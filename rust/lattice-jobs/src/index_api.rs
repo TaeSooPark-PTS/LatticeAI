@@ -322,9 +322,52 @@ async fn drain(
     ok(&serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
+pub(crate) fn should_use_worker_embed(configured: bool, db_path: &std::path::Path) -> bool {
+    let env_val = std::env::var(WORKER_EMBED_ENV).ok();
+    should_use_worker_embed_with_env(configured, env_val.as_deref(), db_path)
+}
+
+fn should_use_worker_embed_with_env(
+    configured: bool,
+    env_override: Option<&str>,
+    db_path: &std::path::Path,
+) -> bool {
+    if let Some(raw) = env_override {
+        let normalized = raw.trim().to_ascii_lowercase();
+        if matches!(normalized.as_str(), "0" | "false" | "no" | "off") {
+            return false;
+        }
+        if matches!(normalized.as_str(), "1" | "true" | "yes" | "on") {
+            return true;
+        }
+    }
+    if configured {
+        return true;
+    }
+    if db_path.exists() {
+        if let Ok(conn) = lattice_core::db::open_read_only(db_path) {
+            let raw: Option<String> = conn
+                .query_row(
+                    "SELECT value FROM graph_meta WHERE key='embedding_index_contract'",
+                    [],
+                    |row| row.get(0),
+                )
+                .ok();
+            if let Some(contract) = raw.and_then(|s| {
+                serde_json::from_str::<lattice_core::embedding_contract::EmbeddingIndexContract>(&s)
+                    .ok()
+            }) {
+                if contract.is_semantic() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn worker_embed_seam(state: &IndexApiState) -> Option<WorkerSeamClient> {
-    let env_on = crate::parse_flag(std::env::var(WORKER_EMBED_ENV).ok().as_deref(), false);
-    if state.worker_embed || env_on {
+    if should_use_worker_embed(state.worker_embed, &state.config.graph_db_path()) {
         state.seam.clone()
     } else {
         None
@@ -363,7 +406,7 @@ async fn rebuild(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) ->
     }
 }
 
-mod engine;
+pub(crate) mod engine;
 mod status;
 
 pub use engine::{claim_pending, drain_claimed, drain_queue, embed_items_for_nodes};
@@ -640,5 +683,25 @@ mod tests {
             sha256_text("abc"),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         );
+    }
+
+    #[test]
+    fn semantic_contract_auto_enables_worker_embed_unless_explicitly_disabled() {
+        let (dir, conn) = store();
+        let db = dir.path().join("knowledge_graph.sqlite");
+        assert!(!should_use_worker_embed_with_env(false, None, &db));
+
+        let semantic = lattice_core::embedding_contract::EmbeddingIndexContract::from_semantic(
+            "huggingface",
+            "huggingface:google/embeddinggemma-2:768",
+            768,
+        );
+        conn.execute(
+            "INSERT OR REPLACE INTO graph_meta(key, value) VALUES ('embedding_index_contract', ?1)",
+            [serde_json::to_string(&semantic).unwrap()],
+        )
+        .unwrap();
+        assert!(should_use_worker_embed_with_env(false, None, &db));
+        assert!(!should_use_worker_embed_with_env(false, Some("false"), &db));
     }
 }

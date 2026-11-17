@@ -72,3 +72,7 @@ def main() -> None:
 
 
 __all__ = ["create_worker_app", "main"]
+
+
+if __name__ == "__main__":
+    main()

@@ -167,6 +167,7 @@ fn run(
                     .map(Map::from_iter),
                 scope: graph_scope(spec),
                 now_secs: now,
+                ..Default::default()
             },
         )
         .expect("service hybrid must not fail on the fixture"),
@@ -252,6 +253,7 @@ fn run(
                 conversation_id: opt_text(spec, "conversation_id"),
                 workspace_id: opt_text(spec, "workspace_id"),
                 now_secs: now,
+                ..Default::default()
             },
         )
         .expect("context assembly must not fail on the fixture"),

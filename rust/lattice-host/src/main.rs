@@ -5,11 +5,13 @@
 //! changes when this binary is not running: the existing entry points (the
 //! `ltcai` CLI, a browser pointed straight at the worker) keep working.
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use lattice_host::gateway::{bind_loopback, mounts, serve_gateway, GatewayState};
+use lattice_host::gateway::{
+    bind_gateway, ensure_bind_allowed, mounts, serve_gateway_with_auth_guard, GatewayState,
+};
 use lattice_host::supervisor::{
     find_free_port, preferred_port, HostProbe, Supervisor, SupervisorConfig, SystemProbe,
     DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
@@ -22,9 +24,12 @@ USAGE:
     lattice-host [OPTIONS]
 
 OPTIONS:
+    --bind <ADDR>          Bind IP address (default: LATTICEAI_BIND, then 127.0.0.1;
+                           non-loopback addresses require LATTICEAI_REQUIRE_AUTH=true)
     --port <PORT>          Gateway port (default: LATTICEAI_HOST_PORT,
                            LATTICEAI_PORT, then 4825; scans upward if busy)
     --worker-port <PORT>   Pin the worker port instead of scanning
+    --worker-cmd <CMD>     Explicit worker launch command override
     --no-spawn             Do not start a worker; front an existing one
     --no-jobs              Mount /host/jobs but never run the timer
                            (same as LATTICEAI_JOBS=0)
@@ -34,8 +39,10 @@ OPTIONS:
 
 #[derive(Debug, Default, PartialEq, Eq)]
 struct Options {
+    bind: Option<IpAddr>,
     port: Option<u16>,
     worker_port: Option<u16>,
+    worker_cmd: Option<String>,
     no_spawn: bool,
     no_jobs: bool,
     help: bool,
@@ -46,6 +53,7 @@ struct Options {
 enum ParseError {
     MissingValue(String),
     BadValue(String, String),
+    BadBind(String, String),
     Unknown(String),
 }
 
@@ -54,6 +62,7 @@ impl std::fmt::Display for ParseError {
         match self {
             ParseError::MissingValue(flag) => write!(f, "{flag} needs a value"),
             ParseError::BadValue(flag, value) => write!(f, "{flag}: '{value}' is not a port"),
+            ParseError::BadBind(flag, value) => write!(f, "{flag}: '{value}' is not an IP address"),
             ParseError::Unknown(flag) => write!(f, "unknown option '{flag}'"),
         }
     }
@@ -68,6 +77,24 @@ fn parse_args<I: IntoIterator<Item = String>>(args: I) -> Result<Options, ParseE
             "--no-jobs" => options.no_jobs = true,
             "-h" | "--help" => options.help = true,
             "-V" | "--version" => options.version = true,
+            "--bind" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| ParseError::MissingValue(arg.clone()))?;
+                let ip = raw
+                    .parse::<IpAddr>()
+                    .map_err(|_| ParseError::BadBind(arg.clone(), raw.clone()))?;
+                options.bind = Some(ip);
+            }
+            "--worker-cmd" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| ParseError::MissingValue(arg.clone()))?;
+                if raw.trim().is_empty() {
+                    return Err(ParseError::MissingValue(arg));
+                }
+                options.worker_cmd = Some(raw);
+            }
             "--port" | "--worker-port" => {
                 let raw = iter
                     .next()
@@ -85,6 +112,34 @@ fn parse_args<I: IntoIterator<Item = String>>(args: I) -> Result<Options, ParseE
         }
     }
     Ok(options)
+}
+
+fn parse_require_auth(probe: &dyn HostProbe) -> bool {
+    probe
+        .env_var("LATTICEAI_REQUIRE_AUTH")
+        .map(|raw| {
+            matches!(
+                raw.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn resolve_bind_ip(options: &Options, probe: &dyn HostProbe) -> Result<IpAddr, String> {
+    if let Some(ip) = options.bind {
+        return Ok(ip);
+    }
+    if let Some(raw) = probe
+        .env_var("LATTICEAI_BIND")
+        .filter(|v| !v.trim().is_empty())
+    {
+        return raw
+            .trim()
+            .parse::<IpAddr>()
+            .map_err(|_| format!("LATTICEAI_BIND: '{}' is not a valid IP address", raw.trim()));
+    }
+    Ok(IpAddr::V4(Ipv4Addr::LOCALHOST))
 }
 
 fn log(message: &str) {
@@ -149,9 +204,35 @@ fn jobs_should_run(options: &Options, env_value: Option<&str>) -> bool {
     !options.no_jobs && !options.no_spawn && mounts::jobs_enabled(env_value)
 }
 
+fn ensure_supported_storage_engine(probe: &dyn HostProbe) -> Result<(), String> {
+    if let Some(raw) = probe
+        .env_var("LATTICEAI_STORAGE_ENGINE")
+        .map(|v| v.trim().to_ascii_lowercase())
+        .filter(|v| !v.is_empty())
+    {
+        if matches!(raw.as_str(), "postgres" | "postgresql") {
+            return Err(
+                "LATTICEAI_STORAGE_ENGINE=postgres is not supported as a live primary store \
+                 in lattice-host: SQLite is the authoritative local Brain store, and \
+                 PostgreSQL/pgvector is an export/migration target via /api/brain/storage/migrate-postgres."
+                    .into(),
+            );
+        }
+    }
+    Ok(())
+}
+
 async fn run(options: Options) -> Result<(), String> {
+    if let Some(cmd) = options.worker_cmd.as_ref() {
+        std::env::set_var("LATTICEAI_DESKTOP_BACKEND_CMD", cmd);
+    }
     let probe = SystemProbe;
+    ensure_supported_storage_engine(&probe)?;
+    let bind_ip = resolve_bind_ip(&options, &probe)?;
+    let require_auth = parse_require_auth(&probe);
     let gateway_port = choose_gateway_port(&options, &probe)?;
+    let addr = SocketAddr::new(bind_ip, gateway_port);
+    ensure_bind_allowed(&addr, require_auth).map_err(|err| err.to_string())?;
     let worker_port = choose_worker_port(&options, &probe, gateway_port)?;
 
     let mut config = SupervisorConfig::new(worker_port).with_system_dirs(&probe);
@@ -163,8 +244,9 @@ async fn run(options: Options) -> Result<(), String> {
     let supervisor = Supervisor::with_probe(config, Arc::new(SystemProbe))
         .map_err(|err| format!("cannot create the supervisor: {err}"))?;
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], gateway_port));
-    let listener = bind_loopback(addr).await.map_err(|err| err.to_string())?;
+    let listener = bind_gateway(addr, require_auth)
+        .await
+        .map_err(|err| err.to_string())?;
     let bound = listener
         .local_addr()
         .map(|addr| addr.to_string())
@@ -172,6 +254,9 @@ async fn run(options: Options) -> Result<(), String> {
 
     log(&format!("version {}", lattice_host::VERSION));
     log(&format!("gateway listening on http://{bound}"));
+    if !bind_ip.is_loopback() {
+        log("non-loopback bind enabled with LATTICEAI_REQUIRE_AUTH=true");
+    }
     log(&format!("worker origin {}", supervisor.worker_origin()));
     if options.no_spawn {
         log("--no-spawn: fronting an existing worker, nothing will be started");
@@ -246,7 +331,8 @@ async fn run(options: Options) -> Result<(), String> {
         }
     });
 
-    let result = serve_gateway(listener, state, shutdown_signal()).await;
+    let result =
+        serve_gateway_with_auth_guard(listener, state, require_auth, shutdown_signal()).await;
     let _ = start_task.await;
     let _ = jobs_stop_tx.send(());
     if let Some(handle) = jobs_task {
@@ -436,8 +522,10 @@ mod tests {
     #[test]
     fn usage_documents_every_flag() {
         for flag in [
+            "--bind",
             "--port",
             "--worker-port",
+            "--worker-cmd",
             "--no-spawn",
             "--no-jobs",
             "--help",
@@ -445,5 +533,47 @@ mod tests {
         ] {
             assert!(USAGE.contains(flag), "{flag} missing from --help");
         }
+    }
+
+    #[test]
+    fn bind_defaults_to_loopback_and_parses_explicit_addresses() {
+        let probe = StaticProbe::new();
+        assert_eq!(
+            resolve_bind_ip(&Options::default(), &probe).unwrap(),
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        );
+        let parsed = parse_args(args(&[
+            "--bind",
+            "0.0.0.0",
+            "--worker-cmd",
+            "python3 -m latticeai.worker_app",
+        ]))
+        .expect("parse");
+        assert_eq!(parsed.bind, Some("0.0.0.0".parse().unwrap()));
+        assert_eq!(
+            parsed.worker_cmd.as_deref(),
+            Some("python3 -m latticeai.worker_app")
+        );
+        assert!(!parse_require_auth(&probe));
+        assert!(parse_require_auth(
+            &StaticProbe::new().with_env("LATTICEAI_REQUIRE_AUTH", "true")
+        ));
+    }
+
+    #[test]
+    fn postgres_storage_engine_is_refused_honestly_at_startup() {
+        assert!(ensure_supported_storage_engine(&StaticProbe::new()).is_ok());
+        assert!(ensure_supported_storage_engine(
+            &StaticProbe::new().with_env("LATTICEAI_STORAGE_ENGINE", "sqlite")
+        )
+        .is_ok());
+        let err = ensure_supported_storage_engine(
+            &StaticProbe::new().with_env("LATTICEAI_STORAGE_ENGINE", "postgres"),
+        )
+        .expect_err("postgres primary engine must refuse startup");
+        assert!(
+            err.contains("SQLite is the authoritative local Brain store"),
+            "{err}"
+        );
     }
 }

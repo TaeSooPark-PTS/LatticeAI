@@ -322,3 +322,84 @@ def test_freshness_reports_a_missing_sidecar(tmp_path):
     assert report["stale"] is True
     assert sidecar_fingerprint("hash", 4, 1) == "hash|4|1"
     assert VECTOR_QUERY_K_CAP == 200
+
+
+@pytest.mark.skipif(not hnswlib_available(), reason="HNSW rebuild check needs hnswlib")
+def test_inplace_vector_update_with_equal_count_rebuilds_sidecar(tmp_path):
+    reset_sidecar_cache()
+    db = tmp_path / "kg.sqlite"
+    _seed_db(db, [("a", [1.0, 0.0, 0.0, 0.0]), ("b", [0.0, 1.0, 0.0, 0.0])])
+    first = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[0.0, 0.0, 0.0, 1.0],
+        k=2,
+        db_path=db,
+    )
+    assert first["index"] == "hnsw"
+
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT OR REPLACE INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
+        ("a", "chunk", "a", _blob([0.0, 0.0, 0.0, 1.0]), 4, "hash", "{}", "2026-01-01T00:02:00"),
+    )
+    conn.commit()
+    conn.close()
+
+    freshness = sidecar_freshness(embedding_model="hash", embedding_dim=4, db_path=db)
+    assert freshness["stale"] is True
+
+    second = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[0.0, 0.0, 0.0, 1.0],
+        k=2,
+        db_path=db,
+    )
+    assert second["index"] == "hnsw"
+    assert second["size"] == 2
+    assert second["stale"] is False
+    assert second["refreshed"] == "rebuild"
+    assert second["ids"][0] == "a"
+
+
+@pytest.mark.skipif(not hnswlib_available(), reason="HNSW swap check needs hnswlib")
+def test_equal_count_delete_and_insert_swap_rebuilds_sidecar(tmp_path):
+    reset_sidecar_cache()
+    db = tmp_path / "kg.sqlite"
+    _seed_db(db, [("a", [1.0, 0.0, 0.0, 0.0]), ("b", [0.0, 1.0, 0.0, 0.0])])
+    first = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[0.0, 1.0, 0.0, 0.0],
+        k=2,
+        db_path=db,
+    )
+    assert first["index"] == "hnsw"
+
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM vector_embeddings WHERE item_id = 'b'")
+    conn.execute(
+        "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
+        ("c", "chunk", "c", _blob([0.0, 0.0, 1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:03:00"),
+    )
+    conn.commit()
+    conn.close()
+
+    second = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[0.0, 0.0, 1.0, 0.0],
+        k=2,
+        db_path=db,
+    )
+    assert second["index"] == "hnsw"
+    assert second["size"] == 2
+    assert second["stale"] is False
+    assert second["refreshed"] == "rebuild"
+    assert "b" not in second["ids"]
+    assert second["ids"][0] == "c"

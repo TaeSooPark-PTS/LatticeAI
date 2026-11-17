@@ -23,7 +23,7 @@ pub(crate) fn sha256_hex(data: &[u8]) -> String {
         .collect()
 }
 
-pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+fn prepare_hmac_states(key: &[u8]) -> (Sha256, Sha256) {
     let mut block_key = [0u8; 64];
     if key.len() > 64 {
         let hashed = Sha256::digest(key);
@@ -31,21 +31,23 @@ pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     } else {
         block_key[..key.len()].copy_from_slice(key);
     }
-
     let mut ipad = [0x36u8; 64];
     let mut opad = [0x5cu8; 64];
     for i in 0..64 {
         ipad[i] ^= block_key[i];
         opad[i] ^= block_key[i];
     }
-
     let mut inner = Sha256::new();
     inner.update(ipad);
-    inner.update(data);
-    let inner_digest = inner.finalize();
-
     let mut outer = Sha256::new();
     outer.update(opad);
+    (inner, outer)
+}
+
+pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let (mut inner, mut outer) = prepare_hmac_states(key);
+    inner.update(data);
+    let inner_digest = inner.finalize();
     outer.update(inner_digest);
     let out = outer.finalize();
     let mut mac = [0u8; 32];
@@ -54,18 +56,31 @@ pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
 }
 
 pub(crate) fn pbkdf2_hmac_sha256(password: &[u8], salt: &[u8], iterations: u32, out: &mut [u8]) {
+    let (inner_base, outer_base) = prepare_hmac_states(password);
     let mut counter: u32 = 1;
     let mut offset = 0usize;
     while offset < out.len() {
-        let mut msg = Vec::with_capacity(salt.len() + 4);
-        msg.extend_from_slice(salt);
-        msg.extend_from_slice(&counter.to_be_bytes());
-        let mut u = hmac_sha256(password, &msg);
+        let mut inner = inner_base.clone();
+        inner.update(salt);
+        inner.update(counter.to_be_bytes());
+        let inner_digest = inner.finalize();
+        let mut outer = outer_base.clone();
+        outer.update(inner_digest);
+        let first = outer.finalize();
+
+        let mut u = [0u8; 32];
+        u.copy_from_slice(&first);
         let mut t = u;
         for _ in 1..iterations {
-            u = hmac_sha256(password, &u);
+            let mut in_step = inner_base.clone();
+            in_step.update(u);
+            let in_dig = in_step.finalize();
+            let mut out_step = outer_base.clone();
+            out_step.update(in_dig);
+            let next = out_step.finalize();
+            u.copy_from_slice(&next);
             for (dst, src) in t.iter_mut().zip(u.iter()) {
-                *dst ^= src;
+                *dst ^= *src;
             }
         }
         let take = (out.len() - offset).min(32);

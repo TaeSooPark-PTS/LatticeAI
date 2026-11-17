@@ -4,7 +4,11 @@
 //! deliberately not remounted here.
 
 use std::collections::{HashMap, HashSet};
+use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
+use std::time::Duration;
 
 use axum::body::{Body, Bytes};
 use axum::extract::{Query, State};
@@ -12,8 +16,10 @@ use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
+use futures_core::Stream;
 use lattice_auth::{AuthState, OrderedMap};
 use serde_json::{json, Value};
+use tokio::sync::{broadcast, mpsc};
 
 use crate::workspaceos::project_sessions::{detail, json_ok, now_iso_utc, parse_json_object};
 
@@ -49,6 +55,7 @@ impl RealtimeState {
 pub fn router(state: RealtimeState) -> Router {
     Router::new()
         .route("/realtime/stream", get(realtime_stream))
+        .route("/api/realtime/stream", get(realtime_stream))
         .route("/realtime/feed", get(realtime_feed))
         .route("/realtime/presence", get(realtime_presence))
         .route("/realtime/presence/join", post(realtime_join))
@@ -56,34 +63,162 @@ pub fn router(state: RealtimeState) -> Router {
         .with_state(state)
 }
 
-fn allowed_scopes(identity: &lattice_auth::Identity) -> Option<HashSet<String>> {
+fn allowed_scopes(
+    identity: &lattice_auth::Identity,
+    headers: &HeaderMap,
+    requested_ws: Option<&str>,
+) -> Option<HashSet<String>> {
+    let explicit = requested_ws
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            headers
+                .get("x-workspace-id")
+                .and_then(|v| v.to_str().ok())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+        });
     if identity.email.is_empty() {
-        None
+        explicit.map(|ws| HashSet::from([ws.to_string()]))
     } else {
         let mut set = HashSet::new();
         set.insert("personal".into());
+        if let Some(ws) = explicit {
+            set.insert(ws.to_string());
+        }
         Some(set)
     }
 }
 
-async fn realtime_stream(State(state): State<RealtimeState>, headers: HeaderMap) -> Response {
+struct SseFrameStream {
+    rx: mpsc::Receiver<Result<Bytes, std::io::Error>>,
+    _guard: SubscriberGuard,
+}
+
+impl Stream for SseFrameStream {
+    type Item = Result<Bytes, std::io::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.rx.poll_recv(cx)
+    }
+}
+
+struct SubscriberGuard {
+    bus: Arc<RealtimeBus>,
+}
+
+impl Drop for SubscriberGuard {
+    fn drop(&mut self) {
+        self.bus.subscribers.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+fn event_matches_scope(event: &OrderedMap, scope: Option<&HashSet<String>>) -> bool {
+    match scope {
+        None => true,
+        Some(set) => match event.get("workspace_id").and_then(Value::as_str) {
+            Some(w) if !w.trim().is_empty() => set.contains(w),
+            _ => set.contains("personal"),
+        },
+    }
+}
+
+async fn realtime_stream(
+    State(state): State<RealtimeState>,
+    headers: HeaderMap,
+    Query(query): Query<HashMap<String, String>>,
+) -> Response {
     let identity = match state.auth.require_user(&headers) {
         Ok(id) => id,
         Err(refusal) => return refusal,
     };
-    let scope = allowed_scopes(&identity);
-    let events = state.bus.recent(10, scope.as_ref());
-    let mut body = String::new();
-    for event in events {
-        body.push_str(&sse_format(&event));
+    let scope = allowed_scopes(
+        &identity,
+        &headers,
+        query.get("workspace_id").map(String::as_str),
+    );
+    let live = query
+        .get("live")
+        .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false);
+    let max_live_events = query
+        .get("max_events")
+        .and_then(|v| v.parse::<usize>().ok());
+
+    if !live {
+        let events = state.bus.recent(10, scope.as_ref());
+        let mut body = String::new();
+        for event in events {
+            body.push_str(&sse_format(&event));
+        }
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "text/event-stream; charset=utf-8")
+            .header(header::CACHE_CONTROL, "no-cache")
+            .header("x-accel-buffering", "no")
+            .header(header::CONNECTION, "keep-alive")
+            .body(Body::from(body))
+            .unwrap_or_else(|_| Response::new(Body::empty()));
     }
+
+    let mut broadcast_rx = state.bus.subscribe();
+    state.bus.subscribers.fetch_add(1, Ordering::SeqCst);
+    let guard = SubscriberGuard {
+        bus: Arc::clone(&state.bus),
+    };
+    let backlog = state.bus.recent(10, scope.as_ref());
+    let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(64);
+
+    tokio::spawn(async move {
+        for event in backlog.into_iter().rev() {
+            if tx.send(Ok(Bytes::from(sse_format(&event)))).await.is_err() {
+                return;
+            }
+        }
+        let mut delivered = 0usize;
+        if max_live_events == Some(0) {
+            return;
+        }
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
+        heartbeat.tick().await;
+        loop {
+            tokio::select! {
+                _ = heartbeat.tick() => {
+                    if tx.send(Ok(Bytes::from_static(b": keepalive\n\n"))).await.is_err() {
+                        break;
+                    }
+                }
+                recv = broadcast_rx.recv() => {
+                    match recv {
+                        Ok(event) => {
+                            if !event_matches_scope(&event, scope.as_ref()) {
+                                continue;
+                            }
+                            if tx.send(Ok(Bytes::from(sse_format(&event)))).await.is_err() {
+                                break;
+                            }
+                            delivered += 1;
+                            if let Some(cap) = max_live_events {
+                                if delivered >= cap {
+                                    break;
+                                }
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                        Err(broadcast::error::RecvError::Closed) => break,
+                    }
+                }
+            }
+        }
+    });
+
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/event-stream; charset=utf-8")
         .header(header::CACHE_CONTROL, "no-cache")
         .header("x-accel-buffering", "no")
         .header(header::CONNECTION, "keep-alive")
-        .body(Body::from(body))
+        .body(Body::from_stream(SseFrameStream { rx, _guard: guard }))
         .unwrap_or_else(|_| Response::new(Body::empty()))
 }
 
@@ -100,7 +235,11 @@ async fn realtime_feed(
         .get("limit")
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(50);
-    let scope = allowed_scopes(&identity);
+    let scope = allowed_scopes(
+        &identity,
+        &headers,
+        query.get("workspace_id").map(String::as_str),
+    );
     let events = state.bus.recent(limit, scope.as_ref());
     let contracts: Vec<Value> = events
         .iter()
@@ -118,7 +257,7 @@ async fn realtime_presence(State(state): State<RealtimeState>, headers: HeaderMa
         Ok(id) => id,
         Err(refusal) => return refusal,
     };
-    let scope = allowed_scopes(&identity);
+    let scope = allowed_scopes(&identity, &headers, None);
     let mut map = OrderedMap::new();
     map.insert("presence", json!(state.bus.presence(scope.as_ref())));
     map.insert("stats", json!(state.bus.stats()));
@@ -142,7 +281,7 @@ async fn realtime_join(
             Err(refusal) => return refusal,
         }
     };
-    let scope = allowed_scopes(&identity);
+    let scope = allowed_scopes(&identity, &headers, None);
     let mut workspace_id = object
         .get("workspace_id")
         .and_then(Value::as_str)
@@ -236,15 +375,24 @@ pub struct RealtimeBus {
     feed: Mutex<Vec<OrderedMap>>,
     presence: Mutex<HashMap<String, OrderedMap>>,
     seq: Mutex<u64>,
+    tx: broadcast::Sender<OrderedMap>,
+    subscribers: AtomicUsize,
 }
 
 impl RealtimeBus {
     pub fn new() -> Self {
+        let (tx, _) = broadcast::channel(256);
         Self {
             feed: Mutex::new(Vec::new()),
             presence: Mutex::new(HashMap::new()),
             seq: Mutex::new(0),
+            tx,
+            subscribers: AtomicUsize::new(0),
         }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<OrderedMap> {
+        self.tx.subscribe()
     }
 
     pub fn publish(&self, event: OrderedMap) -> OrderedMap {
@@ -283,6 +431,8 @@ impl RealtimeBus {
             let drain = feed.len() - FEED_LIMIT;
             feed.drain(0..drain);
         }
+        drop(feed);
+        let _ = self.tx.send(enriched.clone());
         enriched
     }
 
@@ -382,7 +532,10 @@ impl RealtimeBus {
     pub fn stats(&self) -> OrderedMap {
         let mut map = OrderedMap::new();
         map.insert("version", json!(REALTIME_VERSION));
-        map.insert("subscribers", json!(0));
+        map.insert(
+            "subscribers",
+            json!(self.subscribers.load(Ordering::SeqCst)),
+        );
         map.insert("presence", json!(self.presence.lock().expect("p").len()));
         map.insert("feed_size", json!(self.feed.lock().expect("f").len()));
         map.insert("transport", json!("sse"));
@@ -442,4 +595,61 @@ fn realtime_contract(event: &OrderedMap) -> OrderedMap {
     map.insert("status", json!(event_type));
     map.insert("timestamp", received);
     map
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lattice_auth::AuthConfig;
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn live_sse_stream_delivers_published_events_and_filters_workspaces() {
+        let auth = AuthState::new(AuthConfig::from_map(&HashMap::new(), None));
+        let state = RealtimeState::new(auth);
+        let bus = Arc::clone(&state.bus);
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let app = router(state);
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+
+        let publisher = tokio::spawn({
+            let bus = Arc::clone(&bus);
+            async move {
+                tokio::time::sleep(Duration::from_millis(40)).await;
+                let mut other = OrderedMap::new();
+                other.insert("area", json!("brain"));
+                other.insert("event_type", json!("other-ws-note"));
+                other.insert("workspace_id", json!("team-secret"));
+                bus.publish(other);
+
+                let mut mine = OrderedMap::new();
+                mine.insert("area", json!("brain"));
+                mine.insert("event_type", json!("personal-note"));
+                mine.insert("workspace_id", json!("personal"));
+                bus.publish(mine);
+            }
+        });
+
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let resp = client
+            .get(format!(
+                "http://{addr}/api/realtime/stream?live=1&max_events=1&workspace_id=personal"
+            ))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        let text = resp.text().await.unwrap();
+        publisher.await.unwrap();
+
+        assert!(text.contains("\"personal-note\""), "{text}");
+        assert!(
+            !text.contains("\"other-ws-note\""),
+            "cross-workspace event leaked into personal SSE stream: {text}"
+        );
+    }
 }

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
+import { useRealtimeStream } from "@/hooks/useRealtimeStream";
 import { t, type Language } from "@/i18n";
 import { asArray } from "@/lib/utils";
 import { clearScopedClientState } from "@/queryClient";
@@ -106,9 +107,18 @@ export function useSnapshotsPanel(language: Language) {
 }
 
 export function useActivityPanel() {
-  const feed = useQuery({ queryKey: ["realtimeFeed"], queryFn: latticeApi.realtimeFeed });
-  const presence = useQuery({ queryKey: ["presence"], queryFn: latticeApi.presence });
-  return { feed, presence };
+  const { transport, pollingInterval } = useRealtimeStream(true);
+  const feed = useQuery({
+    queryKey: ["realtimeFeed"],
+    queryFn: latticeApi.realtimeFeed,
+    refetchInterval: pollingInterval,
+  });
+  const presence = useQuery({
+    queryKey: ["presence"],
+    queryFn: latticeApi.presence,
+    refetchInterval: pollingInterval,
+  });
+  return { feed, presence, transport };
 }
 
 export function useNetworkPanel() {

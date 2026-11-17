@@ -4,13 +4,15 @@ name: Dependency Audit
 # CycloneDX SBOM for each ecosystem.
 #
 # Enforcement posture:
-#   * schedule / workflow_dispatch -> audits are STRICT and fail on findings
-#     (pip-audit: any known vuln; npm: high+), so the weekly run is the loud
-#     channel for triaging supply-chain drift.
-#   * not on the push/PR path: a newly-disclosed CVE in a transitive dep
-#     must never redden an unrelated change.
+#   * release tags / schedule / workflow_dispatch -> audits are STRICT and fail
+#     on findings (pip-audit: any known vuln; npm: high+), blocking vulnerable
+#     releases and keeping weekly supply-chain drift loud.
 
 on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*"
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
   workflow_dispatch:

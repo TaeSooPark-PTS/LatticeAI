@@ -51,6 +51,8 @@ WHEEL_MODULES = [
     "latticeai.cli.entrypoint",
     "latticeai.api.worker_compute",
     "latticeai.api.worker_seams",
+    "latticeai.core.embedding_providers",
+    "latticeai.core.vector_index",
     "latticeai.models.router",
     "latticeai.runtime.build_phases.worker_profile",
     "latticeai.services.model_runtime",

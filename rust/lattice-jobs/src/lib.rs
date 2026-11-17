@@ -41,9 +41,13 @@
 //!
 //! ## Boundaries, stated rather than discovered
 //!
-//! * **The worker does the work.** Embedding, graph writes and ingestion all
-//!   stay in Python — the single-writer rule this product is built on. This
-//!   crate calls an HTTP endpoint on a timer and remembers what it answered.
+//! * **Graph writes are native; semantic compute uses the worker seam.** When bound
+//!   to [`lattice_core::graph_write::GraphWriter`], draining claims `vector_jobs`
+//!   and persists embeddings natively in Rust, delegating vector computation to
+//!   `POST /worker/embed` whenever a semantic [`EmbeddingIndexContract`] (or
+//!   `LATTICEAI_JOBS_WORKER_EMBED=1`) is active, and using `LocalEmbeddingModel`
+//!   for deterministic hash-indexed stores. Without a native writer bound, the
+//!   scheduler falls back to HTTP `POST /api/index/drain`.
 //! * **Queue counts bypass the worker.** They come from the store directly,
 //!   read-only ([`queue`]), because the moment someone asks how much work is
 //!   owed is often the moment the worker is not answering.

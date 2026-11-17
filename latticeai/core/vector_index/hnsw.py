@@ -84,6 +84,8 @@ class HnswIndex:
         self._ann: Any = None
         self._dirty = True
         self._loaded = False
+        self._stamp: Optional[str] = None
+        self._indexed_at: Dict[str, str] = {}
 
     @property
     def backend(self) -> str:
@@ -122,6 +124,16 @@ class HnswIndex:
     def labels(self) -> List[str]:
         """Live label order — the sidecar's identity, loaded or rebuilt."""
         return list(self._labels)
+
+    @property
+    def stamp(self) -> Optional[str]:
+        """Store metadata stamp persisted with the sidecar."""
+        return self._stamp
+
+    @property
+    def indexed_at(self) -> Dict[str, str]:
+        """Per-item indexed_at timestamps for mutation detection."""
+        return dict(self._indexed_at)
 
     def _identity_matches(self, dim: int, space: str, model_id: str) -> bool:
         return (
@@ -343,33 +355,53 @@ class HnswIndex:
             "model_id": self._model_id,
         }
 
-    def save(self, db_path: Any, *, fingerprint: str) -> bool:
+    def save(
+        self,
+        db_path: Any,
+        *,
+        fingerprint: str,
+        stamp: Optional[str] = None,
+        indexed_at: Optional[Mapping[str, str]] = None,
+    ) -> bool:
         """Write the graph + label map beside the brain database."""
         graph = self._ensure_graph()
         if graph is None or not self._labels:
             return False
+        if stamp is not None:
+            self._stamp = str(stamp)
+        if indexed_at is not None:
+            self._indexed_at = {str(k): str(v) for k, v in indexed_at.items()}
         index_path, meta_path = sidecar_paths(db_path)
+        payload: Dict[str, Any] = {
+            "fingerprint": str(fingerprint),
+            "dim": self._dim,
+            "space": self._space,
+            "model_id": self._model_id,
+            "labels": self._labels,
+        }
+        if self._stamp is not None:
+            payload["stamp"] = self._stamp
+        if self._indexed_at:
+            payload["indexed_at"] = self._indexed_at
         try:
             index_path.parent.mkdir(parents=True, exist_ok=True)
             graph.save_index(str(index_path))
             meta_path.write_text(
-                json.dumps(
-                    {
-                        "fingerprint": str(fingerprint),
-                        "dim": self._dim,
-                        "space": self._space,
-                        "model_id": self._model_id,
-                        "labels": self._labels,
-                    },
-                    ensure_ascii=False,
-                ),
+                json.dumps(payload, ensure_ascii=False),
                 encoding="utf-8",
             )
         except Exception:  # noqa: BLE001 — persistence is best-effort
             return False
         return True
 
-    def load(self, db_path: Any, *, fingerprint: str, strict: bool = True) -> bool:
+    def load(
+        self,
+        db_path: Any,
+        *,
+        fingerprint: str,
+        strict: bool = True,
+        stamp: Optional[str] = None,
+    ) -> bool:
         """Adopt a sidecar graph when it matches this embedder identity.
 
         ``strict`` (the default) also requires the stored fingerprint — size
@@ -388,7 +420,16 @@ class HnswIndex:
                 matches = False
             if strict:
                 matches = matches and str(meta["fingerprint"]) == str(fingerprint)
+                if stamp is not None and meta.get("stamp") is not None:
+                    matches = matches and str(meta["stamp"]) == str(stamp)
             labels = [str(label) for label in meta["labels"]]
+            loaded_stamp = str(meta["stamp"]) if meta.get("stamp") is not None else None
+            raw_ts = meta.get("indexed_at")
+            loaded_ts = (
+                {str(k): str(v) for k, v in raw_ts.items()}
+                if isinstance(raw_ts, dict)
+                else {}
+            )
         except Exception:  # noqa: BLE001 — absent/corrupt sidecar = rebuild
             return False
         if not (matches and labels):
@@ -406,6 +447,8 @@ class HnswIndex:
         self._metadata.clear()
         self._dirty = False
         self._loaded = True
+        self._stamp = loaded_stamp
+        self._indexed_at = loaded_ts
         return True
 
 

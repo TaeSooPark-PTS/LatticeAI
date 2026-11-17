@@ -514,8 +514,24 @@ fn embedder_status(conn: &Connection, model_id: &str, dim: i64) -> OrderedMap {
 /// `by_item_type`, `scale` and `operations` — is complete.
 pub fn index_status(conn: &Connection, db_path: &str) -> Result<OrderedMap, CoreError> {
     let model = lattice_core::LocalEmbeddingModel::from_env();
-    let dim = model.dim() as i64;
-    let model_id = model.model_id().to_string();
+    let explicit_contract: Option<lattice_core::embedding_contract::EmbeddingIndexContract> = conn
+        .query_row(
+            "SELECT value FROM graph_meta WHERE key='embedding_index_contract'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok());
+    let (model_id, dim) = match explicit_contract {
+        Some(contract)
+            if contract.is_semantic()
+                && !contract.model_id.is_empty()
+                && contract.dimension > 0 =>
+        {
+            (contract.model_id, contract.dimension as i64)
+        }
+        _ => (model.model_id().to_string(), model.dim() as i64),
+    };
     let vector_counts = count_by(
         conn,
         "SELECT item_type, COUNT(*) FROM vector_embeddings GROUP BY item_type",

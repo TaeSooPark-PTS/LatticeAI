@@ -2,12 +2,18 @@
 
 > Status: reference 2026-07-21
 >
-> **Dated snapshot.** The harness this page documents no longer exists in the
-> tree: `scripts/bench_models.py` went with the Python agent loop when 11.5.1
-> ported it to Rust, and `latticeai.core.agent_eval` / `scripts/agent_eval.py`
-> followed (the last of them deleted in 11.8.0). The methodology and the
-> honesty notes below are kept as the record of how these numbers were produced
-> and what they did and did not mean — not as instructions you can run today.
+> **Active CI retrieval baseline gate:** `scripts/bench_retrieval_baseline.py --check-budgets`
+> runs on every CI workflow (`ubuntu-latest`, Python 3.11 + `hnswlib`) to enforce
+> HNSW recall@10 (`>= 0.90`), p95 query latency (`<= 50 ms`), and incremental
+> insert/delete sidecar refresh latency (`<= 250 ms`). Run locally with:
+> `.venv/bin/python scripts/bench_retrieval_baseline.py --check-budgets --json bench-retrieval.json`.
+>
+> **Dated snapshot below.** The model-output repair harness documented in the
+> remainder of this page (`scripts/bench_models.py`) went with the Python agent
+> loop when 11.5.1 ported it to Rust, and `latticeai.core.agent_eval` /
+> `scripts/agent_eval.py` followed (the last of them deleted in 11.8.0). The
+> methodology and honesty notes below are kept as the record of how those
+> numbers were produced.
 
 Methodology and results for `scripts/bench_models.py`, a harness that measured
 how well the agent loop turns model output into executable actions across model

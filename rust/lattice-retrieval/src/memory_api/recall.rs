@@ -114,6 +114,32 @@ pub fn recall(
     workspace_id: Option<&str>,
     limit: i64,
 ) -> Result<OrderedMap, CoreError> {
+    recall_with_query_vector(
+        conn,
+        state,
+        graph_enabled,
+        query,
+        user_email,
+        workspace_id,
+        limit,
+        None,
+        None,
+    )
+}
+
+/// [`recall`] with an optional precomputed semantic query vector or degradation note.
+#[allow(clippy::too_many_arguments)]
+pub fn recall_with_query_vector(
+    conn: &Connection,
+    state: &Value,
+    graph_enabled: bool,
+    query: &str,
+    user_email: &str,
+    workspace_id: Option<&str>,
+    limit: i64,
+    query_embedding: Option<&crate::bm25::QueryVectorOverride>,
+    semantic_degraded: Option<&str>,
+) -> Result<OrderedMap, CoreError> {
     let q = lattice_core::pytext::strip(query);
     let tokens = query_tokens(&q);
     let mut results: Vec<Row> = Vec::new();
@@ -212,7 +238,28 @@ pub fn recall(
     let mut vector_used = false;
     if graph_enabled && !q.is_empty() {
         let model = lattice_core::LocalEmbeddingModel::from_env();
-        let hits = match crate::vector::vector_search(conn, &model, &q, limit, 0.0) {
+        let vector_result = if let Some(reason) = semantic_degraded {
+            Err(CoreError::InvalidRequest(reason.to_string()))
+        } else if let Some(ovr) = query_embedding {
+            crate::vector::vector_search_aligned(
+                conn,
+                crate::vector::VectorQueryInput::Precomputed {
+                    model_id: &ovr.model_id,
+                    vector: &ovr.vector,
+                    is_hash_fallback: ovr.is_hash_fallback,
+                },
+                &q,
+                &crate::vector::VectorSearchOptions {
+                    limit,
+                    min_score: 0.0,
+                    scope: None,
+                    include_historical: false,
+                },
+            )
+        } else {
+            crate::vector::vector_search(conn, &model, &q, limit, 0.0)
+        };
+        let hits = match vector_result {
             Ok(payload) => {
                 vector_used = true;
                 let matches = payload

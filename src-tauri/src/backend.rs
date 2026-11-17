@@ -88,6 +88,9 @@ pub struct BackendStatus {
     /// Why the front door is not there, when this shell was supposed to serve
     /// one and could not bind it (11.5.2, additive). `null` normally.
     pub gateway_error: Option<String>,
+    /// Non-silent warning when the Python AI worker runtime is unavailable or
+    /// degraded while the native Rust Brain surface remains active (additive).
+    pub worker_warning: Option<String>,
 }
 
 /// The gateway this shell is serving, and how to stop it.
@@ -104,7 +107,8 @@ pub struct DesktopBackend {
     /// touch it from whichever thread the runtime hands them.
     gateway: Mutex<Option<RunningGateway>>,
     /// The jobs scheduler, mounted on `/host/jobs` in the gateway topology.
-    jobs: Option<Arc<lattice_jobs::Scheduler>>,
+    /// Upgraded to a graph-bound native drain once `open_product` succeeds.
+    jobs: Mutex<Option<Arc<lattice_jobs::Scheduler>>>,
     /// Why the front door is not there, when it could not be bound.
     ///
     /// `None` means "nothing went wrong" — including in the topology that
@@ -132,15 +136,81 @@ fn bundled_worker_present(probe: &dyn HostProbe) -> bool {
     false
 }
 
-/// Command that pins the supervisor onto the worker, or `None` when an
-/// existing override / bundled tree should win.
+/// Discover a packaged `lattice-host` sidecar/sibling binary before falling
+/// back to a developer workspace build directory.
+pub fn resolve_packaged_host_binary(
+    probe: &dyn HostProbe,
+    exe_dir: Option<&std::path::Path>,
+    workspace_root: Option<&std::path::Path>,
+) -> Option<std::path::PathBuf> {
+    let bin_name = if cfg!(windows) {
+        "lattice-host.exe"
+    } else {
+        "lattice-host"
+    };
+    for env_key in ["LATTICEAI_HOST_BIN", "LTCAI_HOST"] {
+        if let Some(pinned) = probe.env_var(env_key).filter(|v| !v.trim().is_empty()) {
+            let path = std::path::PathBuf::from(pinned);
+            if probe.is_file(&path) {
+                return Some(path);
+            }
+        }
+    }
+    if let Some(dir) = exe_dir {
+        let sidecar_arch = format!(
+            "lattice-host-{}-{}{}",
+            std::env::consts::ARCH,
+            std::env::consts::OS,
+            if cfg!(windows) { ".exe" } else { "" }
+        );
+        for candidate in [dir.join(bin_name), dir.join(sidecar_arch)] {
+            if probe.is_file(&candidate) {
+                return Some(candidate);
+            }
+        }
+    }
+    if let Some(resources) = probe.resource_dir() {
+        for candidate in [
+            resources.join("bin").join(bin_name),
+            resources.join(bin_name),
+        ] {
+            if probe.is_file(&candidate) {
+                return Some(candidate);
+            }
+        }
+    }
+    if let Some(home) = probe
+        .env_var("HOME")
+        .or_else(|| probe.env_var("USERPROFILE"))
+        .filter(|v| !v.trim().is_empty())
+    {
+        let managed = std::path::PathBuf::from(home)
+            .join(".ltcai")
+            .join("bin")
+            .join(bin_name);
+        if probe.is_file(&managed) {
+            return Some(managed);
+        }
+    }
+    if let Some(ws) = workspace_root {
+        for profile in ["release", "debug"] {
+            let built = ws.join("rust").join("target").join(profile).join(bin_name);
+            if probe.is_file(&built) {
+                return Some(built);
+            }
+        }
+    }
+    None
+}
+
+/// Resolve the Python interpreter for the supervised AI worker (`--factory`),
+/// or `None` when an explicit command override is already active.
 ///
-/// `bin/ltcai.js` is now the **host** front door. If the supervisor still
-/// treats `ltcai` on `PATH` as a worker (lattice-host rule 2), it would spawn
-/// another host and recurse. Pinning `python -m latticeai.worker_app` closes
-/// that hatch in the unpackaged shell. A caller that already set
-/// `LATTICEAI_DESKTOP_BACKEND_CMD` is left alone.
-fn worker_launch_command(probe: &dyn HostProbe) -> Option<String> {
+/// Pinning `LTCAI_PYTHON` (rather than setting `LATTICEAI_DESKTOP_BACKEND_CMD`
+/// to a bare `-m latticeai.worker_app`) lets [`Supervisor`] construct its
+/// canonical `python -m uvicorn latticeai.worker_app:create_worker_app --factory
+/// --host 127.0.0.1 --port <chosen>` command for both unpackaged and bundled `.app` builds.
+fn resolve_worker_python(probe: &dyn HostProbe) -> Option<String> {
     if probe
         .env_var(BACKEND_CMD_ENV)
         .filter(|value| !value.trim().is_empty())
@@ -148,23 +218,56 @@ fn worker_launch_command(probe: &dyn HostProbe) -> Option<String> {
     {
         return None;
     }
-    if bundled_worker_present(probe) {
-        return None;
+    for env_key in ["LATTICEAI_WORKER_PYTHON", "LTCAI_PYTHON"] {
+        if let Some(pinned) = probe.env_var(env_key).filter(|v| !v.trim().is_empty()) {
+            return Some(pinned);
+        }
     }
     let candidates = lattice_host::supervisor::command::python_candidates(probe);
-    let python = candidates
+    if bundled_worker_present(probe) {
+        return candidates
+            .iter()
+            .find(|program| probe.module_importable(program, "uvicorn"))
+            .or_else(|| {
+                candidates
+                    .iter()
+                    .find(|program| probe.is_file(std::path::Path::new(program)))
+            })
+            .cloned();
+    }
+    candidates
         .iter()
         .find(|program| probe.module_importable(program, WORKER_MODULE))
         .cloned()
         .or_else(|| candidates.first().cloned())
-        .unwrap_or_else(|| "python3".into());
-    Some(format!("{python} -m {WORKER_MODULE}"))
 }
 
-/// Pin the worker launch on the real process environment, once.
+/// Pin `LTCAI_PYTHON` (and `LATTICEAI_HOST_BIN` when a packaged sidecar exists)
+/// on the process environment when resolved, once.
 fn pin_worker_launch_if_needed(probe: &dyn HostProbe) {
-    if let Some(command) = worker_launch_command(probe) {
-        std::env::set_var(BACKEND_CMD_ENV, command);
+    if probe
+        .env_var("LTCAI_PYTHON")
+        .filter(|v| !v.trim().is_empty())
+        .is_none()
+    {
+        if let Some(python) = resolve_worker_python(probe) {
+            std::env::set_var("LTCAI_PYTHON", python);
+        }
+    }
+    if probe
+        .env_var("LATTICEAI_HOST_BIN")
+        .filter(|v| !v.trim().is_empty())
+        .is_none()
+    {
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(std::path::Path::to_path_buf));
+        let workspace_root = std::env::current_dir().ok();
+        if let Some(host_bin) =
+            resolve_packaged_host_binary(probe, exe_dir.as_deref(), workspace_root.as_deref())
+        {
+            std::env::set_var("LATTICEAI_HOST_BIN", host_bin);
+        }
     }
 }
 
@@ -193,7 +296,7 @@ impl DesktopBackend {
             supervisor,
             health_deadline,
             gateway: Mutex::new(None),
-            jobs,
+            jobs: Mutex::new(jobs),
             gateway_error: Mutex::new(None),
         })
     }
@@ -283,9 +386,16 @@ impl DesktopBackend {
         if let Some(root) = self.agent_root() {
             state = state.with_agent_root(root);
         }
-        if let Some(scheduler) = &self.jobs {
-            state = state.with_jobs(Arc::clone(scheduler));
-        }
+        let mut state = match state.open_product() {
+            Ok(state) => state,
+            Err(err) => {
+                let message = format!("the gateway could not open the product surface: {err}");
+                eprintln!("lattice-ai-desktop: {message}");
+                *self.gateway_error.lock().expect("gateway error lock") = Some(message);
+                return;
+            }
+        };
+        state = self.attach_product_scheduler(state);
 
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         tauri::async_runtime::spawn(async move {
@@ -309,8 +419,27 @@ impl DesktopBackend {
     /// against a stopped worker fails, backs off, and is picked up again when
     /// the worker returns — which is exactly what a scheduler should do, and
     /// cheaper than a second lifecycle to keep in step.
+    fn attach_product_scheduler(&self, mut state: GatewayState) -> GatewayState {
+        if self.plan.topology == Topology::Gateway {
+            if let Some(product) = state.product() {
+                let scheduler = mounts::scheduler_with_graph(
+                    &self.plan.worker_origin,
+                    self.supervisor.client(),
+                    product.graph.clone(),
+                );
+                state = state.with_jobs(Arc::clone(&scheduler));
+                *self.jobs.lock().expect("jobs lock") = Some(scheduler);
+                return state;
+            }
+        }
+        if let Some(scheduler) = self.jobs.lock().expect("jobs lock").clone() {
+            state = state.with_jobs(scheduler);
+        }
+        state
+    }
+
     fn start_jobs(&self) {
-        let Some(scheduler) = &self.jobs else {
+        let Some(scheduler) = self.jobs.lock().expect("jobs lock").clone() else {
             return;
         };
         if !mounts::jobs_enabled_from_env() {
@@ -318,7 +447,7 @@ impl DesktopBackend {
             return;
         }
         let interval = scheduler.config().interval.as_secs();
-        Arc::clone(scheduler).spawn(std::future::pending::<()>());
+        scheduler.spawn(std::future::pending::<()>());
         eprintln!("lattice-ai-desktop: jobs scheduler every {interval}s");
     }
 
@@ -400,11 +529,27 @@ impl DesktopBackend {
             gateway_origin: self.plan.gateway_port.map(|_| self.plan.origin.clone()),
             jobs_running: self
                 .jobs
+                .lock()
+                .expect("jobs lock")
                 .as_ref()
                 .map(|scheduler| scheduler.is_running())
                 .unwrap_or(false),
             gateway_error: self.gateway_error(),
+            worker_warning: self.worker_warning(status),
         }
+    }
+
+    fn worker_warning(&self, status: &WorkerStatus) -> Option<String> {
+        if !self.supervised() || status.running {
+            return None;
+        }
+        status.last_error.as_ref().map(|err| {
+            format!(
+                "AI worker degraded ({err}). Local Brain graph/search/notes remain active; \
+                 install Python 3.11+ with Lattice AI dependencies or set LTCAI_PYTHON for \
+                 local embeddings and model inference."
+            )
+        })
     }
 
     /// `command` has always been a plain string, never null, so an unresolved
@@ -459,7 +604,7 @@ mod tests {
         assert_eq!(shell.topology(), Topology::Gateway);
         assert_ne!(shell.plan.worker_origin, shell.plan.origin);
         assert!(
-            shell.jobs.is_some(),
+            shell.jobs.lock().expect("jobs lock").is_some(),
             "gateway topology still mounts /host/jobs"
         );
     }
@@ -472,7 +617,7 @@ mod tests {
         assert!(!shell.supervised());
         assert_eq!(shell.topology(), Topology::External);
         assert!(
-            shell.jobs.is_none(),
+            shell.jobs.lock().expect("jobs lock").is_none(),
             "an attached host is not ours to schedule"
         );
     }
@@ -612,29 +757,58 @@ mod tests {
     #[test]
     fn an_existing_backend_cmd_is_left_alone() {
         let probe = StaticProbe::new().with_env(BACKEND_CMD_ENV, "custom-worker --flag");
-        assert_eq!(worker_launch_command(&probe), None);
+        assert_eq!(resolve_worker_python(&probe), None);
     }
 
     #[test]
-    fn a_bundled_tree_is_left_to_the_supervisor() {
+    fn a_bundled_tree_prefers_bundled_or_uvicorn_capable_python() {
         let probe = StaticProbe::new()
             .with_resource_dir("/app/Resources")
-            .with_file("/app/Resources/latticeai/worker_app.py");
-        assert_eq!(worker_launch_command(&probe), None);
-        let legacy = StaticProbe::new()
-            .with_resource_dir("/app/Resources")
-            .with_file("/app/Resources/_up_/latticeai/cli/entrypoint.py");
-        assert_eq!(worker_launch_command(&legacy), None);
+            .with_file("/app/Resources/latticeai/worker_app.py")
+            .with_file("/app/Resources/python/bin/python3")
+            .with_importable("/app/Resources/python/bin/python3");
+        assert_eq!(
+            resolve_worker_python(&probe).as_deref(),
+            Some("/app/Resources/python/bin/python3")
+        );
     }
 
     #[test]
-    fn an_unpackaged_shell_pins_the_worker_module() {
+    fn an_unpackaged_shell_resolves_the_worker_interpreter_for_supervisor_factory() {
         let probe = StaticProbe::new().with_importable("/opt/homebrew/bin/python3");
-        let command = worker_launch_command(&probe).expect("pin");
-        assert!(command.ends_with("-m latticeai.worker_app"), "{command}");
-        assert!(
-            !command.contains("latticeai.cli.entrypoint"),
-            "the product server is gone: {command}"
-        );
+        let python = resolve_worker_python(&probe).expect("python");
+        assert_eq!(python, "/opt/homebrew/bin/python3");
+    }
+
+    #[test]
+    fn packaged_sidecar_binary_takes_precedence_over_workspace_build() {
+        let bin_name = if cfg!(windows) {
+            "lattice-host.exe"
+        } else {
+            "lattice-host"
+        };
+        let sidecar = format!("/Applications/Lattice AI.app/Contents/MacOS/{bin_name}");
+        let ws_bin = format!("/workspace/rust/target/release/{bin_name}");
+        let probe = StaticProbe::new().with_file(&sidecar).with_file(&ws_bin);
+        let found = resolve_packaged_host_binary(
+            &probe,
+            Some(std::path::Path::new(
+                "/Applications/Lattice AI.app/Contents/MacOS",
+            )),
+            Some(std::path::Path::new("/workspace")),
+        )
+        .expect("resolved");
+        assert_eq!(found, std::path::PathBuf::from(sidecar));
+    }
+
+    #[test]
+    fn degraded_worker_surfaces_explicit_non_silent_warning() {
+        let shell = backend(StaticProbe::new().with_env(PORT_ENV, "41846"));
+        let mut status = WorkerStatus::idle(41847, true);
+        status.last_error = Some("worker unavailable".into());
+        let rendered = shell.render(&status);
+        let warning = rendered.worker_warning.expect("warning present");
+        assert!(warning.contains("Local Brain"), "{warning}");
+        assert!(warning.contains("LTCAI_PYTHON"), "{warning}");
     }
 }

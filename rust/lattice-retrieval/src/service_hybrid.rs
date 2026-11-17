@@ -51,6 +51,10 @@ pub struct ServiceHybridOptions {
     pub scope: Scope,
     /// The wall clock the recency decay reads, as naive epoch seconds.
     pub now_secs: f64,
+    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
+    pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
+    /// Reason semantic query embedding degraded (so hybrid falls back to lexical + graph).
+    pub semantic_degraded: Option<String>,
 }
 
 impl Default for ServiceHybridOptions {
@@ -63,6 +67,8 @@ impl Default for ServiceHybridOptions {
             weights: None,
             scope: Scope::default(),
             now_secs: 0.0,
+            query_embedding: None,
+            semantic_degraded: None,
         }
     }
 }
@@ -228,15 +234,37 @@ pub fn service_hybrid_search(
     // Every channel is scoped at the source, so out-of-scope rows never enter
     // the fusion set; the fused result is re-scoped below regardless.
     let scope = &options.scope;
+    let vector_payload = if let Some(ovr) = options.query_embedding.as_ref() {
+        crate::service::vector_search_aligned_service(
+            conn,
+            crate::vector::VectorQueryInput::Precomputed {
+                model_id: &ovr.model_id,
+                vector: &ovr.vector,
+                is_hash_fallback: ovr.is_hash_fallback,
+            },
+            &search_query,
+            options.vector_limit,
+            0.0,
+            scope,
+            false,
+        )?
+    } else if let Some(reason) = options.semantic_degraded.as_ref() {
+        serde_json::json!({
+            "query": search_query,
+            "mode": "vector",
+            "provider_status": "degraded",
+            "degraded_reason": reason,
+            "matches": [],
+        })
+    } else {
+        vector_search(conn, model, &search_query, options.vector_limit, 0.0, scope)?
+    };
     let channels: Vec<(&str, Value)> = vec![
         (
             "keyword",
             keyword_search(conn, &search_query, options.keyword_limit, scope)?,
         ),
-        (
-            "vector",
-            vector_search(conn, model, &search_query, options.vector_limit, 0.0, scope)?,
-        ),
+        ("vector", vector_payload),
         (
             "graph",
             graph_search(

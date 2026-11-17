@@ -64,11 +64,15 @@ def test_container_context_excludes_secrets_and_large_build_outputs():
 
 def test_container_runs_as_non_root_with_a_healthcheck():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    install_at = dockerfile.index('RUN pip install --no-cache-dir "."')
+    host_copy_at = dockerfile.index("COPY --from=host-builder")
+    install_at = dockerfile.index("RUN pip install")
     user_at = dockerfile.index("USER lattice")
-    command_at = dockerfile.index('CMD ["python", "server.py"]')
+    command_at = dockerfile.index('CMD ["lattice-host", "--port", "4825"]')
 
+    assert "PIP_NO_CACHE_DIR=1" in dockerfile
+    assert host_copy_at < user_at < command_at
     assert install_at < user_at < command_at
+    assert "server.py" not in dockerfile
     assert "HEALTHCHECK" in dockerfile
     assert "http://127.0.0.1:4825/health" in dockerfile
     assert "LATTICEAI_AGENT_ROOT=/data/agent_workspace" in dockerfile

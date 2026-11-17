@@ -104,6 +104,7 @@ jobs:
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
           python -c "import hnswlib"
+          python scripts/bench_retrieval_baseline.py --check-budgets
           python -m pytest \
             tests/unit/test_vector_index_sidecar.py \
             tests/unit/test_vector_index_hnsw.py \

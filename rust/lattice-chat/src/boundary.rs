@@ -94,6 +94,29 @@ pub fn blocked_reason(node: &Value) -> Option<String> {
     None
 }
 
+/// `is_node_blocked_for_cloud` — enforces both immutable hard blocks and any
+/// additional node types or metadata flags configured in `policy`.
+pub fn blocked_reason_for_policy(node: &Value, policy: &HybridPolicy) -> Option<String> {
+    if let Some(reason) = blocked_reason(node) {
+        return Some(reason);
+    }
+    let node_type = node.get("type").and_then(Value::as_str).unwrap_or("");
+    if !node_type.is_empty() && policy.blocked_node_types.contains(node_type) {
+        return Some(format!(
+            "node type '{node_type}' is blocked from cloud payloads"
+        ));
+    }
+    let meta = node.get("metadata").and_then(Value::as_object)?;
+    for flag in &policy.blocked_metadata_flags {
+        if meta.get(flag.as_str()).is_some_and(truthy) {
+            return Some(format!(
+                "node flagged '{flag}' is blocked from cloud payloads"
+            ));
+        }
+    }
+    None
+}
+
 /// `mode_store._read` — the three buckets, defaults on any unreadable file.
 fn read_store(path: &Path) -> Map<String, Value> {
     let mut data = std::fs::read_to_string(path)
@@ -631,5 +654,38 @@ mod tests {
         assert_eq!(strip_cloud_prefix("그냥 질문"), "그냥 질문");
         assert!(is_explicit_cloud_request("/cloud"));
         assert!(!is_explicit_cloud_request("/cloudy"));
+    }
+
+    #[test]
+    fn policy_blocked_types_and_flags_are_enforced_alongside_hard_blocks() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join(HYBRID_POLICY_FILE),
+            serde_json::to_string(&json!({
+                "default": {
+                    "blocked_node_types": ["Journal"],
+                    "blocked_metadata_flags": ["confidential"]
+                }
+            }))
+            .expect("json"),
+        )
+        .expect("write");
+        let policy = resolve_hybrid_policy(dir.path(), None, None);
+        assert_eq!(
+            blocked_reason_for_policy(&json!({"type": "Journal"}), &policy).as_deref(),
+            Some("node type 'Journal' is blocked from cloud payloads")
+        );
+        assert_eq!(
+            blocked_reason_for_policy(
+                &json!({"type": "Note", "metadata": {"confidential": true}}),
+                &policy
+            )
+            .as_deref(),
+            Some("node flagged 'confidential' is blocked from cloud payloads")
+        );
+        assert_eq!(
+            blocked_reason_for_policy(&json!({"type": "Decision"}), &policy),
+            None
+        );
     }
 }

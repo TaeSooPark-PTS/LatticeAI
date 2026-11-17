@@ -414,7 +414,14 @@ pub async fn vector_freshness(state: &BrainState) -> OrderedMap {
 }
 
 fn sidecar_status(conn: &rusqlite::Connection, db_path: &str) -> Value {
-    let model = lattice_core::LocalEmbeddingModel::from_env();
+    let fallback = lattice_core::LocalEmbeddingModel::from_env();
+    let (active_model, active_dim) =
+        match lattice_core::graph_write::GraphWriter::read_index_contract(conn) {
+            Some(contract) if !contract.model_id.is_empty() && contract.dimension > 0 => {
+                (contract.model_id, contract.dimension as i64)
+            }
+            _ => (fallback.model_id().to_string(), fallback.dim() as i64),
+        };
     let meta_path = std::path::Path::new(db_path).with_extension("hnsw.meta.json");
     let size = std::fs::read_to_string(meta_path)
         .ok()
@@ -427,7 +434,7 @@ fn sidecar_status(conn: &rusqlite::Connection, db_path: &str) -> Value {
     let store_size: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=?",
-            rusqlite::params![model.model_id(), model.dim() as i64],
+            rusqlite::params![active_model, active_dim],
             |row| row.get(0),
         )
         .unwrap_or(0);

@@ -10,7 +10,9 @@ use serde_json::{json, Value};
 use crate::boundary::{request_network_mode, NetworkMode};
 use crate::contracts::ChatRequest;
 use crate::documents;
-use crate::graph::{build_context_quality, build_graph_trace, QUALITY_LIMIT, TRACE_LIMIT};
+use crate::graph::{
+    build_context_quality_with_query, build_graph_trace, QUALITY_LIMIT, TRACE_LIMIT,
+};
 use crate::helpers::{assess_answer_grounding, detect_language, language_hint};
 use crate::history::json_body;
 use crate::intents::{persist_entry, HistoryMeta};
@@ -39,6 +41,17 @@ pub(crate) async fn run_model_turn(
         language_hint(language),
         req.context.as_deref().unwrap_or("")
     );
+    let semantic_contract = state
+        .read_conn()
+        .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));
+    let effective_query =
+        lattice_retrieval::query_embed::effective_hybrid_query(&req.message, false);
+    let query_embed = lattice_retrieval::query_embed::resolve_query_embedding_with_contract(
+        semantic_contract,
+        state.worker.as_ref().map(ChatWorker::client),
+        &effective_query,
+    )
+    .await;
     let mut context_trace = None;
     if let Some(conn) = state.read_conn() {
         let request = lattice_retrieval::ContextRequest {
@@ -49,6 +62,8 @@ pub(crate) async fn run_model_turn(
             conversation_id: req.conversation_id.clone(),
             workspace_id: workspace_id.clone(),
             now_secs: now_secs(),
+            query_embedding: query_embed.query_vector.clone(),
+            semantic_degraded: query_embed.degraded_reason.clone(),
             ..Default::default()
         };
         if let Ok(assembled) =
@@ -132,13 +147,15 @@ pub(crate) async fn run_model_turn(
             object.insert("context_assembly".into(), trace);
         }
     }
-    let context_quality = build_context_quality(
+    let context_quality = build_context_quality_with_query(
         conn.as_ref(),
         &LocalEmbeddingModel::default(),
         &req.message,
         allowed.as_ref(),
         QUALITY_LIMIT,
         now_secs(),
+        query_embed.query_vector,
+        query_embed.degraded_reason,
     );
     if let Some(object) = trace_seed.as_object_mut() {
         object.insert("context_quality".into(), context_quality.clone());

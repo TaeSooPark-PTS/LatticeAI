@@ -183,9 +183,14 @@ async fn proof_of(
         let scope = caller.scope.clone();
         let wsos_state = snapshot.state.clone();
         let text = query.clone();
+        let resolution = if graph {
+            crate::query_embed::resolve_query_embedding(state.store(), state.seam(), &text).await
+        } else {
+            crate::query_embed::QueryEmbedResolution::default()
+        };
         state
             .read(move |conn| {
-                recall::recall(
+                recall::recall_with_query_vector(
                     conn,
                     &wsos_state,
                     graph,
@@ -193,6 +198,8 @@ async fn proof_of(
                     &email,
                     scope.as_deref(),
                     limit,
+                    resolution.query_vector.as_ref(),
+                    resolution.degraded_reason.as_deref(),
                 )
             })
             .await?
@@ -315,9 +322,14 @@ async fn memory_recall(State(state): State<BrainState>, request: Request) -> Res
     let email = caller.email.clone();
     let scope = caller.scope.clone();
     let wsos_state = snapshot.state;
+    let resolution = if graph && !query.trim().is_empty() {
+        crate::query_embed::resolve_query_embedding(state.store(), state.seam(), &query).await
+    } else {
+        crate::query_embed::QueryEmbedResolution::default()
+    };
     match state
         .read(move |conn| {
-            recall::recall(
+            recall::recall_with_query_vector(
                 conn,
                 &wsos_state,
                 graph,
@@ -325,6 +337,8 @@ async fn memory_recall(State(state): State<BrainState>, request: Request) -> Res
                 &email,
                 scope.as_deref(),
                 limit,
+                resolution.query_vector.as_ref(),
+                resolution.degraded_reason.as_deref(),
             )
         })
         .await

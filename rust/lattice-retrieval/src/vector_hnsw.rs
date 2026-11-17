@@ -191,18 +191,55 @@ pub fn try_hnsw(
     if candidates_total <= 0 {
         return Err("vector store is empty for this embedding identity".into());
     }
-    let reply = query_worker(
-        model.model_id(),
-        model.dim() as i64,
-        query_vector,
-        candidate_k(limit),
-    )?;
-    if reply.size > 0 && reply.store_size > 0 && reply.size != reply.store_size {
-        return Err(format!(
-            "identity stale: sidecar size {} vs store {}",
-            reply.size, reply.store_size
-        ));
-    }
+    let wanted = candidate_k(limit);
+    let reply = match query_worker(model.model_id(), model.dim() as i64, query_vector, wanted) {
+        Ok(worker_reply)
+            if !(worker_reply.size > 0
+                && worker_reply.store_size > 0
+                && worker_reply.size != worker_reply.store_size) =>
+        {
+            worker_reply
+        }
+        Err(worker_reason) => {
+            let native_disabled = std::env::var("LATTICEAI_NATIVE_HNSW")
+                .ok()
+                .is_some_and(|v| {
+                    matches!(
+                        v.trim().to_ascii_lowercase().as_str(),
+                        "0" | "false" | "off"
+                    )
+                });
+            if native_disabled {
+                return Err(worker_reason);
+            }
+            let (ids, active_size) = crate::native_hnsw::query_native_hnsw(
+                conn,
+                model.model_id(),
+                model.dim(),
+                query_vector,
+                wanted as usize,
+            )?;
+            if ids.is_empty() {
+                return Err(format!(
+                    "native HNSW returned no candidates ({worker_reason})"
+                ));
+            }
+            HnswReply {
+                ids,
+                index: "hnsw".into(),
+                size: active_size as i64,
+                store_size: candidates_total,
+                stale: false,
+                detail: Some("served by native Rust HNSW graph".into()),
+            }
+        }
+        Ok(stale_reply) => {
+            return Err(format!(
+                "identity stale: sidecar size {} vs store {}",
+                stale_reply.size, stale_reply.store_size
+            ));
+        }
+    };
     rescore(
         conn,
         model,

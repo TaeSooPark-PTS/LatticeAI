@@ -22,7 +22,9 @@ use serde_json::{json, Value};
 use crate::knowledge::network::DeviceIdentity;
 use crate::workspaceos::project_sessions;
 
-pub(super) use super::kdf::{ct_eq, hkdf_sha256, hmac_sha256, scrypt_kdf, sha256_hex};
+pub(super) use super::kdf::{
+    ct_eq, hkdf_sha256, hmac_sha256, pbkdf2_hmac_sha256, scrypt_kdf, sha256_hex,
+};
 pub(super) use super::x25519::{
     decode_b64_key32, identity_x25519_keypair, x25519_base, x25519_scalarmult,
 };
@@ -30,9 +32,14 @@ pub(super) use super::x25519::{
 pub(crate) const ARCHIVE_FORMAT: &str = "latticeai.kg.archive";
 pub(crate) const ARCHIVE_FORMAT_VERSION: u64 = 1;
 pub(crate) const ARCHIVE_CIPHER: &str = "sha256-ctr-hmac-sha256";
-pub(crate) const SCRYPT_N: u32 = 4096;
+pub(crate) const SCRYPT_N_V1_LEGACY: u32 = 4096;
+pub(crate) const SCRYPT_N: u32 = 16384;
 pub(crate) const SCRYPT_R: u32 = 8;
 pub(crate) const SCRYPT_P: u32 = 1;
+pub(crate) const PBKDF2_V2_ITERATIONS: u32 = 600_000;
+const MIN_PBKDF2_ITERATIONS: u32 = 100_000;
+const MAX_PBKDF2_ITERATIONS: u32 = 5_000_000;
+const ARCHIVE_KDF_ENV: &str = "LATTICEAI_ARCHIVE_KDF";
 const HEADER_ENTRY: &str = "header.json";
 const MANIFEST_ENTRY: &str = "manifest.json";
 const PAYLOAD_ENTRY: &str = "payload.enc";
@@ -243,22 +250,43 @@ pub(crate) fn seal_and_write_archive(
                         "A passphrase is required for encrypted .latticebrain archives.".into(),
                     );
                 }
-                scrypt_kdf(
-                    passphrase.as_bytes(),
-                    &salt,
-                    SCRYPT_N,
-                    SCRYPT_R,
-                    SCRYPT_P,
-                    &mut key_material,
-                )?;
-                (
-                    "passphrase",
-                    "scrypt",
-                    json!({"n": SCRYPT_N, "r": SCRYPT_R, "p": SCRYPT_P}),
-                    ARCHIVE_CIPHER,
-                    Value::Null,
-                    Value::Null,
-                )
+                let preferred_kdf = std::env::var(ARCHIVE_KDF_ENV)
+                    .ok()
+                    .map(|v| v.trim().to_ascii_lowercase())
+                    .unwrap_or_else(|| "scrypt".to_string());
+                if preferred_kdf == "pbkdf2-hmac-sha256" || preferred_kdf == "pbkdf2" {
+                    pbkdf2_hmac_sha256(
+                        passphrase.as_bytes(),
+                        &salt,
+                        PBKDF2_V2_ITERATIONS,
+                        &mut key_material,
+                    );
+                    (
+                        "passphrase",
+                        "pbkdf2-hmac-sha256",
+                        json!({"v": 2, "iterations": PBKDF2_V2_ITERATIONS}),
+                        ARCHIVE_CIPHER,
+                        Value::Null,
+                        Value::Null,
+                    )
+                } else {
+                    scrypt_kdf(
+                        passphrase.as_bytes(),
+                        &salt,
+                        SCRYPT_N,
+                        SCRYPT_R,
+                        SCRYPT_P,
+                        &mut key_material,
+                    )?;
+                    (
+                        "passphrase",
+                        "scrypt",
+                        json!({"v": 2, "n": SCRYPT_N, "r": SCRYPT_R, "p": SCRYPT_P}),
+                        ARCHIVE_CIPHER,
+                        Value::Null,
+                        Value::Null,
+                    )
+                }
             }
             EncryptionMode::RecipientPublicKey { public_key_b64 } => {
                 let recipient_pub = decode_b64_key32(public_key_b64)?;
@@ -555,23 +583,45 @@ pub(crate) fn verify_and_decrypt_archive(
                 .get("kdf")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            if kdf != "scrypt" {
-                return Err(format!("Unsupported archive KDF: {kdf}"));
-            }
             let params = envelope.header.get("kdf_params");
-            let n = params
-                .and_then(|p| p.get("n"))
-                .and_then(Value::as_u64)
-                .unwrap_or(u64::from(SCRYPT_N)) as u32;
-            let r = params
-                .and_then(|p| p.get("r"))
-                .and_then(Value::as_u64)
-                .unwrap_or(u64::from(SCRYPT_R)) as u32;
-            let p = params
-                .and_then(|p| p.get("p"))
-                .and_then(Value::as_u64)
-                .unwrap_or(u64::from(SCRYPT_P)) as u32;
-            scrypt_kdf(passphrase.as_bytes(), &salt, n, r, p, &mut key_material)?;
+            match kdf {
+                "scrypt" => {
+                    let n = params
+                        .and_then(|p| p.get("n"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(u64::from(SCRYPT_N_V1_LEGACY))
+                        as u32;
+                    let r = params
+                        .and_then(|p| p.get("r"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(u64::from(SCRYPT_R)) as u32;
+                    let p = params
+                        .and_then(|p| p.get("p"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(u64::from(SCRYPT_P)) as u32;
+                    scrypt_kdf(passphrase.as_bytes(), &salt, n, r, p, &mut key_material)?;
+                }
+                "pbkdf2-hmac-sha256" => {
+                    let iterations = params
+                        .and_then(|p| p.get("iterations"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(u64::from(PBKDF2_V2_ITERATIONS));
+                    if iterations < u64::from(MIN_PBKDF2_ITERATIONS)
+                        || iterations > u64::from(MAX_PBKDF2_ITERATIONS)
+                    {
+                        return Err(format!(
+                            "Unsupported PBKDF2-HMAC-SHA256 iteration count: {iterations}"
+                        ));
+                    }
+                    pbkdf2_hmac_sha256(
+                        passphrase.as_bytes(),
+                        &salt,
+                        iterations as u32,
+                        &mut key_material,
+                    );
+                }
+                _ => return Err(format!("Unsupported archive KDF: {kdf}")),
+            }
         }
         "recipient_public_key" => {
             let identity = match key {
@@ -725,5 +775,58 @@ mod tests {
 
         let wrong = verify_and_decrypt_archive(&archive_path, DecryptionKey::Identity(&other));
         assert!(wrong.is_err(), "wrong recipient key must be rejected");
+    }
+
+    #[test]
+    fn v2_pbkdf2_600k_and_v2_scrypt_16k_roundtrip_cleanly() {
+        let dir = tempfile::tempdir().unwrap();
+        let signer = DeviceIdentity::load_or_create(&dir.path().join("signer.key"));
+        let payload = b"confidential archive v2 kdf payload";
+
+        // 1. Default v2 scrypt (N=16384, v=2)
+        std::env::remove_var(ARCHIVE_KDF_ENV);
+        let scrypt_path = dir.path().join("v2_scrypt.latticebrain");
+        let mut manifest1 = OrderedMap::new();
+        let (hdr1, _) = seal_and_write_archive(
+            &scrypt_path,
+            "full",
+            payload,
+            &mut manifest1,
+            EncryptionMode::Passphrase("strong-passphrase"),
+            &signer,
+        )
+        .unwrap();
+        assert_eq!(hdr1["kdf"], "scrypt");
+        assert_eq!(hdr1["kdf_params"]["v"], 2);
+        assert_eq!(hdr1["kdf_params"]["n"], SCRYPT_N);
+        let dec1 = verify_and_decrypt_archive(
+            &scrypt_path,
+            DecryptionKey::Passphrase("strong-passphrase"),
+        )
+        .unwrap();
+        assert_eq!(dec1.plaintext, payload);
+
+        // 2. v2 PBKDF2-HMAC-SHA256 (600,000 iterations)
+        std::env::set_var(ARCHIVE_KDF_ENV, "pbkdf2-hmac-sha256");
+        let pbkdf2_path = dir.path().join("v2_pbkdf2.latticebrain");
+        let mut manifest2 = OrderedMap::new();
+        let (hdr2, _) = seal_and_write_archive(
+            &pbkdf2_path,
+            "full",
+            payload,
+            &mut manifest2,
+            EncryptionMode::Passphrase("strong-passphrase"),
+            &signer,
+        )
+        .unwrap();
+        std::env::remove_var(ARCHIVE_KDF_ENV);
+        assert_eq!(hdr2["kdf"], "pbkdf2-hmac-sha256");
+        assert_eq!(hdr2["kdf_params"]["iterations"], PBKDF2_V2_ITERATIONS);
+        let dec2 = verify_and_decrypt_archive(
+            &pbkdf2_path,
+            DecryptionKey::Passphrase("strong-passphrase"),
+        )
+        .unwrap();
+        assert_eq!(dec2.plaintext, payload);
     }
 }

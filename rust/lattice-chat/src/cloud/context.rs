@@ -8,7 +8,7 @@ use lattice_retrieval::shape::context_quality_signal;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
-use crate::boundary::{blocked_reason, NetworkMode};
+use crate::boundary::{blocked_reason, blocked_reason_for_policy, HybridPolicy, NetworkMode};
 use crate::pyvalue::{field, text as py_text};
 use crate::redact::redact_secret_text;
 
@@ -115,10 +115,91 @@ pub fn build_minimal_context(
     conn: &Connection,
     model: &LocalEmbeddingModel,
     message: &str,
+    mode: NetworkMode,
+    top_k: i64,
+    allowed_workspaces: Option<&BTreeSet<String>>,
+    now_secs: f64,
+) -> MinimalContext {
+    build_minimal_context_inner(
+        conn,
+        model,
+        message,
+        mode,
+        top_k,
+        allowed_workspaces,
+        now_secs,
+        None,
+        None,
+        None,
+    )
+}
+
+/// `build_minimal_context` with user/workspace `HybridPolicy` filtering.
+#[allow(clippy::too_many_arguments)]
+pub fn build_minimal_context_with_policy(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    message: &str,
+    mode: NetworkMode,
+    top_k: i64,
+    allowed_workspaces: Option<&BTreeSet<String>>,
+    now_secs: f64,
+    policy: &HybridPolicy,
+) -> MinimalContext {
+    build_minimal_context_inner(
+        conn,
+        model,
+        message,
+        mode,
+        top_k,
+        allowed_workspaces,
+        now_secs,
+        Some(policy),
+        None,
+        None,
+    )
+}
+
+/// [`build_minimal_context_with_policy`] with optional semantic query vector override.
+#[allow(clippy::too_many_arguments)]
+pub fn build_minimal_context_with_policy_and_query(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    message: &str,
+    mode: NetworkMode,
+    top_k: i64,
+    allowed_workspaces: Option<&BTreeSet<String>>,
+    now_secs: f64,
+    policy: &HybridPolicy,
+    query_embedding: Option<lattice_retrieval::QueryVectorOverride>,
+    semantic_degraded: Option<String>,
+) -> MinimalContext {
+    build_minimal_context_inner(
+        conn,
+        model,
+        message,
+        mode,
+        top_k,
+        allowed_workspaces,
+        now_secs,
+        Some(policy),
+        query_embedding,
+        semantic_degraded,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_minimal_context_inner(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    message: &str,
     _mode: NetworkMode,
     top_k: i64,
     allowed_workspaces: Option<&BTreeSet<String>>,
     now_secs: f64,
+    policy: Option<&HybridPolicy>,
+    query_embedding: Option<lattice_retrieval::QueryVectorOverride>,
+    semantic_degraded: Option<String>,
 ) -> MinimalContext {
     let query = message.trim().to_string();
     let keywords = extract_keywords(&query, 12);
@@ -140,6 +221,8 @@ pub fn build_minimal_context(
         allowed_workspaces: allowed_workspaces.cloned(),
         include_legacy_global: false,
         now_secs,
+        query_embedding,
+        semantic_degraded,
         ..Default::default()
     };
     // Fail closed: an unusable retrieval sends nothing rather than falling back
@@ -165,7 +248,10 @@ pub fn build_minimal_context(
 
     let mut selected: Vec<Value> = matches
         .into_iter()
-        .filter(|node| blocked_reason(node).is_none())
+        .filter(|node| match policy {
+            Some(resolved) => blocked_reason_for_policy(node, resolved).is_none(),
+            None => blocked_reason(node).is_none(),
+        })
         .collect();
     // `sort` in Python is stable, and so is `sort_by` here — the third key only
     // breaks ties the first two leave.

@@ -65,6 +65,34 @@ def store_vector_count(conn: sqlite3.Connection, model_id: str, dim: int) -> int
     return int(row[0]) if row else 0
 
 
+def store_vector_stamp(
+    conn: sqlite3.Connection, model_id: str, dim: int
+) -> Tuple[int, str]:
+    """Metadata-only count + boundary stamp so equal-count edits/swaps invalidate."""
+    row = conn.execute(
+        "SELECT COUNT(*), COALESCE(MAX(indexed_at), ''), COALESCE(MIN(indexed_at), ''), "
+        "COALESCE(MIN(item_id), ''), COALESCE(MAX(item_id), '') "
+        "FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=?",
+        (model_id, int(dim)),
+    ).fetchone()
+    if not row:
+        return 0, "0||||"
+    count = int(row[0] or 0)
+    return count, f"{count}|{row[1]}|{row[2]}|{row[3]}|{row[4]}"
+
+
+def load_store_stamps(
+    conn: sqlite3.Connection, model_id: str, dim: int
+) -> Dict[str, str]:
+    """Item ids and indexed_at strings only — never touches embedding blobs."""
+    rows = conn.execute(
+        "SELECT item_id, COALESCE(indexed_at, '') FROM vector_embeddings "
+        "WHERE embedding_model=? AND embedding_dim=? ORDER BY indexed_at ASC, item_id ASC",
+        (model_id, int(dim)),
+    )
+    return {str(item_id): str(indexed_at) for item_id, indexed_at in rows}
+
+
 def load_store_items(
     conn: sqlite3.Connection, model_id: str, dim: int
 ) -> List[Tuple[str, List[float], Dict[str, Any]]]:
@@ -119,12 +147,37 @@ def load_store_items_for(
     ]
 
 
-def _open_and_count(path: Path, model_id: str, dim: int) -> int:
+def _open_and_stamp(path: Path, model_id: str, dim: int) -> Tuple[int, str]:
     conn = _open_readonly(path)
     if conn is None:
-        return 0
+        return 0, "0||||"
     try:
-        return store_vector_count(conn, model_id, dim)
+        return store_vector_stamp(conn, model_id, dim)
+    finally:
+        conn.close()
+
+
+def _open_and_load_stamps(path: Path, model_id: str, dim: int) -> Dict[str, str]:
+    conn = _open_readonly(path)
+    if conn is None:
+        return {}
+    try:
+        return load_store_stamps(conn, model_id, dim)
+    finally:
+        conn.close()
+
+
+def _load_items_for_ids(
+    path: Path,
+    model_id: str,
+    dim: int,
+    missing: Sequence[str],
+) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    conn = _open_readonly(path)
+    if conn is None:
+        return []
+    try:
+        return load_store_items_for(conn, model_id, dim, missing)
     finally:
         conn.close()
 
@@ -158,17 +211,23 @@ def _load_missing_items(
         conn.close()
 
 
-def sidecar_meta_size(db_path: Path) -> Optional[int]:
-    """Label count from the sidecar meta file, or ``None`` when it is absent."""
+def _sidecar_meta_state(db_path: Path) -> Tuple[Optional[int], Optional[str]]:
     _, meta_path = sidecar_paths(db_path)
     try:
         import json
 
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         labels = meta.get("labels") or []
-        return len(labels)
+        stamp = str(meta["stamp"]) if meta.get("stamp") is not None else None
+        return len(labels), stamp
     except Exception:  # noqa: BLE001 — absent/corrupt meta is "no sidecar"
-        return None
+        return None, None
+
+
+def sidecar_meta_size(db_path: Path) -> Optional[int]:
+    """Label count from the sidecar meta file, or ``None`` when it is absent."""
+    size, _ = _sidecar_meta_state(db_path)
+    return size
 
 
 def _open_readonly(db_path: Path) -> Optional[sqlite3.Connection]:
@@ -262,8 +321,8 @@ def query_sidecar(
     if not model_id:
         return _none_reply(detail="embedding_model is required")
 
-    # COUNT first. Warm queries that already match never open embedding blobs.
-    store_size = _open_and_count(path, model_id, dim)
+    # Metadata stamp first. Warm queries that match never open embedding blobs.
+    store_size, store_stamp = _open_and_stamp(path, model_id, dim)
 
     key = (str(path), model_id, dim)
     with _LOCK:
@@ -272,11 +331,11 @@ def query_sidecar(
         if index is None:
             index = HnswIndex(dim=dim, model_id=model_id)
             loaded = index.load(
-                path, fingerprint=sidecar_fingerprint(model_id, dim, store_size)
+                path,
+                fingerprint=sidecar_fingerprint(model_id, dim, store_size),
+                stamp=store_stamp,
             )
             if not loaded and store_size > 0:
-                # Sidecar exists for this identity but the COUNT moved —
-                # load the graph and append the missing ids below.
                 loaded = index.load(
                     path,
                     fingerprint=sidecar_fingerprint(model_id, dim, store_size),
@@ -284,43 +343,77 @@ def query_sidecar(
                 )
             if not loaded:
                 items = _load_all_items(path, model_id, dim)
+                store_stamps = _open_and_load_stamps(path, model_id, dim)
                 store_size = len(items)
                 if not items:
                     return _none_reply(
                         store_size=store_size,
                         detail="no HNSW sidecar for this embedding identity",
                     )
-                refreshed = _refresh_index(index, items, model_id, dim)
-                index.save(path, fingerprint=sidecar_fingerprint(model_id, dim, len(items)))
+                index.rebuild(items)
+                refreshed = "rebuild"
+                index.save(
+                    path,
+                    fingerprint=sidecar_fingerprint(model_id, dim, len(items)),
+                    stamp=store_stamp,
+                    indexed_at=store_stamps,
+                )
             _CACHE[key] = index
 
         cached_size = int(index.stats().get("size") or 0)
-        stale = cached_size != store_size
-        if stale and store_size == 0:
+        needs_sync = (cached_size != store_size) or (index.stamp != store_stamp)
+        if needs_sync and store_size == 0:
             _CACHE.pop(key, None)
             return _none_reply(
                 store_size=0,
                 detail="vector store is empty for this embedding identity",
             )
-        if stale and store_size > cached_size:
-            delta = _load_missing_items(path, model_id, dim, index.labels)
-            if delta:
-                refreshed = _refresh_index(index, delta, model_id, dim)
-                cached_size = int(index.stats().get("size") or 0)
+        if needs_sync:
+            store_stamps = _open_and_load_stamps(path, model_id, dim)
+            current_labels = index.labels
+            current_set = set(current_labels)
+            known_ts = index.indexed_at
+            all_present = current_set.issubset(store_stamps.keys())
+            existing_untouched = (
+                all(known_ts.get(cid) == store_stamps.get(cid) for cid in current_labels)
+                if known_ts
+                else store_size > cached_size
+            )
+            missing = [cid for cid in store_stamps if cid not in current_set]
+            if all_present and existing_untouched and not missing and cached_size == store_size:
                 index.save(
-                    path, fingerprint=sidecar_fingerprint(model_id, dim, cached_size)
+                    path,
+                    fingerprint=sidecar_fingerprint(model_id, dim, cached_size),
+                    stamp=store_stamp,
+                    indexed_at=store_stamps,
                 )
-                stale = cached_size != store_size
-        elif stale:
-            items = _load_all_items(path, model_id, dim)
-            store_size = len(items)
-            if items:
-                refreshed = _refresh_index(index, items, model_id, dim)
-                cached_size = int(index.stats().get("size") or 0)
-                index.save(
-                    path, fingerprint=sidecar_fingerprint(model_id, dim, cached_size)
-                )
-                stale = cached_size != store_size
+            elif all_present and existing_untouched and missing:
+                delta = _load_items_for_ids(path, model_id, dim, missing)
+                if delta:
+                    refreshed = _refresh_index(index, delta, model_id, dim)
+                    cached_size = int(index.stats().get("size") or 0)
+                    index.save(
+                        path,
+                        fingerprint=sidecar_fingerprint(model_id, dim, cached_size),
+                        stamp=store_stamp,
+                        indexed_at=store_stamps,
+                    )
+            else:
+                items = _load_all_items(path, model_id, dim)
+                store_size = len(items)
+                if items:
+                    index.rebuild(items)
+                    refreshed = "rebuild"
+                    cached_size = int(index.stats().get("size") or 0)
+                    index.save(
+                        path,
+                        fingerprint=sidecar_fingerprint(model_id, dim, cached_size),
+                        stamp=store_stamp,
+                        indexed_at=store_stamps,
+                    )
+        stale = (cached_size != store_size) or (
+            index.stamp is not None and index.stamp != store_stamp
+        )
 
         if cached_size <= 0:
             return _none_reply(
@@ -359,18 +452,22 @@ def sidecar_freshness(
 ) -> Dict[str, Any]:
     """Cheap on-disk vs store comparison — no ANN query, no rebuild."""
     path = Path(db_path) if db_path is not None else resolve_graph_db(workspace)
-    meta_size = sidecar_meta_size(path)
+    meta_size, meta_stamp = _sidecar_meta_state(path)
     store_size = 0
+    store_stamp: Optional[str] = None
     conn = _open_readonly(path)
     if conn is not None:
         try:
             if embedding_model and embedding_dim:
-                store_size = store_vector_count(conn, embedding_model, int(embedding_dim))
+                store_size, store_stamp = store_vector_stamp(
+                    conn, embedding_model, int(embedding_dim)
+                )
             else:
                 row = conn.execute("SELECT COUNT(*) FROM vector_embeddings").fetchone()
                 store_size = int(row[0]) if row else 0
         except sqlite3.Error:
             store_size = 0
+            store_stamp = None
         finally:
             conn.close()
     if meta_size is None:
@@ -381,17 +478,24 @@ def sidecar_freshness(
             "stale": store_size > 0,
             "detail": "no HNSW sidecar next to the brain database",
         }
-    stale = meta_size != store_size
+    stamp_stale = (
+        meta_stamp is not None
+        and store_stamp is not None
+        and meta_stamp != store_stamp
+    )
+    stale = (meta_size != store_size) or stamp_stale
+    if meta_size != store_size:
+        detail = f"sidecar size {meta_size} != store count {store_size}"
+    elif stamp_stale:
+        detail = "sidecar stamp differs from vector store (in-place update or swap)"
+    else:
+        detail = "sidecar matches the vector store"
     return {
         "index": "hnsw",
         "size": meta_size,
         "store_size": store_size,
         "stale": stale,
-        "detail": (
-            f"sidecar size {meta_size} != store count {store_size}"
-            if stale
-            else "sidecar matches the vector store"
-        ),
+        "detail": detail,
     }
 
 

@@ -44,7 +44,11 @@ mod provider;
 
 pub use adapter::{cloud_egress_event, CloudTurnResult, EgressAudit, OpenAiCompatibleAdapter};
 pub use budget::{budget_for, record_budget, reset_budget, scope_key, TokenBudget};
-pub use context::{build_minimal_context, extract_keywords, rough_token_estimate, MinimalContext};
+pub use context::{
+    build_minimal_context, build_minimal_context_with_policy,
+    build_minimal_context_with_policy_and_query, extract_keywords, rough_token_estimate,
+    MinimalContext,
+};
 pub use expansion::{
     extract_candidates, ingest_expansion, plan_kg_expansion, plan_kg_expansion_rich, ExpansionPlan,
     ReviewSink,

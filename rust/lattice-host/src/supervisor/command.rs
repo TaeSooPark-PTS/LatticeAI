@@ -292,9 +292,44 @@ pub fn find_in_path(probe: &dyn HostProbe, name: &str) -> Option<String> {
 /// Python interpreters to try, in priority order, deduplicated in place.
 pub fn python_candidates(probe: &dyn HostProbe) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    if let Some(value) = probe.env_var("LTCAI_PYTHON") {
-        if !value.trim().is_empty() {
-            out.push(value);
+    for env_key in ["LATTICEAI_WORKER_PYTHON", "LTCAI_PYTHON"] {
+        if let Some(value) = probe.env_var(env_key) {
+            if !value.trim().is_empty() {
+                out.push(value);
+            }
+        }
+    }
+    if let Some(resources) = probe.resource_dir() {
+        for rel in [
+            Path::new("python").join("bin").join("python3"),
+            Path::new("python").join("bin").join("python"),
+            Path::new("python").join("Scripts").join("python.exe"),
+            Path::new(".venv").join("bin").join("python"),
+            Path::new(".venv").join("Scripts").join("python.exe"),
+        ] {
+            let candidate = resources.join(rel);
+            if probe.is_file(&candidate) {
+                out.push(candidate.to_string_lossy().into_owned());
+            }
+        }
+    }
+    if let Some(home) = probe
+        .env_var("HOME")
+        .or_else(|| probe.env_var("USERPROFILE"))
+        .filter(|h| !h.trim().is_empty())
+    {
+        let home_dir = PathBuf::from(home);
+        for venv_name in ["venv", "npm-python"] {
+            for rel in [
+                Path::new("bin").join("python3"),
+                Path::new("bin").join("python"),
+                Path::new("Scripts").join("python.exe"),
+            ] {
+                let candidate = home_dir.join(".ltcai").join(venv_name).join(rel);
+                if probe.is_file(&candidate) {
+                    out.push(candidate.to_string_lossy().into_owned());
+                }
+            }
         }
     }
     for name in ["python3", "python"] {
@@ -395,12 +430,17 @@ pub fn resolve_worker_command(
     }
 
     if let Some(root) = bundled_root(probe) {
-        // Unlike rule 3 the module is not importable from the ambient
-        // environment, so pick the first interpreter that actually exists and
-        // point PYTHONPATH/cwd at the bundled tree.
+        // Unlike rule 2 the worker package lives in the bundled tree rather than
+        // site-packages, so prefer an interpreter that can import `uvicorn` first,
+        // then fall back to the first interpreter binary present on disk.
         let python = candidates
             .iter()
-            .find(|path| probe.is_file(Path::new(path)))
+            .find(|path| probe.module_importable(path, "uvicorn"))
+            .or_else(|| {
+                candidates
+                    .iter()
+                    .find(|path| probe.is_file(Path::new(path)))
+            })
             .or_else(|| candidates.first())
             .cloned();
         if let Some(python) = python {

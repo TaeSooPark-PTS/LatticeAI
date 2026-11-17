@@ -41,6 +41,10 @@ pub struct HybridOptions {
     /// is what makes a golden file possible at all — and what lets a caller ask
     /// "how would this have ranked yesterday?" without lying to the process.
     pub now_secs: f64,
+    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
+    pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
+    /// Reason semantic query embedding degraded so hybrid degrades to `lexical_only`.
+    pub semantic_degraded: Option<String>,
 }
 
 impl Default for HybridOptions {
@@ -54,6 +58,8 @@ impl Default for HybridOptions {
             vector_limit: None,
             min_vector_score: 0.0,
             now_secs: 0.0,
+            query_embedding: None,
+            semantic_degraded: None,
         }
     }
 }
@@ -183,13 +189,36 @@ pub fn hybrid_search(
     ] {
         vector_meta.insert(key.into(), Value::Null);
     }
-    match vector_search(
-        conn,
-        model,
-        &search_query,
-        vec_fetch,
-        options.min_vector_score,
-    ) {
+    let mut vector_degraded: Option<String> = None;
+    let vector_outcome = if let Some(reason) = options.semantic_degraded.as_ref() {
+        vector_degraded = Some(reason.clone());
+        Err(CoreError::InvalidRequest(reason.clone()))
+    } else if let Some(ovr) = options.query_embedding.as_ref() {
+        crate::vector::vector_search_aligned(
+            conn,
+            crate::vector::VectorQueryInput::Precomputed {
+                model_id: &ovr.model_id,
+                vector: &ovr.vector,
+                is_hash_fallback: ovr.is_hash_fallback,
+            },
+            &search_query,
+            &crate::vector::VectorSearchOptions {
+                limit: vec_fetch,
+                min_score: options.min_vector_score,
+                scope: None,
+                include_historical: false,
+            },
+        )
+    } else {
+        vector_search(
+            conn,
+            model,
+            &search_query,
+            vec_fetch,
+            options.min_vector_score,
+        )
+    };
+    match vector_outcome {
         Ok(payload) => {
             vector_matches = payload["matches"]
                 .as_array()
@@ -234,8 +263,11 @@ pub fn hybrid_search(
         }
     }
 
-    let mut vector_degraded: Option<String> = None;
-    if mode == "hybrid" && vector_matches.is_empty() && stale_embedder(conn, model) {
+    if mode == "hybrid"
+        && options.query_embedding.is_none()
+        && vector_matches.is_empty()
+        && stale_embedder(conn, model)
+    {
         vector_degraded = Some("stale_embedder".to_string());
     }
     if !vector_matches.is_empty() && allowed.is_some() {

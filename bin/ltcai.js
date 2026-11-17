@@ -25,9 +25,11 @@ USAGE:
     ltcai doctor
 
 OPTIONS:
-    --host <HOST>          Bind hint (sets LATTICEAI_HOST). lattice-host listens on 127.0.0.1
+    --bind <ADDR>          Bind IP address (default: 127.0.0.1; 0.0.0.0 requires LATTICEAI_REQUIRE_AUTH=true)
+    --host <HOST>          Bind hint (sets LATTICEAI_HOST). lattice-host listens on 127.0.0.1 by default
     --port <PORT>          Gateway port (default: LATTICEAI_PORT, then 4825)
     --worker-port <PORT>   Pin the worker port instead of scanning
+    --worker-cmd <CMD>     Explicit worker launch command override
     --no-spawn             Do not start a worker; front an existing one
     --no-jobs              Mount /host/jobs but never run the timer
     -h, --help             Print this help
@@ -130,12 +132,20 @@ function whichHost() {
 function existingHostBinary() {
   const pinned = process.env.LATTICEAI_HOST_BIN || process.env.LTCAI_HOST;
   if (pinned && fs.existsSync(pinned)) return pinned;
+  const home = os.homedir();
+  const platformKey = `${process.platform}-${process.arch}`;
   const candidates = [
+    path.join(root, "bin", "native", platformKey, hostName),
+    path.join(root, "bin", hostName),
     path.join(root, "rust", "target", "release", hostName),
     path.join(root, "rust", "target", "debug", hostName),
     path.join(root, "src-tauri", "target", "release", hostName),
     path.join(root, "src-tauri", "target", "debug", hostName),
-  ];
+    home ? path.join(home, ".ltcai", "bin", hostName) : null,
+    home ? path.join(home, ".cargo", "bin", hostName) : null,
+    process.platform !== "win32" ? path.join("/opt/homebrew/bin", hostName) : null,
+    process.platform !== "win32" ? path.join("/usr/local/bin", hostName) : null,
+  ].filter(Boolean);
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;
   }
@@ -151,7 +161,11 @@ function ensureHostBinary() {
   }
   const manifest = path.join(root, "rust", "Cargo.toml");
   if (!fs.existsSync(manifest)) {
-    console.error("[LTCAI] lattice-host binary not found and rust/ workspace is missing.");
+    console.error(
+      "[LTCAI] lattice-host binary not found. When installed via npm without a source checkout, install lattice-host first:\n" +
+      "  1. Download lattice-host from GitHub Releases into ~/.ltcai/bin/lattice-host (or set LATTICEAI_HOST_BIN), or\n" +
+      "  2. Build with Rust: cargo install --git https://github.com/TaeSooPark-PTS/LatticeAI lattice-host"
+    );
     process.exit(1);
   }
   console.log("[LTCAI] Building lattice-host (cargo build -p lattice-host)...");
@@ -188,6 +202,16 @@ function parseArgs(argv) {
     }
     if (arg === "-V" || arg === "--version") {
       parsed.version = true;
+      continue;
+    }
+    if (arg === "--bind" || arg.startsWith("--bind=")) {
+      const bindAddr = arg === "--bind" ? argv[++i] : arg.slice("--bind=".length);
+      if (bindAddr) parsed.hostArgs.push("--bind", bindAddr);
+      continue;
+    }
+    if (arg === "--worker-cmd" || arg.startsWith("--worker-cmd=")) {
+      const workerCmd = arg === "--worker-cmd" ? argv[++i] : arg.slice("--worker-cmd=".length);
+      if (workerCmd) parsed.hostArgs.push("--worker-cmd", workerCmd);
       continue;
     }
     if (arg === "--host" || arg.startsWith("--host=")) {

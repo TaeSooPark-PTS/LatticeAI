@@ -262,7 +262,8 @@ pub fn platform_router(state: &OneDoorState) -> Router {
     let mut network_state = network::NetworkState::new(auth(), state.config.clone());
     network_state.graph = Some(state.graph.clone());
 
-    let mut boundary = network_boundary::NetworkBoundaryState::new(auth(), state.config.clone());
+    let mut boundary = network_boundary::NetworkBoundaryState::new(auth(), state.config.clone())
+        .with_workspaces(Arc::clone(&state.resolver));
     boundary.graph = Some(state.graph.clone());
 
     let mut portability_state = portability::PortabilityState::new(auth(), state.config.clone());

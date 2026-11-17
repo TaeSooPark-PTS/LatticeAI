@@ -1,8 +1,7 @@
 import * as React from "react";
-import { type BrainState } from "@/components/LivingBrain";
 import { readProductFlowComplete } from "@/components/productFlowState";
 import { useAppStore } from "@/store/appStore";
-import { parseHash, productShellRoutes } from "@/routes";
+import { productShellRoutes } from "@/routes";
 import { WorkspaceProfileSwitcher } from "@/components/WorkspaceProfileSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { AdminAccessGate } from "@/components/AdminAccessGate";
@@ -11,10 +10,17 @@ import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { Brain, Ellipsis, Moon, Sun, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
-import { clamp } from "@/lib/utils";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
 import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
 import { LazyRoute } from "@/components/ErrorBoundary";
+import {
+  pointerDownHitsMenu,
+  restoreFocusTo,
+  useAppBootstrap,
+  useShellMenu,
+} from "@/hooks/useAppBootstrap";
+
+export { pointerDownHitsMenu, restoreFocusTo };
 
 // Heavy first-run onboarding and the conversation home each carry large subtrees
 // (setup flow, chat panels, markdown, memory rings). They are code-split so the
@@ -34,17 +40,8 @@ const SystemPage = React.lazy(() => import("@/pages/System").then((module) => ({
 const AdminConsole = React.lazy(() => import("@/features/admin/AdminConsole").then((module) => ({ default: module.AdminConsole })));
 
 export default function App() {
-  const theme = useAppStore((state) => state.theme);
-  const language = useAppStore((state) => state.language);
+  const { language, rawRoute, parsed, brainState, intensity, setBrain } = useAppBootstrap();
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
-  const rawRoute = useHashRoute();
-  const parsed = React.useMemo(() => parseHash(), [rawRoute]);
-  const { state: brainState, intensity, setBrain } = useBrainState();
-
-  React.useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.lang = language === "ko" ? "ko" : "en";
-  }, [theme, language]);
 
   if (!flowComplete) {
     return (
@@ -116,40 +113,6 @@ export default function App() {
   );
 }
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-/**
- * Focusable descendants that are actually rendered.
- *
- * The menu holds a copy of the management links that CSS hides once the topbar
- * shows them. Those anchors stay in the DOM, so a plain querySelectorAll would
- * report focus targets the browser will refuse to focus and Tab will skip —
- * putting the focus trap's boundaries in the wrong place.
- */
-function focusablesIn(root: HTMLElement | null): HTMLElement[] {
-  return Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []).filter(
-    (element) => element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0,
-  );
-}
-
-/** Exported for tests: focus a target that may already have gone away. */
-export function restoreFocusTo(element: HTMLElement | null) {
-  element?.focus();
-}
-
-/** Exported for tests: whether a pointer-down landed on the menu or one of its triggers. */
-export function pointerDownHitsMenu(
-  target: Node,
-  panel: HTMLElement | null,
-  desktopButton: HTMLElement | null,
-  mobileButton: HTMLElement | null,
-) {
-  return Boolean(
-    panel?.contains(target) || desktopButton?.contains(target) || mobileButton?.contains(target),
-  );
-}
-
 function BrainShell({
   active,
   contentOwnsMain = false,
@@ -162,84 +125,14 @@ function BrainShell({
   const language = useAppStore((state) => state.language);
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const menuPanelRef = React.useRef<HTMLDivElement>(null);
-  const desktopMenuButtonRef = React.useRef<HTMLButtonElement>(null);
-  const mobileMenuButtonRef = React.useRef<HTMLButtonElement>(null);
-  const returnFocusRef = React.useRef<HTMLButtonElement | null>(null);
-
-  const closeMenu = React.useCallback((restoreFocus = true) => {
-    setMenuOpen(false);
-    if (restoreFocus) {
-      window.requestAnimationFrame(() => restoreFocusTo(returnFocusRef.current));
-    }
-  }, []);
-
-  const toggleMenu = React.useCallback((trigger: HTMLButtonElement) => {
-    returnFocusRef.current = trigger;
-    setMenuOpen((open) => !open);
-  }, []);
-
-  React.useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeMenu();
-        return;
-      }
-      if (event.key === "Tab") {
-        const focusable = focusablesIn(menuPanelRef.current);
-        if (!focusable.length) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        pointerDownHitsMenu(
-          target,
-          menuPanelRef.current,
-          desktopMenuButtonRef.current,
-          mobileMenuButtonRef.current,
-        )
-      ) {
-        return;
-      }
-      closeMenu(false);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onPointerDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onPointerDown);
-    };
-  }, [menuOpen, closeMenu]);
-
-  React.useEffect(() => {
-    setMenuOpen(false);
-  }, [active]);
-
-  React.useEffect(() => {
-    if (!menuOpen) return;
-    window.requestAnimationFrame(() => {
-      // The navigation section is hidden once the topbar carries those links,
-      // and focus() on a display:none element silently does nothing — which
-      // would leave the open dialog with focus still on the trigger. Take the
-      // first item that is actually rendered.
-      const rendered = focusablesIn(menuPanelRef.current);
-      const firstNavigationItem = rendered.find((element) => element.closest(".brain-more-nav"));
-      (firstNavigationItem || rendered[0])?.focus();
-    });
-  }, [menuOpen]);
+  const {
+    menuOpen,
+    menuPanelRef,
+    desktopMenuButtonRef,
+    mobileMenuButtonRef,
+    closeMenu,
+    toggleMenu,
+  } = useShellMenu(active);
 
   // Four everyday destinations stay in the primary nav — 대화 · 자료 · 기억 ·
   // 연대기, in the order `productShellRoutes` lists them; the three management
@@ -535,32 +428,4 @@ function PageLoader({ language }: { language: Language }) {
       {t(language, "shell.loading")}
     </div>
   );
-}
-
-function useHashRoute() {
-  const read = React.useCallback(() => {
-    const hash = window.location.hash.replace(/^#/, "");
-    return hash.startsWith("/") ? hash : "/brain";
-  }, []);
-  const [route, setRoute] = React.useState(read);
-
-  React.useEffect(() => {
-    const onHashChange = () => setRoute(read());
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, [read]);
-
-  return route;
-}
-
-function useBrainState() {
-  const [state, setState] = React.useState<BrainState>("idle");
-  const [intensity, setIntensity] = React.useState(0.58);
-
-  const setBrain = React.useCallback((next: BrainState, nextIntensity?: number) => {
-    setState(next);
-    if (nextIntensity !== undefined) setIntensity(clamp(nextIntensity, 0.38, 1));
-  }, []);
-
-  return { state, intensity, setBrain };
 }

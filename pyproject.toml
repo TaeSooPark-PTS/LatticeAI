@@ -132,7 +132,7 @@ Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELO
 # ``server.py`` (the ``server:app`` compatibility shim) went with
 # ``latticeai/server_app.py``: the product application it proxied is
 # ``lattice-host`` now, and the worker is an ASGI factory, not a module global.
-packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.graph._kg_common", "lattice_brain.ingestion", "lattice_brain.multimodal", "lattice_brain.runtime", "latticeai", "latticeai.api", "latticeai.cli", "latticeai.core", "latticeai.core.embedding_providers", "latticeai.models", "latticeai.models.router", "latticeai.runtime", "latticeai.runtime.build_phases", "latticeai.services", "latticeai.services.model_runtime", "latticeai.tools"]
+packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.graph._kg_common", "lattice_brain.ingestion", "lattice_brain.multimodal", "lattice_brain.runtime", "latticeai", "latticeai.api", "latticeai.cli", "latticeai.core", "latticeai.core.embedding_providers", "latticeai.core.vector_index", "latticeai.models", "latticeai.models.router", "latticeai.runtime", "latticeai.runtime.build_phases", "latticeai.services", "latticeai.services.model_runtime", "latticeai.tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]

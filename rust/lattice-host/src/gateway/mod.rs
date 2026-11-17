@@ -334,6 +334,8 @@ impl fmt::Debug for GatewayState {
 pub enum GatewayError {
     /// Someone asked for a non-loopback bind. Refused.
     NonLoopbackBind(SocketAddr),
+    /// Someone asked for a non-loopback bind without `LATTICEAI_REQUIRE_AUTH=true`.
+    UnauthenticatedPublicBind(SocketAddr),
     /// The listener could not be bound.
     Bind(String),
     /// The server stopped with an error.
@@ -354,6 +356,10 @@ impl fmt::Display for GatewayError {
                 f,
                 "refusing to bind the lattice-host gateway to {addr}: loopback only"
             ),
+            GatewayError::UnauthenticatedPublicBind(addr) => write!(
+                f,
+                "refusing non-loopback bind {addr} without LATTICEAI_REQUIRE_AUTH=true"
+            ),
             GatewayError::Bind(message)
             | GatewayError::Serve(message)
             | GatewayError::Client(message)
@@ -370,6 +376,15 @@ pub fn ensure_loopback(addr: &SocketAddr) -> Result<(), GatewayError> {
         Ok(())
     } else {
         Err(GatewayError::NonLoopbackBind(*addr))
+    }
+}
+
+/// Reject non-loopback bind addresses unless authentication is mandatory.
+pub fn ensure_bind_allowed(addr: &SocketAddr, require_auth: bool) -> Result<(), GatewayError> {
+    if addr.ip().is_loopback() || require_auth {
+        Ok(())
+    } else {
+        Err(GatewayError::UnauthenticatedPublicBind(*addr))
     }
 }
 
@@ -474,7 +489,18 @@ pub async fn bind_loopback(addr: SocketAddr) -> Result<TcpListener, GatewayError
         .map_err(|err| GatewayError::Bind(format!("cannot bind gateway on {addr}: {err}")))
 }
 
-/// Serve the gateway on an already-bound listener until `shutdown` resolves.
+/// Bind a gateway listener, requiring `require_auth == true` for non-loopback addresses.
+pub async fn bind_gateway(
+    addr: SocketAddr,
+    require_auth: bool,
+) -> Result<TcpListener, GatewayError> {
+    ensure_bind_allowed(&addr, require_auth)?;
+    TcpListener::bind(addr)
+        .await
+        .map_err(|err| GatewayError::Bind(format!("cannot bind gateway on {addr}: {err}")))
+}
+
+/// Serve the gateway on an already-bound loopback listener until `shutdown` resolves.
 ///
 /// Served *with connect info*: the proxy states the peer's address in
 /// `X-Forwarded-For`, and a peer it was never told about is one it would have
@@ -490,6 +516,34 @@ where
     if let Ok(addr) = listener.local_addr() {
         ensure_loopback(&addr)?;
     }
+    serve_gateway_inner(listener, state, shutdown).await
+}
+
+/// Serve the gateway on an already-bound listener, allowing non-loopback binds
+/// only when `require_auth` is enabled.
+pub async fn serve_gateway_with_auth_guard<F>(
+    listener: TcpListener,
+    state: Arc<GatewayState>,
+    require_auth: bool,
+    shutdown: F,
+) -> Result<(), GatewayError>
+where
+    F: Future<Output = ()> + Send + 'static,
+{
+    if let Ok(addr) = listener.local_addr() {
+        ensure_bind_allowed(&addr, require_auth)?;
+    }
+    serve_gateway_inner(listener, state, shutdown).await
+}
+
+async fn serve_gateway_inner<F>(
+    listener: TcpListener,
+    state: Arc<GatewayState>,
+    shutdown: F,
+) -> Result<(), GatewayError>
+where
+    F: Future<Output = ()> + Send + 'static,
+{
     axum::serve(
         listener,
         build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
@@ -539,6 +593,20 @@ mod tests {
             .await
             .expect_err("must refuse");
         assert!(matches!(err, GatewayError::NonLoopbackBind(_)));
+    }
+
+    #[tokio::test]
+    async fn bind_gateway_requires_auth_for_non_loopback_addresses() {
+        let err = bind_gateway("0.0.0.0:0".parse().expect("addr"), false)
+            .await
+            .expect_err("must refuse unauthenticated public bind");
+        assert!(matches!(err, GatewayError::UnauthenticatedPublicBind(_)));
+        assert!(err.to_string().contains("LATTICEAI_REQUIRE_AUTH=true"));
+
+        let listener = bind_gateway("0.0.0.0:0".parse().expect("addr"), true)
+            .await
+            .expect("authenticated public bind succeeds");
+        assert!(listener.local_addr().is_ok());
     }
 
     #[tokio::test]

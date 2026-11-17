@@ -346,6 +346,22 @@ async fn an_embedder_this_process_cannot_reproduce_leaves_the_vector_as_backlog(
         model, "openai:text-embedding-3-small",
         "the Message node carries the worker vector, not the native hash"
     );
+    let chunk_models: Vec<String> = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT DISTINCT embedding_model FROM vector_embeddings WHERE item_type='chunk'",
+            )
+            .expect("chunk query");
+        stmt.query_map([], |row| row.get(0))
+            .expect("rows")
+            .filter_map(Result::ok)
+            .collect()
+    };
+    assert_eq!(
+        chunk_models,
+        vec!["openai:text-embedding-3-small".to_string()],
+        "chunk vectors must match the worker's semantic model_id, never degrade to hash"
+    );
     let native: String = conn
         .query_row(
             "SELECT embedding_model FROM vector_embeddings ve \

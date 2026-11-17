@@ -50,6 +50,30 @@ pub fn build_context_quality(
     limit: i64,
     now_secs: f64,
 ) -> Value {
+    build_context_quality_with_query(
+        conn,
+        model,
+        query,
+        allowed_workspaces,
+        limit,
+        now_secs,
+        None,
+        None,
+    )
+}
+
+/// [`build_context_quality`] with optional precomputed semantic query vector or degradation note.
+#[allow(clippy::too_many_arguments)]
+pub fn build_context_quality_with_query(
+    conn: Option<&Connection>,
+    model: &LocalEmbeddingModel,
+    query: &str,
+    allowed_workspaces: Option<&BTreeSet<String>>,
+    limit: i64,
+    now_secs: f64,
+    query_embedding: Option<lattice_retrieval::QueryVectorOverride>,
+    semantic_degraded: Option<String>,
+) -> Value {
     let query = query.trim();
     let Some(conn) = conn.filter(|_| !query.is_empty()) else {
         return context_quality_signal(
@@ -63,6 +87,8 @@ pub fn build_context_quality(
         top_k: limit,
         allowed_workspaces: allowed_workspaces.cloned(),
         now_secs,
+        query_embedding,
+        semantic_degraded,
         ..Default::default()
     };
     match hybrid_search(conn, model, query, &options) {

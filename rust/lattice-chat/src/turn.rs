@@ -587,20 +587,24 @@ fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
     pieces
 }
 
-/// Batch-embed chunk texts. Seam / model disagreement → no supplied vectors.
+/// Batch-embed chunk texts via `/worker/embed` (`kind = "passage"`).
+///
+/// Accepts both hash and semantic provider vectors as long as the worker
+/// returned a valid `(model_id, dim)` matching each vector's width, so chunk
+/// rows share the same embedding space as the parent `Message` node.
 async fn supply_chunk_vectors(state: &ChatState, mut chunks: Vec<ChunkPiece>) -> Vec<ChunkPiece> {
-    let (Some(worker), Some(graph)) = (state.worker.as_ref(), state.graph.as_ref()) else {
+    let (Some(worker), Some(_graph)) = (state.worker.as_ref(), state.graph.as_ref()) else {
         return chunks;
     };
     let texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
     let Ok(reply) = worker.embed(&texts, "passage").await else {
         return chunks;
     };
-    if reply.model_id != graph.embedder().model_id() || reply.dim != graph.embedder().dim() {
+    if reply.model_id.trim().is_empty() || reply.dim == 0 {
         return chunks;
     }
     for (piece, values) in chunks.iter_mut().zip(reply.vectors) {
-        if !values.is_empty() {
+        if values.len() == reply.dim {
             piece.embedding = Some(SuppliedVector {
                 values,
                 model_id: reply.model_id.clone(),
@@ -667,7 +671,7 @@ pub async fn write_chat_turn(
     } else {
         Vec::new()
     };
-    if matches!(vector_identity, VectorIdentity::Agrees) && !chunks.is_empty() {
+    if supplied_vector.is_some() && !chunks.is_empty() {
         chunks = supply_chunk_vectors(state, chunks).await;
     }
     let ingest = graph.as_ref().map(|_| IngestMessageRequest {

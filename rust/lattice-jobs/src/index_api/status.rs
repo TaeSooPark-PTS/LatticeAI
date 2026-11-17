@@ -166,8 +166,24 @@ struct VectorRow {
 /// `_VectorStatusMixin.index_status()`.
 pub fn index_status(conn: &Connection) -> Result<Value, CoreError> {
     let model = LocalEmbeddingModel::from_env();
-    let model_id = model.model_id().to_string();
-    let model_dim = model.dim() as i64;
+    let explicit_contract: Option<lattice_core::embedding_contract::EmbeddingIndexContract> = conn
+        .query_row(
+            "SELECT value FROM graph_meta WHERE key='embedding_index_contract'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok());
+    let (model_id, model_dim) = match explicit_contract {
+        Some(contract)
+            if contract.is_semantic()
+                && !contract.model_id.is_empty()
+                && contract.dimension > 0 =>
+        {
+            (contract.model_id, contract.dimension as i64)
+        }
+        _ => (model.model_id().to_string(), model.dim() as i64),
+    };
 
     let counts_by_type: Vec<(String, i64)> = {
         let mut statement = conn.prepare(

@@ -36,6 +36,10 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const [endpoints, setEndpoints] = React.useState<AnalysisEndpointStatus | null>(null);
   const [reloadToken, setReloadToken] = React.useState(0);
   const [selected, setSelected] = React.useState<RecommendedModel | null>(null);
+  const [embeddingReadiness, setEmbeddingReadiness] = React.useState<{
+    state: "semantic" | "hash";
+    modelId: string;
+  }>({ state: "hash", modelId: "lattice-local-hash-v1" });
 
   const outcome = React.useMemo(() => evaluateAnalysis({ analysis, endpoints }), [analysis, endpoints]);
   const embeddingModel = React.useMemo(() => recommendedEmbeddingModel(analysis), [analysis]);
@@ -45,11 +49,12 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   React.useEffect(() => {
     let cancelled = false;
     async function runAnalysis() {
-      const [setup, recommendationsResult, models, sysinfo] = await Promise.all([
+      const [setup, recommendationsResult, models, sysinfo, embStatus] = await Promise.all([
         latticeApi.setupScan(),
         latticeApi.modelRecommendations("local_mlx"),
         latticeApi.models(),
         latticeApi.sysinfo(),
+        latticeApi.embeddingsStatus(),
       ]);
       if (cancelled) return;
       setAnalysis({
@@ -63,6 +68,18 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
         recommendations: recommendationsResult.ok,
         models: models.ok,
         sysinfo: sysinfo.ok,
+      });
+      const raw =
+        embStatus.ok && embStatus.data && typeof embStatus.data === "object"
+          ? (embStatus.data as Record<string, unknown>)
+          : {};
+      const provider = String(raw.provider || "").toLowerCase();
+      const modelId = String(raw.model_id || "lattice-local-hash-v1");
+      const isSemantic =
+        !modelId.startsWith("lattice-local-hash") && provider !== "hash";
+      setEmbeddingReadiness({
+        state: isSemantic ? "semantic" : "hash",
+        modelId,
       });
     }
     void runAnalysis();
@@ -130,8 +147,23 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-medium text-primary">
-                      {t(language, "flow.recommend.embedding.tag")}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-medium text-primary">
+                        {t(language, "flow.recommend.embedding.tag")}
+                      </span>
+                      <span
+                        className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                        data-testid="flow-embedding-readiness"
+                        data-state={embeddingReadiness.state}
+                      >
+                        {embeddingReadiness.state === "semantic"
+                          ? t(language, "flow.recommend.embedding.statusSemantic", {
+                              model: embeddingReadiness.modelId,
+                            })
+                          : t(language, "flow.recommend.embedding.statusHash", {
+                              model: embeddingReadiness.modelId,
+                            })}
+                      </span>
                     </div>
                     <div className="mt-0.5 text-base font-semibold">
                       {embeddingModel.name} <span className="text-xs font-normal text-muted-foreground">({embeddingModel.id})</span>

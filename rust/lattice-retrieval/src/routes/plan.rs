@@ -184,6 +184,7 @@ impl Plan {
                     now_secs: params
                         .optional_instant("now")?
                         .unwrap_or_else(super::naive_local_now),
+                    ..ServiceHybridOptions::default()
                 }),
             }),
             Endpoint::GraphSearch => Ok(Plan::GraphSearch {
@@ -249,6 +250,7 @@ impl Plan {
                 now_secs: params
                     .optional_instant("now")?
                     .unwrap_or_else(super::naive_local_now),
+                ..ContextRequest::default()
             }))),
             Endpoint::ContextDocument => {
                 Ok(Plan::ContextDocument(Box::new(DocumentContextRequest {

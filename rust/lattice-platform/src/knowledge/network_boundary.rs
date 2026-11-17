@@ -54,6 +54,7 @@ pub struct NetworkBoundaryState {
     pub policy: Arc<PolicyStore>,
     pub(crate) budgets: Arc<Mutex<HashMap<String, TokenBudget>>>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
+    pub workspaces: Option<Arc<crate::workspaceos::workspace::WorkspaceService>>,
 }
 
 impl NetworkBoundaryState {
@@ -66,7 +67,16 @@ impl NetworkBoundaryState {
             budgets: Arc::new(Mutex::new(HashMap::new())),
             config: Arc::new(config),
             graph: None,
+            workspaces: None,
         }
+    }
+
+    pub fn with_workspaces(
+        mut self,
+        workspaces: Arc<crate::workspaceos::workspace::WorkspaceService>,
+    ) -> Self {
+        self.workspaces = Some(workspaces);
+        self
     }
 }
 
@@ -124,7 +134,17 @@ async fn get_network_boundary(
         Err(refusal) => return refusal,
     };
     let user = email_of(&identity);
-    let ws = scope(&headers, query.get("workspace_id").map(String::as_str));
+    let requested_ws = scope(&headers, query.get("workspace_id").map(String::as_str));
+    if requested_ws.is_some() {
+        if let Err(err) = super::network_boundary_guard::resolve_read_scope(
+            state.workspaces.as_deref(),
+            user.as_deref(),
+            requested_ws.as_deref(),
+        ) {
+            return detail(StatusCode::FORBIDDEN, &err);
+        }
+    }
+    let ws = requested_ws;
     let mut payload = state.boundary.get(user.as_deref(), ws.as_deref());
     let key = budget_key(user.as_deref(), ws.as_deref());
     payload.insert("token_budget", json!(budget_snapshot(&state, &key)));
@@ -154,7 +174,17 @@ async fn ui_state(
         Err(refusal) => return refusal,
     };
     let user = email_of(&identity);
-    let ws = scope(&headers, query.get("workspace_id").map(String::as_str));
+    let requested_ws = scope(&headers, query.get("workspace_id").map(String::as_str));
+    if requested_ws.is_some() {
+        if let Err(err) = super::network_boundary_guard::resolve_read_scope(
+            state.workspaces.as_deref(),
+            user.as_deref(),
+            requested_ws.as_deref(),
+        ) {
+            return detail(StatusCode::FORBIDDEN, &err);
+        }
+    }
+    let ws = requested_ws;
     let mode_payload = state.boundary.get(user.as_deref(), ws.as_deref());
     let policy = state.policy.resolve(user.as_deref(), ws.as_deref());
     let key = budget_key(user.as_deref(), ws.as_deref());
@@ -219,7 +249,15 @@ async fn set_network_boundary(
         .and_then(Value::as_bool)
         .unwrap_or(false);
     let user = email_of(&identity);
-    let ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
+    let requested_ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
+    let ws = match super::network_boundary_guard::authorize_scope_write(
+        state.workspaces.as_deref(),
+        user.as_deref(),
+        requested_ws.as_deref(),
+    ) {
+        Ok(ws) => ws,
+        Err(err) => return detail(StatusCode::FORBIDDEN, &err),
+    };
     match state
         .boundary
         .set_mode(mode, user.as_deref(), ws.as_deref(), ack)
@@ -252,20 +290,49 @@ async fn preview(
         .unwrap_or(6)
         .clamp(1, 12) as usize;
     let user = email_of(&identity);
-    let ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
-    let mode = state.boundary.resolve(user.as_deref(), ws.as_deref());
+    let requested_ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
+    let (resolved_ws, allowed_workspaces) = match super::network_boundary_guard::resolve_read_scope(
+        state.workspaces.as_deref(),
+        user.as_deref(),
+        requested_ws.as_deref(),
+    ) {
+        Ok(pair) => pair,
+        Err(err) => return detail(StatusCode::FORBIDDEN, &err),
+    };
+    let policy_ws = requested_ws.as_deref().or(resolved_ws.as_deref());
+    let mode = state.boundary.resolve(user.as_deref(), policy_ws);
+    let resolved_policy = state.policy.resolve(user.as_deref(), policy_ws);
     let keywords: Vec<String> = message
         .split_whitespace()
         .filter(|w| !w.is_empty())
         .map(str::to_string)
         .collect();
-    let nodes = preview_nodes(&state.config, &keywords, top_k);
-    let token_estimate = nodes
-        .iter()
-        .map(|n| n.title.chars().count() / 4 + 8)
-        .sum::<usize>()
-        .max(1);
-    let key = budget_key(user.as_deref(), ws.as_deref());
+    let nodes = super::network_boundary_guard::preview_nodes_filtered(
+        &state.config,
+        &keywords,
+        top_k,
+        allowed_workspaces.as_ref(),
+        &resolved_policy,
+    );
+    let compact: String = crate::workspaceos::workspace::redact::redact_secret_text(
+        &nodes
+            .iter()
+            .map(|n| {
+                if n.summary.is_empty() || n.summary == n.title {
+                    format!("- [{}] {}", n.node_type, n.title)
+                } else {
+                    format!("- [{}] {}: {}", n.node_type, n.title, n.summary)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    let token_estimate = if compact.is_empty() {
+        1
+    } else {
+        compact.chars().count().div_ceil(4).max(1)
+    };
+    let key = budget_key(user.as_deref(), policy_ws);
     let budget = budget_snapshot(&state, &key);
     let would_block = {
         let max = budget
@@ -280,17 +347,6 @@ async fn preview(
             None
         }
     };
-    let compact: String = nodes
-        .iter()
-        .map(|n| {
-            if n.summary.is_empty() || n.summary == n.title {
-                format!("- [{}] {}", n.node_type, n.title)
-            } else {
-                format!("- [{}] {}: {}", n.node_type, n.title, n.summary)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
     let mut quality = OrderedMap::new();
     quality.insert("mode", json!("hybrid"));
     quality.insert("nodes", json!(nodes.len()));
@@ -349,8 +405,20 @@ async fn set_node_sensitivity(
         .and_then(Value::as_bool)
         .unwrap_or(true);
     let reason = object.get("reason").and_then(Value::as_str);
-    let _ = identity;
+    let user = email_of(&identity);
+    let requested_ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
     if let Some(graph) = state.graph.clone() {
+        if let Err((status, message)) =
+            super::network_boundary_guard::authorize_node_sensitivity_write(
+                &state.config,
+                state.workspaces.as_deref(),
+                user.as_deref(),
+                requested_ws.as_deref(),
+                &node_id,
+            )
+        {
+            return detail(status, &message);
+        }
         let nid = node_id.clone();
         let reason_owned = reason.map(str::to_string);
         match tokio::task::spawn_blocking(move || {
@@ -392,8 +460,21 @@ async fn get_policy(
         Err(refusal) => return refusal,
     };
     let user = email_of(&identity);
-    let ws = scope(&headers, query.get("workspace_id").map(String::as_str));
-    json_ok(state.policy.resolve(user.as_deref(), ws.as_deref()))
+    let requested_ws = scope(&headers, query.get("workspace_id").map(String::as_str));
+    if requested_ws.is_some() {
+        if let Err(err) = super::network_boundary_guard::resolve_read_scope(
+            state.workspaces.as_deref(),
+            user.as_deref(),
+            requested_ws.as_deref(),
+        ) {
+            return detail(StatusCode::FORBIDDEN, &err);
+        }
+    }
+    json_ok(
+        state
+            .policy
+            .resolve(user.as_deref(), requested_ws.as_deref()),
+    )
 }
 
 async fn set_policy(
@@ -414,7 +495,15 @@ async fn set_policy(
         }
     };
     let user = email_of(&identity);
-    let ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
+    let requested_ws = scope(&headers, object.get("workspace_id").and_then(Value::as_str));
+    let ws = match super::network_boundary_guard::authorize_scope_write(
+        state.workspaces.as_deref(),
+        user.as_deref(),
+        requested_ws.as_deref(),
+    ) {
+        Ok(ws) => ws,
+        Err(err) => return detail(StatusCode::FORBIDDEN, &err),
+    };
     json_ok(
         state
             .policy
@@ -426,62 +515,6 @@ fn budget_snapshot(state: &NetworkBoundaryState, key: &str) -> OrderedMap {
     let mut budgets = state.budgets.lock().expect("budget lock");
     let budget = budgets.entry(key.to_string()).or_default();
     budget.snapshot()
-}
-
-#[derive(Clone)]
-struct PreviewNode {
-    id: String,
-    title: String,
-    summary: String,
-    node_type: String,
-}
-
-fn preview_nodes(config: &RuntimeConfig, keywords: &[String], top_k: usize) -> Vec<PreviewNode> {
-    let path = config.graph_db_path();
-    if !path.exists() {
-        return Vec::new();
-    }
-    let Ok(conn) = lattice_core::db::open_read_only(&path) else {
-        return Vec::new();
-    };
-    let Ok(mut stmt) = conn.prepare("SELECT id, type, title, summary FROM nodes LIMIT 200") else {
-        return Vec::new();
-    };
-    let mut scored = Vec::new();
-    if let Ok(rows) = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-            row.get::<_, String>(3).unwrap_or_default(),
-        ))
-    }) {
-        for row in rows.flatten() {
-            let (id, node_type, title, summary) = row;
-            let hay = format!("{title} {summary}").to_lowercase();
-            let score = if keywords.is_empty() {
-                1
-            } else {
-                keywords
-                    .iter()
-                    .filter(|k| hay.contains(&k.to_lowercase()))
-                    .count()
-            };
-            if score > 0 {
-                scored.push((
-                    score,
-                    PreviewNode {
-                        id,
-                        title,
-                        summary,
-                        node_type,
-                    },
-                ));
-            }
-        }
-    }
-    scored.sort_by_key(|entry| std::cmp::Reverse(entry.0));
-    scored.into_iter().take(top_k).map(|(_, n)| n).collect()
 }
 
 fn network_mode_catalog() -> Vec<OrderedMap> {

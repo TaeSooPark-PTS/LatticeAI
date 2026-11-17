@@ -194,29 +194,41 @@ fn all_agents(state: &Value) -> Vec<OrderedMap> {
     all
 }
 
-fn redact(mut agent: OrderedMap) -> OrderedMap {
-    // Python redact_secrets walks nested maps; fixture agents have no secrets.
-    if let Some(Value::Object(cfg)) = agent.get("config").cloned() {
-        let mut cleaned = serde_json::Map::new();
-        for (k, v) in cfg {
-            let lk = k.to_lowercase();
-            if [
-                "secret",
-                "token",
-                "password",
-                "api_key",
-                "apikey",
-                "credential",
-            ]
-            .iter()
-            .any(|s| lk.contains(s))
-            {
-                cleaned.insert(k, json!("***"));
-            } else {
-                cleaned.insert(k, v);
+fn is_secret_key(key: &str) -> bool {
+    let lk = key.to_lowercase();
+    [
+        "secret",
+        "token",
+        "password",
+        "api_key",
+        "apikey",
+        "credential",
+    ]
+    .iter()
+    .any(|s| lk.contains(s))
+}
+
+fn redact_value(value: Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut cleaned = serde_json::Map::new();
+            for (k, v) in map {
+                if is_secret_key(&k) {
+                    cleaned.insert(k, json!("***"));
+                } else {
+                    cleaned.insert(k, redact_value(v));
+                }
             }
+            Value::Object(cleaned)
         }
-        agent.insert("config", Value::Object(cleaned));
+        Value::Array(items) => Value::Array(items.into_iter().map(redact_value).collect()),
+        other => other,
+    }
+}
+
+fn redact(mut agent: OrderedMap) -> OrderedMap {
+    if let Some(cfg) = agent.get("config").cloned() {
+        agent.insert("config", redact_value(cfg));
     }
     agent
 }
@@ -394,9 +406,7 @@ async fn register_agent(
                 .collect()
         })
         .unwrap_or_default();
-    if existing.iter().any(|id| id == &agent_id) {
-        agent_id = format!("agent:custom:{slug}-{}", existing.len() + 1);
-    }
+    agent_id = unique_custom_agent_id(&slug, &existing);
     let mut entry = OrderedMap::new();
     entry.insert("id", json!(agent_id));
     entry.insert("name", json!(name));
@@ -563,4 +573,57 @@ async fn remove_agent(
     let mut body = OrderedMap::new();
     body.insert("removed", json!(agent_id));
     json_status(StatusCode::OK, &body)
+}
+
+fn unique_custom_agent_id(slug: &str, existing: &[String]) -> String {
+    let base = format!("agent:custom:{slug}");
+    if !existing.iter().any(|id| id == &base) {
+        return base;
+    }
+    let mut suffix = existing.len() + 1;
+    loop {
+        let candidate = format!("agent:custom:{slug}-{suffix}");
+        if !existing.iter().any(|id| id == &candidate) {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redact_masks_nested_maps_and_arrays_recursively() {
+        let mut agent = OrderedMap::new();
+        agent.insert(
+            "config",
+            json!({
+                "endpoint": "https://example.invalid",
+                "auth": {
+                    "api_key": "sk-secret",
+                    "nested": [{"bearer_token": "tok-123"}, {"mode": "strict"}]
+                }
+            }),
+        );
+        let cleaned = redact(agent);
+        let cfg = cleaned.get("config").expect("config");
+        assert_eq!(cfg["endpoint"], "https://example.invalid");
+        assert_eq!(cfg["auth"]["api_key"], "***");
+        assert_eq!(cfg["auth"]["nested"][0]["bearer_token"], "***");
+        assert_eq!(cfg["auth"]["nested"][1]["mode"], "strict");
+    }
+
+    #[test]
+    fn unique_custom_agent_id_avoids_post_deletion_collisions() {
+        let existing = vec![
+            "agent:custom:helper".to_string(),
+            "agent:custom:helper-3".to_string(),
+        ];
+        assert_eq!(
+            unique_custom_agent_id("helper", &existing),
+            "agent:custom:helper-4"
+        );
+    }
 }

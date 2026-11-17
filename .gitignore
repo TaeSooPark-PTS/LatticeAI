@@ -3,6 +3,7 @@
 .ltcai-test/
 .ltcai-brain/
 .claude/
+.geminiignore
 # extracted sdist build artifact
 ltcai-[0-9]*/
 *.log

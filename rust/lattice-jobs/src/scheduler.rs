@@ -192,14 +192,20 @@ impl Scheduler {
         let started = Instant::now();
         let budget = self.config.request_timeout;
         let limit = plan.limit.max(1) as usize;
+        let use_worker = index_api::should_use_worker_embed(false, &db);
+        let seam = use_worker.then(|| {
+            lattice_core::worker::WorkerSeamClient::with_client(
+                self.client.clone(),
+                &self.config.worker_origin,
+            )
+            .with_timeout(self.config.request_timeout)
+        });
         let mut total = DrainOutcome::default();
         for _ in 0..MAX_DRAIN_WAVES {
             let graph = graph.clone();
             let db = db.clone();
-            let outcome =
-                tokio::task::spawn_blocking(move || index_api::drain_queue(&graph, &db, limit))
-                    .await
-                    .map_err(|error| error.to_string())?;
+            let seam = seam.clone();
+            let outcome = index_api::engine::drain_once(graph, db, limit, seam).await?;
             let claimed = outcome.claimed;
             total.absorb(outcome);
             if claimed == 0 || claimed < plan.limit as u64 {

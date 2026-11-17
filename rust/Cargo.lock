@@ -914,6 +914,7 @@ dependencies = [
  "base64",
  "ed25519-dalek",
  "fancy-regex",
+ "futures-core",
  "getrandom 0.4.3",
  "lattice-agent",
  "lattice-auth",

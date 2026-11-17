@@ -9,9 +9,8 @@ use serde_json::{json, Value};
 
 use crate::boundary::{resolve_hybrid_policy, strip_cloud_prefix, EscalationReason, NetworkMode};
 use crate::cloud::{
-    budget_for, build_minimal_context, cloud_egress_event, ingest_expansion,
-    plan_kg_expansion_rich, record_budget, scope_key, CloudProvider, CloudTurnResult,
-    MinimalContext,
+    budget_for, cloud_egress_event, ingest_expansion, plan_kg_expansion_rich, record_budget,
+    scope_key, CloudProvider, CloudTurnResult, MinimalContext,
 };
 use crate::contracts::ChatRequest;
 use crate::documents::DocumentPreparation;
@@ -233,13 +232,22 @@ pub(crate) async fn hybrid_response(
     meta: &HistoryMeta<'_>,
 ) -> Option<Response> {
     let policy = resolve_hybrid_policy(&state.config.data_dir, effective_email, workspace_id);
-    let _ = policy;
     let question = strip_cloud_prefix(&req.message).to_string();
     let allowed = workspace_id
         .filter(|id| !id.is_empty())
         .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let semantic_contract = state
+        .read_conn()
+        .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));
+    let effective_query = lattice_retrieval::query_embed::effective_hybrid_query(&question, false);
+    let query_embed = lattice_retrieval::query_embed::resolve_query_embedding_with_contract(
+        semantic_contract,
+        state.worker.as_ref().map(|w| w.client()),
+        &effective_query,
+    )
+    .await;
     let minimal = if let Some(conn) = state.read_conn() {
-        build_minimal_context(
+        crate::cloud::build_minimal_context_with_policy_and_query(
             &conn,
             &LocalEmbeddingModel::default(),
             &question,
@@ -247,6 +255,9 @@ pub(crate) async fn hybrid_response(
             6,
             allowed.as_ref(),
             now_secs(),
+            &policy,
+            query_embed.query_vector,
+            query_embed.degraded_reason,
         )
     } else {
         MinimalContext {

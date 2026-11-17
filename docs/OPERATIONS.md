@@ -196,11 +196,14 @@ LTCAI
 # 환경변수와 함께 시작
 LATTICEAI_SECRET_KEY=xxx LATTICEAI_ENABLE_GRAPH=true LTCAI
 
+# 컨테이너 등 외부 인터페이스 바인딩 (LATTICEAI_REQUIRE_AUTH=true 필수, 미설정 시 기동 거부)
+LATTICEAI_REQUIRE_AUTH=true lattice-host --bind 0.0.0.0 --port 4825
+
 # 종료
 Ctrl+C  또는  kill <pid>
 ```
 
-서버는 종료 시 진행 중인 HTTP 요청을 완료한 후 종료됩니다 (graceful shutdown — uvicorn 기본 동작).
+`lattice-host` 는 기본적으로 루프백(`127.0.0.1:4825`)에만 바인딩하며, 비-루프백 주소(`0.0.0.0` 등)는 `LATTICEAI_REQUIRE_AUTH=true` 가 활성화된 경우에만 허용됩니다. 종료 시에는 진행 중인 HTTP 요청과 워커 프로세스를 안전하게 정리한 뒤 종료합니다.
 
 ## 10. 릴리스 증거 캡처 순서 (레이아웃·UI 변경 후)
 

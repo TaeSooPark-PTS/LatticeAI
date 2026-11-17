@@ -202,9 +202,39 @@ describe("ProductFlow", () => {
     const embCard = await screen.findByTestId("flow-embedding-recommendation");
     expect(embCard.textContent).toContain("Google EmbeddingGemma 2");
     expect(embCard.textContent).toContain("google/embeddinggemma-2");
+    const readiness = screen.getByTestId("flow-embedding-readiness");
+    expect(readiness.getAttribute("data-state")).toBe("hash");
 
     fireEvent.click(screen.getByTestId("flow-select-embedding-model"));
     await screen.findByText(t("ko", "flow.install.title.ready"));
+  });
+
+  it("reports active semantic embedding readiness when embeddingsStatus names a semantic provider", async () => {
+    renderFlow({
+      ...readyProbes,
+      embeddingsStatus: ok({
+        provider: "huggingface",
+        model_id: "huggingface:google/embeddinggemma-2:768",
+      }),
+    });
+    await goToLogin();
+    await signIn();
+
+    const readiness = await screen.findByTestId("flow-embedding-readiness");
+    expect(readiness.getAttribute("data-state")).toBe("semantic");
+    expect(readiness.textContent).toContain("huggingface:google/embeddinggemma-2:768");
+  });
+
+  it("falls back to hash readiness badge when embeddingsStatus fails", async () => {
+    renderFlow({
+      ...readyProbes,
+      embeddingsStatus: { ok: false, status: 503, error: "unavailable", data: null },
+    });
+    await goToLogin();
+    await signIn();
+
+    const readiness = await screen.findByTestId("flow-embedding-readiness");
+    expect(readiness.getAttribute("data-state")).toBe("hash");
   });
 });
 

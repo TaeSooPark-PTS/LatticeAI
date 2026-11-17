@@ -109,6 +109,10 @@ pub struct ContextRequest {
     pub workspace_id: Option<String>,
     /// The wall clock the knowledge search's recency decay reads.
     pub now_secs: f64,
+    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
+    pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
+    /// Reason semantic query embedding degraded, if any.
+    pub semantic_degraded: Option<String>,
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -312,6 +316,8 @@ pub fn assemble_context(
                 limit: request.knowledge_limit,
                 scope: knowledge_scope(request.workspace_id.as_deref()),
                 now_secs: request.now_secs,
+                query_embedding: request.query_embedding.clone(),
+                semantic_degraded: request.semantic_degraded.clone(),
                 ..ServiceHybridOptions::default()
             },
         )?;

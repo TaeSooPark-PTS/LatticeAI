@@ -1,9 +1,24 @@
-name: Sidecar E2E (nightly)
+name: Sidecar E2E
 
-# Wave 3.2 residual — real FastAPI sidecar + Playwright first-value loop.
-# Mock-server visual smoke stays in visual.yml; this job is the live path.
+# Live `lattice-host` + Python worker sidecar + Playwright first-value loop.
+# Mock-server visual smoke stays in visual.yml; this job gates PRs touching
+# gateway/worker/frontend paths, release tags, and nightly runs.
 
 on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "rust/lattice-host/**"
+      - "latticeai/worker_app.py"
+      - "latticeai/api/worker_compute.py"
+      - "frontend/**"
+      - "playwright.e2e.config.js"
+      - "scripts/run_sidecar_e2e.mjs"
+      - ".github/workflows/e2e-sidecar.yml"
   schedule:
     - cron: "27 4 * * *"
   workflow_dispatch:

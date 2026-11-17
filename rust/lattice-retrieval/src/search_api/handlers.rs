@@ -201,6 +201,13 @@ async fn hybrid_graphrag(
     expand_depth: i64,
     image_fusion: bool,
 ) -> Response {
+    let store = match state.require_graph() {
+        Ok(store) => Arc::clone(store),
+        Err(refusal) => return refusal,
+    };
+    let effective = crate::query_embed::effective_graphrag_query(&query);
+    let resolution =
+        crate::query_embed::resolve_query_embedding(&store, state.seam(), &effective).await;
     let now = crate::routes::naive_local_now();
     let graph_config = crate::bm25::GraphRagConfig {
         max_hops: expand_depth.clamp(1, 2) as usize,
@@ -214,12 +221,20 @@ async fn hybrid_graphrag(
         graph_config,
         scope,
         now_secs: now,
+        query_embedding: resolution.query_vector,
         ..crate::bm25::GraphRagOptions::default()
     };
     let engine_query = query.clone();
+    let degraded = resolution.degraded_reason;
     let outcome = run(state, move |conn| {
         let model = LocalEmbeddingModel::from_env();
-        crate::bm25::hybrid_bm25_vector_graph_search(conn, &model, &engine_query, &options)
+        let mut out =
+            crate::bm25::hybrid_bm25_vector_graph_search(conn, &model, &engine_query, &options)?;
+        if let (Some(reason), Some(object)) = (degraded.as_ref(), out.as_object_mut()) {
+            object.insert("vector_provider_status".into(), json!("degraded"));
+            object.insert("vector_degraded_reason".into(), json!(reason));
+        }
+        Ok(out)
     })
     .await;
     let mut report = match outcome {
@@ -260,6 +275,13 @@ async fn hybrid(
     weights: Option<Map<String, Value>>,
     image_fusion: bool,
 ) -> Response {
+    let store = match state.require_graph() {
+        Ok(store) => Arc::clone(store),
+        Err(refusal) => return refusal,
+    };
+    let effective = crate::query_embed::effective_hybrid_query(&query, weights.is_some());
+    let resolution =
+        crate::query_embed::resolve_query_embedding(&store, state.seam(), &effective).await;
     let now = crate::routes::naive_local_now();
     let options = ServiceHybridOptions {
         limit,
@@ -269,6 +291,8 @@ async fn hybrid(
         weights,
         scope,
         now_secs: now,
+        query_embedding: resolution.query_vector,
+        semantic_degraded: resolution.degraded_reason,
     };
     let engine_query = query.clone();
     let outcome = run(state, move |conn| {
@@ -430,17 +454,32 @@ async fn vector(
     limit: i64,
     min_score: f64,
 ) -> Response {
+    let store = match state.require_graph() {
+        Ok(store) => Arc::clone(store),
+        Err(refusal) => return refusal,
+    };
+    let resolution =
+        crate::query_embed::resolve_query_embedding(&store, state.seam(), &query).await;
     match run(state, move |conn| {
+        if let Some(reason) = resolution.degraded_reason.as_ref() {
+            return Ok(json!({
+                "query": query,
+                "mode": "vector",
+                "provider_status": "degraded",
+                "degraded_reason": reason,
+                "matches": [],
+            }));
+        }
         let model = LocalEmbeddingModel::from_env();
-        vector_search_aligned_service(
-            conn,
-            crate::vector::VectorQueryInput::Model(&model),
-            &query,
-            limit,
-            min_score,
-            &scope,
-            false,
-        )
+        let query_input = match resolution.query_vector.as_ref() {
+            Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
+                model_id: &ovr.model_id,
+                vector: &ovr.vector,
+                is_hash_fallback: ovr.is_hash_fallback,
+            },
+            None => crate::vector::VectorQueryInput::Model(&model),
+        };
+        vector_search_aligned_service(conn, query_input, &query, limit, min_score, &scope, false)
     })
     .await
     {

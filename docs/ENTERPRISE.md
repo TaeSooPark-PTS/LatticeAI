@@ -45,6 +45,19 @@ and `GET /admin/enterprise/siem-export`: they show policy/export/envelope
 shapes while reporting Enterprise-only capabilities disabled and never
 streaming external events.
 
+## Storage boundary (SQLite primary, PostgreSQL/pgvector export target)
+
+`lattice-host` uses local **SQLite** (`knowledge_graph.sqlite`, WAL mode + FTS5)
+as its single authoritative runtime store:
+
+- Setting `LATTICEAI_STORAGE_ENGINE=postgres` on `lattice-host` fails closed at
+  startup instead of silently writing to SQLite while claiming Postgres is active.
+- `POST /api/brain/storage/migrate-postgres` and `POST /api/brain/storage/postgres/docker`
+  prepare schema/row assessments and Compose manifests cleanly in Community;
+  live SQLite-to-PostgreSQL/pgvector snapshot export is provided by the Python
+  `lattice_brain.storage.postgres_migration` utility for analytics and read-replica
+  pipelines.
+
 ## Enterprise capability roadmap
 
 These are declared in `EnterpriseCapability` so the seam is stable and
