@@ -20,6 +20,20 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.9.0": {
+    "_why": [
+      "Semantic Guard completes contract-aligned semantic query embedding",
+      "(query_embed.rs) and pure-Rust native HNSW + Python workspace/model-scoped",
+      "HNSW sidecar persistence, fail-closed network boundary and cloud slice",
+      "isolation (network_boundary_guard.rs, lattice-chat/src/boundary.rs),",
+      "desktop Tauri / CLI / host supervisor / multi-stage Docker guardrails,",
+      "live Workspace OS realtime SSE (/api/realtime/stream + useRealtimeStream),",
+      "v2 .latticebrain archive KDF hardening, and CI/Sidecar/Audit gate upgrades.",
+      "",
+      "Baseline screen layouts match the captured tree with no full-screen",
+      "redesign. Empty claim set on purpose."
+    ]
+  },
   "12.8.0": {
     "_why": [
       "Trusted Brain delivers full P1/P2/P3 remediation across the Rust host",

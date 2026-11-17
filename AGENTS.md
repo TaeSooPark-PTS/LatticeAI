@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **12.8.0 — Trusted Brain**.
+Current release: **12.9.0 — Semantic Guard**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -45,7 +45,7 @@ The user prefers autonomous execution.
 Default behavior:
 
 - Make reasonable decisions without asking
-- Continue through implementation, testing, build, documentation sync, review, commit, and push
+- Continue through implementation, testing, build, documentation sync, review, commit, push, tagging, GitHub Release, and CD publication
 - Avoid presenting multiple options when a safe default exists
 - Avoid asking for permission for routine engineering work
 - Prefer action over discussion
@@ -57,8 +57,7 @@ Only interrupt for:
 
 - Secrets
 - Credentials
-- Package publishing
-- Production deployment
+- Production service infrastructure deployment
 - Force push
 - Destructive actions
 - Irreversible operations
@@ -297,8 +296,7 @@ For release work:
 - Validate release artifacts before reporting completion
 - Use exact artifact paths
 - Do not use `dist/*` for upload or release commands
-- Do not publish packages unless explicitly requested
-- Do not deploy unless explicitly requested
+- After `main` CI and Visual Smoke pass on a release commit, autonomously create and push the `vX.Y.Z` tag, ensure `.github/workflows/release.yml` attaches exact-version artifacts and publishes the GitHub Release, and verify `.github/workflows/publish.yml` (CD) completes package publication
 
 Expected artifact naming:
 
@@ -306,6 +304,7 @@ Expected artifact naming:
 - `dist/ltcai-X.Y.Z.tar.gz`
 - `dist/ltcai-X.Y.Z.vsix`
 - `ltcai-X.Y.Z.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_X.Y.Z_aarch64.dmg`
 
 Manual package publish commands must use exact target-version filenames.
 
@@ -325,17 +324,13 @@ Do not leave completed work uncommitted.
 
 Do not leave committed work unpushed.
 
-Do not create tags unless explicitly requested.
-
 ---
 
 ## Forbidden
 
 Do not:
 
-- Publish packages unless explicitly requested
-- Deploy services
-- Upload release artifacts unless explicitly requested
+- Deploy live production server infrastructure unless explicitly requested
 - Force push
 - Remove rollback paths without justification
 - Skip tests after major refactors

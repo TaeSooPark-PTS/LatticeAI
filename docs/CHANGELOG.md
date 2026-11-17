@@ -4,6 +4,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.9.0] - 2026-11-17 — Semantic Guard
+
+### Added
+- Added contract-aligned semantic query embedding (`rust/lattice-retrieval/src/query_embed.rs`, `tests/semantic_query_embed.rs`) across `/api/search/hybrid`, `/memory/recall`, and `/chat`, plus pure-Rust `NativeHnswIndex` (`native_hnsw.rs`, `vector_hnsw.rs`), workspace/model-scoped Python HNSW sidecars (`latticeai/core/vector_index/{hnsw,sidecar}.py`, `tests/unit/test_vector_index_sidecar.py`), and `scripts/bench_retrieval_baseline.py`.
+- Added server-enforced network boundary & cloud slice guards (`rust/lattice-platform/src/knowledge/network_boundary_guard.rs`, `rust/lattice-chat/src/{boundary.rs,cloud/context.rs}`, `toolsurface/agent_registry.rs`) enforcing `local_only` / `cloud_allowed` consent and sensitivity rules.
+- Added authenticated Workspace OS realtime SSE streaming (`rust/lattice-platform/src/workspaceos/realtime.rs`, `frontend/src/hooks/{useRealtimeStream.ts,useRealtimeStream.test.tsx}`) and extracted `frontend/src/hooks/useAppBootstrap.ts` at 100% Vitest coverage.
+
+### Changed
+- Hardened Tauri desktop backend (`src-tauri/src/backend.rs`), `bin/ltcai.js` CLI launch & host resolution, `rust/lattice-host` supervisor & gateway guardrails, multi-stage `Dockerfile`, `.latticebrain` v2 archive KDF (`portability/{crypto.rs,kdf.rs}`), and CI / Sidecar E2E / Dependency Audit workflows, and updated `AGENTS.md` for autonomous tag/release/CD execution after green `main` CI.
+
 ## [12.8.0] - 2026-11-16 — Trusted Brain
 
 ### Added

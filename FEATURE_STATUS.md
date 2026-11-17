@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.8.0)
+# Lattice AI Feature Status (v12.9.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.8.0 — Trusted Brain**.
+Current release: **12.9.0 — Semantic Guard**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 12.0.0 and later in `RELEASE.md` and
@@ -518,6 +518,7 @@ still open — including small-model *content* quality and the mock-only
 
 The Git tree keeps supported release history for the `v12.x` era (`12.0.0+`):
 
+- 12.9.0
 - 12.8.0
 - 12.7.0
 - 12.6.0

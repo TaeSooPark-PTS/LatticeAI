@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.9.0 — Semantic Guard** aligns query-time semantic embeddings with the active `EmbeddingIndexContract` across search/recall/chat, adds pure-Rust `NativeHnswIndex` & workspace/model-scoped Python HNSW sidecars, enforces fail-closed `local_only`/`cloud_allowed` network boundary & cloud context guards, hardens Tauri desktop / `LTCAI` CLI / host supervisor / multi-stage Docker lifecycles, streams live Workspace OS SSE events (`/api/realtime/stream`), and upgrades v2 `.latticebrain` archive KDF & CI gates. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.9.0.md`.
+
 **12.8.0 — Trusted Brain** unifies the `EmbeddingIndexContract` & knowledge lifecycle tracking, pushes workspace/lifecycle filtering before SQL `LIMIT` with aligned vector search & bounded sidecar caches, enforces fail-closed multi-user/workspace/tenant isolation across gateway routes, delivers AEAD-encrypted `.latticebrain` archive portability with honest `planned` PostgreSQL status, modularizes `Library`/`System`/`Capture` UI slices, and automates Apple Silicon DMG CI/CD releases. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.8.0.md`.
 
 **12.7.0 — Fast Index** adds a Pre-Tokenized BM25F Sidecar (`Bm25SidecarIndex`), SQLite `bm25_node_stats` persistence, and an inverted posting-list & GraphRAG adjacency cache for O(1) lookup without query-time re-tokenization, alongside a product-first `README.md` and `v12.0.0+` release-history polish. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.7.0.md`.

@@ -3,7 +3,7 @@
 > **Status: reference** — point-in-time inventory, redated at v12.0.0. Not a
 > canonical current-release document; version gates do not bind it.
 
-As of **2026-11-16**, against the **12.8.0 — Trusted Brain** tree. The rows below
+As of **2026-11-17**, against the **12.9.0 — Semantic Guard** tree. The rows below
 were gathered against the `v12.0.0` baseline; what subsequent `v12.x` releases
 closed is marked closed rather than deleted, so the ledger still shows what was
 owed.
@@ -18,9 +18,10 @@ honest leftover list, gathered from
 [FEATURE_STATUS.md](../FEATURE_STATUS.md) Known Limitations and the §정직한
 고지 sections of
 [releases/RELEASE_NOTES_v12.0.0.md](releases/RELEASE_NOTES_v12.0.0.md),
-[releases/RELEASE_NOTES_v12.6.0.md](releases/RELEASE_NOTES_v12.6.0.md), and
-[releases/RELEASE_NOTES_v12.7.0.md](releases/RELEASE_NOTES_v12.7.0.md), and
-[releases/RELEASE_NOTES_v12.8.0.md](releases/RELEASE_NOTES_v12.8.0.md).
+[releases/RELEASE_NOTES_v12.6.0.md](releases/RELEASE_NOTES_v12.6.0.md),
+[releases/RELEASE_NOTES_v12.7.0.md](releases/RELEASE_NOTES_v12.7.0.md),
+[releases/RELEASE_NOTES_v12.8.0.md](releases/RELEASE_NOTES_v12.8.0.md), and
+[releases/RELEASE_NOTES_v12.9.0.md](releases/RELEASE_NOTES_v12.9.0.md).
 
 Four items those ledgers named **closed in 12.0.0**. They are kept below so
 they are not re-opened as work. Everything else is still open.

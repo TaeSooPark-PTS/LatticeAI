@@ -1,6 +1,6 @@
 # Lattice AI 12.8.0 — Trusted Brain
 
-> **Status: canonical** — current release note.
+> **Status: historical** — point-in-time release note.
 
 2026-11-16
 

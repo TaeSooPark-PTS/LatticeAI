@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.8.0 — Trusted Brain**.
+Current release: **12.9.0 — Semantic Guard**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **12.0.0 through 12.8.0** (the
+The public Git tree keeps release history from **12.0.0 through 12.9.0** (the
 modern `v12.x` Rust-host and domain-grouped architecture era). Security support
 follows that same product era: **only the 12.x line receives fixes.**
 
@@ -21,7 +21,9 @@ active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 12.8.x (latest) | Supported |
+| 12.9.x (latest) | Supported |
+| 12.8.x | Supported |
+| 12.7.x | Supported |
 | 12.6.x | Supported |
 | 12.5.x | Supported |
 | 12.4.x | Supported |

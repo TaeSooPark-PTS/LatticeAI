@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.9.0 — Semantic Guard (2026-11-17)
+
+**시맨틱 쿼리 임베딩 계약 정렬(`query_embed.rs`) 및 순수 Rust 네이티브 HNSW(`NativeHnswIndex`)·스코프 Python HNSW 사이드카**, **네트워크 경계·클라우드 컨텍스트 fail-closed 격리(`network_boundary_guard.rs`, `lattice-chat/src/boundary.rs`)**, **데스크톱(Tauri)·CLI·호스트 슈퍼바이저·멀티스테이지 Docker 가드레일**, **실시간 Workspace OS SSE(`/api/realtime/stream`) 및 `useAppBootstrap` 분리**, **`.latticebrain` v2 아카이브 KDF 강화 및 CI 게이트 확장**을 통합한 릴리스.
+
+- **시맨틱 쿼리 정렬 & 네이티브/사이드카 HNSW:** `rust/lattice-retrieval/src/{query_embed.rs,native_hnsw.rs,vector_hnsw.rs}`와 `latticeai/core/vector_index/{hnsw.py,sidecar.py}`에서 `/api/search/hybrid`·`/memory/recall`·`/chat` 쿼리 임베딩을 활성 `EmbeddingIndexContract`에 정렬하고 순수 Rust HNSW 및 `(workspace_id, model_id, dim)` 스코프 사이드카 영속화를 제공한다.
+- **네트워크 경계 격리 & 데스크톱/CLI/Docker 가드레일:** `network_boundary_guard.rs`와 `lattice-chat/src/{boundary.rs,cloud/context.rs}`가 `local_only`/`cloud_allowed` 동의 및 민감도 필터를 서버 측에서 강제하며, `src-tauri/src/backend.rs`·`bin/ltcai.js`·`rust/lattice-host`·`Dockerfile`의 프로세스 수명주기 및 컨테이너 가드레일을 보강했다.
+- **실시간 SSE 스트림, v2 KDF & CI 게이트:** `workspaceos/realtime.rs`와 `useRealtimeStream.ts`(Vitest 100%)로 실시간 이벤트 스트리밍을 연결하고 `useAppBootstrap.ts`를 분리했으며, `portability/{crypto.rs,kdf.rs}` v2 KDF 강화(v1 복호화 하위 호환) 및 `.github/workflows/{ci,dependency-audit,e2e-sidecar}.yml` 게이트를 강화했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md).
+
+빌드 산출물은 `dist/ltcai-12.9.0-py3-none-any.whl`,
+`dist/ltcai-12.9.0.tar.gz`, `ltcai-12.9.0.tgz`, `dist/ltcai-12.9.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.9.0_aarch64.dmg` 입니다.
+
 ## v12.8.0 — Trusted Brain (2026-11-16)
 
 **임베딩 계약·지식 라이프사이클 일원화**, **SQLite `LIMIT` 이전 워크스페이스 스코핑·벡터 차원 정렬·바운드 사이드카 캐시**, **사용자·워크스페이스·테넌트 fail-closed 게이트웨이 격리**, **암호화 `.latticebrain` 아카이브 및 정직한 PostgreSQL `planned` 보고**, **프론트엔드 기능 모듈 분리**, **PR 검색 게이트·macOS DMG CI/CD 자동화**를 통합한 릴리스.

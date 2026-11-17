@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.8.0 — Trusted Brain**.
+Current release: **12.9.0 — Semantic Guard**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
