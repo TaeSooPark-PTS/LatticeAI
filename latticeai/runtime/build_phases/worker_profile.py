@@ -133,9 +133,11 @@ def phase_worker_routes(ctx: Any) -> None:
     decision about the application object, not more assembly state.
     """
     from latticeai.api.worker_compute import create_worker_compute_router
+    from latticeai.api.worker_resilience import install_worker_compute_resilience
     from latticeai.api.worker_seams import create_worker_seams_router
 
     app = ctx.app
+    install_worker_compute_resilience(app)
     app.include_router(
         create_worker_seams_router(
             require_user=ctx.require_user,

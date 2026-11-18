@@ -262,28 +262,65 @@ impl OneDoorState {
     /// A read-only `{total_nodes, total_edges}` probe for the admin summary.
     ///
     /// Bound as a callback rather than reached for directly because
-    /// `lattice-platform` must not learn the graph's SQL: the admin report only
-    /// wants two numbers, and a store that has no `nodes` table yet answers
-    /// zeroes rather than failing the whole page.
+    /// `lattice-platform` must not learn the graph's SQL. Distinguishes three
+    /// states explicitly instead of collapsing SQL errors into `0`:
+    /// - uninitialized store (tables not created yet): `status = "empty"`, counts `0`
+    /// - healthy store (empty or populated): `status = "ok"`, exact row counts
+    /// - SQLite / query failure: `Err("unavailable: …")` so admin health and
+    ///   audit endpoints surface `unavailable` rather than reporting 0 nodes.
     pub fn graph_stats(&self) -> Arc<dyn Fn() -> Result<serde_json::Value, String> + Send + Sync> {
         let store = Arc::clone(&self.store);
-        Arc::new(move || {
-            store
-                .with_read_conn(|conn| {
-                    let count = |table: &str| -> i64 {
-                        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
-                            row.get(0)
-                        })
-                        .unwrap_or(0)
-                    };
-                    Ok(serde_json::json!({
-                        "total_nodes": count("nodes"),
-                        "total_edges": count("edges"),
-                    }))
-                })
-                .map_err(|err| err.to_string())
-        })
+        Arc::new(move || probe_store_graph_stats(&store))
     }
+}
+
+/// Probe `nodes` and `edges` counts on `store` without masking SQL failures.
+pub fn probe_store_graph_stats(store: &Store) -> Result<serde_json::Value, String> {
+    store
+        .with_read_conn(probe_conn_graph_stats)
+        .map_err(|err| format!("unavailable: {err}"))
+}
+
+fn probe_conn_graph_stats(
+    conn: &rusqlite::Connection,
+) -> Result<serde_json::Value, lattice_core::db::CoreError> {
+    let table_or_view_exists = |name: &str| -> Result<bool, rusqlite::Error> {
+        conn.query_row(
+            "SELECT EXISTS(
+                SELECT 1 FROM sqlite_master
+                WHERE type IN ('table', 'view') AND name = ?1
+            )",
+            [name],
+            |row| row.get(0),
+        )
+    };
+    let count_existing = |table: &str| -> Result<i64, rusqlite::Error> {
+        match table {
+            "nodes" => conn.query_row("SELECT COUNT(*) FROM nodes", [], |row| row.get(0)),
+            "edges" => conn.query_row("SELECT COUNT(*) FROM edges", [], |row| row.get(0)),
+            _ => unreachable!("unsupported graph table probe"),
+        }
+    };
+
+    let has_nodes = table_or_view_exists("nodes")?;
+    let has_edges = table_or_view_exists("edges")?;
+    let total_nodes = if has_nodes {
+        count_existing("nodes")?
+    } else {
+        0
+    };
+    let total_edges = if has_edges {
+        count_existing("edges")?
+    } else {
+        0
+    };
+    let schema_initialized = has_nodes && has_edges;
+    Ok(serde_json::json!({
+        "status": if schema_initialized { "ok" } else { "empty" },
+        "schema_initialized": schema_initialized,
+        "total_nodes": total_nodes,
+        "total_edges": total_edges,
+    }))
 }
 
 /// The `workspace_os.json` port both leaf crates declare, answered by the
@@ -421,5 +458,47 @@ mod tests {
     #[test]
     fn the_blob_directory_is_the_one_the_ownership_map_names() {
         assert_eq!(BLOB_DIR, "knowledge_graph_blobs");
+    }
+
+    #[test]
+    fn graph_stats_distinguishes_empty_store_from_sql_failure() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("knowledge_graph.sqlite");
+        let store = Arc::new(Store::open(&db_path).expect("open store"));
+
+        // 1. Unbootstrapped empty SQLite file reports status="empty", counts=0.
+        let uninit = probe_store_graph_stats(&store).expect("uninitialized probe");
+        assert_eq!(uninit["status"], "empty");
+        assert_eq!(uninit["schema_initialized"], false);
+        assert_eq!(uninit["total_nodes"], 0);
+        assert_eq!(uninit["total_edges"], 0);
+
+        // 2. Bootstrapped empty Brain reports status="ok", counts=0.
+        let writer =
+            GraphWriter::open(Arc::clone(&store), dir.path().join(BLOB_DIR)).expect("bootstrap");
+        let empty = probe_store_graph_stats(&store).expect("empty probe");
+        assert_eq!(empty["status"], "ok");
+        assert_eq!(empty["schema_initialized"], true);
+        assert_eq!(empty["total_nodes"], 0);
+        assert_eq!(empty["total_edges"], 0);
+        drop(writer);
+
+        // 3. Broken/corrupt SQL relation surfaces Err("unavailable: ...") rather than 0.
+        let broken_path = dir.path().join("broken_graph.sqlite");
+        let broken_store = Store::open(&broken_path).expect("open broken store");
+        broken_store
+            .with_write_txn(|txn| {
+                txn.execute_batch(
+                    "CREATE VIEW nodes AS SELECT missing_column FROM nonexistent_backing_table;
+                     CREATE TABLE edges (id TEXT PRIMARY KEY);",
+                )?;
+                Ok(())
+            })
+            .expect("create broken view");
+        let err = probe_store_graph_stats(&broken_store).expect_err("broken SQL must not return 0");
+        assert!(
+            err.starts_with("unavailable:"),
+            "expected unavailable prefix, got: {err}"
+        );
     }
 }

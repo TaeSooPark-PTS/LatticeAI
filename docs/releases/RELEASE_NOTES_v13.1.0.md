@@ -1,6 +1,6 @@
 # Lattice AI 13.1.0 — Living Synthesis
 
-> **Status: canonical** — current release note.
+> **Status: historical** — point-in-time release note.
 
 2026-11-18
 

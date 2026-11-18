@@ -1,27 +1,24 @@
 //! The worker seam, from the gateway's side.
 //!
-//! v11.6.0 inverts the topology: `lattice-host` becomes the product server and
-//! the Python worker keeps only what it alone can do — inference, tool-handler
-//! execution and graph writes, proposal staging, the document parser matrix,
-//! embedding production. Everything a Rust route needs from that box goes over
+//! Since v11.6.0 Wave 3, `lattice-host` is the product server and owns all
+//! SQLite and state-file writes natively (`GraphWriter`, `WorkspaceOsStore`).
+//! The Python worker keeps only stateless compute — LLM inference, the document
+//! parser/render matrix, entity/triple extraction, ASR, and embedding
+//! production. Everything a Rust route needs from that compute box goes over
 //! loopback HTTP, and this is the client every crate uses to make the call.
 //!
-//! It is deliberately shapeless: `post_json`, `get_json`, `stream_sse`. The
-//! typed seams that already exist — `lattice_agent::worker::WorkerClient` for
-//! `/agent/{llm,tool,change-proposal}`, `lattice_ingest::worker::WorkerClient`
-//! for `/knowledge-graph/ingest` — encode one contract each and keep it. This
-//! carries the rest (WP-I6's history/graph/sysinfo seams, `/models`,
-//! `/engines/prepare-model/stream`, `/api/index/*`) without inventing a type
-//! per endpoint before the endpoint exists.
+//! It is deliberately shapeless: `post_json`, `get_json`, `stream_sse`, plus
+//! opt-in `post_idempotent_json` for stateless compute calls that carry an
+//! idempotency key across transient worker restarts.
 //!
-//! ## Deliberate non-features
+//! ## Design rules
 //!
-//! * **No retries.** A drain tick backs off, a chat turn fails the turn, an
-//!   admin read shows an error — three different right answers, none of which
-//!   this layer can pick. `lattice_jobs::tick` already documents its own.
-//! * **No authentication of its own.** The worker's routes call
-//!   `require_user`, so a deployment with auth on must supply the credential;
-//!   [`WorkerSeamClient::with_header`] is how, and nothing here invents one.
+//! * **No implicit retries on `post_json`.** A drain tick backs off, a chat
+//!   turn fails the turn, an admin read shows an error — callers that want
+//!   bounded retry over stateless compute opt into [`WorkerSeamClient::post_idempotent_json`]
+//!   with an explicit [`WorkerRetryPolicy`] and idempotency key.
+//! * **No authentication of its own.** A deployment with auth on supplies the
+//!   credential via [`WorkerSeamClient::with_header`]; nothing here invents one.
 //! * **No JSON feature on reqwest.** The workspace pins reqwest without it (the
 //!   proxy streams bytes and never deserialises), so bodies are serialised and
 //!   parsed with `serde_json` by hand — the same way `lattice-jobs` and
@@ -92,6 +89,40 @@ impl WorkerSeamError {
             WorkerSeamError::Transport { path, .. }
             | WorkerSeamError::Rejected { path, .. }
             | WorkerSeamError::Malformed { path, .. } => Some(path),
+        }
+    }
+
+    /// Whether the failure represents a transient worker unavailability
+    /// (transport drop/timeout or 429/502/503/504 overload/restart) suitable
+    /// for bounded idempotent retry.
+    pub fn is_transient(&self) -> bool {
+        match self {
+            WorkerSeamError::Transport { .. } => true,
+            WorkerSeamError::Rejected { status, .. } => {
+                matches!(*status, 429 | 502 | 503 | 504)
+            }
+            WorkerSeamError::Client(_) | WorkerSeamError::Malformed { .. } => false,
+        }
+    }
+}
+
+/// Bounded retry policy for stateless idempotent worker compute endpoints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkerRetryPolicy {
+    /// Maximum additional retry attempts after the initial call (`0` = single attempt).
+    pub max_retries: usize,
+    /// Base backoff before the first retry; doubles on each attempt up to `max_backoff`.
+    pub initial_backoff: Duration,
+    /// Upper bound on per-attempt sleep duration.
+    pub max_backoff: Duration,
+}
+
+impl Default for WorkerRetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_retries: 2,
+            initial_backoff: Duration::from_millis(50),
+            max_backoff: Duration::from_millis(500),
         }
     }
 }
@@ -199,6 +230,42 @@ impl WorkerSeamClient {
             .timeout(self.timeout)
             .body(payload);
         read_json(request, path).await
+    }
+
+    /// `POST {origin}{path}` with an explicit `x-lattice-idempotency-key` header
+    /// and bounded retry on transient worker failures (`is_transient()`).
+    pub async fn post_idempotent_json(
+        &self,
+        path: &str,
+        idempotency_key: &str,
+        body: &Value,
+        policy: WorkerRetryPolicy,
+    ) -> Result<Value, WorkerSeamError> {
+        let payload =
+            serde_json::to_vec(body).map_err(|error| WorkerSeamError::Client(error.to_string()))?;
+        let mut attempt = 0usize;
+        let mut backoff = policy.initial_backoff;
+        loop {
+            let mut request = self
+                .request(reqwest::Method::POST, path)
+                .header("content-type", "application/json")
+                .timeout(self.timeout)
+                .body(payload.clone());
+            if !idempotency_key.trim().is_empty() {
+                request = request.header("x-lattice-idempotency-key", idempotency_key.trim());
+            }
+            match read_json(request, path).await {
+                Ok(val) => return Ok(val),
+                Err(err) if attempt < policy.max_retries && err.is_transient() => {
+                    attempt += 1;
+                    if !backoff.is_zero() {
+                        tokio::time::sleep(backoff).await;
+                    }
+                    backoff = backoff.saturating_mul(2).min(policy.max_backoff);
+                }
+                Err(err) => return Err(err),
+            }
+        }
     }
 
     /// `GET {origin}{path}`, answered as JSON.
@@ -404,5 +471,80 @@ mod tests {
         // 3 bytes per glyph: a byte-slicing truncate would panic here.
         assert_eq!(truncate("한국어", 10), "한국어");
         assert_eq!(truncate("한국어입니다", 3), "한국어…");
+    }
+
+    #[tokio::test]
+    async fn idempotent_post_recovers_from_transient_503_and_stops_on_400() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+        let addr = listener.local_addr().expect("addr");
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_server = Arc::clone(&hits);
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut socket, _)) = listener.accept().await else {
+                    break;
+                };
+                let n = hits_server.fetch_add(1, Ordering::SeqCst);
+                let mut buf = [0u8; 2048];
+                let read_n = socket.read(&mut buf).await.unwrap_or(0);
+                let req_str = String::from_utf8_lossy(&buf[..read_n]);
+                assert!(
+                    req_str
+                        .to_ascii_lowercase()
+                        .contains("x-lattice-idempotency-key: job-123"),
+                    "missing idempotency header in request: {req_str}"
+                );
+                let response = match n {
+                    0 => {
+                        "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 12\r\nConnection: close\r\n\r\nrestarting.."
+                    }
+                    1 => {
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\nConnection: close\r\n\r\n{\"ok\":true}"
+                    }
+                    _ => {
+                        "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\nConnection: close\r\n\r\nbad payload"
+                    }
+                };
+                let _ = socket.write_all(response.as_bytes()).await;
+            }
+        });
+
+        let client = WorkerSeamClient::new(format!("http://{addr}")).expect("client");
+        let policy = WorkerRetryPolicy {
+            max_retries: 2,
+            initial_backoff: Duration::from_millis(5),
+            max_backoff: Duration::from_millis(20),
+        };
+        let ok = client
+            .post_idempotent_json(
+                "/worker/embed",
+                "job-123",
+                &serde_json::json!({"q": "hi"}),
+                policy,
+            )
+            .await
+            .expect("retry succeeds on second attempt");
+        assert_eq!(ok["ok"], true);
+        assert_eq!(hits.load(Ordering::SeqCst), 2);
+
+        // Non-transient 400 must fail immediately without burning retries.
+        let err = client
+            .post_idempotent_json(
+                "/worker/embed",
+                "job-123",
+                &serde_json::json!({"q": "bad"}),
+                policy,
+            )
+            .await
+            .expect_err("400 should not retry");
+        assert!(!err.is_transient());
+        assert_eq!(err.status(), Some(400));
+        assert_eq!(hits.load(Ordering::SeqCst), 3);
     }
 }

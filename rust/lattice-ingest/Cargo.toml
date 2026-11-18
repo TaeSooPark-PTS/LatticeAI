@@ -24,6 +24,7 @@ reqwest = { workspace = true }
 # closure names rusqlite::Connection, which is the same workspace pin the
 # other route crates already use.
 rusqlite = { workspace = true }
+notify = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

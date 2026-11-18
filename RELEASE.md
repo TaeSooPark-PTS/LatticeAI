@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.2.0 — Living Synthesis (2026-11-19)
+
+**이중 시간축(Bi-temporal) 지식 그래프·비파괴 한/영 개체 통합(`temporal.rs`, `entity_resolution.rs`)**, **주장 단위 근거 검증·기권(`grounding.rs`) 및 검색/생성 분리형 모델 무관 RAG 평가(`rag_eval_grounded.rs`)**, **OS 이벤트 디바운스 감시·청크 단위 증분 재임베딩·표/페이지/OCR 구조 보존 수집(`incremental_watch.rs`, `incremental_sync.rs`, `document_structure.rs`)**, **원자적 체크포인트·멱등 원장·승인 재시작 복구·롤백을 갖춘 내구성 DAG 에이전트 워크플로 엔진(`kernel/workflow.rs`)**, **워커 멱등 재시도·타임아웃 격리(`worker.rs`, `worker_resilience.py`)·클라우드 비밀 파일 차단(`boundary.rs`)·정직한 그래프 상태 프로브(`onedoor.rs`, `audit.rs`) 및 Section 16 종단간 검증 스위트(`roadmap_section16_suite.rs`)**를 통합한 로드맵 완성 릴리스.
+
+- **이중 시간축 지식 진화·개체 통합 & 근거 기반 RAG:** `temporal.rs`와 `entity_resolution.rs`가 유효 시간(`valid_from`..`valid_until`)·트랜잭션 시간 시점 조회와 비파괴 `SAME_AS` 한/영 별칭 병합·원복을 제공하고, `grounding.rs`·`rag_eval_grounded.rs`가 주장 단위 수치/극성/대체 지식 누수 검증, 근거 부족 시 자동 기권, 로컬/클라우드 모델 교체 불변성을 보장한다.
+- **이벤트 기반 증분 동기화·멀티모달 구조 수집 & 내구성 DAG 워크플로:** `incremental_watch.rs`·`incremental_sync.rs`·`document_structure.rs`가 디바운스 파일 감시, 변경 청크만 재임베딩하는 증분 동기화, 표(`table_structured`)·페이지·캡션·OCR 보존 수집을 수행하며, `kernel/workflow.rs`가 단계별 체크포인트, SHA-256 멱등 원장, 상수 시간 승인 토큰 재시작 복구, 실패 시 파일 스냅샷 롤백, `USED_BY_AGENT`/`GENERATED_BY` 계보 기록을 제공한다.
+- **워커 복원력·클라우드 비밀 경계·정직한 텔레메트리 & Section 16 검증 스위트:** `WorkerSeamClient::post_idempotent_json`·`worker_resilience.py` 멱등 재시도/타임아웃 격리, `.env`·개인키 등 비밀 파일 클라우드 유출 차단(`boundary.rs`), `empty`/`ok`/`unavailable` 그래프 상태 분리(`onedoor.rs`, `audit.rs`), 그리고 `roadmap_section16_suite.rs`(16.1 분리형 RAG, 16.2 1월→3월→5월 시간 진화, 16.3 클라우드 경계, 16.4 장애·인덱싱 중단·승인 재시작 복구) 전수 검증을 완료했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.2.0.md](docs/releases/RELEASE_NOTES_v13.2.0.md).
+
+빌드 산출물은 `dist/ltcai-13.2.0-py3-none-any.whl`,
+`dist/ltcai-13.2.0.tar.gz`, `ltcai-13.2.0.tgz`, `dist/ltcai-13.2.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.2.0_aarch64.dmg` 입니다.
+
 ## v13.1.0 — Living Synthesis (2026-11-18)
 
 **지식 그래프 인터랙티브 인스펙터·2-Hop 이웃 추론 합성(`neighborhood_synthesis.rs`, `GraphNodeInspector.tsx`, `MultiHopSynthesisView.tsx`) 및 원클릭 상충 기억 정리(`ContradictionInspector.tsx`)**, **채팅 답변 원클릭 Brain 기억 승격(`Save to Brain`)·인라인 변경 제안 비교/승인(`InlineStagedProposals.tsx`)·실시간 에이전트 도구 표시 및 출처 원문 그래프 점프(`AnswerProof.tsx`)**, **임베딩 백로그 진행률 바·즉시 인덱싱(`POST /api/index/drain`)·`stale_embedder` 보존(`health.rs`)·모델 다운로드 바이트 진행률 및 협력적 취소(`InstallScreen.tsx`, `ModelsPanel.tsx`)·`⌘K` 노드 포커스·반응형 작업공간 캐시 무효화·한/영 무누수 로컬라이제이션(Vitest 100%)**을 통합한 사용자 체감 대형 업그레이드 릴리스.

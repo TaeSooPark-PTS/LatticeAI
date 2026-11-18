@@ -91,6 +91,34 @@ pub fn blocked_reason(node: &Value) -> Option<String> {
             ));
         }
     }
+    for uri_key in ["source_uri", "file_path"] {
+        if let Some(uri) = meta.get(uri_key).and_then(Value::as_str) {
+            let base = uri
+                .rsplit(['/', '\\'])
+                .next()
+                .unwrap_or(uri)
+                .trim()
+                .to_lowercase();
+            let is_template = base.ends_with(".example")
+                || base.ends_with(".sample")
+                || base.ends_with(".template");
+            let is_secret_file = !is_template
+                && (base == ".env"
+                    || base.starts_with(".env.")
+                    || base.ends_with(".pem")
+                    || base.ends_with(".key")
+                    || base.ends_with(".p12")
+                    || base.ends_with(".pfx")
+                    || base.starts_with("id_rsa")
+                    || base.starts_with("id_ed25519")
+                    || base == "credentials.json");
+            if is_secret_file {
+                return Some(format!(
+                    "sensitive source '{base}' is blocked from cloud payloads"
+                ));
+            }
+        }
+    }
     None
 }
 

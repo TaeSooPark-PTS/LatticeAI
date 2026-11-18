@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **13.1.0 — Living Synthesis**.
+Current release: **13.2.0 — Living Synthesis**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -128,23 +128,37 @@ Knowledge Graph changes must:
 - Preserve legacy compatibility
 - Avoid destructive migrations
 - Prefer reprojection over mutation
-- Keep rollback paths available
-- Maintain equivalence tests
+- Keep rollback paths available (`rollback_entity_consolidation`, reversible folder reorganization)
+- Maintain equivalence and bi-temporal / entity-resolution invariants (`rust/lattice-core/src/{temporal.rs,entity_resolution.rs}`)
+- Preserve claim-level grounding, superseded exclusion, and separated RAG evaluation gates (`rust/lattice-retrieval/src/{grounding.rs,rag_eval_grounded.rs}`)
+- Preserve chunk-level incremental sync and structured table/page/OCR ingestion invariants (`rust/lattice-ingest/src/{incremental_watch.rs,incremental_sync.rs,document_structure.rs}`)
 - Preserve read compatibility
 - Preserve migration safety
-- Preserve dual-write guarantees
+- Preserve single-writer `GraphWriter` guarantees (`rust/lattice-core/src/graph_write/`)
 
 ---
 
-## Agent Loop Rules (9.6.0)
+## Agent Loop & Durable Workflow Rules (9.6.0 / 13.2.0)
 
-The single-agent reasoning loop (`latticeai/core/agent/`) is observable and
-evaluated; changes to it must keep these invariants:
+The single-agent reasoning loop (`latticeai/core/agent/`) and durable DAG workflow engine (`rust/lattice-agent/src/kernel/workflow.rs`) are observable and
+evaluated; changes to them must keep these invariants:
 
 - Every run carries a `LoopTrace` (`latticeai/core/agent_trace.py`): llm
   calls, parse errors (recovered or not), format repairs, corrections, tool
   outcomes, retries. The API returns `loop` (trace summary) with each agent
   response — do not remove or bypass it.
+- Durable multi-step workflows (`DurableWorkflowStore` in `rust/lattice-agent/src/kernel/workflow.rs`)
+  checkpoint atomically before and after every step, enforce SHA-256
+  `idempotency_ledger` replay across restarts, gate `requires_approval` steps
+  behind constant-time `WaitingApproval` tokens, restore pre-mutation file
+  snapshots on terminal failure, and emit `USED_BY_AGENT` / `GENERATED_BY`
+  Brain provenance edges.
+- Stateless worker compute retries opt into `WorkerSeamClient::post_idempotent_json`
+  (`rust/lattice-core/src/worker.rs`) paired with `latticeai/api/worker_resilience.py`
+  (`x-lattice-idempotency-key` coalescing + unary timeout isolation), while
+  `rust/lattice-host/tests/roadmap_section16_suite.rs` locks Section 16.1–16.4
+  end-to-end RAG, bi-temporal evolution, cloud secret-file boundary, and fault
+  recovery invariants.
 - Weak-model tolerance lives in `extract_action_details`: think-block strip,
   fence extraction, object slicing, trailing-comma repair, python-literal
   repair. New tolerances must be deterministic and reported in `repairs`.

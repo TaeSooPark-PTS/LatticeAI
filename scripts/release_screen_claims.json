@@ -20,6 +20,24 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.2.0": {
+    "_why": [
+      "Living Synthesis (13.2.0) completes the backend roadmap and Section 16",
+      "end-to-end verification suite: bi-temporal knowledge timelines &",
+      "canonical entity resolution (temporal.rs, entity_resolution.rs),",
+      "claim-level grounding & separated RAG evaluation (grounding.rs,",
+      "rag_eval_grounded.rs), event-driven debounced watch + chunk-level",
+      "incremental re-embedding + structured/multimodal document ingestion",
+      "(incremental_watch.rs, incremental_sync.rs, document_structure.rs),",
+      "durable checkpointed DAG agent workflows (kernel/workflow.rs), worker",
+      "seam idempotency & timeout isolation (worker.rs, worker_resilience.py),",
+      "secret-file cloud boundary guards, and honest graph telemetry.",
+      "",
+      "No frontend screen shell was redesigned in 13.2.0 (05-memory-graph",
+      "carries normal ~2.7% Cytoscape layout jitter). Empty claim set on",
+      "purpose; unclaimed screens are still measured and printed."
+    ]
+  },
   "13.1.0": {
     "_why": [
       "Living Synthesis delivers interactive Knowledge Graph neighborhood &",

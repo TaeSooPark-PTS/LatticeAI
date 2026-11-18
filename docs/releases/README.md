@@ -4,6 +4,10 @@ Per-version release notes for Lattice AI (`v12.0.0` and later). The rolling summ
 
 | Version | Theme | Note |
 | --- | --- | --- |
+| 13.2.0 | Living Synthesis | [RELEASE_NOTES_v13.2.0.md](RELEASE_NOTES_v13.2.0.md) |
+| 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](RELEASE_NOTES_v13.1.0.md) |
+| 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](RELEASE_NOTES_v13.0.0.md) |
+| 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](RELEASE_NOTES_v12.10.0.md) |
 | 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](RELEASE_NOTES_v12.9.0.md) |
 | 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](RELEASE_NOTES_v12.8.0.md) |
 | 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](RELEASE_NOTES_v12.7.0.md) |

@@ -49,9 +49,12 @@
 pub mod api;
 pub mod browser_api;
 pub mod chunk;
+pub mod document_structure;
 pub mod filters;
 pub mod fingerprint;
 pub mod hashes;
+pub mod incremental_sync;
+pub mod incremental_watch;
 pub mod local_files_api;
 pub mod pages;
 pub mod pystr;
@@ -64,9 +67,20 @@ pub use api::{router, IngestApiConfig, CHUNK_PATH, PLAN_PATH};
 pub use chunk::{
     chunk_meta_fields, typed_chunks, Chunk, ChunkMeta, DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE,
 };
+pub use document_structure::{
+    extract_document_structure, persist_structure_and_multimodal_overlay, DocumentStructurePlan,
+    OcrVisionObservation, OcrVisionProvider,
+};
 pub use hashes::{
     chunk_id, content_id, file_content_hash, identity_hash, sha256_bytes, sha256_text,
     text_content_hash, vector_text_hash,
+};
+pub use incremental_sync::{
+    reconcile_deleted_uris, sync_document_incremental, IncrementalSyncReceipt,
+    IncrementalSyncRequest,
+};
+pub use incremental_watch::{
+    DebouncedWatchConfig, DebouncedWatchEngine, DetectedMove, RawFsChange, WatchBatch,
 };
 pub use pages::{citation_locator, page_for_offset, pdf_page_offsets};
 pub use pystr::{is_py_space, py_strip, py_suffix};

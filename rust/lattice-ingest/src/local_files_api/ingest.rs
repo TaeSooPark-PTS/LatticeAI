@@ -738,8 +738,27 @@ pub(super) async fn upload_document(
             .as_ref()
             .and_then(super::enrich::SeamEmbedOutcome::batch),
     );
+    let mut extracted_map = serde_json::Map::new();
+    if !text.is_empty() {
+        extracted_map.insert("content".into(), json!(text));
+    }
+    if let Some(parsed) = parsed {
+        for (key, value) in parsed {
+            if key != "content" && key != "filename" {
+                extracted_map.entry(key).or_insert(value);
+            }
+        }
+    }
+    let structure_plan = crate::document_structure::extract_document_structure(
+        &filename,
+        mime.as_deref().unwrap_or(""),
+        &text,
+        &extracted_map,
+        None,
+    );
     let mut chunks =
         super::enrich::chunk_pieces_for(&text, &filename, mime.as_deref().unwrap_or(""));
+    chunks.extend(structure_plan.table_chunks.clone());
     let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
     let chunk_embed = if chunk_texts.is_empty() {
         None
@@ -753,17 +772,6 @@ pub(super) async fn upload_document(
             .and_then(super::enrich::SeamEmbedOutcome::batch),
         true,
     );
-    let mut extracted_map = serde_json::Map::new();
-    if !text.is_empty() {
-        extracted_map.insert("content".into(), json!(text));
-    }
-    if let Some(parsed) = parsed {
-        for (key, value) in parsed {
-            if key != "content" && key != "filename" {
-                extracted_map.entry(key).or_insert(value);
-            }
-        }
-    }
     let tmp = std::env::temp_dir().join(format!(
         "lattice-upload-{}",
         std::time::SystemTime::now()
@@ -785,11 +793,14 @@ pub(super) async fn upload_document(
                 .and_then(super::enrich::SeamEmbedOutcome::contract)
         })
         .cloned();
+    let chunks_for_overlay = chunks.clone();
     let request = lattice_core::graph_write::types::IngestFileRequest {
         path: tmp.clone(),
         original_filename: Some(filename),
         mime_type: mime,
         extracted: extracted_map,
+        structure: structure_plan.structure.clone(),
+        structure_nodes: structure_plan.structure_nodes.clone(),
         chunks,
         concepts: extracted.concepts,
         triples: extracted.triples,
@@ -805,6 +816,15 @@ pub(super) async fn upload_document(
                 .zip(incoming_contract.as_ref())
                 .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
             let outcome = graph.ingest_file(&request)?;
+            let _ = crate::document_structure::persist_structure_and_multimodal_overlay(
+                &graph,
+                &outcome.node_id,
+                &chunks_for_overlay,
+                &outcome.chunk_ids,
+                &structure_plan,
+                None,
+                None,
+            );
             let active = graph
                 .current_index_contract()
                 .ok()

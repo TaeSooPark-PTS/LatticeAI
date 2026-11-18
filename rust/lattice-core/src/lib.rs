@@ -10,12 +10,14 @@ pub mod bm25_stats;
 pub mod db;
 pub mod embedding_contract;
 pub mod embeddings;
+pub mod entity_resolution;
 pub mod graph_write;
 pub mod messages;
 pub mod paths;
 pub mod pytext;
 pub mod read;
 pub mod redact;
+pub mod temporal;
 pub mod worker;
 
 pub use db::{open_read_only, CoreError};

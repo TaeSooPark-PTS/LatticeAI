@@ -3,23 +3,24 @@
 //!
 //! Until v11.6.0 this module was read-only by construction — Python owned every
 //! write, and `open_read_only` made that a property of the connection rather
-//! than a promise in a comment. One Door splits that ownership rather than
-//! removing it:
+//! than a promise in a comment. Wave 3 of One Door completed the transition to
+//! native Rust write ownership:
 //!
 //! * **Rust owns platform state** — users/sessions, workspaces, review queue,
 //!   proposal metadata, settings, jobs bookkeeping, history. Those tables and
 //!   files are written here, through [`Store`].
-//! * **The worker stays the single writer of the Brain** — nodes, edges,
-//!   chunks, vectors, provenance, ingestion. A Rust route that must change the
-//!   graph delegates over the seam (`POST /agent/tool`,
-//!   `POST /knowledge-graph/ingest`) instead of opening a write connection.
+//! * **Rust owns the Brain store via [`crate::graph_write::GraphWriter`]** —
+//!   nodes, edges, chunks, vectors, provenance, and ingestion all commit
+//!   through [`Store::with_write_txn`] on the single writer connection. The
+//!   Python worker is pure stateless compute (`/worker/{embed,parse,extract,render/*,asr}`)
+//!   and never opens `knowledge_graph.sqlite` for writing.
 //!
-//! [`tables`] is that split written down, table by table, with the Python file
-//! that writes each one. Wave-2 packages follow it rather than guessing, and
-//! `tests/db_write_ownership.rs` checks it against the committed fixture store
-//! so a table that appears in the product cannot quietly go unclassified.
+//! [`tables`] records the table-by-table schema inventory and historical port
+//! lineage, and `tests/db_write_ownership.rs` checks it against the committed
+//! fixture store so a table that appears in the product cannot quietly go
+//! unclassified.
 //!
-//! The pragmas on a write connection are Python's, not ours — see
+//! The pragmas on a write connection match the historical SQLite contract — see
 //! [`open_read_write`].
 
 use std::path::{Path, PathBuf};

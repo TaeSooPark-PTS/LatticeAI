@@ -277,7 +277,7 @@ pub(crate) async fn admin_audit(
     let graph = if state.enable_graph {
         match (state.graph_stats)() {
             Ok(v) => v,
-            Err(e) => json!({"error": e}),
+            Err(e) => json!({"status": "unavailable", "error": e}),
         }
     } else {
         json!({"disabled": true})

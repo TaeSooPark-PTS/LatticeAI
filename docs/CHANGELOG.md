@@ -4,6 +4,21 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.2.0] - 2026-11-19 — Living Synthesis
+
+### Added
+- Added bi-temporal knowledge timeline & conflict evolution classification (`rust/lattice-core/src/temporal.rs`: `valid_from`..`valid_until`, `recorded_at`/`superseded_at`, `query_temporal_timeline`, `TemporalEvolution` vs. `ComplementaryRefinement` vs. `ActiveContradiction`) and non-destructive, reversible canonical entity resolution (`rust/lattice-core/src/entity_resolution.rs`: `EntityAliasBook`, Korean particle stripping, `SAME_AS` edges, `rollback_entity_consolidation`).
+- Added claim-level evidence grounding, superseded-leak rejection & fail-closed bilingual abstention (`rust/lattice-retrieval/src/grounding.rs`) plus separated Retrieval vs. Generation RAG benchmarking & model-swap invariance evaluation (`rust/lattice-retrieval/src/rag_eval_grounded.rs`) over `LocalEmbeddingModel` (`lattice-local-hash-v1`).
+- Added event-driven debounced filesystem watching (`rust/lattice-ingest/src/incremental_watch.rs`), chunk-level incremental re-embedding & move relocation (`rust/lattice-ingest/src/incremental_sync.rs`), and structured table/page/slide/sheet/caption & optional local OCR/vision ingestion (`rust/lattice-ingest/src/document_structure.rs`, `local_files_api/ingest.rs`).
+- Added durable checkpointed DAG agent workflow execution (`rust/lattice-agent/src/kernel/workflow.rs`) with acyclic validation, parallel read-only / serial mutating waves, SHA-256 idempotency ledger replay, mid-step crash reconciliation, constant-time `WaitingApproval` pause/resume across restarts, pre-mutation file rollback snapshots, and Brain `USED_BY_AGENT` / `GENERATED_BY` provenance export.
+- Added opt-in idempotent worker seam retries (`rust/lattice-core/src/worker.rs`: `WorkerSeamClient::post_idempotent_json`, `WorkerRetryPolicy`), stateless Python compute timeout isolation & idempotent replay coalescing (`latticeai/api/worker_resilience.py`, `worker_profile.py`, `tests/unit/test_worker_resilience.py`), and the Section 16 End-to-End Product Verification Suite (`rust/lattice-host/tests/roadmap_section16_suite.rs`, covering 16.1–16.4).
+
+### Changed
+- Updated `rust/lattice-core/src/db.rs` write-ownership documentation to match native Rust `GraphWriter` single-writer ownership alongside stateless Python compute.
+
+### Fixed
+- Blocked secret-file sources (`.env`, `.env.*`, `.pem`, `.key`, `.p12`, `.pfx`, `id_rsa*`, `id_ed25519*`, `credentials.json`, while exempting `.example`/`.sample`/`.template`) from outbound cloud context payloads in `rust/lattice-chat/src/boundary.rs`, and distinguished `empty`, `ok`, and SQL-error `unavailable` graph health states in `rust/lattice-host/src/gateway/onedoor.rs` and `rust/lattice-platform/src/adminops/admin/{audit,handlers}.rs`.
+
 ## [13.1.0] - 2026-11-18 — Living Synthesis
 
 ### Added

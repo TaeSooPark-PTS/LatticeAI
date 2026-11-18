@@ -97,9 +97,14 @@ pub mod tools;
 // ---------------------------------------------------------------------------
 
 // kernel/ — the loop and every decision that can refuse.
+pub use kernel::workflow::{
+    compute_idempotency_key, DurableWorkflowStore, ExecutionWave, StepExecOutput, StepReceipt,
+    WorkflowAdvanceOutcome, WorkflowRunRecord, WorkflowSpec, WorkflowStatus, WorkflowStepSpec,
+    WorkflowStepState, WorkflowStepStatus, WORKFLOWS_DIR_NAME,
+};
 pub use kernel::{
     agentloop, breaker, eval, governor, mode, permission, plan, policy, profile, proposals, runs,
-    state, trace, transcript,
+    state, trace, transcript, workflow,
 };
 // parse/ — untrusted model text in, typed values out.
 pub use parse::{action, channel, inference, pyjson, pyliteral, pyshlex, pystr};

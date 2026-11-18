@@ -461,20 +461,28 @@ pub fn build_admin_audit_report(
 
     if let Some(stats) = graph_stats {
         if !stats.is_null() && stats.as_object().map(|o| !o.is_empty()).unwrap_or(true) {
-            summary.insert(
-                "graph_nodes",
-                json!(stats
-                    .get("total_nodes")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)),
-            );
-            summary.insert(
-                "graph_edges",
-                json!(stats
-                    .get("total_edges")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)),
-            );
+            if stats.get("error").is_some()
+                || stats.get("status").and_then(Value::as_str) == Some("unavailable")
+            {
+                summary.insert("graph_status", json!("unavailable"));
+                summary.insert("graph_nodes", Value::Null);
+                summary.insert("graph_edges", Value::Null);
+            } else {
+                summary.insert(
+                    "graph_nodes",
+                    json!(stats
+                        .get("total_nodes")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0)),
+                );
+                summary.insert(
+                    "graph_edges",
+                    json!(stats
+                        .get("total_edges")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0)),
+                );
+            }
         }
     }
 

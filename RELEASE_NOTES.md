@@ -1,3 +1,9 @@
+# [v13.2.0 - Living Synthesis] (2026-11-19)
+
+이중 시간축(Bi-temporal) 지식 그래프·시점 조회 및 비파괴 한/영 개체 통합(`temporal.rs`, `entity_resolution.rs`), 주장 단위 근거 검증·기권(`grounding.rs`) 및 검색/생성 분리형 모델 무관 RAG 평가(`rag_eval_grounded.rs`), OS 이벤트 디바운스 감시·청크 단위 증분 재임베딩·표/페이지/OCR 구조 보존 수집(`incremental_watch.rs`, `incremental_sync.rs`, `document_structure.rs`), 원자적 체크포인트·멱등 원장·재시작 승인 복구·롤백을 갖춘 내구성 DAG 에이전트 워크플로 엔진(`kernel/workflow.rs`), 워커 멱등 재시도·타임아웃 격리(`worker.rs`, `worker_resilience.py`)·클라우드 비밀 파일 차단(`boundary.rs`)·정직한 그래프 상태 프로브(`onedoor.rs`, `audit.rs`) 및 Section 16 종단간 제품 검증 스위트(`roadmap_section16_suite.rs`, 16.1–16.4)를 적용했습니다.
+
+See [docs/releases/RELEASE_NOTES_v13.2.0.md](docs/releases/RELEASE_NOTES_v13.2.0.md).
+
 # [v13.1.0 - Living Synthesis] (2026-11-18)
 
 지식 그래프 인터랙티브 노드 인스펙터·단일 조회 2-Hop 이웃 추론 합성(`neighborhood_synthesis.rs`, `GraphNodeInspector.tsx`, `MultiHopSynthesisView.tsx`)·상충 필터 및 원클릭 상충 기억 제안/해결(`ContradictionInspector.tsx`), 채팅 답변 원클릭 **Brain에 기억하기** 승격·인라인 변경 제안 diff 승인/거절(`InlineStagedProposals.tsx`)·실시간 도구 단계 표시 및 출처 모달 그래프 점프(`AnswerProof.tsx`), 임베딩 진행률 바·즉시 인덱싱 드레인(`POST /api/index/drain`)·`stale_embedder` 보존(`health.rs`), 모델 다운로드 바이트/파일 표시 및 협력적 취소(`InstallScreen.tsx`, `ModelsPanel.tsx`), `⌘K` 지식 노드 포커스·작업공간 즉시 쿼리 무효화 및 한/영 무누수 로컬라이제이션(Vitest 100%)을 적용했습니다.
@@ -107,10 +113,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.1.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.2.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
+- [v13.2.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.2.0.md)
 - [v13.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.1.0.md)
 - [v13.0.0 - Sovereign Synthesis](docs/releases/RELEASE_NOTES_v13.0.0.md)
 - [v12.10.0 - Grounded Self](docs/releases/RELEASE_NOTES_v12.10.0.md)
