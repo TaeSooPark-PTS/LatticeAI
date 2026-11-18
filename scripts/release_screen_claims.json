@@ -20,6 +20,29 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.1.0": {
+    "_why": [
+      "Living Synthesis delivers interactive Knowledge Graph neighborhood &",
+      "2-hop synthesis (neighborhood_synthesis.rs, GraphNodeInspector.tsx,",
+      "MultiHopSynthesisView.tsx), toolbar conflict-only filtering & shortcut",
+      "ergonomics (DigitalBrainExplorer.tsx), one-click contradiction staging",
+      "and resolution (ContradictionInspector.tsx), Chat Save-to-Brain insight",
+      "promotion & inline staged proposal approval (InlineStagedProposals.tsx),",
+      "live embedding drain progress & Index-now controls (BrainSignals.tsx),",
+      "cooperative download cancel & byte/file metrics (InstallScreen.tsx,",
+      "ModelsPanel.tsx), Command Palette node focus, and reactive workspace",
+      "cache invalidation.",
+      "",
+      "On 05-memory-graph.png, the Knowledge Graph Explorer renders the updated",
+      "metadata bar, keyboard shortcut badge, and graph layout (measured ~2.53%).",
+      "Node-selected inspector panels, assistant reply actions, active download",
+      "cancel buttons, and pending embedding drain bars mount on interactive",
+      "states rather than the idle baseline shells."
+    ],
+    "05-memory-graph.png": {
+      "min_pct": 1.5
+    }
+  },
   "13.0.0": {
     "_why": [
       "Sovereign Synthesis enforces cross-domain crate decoupling",

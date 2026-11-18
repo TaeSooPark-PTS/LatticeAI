@@ -402,6 +402,10 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "deleteSelfModelFact", invoke: () => api.deleteSelfModelFact("self:preference:1"), method: "DELETE", path: "/api/memory/self-model/self%3Apreference%3A1" },
   { name: "proposeSelfModel", invoke: () => api.proposeSelfModel("매일 아침 회고"), method: "POST", path: "/api/memory/self-model/propose", body: { text: "매일 아침 회고", source: "ui" } },
   { name: "applySelfModelProposal", invoke: () => api.applySelfModelProposal("rev-1"), method: "POST", path: "/api/memory/self-model/apply", body: { item_id: "rev-1" } },
+  { name: "graphNodeInspect", invoke: () => api.graphNodeInspect("n1"), method: "GET", path: "/api/graph/node", query: { node_id: "n1", include_neighbors: "true", include_reasoning: "true", depth: "2", limit: "40" } },
+  { name: "brainProposeContradictions", invoke: () => api.brainProposeContradictions(), method: "POST", path: "/api/brain/contradictions/propose", body: {} },
+  { name: "brainResolveContradiction", invoke: () => api.brainResolveContradiction("rev-2", "replace"), method: "POST", path: "/api/brain/contradictions/resolve", body: { item_id: "rev-2", resolution: "replace" } },
+  { name: "indexDrain", invoke: () => api.indexDrain(), method: "POST", path: "/api/index/drain", body: { limit: 50 } },
 ];
 
 // Wrappers whose behavior is not "one request, one envelope": each has its own

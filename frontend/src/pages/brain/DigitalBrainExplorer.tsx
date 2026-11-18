@@ -1,9 +1,9 @@
 import * as React from "react";
 import "@/i18n/brain";
 import { useMutation } from "@tanstack/react-query";
-import { Filter, Focus, LocateFixed, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, Filter, Focus, LocateFixed, Search, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { DataPanel, EmptyState, EntityList, KeyValueList, StructuredView } from "@/components/primitives";
+import { DataPanel, EmptyState, EntityList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,22 +12,53 @@ import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { fmtNumber } from "@/lib/utils";
 import { CytoscapeGraph } from "./CytoscapeGraph";
+import { GraphNodeInspector } from "./GraphNodeInspector";
 import { buildExplorerModel, parseGraph, type LabelMode } from "./graphExplorer";
-import { graphTypeLabel, groupLabelFor, sourceCreatedAt, sourceType } from "./sourceMeta";
+import { graphTypeLabel } from "./sourceMeta";
 
 export function DigitalBrainExplorer({ data }: { data: unknown }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const theme = useAppStore((state) => state.theme);
+  const focusedGraphNodeId = useAppStore((state) => state.focusedGraphNodeId);
+  const setFocusedGraphNodeId = useAppStore((state) => state.setFocusedGraphNodeId);
   const parsed = React.useMemo(() => parseGraph(data, language), [data, language, theme]);
   const [search, setSearch] = React.useState("");
   const [groupFilter, setGroupFilter] = React.useState("all");
+  const [conflictsOnly, setConflictsOnly] = React.useState(false);
   const [minImportance, setMinImportance] = React.useState(mode === "basic" ? 0.1 : 0);
   const [labelMode, setLabelMode] = React.useState<LabelMode>("important");
   const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [fitSignal, setFitSignal] = React.useState(0);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const backendSearch = useMutation({ mutationFn: () => latticeApi.hybridSearch(search.trim()) });
+
+  React.useEffect(() => {
+    if (!focusedGraphNodeId || !parsed.nodes.length) return;
+    if (parsed.nodes.some((node) => node.id === focusedGraphNodeId)) {
+      setSelectedId(focusedGraphNodeId);
+      setFitSignal((value) => value + 1);
+    }
+    setFocusedGraphNodeId(null);
+  }, [focusedGraphNodeId, parsed.nodes, setFocusedGraphNodeId]);
+
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const inField = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT"));
+      if (event.key === "/" && !inField && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (event.key === "Escape" && (selectedId || conflictsOnly)) {
+        setSelectedId(null);
+        setConflictsOnly(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedId, conflictsOnly]);
+
   const model = React.useMemo(() => buildExplorerModel({
     graph: parsed,
     search,
@@ -37,7 +68,9 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
     selectedId,
     labelMode,
     maxNodes: 220,
-  }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode]);
+    conflictsOnly,
+  }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode, conflictsOnly]);
+
   const selected = parsed.nodes.find((node) => node.id === selectedId);
   const selectedGroup = selectedId?.startsWith("group:") ? model.groups.find((group) => group.id === selectedId.replace("group:", "")) : null;
   const toggleGroup = (id: string) => {
@@ -65,6 +98,7 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
         <div className="graph-explorer-search">
           <Search className="graph-explorer-search-icon" aria-hidden="true" />
           <Input
+            ref={searchInputRef}
             className="graph-explorer-search-input"
             aria-label={t(language, "graph.search.aria")}
             value={search}
@@ -81,6 +115,18 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
           <option value="all">{t(language, "graph.labels.all")}</option>
           <option value="off">{t(language, "graph.labels.off")}</option>
         </select>
+        {parsed.conflictNodeIds.size > 0 ? (
+          <Button
+            type="button"
+            variant={conflictsOnly ? "default" : "outline"}
+            aria-pressed={conflictsOnly}
+            data-testid="graph-conflicts-toggle"
+            onClick={() => setConflictsOnly((prev) => !prev)}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            {t(language, "graph.conflictsOnly", { count: fmtNumber(parsed.conflictNodeIds.size) })}
+          </Button>
+        ) : null}
         <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}>
           <LocateFixed className="h-4 w-4" /> {t(language, "graph.fit")}
         </Button>
@@ -102,6 +148,7 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
               <Badge variant={model.hiddenByFilters ? "warning" : "success"}>
                 {model.hiddenByFilters ? t(language, "graph.filtered", { count: fmtNumber(model.hiddenByFilters) }) : t(language, "graph.allInView")}
               </Badge>
+              <Badge variant="muted">{t(language, "graph.shortcutHint")}</Badge>
             </div>
             <div className="graph-explorer-meta-tools">
               <Filter className="h-3.5 w-3.5" />
@@ -148,34 +195,13 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {selected ? (
-                  <>
-                    <div>
-                      <div className="text-lg font-semibold">{selected.label}</div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        <Badge variant="muted">{graphTypeLabel(selected.type, language)}</Badge>
-                        <Badge variant="muted">{groupLabelFor(selected, model.groups)}</Badge>
-                        <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
-                      </div>
-                    </div>
-                    {selected.summary ? <p className="text-sm text-muted-foreground">{selected.summary}</p> : null}
-                    {mode === "basic" ? (
-                      <KeyValueList data={{
-                        connections: selected.degree,
-                        source: selected.source || t(language, "graph.source.none"),
-                        source_type: sourceType(selected.raw, language),
-                        created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
-                      }} />
-                    ) : (
-                      <StructuredView value={{
-                        id: selected.id,
-                        degree: selected.degree,
-                        source: selected.source || t(language, "graph.source.none"),
-                        source_type: sourceType(selected.raw, language),
-                        created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
-                      }} />
-                    )}
-                    {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>{t(language, "graph.copySource")}</Button> : null}
-                  </>
+                  <GraphNodeInspector
+                    selected={selected}
+                    groups={model.groups}
+                    mode={mode}
+                    language={language}
+                    onSelectNode={setSelectedId}
+                  />
                 ) : selectedGroup ? (
                   <div className="space-y-2">
                     <Badge variant="warning">{t(language, "graph.collapsedGroup")}</Badge>

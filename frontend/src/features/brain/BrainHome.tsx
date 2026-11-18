@@ -34,6 +34,8 @@ export function BrainHome({
   onBrainChange: (state: BrainState, intensity?: number) => void;
 }) {
   const language = useAppStore((state) => state.language);
+  const pendingChatPrompt = useAppStore((state) => state.pendingChatPrompt);
+  const setPendingChatPrompt = useAppStore((state) => state.setPendingChatPrompt);
   const sessionMessages = useConversationSession((state) => state.messages);
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
   const memoriesQ = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
@@ -87,6 +89,12 @@ export function BrainHome({
     t(language, "brain.prompt.know"),
     t(language, "brain.prompt.plan"),
   ], [language]);
+
+  React.useEffect(() => {
+    if (!pendingChatPrompt) return;
+    chat.setDraft(pendingChatPrompt);
+    setPendingChatPrompt(null);
+  }, [pendingChatPrompt, chat.setDraft, setPendingChatPrompt]);
 
   const openDepth = React.useCallback((depth: number) => {
     triggerBrainRecall();

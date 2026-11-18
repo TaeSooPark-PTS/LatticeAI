@@ -1,10 +1,12 @@
 import * as React from "react";
-import { X } from "lucide-react";
+import { Share2, X } from "lucide-react";
 
 import { latticeApi, type EvidenceAction } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useAppStore } from "@/store/appStore";
 import { isRecord, textValue } from "./brainData";
+import { navigateHash } from "./navigation";
 import type { Message } from "./types";
 
 function citationDomId(messageId: string, citationId: string): string {
@@ -162,7 +164,8 @@ export function CitationVisual({
   const hasThumbnail = Boolean(citation.thumbnail);
   const canOpenOriginal = isLocalImageLocator(citation.locator);
 
-  const toggleOriginal = () => {
+  const toggleOriginal = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     if (origState.status === "open") {
       setOrigState({ status: "closed" });
       return;
@@ -391,15 +394,16 @@ export function parseSourceNode(data: unknown): SourceNode | null {
 // same modal shell as file previews. The honest failure mode matters:
 // citations that are not graph nodes (older recalls) show a clear error
 // instead of pretending there is nothing to see.
-function SourceChunkModal({
-  language,
-  citation,
-  onClose,
-}: {
-  language: Language;
-  citation: Citation;
-  onClose: () => void;
-}) {
+export function SourceChunkModal(
+  props: { language: Language; onClose: () => void } & (
+    | { citation: Citation; nodeId?: undefined; fallbackTitle?: undefined }
+    | { citation?: undefined; nodeId: string; fallbackTitle: string }
+  ),
+) {
+  const { language, citation, onClose } = props;
+  const targetId = citation ? citation.id : props.nodeId;
+  const initialTitle = citation ? citation.title : props.fallbackTitle;
+  const setFocusedGraphNodeId = useAppStore((state) => state.setFocusedGraphNodeId);
   const trapRef = useFocusTrap<HTMLDivElement>(onClose);
   const [state, setState] = React.useState<
     { status: "loading" } | { status: "error"; reason: string } | { status: "ready"; node: SourceNode }
@@ -408,7 +412,7 @@ function SourceChunkModal({
   React.useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    void latticeApi.graphNode(citation.id).then((result) => {
+    void latticeApi.graphNode(targetId).then((result) => {
       if (cancelled) return;
       const node = result.ok ? parseSourceNode(result.data) : null;
       if (node) setState({ status: "ready", node });
@@ -417,9 +421,15 @@ function SourceChunkModal({
     return () => {
       cancelled = true;
     };
-  }, [citation.id]);
+  }, [targetId]);
 
-  const title = state.status === "ready" && state.node.title ? state.node.title : citation.title;
+  const title = state.status === "ready" && state.node.title ? state.node.title : initialTitle;
+  const openInGraph = () => {
+    setFocusedGraphNodeId(targetId);
+    onClose();
+    navigateHash("/knowledge-graph");
+  };
+
   return (
     <div
       className="file-preview-backdrop"
@@ -444,6 +454,15 @@ function SourceChunkModal({
             ) : null}
             <button
               type="button"
+              data-testid="source-modal-open-graph"
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
+              onClick={openInGraph}
+            >
+              <Share2 className="h-3 w-3" aria-hidden="true" />
+              {t(language, "brain.sourceModal.openGraph")}
+            </button>
+            <button
+              type="button"
               className="file-preview-close"
               aria-label={t(language, "brain.sourceModal.close")}
               onClick={onClose}
@@ -461,6 +480,7 @@ function SourceChunkModal({
             </p>
           ) : (
             <>
+              {citation ? <CitationVisual language={language} citation={citation} /> : null}
               {state.node.summary ? (
                 <pre className="source-chunk-text" data-testid="source-chunk-text">{state.node.summary}</pre>
               ) : (

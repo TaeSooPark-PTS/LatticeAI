@@ -69,15 +69,63 @@ export function StaleEmbedderNotice({ language }: { language: Language }) {
   );
 }
 
-// Soft chip shown while some knowledge still waits for vector indexing.
+// Soft chip shown while some knowledge still waits for vector indexing, with
+// live embedded/total progress and a one-click immediate drain action.
 export function VectorFreshnessNotice({ language }: { language: Language }) {
+  const qc = useQueryClient();
   const freshness = useVectorFreshness();
-  if (!freshness || freshness.status !== "pending" || freshness.pendingItems < 1) return null;
+  const [drainedCount, setDrainedCount] = React.useState<number | null>(null);
+  const drain = useMutation({
+    mutationFn: () => latticeApi.indexDrain(50),
+    onSuccess: async (res) => {
+      if (res.ok) {
+        const processed = Math.max(0, Math.round(Number((res.data as Record<string, unknown>).processed || 0)));
+        setDrainedCount(processed);
+      }
+      await qc.invalidateQueries({ queryKey: ["vectorFreshness"] });
+    },
+  });
+
+  if (!freshness || freshness.status !== "pending" || freshness.pendingItems < 1) {
+    if (drainedCount !== null && drainedCount > 0) {
+      return (
+        <p className="brain-freshness-chip" role="status" data-testid="vector-freshness-drained">
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{t(language, "brain.freshness.drained", { count: drainedCount })}</span>
+        </p>
+      );
+    }
+    return null;
+  }
+
+  const total = freshness.totalItems;
+  const embedded = total > 0 ? Math.max(0, total - freshness.pendingItems) : 0;
+  const pct = total > 0 ? Math.min(100, Math.round((embedded / total) * 100)) : 0;
+
   return (
-    <p className="brain-freshness-chip" role="status" data-testid="vector-freshness-chip">
-      <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-      <span>{t(language, "brain.freshness.pending", { count: freshness.pendingItems })}</span>
-    </p>
+    <div className="brain-freshness-chip flex flex-wrap items-center justify-between gap-2" role="status" data-testid="vector-freshness-chip">
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>{t(language, "brain.freshness.pending", { count: freshness.pendingItems })}</span>
+        {total > 0 ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="vector-freshness-progress">
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+            </span>
+            <span>{t(language, "brain.freshness.progress", { embedded, total })}</span>
+          </span>
+        ) : null}
+      </span>
+      <button
+        type="button"
+        data-testid="vector-freshness-drain"
+        disabled={drain.isPending}
+        onClick={() => drain.mutate()}
+        className="rounded-md border border-border bg-background/80 px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+      >
+        {t(language, drain.isPending ? "brain.freshness.draining" : "brain.freshness.drainNow")}
+      </button>
+    </div>
   );
 }
 

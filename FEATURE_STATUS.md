@@ -1,11 +1,11 @@
-# Lattice AI Feature Status (v13.0.0)
+# Lattice AI Feature Status (v13.1.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **13.0.0 — Sovereign Synthesis**.
+Current release: **13.1.0 — Living Synthesis**.
 
-This file describes the current product state and known limitations. Historical
+This file describes the current product state and known limitations (including interactive Knowledge Graph neighborhood synthesis & conflict filtering, one-click contradiction staging/resolution, Chat Save-to-Brain & inline proposal approval, live embedding drain controls, and cooperative download cancellation). Historical
 change history is intentionally limited to 12.0.0 and later in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 

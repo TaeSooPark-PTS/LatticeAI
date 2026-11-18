@@ -38,7 +38,21 @@ export type ParsedGraph = {
   nodes: GraphNode[];
   edges: GraphEdge[];
   groups: GraphGroup[];
+  conflictNodeIds?: Set<string>;
 };
+
+const CONFLICT_RELATIONS = new Set([
+  "CONTRADICTS",
+  "CONFLICTS_WITH",
+  "REFUTES",
+  "DISPUTES",
+  "SUPERSEDES",
+  "REPLACES",
+]);
+
+export function isConflictRelation(label: string): boolean {
+  return CONFLICT_RELATIONS.has(label.trim().toUpperCase());
+}
 
 export type ExplorerModel = ParsedGraph & {
   elements: ElementDefinition[];
@@ -122,7 +136,7 @@ function groupDefinition(id: string) {
   return groupDefinitions.find((group) => group.id === id) || groupDefinitions[groupDefinitions.length - 1];
 }
 
-export function parseGraph(data: unknown, language: Language): ParsedGraph {
+export function parseGraph(data: unknown, language: Language = "en"): ParsedGraph & { conflictNodeIds: Set<string> } {
   let graph = isRecord(data) ? data : {};
   if (isRecord(graph.data) && (Array.isArray(graph.data.nodes) || isRecord(graph.data.nodes))) {
     graph = graph.data as Record<string, unknown>;
@@ -166,6 +180,13 @@ export function parseGraph(data: unknown, language: Language): ParsedGraph {
     const searchText = [id, label, type, summary, source, Object.keys(metadata).join(" ")].join(" ").toLowerCase();
     return [{ id, label, type, group: groupForType(type), summary, source, importance, degree: nodeDegree, searchText, raw: node }];
   });
+  const conflictNodeIds = new Set<string>();
+  edges.forEach((edge) => {
+    if (isConflictRelation(edge.label)) {
+      conflictNodeIds.add(edge.source);
+      conflictNodeIds.add(edge.target);
+    }
+  });
   const groupCounts = new Map<string, number>();
   nodes.forEach((node) => groupCounts.set(node.group, (groupCounts.get(node.group) || 0) + 1));
   const groups = groupDefinitions.map((group) => ({
@@ -176,7 +197,7 @@ export function parseGraph(data: unknown, language: Language): ParsedGraph {
     visibleCount: 0,
     collapsed: false,
   })).filter((group) => group.count > 0);
-  return { nodes, edges, groups };
+  return { nodes, edges, groups, conflictNodeIds };
 }
 
 export function buildExplorerModel({
@@ -188,6 +209,7 @@ export function buildExplorerModel({
   selectedId,
   labelMode,
   maxNodes,
+  conflictsOnly = false,
 }: {
   graph: ParsedGraph;
   search: string;
@@ -197,6 +219,7 @@ export function buildExplorerModel({
   selectedId: string | null;
   labelMode: LabelMode;
   maxNodes: number;
+  conflictsOnly?: boolean;
 }): ExplorerModel {
   const query = search.trim().toLowerCase();
   const neighborIds = new Set<string>();
@@ -208,6 +231,7 @@ export function buildExplorerModel({
     });
   }
   const filtered = graph.nodes
+    .filter((node) => !conflictsOnly || Boolean(graph.conflictNodeIds?.has(node.id)))
     .filter((node) => groupFilter === "all" || node.group === groupFilter || node.type === groupFilter)
     .filter((node) => query ? node.searchText.includes(query) : node.importance >= minImportance)
     .filter((node) => !neighborIds.size || neighborIds.has(node.id))

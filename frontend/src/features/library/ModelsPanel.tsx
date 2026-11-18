@@ -30,8 +30,10 @@ export function ModelsPanel() {
     latestMetrics,
     lastResult,
     lastError,
+    cancelledNotice,
     busy,
     prepareModel,
+    cancelPrepare,
     unloadCurrentModel,
     currentId,
     catalog,
@@ -121,11 +123,25 @@ export function ModelsPanel() {
                       <div className="font-medium">{String(latestProgress.message || t(language, "library.preparing"))}</div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <span data-testid="library-progress-percent">{t(language, "library.progress.percent", { percent: latestMetrics.percent })}</span>
+                        {latestMetrics.bytesLabel ? (
+                          <span data-testid="library-progress-bytes">{latestMetrics.bytesLabel}</span>
+                        ) : null}
                         {latestMetrics.speedMbps ? (
                           <span data-testid="library-progress-speed">{t(language, "library.progress.speedMbps", { speed: latestMetrics.speedMbps })}</span>
                         ) : null}
                         {latestMetrics.etaSeconds !== null ? (
                           <span data-testid="library-progress-eta">{t(language, "library.progress.etaSeconds", { seconds: latestMetrics.etaSeconds })}</span>
+                        ) : null}
+                        {busy ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid="library-cancel-prepare"
+                            onClick={cancelPrepare}
+                          >
+                            {t(language, "library.progress.cancel")}
+                          </Button>
                         ) : null}
                       </div>
                     </div>
@@ -138,6 +154,10 @@ export function ModelsPanel() {
                         {t(language, "library.progress.fallbackNotice", { repo: latestMetrics.fallbackRepo })}
                       </div>
                     ) : null}
+                  </div>
+                ) : cancelledNotice ? (
+                  <div className="rounded-lg border border-border bg-background/55 p-3 text-xs text-muted-foreground" role="status" data-testid="library-download-cancelled">
+                    {t(language, "library.progress.cancelled")}
                   </div>
                 ) : null}
                 {lastError ? <ModelRecovery error={lastError} /> : null}

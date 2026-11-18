@@ -69,6 +69,66 @@ describe("VectorFreshnessNotice", () => {
     await waitFor(() => expect(latticeApi.brainVectorFreshness).toHaveBeenCalled());
     expect(screen.queryByTestId("vector-freshness-chip")).toBeNull();
   });
+
+  it("drains pending embeddings on click, shows drained confirmation once ready, and handles total_items=0 or failed drain", async () => {
+    const freshnessSpy = vi
+      .spyOn(latticeApi, "brainVectorFreshness")
+      .mockResolvedValueOnce({
+        ok: true, status: 200, source: "live",
+        data: { status: "pending", pending_items: 4, total_items: 0, detail: "" },
+      } as never)
+      .mockResolvedValueOnce({
+        ok: true, status: 200, source: "live",
+        data: { status: "pending", pending_items: 4, total_items: 20, detail: "" },
+      } as never)
+      .mockResolvedValue({
+        ok: true, status: 200, source: "live",
+        data: { status: "ready", pending_items: 0, total_items: 20, detail: "" },
+      } as never);
+
+    let releaseDrain: (val: unknown) => void = () => {};
+    const drainSpy = vi
+      .spyOn(latticeApi, "indexDrain")
+      .mockResolvedValueOnce({ ok: false, status: 500, source: "unavailable", data: {} } as never)
+      .mockImplementationOnce(() => new Promise((resolve) => { releaseDrain = resolve; }) as never);
+
+    renderWithQuery(<VectorFreshnessNotice language="ko" />);
+    await screen.findByTestId("vector-freshness-chip");
+    // total_items === 0 hides the ratio meter cleanly.
+    expect(screen.queryByTestId("vector-freshness-progress")).toBeNull();
+
+    // First click fails -> refreshes freshness to total_items: 20, showing progress bar.
+    await userEvent.click(screen.getByTestId("vector-freshness-drain"));
+    await waitFor(() => expect(drainSpy).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId("vector-freshness-progress")).toBeTruthy();
+
+    // Second click shows "인덱싱 중…" while pending, then resolves with processed: 4 -> drained chip shows!
+    await userEvent.click(screen.getByTestId("vector-freshness-drain"));
+    expect(await screen.findByText("인덱싱 중…")).toBeTruthy();
+    releaseDrain({ ok: true, status: 200, source: "live", data: { status: "ok", processed: 4 } });
+    await waitFor(() => expect(freshnessSpy).toHaveBeenCalledTimes(3));
+    expect((await screen.findByTestId("vector-freshness-drained")).textContent).toContain("4건 인덱싱 완료");
+  });
+
+  it("handles drain returning zero processed items without showing a drained chip", async () => {
+    vi.spyOn(latticeApi, "brainVectorFreshness")
+      .mockResolvedValueOnce({
+        ok: true, status: 200, source: "live",
+        data: { status: "pending", pending_items: 1, total_items: 10, detail: "" },
+      } as never)
+      .mockResolvedValue({
+        ok: true, status: 200, source: "live",
+        data: { status: "ready", pending_items: 0, total_items: 10, detail: "" },
+      } as never);
+    vi.spyOn(latticeApi, "indexDrain").mockResolvedValue({
+      ok: true, status: 200, source: "live", data: {},
+    } as never);
+
+    renderWithQuery(<VectorFreshnessNotice language="ko" />);
+    await userEvent.click(await screen.findByTestId("vector-freshness-drain"));
+    await waitFor(() => expect(screen.queryByTestId("vector-freshness-chip")).toBeNull());
+    expect(screen.queryByTestId("vector-freshness-drained")).toBeNull();
+  });
 });
 
 describe("StaleEmbedderNotice", () => {

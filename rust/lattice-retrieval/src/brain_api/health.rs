@@ -1,21 +1,8 @@
 //! `GET /api/brain/health` and `GET /api/brain/vector-freshness`.
 //!
-//! The health report grades four dimensions and is deliberate about what it
-//! refuses to grade. Three rules in `health.py` decide its numbers and are
-//! reproduced exactly:
-//!
-//! * **an empty index is not perfect coverage.** `embedding_coverage` is
-//!   `unavailable` when the store reports no `coverage_ratio` **or** when it has
-//!   zero indexable items — scoring 100% of nothing is how a brand-new Brain
-//!   used to grade itself "excellent" off its only measurable dimension.
-//! * **`round()` is banker's rounding** (see [`super::pyutil::py_round`]).
-//! * **`if cons_dim.get("contradiction_edges"):` is falsy at zero**, so a graph
-//!   with no contradictions raises no action — a null check would raise one
-//!   saying "0 contradiction edges recorded".
-//!
-//! The composite averages only what could be measured, reports that as
-//! `coverage`, and when nothing could be measured says why rather than leaving
-//! a bare null (the 9.9.7 rule that a "—" always states its reason).
+//! Empty indexes report `unavailable` coverage, `round()` uses banker's
+//! rounding ([`super::pyutil::py_round`]), zero contradiction edges raise no
+//! action, and the composite averages only measurable dimensions.
 
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
@@ -470,7 +457,6 @@ fn freshness_unavailable(detail: &str) -> OrderedMap {
     out
 }
 
-/// `_vector_freshness_contract` over the store's own freshness answer.
 fn contract_of(raw: &OrderedMap) -> OrderedMap {
     let mut status = raw
         .get("status")
@@ -480,7 +466,10 @@ fn contract_of(raw: &OrderedMap) -> OrderedMap {
     if status == "needs_reindex" {
         status = "pending".to_string();
     }
-    if !matches!(status.as_str(), "ready" | "pending" | "unavailable") {
+    if !matches!(
+        status.as_str(),
+        "ready" | "pending" | "stale_embedder" | "unavailable"
+    ) {
         status = "unavailable".to_string();
     }
     let count = |key: &str| -> i64 {
@@ -788,13 +777,21 @@ mod tests {
         let contract = contract_of(&raw);
         assert_eq!(contract.get("status"), Some(&Value::from("pending")));
         assert_eq!(contract.get("pending_items"), Some(&Value::from(3)));
+        let mut stale = OrderedMap::new();
+        stale.insert("status", Value::from("stale_embedder"));
+        assert_eq!(
+            contract_of(&stale).get("status"),
+            Some(&Value::from("stale_embedder"))
+        );
         let mut odd = OrderedMap::new();
-        odd.insert("status", Value::from("stale_embedder"));
+        odd.insert("status", Value::from("unknown_state"));
         let contract = contract_of(&odd);
         assert_eq!(contract.get("status"), Some(&Value::from("unavailable")));
         assert_eq!(contract.get("total_items"), Some(&Value::from(0)));
         assert_eq!(contract.get("detail"), Some(&Value::from("")));
-        let unavailable = freshness_unavailable("no index");
-        assert_eq!(unavailable.get("detail"), Some(&Value::from("no index")));
+        assert_eq!(
+            freshness_unavailable("no index").get("detail"),
+            Some(&Value::from("no index"))
+        );
     }
 }

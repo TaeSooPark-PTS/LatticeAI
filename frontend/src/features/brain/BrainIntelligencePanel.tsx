@@ -4,7 +4,9 @@ import { Activity, ChevronDown, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
+import { asArray } from "@/lib/utils";
 import { isRecord } from "./brainData";
+import { ContradictionInspector } from "./ContradictionInspector";
 
 const DIMENSION_KEYS = ["freshness", "connectivity", "embedding_coverage", "consistency"] as const;
 const ACTION_KEYS = new Set([
@@ -50,10 +52,12 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
     void contradictionsQ.refetch();
   };
   const insights = insightsQ.data?.ok && isRecord(insightsQ.data.data) ? insightsQ.data.data : null;
-  const contradictionCount =
+  const contradictionData =
     contradictionsQ.data?.ok && isRecord(contradictionsQ.data.data)
-      ? Number(contradictionsQ.data.data.count || 0)
-      : 0;
+      ? contradictionsQ.data.data
+      : null;
+  const contradictionItems = contradictionData ? asArray<Record<string, unknown>>(contradictionData.items) : [];
+  const contradictionCount = contradictionData ? Number(contradictionData.count || contradictionItems.length) : 0;
 
   const overallScore = health && typeof health.overall_score === "number" ? health.overall_score : null;
   const grade = health && typeof health.grade === "string" ? health.grade : null;
@@ -129,6 +133,10 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
                 <span>{t(language, "intelligence.insights.orphans", { count: String(numberValue(attention.orphan_nodes)) })}</span>
                 <span>{t(language, "intelligence.contradictions", { count: String(contradictionCount) })}</span>
               </div>
+
+              {contradictionItems.length > 0 ? (
+                <ContradictionInspector language={language} items={contradictionItems} />
+              ) : null}
 
               {actions.length ? (
                 <div className="brain-intelligence-actions">

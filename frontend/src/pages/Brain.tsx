@@ -89,7 +89,14 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
       <StaleEmbedderNotice language={language} />
       <VectorFreshnessNotice language={language} />
 
-      {view === "knowledge" ? <HybridSearch /> : null}
+      {view === "knowledge" ? (
+        <HybridSearch
+          onOpenGraphNode={(nodeId) => {
+            useAppStore.getState().setFocusedGraphNodeId(nodeId);
+            selectView("graph");
+          }}
+        />
+      ) : null}
       {view === "memory" ? <UnifiedMemoryPanel /> : null}
       {isGraph ? (
         graph.isLoading ? (
@@ -211,7 +218,7 @@ export function MemoryStatus({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function HybridSearch() {
+function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) => void }) {
   const language = useAppStore((state) => state.language);
   const [query, setQuery] = React.useState("");
   const [multiHop, setMultiHop] = React.useState(false);
@@ -246,7 +253,13 @@ function HybridSearch() {
           <DataPanel title={t(language, "brain.search.results")} result={search.data}>
             {(data) => (
               <div className="space-y-3">
-                {multiHop ? <MultiHopSynthesisView language={language} data={data as Record<string, unknown>} /> : null}
+                {multiHop ? (
+                  <MultiHopSynthesisView
+                    language={language}
+                    data={data as Record<string, unknown>}
+                    onSelectNode={(nodeId) => onOpenGraphNode(nodeId)}
+                  />
+                ) : null}
                 <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={12} />
               </div>
             )}

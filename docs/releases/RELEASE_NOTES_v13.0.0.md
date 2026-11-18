@@ -1,6 +1,6 @@
 # Lattice AI 13.0.0 — Sovereign Synthesis
 
-> **Status: canonical** — current release note.
+> **Status: historical** — point-in-time release note.
 
 2026-11-18
 

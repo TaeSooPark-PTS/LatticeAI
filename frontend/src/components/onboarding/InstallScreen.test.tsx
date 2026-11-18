@@ -226,8 +226,8 @@ describe("InstallScreen", () => {
     });
 
     const alert = screen.getByRole("alert");
-    // The final message comes from the result payload, de-jargoned.
-    expect(alert.textContent).toContain("the local model support pull was interrupted");
+    // The final message comes from the result payload, de-jargoned in the active language.
+    expect(alert.textContent).toContain(`the ${t("ko", "flow.install.error.localSupport")} pull was interrupted`);
     expect(alert.textContent).toContain(t("ko", "flow.install.retry"));
     for (const item of stageItems()) expect(item.className).toContain("is-error");
     expect(screen.getByText(t("ko", "flow.install.stage.error"))).toBeTruthy();
@@ -242,7 +242,44 @@ describe("InstallScreen", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.start") }));
     });
-    expect(screen.getByRole("alert").textContent).toContain("The selected model could not be loaded.");
+    expect(screen.getByRole("alert").textContent).toContain(t("ko", "flow.install.error.loadFailed"));
+  });
+
+  it("shows byte progress and current file, and cancels an active download cooperatively", async () => {
+    let handlers: Handlers = {};
+    let receivedSignal: AbortSignal | undefined;
+    const unload = vi.fn(async () => ({ ok: true, status: 200, source: "live", data: {} }));
+    let resolveStream: (val: unknown) => void = () => {};
+    const prepare = vi.fn((body: Record<string, unknown>, incoming: Handlers & { signal?: AbortSignal }) => {
+      handlers = incoming;
+      receivedSignal = incoming.signal;
+      return new Promise((resolve) => {
+        resolveStream = resolve;
+      });
+    });
+    renderInstall(model(), { streamModelPrepare: prepare, unloadModel: unload });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.start") }));
+    });
+    await act(async () => {
+      handlers.onProgress?.({
+        stage: "download_weights",
+        percent: 42,
+        downloaded_bytes: 1.5 * 1024 * 1024 * 1024,
+        total_bytes: 4.0 * 1024 * 1024 * 1024,
+        current_file: "model-00001.safetensors",
+      });
+    });
+    expect(screen.getByTestId("install-bytes").textContent).toBe("1.5 GB / 4.0 GB");
+    expect(screen.getByTestId("install-current-file").textContent).toBe("model-00001.safetensors");
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("install-cancel"));
+      resolveStream({ ok: false, status: 0, source: "unavailable", data: {} });
+    });
+    expect(receivedSignal?.aborted).toBe(true);
+    expect(unload).toHaveBeenCalledWith(model().loadId);
   });
 
   it("hands back and later to the caller while idle", () => {

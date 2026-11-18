@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.1.0 — Living Synthesis (2026-11-18)
+
+**지식 그래프 인터랙티브 인스펙터·2-Hop 이웃 추론 합성(`neighborhood_synthesis.rs`, `GraphNodeInspector.tsx`, `MultiHopSynthesisView.tsx`) 및 원클릭 상충 기억 정리(`ContradictionInspector.tsx`)**, **채팅 답변 원클릭 Brain 기억 승격(`Save to Brain`)·인라인 변경 제안 비교/승인(`InlineStagedProposals.tsx`)·실시간 에이전트 도구 표시 및 출처 원문 그래프 점프(`AnswerProof.tsx`)**, **임베딩 백로그 진행률 바·즉시 인덱싱(`POST /api/index/drain`)·`stale_embedder` 보존(`health.rs`)·모델 다운로드 바이트 진행률 및 협력적 취소(`InstallScreen.tsx`, `ModelsPanel.tsx`)·`⌘K` 노드 포커스·반응형 작업공간 캐시 무효화·한/영 무누수 로컬라이제이션(Vitest 100%)**을 통합한 사용자 체감 대형 업그레이드 릴리스.
+
+- **인터랙티브 지식 그래프 & 상충 정리:** `/api/graph/node`(`include_reasoning=true`)가 단일 스코프 SQLite 조회로 1-hop/2-hop 추론 체인·매개 개념·상충 엣지를 합성하며, `GraphNodeInspector.tsx`·`DigitalBrainExplorer.tsx`·`ContradictionInspector.tsx`가 이웃 노드 피벗, 상충 필터, `/`·`Esc` 단축키, 상충 제안 생성 및 원클릭 해결(`keep_old`·`replace`·`keep_both_temporal`)을 제공한다.
+- **실행형 채팅·에이전트 워크스페이스 UX:** 답변 하단 **Brain에 기억하기** 원클릭 인제스트, 에이전트 변경 제안 직후 인라인 diff 확인 및 승인/거절, 실행 중 활성 도구명 표시, 출처 원문 모달 내 그래프 이동 및 로컬 원본 이미지 동의 미리보기를 연결했다.
+- **일상 사용성·다운로드 취소 & 한/영 무결성:** `VectorFreshnessNotice` 진행률 바 및 **지금 인덱싱** 드레인 버튼, 온보딩·라이브러리 모델 다운로드 `MB/GB`·파일명 표시와 협력적 다운로드 취소(`AbortController` + `unloadModel`), 커맨드 팔레트 지식 노드 즉시 포커스 및 언어 전환, 작업공간 전환 시 즉시 쿼리 무효화, 한/영 오류 메시지 전수 로컬라이제이션을 달성했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.1.0.md](docs/releases/RELEASE_NOTES_v13.1.0.md).
+
+빌드 산출물은 `dist/ltcai-13.1.0-py3-none-any.whl`,
+`dist/ltcai-13.1.0.tar.gz`, `ltcai-13.1.0.tgz`, `dist/ltcai-13.1.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.1.0_aarch64.dmg` 입니다.
+
 ## v13.0.0 — Sovereign Synthesis (2026-11-18)
 
 **크로스 도메인 아키텍처 분리 강제(`lattice_core::redact`, `lattice_agent::seam`, `domain_boundaries.rs`) 및 통합 Rust 서버 i18n(`lattice-auth`→`lattice-core::messages`)**, **다단계(2-Hop) 지식 그래프 추론 경로·매개 개념·상충 감지 합성(`reasoning_paths.rs`, `MultiHopSynthesisView.tsx`)**, **단일 트랜잭션 리뷰 스토어·폴더 재구성 원클릭 되돌리기(`reversible_reorganization.rs`, `ReviewCard.tsx`) 및 대화 문서 세션 영속화(`DocumentSessions::with_data_dir`)**, **프론트엔드 API 모듈 분할(`streaming.ts`, `transfers.ts`, Vitest 100%) 및 Tauri 백엔드 모듈화**를 통합한 메이저 릴리스.

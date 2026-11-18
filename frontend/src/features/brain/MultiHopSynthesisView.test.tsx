@@ -83,4 +83,127 @@ describe("MultiHopSynthesisView", () => {
     expect(screen.getByText("1-Hop")).toBeTruthy();
     expect(screen.getAllByText(/—\[LINKS\]→/)).toHaveLength(2);
   });
+
+  it("filters paths by hop count or conflict flag and invokes onSelectNode for bridges, conflicts, and chain nodes", async () => {
+    const selected: Array<[string, string]> = [];
+    const { getByTestId, getByRole, queryByText } = render(
+      <MultiHopSynthesisView
+        language="en"
+        onSelectNode={(id, title) => selected.push([id, title])}
+        data={{
+          synthesis: {
+            direct_hits: 2,
+            multi_hop_hits: 1,
+            bridge_concepts: [
+              { id: "b1", title: "Bridge One", node_type: "Concept", bridged_targets: 2 },
+            ],
+            contradictions: [
+              {
+                source_id: "s1",
+                source_title: "Source Conflict",
+                target_id: "c1",
+                target_title: "Target Conflict",
+                relation: "CONTRADICTS",
+              },
+            ],
+          },
+          reasoning_paths: [
+            {
+              seed_id: "s1",
+              seed_title: "Seed A",
+              bridge_id: "b1",
+              bridge_title: "Bridge One",
+              target_id: "t1",
+              target_title: "Two Hop Target",
+              hops: 2,
+              relations: ["DEPENDS_ON", "PROVES"],
+              path_score: 0.9,
+              is_contradiction: false,
+            },
+            {
+              seed_id: "s2",
+              seed_title: "Seed B",
+              bridge_id: null,
+              bridge_title: null,
+              target_id: "c1",
+              target_title: "Conflict Target",
+              hops: 1,
+              relations: ["CONTRADICTS"],
+              path_score: 0,
+              is_contradiction: true,
+            },
+          ],
+        }}
+      />,
+    );
+
+    getByTestId("bridge-chip-b1").click();
+    getByRole("button", { name: "Jump to Source Conflict" }).click();
+    getByRole("button", { name: "Jump to Two Hop Target" }).click();
+    expect(selected).toEqual([
+      ["b1", "Bridge One"],
+      ["s1", "Source Conflict"],
+      ["t1", "Two Hop Target"],
+    ]);
+
+    // Filter to 2+ hops -> 1-hop Conflict Target hides; filter to conflicts -> Two Hop Target hides; filter all -> both return.
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.click(getByTestId("synthesis-filter-multiHop"));
+    expect(queryByText("Conflict Target")).toBeNull();
+    fireEvent.click(getByTestId("synthesis-filter-conflicts"));
+    expect(queryByText("Two Hop Target")).toBeNull();
+    expect(queryByText("Conflict Target")).toBeTruthy();
+    fireEvent.click(getByTestId("synthesis-filter-all"));
+    expect(queryByText("Two Hop Target")).toBeTruthy();
+  });
+
+  it("hides filter buttons when only 1-hop non-conflict paths exist and omits multiHop pill when only 1-hop conflict paths exist", () => {
+    const plain = render(
+      <MultiHopSynthesisView
+        language="en"
+        data={{
+          reasoning_paths: [
+            {
+              seed_id: "s1",
+              seed_title: "Seed",
+              bridge_id: null,
+              bridge_title: null,
+              target_id: "t1",
+              target_title: "Plain 1-Hop",
+              hops: 1,
+              relations: ["LINKS"],
+              path_score: 0.7,
+              is_contradiction: false,
+            },
+          ],
+        }}
+      />,
+    );
+    expect(plain.queryByTestId("synthesis-filter-all")).toBeNull();
+    plain.unmount();
+
+    const conflictOnly = render(
+      <MultiHopSynthesisView
+        language="en"
+        data={{
+          reasoning_paths: [
+            {
+              seed_id: "s1",
+              seed_title: "Seed",
+              bridge_id: null,
+              bridge_title: null,
+              target_id: "t2",
+              target_title: "Conflict 1-Hop",
+              hops: 1,
+              relations: ["CONTRADICTS"],
+              path_score: 0.8,
+              is_contradiction: true,
+            },
+          ],
+        }}
+      />,
+    );
+    expect(conflictOnly.getByTestId("synthesis-filter-conflicts")).toBeTruthy();
+    expect(conflictOnly.queryByTestId("synthesis-filter-multiHop")).toBeNull();
+  });
 });

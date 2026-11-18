@@ -25,6 +25,7 @@ import { AgentApprovalCard } from "./AgentApprovalCard";
 import { AgentStepTimeline, LoopRepairsNote, RunExplanationNote } from "./AgentStepTimeline";
 import type { ApprovalResolution } from "./approvalFlow";
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
+import { InlineStagedProposals } from "./InlineStagedProposals";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainIntelligencePanel } from "./BrainIntelligencePanel";
 import { KnowledgeGardenPanel } from "./KnowledgeGarden";
@@ -263,6 +264,9 @@ export function BrainConversation({
                           streaming={streaming && index === messages.length - 1}
                         />
                       ) : null}
+                      {message.role === "assistant" && !streaming && message.agentSteps?.some((step) => step.event === "proposed") ? (
+                        <InlineStagedProposals language={language} />
+                      ) : null}
                       {showActions ? (
                         <MessageActions
                           language={language}
@@ -272,6 +276,7 @@ export function BrainConversation({
                           canFollowUp={canFollowUp}
                           onFollowUp={onSendText}
                           onCreateActionItem={onCreateActionItem}
+                          onSaveToBrain={onIngestNote}
                         />
                       ) : null}
                       {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
@@ -586,6 +591,7 @@ function MessageActions({
   canFollowUp,
   onFollowUp,
   onCreateActionItem,
+  onSaveToBrain,
 }: {
   language: Language;
   content: string;
@@ -594,8 +600,10 @@ function MessageActions({
   canFollowUp: boolean;
   onFollowUp: (text: string) => void;
   onCreateActionItem: (content: string) => void;
+  onSaveToBrain: (content: string) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const [savedBrain, setSavedBrain] = React.useState(false);
   const followUps = React.useMemo(
     () => [
       { labelKey: "brain.message.followup.checklist", promptKey: "brain.message.followup.checklist.prompt" },
@@ -613,6 +621,11 @@ function MessageActions({
     } catch {}
   }
 
+  function saveBrain() {
+    onSaveToBrain(content);
+    setSavedBrain(true);
+  }
+
   return (
     <div className="brain-message-actions">
       <button type="button" aria-label={t(language, "brain.message.copyAria")} onClick={() => void copy()}>
@@ -625,6 +638,16 @@ function MessageActions({
           {t(language, "brain.message.regenerate")}
         </button>
       ) : null}
+      <button
+        type="button"
+        data-testid="message-save-brain"
+        aria-label={t(language, "brain.message.saveBrainAria")}
+        disabled={savedBrain}
+        onClick={saveBrain}
+      >
+        <DatabaseZap className="h-3 w-3" aria-hidden="true" />
+        {savedBrain ? t(language, "brain.message.savedBrain") : t(language, "brain.message.saveBrain")}
+      </button>
       {canFollowUp ? (
         <button type="button" aria-label={t(language, "brain.message.saveTaskAria")} onClick={() => onCreateActionItem(content)}>
           <ListTodo className="h-3 w-3" aria-hidden="true" />

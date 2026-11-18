@@ -79,6 +79,7 @@ const GRAPH_SEARCH_REQUEST: &[FieldSpec] = &[
 const GRAPH_NODE_REQUEST: &[FieldSpec] = &[
     required("node_id", Kind::Str(1)),
     optional("include_neighbors", Kind::Bool),
+    optional("include_reasoning", Kind::Bool),
     optional("depth", Kind::Int),
     optional("limit", Kind::Int),
 ];
@@ -587,19 +588,32 @@ async fn node_get(
         Err(refusal) => return refusal,
     };
     let query = Query::parse(raw.as_deref());
-    let (node_id, include_neighbors, depth, limit) = match (
+    let (node_id, include_neighbors, include_reasoning, depth, limit) = match (
         query.require_str("node_id"),
         query.bool_or("include_neighbors", true),
+        query.bool_or("include_reasoning", false),
         query.int_or("depth", 1),
         query.int_or("limit", 100),
     ) {
-        (Ok(node_id), Ok(neighbors), Ok(depth), Ok(limit)) => (node_id, neighbors, depth, limit),
-        (Err(refusal), _, _, _)
-        | (_, Err(refusal), _, _)
-        | (_, _, Err(refusal), _)
-        | (_, _, _, Err(refusal)) => return refusal,
+        (Ok(node_id), Ok(neighbors), Ok(reasoning), Ok(depth), Ok(limit)) => {
+            (node_id, neighbors, reasoning, depth, limit)
+        }
+        (Err(refusal), _, _, _, _)
+        | (_, Err(refusal), _, _, _)
+        | (_, _, Err(refusal), _, _)
+        | (_, _, _, Err(refusal), _)
+        | (_, _, _, _, Err(refusal)) => return refusal,
     };
-    node(&state, scope, node_id, include_neighbors, depth, limit).await
+    node(
+        &state,
+        scope,
+        node_id,
+        include_neighbors,
+        include_reasoning,
+        depth,
+        limit,
+    )
+    .await
 }
 
 async fn node_post(
@@ -620,6 +634,7 @@ async fn node_post(
         scope,
         model.str("node_id").to_string(),
         model.bool("include_neighbors", true),
+        model.bool("include_reasoning", false),
         model.int("depth", 1),
         model.int("limit", 100),
     )
@@ -631,6 +646,7 @@ async fn node(
     scope: Scope,
     node_id: String,
     include_neighbors: bool,
+    include_reasoning: bool,
     depth: i64,
     limit: i64,
 ) -> Response {
@@ -638,18 +654,30 @@ async fn node(
         let node = crate::knowledge_graph_api::get_node(conn, &node_id, &scope)?;
         let mut payload = OrderedMap::new();
         payload.insert("node", node);
-        if include_neighbors {
+        if include_neighbors || include_reasoning {
+            let effective_depth = if include_reasoning {
+                depth.max(2)
+            } else {
+                depth
+            };
             let neighborhood = crate::graph_reads::traverse(
                 conn,
                 &node_id,
                 &crate::graph_reads::TraverseOptions {
-                    depth,
+                    depth: effective_depth,
                     limit,
                     allowed_workspaces: scope.allowed_workspaces.clone(),
                     include_legacy_global: scope.include_legacy_global,
                 },
             )?;
-            payload.insert("neighborhood", neighborhood);
+            if include_reasoning {
+                let reasoning =
+                    crate::neighborhood_synthesis::synthesize_neighborhood(&node_id, &neighborhood);
+                payload.insert("reasoning", reasoning);
+            }
+            if include_neighbors {
+                payload.insert("neighborhood", neighborhood);
+            }
         }
         Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
     })

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, UserCircle, Building2, ArrowRightLeft } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
@@ -33,9 +33,11 @@ function ownerEmail(profile: unknown): string | null {
  * through the Settings tabs.
  */
 export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
+  const qc = useQueryClient();
   const workspaceIdState = useAppStore((state) => state.workspaceId);
   const setWorkspaceId = useAppStore((state) => state.setWorkspaceId);
   const [open, setOpen] = React.useState(false);
+  const [switchedLabel, setSwitchedLabel] = React.useState<string | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: latticeApi.profile });
@@ -75,6 +77,9 @@ export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
   const handleSwitch = (id: string) => {
     if (id && id !== workspaceIdState) {
       setWorkspaceId(id);
+      const nextRow = workspaces.find((row) => workspaceId(row) === id)!;
+      setSwitchedLabel(workspaceName(language, nextRow));
+      void qc.invalidateQueries();
     }
     setOpen(false);
   };
@@ -96,6 +101,11 @@ export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
         </span>
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
+      {switchedLabel ? (
+        <span className="sr-only" role="status" data-testid="workspace-switched-status">
+          {t(language, "shell.workspace.switched", { name: switchedLabel })}
+        </span>
+      ) : null}
 
       {open ? (
         <div className="workspace-profile-popover" role="dialog" aria-label={t(language, "shell.workspace.label")}>

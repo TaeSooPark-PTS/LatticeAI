@@ -83,6 +83,9 @@ export function AgentStepTimeline({
 }) {
   if (!steps.length) return null;
   const visible = steps.slice(-MAX_VISIBLE_STEPS);
+  const lastStep = steps[steps.length - 1];
+  const activeTool = friendlyAction(language, lastStep.action);
+  const toolCount = steps.filter((step) => step.event === "tool").length;
   const list = (
     <ol className="brain-step-list">
       {visible.map((step, index) => {
@@ -109,7 +112,9 @@ export function AgentStepTimeline({
       >
         <p className="brain-step-live-head" role="status">
           <span className="brain-step-dot is-live" aria-hidden="true" />
-          {t(language, "brain.steps.live", { count: steps.length })}
+          {activeTool
+            ? t(language, "brain.steps.liveTool", { count: steps.length, tool: activeTool })
+            : t(language, "brain.steps.live", { count: steps.length })}
         </p>
         {list}
       </section>
@@ -122,7 +127,11 @@ export function AgentStepTimeline({
       aria-label={t(language, "brain.steps.aria")}
       data-testid="agent-step-timeline"
     >
-      <summary>{t(language, "brain.steps.summary", { count: steps.length })}</summary>
+      <summary>
+        {toolCount > 0
+          ? t(language, "brain.steps.summaryTools", { count: steps.length, tools: toolCount })
+          : t(language, "brain.steps.summary", { count: steps.length })}
+      </summary>
       {list}
     </details>
   );

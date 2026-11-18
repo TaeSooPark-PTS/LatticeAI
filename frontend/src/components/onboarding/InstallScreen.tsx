@@ -29,12 +29,28 @@ export function InstallScreen({
   const [message, setMessage] = React.useState(t(language, "flow.install.wait"));
   const [error, setError] = React.useState<string | null>(null);
   const [metrics, setMetrics] = React.useState(() => formatStreamMetrics(null));
+  const abortRef = React.useRef<AbortController | null>(null);
+  const cancelledRef = React.useRef(false);
 
   const statusText = t(language, `flow.install.stage.${stage}`, { defaultValue: message });
   const activeFallbackRepo = metrics.fallbackRepo || model.loadId;
   const showFallbackNotice = Boolean(metrics.gatedFallback || model.gatedFallback);
 
+  function cancelInstall() {
+    cancelledRef.current = true;
+    abortRef.current?.abort();
+    void latticeApi.unloadModel(model.loadId);
+    setBusy(false);
+    setStage("idle");
+    setPercent(0);
+    setMessage(t(language, "flow.install.cancelled"));
+    setError(null);
+  }
+
   async function start() {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    cancelledRef.current = false;
     setBusy(true);
     setError(null);
     setStage("install");
@@ -43,6 +59,7 @@ export function InstallScreen({
     const result = await latticeApi.streamModelPrepare(
       { model: model.loadId, engine: model.engine || "local_mlx", allow_download: model.downloadRequired },
       {
+        signal: controller.signal,
         onProgress: (event) => {
           const nextStage = friendlyInstallStage(String(event.stage || ""));
           setStage(nextStage);
@@ -57,10 +74,11 @@ export function InstallScreen({
         },
         onError: (event) => {
           setStage("error");
-          setError(consumerError(event));
+          setError(consumerError(event, language));
         },
       },
     );
+    if (cancelledRef.current) return;
     setBusy(false);
     if (result.ok) {
       setStage("done");
@@ -69,7 +87,7 @@ export function InstallScreen({
       window.setTimeout(onComplete, 700);
     } else {
       setStage("error");
-      setError(consumerError(result.data as ApiData));
+      setError(consumerError(result.data as ApiData, language));
     }
   }
 
@@ -100,6 +118,9 @@ export function InstallScreen({
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground" data-testid="install-progress-metrics">
             <span data-testid="install-percent">{t(language, "flow.install.metrics.percent", { percent: Math.round(percent) })}</span>
             <div className="flex flex-wrap items-center gap-3">
+              {metrics.bytesLabel ? (
+                <span data-testid="install-bytes">{metrics.bytesLabel}</span>
+              ) : null}
               {metrics.speedMbps ? (
                 <span data-testid="install-speed">{t(language, "flow.install.metrics.speedMbps", { speed: metrics.speedMbps })}</span>
               ) : null}
@@ -108,6 +129,11 @@ export function InstallScreen({
               ) : null}
             </div>
           </div>
+          {metrics.currentFile ? (
+            <div className="mt-1 truncate text-xs text-muted-foreground" data-testid="install-current-file">
+              {metrics.currentFile}
+            </div>
+          ) : null}
           {showFallbackNotice ? (
             <div className="mt-2 text-xs text-muted-foreground" data-testid="install-fallback-notice">
               {t(language, "flow.install.fallbackNotice", { repo: activeFallbackRepo })}
@@ -165,6 +191,16 @@ export function InstallScreen({
       <div className="ritual-button-row">
         <Button variant="ghost" onClick={onBack} disabled={busy}>{t(language, "flow.install.back")}</Button>
         <Button variant="outline" onClick={onLater} disabled={busy}>{t(language, "flow.install.later")}</Button>
+        {busy ? (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="install-cancel"
+            onClick={cancelInstall}
+          >
+            {t(language, "flow.install.cancel")}
+          </Button>
+        ) : null}
 
         {stage !== "done" ? (
           <Button
@@ -250,7 +286,7 @@ function friendlyInstallMessage(event: ApiData, stage: InstallStage, language: L
     idle: t(language, "flow.install.wait"),
     error: t(language, "flow.install.stage.error"),
   }[stage];
-  return cleanConsumerText(String(event.user_message || event.message || fallback));
+  return cleanConsumerText(String(event.user_message || event.message || fallback), language);
 }
 
 function installLabel(stage: "install" | "download" | "load" | "validate", language: Language, model: RecommendedModel) {
@@ -273,19 +309,24 @@ function installStepState(current: InstallStage, item: "install" | "download" | 
   return "";
 }
 
-function consumerError(data: ApiData | unknown) {
+function consumerError(data: ApiData | unknown, language: Language) {
   const record = asRecord(data);
-  const guidance = asArray<string>(record.recovery_guidance).map(cleanConsumerText).filter(Boolean);
-  const message = cleanConsumerText(String(record.user_message || record.reason || record.error || "The selected model could not be loaded."));
+  const guidance = asArray<string>(record.recovery_guidance)
+    .map((item) => cleanConsumerText(item, language))
+    .filter(Boolean);
+  const message = cleanConsumerText(
+    String(record.user_message || record.reason || record.error || t(language, "flow.install.error.loadFailed")),
+    language,
+  );
   return [message, ...guidance.slice(0, 2)].join(" ");
 }
 
-function cleanConsumerText(value: string) {
+function cleanConsumerText(value: string, language: Language) {
   return String(value || "")
-    .replace(/gemma4_unified/gi, "this model format")
-    .replace(/mlx[-_ ]?vlm|mlx[-_ ]?lm|local_mlx|\bmlx\b|\bgguf\b|\bollama\b|huggingface|hugging face/gi, "local model support")
-    .replace(/runtime/gi, "model support")
-    .replace(/No module named ['\"][^'\"]+['\"]/gi, "A local support component is missing")
+    .replace(/gemma4_unified/gi, t(language, "flow.install.error.format"))
+    .replace(/mlx[-_ ]?vlm|mlx[-_ ]?lm|local_mlx|\bmlx\b|\bgguf\b|\bollama\b|huggingface|hugging face/gi, t(language, "flow.install.error.localSupport"))
+    .replace(/runtime/gi, t(language, "flow.install.error.support"))
+    .replace(/No module named ['"][^'"]+['"]/gi, t(language, "flow.install.error.missingComponent"))
     .replace(/\s+/g, " ")
     .trim();
 }

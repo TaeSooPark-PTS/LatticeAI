@@ -484,11 +484,12 @@ describe("naming helpers", () => {
     expect(model.loadId).toBe("mlx-community/gemma-4-e2b-it-4bit");
   });
 
-  it("formatStreamMetrics normalises speed, ETA, current file, and gated fallback fields", () => {
+  it("formatStreamMetrics normalises speed, ETA, bytesLabel, current file, and gated fallback fields", () => {
     expect(formatStreamMetrics(null)).toEqual({
       percent: 0,
       speedMbps: null,
       etaSeconds: null,
+      bytesLabel: null,
       currentFile: "",
       gatedFallback: false,
       fallbackRepo: "",
@@ -498,6 +499,8 @@ describe("naming helpers", () => {
         percent: 64.6,
         speed_bps: 12.4 * 1024 * 1024,
         eta_seconds: 18,
+        downloaded_bytes: 256 * 1024 * 1024,
+        total_bytes: 512 * 1024 * 1024,
         current_file: "model.safetensors",
         gated_fallback: true,
         fallback_repo: "mlx-community/embeddinggemma-2-4bit",
@@ -506,6 +509,7 @@ describe("naming helpers", () => {
       percent: 65,
       speedMbps: "12.4",
       etaSeconds: 18,
+      bytesLabel: "256 MB / 512 MB",
       currentFile: "model.safetensors",
       gatedFallback: true,
       fallbackRepo: "mlx-community/embeddinggemma-2-4bit",
@@ -515,12 +519,15 @@ describe("naming helpers", () => {
         percent: 100,
         speed_mbps: 8.25,
         eta_seconds: 0,
+        downloaded_bytes: 2 * 1024 * 1024 * 1024,
+        total_bytes: 2 * 1024 * 1024 * 1024,
         file: "tokenizer.json",
       }),
     ).toEqual({
       percent: 100,
       speedMbps: "8.3",
       etaSeconds: 0,
+      bytesLabel: "2.0 GB / 2.0 GB",
       currentFile: "tokenizer.json",
       gatedFallback: false,
       fallbackRepo: "",

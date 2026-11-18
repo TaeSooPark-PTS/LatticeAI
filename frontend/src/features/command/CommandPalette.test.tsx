@@ -59,8 +59,40 @@ describe("CommandPalette", () => {
     await screen.findByText("계약서 digest");
 
     await userEvent.click(screen.getByText("계약서 초안"));
-    expect(window.location.hash).toBe("#/brain/graph");
+    expect(window.location.hash).toBe("#/knowledge-graph");
     expect(screen.queryByTestId("command-palette")).toBeNull();
+  });
+
+  it("toggles language from the proactive quick action in both Korean and English modes and handles id-less knowledge hits", async () => {
+    mockBriefing({ sections: {}, quick_actions: [] });
+    vi.spyOn(latticeApi, "commandSearch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      source: "api",
+      data: {
+        query: "노드",
+        total: 1,
+        groups: [{ kind: "knowledge", items: [{ title: "ID 없는 지식", summary: "설명" }] }],
+      },
+    } as never);
+
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ language: "ko", focusedGraphNodeId: null });
+    const koView = renderWithClient(<CommandPalette language="ko" initialOpen />);
+    await userEvent.click(await screen.findByText("언어 전환 (English)"));
+    expect(useAppStore.getState().language).toBe("en");
+    koView.unmount();
+
+    const enView = renderWithClient(<CommandPalette language="en" initialOpen />);
+    await userEvent.click(await screen.findByText("Switch language (한국어)"));
+    expect(useAppStore.getState().language).toBe("ko");
+    enView.unmount();
+
+    renderWithClient(<CommandPalette language="ko" initialOpen />);
+    await userEvent.type(screen.getByRole("textbox"), "노드");
+    await userEvent.click(await screen.findByText("ID 없는 지식"));
+    expect(useAppStore.getState().focusedGraphNodeId).toBeNull();
+    expect(window.location.hash).toBe("#/knowledge-graph");
   });
 
   it("filters navigation pages without a backend call and closes on Escape", async () => {

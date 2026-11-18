@@ -17,6 +17,7 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 import { t, type Language } from "@/i18n";
 import { commandRoutes } from "@/routes";
 import { navigateHash } from "@/features/brain/navigation";
+import { useAppStore } from "@/store/appStore";
 
 type PaletteItem = {
   id: string;
@@ -25,9 +26,10 @@ type PaletteItem = {
   detail?: string;
   icon: React.ReactNode;
   target: string;
+  focusNodeId?: string;
   // Optional extra behavior on activation, e.g. asking the briefing panel to
   // expand itself after navigation. Search behavior stays untouched.
-  action?: "open-briefing";
+  action?: "open-briefing" | "toggle-language";
 };
 
 type SearchGroup = { kind: string; items: Record<string, unknown>[] };
@@ -131,6 +133,21 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
         icon: <MessageCircle className="h-4 w-4" />,
         target: "/brain",
       });
+      proactive.push({
+        id: "proactive-graph",
+        group: "proactive",
+        title: t(language, "command.action.openGraph"),
+        icon: <Database className="h-4 w-4" />,
+        target: "/knowledge-graph",
+      });
+      proactive.push({
+        id: "proactive-language",
+        group: "proactive",
+        title: t(language, "command.action.toggleLanguage"),
+        icon: <Workflow className="h-4 w-4" />,
+        target: "",
+        action: "toggle-language",
+      });
     }
     const pages: PaletteItem[] = PAGE_ENTRIES.map((entry) => ({
       id: entry.id,
@@ -145,13 +162,15 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
     for (const group of groups) {
       for (const raw of asArray<Record<string, unknown>>(group.items)) {
         if (group.kind === "knowledge") {
+          const rawId = typeof raw.id === "string" && raw.id ? raw.id : "";
           remote.push({
             id: `kg-${String(raw.id ?? remote.length)}`,
             group: "knowledge",
             title: String(raw.title || raw.id || ""),
             detail: String(raw.summary || raw.type || ""),
             icon: <Database className="h-4 w-4" />,
-            target: "/brain/graph",
+            target: "/knowledge-graph",
+            focusNodeId: rawId || undefined,
           });
         } else if (group.kind === "conversation") {
           remote.push({
@@ -190,6 +209,13 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
     (item: PaletteItem | undefined) => {
       if (!item) return;
       close();
+      if (item.action === "toggle-language") {
+        useAppStore.getState().setLanguage(language === "ko" ? "en" : "ko");
+        return;
+      }
+      if (item.focusNodeId) {
+        useAppStore.getState().setFocusedGraphNodeId(item.focusNodeId);
+      }
       navigateHash(item.target);
       if (item.action === "open-briefing") {
         // Best effort: an already-mounted briefing panel expands and scrolls
@@ -197,7 +223,7 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
         window.dispatchEvent(new Event("lattice:open-briefing"));
       }
     },
-    [close],
+    [close, language],
   );
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

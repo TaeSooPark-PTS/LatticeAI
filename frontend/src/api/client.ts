@@ -475,6 +475,10 @@ export const latticeApi = {
   resumeIngestionJob: (jobId: string) => post(`/api/ingestion/jobs/${encodeURIComponent(jobId)}/resume`, {}, {}),
   brainInsights: () => get("/api/brain/insights", { activity: {}, attention: {}, suggested_questions: [] }),
   brainContradictions: () => get("/api/brain/contradictions", { items: [], count: 0 }),
+  brainProposeContradictions: () => post<Record<string, unknown>>("/api/brain/contradictions/propose", {}, { proposed_count: 0, proposed: [] }),
+  brainResolveContradiction: (itemId: string, resolution: "keep_old" | "replace" | "keep_both_temporal") =>
+    post<Record<string, unknown>>("/api/brain/contradictions/resolve", { item_id: itemId, resolution }, {}),
+  indexDrain: (limit = 50) => post<Record<string, unknown>>("/api/index/drain", { limit }, { status: "ok", processed: 0 }),
   // Knowledge garden overview (v9.9.7): recent / contradictions / stale /
   // frequent in one read-only call.
   brainGarden: (limit = 8) => get<Record<string, unknown>>(
@@ -510,6 +514,11 @@ export const latticeApi = {
     "/api/graph/node",
     { node: {} },
     { node_id: nodeId, include_neighbors: false },
+  ),
+  graphNodeInspect: (nodeId: string, depth = 2, limit = 40) => get<Record<string, unknown>>(
+    "/api/graph/node",
+    { node: {}, neighborhood: { nodes: [], edges: [] }, reasoning: { reasoning_paths: [], synthesis: {} } },
+    { node_id: nodeId, include_neighbors: true, include_reasoning: true, depth, limit },
   ),
   // Folder watch-mode health (opt-in poller): stored watches + last scan
   // results, so the home can show whether connected folders actually flow.

@@ -1,3 +1,9 @@
+# [v13.1.0 - Living Synthesis] (2026-11-18)
+
+지식 그래프 인터랙티브 노드 인스펙터·단일 조회 2-Hop 이웃 추론 합성(`neighborhood_synthesis.rs`, `GraphNodeInspector.tsx`, `MultiHopSynthesisView.tsx`)·상충 필터 및 원클릭 상충 기억 제안/해결(`ContradictionInspector.tsx`), 채팅 답변 원클릭 **Brain에 기억하기** 승격·인라인 변경 제안 diff 승인/거절(`InlineStagedProposals.tsx`)·실시간 도구 단계 표시 및 출처 모달 그래프 점프(`AnswerProof.tsx`), 임베딩 진행률 바·즉시 인덱싱 드레인(`POST /api/index/drain`)·`stale_embedder` 보존(`health.rs`), 모델 다운로드 바이트/파일 표시 및 협력적 취소(`InstallScreen.tsx`, `ModelsPanel.tsx`), `⌘K` 지식 노드 포커스·작업공간 즉시 쿼리 무효화 및 한/영 무누수 로컬라이제이션(Vitest 100%)을 적용했습니다.
+
+See [docs/releases/RELEASE_NOTES_v13.1.0.md](docs/releases/RELEASE_NOTES_v13.1.0.md).
+
 # [v13.0.0 - Sovereign Synthesis] (2026-11-18)
 
 크로스 도메인 결합 제거(`lattice_core::redact`, `lattice_agent::seam::worker`, `modelops`→`http_reply`, `domain_boundaries.rs`)와 통합 Rust 서버 i18n(`lattice-auth`→`lattice_core::messages`, `check_server_i18n.mjs` 146개 카탈로그 검증), 다단계(2-Hop) 지식 그래프 추론 체인·매개 개념·상충 감지 합성(`reasoning_paths.rs`, `MultiHopSynthesisView.tsx`), 단일 트랜잭션 리뷰 스토어·폴더 재구성 원클릭 되돌리기(`reversible_reorganization.rs`, `ReviewCard.tsx`) 및 대화 문서 세션 영속화(`chat_document_sessions.json`), 프론트엔드 API 모듈 분할(`streaming.ts`, `transfers.ts`, Vitest 100%) 및 Tauri 백엔드 모듈화를 적용했습니다.
@@ -101,10 +107,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.0.0** (the modern `v12.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `12.x` era, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.1.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
+- [v13.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.1.0.md)
 - [v13.0.0 - Sovereign Synthesis](docs/releases/RELEASE_NOTES_v13.0.0.md)
 - [v12.10.0 - Grounded Self](docs/releases/RELEASE_NOTES_v12.10.0.md)
 - [v12.9.0 - Semantic Guard](docs/releases/RELEASE_NOTES_v12.9.0.md)

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **13.0.0 — Sovereign Synthesis**.
+Current release: **13.1.0 — Living Synthesis**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

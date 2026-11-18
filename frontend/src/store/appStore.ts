@@ -10,11 +10,15 @@ type AppState = {
   workspaceId: string | null;
   apiBase: string | null;
   language: Language;
+  focusedGraphNodeId: string | null;
+  pendingChatPrompt: string | null;
   setTheme: (theme: Theme) => void;
   setMode: (mode: WorkspaceMode) => void;
   setWorkspaceId: (workspaceId: string | null) => void;
   setApiBase: (apiBase: string | null) => void;
   setLanguage: (language: Language) => void;
+  setFocusedGraphNodeId: (nodeId: string | null) => void;
+  setPendingChatPrompt: (prompt: string | null) => void;
 };
 
 function readTheme(): Theme {
@@ -55,6 +59,8 @@ export const useAppStore = create<AppState>((set) => ({
   workspaceId: readWorkspaceId(),
   apiBase: null,
   language: readLanguage(),
+  focusedGraphNodeId: null,
+  pendingChatPrompt: null,
   setTheme: (theme) => {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("lattice.theme", theme); } catch {}
@@ -78,4 +84,6 @@ export const useAppStore = create<AppState>((set) => ({
     try { localStorage.setItem("lattice.language", language); } catch {}
     set({ language });
   },
+  setFocusedGraphNodeId: (focusedGraphNodeId) => set({ focusedGraphNodeId }),
+  setPendingChatPrompt: (pendingChatPrompt) => set({ pendingChatPrompt }),
 }));

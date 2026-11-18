@@ -47,14 +47,33 @@ export function useLibraryModels(language: Language) {
   const [progress, setProgress] = React.useState<Record<string, unknown>[]>([]);
   const [lastResult, setLastResult] = React.useState<Record<string, unknown> | null>(null);
   const [lastError, setLastError] = React.useState<Record<string, unknown> | null>(null);
+  const [cancelledNotice, setCancelledNotice] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const streamReportedError = React.useRef(false);
+  const abortRef = React.useRef<AbortController | null>(null);
+  const activeModelRef = React.useRef<string>("");
+  const cancelledRef = React.useRef(false);
 
   const derived = deriveModelsPanelView(models.data?.data, recs.data?.data, language);
   const latestProgress = progress[progress.length - 1] || null;
   const latestMetrics = formatStreamMetrics(latestProgress);
 
+  function cancelPrepare() {
+    cancelledRef.current = true;
+    abortRef.current?.abort();
+    void latticeApi.unloadModel(activeModelRef.current);
+    setBusy(false);
+    setProgress([]);
+    setLastError(null);
+    setCancelledNotice(true);
+  }
+
   async function prepareModel(loadId: string, engine: string, allowDownload: boolean) {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    activeModelRef.current = loadId;
+    cancelledRef.current = false;
+    setCancelledNotice(false);
     setBusy(true);
     setActiveModel(loadId);
     setProgress([]);
@@ -64,6 +83,7 @@ export function useLibraryModels(language: Language) {
     const result = await latticeApi.streamModelPrepare(
       { model: loadId, engine: engine || "local_mlx", allow_download: allowDownload },
       {
+        signal: controller.signal,
         onProgress: (event) => setProgress((items) => [...items.slice(-8), event]),
         onDone: (event) => setLastResult(event),
         onError: (event) => {
@@ -72,6 +92,7 @@ export function useLibraryModels(language: Language) {
         },
       },
     );
+    if (cancelledRef.current) return;
     setBusy(false);
     await qc.invalidateQueries({ queryKey: ["models"] });
     await qc.invalidateQueries({ queryKey: ["modelRecommendations", "local_mlx"] });
@@ -95,8 +116,10 @@ export function useLibraryModels(language: Language) {
     latestMetrics,
     lastResult,
     lastError,
+    cancelledNotice,
     busy,
     prepareModel,
+    cancelPrepare,
     unloadCurrentModel,
     ...derived,
   };

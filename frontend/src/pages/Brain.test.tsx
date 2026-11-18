@@ -246,6 +246,9 @@ describe("BrainPage", () => {
     await waitFor(() => expect(hybridSearchGraphRag).toHaveBeenCalledWith("WAL checkpointer"));
     expect(await screen.findByTestId("multihop-synthesis-panel")).toBeTruthy();
     expect(screen.getByText("Reader Lock")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Reader Lock 노드로 이동" }));
+    expect(window.location.hash).toBe("#/knowledge-graph");
   });
 });
 

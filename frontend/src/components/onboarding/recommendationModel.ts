@@ -43,10 +43,16 @@ export type StreamMetrics = {
   percent: number;
   speedMbps: string | null;
   etaSeconds: number | null;
+  bytesLabel: string | null;
   currentFile: string;
   gatedFallback: boolean;
   fallbackRepo: string;
 };
+
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
+}
 
 export function formatStreamMetrics(event: ApiData | null | undefined): StreamMetrics {
   const rec = asRecord(event);
@@ -59,6 +65,11 @@ export function formatStreamMetrics(event: ApiData | null | undefined): StreamMe
   const etaSeconds = rawEta !== undefined && rawEta !== null && rawEta !== ""
     ? Math.max(0, Math.round(Number(rawEta)))
     : null;
+  const downloadedBytes = Number(rec.downloaded_bytes ?? 0);
+  const totalBytes = Number(rec.total_bytes ?? 0);
+  const bytesLabel = downloadedBytes > 0 && totalBytes > 0
+    ? `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}`
+    : null;
   const currentFile = String(rec.current_file || rec.file || rec.detail || "");
   const gatedFallback = Boolean(rec.gated_fallback);
   const fallbackRepo = String(rec.fallback_repo || "");
@@ -66,6 +77,7 @@ export function formatStreamMetrics(event: ApiData | null | undefined): StreamMe
     percent,
     speedMbps,
     etaSeconds,
+    bytesLabel,
     currentFile,
     gatedFallback,
     fallbackRepo,

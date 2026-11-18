@@ -64,6 +64,7 @@ pub mod keyword;
 pub mod knowledge_graph_api;
 pub mod memory_api;
 pub mod native_hnsw;
+pub mod neighborhood_synthesis;
 pub mod policy;
 pub mod query_embed;
 pub mod rag_eval;

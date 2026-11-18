@@ -4,6 +4,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.1.0] - 2026-11-18 — Living Synthesis
+
+### Added
+- Added scoped Knowledge Graph neighborhood multi-hop synthesis (`rust/lattice-retrieval/src/neighborhood_synthesis.rs`, `GET`/`POST /api/graph/node` `include_reasoning=true`), interactive `GraphNodeInspector` (`frontend/src/pages/brain/GraphNodeInspector.tsx`), hop/conflict filter pills, confidence bars & clickable node navigation in `MultiHopSynthesisView.tsx`, toolbar conflict-only filtering & `/` + `Escape` shortcuts in `DigitalBrainExplorer.tsx`, and interactive contradiction staging/resolution (`ContradictionInspector.tsx`) in `BrainIntelligencePanel.tsx`.
+- Added one-click **Save to Brain** assistant insight promotion (`BrainConversation.tsx`), inline staged proposal diff inspection & approval/rejection (`InlineStagedProposals.tsx`), contextual `pendingChatPrompt` handoff (`BrainHome.tsx`), live active-tool indicators in `AgentStepTimeline.tsx`, and one-click Knowledge Graph jump + modal visual evidence preview in `SourceChunkModal` (`AnswerProof.tsx`).
+- Added live `embedded / total` progress visualization & one-click **Index now** embedding drain (`POST /api/index/drain`) in `VectorFreshnessNotice` (`BrainSignals.tsx`), human-readable byte/file metrics & cooperative `AbortController` + `unloadModel` download cancellation in `InstallScreen.tsx` and `ModelsPanel.tsx` (`useLibraryModels.ts`), `⌘K` Knowledge Graph node focus & quick language/graph actions in `CommandPalette.tsx`, and live query invalidation on workspace switch in `WorkspaceProfileSwitcher.tsx`.
+
+### Fixed
+- Preserved `stale_embedder` status in `rust/lattice-retrieval/src/brain_api/health.rs` (`GET /api/brain/vector-freshness`) so embedder swap recovery notices work end-to-end against the native Rust server, stopped click propagation on inline original-image consent buttons in `AnswerProof.tsx`, and localized fallback error formatting in `InstallScreen.tsx` with zero English leaks in Korean mode at 100% Vitest coverage.
+
 ## [13.0.0] - 2026-11-18 — Sovereign Synthesis
 
 ### Added
