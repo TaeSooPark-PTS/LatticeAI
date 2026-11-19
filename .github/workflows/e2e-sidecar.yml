@@ -51,32 +51,38 @@ jobs:
           node-version: "20"
           cache: npm
 
-      # The runner builds `lattice-host` from this checkout (One Door: the
-      # front door is the binary, not `uvicorn server:app`). Without this a
-      # cold cargo build burns 5–10 minutes of every nightly run.
       - name: Cache cargo registry and build output
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: rust
 
-      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
-        # Ensure Chromium & Tauri system libraries install cleanly across both
-        # Ubuntu 24.04 and upcoming Ubuntu 26.04 (`ubuntu-latest` / `ubuntu-26.04`).
+      - name: Configure APT mirror timeouts
         run: |
-          sudo apt-get update -y || true
-          sudo apt-get install -y --no-install-recommends libasound2t64 || sudo apt-get install -y --no-install-recommends libasound2 || true
-          sudo apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo apt-get install -y --no-install-recommends libatk1.0-0 || true
-          sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
-          sudo apt-get install -y --no-install-recommends libcups2t64 || sudo apt-get install -y --no-install-recommends libcups2 || true
-          sudo apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo apt-get install -y --no-install-recommends libgtk-3-0 || true
-          sudo apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
-          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+          printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "2";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' | sudo tee /etc/apt/apt.conf.d/99fast-failover >/dev/null || true
+
+      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: l
+        run: |
+          sudo -E apt-get update -y || true
+          sudo -E apt-get install -y --no-install-recommends \
+            libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libgtk-3-0t64 \
+            libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 libwebkit2gtk-4.1-0 || {
+            sudo -E apt-get install -y --no-install-recommends libasound2t64 || sudo -E apt-get install -y --no-install-recommends libasound2 || true
+            sudo -E apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk1.0-0 || true
+            sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
+            sudo -E apt-get install -y --no-install-recommends libcups2t64 || sudo -E apt-get install -y --no-install-recommends libcups2 || true
+            sudo -E apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo -E apt-get install -y --no-install-recommends libgtk-3-0 || true
+            sudo -E apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
+            sudo -E apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo -E apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+          }
 
       - name: Install dependencies
         run: |
           pip install -e "."
           npm ci
-          npx playwright install --with-deps chromium || npx playwright install chromium
+          npx playwright install chromium
 
       - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries
         run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic --verify-chromium

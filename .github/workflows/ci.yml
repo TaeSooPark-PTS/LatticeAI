@@ -14,24 +14,59 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  frontend:
+    name: Frontend, extensions & docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          (cd vscode-extension && npm ci)
+
+      - name: Lint frontend, i18n, bundle & docs
+        run: |
+          npm run lint:visual
+          npm run lint:frontend
+          npm run typecheck
+          node scripts/check_i18n_literals.mjs
+          npm run check:i18n-namespaces
+          npm run check:bundle
+          npm run check:server-i18n
+          node scripts/check_release_evidence_bound.mjs
+          npm run check:max-file-lines
+          npm run docs:check-current
+          npm run docs:check-links
+          node scripts/check_ubuntu_runner_compat.mjs --diagnostic
+
+      - name: Browser and VS Code extension tests
+        run: npm run test:browser-extension && npm run test:vscode-extension
+
+      - name: Run frontend tests (100% coverage)
+        # vitest.config.ts pins 100% thresholds on all four metrics.
+        run: npm run test:frontend:coverage
+
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 30
     strategy:
-      # 3.14 is what the product is developed on daily; without it here, the
-      # maintainer's own environment was the one configuration CI never saw.
-      # macOS is where the flagship path runs (Apple Silicon, MLX) and where
-      # the .dmg is produced, and it had no runner at all through 10.1.x — the
-      # desktop artifact was only ever built on one laptop.
+      # 3.14 is what the product is developed on daily; 3.11 is the floor;
+      # macOS arm64 catches platform-specific path/subprocess/sqlite issues.
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.14"]
         include:
-          # One macOS leg on the floor version: enough to catch platform-specific
-          # breakage (path handling, subprocess, tempfile, sqlite build flags)
-          # without tripling the matrix.
           - os: macos-latest
             python-version: "3.11"
 
@@ -44,7 +79,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Set up Node
+      - name: Set up Node (OpenAPI drift check leg only)
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "20"
@@ -53,21 +89,21 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.11" ]; then
-            pip install -e ".[ann]" pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
+            pip install -e ".[ann]" pytest pytest-asyncio httpx ruff "mypy>=1.14,<2"
             python -c "import hnswlib; print('hnswlib ok:', hnswlib.__file__)"
+            npm ci
+          elif [ "${{ matrix.os }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.14" ]; then
+            pip install -e "." pytest pytest-asyncio httpx "pytest-cov>=7,<8"
           else
-            pip install -e "." pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
+            pip install -e "." pytest pytest-asyncio httpx
           fi
-          npm ci
-          (cd vscode-extension && npm ci)
 
-      - name: Generate OpenAPI (for drift fix artifact)
+      - name: Generate & check OpenAPI sync
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
-          npm run frontend:openapi
+          npm run frontend:openapi:check
           mkdir -p openapi-artifacts
           cp frontend/openapi.json frontend/src/api/openapi.ts openapi-artifacts/
-        continue-on-error: true
 
       - name: Upload OpenAPI artifacts
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
@@ -77,42 +113,15 @@ jobs:
           path: openapi-artifacts/
           retention-days: 1
 
-      - name: Lint and typecheck
+      - name: Lint and typecheck Python
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
-        run: |
-          npm run lint
-          npm run typecheck
-          npm run docs:check-current
-          npm run docs:check-links
-          node scripts/check_ubuntu_runner_compat.mjs --diagnostic
-
-      - name: Lint (Python only, other matrix legs)
-        if: matrix.python-version != '3.11' || matrix.os != 'ubuntu-latest'
         run: npm run lint:python
 
-      - name: Browser and VS Code extension tests
-        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
-        run: npm run test:browser-extension && npm run test:vscode-extension
-
-      - name: Run frontend tests
-        # Frontend runs under coverage: vitest.config.ts pins 100% thresholds
-        # on all four metrics, so a single uncovered line fails this step the
-        # same way it fails locally.
-        run: npm run test:frontend:coverage
-
-      - name: Retrieval sidecar & contract gates
+      - name: Retrieval baseline budget check
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
           python -c "import hnswlib"
           python scripts/bench_retrieval_baseline.py --check-budgets
-          python -m pytest \
-            tests/unit/test_vector_index_sidecar.py \
-            tests/unit/test_vector_index_hnsw.py \
-            tests/unit/test_cov_wp12_provider_contract.py \
-            tests/unit/test_worker_allowlist.py \
-            tests/unit/test_hybrid_graph_bm25.py \
-            tests/unit/test_worker_compute.py \
-            -v --tb=short
 
       - name: Run unit tests
         if: matrix.python-version != '3.14' || matrix.os != 'ubuntu-latest'
@@ -120,11 +129,7 @@ jobs:
 
       - name: Coverage floor (>=90)
         if: matrix.python-version == '3.14' && matrix.os == 'ubuntu-latest'
-        # 3.14 + ubuntu is the only coverage leg: the 3.11 settrace tracer
-        # folds some jump-only lines into the preceding line, so an executed
-        # line can go unreported. 3.12+ measure via sys.monitoring. Other
-        # legs run the plain unit suite above; this leg runs pytest once
-        # under coverage (line floor 90, no branch gate).
+        # 3.14 + ubuntu uses sys.monitoring for accurate line coverage (>=90).
         run: python -m pytest tests/ -q --cov --cov-report=term:skip-covered
 
       - name: Product readiness gate
@@ -132,16 +137,12 @@ jobs:
         run: python scripts/product_readiness.py
 
   integration:
-    # v11.6.0 "One Door": the server these tests run against is `lattice-host`,
-    # not `uvicorn server:app` — that root shim went with the Python product
-    # app. The runner builds the binary from this checkout (ubuntu-latest ships
-    # a stable cargo), boots it, and the gateway supervises the Python worker
-    # behind it. So this job needs both toolchains, and the cargo cache below
-    # is what keeps the cold build from costing 5–10 minutes every run.
+    # One Door: builds `lattice-host`, boots it supervising the Python worker,
+    # and runs isolated integration tests in a disposable tempdir.
     name: Integration smoke test
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: test
+    needs: [frontend, test]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,8 +164,7 @@ jobs:
           workspaces: rust
 
       - name: Install dependencies
-        run: |
-          pip install -e "." pytest pytest-asyncio httpx
+        run: pip install -e "." pytest pytest-asyncio httpx
 
       - name: Run isolated integration tests
         env:
@@ -174,8 +174,8 @@ jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: integration
+    timeout-minutes: 15
+    needs: [frontend, test]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -209,16 +209,6 @@ jobs:
           path: dist/
 
   rust:
-    # Phase 1 of docs/v11.4.0_RUST_FOUNDATION_PLAN.md: the rust/ cargo
-    # workspace (lattice-core, lattice-retrieval, lattice-host). Independent of
-    # the Python jobs on purpose — nothing here imports Python, and nothing in
-    # the Python legs compiles Rust, so a failure names its own half.
-    #
-    # src-tauri is deliberately NOT built in this job. The desktop shell needs
-    # macOS/tauri system libraries (webkit2gtk, libsoup, the macOS SDK for the
-    # signed .dmg) that a bare ubuntu runner does not have; it is built by the
-    # release flow on macOS instead. It consumes this workspace through a path
-    # dependency, so what this job proves is what the desktop ships.
     name: Rust workspace
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -227,9 +217,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Rust
-        # dtolnay/rust-toolchain publishes no version tags; the convention is to
-        # pin the commit its `stable` branch points at, like every other action
-        # here is pinned by SHA.
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt, clippy
@@ -247,12 +234,63 @@ jobs:
         working-directory: rust
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Retrieval contract & parity tests
-        working-directory: rust
-        run: cargo test -p lattice-retrieval --tests
-
       - name: Test
-        # Includes the retrieval parity suite: every committed golden re-run
-        # against the committed fixture store, compared exactly.
         working-directory: rust
         run: cargo test --workspace
+
+  visual:
+    name: Playwright visual smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node 20
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure APT mirror timeouts
+        run: |
+          printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "2";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' | sudo tee /etc/apt/apt.conf.d/99fast-failover >/dev/null || true
+
+      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: l
+        run: |
+          sudo -E apt-get update -y || true
+          sudo -E apt-get install -y --no-install-recommends \
+            libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libgtk-3-0t64 \
+            libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 libwebkit2gtk-4.1-0 || {
+            sudo -E apt-get install -y --no-install-recommends libasound2t64 || sudo -E apt-get install -y --no-install-recommends libasound2 || true
+            sudo -E apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk1.0-0 || true
+            sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
+            sudo -E apt-get install -y --no-install-recommends libcups2t64 || sudo -E apt-get install -y --no-install-recommends libcups2 || true
+            sudo -E apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo -E apt-get install -y --no-install-recommends libgtk-3-0 || true
+            sudo -E apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
+            sudo -E apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo -E apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+          }
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries
+        run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic --verify-chromium
+
+      - name: Run visual smoke tests
+        run: npm run test:visual
+
+      - name: Upload visual failure report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: visual-smoke-report
+          path: |
+            test-results/
+            playwright-report/

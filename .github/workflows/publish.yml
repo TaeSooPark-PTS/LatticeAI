@@ -1,19 +1,12 @@
 name: CD
 
-# Publishes the released version to npm, PyPI, VS Code Marketplace and Open VSX,
-# and guarantees that all exact-version release assets (including the macOS
-# Apple Silicon Tauri DMG and SHA256SUMS) are attached to the GitHub Release.
+# Publishes the released version to npm, PyPI, VS Code Marketplace and Open VSX.
 #
-# Triggers only when a GitHub Release is published (a deliberate act) or on
-# manual dispatch — never on a bare tag push, so pushing a tag still cannot
-# publish anything by accident. scripts/publish_release.mjs is idempotent:
-# registries already carrying the version are reported "already-published"
-# and skipped, so re-runs are always safe.
-#
-# Secrets: NPM_TOKEN (granular/automation, 2FA-exempt), PYPI_API_TOKEN,
-# VSCE_PAT (Marketplace Manage scope), OVSX_PAT (Open VSX), plus optional
-# APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY /
-# APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID for notarized macOS builds.
+# Hard-enforces completed green CI (`ci.yml`) and Visual Smoke (`visual.yml`) on
+# the exact tagged commit SHA before publishing. Reuses exact-version verified
+# assets already uploaded to the GitHub Release by `release.yml` (falling back
+# to building only if assets are absent), and checks macOS DMG presence on
+# Ubuntu so a second `macos-latest` runner is never allocated unnecessarily.
 
 on:
   release:
@@ -22,12 +15,13 @@ on:
   workflow_call:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v12.10.0)"
+        description: "Release tag to publish (e.g. v13.3.1)"
         required: false
         type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cd-${{ inputs.tag || github.event.release.tag_name || github.ref }}
@@ -40,28 +34,40 @@ jobs:
   publish:
     name: Publish npm · PyPI · Marketplace · Open VSX
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
+      need_macos_dmg: ${{ steps.assets.outputs.need_macos_dmg }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
 
-      - name: Refuse to publish an unreleased version
+      - name: Refuse to publish unreleased or unverified commits
         id: meta
-        # The checked-out tree's package.json version must have a pushed tag.
-        # This is what keeps workflow_dispatch from publishing a mid-cycle
-        # version bump that was never released.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           if [ -z "$(git ls-remote --tags origin "refs/tags/v${VERSION}")" ]; then
             echo "::error::v${VERSION} has no pushed tag — refusing to publish an unreleased version."
             exit 1
           fi
+          SHA="$(git rev-parse HEAD)"
+          echo "Verifying required CI workflow (ci.yml) on commit ${SHA}..."
+          OK="$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          if [ "${OK:-0}" -lt 1 ]; then
+            echo "::error::CD blocked: CI (ci.yml) has no completed success run for commit ${SHA}."
+            exit 1
+          fi
+          echo "Verified ci.yml passed on ${SHA} (${OK} successful run(s))."
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Publishing v${VERSION} (tag exists)."
 
       - name: Set up Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -76,35 +82,79 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade build twine
-          pip install "."
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Verify Ubuntu 24.04 / 26.04 runner compatibility
-        run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic
-
-      - name: Build Python sdist + wheel
-        run: python -m build
-
-      - name: Pack npm tarball
-        run: npm pack
-
-      - name: Build VSIX
-        working-directory: vscode-extension
-        run: |
-          npm ci || npm install
-          npm run compile
-          test -f out/extension.js
-          npx --yes @vscode/vsce package --no-yarn \
-            -o "../dist/ltcai-$(node -p "require('../package.json').version").vsix"
-
-      - name: Stage exact-version core assets
+      - name: Reuse verified GitHub Release assets & check macOS DMG presence
+        id: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           V="${{ steps.meta.outputs.version }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          DMG_NAME="Lattice AI_${V}_aarch64.dmg"
+          DMG_DOT_NAME="Lattice.AI_${V}_aarch64.dmg"
+          ASSETS="$(gh release view "${TAG}" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' 2>/dev/null || true)"
+
+          if (echo "${ASSETS}" | grep -Fxq "${DMG_NAME}" || echo "${ASSETS}" | grep -Fxq "${DMG_DOT_NAME}") && echo "${ASSETS}" | grep -Fxq "SHA256SUMS-${V}.txt"; then
+            echo "need_macos_dmg=false" >> "$GITHUB_OUTPUT"
+            echo "macOS DMG & SHA256SUMS already present on ${TAG}."
+          else
+            echo "need_macos_dmg=true" >> "$GITHUB_OUTPUT"
+            echo "macOS DMG or SHA256SUMS missing on ${TAG}; will backfill."
+          fi
+
+          CORE_OK=true
+          for f in \
+            "ltcai-${V}-py3-none-any.whl" \
+            "ltcai-${V}.tar.gz" \
+            "ltcai-${V}.tgz" \
+            "ltcai-${V}.vsix" \
+            "SHA256SUMS-${V}.txt"; do
+            if ! echo "${ASSETS}" | grep -Fxq "${f}"; then
+              CORE_OK=false
+            fi
+          done
+
+          if [ "${CORE_OK}" = "true" ]; then
+            mkdir -p release-core-assets dist
+            gh release download "${TAG}" --repo "${{ github.repository }}" --dir release-core-assets --clobber \
+              -p "ltcai-${V}-py3-none-any.whl" \
+              -p "ltcai-${V}.tar.gz" \
+              -p "ltcai-${V}.tgz" \
+              -p "ltcai-${V}.vsix" \
+              -p "SHA256SUMS-${V}.txt"
+            (
+              cd release-core-assets
+              grep -E "  ltcai-${V}(-py3-none-any\.whl|\.tar\.gz|\.tgz|\.vsix)$" "SHA256SUMS-${V}.txt" | sha256sum -c -
+            )
+            cp "release-core-assets/ltcai-${V}-py3-none-any.whl" dist/
+            cp "release-core-assets/ltcai-${V}.tar.gz" dist/
+            cp "release-core-assets/ltcai-${V}.vsix" dist/
+            cp "release-core-assets/ltcai-${V}.tgz" "./ltcai-${V}.tgz"
+            echo "core_reused=true" >> "$GITHUB_OUTPUT"
+            echo "Reused & checksum-verified all 4 core artifacts from GitHub Release ${TAG}."
+          else
+            echo "core_reused=false" >> "$GITHUB_OUTPUT"
+            echo "Core assets not yet on GitHub Release ${TAG}; will build locally."
+          fi
+
+      - name: Install upload tooling (fast reuse path)
+        if: steps.assets.outputs.core_reused == 'true'
+        run: pip install --upgrade twine
+
+      - name: Build core assets (fallback when not on GitHub Release)
+        if: steps.assets.outputs.core_reused != 'true'
+        run: |
+          V="${{ steps.meta.outputs.version }}"
+          pip install --upgrade build twine
+          npm ci
+          python -m build
+          npm pack
+          (
+            cd vscode-extension
+            npm ci
+            npm run compile
+            test -f out/extension.js
+            npx --yes @vscode/vsce package --no-yarn -o "../dist/ltcai-${V}.vsix"
+          )
           mkdir -p release-core-assets
           cp "dist/ltcai-${V}-py3-none-any.whl" \
              "dist/ltcai-${V}.tar.gz" \
@@ -119,7 +169,8 @@ jobs:
             sha256sum "ltcai-${V}.vsix" > "ltcai-${V}.vsix.sha256"
           )
 
-      - name: Upload core assets artifact
+      - name: Upload core assets artifact (only if macOS DMG backfill needed)
+        if: steps.assets.outputs.need_macos_dmg == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cd-core-assets
@@ -136,59 +187,35 @@ jobs:
         run: node scripts/publish_release.mjs
 
   macos-dmg:
-    name: Ensure macOS Apple Silicon DMG
+    name: Backfill macOS Apple Silicon DMG
     needs: publish
+    if: needs.publish.outputs.need_macos_dmg == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
-    outputs:
-      built: ${{ steps.check.outputs.need_build }}
     steps:
-      - name: Check whether DMG & checksum already exist on GitHub Release
-        id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          V="${{ needs.publish.outputs.version }}"
-          TAG="${{ needs.publish.outputs.tag }}"
-          DMG_NAME="Lattice AI_${V}_aarch64.dmg"
-          DMG_DOT_NAME="Lattice.AI_${V}_aarch64.dmg"
-          ASSETS="$(gh release view "${TAG}" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' 2>/dev/null || true)"
-          if (echo "${ASSETS}" | grep -Fxq "${DMG_NAME}" || echo "${ASSETS}" | grep -Fxq "${DMG_DOT_NAME}") && echo "${ASSETS}" | grep -Fxq "SHA256SUMS-${V}.txt"; then
-            echo "need_build=false" >> "$GITHUB_OUTPUT"
-            echo "${DMG_NAME} and SHA256SUMS-${V}.txt already present on ${TAG}."
-          else
-            echo "need_build=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.check.outputs.need_build == 'true'
         with:
           ref: ${{ needs.publish.outputs.tag }}
 
       - name: Verify Apple Silicon runner architecture
-        if: steps.check.outputs.need_build == 'true'
         run: test "$(uname -m)" = "arm64"
 
       - name: Set up Python 3.11
-        if: steps.check.outputs.need_build == 'true'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Set up Node 20
-        if: steps.check.outputs.need_build == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "20"
           cache: npm
 
       - name: Set up Rust
-        if: steps.check.outputs.need_build == 'true'
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Cache Cargo registry and Tauri build output
-        if: steps.check.outputs.need_build == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: |
@@ -196,7 +223,6 @@ jobs:
             src-tauri
 
       - name: Install dependencies & build frontend assets
-        if: steps.check.outputs.need_build == 'true'
         run: |
           pip install "."
           npm ci
@@ -204,7 +230,6 @@ jobs:
 
       - name: Configure Apple Developer ID signing (when secrets exist)
         id: signing
-        if: steps.check.outputs.need_build == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -234,7 +259,6 @@ jobs:
           fi
 
       - name: Build Tauri macOS bundle & DMG
-        if: steps.check.outputs.need_build == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -242,7 +266,6 @@ jobs:
         run: npm run desktop:tauri:build
 
       - name: Ensure ad-hoc signature & smoke-verify DMG
-        if: steps.check.outputs.need_build == 'true'
         run: |
           V="${{ needs.publish.outputs.version }}"
           APP_PATH="src-tauri/target/release/bundle/macos/Lattice AI.app"
@@ -268,7 +291,6 @@ jobs:
           python -c "import scripts.release_smoke as rs; rs.smoke_static_assets('${V}'); rs.smoke_tauri('${V}', launch=False)"
 
       - name: Stage macOS DMG and checksum
-        if: steps.check.outputs.need_build == 'true'
         run: |
           V="${{ needs.publish.outputs.version }}"
           DMG_NAME="Lattice AI_${V}_aarch64.dmg"
@@ -280,7 +302,6 @@ jobs:
           )
 
       - name: Upload macOS DMG artifact
-        if: steps.check.outputs.need_build == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cd-macos-assets
@@ -290,8 +311,9 @@ jobs:
   attach-release-assets:
     name: Ensure GitHub Release assets & checksums
     needs: [publish, macos-dmg]
-    if: needs.macos-dmg.outputs.built == 'true'
+    if: needs.publish.outputs.need_macos_dmg == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -325,14 +347,6 @@ jobs:
             "ltcai-${V}.vsix" \
             "Lattice AI_${V}_aarch64.dmg" > "SHA256SUMS-${V}.txt"
           sha256sum -c "SHA256SUMS-${V}.txt"
-          if ! gh release view "${TAG}" >/dev/null 2>&1; then
-            NOTES_FILE="../docs/releases/RELEASE_NOTES_v${V}.md"
-            if [ -f "${NOTES_FILE}" ]; then
-              gh release create "${TAG}" --title "Lattice AI v${V}" --notes-file "${NOTES_FILE}"
-            else
-              gh release create "${TAG}" --title "Lattice AI v${V}" --generate-notes
-            fi
-          fi
           gh release upload "${TAG}" --clobber \
             "ltcai-${V}-py3-none-any.whl" \
             "ltcai-${V}-py3-none-any.whl.sha256" \

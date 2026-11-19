@@ -11,13 +11,13 @@ configuration. Companion to [SECURITY_AUDIT.md](SECURITY_AUDIT.md) and
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| CI | `.github/workflows/ci.yml` | push/PR to `main` | Lint, typecheck, unit + coverage + retrieval sidecar/contract gates + integration tests, product-readiness, build + wheel smoke, Rust workspace |
-| Release | `.github/workflows/release.yml` | tags `v*` / `[0-9]*` | Build & smoke-verify Linux assets + Apple Silicon macOS DMG, generate checksums, attach exact-version assets to the GitHub Release, and chain CD via `workflow_call` |
-| CD | `.github/workflows/publish.yml` | GitHub Release `published`, `workflow_call`, dispatch | Publish npm / PyPI / Marketplace / Open VSX (idempotent) and verify/backfill `Lattice AI_<v>_aarch64.dmg` + checksums on the GitHub Release |
-| Visual Smoke | `.github/workflows/visual.yml` | push to `main`, nightly cron, dispatch | Playwright visual smoke (not on PRs) |
-| Sidecar E2E | `.github/workflows/e2e-sidecar.yml` | nightly cron, dispatch | Live sidecar Playwright first-value loop |
-| Dependency Audit | `.github/workflows/dependency-audit.yml` | weekly cron, dispatch | pip-audit + npm audit + CycloneDX SBOMs |
-| Postgres Integration | `.github/workflows/postgres-integration.yml` | weekly cron, dispatch | **Skipped / Planned** — retired Python SQLite→Postgres live suite guard (`SQLite` is the live default; PostgreSQL live migration is `Planned`) |
+| CI | `.github/workflows/ci.yml` | push/PR to `main` | Single-run Frontend/i18n/docs/extensions/100% Vitest job, Python 3.11/3.12/3.14 Ubuntu + 3.11 macOS matrix, parallel Integration smoke + Build/wheel smoke, Rust workspace, and `main`-only Playwright Visual Smoke |
+| Release | `.github/workflows/release.yml` | `workflow_run` (`CI` completed on `main`), tags `v*` / `[0-9]*`, dispatch | Hard-enforces completed green `CI` on exact commit SHA, auto-tags unreleased versions on `main`, builds & smoke-verifies core assets + Apple Silicon macOS DMG, attaches GitHub Release assets, and chains CD via `workflow_call` |
+| CD | `.github/workflows/publish.yml` | `workflow_call`, GitHub Release `published`, dispatch | Re-enforces green `CI` on exact commit SHA, reuses checksum-verified GitHub Release assets (zero duplicate build), publishes npm / PyPI / Marketplace / Open VSX (idempotent), and skips macOS runner allocation when DMG already exists |
+| Visual Smoke | `.github/workflows/visual.yml` | nightly cron, dispatch | Scheduled / on-demand Playwright visual smoke (`main` push visual smoke runs inside `ci.yml`) |
+| Sidecar E2E | `.github/workflows/e2e-sidecar.yml` | tags, relevant PR paths, nightly cron, dispatch | Live sidecar Playwright first-value loop with 15s APT mirror failover |
+| Dependency Audit | `.github/workflows/dependency-audit.yml` | tags, weekly cron, dispatch | pip-audit + npm audit + CycloneDX SBOMs |
+| Postgres Integration | `.github/workflows/postgres-integration.yml` | dispatch only | **Skipped / Planned** — retired Python SQLite→Postgres live suite guard (`SQLite` is the live default; PostgreSQL live migration is `Planned`) |
 
 There is no `agent-smoke.yml`. Hosted runners have no MLX models; a fail-open
 weekly smoke cannot report anything actionable.

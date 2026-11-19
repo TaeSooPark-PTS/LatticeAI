@@ -1,8 +1,6 @@
 name: Visual Smoke
 
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
@@ -58,7 +56,9 @@ jobs:
           }
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium || npx playwright install chromium
+        # System libraries were already installed in the batched t64 step above;
+        # skip `--with-deps` to avoid a second redundant apt-get transaction.
+        run: npx playwright install chromium
 
       - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries
         run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic --verify-chromium

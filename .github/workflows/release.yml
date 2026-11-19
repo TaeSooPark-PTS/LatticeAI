@@ -1,21 +1,21 @@
 name: Release
 
-# Runs on semantic release tag pushes, with or without a leading v, and on
-# manual dispatch. Builds, signs, smoke-verifies, checksums, and attaches all
-# exact-version release assets (Python wheel/sdist, npm tarball, VS Code VSIX,
-# and macOS Apple Silicon Tauri DMG) to the GitHub Release.
+# Automatically triggers when `CI` (`ci.yml`) completes on `main` (auto-tagging
+# & releasing any new unreleased version in package.json, while cleanly
+# skipping ordinary already-tagged commits), and also supports manual tag push
+# or workflow_dispatch.
 #
-# Package-store publication never happens here: pushing a tag can never publish
-# to PyPI / npm / VS Code Marketplace / Open VSX by accident. Publication is
-# publish.yml (CD), which runs when a GitHub Release is published.
-#
-# Local publish commands below must use exact version filenames. Never publish
-# with a broad dist/* glob.
-#
-# Lint, typecheck, docs:check-links, frontend tests, and unit pytest already
-# ran on this commit in ci.yml. This workflow does not repeat them.
+# Hard-enforces completed green `CI` (`ci.yml` — including Rust, Python matrix,
+# Frontend 100% coverage, Integration smoke, Build, and Visual Smoke) on the
+# exact commit SHA before building, signing, publishing the GitHub Release, or
+# chaining CD (`publish.yml`). If CI failed or never ran on the commit, Release
+# and CD are strictly blocked.
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   push:
     tags:
       - 'v*'
@@ -24,9 +24,10 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_sha || github.ref }}
   cancel-in-progress: false
 
 # GitHub is migrating JS actions to Node.js 24 (Node 20 removed 2026-09-16).
@@ -34,23 +35,99 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  verify-ci:
+    name: Enforce CI passed & resolve release target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      should_release: ${{ steps.gate.outputs.should_release }}
+      version: ${{ steps.gate.outputs.version }}
+      tag: ${{ steps.gate.outputs.tag }}
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - name: Skip when triggered by non-push or failed CI workflow_run
+        id: precheck
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.event }}" != "push" ] || [ "${{ github.event.workflow_run.head_branch }}" != "main" ]; then
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping auto-release: CI run was not a push to main."
+              exit 0
+            fi
+            if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::CI did not succeed (conclusion=${{ github.event.workflow_run.conclusion }}); Release & CD blocked."
+              exit 0
+            fi
+          fi
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.precheck.outputs.proceed == 'true'
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+          fetch-depth: 0
+
+      - name: Verify green CI on exact commit SHA & auto-tag unreleased versions
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.precheck.outputs.proceed }}" != "true" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHA="$(git rev-parse HEAD)"
+          OK="$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          if [ "${OK:-0}" -lt 1 ]; then
+            echo "::error::Release & CD blocked: CI (ci.yml) has no completed success run for commit ${SHA}."
+            exit 1
+          fi
+          echo "Verified CI passed on commit ${SHA} (${OK} successful run(s))."
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAG="${GITHUB_REF_NAME}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+            TAG="v${VERSION}"
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "Tag ${TAG} already exists on origin — ordinary main commit, skipping Release & CD."
+              exit 0
+            fi
+            # Ensure release docs match before auto-tagging a new version.
+            node scripts/check_current_release_docs.mjs
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "${TAG}" -m "Lattice AI ${TAG} — Living Synthesis" "${SHA}"
+            git push origin "${TAG}"
+            echo "Auto-created and pushed tag ${TAG} at CI-verified commit ${SHA}."
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build and validate core artifacts
+    needs: verify-ci
+    if: needs.verify-ci.outputs.should_release == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Extract version
-        id: meta
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-          fi
+        with:
+          ref: ${{ needs.verify-ci.outputs.sha }}
 
       - name: Set up Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -64,14 +141,9 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install Python dependencies
+      - name: Install build dependencies
         run: |
           pip install --upgrade build twine
-          pip install "."
-          pip install pytest pytest-asyncio httpx ruff "mypy>=1.14,<2"
-
-      - name: Install Node dependencies
-        run: |
           npm ci
           (cd vscode-extension && npm ci)
 
@@ -86,37 +158,32 @@ jobs:
         run: python -m build
 
       - name: Installed-wheel smoke test (fresh venv, non-repo cwd)
-        run: python scripts/wheel_smoke.py --wheel "dist/ltcai-${{ steps.meta.outputs.version }}-py3-none-any.whl"
+        run: python scripts/wheel_smoke.py --wheel "dist/ltcai-${{ needs.verify-ci.outputs.version }}-py3-none-any.whl"
 
       - name: Validate Python distribution
-        # Explicit filenames — more reliable than a glob on all shells/CI runners.
         run: |
           twine check \
-            "dist/ltcai-${{ steps.meta.outputs.version }}-py3-none-any.whl" \
-            "dist/ltcai-${{ steps.meta.outputs.version }}.tar.gz"
+            "dist/ltcai-${{ needs.verify-ci.outputs.version }}-py3-none-any.whl" \
+            "dist/ltcai-${{ needs.verify-ci.outputs.version }}.tar.gz"
 
       - name: Pack npm tarball
         run: npm pack
 
-      - name: Install vsce
-        run: npm install -g @vscode/vsce
-
       - name: Build VSIX
         working-directory: vscode-extension
         run: |
-          npm ci || npm install
           npm run compile
           test -f out/extension.js
-          vsce package --no-yarn -o "../dist/ltcai-${{ steps.meta.outputs.version }}.vsix"
+          npx --yes @vscode/vsce package --no-yarn -o "../dist/ltcai-${{ needs.verify-ci.outputs.version }}.vsix"
 
       - name: Validate release artifacts (version-scoped, no dist/* glob)
         run: |
           python scripts/validate_release_artifacts.py \
-            "${{ steps.meta.outputs.version }}" --require-vsix --require-tgz
+            "${{ needs.verify-ci.outputs.version }}" --require-vsix --require-tgz
 
       - name: Stage exact-version core assets and checksums
         run: |
-          V="${{ steps.meta.outputs.version }}"
+          V="${{ needs.verify-ci.outputs.version }}"
           mkdir -p release-core-assets
           cp "dist/ltcai-${V}-py3-none-any.whl" \
              "dist/ltcai-${V}.tar.gz" \
@@ -140,21 +207,14 @@ jobs:
 
   macos-dmg:
     name: Build & sign macOS Apple Silicon DMG
+    needs: verify-ci
+    if: needs.verify-ci.outputs.should_release == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Extract version
-        id: meta
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-          fi
+        with:
+          ref: ${{ needs.verify-ci.outputs.sha }}
 
       - name: Verify Apple Silicon runner architecture
         run: |
@@ -233,7 +293,7 @@ jobs:
 
       - name: Ensure ad-hoc signature & smoke-verify DMG
         run: |
-          V="${{ steps.meta.outputs.version }}"
+          V="${{ needs.verify-ci.outputs.version }}"
           APP_PATH="src-tauri/target/release/bundle/macos/Lattice AI.app"
           DMG_PATH="src-tauri/target/release/bundle/dmg/Lattice AI_${V}_aarch64.dmg"
           test -d "${APP_PATH}"
@@ -263,7 +323,7 @@ jobs:
 
       - name: Stage macOS DMG and checksum
         run: |
-          V="${{ steps.meta.outputs.version }}"
+          V="${{ needs.verify-ci.outputs.version }}"
           DMG_NAME="Lattice AI_${V}_aarch64.dmg"
           mkdir -p release-macos-assets
           cp "src-tauri/target/release/bundle/dmg/${DMG_NAME}" "release-macos-assets/${DMG_NAME}"
@@ -281,12 +341,16 @@ jobs:
 
   github-release:
     name: Publish GitHub Release assets
-    needs: [build, macos-dmg]
+    needs: [verify-ci, build, macos-dmg]
+    if: needs.verify-ci.outputs.should_release == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify-ci.outputs.sha }}
 
       - name: Download core release assets
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -302,7 +366,7 @@ jobs:
 
       - name: Verify exact assets and build unified SHA256SUMS
         run: |
-          V="${{ needs.build.outputs.version }}"
+          V="${{ needs.verify-ci.outputs.version }}"
           cd release-assets
           for f in \
             "ltcai-${V}-py3-none-any.whl" \
@@ -320,19 +384,15 @@ jobs:
             "Lattice AI_${V}_aarch64.dmg" > "SHA256SUMS-${V}.txt"
           sha256sum -c "SHA256SUMS-${V}.txt"
 
-      - name: Upload assets to GitHub Release (for pushed tags)
+      - name: Upload assets to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          V="${{ needs.build.outputs.version }}"
-          TAG="v${V}"
-          if [ -z "$(git ls-remote --tags origin "refs/tags/${TAG}")" ] && [ "${{ github.ref_type }}" != "tag" ]; then
-            echo "No tag ${TAG} on origin; skipping GitHub Release attachment."
+          V="${{ needs.verify-ci.outputs.version }}"
+          TARGET_TAG="${{ needs.verify-ci.outputs.tag }}"
+          if [ -z "$(git ls-remote --tags origin "refs/tags/${TARGET_TAG}")" ]; then
+            echo "No tag ${TARGET_TAG} on origin; skipping GitHub Release attachment."
             exit 0
-          fi
-          TARGET_TAG="${{ github.ref_type == 'tag' && github.ref_name || '' }}"
-          if [ -z "${TARGET_TAG}" ]; then
-            TARGET_TAG="${TAG}"
           fi
           NOTES_FILE="docs/releases/RELEASE_NOTES_v${V}.md"
           if ! gh release view "${TARGET_TAG}" >/dev/null 2>&1; then
@@ -357,11 +417,12 @@ jobs:
 
   cd:
     name: Chain CD package publication
-    needs: [build, github-release]
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [verify-ci, build, github-release]
+    if: needs.verify-ci.outputs.should_release == 'true'
     permissions:
       contents: write
+      actions: read
     uses: ./.github/workflows/publish.yml
     with:
-      tag: ${{ github.ref_name }}
+      tag: ${{ needs.verify-ci.outputs.tag }}
     secrets: inherit

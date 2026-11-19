@@ -7,7 +7,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "python"
@@ -19,7 +23,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      frontend-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "frontend"
@@ -31,7 +39,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      vscode-extension-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "vscode-extension"
@@ -43,7 +55,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      rust-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "rust"
@@ -55,7 +71,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      desktop-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "desktop"
@@ -67,7 +87,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "ci"
