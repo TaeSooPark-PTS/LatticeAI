@@ -32,7 +32,7 @@ serde_json = "1"
 # Storage / retrieval. FTS5 must be verifiably available — lattice-core
 # carries a unit test that creates a trigram fts5 table and fails loudly if
 # the bundled build lacks the module.
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 # Host / gateway.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "time", "signal", "io-util", "sync"] }
 axum = "0.7"
