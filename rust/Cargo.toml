@@ -39,7 +39,7 @@ axum = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["stream"] }
 libc = "0.2"
 # Phase 2-4 additions: file watching for lattice-ingest.
-notify = "6"
+notify = "8"
 walkdir = "2"
 # Agent loop (v11.5.1): Python-compatible regex (lookbehind), approval-token
 # hashing/encoding, and the SSE stream wrapper for the live step timeline.
