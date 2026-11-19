@@ -44,7 +44,7 @@ walkdir = "2"
 # Agent loop (v11.5.1): Python-compatible regex (lookbehind), approval-token
 # hashing/encoding, and the SSE stream wrapper for the live step timeline.
 fancy-regex = "0.14"
-sha2 = "0.10"
+sha2 = "0.11"
 base64 = "0.22"
 getrandom = "0.4"
 futures-core = "0.3"
