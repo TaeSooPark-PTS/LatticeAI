@@ -133,6 +133,7 @@ from latticeai.tools.filesystem import *  # noqa: E402,F401,F403
 from latticeai.tools.knowledge import *  # noqa: E402,F401,F403
 from latticeai.tools.local_files import *  # noqa: E402,F401,F403
 from latticeai.tools.network import *  # noqa: E402,F401,F403
+from latticeai.tools.web import *  # noqa: E402,F401,F403
 
 
 # ── tool registry: the single name → invocation source of truth ───────────────
@@ -168,8 +169,12 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "local_read":        lambda a: local_read(a["path"]),
     "read_document":     lambda a: read_document(a["path"]),
     "network_status":    lambda a: network_status(),
+    # web research
+    "web_fetch":         lambda a: web_fetch(a["url"], a.get("max_chars", 4000)),
+    "web_search":        lambda a: web_search(a["query"], a.get("max_results", 5)),
     # computer use
     "computer_screenshot": lambda a: computer_screenshot(),
+    "computer_ui_inspect": lambda a: computer_ui_inspect(a.get("app")),
     "computer_click":    lambda a: computer_click(a.get("x", 0), a.get("y", 0), a.get("button", "left"), a.get("double", False)),
     "computer_type":     lambda a: computer_type(a["text"], a.get("interval", 0.04)),
     "computer_key":      lambda a: computer_key(a["key"]),
@@ -214,7 +219,8 @@ __all__ = [
     "knowledge_search", "knowledge_tree", "knowledge_scope_root",
     "obsidian_search", "obsidian_tree",
     "network_status",
-    "computer_screenshot", "computer_click", "computer_type", "computer_key", "computer_scroll",
+    "web_fetch", "web_search", "validate_web_url", "distill_html_to_text", "sanitize_untrusted_web_text",
+    "computer_screenshot", "computer_ui_inspect", "computer_click", "computer_type", "computer_key", "computer_scroll",
     "computer_move", "computer_drag", "computer_status", "vision_analyze",
     "git_status", "git_diff", "git_log", "git_show",
     "TOOL_HANDLERS", "DEFAULT_TOOL_REGISTRY", "registered_tools", "execute_tool",

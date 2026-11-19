@@ -414,6 +414,9 @@ const GOVERNED_TOOLS: &[&str] = &[
     "computer_open_app",
     "computer_open_url",
     "vision_analyze",
+    "web_fetch",
+    "web_search",
+    "computer_ui_inspect",
 ];
 
 /// Build the product policy table from platform governance.
@@ -471,9 +474,21 @@ mod tests {
         assert!(table.tools.contains_key("write_file"));
         assert!(table.tools.contains_key("read_file"));
         assert!(table.tools.contains_key("run_command"));
+        assert!(table.tools.contains_key("web_fetch"));
+        assert!(table.tools.contains_key("web_search"));
+        assert!(table.tools.contains_key("computer_ui_inspect"));
         assert!(table.tools.len() > 20);
         assert_eq!(table.tools["write_file"].risk, "write");
         assert_eq!(table.tools["read_file"].risk, "read");
+        assert_eq!(table.tools["web_fetch"].risk, "read");
+        assert!(table.tools["web_fetch"].network);
+        assert!(table.tools["web_fetch"].auto_approve);
+        assert_eq!(table.tools["computer_ui_inspect"].risk, "read");
+        assert!(table.tools["computer_ui_inspect"].auto_approve);
+        assert_eq!(
+            table.tools["computer_ui_inspect"].capability.as_deref(),
+            Some("desktop:control")
+        );
     }
 
     #[test]
