@@ -67,6 +67,36 @@ pub(super) fn native_args(tool: &str) -> Vec<ArgSpec> {
             "the application to open",
             "",
         )],
+        "web_search" => vec![ArgSpec::line("query", "what to search the web for")],
+        "web_fetch" => vec![ArgSpec::line("url", "the page address to fetch")],
+        // The frontmost application is inspected when none is named, so the
+        // app is asked for and never insisted on.
+        "computer_ui_inspect" => vec![ArgSpec::line_defaulting(
+            "app",
+            "the application whose UI to inspect",
+            "",
+        )],
+        "computer_click" | "computer_move" | "computer_scroll" => vec![
+            ArgSpec::line("x", "horizontal screen coordinate in pixels"),
+            ArgSpec::line("y", "vertical screen coordinate in pixels"),
+        ],
+        "computer_drag" => vec![
+            ArgSpec::line("x1", "start x coordinate in pixels"),
+            ArgSpec::line("y1", "start y coordinate in pixels"),
+            ArgSpec::line("x2", "end x coordinate in pixels"),
+            ArgSpec::line("y2", "end y coordinate in pixels"),
+        ],
+        "computer_type" => vec![ArgSpec::text("text", "the text to type")],
+        "computer_key" => vec![ArgSpec::line(
+            "key",
+            "the key or combination to press, e.g. return or command+s",
+        )],
+        "computer_screenshot"
+        | "computer_status"
+        | "knowledge_tree"
+        | "obsidian_tree"
+        | "git_status"
+        | "git_diff" => Vec::new(),
         "final" => vec![ArgSpec::line("message", "one line: what you did")],
         _ => Vec::new(),
     }
@@ -105,6 +135,10 @@ pub fn arg_synonyms(arg: &str) -> &'static [&'static str] {
             "term",
             "text",
             "keyword",
+            "q",
+            "search",
+            "search_query",
+            "searchQuery",
         ],
         "path" => &[
             "file",
@@ -116,8 +150,17 @@ pub fn arg_synonyms(arg: &str) -> &'static [&'static str] {
         ],
         "content" => &["body", "contents", "text", "html", "code", "source", "data"],
         "command" => &["cmd", "command_line", "commandLine"],
-        "url" => &["address", "link", "href"],
-        "app" => &["application", "name"],
+        "url" => &["address", "link", "href", "uri", "website"],
+        "app" => &["application", "name", "app_name", "appName"],
+        "key" => &[
+            "keys",
+            "combo",
+            "key_combo",
+            "keyCombo",
+            "shortcut",
+            "hotkey",
+        ],
+        "text" => &["content", "input", "value", "string"],
         "title" => &["name", "heading"],
         _ => &[],
     }
@@ -232,6 +275,135 @@ pub fn adopt_named_args(
     adopted
 }
 
+const WRAPPER_KEYS: [&str; 3] = ["args", "parameters", "arguments"];
+
+const INT_COERCE_KEYS: [&str; 11] = [
+    "x",
+    "y",
+    "x1",
+    "y1",
+    "x2",
+    "y2",
+    "clicks",
+    "max_results",
+    "offset",
+    "limit",
+    "hops",
+];
+
+const FLOAT_COERCE_KEYS: [&str; 1] = ["interval"];
+
+const BOOL_COERCE_KEYS: [&str; 3] = ["double", "include_graph", "replace_all"];
+
+fn parse_bool_str(raw: &str) -> Option<bool> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "true" | "yes" | "1" => Some(true),
+        "false" | "no" | "0" => Some(false),
+        _ => None,
+    }
+}
+
+fn normalize_computer_key(raw: &str, notes: &mut Vec<String>) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut parts: Vec<String> = trimmed
+        .split('+')
+        .map(|part| part.trim().to_string())
+        .collect();
+    let len = parts.len();
+    let has_plus = len > 1;
+    let mut changed = false;
+
+    for (idx, part) in parts.iter_mut().enumerate() {
+        let lower = part.to_ascii_lowercase();
+        let (replacement, note) = match lower.as_str() {
+            "enter" => ("return", "key_alias:enter->return"),
+            "esc" => ("escape", "key_alias:esc->escape"),
+            "cmd" if has_plus && idx + 1 < len => ("command", "key_alias:cmd+->command+"),
+            "ctrl" if has_plus && idx + 1 < len => ("control", "key_alias:ctrl+->control+"),
+            _ => continue,
+        };
+        *part = replacement.to_string();
+        notes.push(note.to_string());
+        changed = true;
+    }
+
+    changed.then(|| parts.join("+"))
+}
+
+/// Unwrap nested argument envelopes, coerce stringified scalars, and normalize
+/// `computer_key` key aliases in place.
+///
+/// Returns a deterministic list of notes describing each change applied, or an
+/// empty `Vec` when `args` required no normalization.
+pub fn coerce_and_unwrap_args(entry: &CatalogEntry, args: &mut Map<String, Value>) -> Vec<String> {
+    let mut notes = Vec::new();
+
+    for wrapper in WRAPPER_KEYS {
+        if !matches!(args.get(wrapper), Some(Value::Object(_))) {
+            continue;
+        }
+        let Some(Value::Object(nested)) = args.remove(wrapper) else {
+            continue;
+        };
+        for (key, value) in nested {
+            args.entry(key).or_insert(value);
+        }
+        notes.push(format!("unwrapped:{wrapper}"));
+    }
+
+    for key in INT_COERCE_KEYS {
+        let Some(Value::String(raw)) = args.get(key) else {
+            continue;
+        };
+        if let Ok(parsed) = raw.trim().parse::<i64>() {
+            args.insert(key.to_string(), Value::Number(parsed.into()));
+            notes.push(format!("coerced:{key}"));
+        }
+    }
+
+    for key in FLOAT_COERCE_KEYS {
+        let Some(Value::String(raw)) = args.get(key) else {
+            continue;
+        };
+        if let Some(number) = raw
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .and_then(serde_json::Number::from_f64)
+        {
+            args.insert(key.to_string(), Value::Number(number));
+            notes.push(format!("coerced:{key}"));
+        }
+    }
+
+    for key in BOOL_COERCE_KEYS {
+        let Some(Value::String(raw)) = args.get(key) else {
+            continue;
+        };
+        if let Some(parsed) = parse_bool_str(raw) {
+            args.insert(key.to_string(), Value::Bool(parsed));
+            notes.push(format!("coerced:{key}"));
+        }
+    }
+
+    let bare_name = entry
+        .name
+        .strip_prefix(super::MCP_PREFIX)
+        .unwrap_or(&entry.name);
+    if bare_name == "computer_key" {
+        if let Some(Value::String(raw)) = args.get("key") {
+            if let Some(normalized) = normalize_computer_key(raw, &mut notes) {
+                args.insert("key".to_string(), Value::String(normalized));
+            }
+        }
+    }
+
+    notes
+}
+
 /// The first required argument this call has no value and **no documented
 /// default** for.
 ///
@@ -270,6 +442,21 @@ pub(super) fn native_summary(tool: &str) -> &'static str {
             "extract multi-hop entity/concept subgraph context for GraphRAG"
         }
         "run_command" => "run a shell command",
+        "web_search" => "search the web and return result titles, links and snippets",
+        "web_fetch" => "fetch a web page and return its readable text",
+        "computer_ui_inspect" => "list an application's visible UI elements and their positions",
+        "computer_screenshot" => "capture the screen",
+        "computer_status" => "report whether desktop control is available",
+        "computer_click" => "click at a screen coordinate",
+        "computer_type" => "type text at the current focus",
+        "computer_key" => "press a key or key combination",
+        "computer_scroll" => "scroll at a screen coordinate",
+        "computer_move" => "move the pointer to a screen coordinate",
+        "computer_drag" => "drag from one screen coordinate to another",
+        "computer_open_app" => "open an application",
+        "computer_open_url" => "open a URL in the browser",
+        "git_status" => "show the workspace's git status",
+        "git_diff" => "show the workspace's uncommitted git diff",
         "final" => "the work is done — finish the run",
         _ => "",
     }

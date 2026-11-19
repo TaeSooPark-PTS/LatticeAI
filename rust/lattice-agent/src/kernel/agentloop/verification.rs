@@ -658,6 +658,35 @@ impl Runtime {
             Self::hold_for_review(ctx, req, file_create_actions, &caveat);
             return true;
         }
+        if crate::kernel::transcript::rag_grounding::transcript_has_evidence(&ctx.transcript) {
+            use crate::kernel::transcript::rag_grounding::{
+                extract_evidence_passages, verify_grounded_answer, GroundingDefect,
+            };
+            let passages = extract_evidence_passages(&ctx.transcript);
+            let report = verify_grounded_answer(&ctx.final_message, &passages);
+            if report.has(GroundingDefect::SupersededFactLeak)
+                || report.has(GroundingDefect::NumericMismatch)
+                || report.has(GroundingDefect::PolarityMismatch)
+                || report.has(GroundingDefect::ZeroActiveEvidenceHallucination)
+            {
+                ctx.trace.decision(
+                    "verify",
+                    "needs_review_rag_grounding",
+                    &[("report", report.to_detail())],
+                );
+                let reasons = report
+                    .defects
+                    .iter()
+                    .map(|d| d.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let caveat = format!(
+                    "답변이 검색/문서 근거와 일치하지 않거나 대체된(superseded) 사실을 포함하여 완료로 처리하지 않았습니다 ({reasons}). 결과를 직접 확인해 주세요."
+                );
+                Self::hold_for_review(ctx, req, file_create_actions, &caveat);
+                return true;
+            }
+        }
         false
     }
 

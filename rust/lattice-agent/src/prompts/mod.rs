@@ -83,15 +83,35 @@ pub const CORE_TOOL_CATALOG: [(&str, &str); 5] = [
 /// Sorted by name so the lookup is a binary search, and deliberately partial:
 /// a tool the run offers that is not here renders as a bare name rather than a
 /// guessed signature.
-const TOOL_SIGNATURES: [(&str, &str); 9] = [
+const TOOL_SIGNATURES: [(&str, &str); 29] = [
+    ("computer_click", "x, y"),
+    ("computer_drag", "x1, y1, x2, y2"),
+    ("computer_key", "key"),
+    ("computer_move", "x, y"),
+    ("computer_open_app", "app"),
+    ("computer_open_url", "url"),
+    ("computer_screenshot", ""),
+    ("computer_scroll", "x, y"),
+    ("computer_status", ""),
+    ("computer_type", "text"),
+    ("computer_ui_inspect", "app"),
     ("create_web_project", "path"),
     ("edit_file", "path, old_string, new_string"),
     ("final", "message"),
+    ("git_diff", ""),
+    ("git_status", ""),
+    ("grep", "pattern"),
+    ("knowledge_graph_context", "query"),
+    ("knowledge_graph_search", "query"),
+    ("knowledge_search", "query"),
+    ("knowledge_tree", ""),
     ("list_dir", "path"),
     ("local_write", "path, content"),
     ("read_file", "path"),
     ("run_command", "command"),
     ("todo_write", "todos"),
+    ("web_fetch", "url"),
+    ("web_search", "query"),
     ("write_file", "path, content"),
 ];
 
@@ -140,13 +160,15 @@ pub const GRAPH_SKILL_BRIEFS: [(&str, &str, &str); 3] = [
 /// rendering the row bare would be the one place the two surfaces disagreed
 /// about what a tool takes. A `skill.` row is never given a signature — a skill
 /// takes no argument the harness could ask for.
-fn signature(name: &str) -> String {
+pub fn signature(name: &str) -> String {
     let bare = name
         .strip_prefix(crate::tools::catalog::MCP_PREFIX)
         .unwrap_or(name);
     match TOOL_SIGNATURES.binary_search_by(|(known, _)| (*known).cmp(bare)) {
-        Ok(index) => format!("{name}{{{}}}", TOOL_SIGNATURES[index].1),
-        Err(_) => name.to_string(),
+        Ok(index) if !TOOL_SIGNATURES[index].1.is_empty() => {
+            format!("{name}{{{}}}", TOOL_SIGNATURES[index].1)
+        }
+        _ => name.to_string(),
     }
 }
 
@@ -349,6 +371,52 @@ mod tests {
         let original = sorted.clone();
         sorted.sort_unstable();
         assert_eq!(original, sorted);
+    }
+
+    #[test]
+    fn tool_signatures_are_strictly_ascii_sorted_and_cover_expanded_catalog() {
+        for pair in TOOL_SIGNATURES.windows(2) {
+            let left = pair[0].0;
+            let right = pair[1].0;
+            assert!(left.is_ascii(), "{left} must be ASCII");
+            assert!(right.is_ascii(), "{right} must be ASCII");
+            assert!(
+                left.as_bytes() < right.as_bytes(),
+                "TOOL_SIGNATURES out of strict ASCII order: {left:?} before {right:?}"
+            );
+        }
+
+        let expected = [
+            ("web_search", "web_search{query}"),
+            ("web_fetch", "web_fetch{url}"),
+            ("computer_ui_inspect", "computer_ui_inspect{app}"),
+            ("computer_screenshot", "computer_screenshot"),
+            ("computer_status", "computer_status"),
+            ("computer_click", "computer_click{x, y}"),
+            ("computer_type", "computer_type{text}"),
+            ("computer_key", "computer_key{key}"),
+            ("computer_scroll", "computer_scroll{x, y}"),
+            ("computer_move", "computer_move{x, y}"),
+            ("computer_drag", "computer_drag{x1, y1, x2, y2}"),
+            ("computer_open_app", "computer_open_app{app}"),
+            ("computer_open_url", "computer_open_url{url}"),
+            ("knowledge_search", "knowledge_search{query}"),
+            ("knowledge_graph_search", "knowledge_graph_search{query}"),
+            ("knowledge_graph_context", "knowledge_graph_context{query}"),
+            ("knowledge_tree", "knowledge_tree"),
+            ("grep", "grep{pattern}"),
+            ("git_status", "git_status"),
+            ("git_diff", "git_diff"),
+        ];
+        for (name, rendered) in expected {
+            assert_eq!(signature(name), rendered, "signature mismatch for {name}");
+            let catalog_entries = crate::tools::catalog::native_entries(&[name.to_string()]);
+            assert_eq!(
+                catalog_entries[0].signature(),
+                rendered,
+                "catalog signature mismatch for {name}"
+            );
+        }
     }
 
     #[test]

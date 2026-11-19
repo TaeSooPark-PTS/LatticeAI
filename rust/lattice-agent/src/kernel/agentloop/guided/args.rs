@@ -243,7 +243,18 @@ impl Runtime {
         profile: AgentProfile,
     ) -> Result<Map<String, Value>, WorkerError> {
         let mut args = Map::new();
-        let brief = self.argument_brief(ctx, req);
+        let has_rag_evidence = entry.name == "final"
+            && crate::kernel::transcript::rag_grounding::transcript_has_evidence(&ctx.transcript);
+        let brief = if has_rag_evidence {
+            let passages = crate::kernel::transcript::rag_grounding::extract_evidence_passages(
+                &ctx.transcript,
+            );
+            let card =
+                crate::kernel::transcript::rag_grounding::build_evidence_card(&passages, 1200);
+            format!("{}\n\n{card}", self.argument_brief(ctx, req))
+        } else {
+            self.argument_brief(ctx, req)
+        };
         // Read once, and only where it is read at all: the term rule below asks
         // the catalog what a *tool* name looks like, and a call that takes no
         // search argument never asks. `ToolCatalog::entries` is a scan of the
@@ -347,10 +358,14 @@ impl Runtime {
                 // out of three. The first ask keeps the stop, which is what
                 // keeps a one-line answer one line; the re-ask is the one that
                 // has already been told a line is not coming.
-                let (max_tokens, stop): (u32, &[&str]) = match spec.kind {
-                    ArgKind::Line if attempt == 0 => (LINE_TOKENS, &LINE_STOP),
-                    ArgKind::Line => (LINE_TOKENS, &[]),
-                    ArgKind::Text => (self.deps.phase_budgets.execute_tokens, &[]),
+                let (max_tokens, stop): (u32, &[&str]) = if has_rag_evidence {
+                    (self.deps.phase_budgets.execute_tokens.min(512), &[])
+                } else {
+                    match spec.kind {
+                        ArgKind::Line if attempt == 0 => (LINE_TOKENS, &LINE_STOP),
+                        ArgKind::Line => (LINE_TOKENS, &[]),
+                        ArgKind::Text => (self.deps.phase_budgets.execute_tokens, &[]),
+                    }
                 };
                 let reply = self
                     .deps
@@ -367,15 +382,19 @@ impl Runtime {
                     .await?;
                 ctx.trace.llm_call("execute", model_id);
                 let reply = clean_reply(&reply);
-                let answered = match spec.kind {
-                    ArgKind::Line => parse_line(&reply),
-                    // The same extractor the direct chat path uses, so a fenced
-                    // answer here and a fenced answer there are unwrapped by one
-                    // rule rather than two.
-                    ArgKind::Text => crate::content::sanitize::extract_file_content(
-                        &reply,
-                        args.get("path").and_then(Value::as_str).unwrap_or_default(),
-                    ),
+                let answered = if has_rag_evidence && reply.trim().contains('\n') {
+                    reply.trim().to_string()
+                } else {
+                    match spec.kind {
+                        ArgKind::Line => parse_line(&reply),
+                        // The same extractor the direct chat path uses, so a fenced
+                        // answer here and a fenced answer there are unwrapped by one
+                        // rule rather than two.
+                        ArgKind::Text => crate::content::sanitize::extract_file_content(
+                            &reply,
+                            args.get("path").and_then(Value::as_str).unwrap_or_default(),
+                        ),
+                    }
                 };
                 // A small model continues the nearest text, and the nearest
                 // text is what we just asked. Strip our own sentences off the

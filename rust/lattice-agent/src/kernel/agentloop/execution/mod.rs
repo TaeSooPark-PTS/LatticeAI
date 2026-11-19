@@ -36,6 +36,22 @@ use crate::seam::worker::{Completion, ToolOutcome, WorkerError};
 mod repair;
 use repair::*;
 
+pub fn request_wants_web(request: &str) -> bool {
+    crate::kernel::agentloop::guided::request_wants_web(request)
+}
+
+pub fn request_wants_computer_use(request: &str) -> bool {
+    crate::kernel::agentloop::guided::request_wants_computer_use(request)
+}
+
+pub fn request_wants_knowledge(request: &str) -> bool {
+    crate::kernel::agentloop::guided::request_wants_knowledge(request)
+}
+
+pub fn url_named_in_request(request: &str) -> Option<String> {
+    crate::kernel::agentloop::guided::url_named_in_request(request)
+}
+
 /// One action the executor decided on, however it decided.
 ///
 /// The JSON loop reads these four out of a parsed object; the guided loop
@@ -134,6 +150,8 @@ impl Runtime {
         // enforced here too since v12.0.0.
         let mut last_failure: Option<String> = None;
         let mut repeated_failures = 0u32;
+        let measured_run = self.deps.probe.is_some() && self.deps.agent_profile.is_none();
+        let mut adaptive_prefix = false;
 
         for _ in 0..budget {
             let context = self.executor_context(ctx, req, profile);
@@ -151,8 +169,10 @@ impl Runtime {
                     // asks for it the completion *starts* inside the object, so
                     // a preamble, a fence or a `<|channel|>` frame is not a
                     // thing the model can emit rather than a thing the repair
-                    // chain has to undo. Off for `standard`.
-                    prefix: if profile.forced_json_prefix {
+                    // chain has to undo. Off for `standard`, unless mid-run
+                    // adaptive escalation enables it after 2 parse failures on
+                    // a measured run.
+                    prefix: if profile.forced_json_prefix || adaptive_prefix {
                         crate::kernel::profile::EXECUTE_JSON_PREFIX
                     } else {
                         ""
@@ -177,6 +197,21 @@ impl Runtime {
                     }
                     None => {
                         parse_failures += 1;
+                        if measured_run
+                            && !profile.forced_json_prefix
+                            && !adaptive_prefix
+                            && parse_failures >= 2
+                        {
+                            adaptive_prefix = true;
+                            ctx.trace.decision(
+                                "execute",
+                                "adaptive_prefix_enabled",
+                                &[
+                                    ("profile", json!(profile.name)),
+                                    ("parse_failures", json!(parse_failures)),
+                                ],
+                            );
+                        }
                         let fingerprint = raw.trim().to_string();
                         let repeated = !fingerprint.is_empty() && !seen_replies.insert(fingerprint);
                         if repeated && repeat_escalations > 0 && parse_failures >= parse_budget {
@@ -325,6 +360,21 @@ Choose one of these exact names: {known}."
             }
             if last_step_copied_the_example(ctx) || last_step_unknown_action(ctx) {
                 parse_failures += 1;
+                if measured_run
+                    && !profile.forced_json_prefix
+                    && !adaptive_prefix
+                    && parse_failures >= 2
+                {
+                    adaptive_prefix = true;
+                    ctx.trace.decision(
+                        "execute",
+                        "adaptive_prefix_enabled",
+                        &[
+                            ("profile", json!(profile.name)),
+                            ("parse_failures", json!(parse_failures)),
+                        ],
+                    );
+                }
                 if parse_failures >= parse_budget {
                     if self.demote_to_guided(ctx, profile) {
                         return self
@@ -416,22 +466,23 @@ Choose one of these exact names: {known}."
     /// * nothing has worked yet — a run with execution evidence is making
     ///   progress, and restarting it in another mode would throw that away.
     fn demote_to_guided(&mut self, ctx: &mut AgentRunContext, profile: AgentProfile) -> bool {
-        if profile.decomposed
-            || self.deps.probe.is_none()
-            || self.deps.agent_profile.is_some()
-            || Self::has_execution_evidence(ctx)
-        {
+        if profile.decomposed || self.deps.probe.is_none() || self.deps.agent_profile.is_some() {
             return false;
         }
+        let decision = if Self::has_execution_evidence(ctx) {
+            "profile_demoted_mid_run"
+        } else {
+            "profile_demoted"
+        };
         ctx.trace.decision(
             "execute",
-            "profile_demoted",
+            decision,
             &[("from", json!(profile.name)), ("to", json!("guided"))],
         );
         self.emit_step(
             "execute",
             "profile",
-            &[("profile", json!({"profile": "guided", "source": "demoted"}))],
+            &[("profile", json!({"profile": "guided", "source": decision}))],
         );
         self.set_resolved_profile(crate::kernel::profile::GUIDED);
         true
@@ -488,13 +539,24 @@ Choose one of these exact names: {known}."
         };
         if original != "final" {
             if let Some(entry) = crate::tools::catalog::entry_for(&catalog, &original) {
+                let mut coerced = crate::tools::catalog::coerce_and_unwrap_args(entry, &mut args);
                 let snapshot = args.clone();
                 let adopted = crate::tools::catalog::adopt_named_args(entry, &snapshot, &mut args);
                 if !adopted.is_empty() {
+                    coerced.extend(crate::tools::catalog::coerce_and_unwrap_args(
+                        entry, &mut args,
+                    ));
                     ctx.trace.decision(
                         "execute",
                         "synonym_arg_adopted",
                         &[("action", json!(original)), ("args", json!(adopted))],
+                    );
+                }
+                if !coerced.is_empty() {
+                    ctx.trace.decision(
+                        "execute",
+                        "arg_coerced",
+                        &[("action", json!(original)), ("args", json!(coerced))],
                     );
                 }
                 let filled = crate::tools::catalog::fill_documented_defaults(entry, &mut args);
@@ -513,8 +575,22 @@ Choose one of these exact names: {known}."
                         &[("action", json!(original)), ("args", json!(stated))],
                     );
                 }
+                if let Some((element, cx, cy)) =
+                    self.resolve_ui_element_coords(ctx, &original, &mut args)
+                {
+                    ctx.trace.decision(
+                        "execute",
+                        "ui_element_resolved",
+                        &[
+                            ("action", json!(original)),
+                            ("element", json!(element)),
+                            ("x", json!(cx)),
+                            ("y", json!(cy)),
+                        ],
+                    );
+                }
                 if let Some(missing) = crate::tools::catalog::missing_required(entry, &args) {
-                    return self.refuse_incomplete_call(ctx, &original, &args, &missing);
+                    return self.refuse_incomplete_call(ctx, entry, &original, &args, &missing);
                 }
             }
         }
@@ -581,6 +657,9 @@ Choose one of these exact names: {known}."
             // answer named no figure at all.
             ctx.final_message =
                 complete_counted_and_summarized(&settled, &req.message, &ctx.transcript);
+            if crate::kernel::transcript::rag_grounding::transcript_has_evidence(&ctx.transcript) {
+                self.enforce_or_repair_grounded_final(ctx, req).await;
+            }
             ctx.transcript.push(json!({
                 "state": AgentState::Executing.as_str(),
                 "action": "final", "thoughts": thoughts,
@@ -728,6 +807,100 @@ with its own path and its own content.";
         self.dispatch_step(ctx, req, call).await;
         remember_catalog_name(ctx, name, original);
         true
+    }
+
+    /// Verify a `final` answer against RAG / web evidence on `ctx.transcript`:
+    /// - Enforces clean bilingual abstention on `ZeroActiveEvidenceHallucination`
+    ///   (`grounded_abstention_enforced`).
+    /// - Performs at most ONE targeted self-repair completion with
+    ///   `[ACTIVE GROUNDED EVIDENCE]` on numeric, polarity, superseded-fact,
+    ///   or citation defects (`grounded_answer_repaired`).
+    async fn enforce_or_repair_grounded_final(
+        &mut self,
+        ctx: &mut AgentRunContext,
+        req: &RunRequest,
+    ) {
+        use crate::kernel::transcript::rag_grounding::{
+            abstention_message, build_evidence_card, extract_evidence_passages,
+            verify_grounded_answer, GroundingDefect,
+        };
+        let passages = extract_evidence_passages(&ctx.transcript);
+        let report = verify_grounded_answer(&ctx.final_message, &passages);
+        if report.is_clean() {
+            return;
+        }
+        if report.has(GroundingDefect::ZeroActiveEvidenceHallucination) {
+            ctx.final_message = abstention_message(&req.message);
+            ctx.trace.decision(
+                "execute",
+                "grounded_abstention_enforced",
+                &[("report", report.to_detail())],
+            );
+            return;
+        }
+        let card = build_evidence_card(&passages, 1600);
+        let defects = report
+            .defects
+            .iter()
+            .map(|d| d.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let details = report.details.join("; ");
+        let repair_context = format!(
+            "{card}\n\n[USER REQUEST]\n{}\n\n[DRAFT ANSWER WITH GROUNDING DEFECTS ({defects}: {details})]\n{}\n\n\
+Rewrite the answer so that every number, polarity, and claim strictly matches ONLY the [ACTIVE GROUNDED EVIDENCE] passages above, \
+never uses [SUPERSEDED] facts, and cites active sources (e.g. [1], [2]). Reply with the corrected answer text only.",
+            req.message.trim(),
+            ctx.final_message.trim(),
+        );
+        let model_id = ctx.executing_model.clone().or(req.executing_model.clone());
+        let Ok(raw) = self
+            .deps
+            .worker
+            .llm(Completion {
+                model_id: model_id.as_deref(),
+                message:
+                    "Rewrite the final answer strictly grounded in [ACTIVE GROUNDED EVIDENCE].",
+                context: &repair_context,
+                max_tokens: self.deps.phase_budgets.execute_tokens.min(512),
+                temperature: 0.0,
+                stop: &[],
+                prefix: "",
+            })
+            .await
+        else {
+            return;
+        };
+        ctx.trace.llm_call("execute", model_id.as_deref());
+        let candidate = if let Ok((parsed, _)) = extract_action_details(&raw) {
+            let msg = py_str_or_empty(parsed.get("message"));
+            if !msg.trim().is_empty() {
+                msg.trim().to_string()
+            } else {
+                parsed
+                    .get("args")
+                    .and_then(|a| a.get("message"))
+                    .map(py_str)
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string()
+            }
+        } else {
+            let stripped = match crate::parse::channel::channel_payload(&raw) {
+                Some(payload) => crate::kernel::agentloop::guided::strip_control_tokens(&payload),
+                None => crate::kernel::agentloop::guided::strip_control_tokens(&raw),
+            };
+            stripped.trim().to_string()
+        };
+        if !candidate.is_empty() {
+            ctx.final_message = candidate;
+            let after = verify_grounded_answer(&ctx.final_message, &passages);
+            ctx.trace.decision(
+                "execute",
+                "grounded_answer_repaired",
+                &[("before", report.to_detail()), ("after", after.to_detail())],
+            );
+        }
     }
 }
 
