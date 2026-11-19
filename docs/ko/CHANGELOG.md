@@ -5,6 +5,21 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
 
+## [13.4.0] - 2026-11-20 — Living Synthesis
+
+### 추가됨
+- **범용 적응형 에이전트 하네스 (`rust/lattice-agent/src/kernel/`):**
+  - 모델별 하드코딩 분기 없이 3턴 런타임 마이크로 프로브(`probe.rs`)로 액션 계약 준수율·메뉴 선택·그라운딩 진실성을 실측(`agent_profile_probe.json` 캐시 및 런타임 강등 갱신)하도록 구현.
+  - 관찰 우선 도구 순위화(`guided/ranking.rs`) 및 한/영 도메인 분류기(`guided/domain.rs`, `guided/args.rs`, `guided/suggestions.rs`)를 추가해 맹목적 실행보다 `computer_ui_inspect`, `web_search`, `web_fetch`, `read_file` 검사를 선행하도록 개선.
+  - 명명된 UI 컨트롤의 바운딩 박스 중앙 좌표 `(x + w/2, y + h/2)`를 자동 산출하는 결정론적 해석(`execution/ui_resolve.rs`)과 JSON 구문 복구·ChatML 프리필(`execution/{repair.rs,mod.rs}`, `parse/action_salvage_text.rs`) 추가.
+  - 폐기된(`is_superseded`) 노드를 배제하고 `[ACTIVE GROUNDED EVIDENCE]` 활성 증거만 요약·검증하는 분리 계층(`transcript/rag_grounding.rs`, `transcript/summaries.rs`) 및 폐쇄형 기권 검증 적용.
+- **네이티브 웹 하네스 & 컴퓨터 유즈 브리지 정합성 (`rust/lattice-agent/src/tools/web/{mod.rs,html.rs,tests.rs}`, `latticeai/tools/{web.py,computer.py}`):**
+  - Rust 웹 추출/HTML 파서 모듈화 및 Python 워커 웹·컴퓨터 유즈 스키마 패리티 완성(`tests/unit/test_web_and_cu_tools.py`, `rust/lattice-platform/tests/mcp_replay.rs`).
+- **25개 태스크 실증 벤치마크 스위트 & 보고서 (`scripts/benchmark_adaptive_harness.py`, `rust/lattice-host/examples/harness_bench.rs`, `docs/ADAPTIVE_HARNESS_BENCHMARK.md`, `docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md`):**
+  - 로컬 `Qwen2.5-0.5B-Instruct-Q4_K_M` 대상 3군 비교 벤치마크에서 전체 통과율을 `28.0%`(Raw) / `24.0%`(비보정 Standard) → `84.0%`(`+56.0 pp`, 상대 `+200.0%` 향상, 컴퓨터 유즈 `100.0%`, RAG 그라운딩 `100.0%`, 도구 호출 `80.0%`, 웹 탐색 `80.0%`, 평균 지연 시간 `-63.3%`)로 실측·문서화(`tests/unit/test_adaptive_harness_benchmark.py`, `rust/lattice-agent/tests/adaptive_harness.rs`).
+- **100% 영문 ↔ 한국어 양방향 문서 대등성 (`docs/ko/**`, `scripts/check_doc_languages.mjs`):**
+  - GitHub에 노출되는 모든 마크다운 문서에 대해 순수 영문/순수 한국어 미러와 양방향 언어 전환 배지를 완성해 `npm run docs:check-languages` 100% 통과 달성.
+
 ## [13.3.1] - 2026-11-19 — Living Synthesis
 
 ### 추가됨

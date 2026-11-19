@@ -39,12 +39,52 @@ impl Runtime {
             // surface a number two ways.
             return crate::kernel::transcript::attributed_count(&req.message, &ctx.transcript);
         }
+        if arg == "url" {
+            return url_named_in_request(&req.message)
+                .or_else(|| {
+                    crate::kernel::agentloop::execution::url_from_transcript(&ctx.transcript)
+                })
+                .or_else(|| self.plan_arg(ctx, entry, arg));
+        }
+        let bare = entry
+            .name
+            .strip_prefix(crate::tools::catalog::MCP_PREFIX)
+            .unwrap_or(entry.name.as_str());
+        if matches!(bare, "computer_click" | "computer_scroll" | "computer_move")
+            && matches!(arg, "x" | "y")
+        {
+            if let Some((_, cx, cy)) =
+                crate::kernel::agentloop::execution::find_request_ui_element_center(
+                    &ctx.transcript,
+                    &req.message,
+                )
+            {
+                return Some(if arg == "x" {
+                    cx.to_string()
+                } else {
+                    cy.to_string()
+                });
+            }
+        }
+        if bare == "computer_type" && arg == "text" {
+            return typed_text_in_request(&req.message).or_else(|| self.plan_arg(ctx, entry, arg));
+        }
+        if bare == "computer_key" && arg == "key" {
+            return key_named_in_request(&req.message).or_else(|| self.plan_arg(ctx, entry, arg));
+        }
         if arg != "path" {
             let line = entry
                 .required
                 .iter()
                 .any(|spec| spec.name == arg && spec.kind == ArgKind::Line);
             return line.then(|| self.plan_arg(ctx, entry, arg)).flatten();
+        }
+        if !entry.name.contains("write") {
+            if let Some(unread) =
+                unread_existing_path_in_request(ctx, &req.message, &self.deps.workspace)
+            {
+                return Some(self.workspace_relative(&unread));
+            }
         }
         if let Some(path) = path_named_in_request(&req.message, entry, &self.deps.workspace) {
             return Some(self.workspace_relative(&path));

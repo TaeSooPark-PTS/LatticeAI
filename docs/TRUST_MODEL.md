@@ -2,7 +2,7 @@
 
 # Lattice AI Trust Model
 
-Current release: **13.3.1 — Living Synthesis**.
+Current release: **13.4.0 — Living Synthesis**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

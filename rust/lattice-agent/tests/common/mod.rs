@@ -264,6 +264,15 @@ impl ReplayWorker {
             .push(json!({"tool": tool, "args": args.clone()}));
     }
 
+    /// Whether the front queued recorded tool call is for `tool`.
+    pub fn has_front_tool_call(&self, tool: &str) -> bool {
+        self.tool_calls
+            .lock()
+            .expect("lock")
+            .first()
+            .is_some_and(|entry| entry.get("tool").and_then(Value::as_str) == Some(tool))
+    }
+
     /// Load the recorded tool results this worker will replay, in order.
     pub fn load_tool_calls(&self, recorded: &[Value]) {
         *self.tool_calls.lock().expect("lock") = recorded.to_vec();
@@ -344,6 +353,11 @@ pub struct RecordingHost {
 
 impl lattice_agent::tools::ToolHost for RecordingHost {
     fn handles(&self, tool: &str) -> bool {
+        if matches!(tool, "web_fetch" | "web_search" | "computer_ui_inspect")
+            && self.worker.has_front_tool_call(tool)
+        {
+            return false;
+        }
         self.inner.handles(tool)
     }
 

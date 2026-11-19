@@ -1,10 +1,10 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v13.3.1)
+# Lattice AI 기능 현황 (v13.4.0)
 
 > **상태: 표준 문서(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **13.3.1 — Living Synthesis**.
+현재 릴리스: **13.4.0 — Living Synthesis**.
 
 이 문서는 Lattice AI의 현재 기능 상태와 알려진 한계를 정직하게 설명합니다(대화형 지식 그래프 이웃 합성 및 모순 필터링, 원클릭 모순 제안/해결, 대화 인사이트 브레인 저장 및 인라인 변경 제안 승인, 실시간 임베딩 드레인 제어, 협조적 모델 다운로드 취소, 2단계 청크 증분 동기화, 주장 단위 근거 검증 텔레메트리, 개체 통합/이중 시간 요약 포함).
 공개 변경 이력은 [`CHANGELOG.md`](./CHANGELOG.md)와 [`RELEASE.md`](../../RELEASE.md)에서 `v12.0.0` 이후 버전만 유지합니다.
@@ -58,7 +58,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **PostgreSQL 백엔드** | 계획됨(Planned) | 공식 로컬 라이브 저장소는 SQLite입니다. PostgreSQL/pgvector는 드라이런 계획 및 옵트인 CI 검증만 존재하는 계획 단계입니다. |
 | **텔레그램 브리지 & 텔레그램 검토** | **11.6.0에서 제거됨** | 제품 서버가 Rust로 전환되면서 기존 Python 플랫폼 코드에 의존하던 텔레그램 브리지가 제거되었습니다. 웹과 VS Code의 검토함(`/api/proposals`)은 그대로 유지됩니다. |
 | **SSO / OIDC 로그인 콜백** | **11.6.0에서 제거됨** | Python 워커가 `/auth/*`를 마운트하지 않으면서 OIDC 로그인/콜백 흐름이 제거되었습니다. SSO 설정 화면과 `lattice-auth` 네이티브 비밀번호 로그인·세션·CSRF는 유지됩니다. |
-| **릴리스 아티팩트** | 현재 제공 | Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_13.3.1_aarch64.dmg`) 및 `SHA256SUMS`가 정확한 버전 파일명으로 빌드·검증·배포됩니다. |
+| **릴리스 아티팩트** | 현재 제공 | Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_13.4.0_aarch64.dmg`) 및 `SHA256SUMS`가 정확한 버전 파일명으로 빌드·검증·배포됩니다. |
 
 ---
 
@@ -83,7 +83,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 
 이 저장소는 현대화된 Rust 호스트 및 도메인 그룹 아키텍처 시대(`12.0.0` 이후)의 릴리스 이력을 유지합니다:
 
-- `13.3.1` · `13.3.0` · `13.2.1` · `13.2.0` · `13.1.0` · `13.0.0`
+- `13.4.0` · `13.3.1` · `13.3.0` · `13.2.1` · `13.2.0` · `13.1.0` · `13.0.0`
 - `12.10.0` · `12.9.0` · `12.8.0` · `12.7.0` · `12.6.0` · `12.5.0` · `12.4.0` · `12.3.0` · `12.2.1` · `12.2.0` · `12.1.0` · `12.0.0`
 
 상세 변경 사항은 [`CHANGELOG.md`](./CHANGELOG.md), 아키텍처 상세는 [`ARCHITECTURE.md`](./ARCHITECTURE.md), 보안 지원 범위는 [`SECURITY.md`](./SECURITY.md)를 참고하세요.

@@ -10,6 +10,12 @@ use crate::kernel::transcript::{compact_transcript, files_written};
 use crate::parse::pystr::{is_truthy, py_str};
 use crate::seam::worker::ToolOutcome;
 
+#[path = "ui_resolve.rs"]
+mod ui_resolve;
+use ui_resolve::find_ui_element_center;
+pub(in crate::kernel::agentloop) use ui_resolve::{
+    cap_lean_action_names_for, find_request_ui_element_center, url_from_transcript,
+};
 /// The sentence appended to a not-found error against the request's own output
 /// file. Also the idempotence marker: a step already carrying it is not steered
 /// twice.
@@ -431,6 +437,7 @@ Send it again with that argument's value."
     pub(super) fn resolve_ui_element_coords(
         &self,
         ctx: &AgentRunContext,
+        req: &RunRequest,
         action: &str,
         args: &mut Map<String, Value>,
     ) -> Option<(String, i64, i64)> {
@@ -442,7 +449,7 @@ Send it again with that argument's value."
         }
         let has_numeric_xy = args.get("x").is_some_and(Value::is_number)
             && args.get("y").is_some_and(Value::is_number);
-        let needle = [
+        let explicit_needle = [
             "element_id",
             "element",
             "label",
@@ -468,14 +475,26 @@ Send it again with that argument's value."
                 .map(str::trim)
                 .filter(|s| !s.is_empty() && s.parse::<f64>().is_err())
                 .map(String::from)
-        })?;
-        if has_numeric_xy && !args.contains_key("element_id") && !args.contains_key("element") {
-            return None;
+        });
+        if let Some(needle) = explicit_needle {
+            if let Some((cx, cy)) = find_ui_element_center(&ctx.transcript, &needle) {
+                args.insert("x".into(), json!(cx));
+                args.insert("y".into(), json!(cy));
+                return Some((needle, cx, cy));
+            }
         }
-        let (cx, cy) = find_ui_element_center(&ctx.transcript, &needle)?;
-        args.insert("x".into(), json!(cx));
-        args.insert("y".into(), json!(cy));
-        Some((needle, cx, cy))
+        if let Some((matched, cx, cy)) =
+            find_request_ui_element_center(&ctx.transcript, &req.message)
+        {
+            let cur_x = args.get("x").and_then(Value::as_i64);
+            let cur_y = args.get("y").and_then(Value::as_i64);
+            if cur_x != Some(cx) || cur_y != Some(cy) {
+                args.insert("x".into(), json!(cx));
+                args.insert("y".into(), json!(cy));
+                return Some((matched, cx, cy));
+            }
+        }
+        None
     }
 
     /// Run one host-catalog entry: an MCP tool the run does not govern, or a
@@ -702,6 +721,7 @@ Send it again with that argument's value."
     /// [`guided::url_named_in_request`]).
     pub(super) fn fill_stated_request_args(
         &self,
+        ctx: &AgentRunContext,
         entry: &crate::tools::catalog::CatalogEntry,
         args: &mut Map<String, Value>,
         req: &crate::kernel::agentloop::RunRequest,
@@ -709,29 +729,71 @@ Send it again with that argument's value."
     ) -> Vec<String> {
         let mut filled = Vec::new();
         for spec in &entry.required {
-            if !matches!(args.get(&spec.name), None | Some(Value::Null)) {
-                continue;
-            }
+            let existing_str = args
+                .get(&spec.name)
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .unwrap_or("");
+            let is_missing = matches!(args.get(&spec.name), None | Some(Value::Null))
+                || (args.get(&spec.name).is_some_and(Value::is_string) && existing_str.is_empty());
             if spec.name == "url" {
-                if let Some(url) = guided::url_named_in_request(&req.message) {
-                    args.insert(spec.name.clone(), json!(url));
-                    filled.push(spec.name.clone());
+                let valid_http =
+                    existing_str.starts_with("http://") || existing_str.starts_with("https://");
+                if is_missing || !valid_http {
+                    if let Some(url) = guided::url_named_in_request(&req.message)
+                        .or_else(|| url_from_transcript(&ctx.transcript))
+                    {
+                        args.insert(spec.name.clone(), json!(url));
+                        filled.push(spec.name.clone());
+                    }
                 }
                 continue;
             }
             if crate::tools::catalog::is_search_arg(&spec.name) {
-                if let Some(term) = guided::term_named_in_request(&req.message, catalog) {
-                    args.insert(spec.name.clone(), json!(term));
-                    filled.push(spec.name.clone());
+                if is_missing {
+                    if let Some(term) = guided::term_named_in_request(&req.message, catalog) {
+                        args.insert(spec.name.clone(), json!(term));
+                        filled.push(spec.name.clone());
+                    }
                 }
                 continue;
             }
             if spec.name == "path" {
-                if let Some(path) =
-                    guided::path_named_in_request(&req.message, entry, &self.deps.workspace)
-                {
-                    args.insert(spec.name.clone(), json!(path));
-                    filled.push(spec.name.clone());
+                if is_missing {
+                    let chosen_path = if !entry.name.contains("write") {
+                        guided::unread_existing_path_in_request(
+                            ctx,
+                            &req.message,
+                            &self.deps.workspace,
+                        )
+                    } else {
+                        None
+                    }
+                    .or_else(|| {
+                        guided::path_named_in_request(&req.message, entry, &self.deps.workspace)
+                    });
+                    if let Some(path) = chosen_path {
+                        args.insert(spec.name.clone(), json!(path));
+                        filled.push(spec.name.clone());
+                    }
+                }
+                continue;
+            }
+            if spec.name == "text" && entry.name.ends_with("computer_type") {
+                if let Some(typed) = guided::typed_text_in_request(&req.message) {
+                    if is_missing || existing_str != typed {
+                        args.insert(spec.name.clone(), json!(typed));
+                        filled.push(spec.name.clone());
+                    }
+                }
+                continue;
+            }
+            if spec.name == "key" && entry.name.ends_with("computer_key") {
+                if let Some(key) = guided::key_named_in_request(&req.message) {
+                    if is_missing {
+                        args.insert(spec.name.clone(), json!(key));
+                        filled.push(spec.name.clone());
+                    }
                 }
             }
         }
@@ -842,308 +904,4 @@ fn phrase_hits(hay: &str, source: &str) -> bool {
         .map(|chunk| chunk.trim().to_lowercase())
         .filter(|chunk| chunk.chars().count() >= 6)
         .any(|needle| hay.contains(&needle))
-}
-
-fn value_as_i64(value: &Value) -> Option<i64> {
-    value
-        .as_i64()
-        .or_else(|| value.as_f64().map(|f| f.round() as i64))
-        .or_else(|| {
-            value
-                .as_str()
-                .and_then(|s| s.trim().parse::<f64>().ok())
-                .map(|f| f.round() as i64)
-        })
-}
-
-fn element_center_coords(elem: &Value) -> Option<(i64, i64)> {
-    let obj = elem.as_object()?;
-    if let (Some(cx), Some(cy)) = (
-        obj.get("center_x").and_then(value_as_i64),
-        obj.get("center_y").and_then(value_as_i64),
-    ) {
-        return Some((cx, cy));
-    }
-    if let Some(center) = obj.get("center") {
-        if let (Some(cx), Some(cy)) = (
-            center.get("x").and_then(value_as_i64),
-            center.get("y").and_then(value_as_i64),
-        ) {
-            return Some((cx, cy));
-        }
-        if let Some(arr) = center.as_array() {
-            if arr.len() >= 2 {
-                if let (Some(cx), Some(cy)) = (value_as_i64(&arr[0]), value_as_i64(&arr[1])) {
-                    return Some((cx, cy));
-                }
-            }
-        }
-    }
-    for key in ["bounds", "bbox", "rect", "frame"] {
-        let Some(box_val) = obj.get(key) else {
-            continue;
-        };
-        if let Some(bobj) = box_val.as_object() {
-            if let (Some(x), Some(y), Some(w), Some(h)) = (
-                bobj.get("x").and_then(value_as_i64),
-                bobj.get("y").and_then(value_as_i64),
-                bobj.get("width")
-                    .or_else(|| bobj.get("w"))
-                    .and_then(value_as_i64),
-                bobj.get("height")
-                    .or_else(|| bobj.get("h"))
-                    .and_then(value_as_i64),
-            ) {
-                return Some((x + w / 2, y + h / 2));
-            }
-            if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
-                bobj.get("x1")
-                    .or_else(|| bobj.get("left"))
-                    .and_then(value_as_i64),
-                bobj.get("y1")
-                    .or_else(|| bobj.get("top"))
-                    .and_then(value_as_i64),
-                bobj.get("x2")
-                    .or_else(|| bobj.get("right"))
-                    .and_then(value_as_i64),
-                bobj.get("y2")
-                    .or_else(|| bobj.get("bottom"))
-                    .and_then(value_as_i64),
-            ) {
-                return Some(((x1 + x2) / 2, (y1 + y2) / 2));
-            }
-        }
-        if let Some(arr) = box_val.as_array() {
-            if arr.len() >= 4 {
-                if let (Some(a), Some(b), Some(c), Some(d)) = (
-                    value_as_i64(&arr[0]),
-                    value_as_i64(&arr[1]),
-                    value_as_i64(&arr[2]),
-                    value_as_i64(&arr[3]),
-                ) {
-                    return Some(((a + c) / 2, (b + d) / 2));
-                }
-            }
-        }
-    }
-    if let (Some(x), Some(y), Some(w), Some(h)) = (
-        obj.get("x").and_then(value_as_i64),
-        obj.get("y").and_then(value_as_i64),
-        obj.get("width")
-            .or_else(|| obj.get("w"))
-            .and_then(value_as_i64),
-        obj.get("height")
-            .or_else(|| obj.get("h"))
-            .and_then(value_as_i64),
-    ) {
-        return Some((x + w / 2, y + h / 2));
-    }
-    if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
-        obj.get("x1").and_then(value_as_i64),
-        obj.get("y1").and_then(value_as_i64),
-        obj.get("x2").and_then(value_as_i64),
-        obj.get("y2").and_then(value_as_i64),
-    ) {
-        return Some(((x1 + x2) / 2, (y1 + y2) / 2));
-    }
-    if let (Some(x), Some(y)) = (
-        obj.get("x").and_then(value_as_i64),
-        obj.get("y").and_then(value_as_i64),
-    ) {
-        return Some((x, y));
-    }
-    None
-}
-
-fn find_ui_element_center(transcript: &[Value], needle: &str) -> Option<(i64, i64)> {
-    let needle_trimmed = needle.trim();
-    if needle_trimmed.is_empty() {
-        return None;
-    }
-    let needle_lower = needle_trimmed.to_lowercase();
-    for step in transcript.iter().rev() {
-        if step.get("error").is_some_and(is_truthy) {
-            continue;
-        }
-        let Some(action) = step.get("action").and_then(Value::as_str) else {
-            continue;
-        };
-        let bare = action
-            .strip_prefix(crate::tools::catalog::MCP_PREFIX)
-            .unwrap_or(action);
-        if bare != "computer_ui_inspect" {
-            continue;
-        }
-        let Some(result) = step.get("result") else {
-            continue;
-        };
-        let mut elements: Vec<&Value> = Vec::new();
-        for key in ["elements", "nodes", "items", "ui_elements", "targets"] {
-            if let Some(arr) = result.get(key).and_then(Value::as_array) {
-                elements.extend(arr.iter());
-            }
-        }
-        if elements.is_empty() {
-            continue;
-        }
-        let field_str = |elem: &Value, key: &str| -> Option<String> {
-            match elem.get(key)? {
-                Value::String(s) if !s.trim().is_empty() => Some(s.trim().to_string()),
-                Value::Number(n) => Some(n.to_string()),
-                _ => None,
-            }
-        };
-        // 1. Exact ID match.
-        for elem in &elements {
-            for key in ["id", "element_id", "uid", "ref"] {
-                if field_str(elem, key).is_some_and(|val| val.eq_ignore_ascii_case(needle_trimmed))
-                {
-                    if let Some(coords) = element_center_coords(elem) {
-                        return Some(coords);
-                    }
-                }
-            }
-        }
-        // 2. Exact label/title/name/text match.
-        for elem in &elements {
-            for key in [
-                "label",
-                "title",
-                "name",
-                "text",
-                "value",
-                "description",
-                "ax_title",
-            ] {
-                if field_str(elem, key).is_some_and(|val| val.to_lowercase() == needle_lower) {
-                    if let Some(coords) = element_center_coords(elem) {
-                        return Some(coords);
-                    }
-                }
-            }
-        }
-        // 3. Case-insensitive substring match against label/title/name/text/id.
-        for elem in &elements {
-            for key in [
-                "label",
-                "title",
-                "name",
-                "text",
-                "value",
-                "description",
-                "id",
-                "element_id",
-            ] {
-                if field_str(elem, key)
-                    .is_some_and(|val| val.to_lowercase().contains(&needle_lower))
-                {
-                    if let Some(coords) = element_center_coords(elem) {
-                        return Some(coords);
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-#[cfg(test)]
-fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
-    cap_lean_action_names_for("", false, names, limit)
-}
-
-pub(in crate::kernel::agentloop) fn cap_lean_action_names_for(
-    request: &str,
-    ui_observed: bool,
-    names: Vec<String>,
-    limit: usize,
-) -> Vec<String> {
-    const CORE: [&str; 8] = [
-        "write_file",
-        "read_file",
-        "edit_file",
-        "list_dir",
-        "mcp.grep",
-        "mcp.list_dir",
-        "mcp.read_file",
-        "mcp.knowledge_search",
-    ];
-    let domain = guided::domain_priority_tools(request, ui_observed);
-    let is_protected = |name: &str| {
-        CORE.contains(&name)
-            || domain.contains(&name)
-            || (!request.trim().is_empty() && guided::named_in(request, name))
-    };
-    let has_final = names.iter().any(|name| name == "final");
-    let present: std::collections::BTreeSet<&str> = names.iter().map(String::as_str).collect();
-    let mut kept = Vec::new();
-    for name in &names {
-        if name == "final" {
-            continue;
-        }
-        if kept.len() + 1 < limit {
-            kept.push(name.clone());
-        }
-    }
-    for priority in domain.iter().copied().chain(CORE) {
-        if !present.contains(priority) || kept.iter().any(|name| name == priority) {
-            continue;
-        }
-        if let Some(index) = kept.iter().rposition(|name| !is_protected(name.as_str())) {
-            kept[index] = priority.to_string();
-        } else if kept.len() + 1 < limit {
-            kept.push(priority.to_string());
-        }
-    }
-    if has_final {
-        kept.push("final".into());
-    }
-    kept
-}
-
-#[cfg(test)]
-mod lean_list_tests {
-    use super::cap_lean_action_names;
-
-    #[test]
-    fn a_long_catalog_keeps_the_head_and_final() {
-        let names: Vec<String> = (0..20)
-            .map(|index| format!("tool_{index}"))
-            .chain(std::iter::once("final".into()))
-            .collect();
-        let capped = cap_lean_action_names(names, 9);
-        assert_eq!(capped.len(), 9);
-        assert_eq!(capped[0], "tool_0");
-        assert_eq!(capped.last().map(String::as_str), Some("final"));
-        assert!(!capped.iter().any(|name| name == "tool_19"));
-    }
-
-    #[test]
-    fn core_file_tools_survive_an_alphabetical_flood() {
-        let mut names: Vec<String> = (0..20).map(|index| format!("computer_{index}")).collect();
-        names.push("write_file".into());
-        names.push("read_file".into());
-        names.push("final".into());
-        let capped = cap_lean_action_names(names, 9);
-        assert!(capped.iter().any(|name| name == "write_file"), "{capped:?}");
-        assert!(capped.iter().any(|name| name == "read_file"), "{capped:?}");
-        assert_eq!(capped.last().map(String::as_str), Some("final"));
-    }
-
-    #[test]
-    fn named_mcp_tools_survive_an_alphabetical_flood() {
-        let mut names: Vec<String> = (0..20).map(|index| format!("computer_{index}")).collect();
-        names.push("mcp.grep".into());
-        names.push("mcp.read_file".into());
-        names.push("write_file".into());
-        names.push("final".into());
-        let capped = cap_lean_action_names(names, 9);
-        assert!(capped.iter().any(|name| name == "mcp.grep"), "{capped:?}");
-        assert!(
-            capped.iter().any(|name| name == "mcp.read_file"),
-            "{capped:?}"
-        );
-        assert!(capped.iter().any(|name| name == "write_file"), "{capped:?}");
-        assert_eq!(capped.last().map(String::as_str), Some("final"));
-    }
 }

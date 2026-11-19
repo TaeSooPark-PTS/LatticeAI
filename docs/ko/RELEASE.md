@@ -17,6 +17,18 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.4.0 — Living Synthesis (2026-11-20)
+
+모델별 코드 분기 없이 동작하는 **범용 적응형 에이전트 하네스(`rust/lattice-agent/src/kernel/{probe.rs,agentloop/,transcript/,parse/}`)**, **모듈화된 네이티브 웹 하네스 및 컴퓨터 유즈 브리지 정합성(`rust/lattice-agent/src/tools/web/`, `latticeai/tools/{web.py,computer.py}`)**, **로컬 `Qwen2.5-0.5B-Instruct-Q4_K_M` 대상 25개 태스크 실측 통과율을 `28.0%`(Raw) / `24.0%`(Standard) → `84.0%`(`+56.0 pp` / 상대 `+200.0%`)로 끌어올린 실증 벤치마크**, **100% 영문 ↔ 한국어 양방향 문서 대등성(`npm run docs:check-languages`)**을 담은 범용 적응형 실행 릴리스.
+
+- **범용 적응형 에이전트 하네스:** 3턴 마이크로 프로브(`probe.rs`), 관찰 우선 도구 순위화(`ranking.rs`) 및 한/영 도메인 분류(`domain.rs`), 결정론적 UI 바운딩 박스 중앙 좌표 해석(`ui_resolve.rs` → 컴퓨터 유즈 `100.0%`), JSON 구문 복구·ChatML 프리필(`repair.rs`, `action_salvage_text.rs`), 활성/폐기 증거 분리 합성(`rag_grounding.rs`, `summaries.rs` → RAG 그라운딩 `100.0%`)을 도입했다.
+- **25개 태스크 실증 벤치마크:** `scripts/benchmark_adaptive_harness.py`와 `rust/lattice-host/examples/harness_bench.rs`로 로컬 `llama-server` 실측을 수행해 **도구 호출 80.0% (`+60.0 pp`)**, **웹 탐색 80.0% (`+80.0 pp`)**, **컴퓨터 유즈 100.0% (`+100.0 pp`)**, **답변 품질 60.0% (Standard 대비 `+40.0 pp`)**, **RAG 그라운딩 100.0% (`+40.0 pp` / Standard 대비 `+80.0 pp`)**, **평균 지연 시간 -63.3%**를 달성했다.
+- **100% 한/영 문서 대등성:** 루트, 크레이트, GitHub 가이드, 벤치마크 보고서 전반에 한국어 미러(`docs/ko/**`)와 양방향 언어 전환 배지를 완성했다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.4.0.md](./releases/RELEASE_NOTES_v13.4.0.md), 벤치마크는 [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](./ADAPTIVE_HARNESS_BENCHMARK.md).
+
+빌드 산출물은 `dist/ltcai-13.4.0-py3-none-any.whl`, `dist/ltcai-13.4.0.tar.gz`, `ltcai-13.4.0.tgz`, `dist/ltcai-13.4.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.0_aarch64.dmg` 입니다.
+
 ## v13.3.1 — Living Synthesis (2026-11-19)
 
 **시맨틱 임베딩 계약용 2단계 비동기 증분 청크 동기화(`plan_incremental_sync` + 비동기 `/worker/embed` + `commit_incremental_sync`, `watch_deliver.rs`)**, **`AnswerProof.tsx` 주장 검증 텔레메트리(`claim_verification`) 및 `BrainIntelligencePanel.tsx` 개체 통합·시간축 요약 카드(한/영 i18n · Vitest 100%)**, **전 스택 주간 Dependabot(`.github/dependabot.yml`) 자동 감시**를 통합한 완성도 업그레이드 릴리스.

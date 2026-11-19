@@ -2,9 +2,9 @@
 
 # Lattice AI 개발 가이드
 
-> **상태: 정본 (13.3.1)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
+> **상태: 정본 (13.4.0)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
 
-현재 릴리스: **13.3.1 — Living Synthesis**.
+현재 릴리스: **13.4.0 — Living Synthesis**.
 
 이 문서는 기여자 온보딩 경로를 정리합니다: 저장소를 어떻게 실행하는지, 변경 사항이 어디에 들어가야 하는지, 어떤 게이트가 실패하는지, 그리고 제품의 정직성을 지키는 내부 규칙을 다룹니다. 제품 포지셔닝과 5분 첫 실행 흐름은 [README.md](../../README.md)와 [ONBOARDING.md](./ONBOARDING.md)에 있습니다. 지원되는 릴리스 이력(12.0.0 이상)은 [CHANGELOG.md](../CHANGELOG.md)와 [RELEASE.md](../../RELEASE.md)에 있으며(`12.x`는 현대적인 Rust 호스트 + 도메인 그룹 아키텍처 세대이므로 [SECURITY.md](../../SECURITY.md)도 `12.x`만 지원합니다), 아직 열린 과제는 [ROADMAP.md](./ROADMAP.md)(참고 문서, 정본 아님)에 정리되어 있습니다.
 
@@ -60,7 +60,7 @@ Apple Silicon 로컬 모델 확장(MLX)은 실제로 모델을 로드할 때만 
 
 `scripts/run_python.mjs`는 `.venv/bin/python`을 우선합니다. `bin/ltcai.js`는 `LTCAI_PYTHON`, 관리형 `~/.ltcai/npm-python`, `.venv` 순서로 찾습니다. 둘 다 있을 때는 `LTCAI_PYTHON`으로 워커 인터프리터를 고정하세요.
 
-`bin/ltcai.js`는 `LATTICEAI_HOST_BIN` / `LTCAI_HOST`, `rust/target/release/lattice-host`, `rust/target/debug/lattice-host` 순서로 호스트 바이너리를 찾습니다. 아무것도 없으면 `cargo build -p lattice-host`(디버그)를 실행합니다. 오래된 `rust/target/release/lattice-host`가 최신 디버그 바이너리보다 우선하므로 `-V`가 13.3.1이 아니라면 경로를 지정하거나 `cargo build -p lattice-host --release`로 다시 빌드하세요.
+`bin/ltcai.js`는 `LATTICEAI_HOST_BIN` / `LTCAI_HOST`, `rust/target/release/lattice-host`, `rust/target/debug/lattice-host` 순서로 호스트 바이너리를 찾습니다. 아무것도 없으면 `cargo build -p lattice-host`(디버그)를 실행합니다. 오래된 `rust/target/release/lattice-host`가 최신 디버그 바이너리보다 우선하므로 `-V`가 13.4.0이 아니라면 경로를 지정하거나 `cargo build -p lattice-host --release`로 다시 빌드하세요.
 
 `npm start`와 `npm run dev`를 같은 포트에서 동시에 실행하지 마세요. 워커 진입점은 기본적으로 `LATTICEAI_PORT` 또는 **4825**를 사용합니다. 워커 연산 로직을 반복 개발할 때는 `LATTICEAI_PORT=4835 npm run dev`를 사용하세요(호스트와 짝지을 때는 `--no-spawn`과 워커 포트 지정 사용).
 
@@ -170,7 +170,7 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 
 ### 릴리스 증거 바인딩
 
-`scripts/check_release_evidence_bound.mjs`는 `output/release/v13.3.1/SCREENSHOT_INDEX.md`가 현재 `static/app/asset-manifest.json` 다이제스트와 비주얼 목 서버 지문과 일치하는지 확인합니다. 수정하려면 `npm run build:assets` 후 `npm run release:evidence`를 실행하세요.
+`scripts/check_release_evidence_bound.mjs`는 `output/release/v13.4.0/SCREENSHOT_INDEX.md`가 현재 `static/app/asset-manifest.json` 다이제스트와 비주얼 목 서버 지문과 일치하는지 확인합니다. 수정하려면 `npm run build:assets` 후 `npm run release:evidence`를 실행하세요.
 
 ## 내부 원칙
 
@@ -197,12 +197,12 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 
 릴리스·배포 예제는 항상 정확한 대상 버전 파일명을 사용해야 하며 와일드카드(`dist/*`) 업로드 명령을 문서화하지 마세요.
 
-13.3.1 릴리스 작업의 정확한 아티팩트 파일명은 다음과 같습니다.
+13.4.0 릴리스 작업의 정확한 아티팩트 파일명은 다음과 같습니다.
 
-- `dist/ltcai-13.3.1-py3-none-any.whl`
-- `dist/ltcai-13.3.1.tar.gz`
-- `ltcai-13.3.1.tgz`
-- `dist/ltcai-13.3.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.3.1_aarch64.dmg`
+- `dist/ltcai-13.4.0-py3-none-any.whl`
+- `dist/ltcai-13.4.0.tar.gz`
+- `ltcai-13.4.0.tgz`
+- `dist/ltcai-13.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.0_aarch64.dmg`
 
 DMG는 ad-hoc 서명(실질적으로 미서명) 상태이며, `npm run release:validate`는 Developer ID 서명이 아니라 파일명과 존재 여부를 검사합니다.

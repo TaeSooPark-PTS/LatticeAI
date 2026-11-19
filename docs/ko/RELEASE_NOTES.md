@@ -1,10 +1,16 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v13.4.0 - Living Synthesis] (2026-11-20)
+
+모델별 코드 분기 없는 범용 적응형 에이전트 하네스(`probe.rs` 3턴 마이크로 프로브, 관찰 우선 도구 순위화·한/영 도메인 분류, 결정론적 UI 바운딩 박스 중앙 좌표 해석 `ui_resolve.rs`, JSON 구문 복구·ChatML 프리필, 활성/폐기 증거 분리 `rag_grounding.rs`), 모듈화된 네이티브 웹 하네스·컴퓨터 유즈 브리지 정합성, 로컬 `Qwen2.5-0.5B-Instruct-Q4_K_M` 대상 25개 태스크 실측 통과율을 `28.0%`(Raw) / `24.0%`(Standard) → `84.0%`(`+56.0 pp` / 상대 `+200.0%`, 컴퓨터 유즈 `100.0%`, RAG 그라운딩 `100.0%`, 지연 시간 `-63.3%`)로 향상시킨 실증 벤치마크, 그리고 100% 한/영 양방향 GitHub 마크다운 대등성을 적용했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.4.0.md](./releases/RELEASE_NOTES_v13.4.0.md) · 벤치마크 보고서: [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](./ADAPTIVE_HARNESS_BENCHMARK.md).
+
 # [v13.3.1 - Living Synthesis] (2026-11-19)
 
 시맨틱 임베딩 계약용 2단계 비동기 증분 청크 동기화(`plan_incremental_sync` + 비동기 `/worker/embed` + `commit_incremental_sync`, `watch_deliver.rs`), `AnswerProof.tsx` 주장 검증 텔레메트리(`claim_verification`) 및 `BrainIntelligencePanel.tsx` 개체 통합·시간축 요약 카드(한/영 i18n · Vitest 100%), 전 스택 주간 `.github/dependabot.yml` 자동 감시를 적용했습니다.
 
-상세 릴리스 노트: [docs/releases/RELEASE_NOTES_v13.3.1.md](../releases/RELEASE_NOTES_v13.3.1.md).
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.3.1.md](./releases/RELEASE_NOTES_v13.3.1.md).
 
 # [v13.3.0 - Living Synthesis] (2026-11-19)
 
@@ -112,11 +118,12 @@ Hugging Face 실저장소 양자화 태그(`Q4_0`·`MXFP4`)와 GGUF 라우팅, �
 
 # 릴리스 노트 색인
 
-이 저장소는 **12.0.0부터 13.3.1까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **12.0.0부터 13.4.0까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (12.0.0+)
 
-- [v13.3.1 - Living Synthesis](../releases/RELEASE_NOTES_v13.3.1.md)
+- [v13.4.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.0.md)
+- [v13.3.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.3.1.md)
 - [v13.3.0 - Living Synthesis](../releases/RELEASE_NOTES_v13.3.0.md)
 - [v13.2.1 - Living Synthesis](../releases/RELEASE_NOTES_v13.2.1.md)
 - [v13.2.0 - Living Synthesis](../releases/RELEASE_NOTES_v13.2.0.md)

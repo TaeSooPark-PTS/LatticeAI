@@ -6,6 +6,7 @@ Per-version release notes for Lattice AI (`v12.0.0` and later). The rolling summ
 
 | Version | Theme | Note |
 | --- | --- | --- |
+| 13.4.0 | Living Synthesis | [RELEASE_NOTES_v13.4.0.md](RELEASE_NOTES_v13.4.0.md) |
 | 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](RELEASE_NOTES_v13.3.1.md) |
 | 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](RELEASE_NOTES_v13.3.0.md) |
 | 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](RELEASE_NOTES_v13.2.1.md) |

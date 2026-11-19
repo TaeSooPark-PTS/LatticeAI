@@ -569,6 +569,17 @@ impl Runtime {
                     }
                 }
             }
+            if entry.name == "write_file" && spec.name == "content" {
+                if let Some(literal) = quoted_term(&req.message) {
+                    if !value.contains(&literal) {
+                        value = if value.trim().is_empty() {
+                            literal
+                        } else {
+                            format!("{}\n{literal}", value.trim())
+                        };
+                    }
+                }
+            }
             if value.trim().is_empty() {
                 // An empty answer takes the plan's own value when there is one.
                 // Otherwise the argument is simply absent and the tool answers

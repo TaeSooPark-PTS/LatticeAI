@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.4.0 - Living Synthesis] (2026-11-20)
+
+Delivered the model-agnostic Universal Adaptive Agent Harness (`probe.rs` 3-turn micro-probing, observation-first tool ranking & bilingual domain classification, deterministic UI bounding-box center resolution `ui_resolve.rs`, malformed-JSON repair & ChatML completion prefill, active vs. superseded evidence separation `rag_grounding.rs`), modular native web fetching & Computer Use bridge parity, a reproducible 25-task live empirical benchmark on `Qwen2.5-0.5B-Instruct-Q4_K_M` lifting overall task pass rate from `28.0%` raw (`24.0%` standard loop) to `84.0%` (`+56.0 pp` / `+200.0%` relative gain, `100.0%` Computer Use, `100.0%` RAG Grounding, `-63.3%` latency), and 100% EN <-> KO bidirectional GitHub Markdown parity.
+
+See [docs/releases/RELEASE_NOTES_v13.4.0.md](docs/releases/RELEASE_NOTES_v13.4.0.md) and [docs/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ADAPTIVE_HARNESS_BENCHMARK.md).
+
 # [v13.3.1 - Living Synthesis] (2026-11-19)
 
 Delivered two-phase async incremental chunk synchronization for semantic embedding contracts (`plan_incremental_sync` + async `/worker/embed` + `commit_incremental_sync`, `watch_deliver.rs`), wired `AnswerProof.tsx` claim verification telemetry (`claim_verification`) and `BrainIntelligencePanel.tsx` entity resolution & temporal timeline summary cards (full Korean/English i18n at 100% Vitest coverage), and enabled weekly full-stack `.github/dependabot.yml` dependency monitoring.
@@ -112,10 +118,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.3.1** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.4.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
+- [v13.4.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.0.md)
 - [v13.3.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.3.1.md)
 - [v13.3.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.3.0.md)
 - [v13.2.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.2.1.md)

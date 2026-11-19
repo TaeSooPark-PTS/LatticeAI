@@ -6,6 +6,21 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.4.0] - 2026-11-20 — Living Synthesis
+
+### Added
+- **Universal Adaptive Agent Harness (`rust/lattice-agent/src/kernel/`):**
+  - Added 3-turn runtime micro-probing (`probe.rs`) scoring action contract fidelity, menu selection, and grounding truthfulness (`agent_profile_probe.json` cache with runtime demotion updates) with zero per-model code branches.
+  - Added observation-first tool ranking (`guided/ranking.rs`) and bilingual (`en`/`ko`) domain classification (`guided/domain.rs`, `guided/args.rs`, `guided/suggestions.rs`) so inspection actions (`computer_ui_inspect`, `web_search`, `web_fetch`, `read_file`) execute ahead of blind actuation.
+  - Added deterministic UI element bounding-box center resolution (`execution/ui_resolve.rs`) computing exact click coordinates `(x + w/2, y + h/2)` for named controls, plus malformed-JSON repair and ChatML completion prefill (`execution/{repair.rs,mod.rs}`, `parse/action_salvage_text.rs`).
+  - Added active vs. superseded evidence separation (`transcript/rag_grounding.rs`, `transcript/summaries.rs`) isolating `[ACTIVE GROUNDED EVIDENCE]` facts from superseded knowledge nodes and enforcing fail-closed abstention.
+- **Native Web Harness & Computer Use Bridge (`rust/lattice-agent/src/tools/web/{mod.rs,html.rs,tests.rs}`, `latticeai/tools/{web.py,computer.py}`):**
+  - Modularized native Rust web fetching and HTML extraction and aligned Python worker web/computer-use tool schemas and bridge parity (`tests/unit/test_web_and_cu_tools.py`, `rust/lattice-platform/tests/mcp_replay.rs`).
+- **25-Task Empirical Benchmark Suite & Documentation (`scripts/benchmark_adaptive_harness.py`, `rust/lattice-host/examples/harness_bench.rs`, `docs/ADAPTIVE_HARNESS_BENCHMARK.md`, `docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md`):**
+  - Added a reproducible 3-arm empirical harness benchmark (`tests/unit/test_adaptive_harness_benchmark.py`, `rust/lattice-agent/tests/adaptive_harness.rs`) demonstrating `28.0%` raw / `24.0%` uncalibrated standard -> `84.0%` (`+56.0 pp` vs raw / `+200.0%` relative gain, `100.0%` Computer Use, `100.0%` RAG Grounding, `80.0%` Tool Calling, `80.0%` Web Handling, `-63.3%` latency vs standard) on local `Qwen2.5-0.5B-Instruct-Q4_K_M`.
+- **100% EN <-> KO Bidirectional Documentation Parity (`docs/ko/**`, `scripts/check_doc_languages.mjs`):**
+  - Completed pure-Korean mirrors and bidirectional language switcher badges across all canonical GitHub Markdown docs (`npm run docs:check-languages` 100% parity gate).
+
 ## [13.3.1] - 2026-11-19 — Living Synthesis
 
 ### Added

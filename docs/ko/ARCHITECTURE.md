@@ -5,7 +5,7 @@
 > **상태: 표준 문서(Canonical)** — 현재 릴리스와 동기화되는 기준 아키텍처 문서입니다.
 > 이전 하위 시스템의 상세 기록은 [`docs/ko/architecture-overview.md`](./architecture-overview.md)(영문 원본: [`docs/architecture.md`](../architecture.md))에서 확인할 수 있습니다.
 
-현재 릴리스: **13.3.1 — Living Synthesis**.
+현재 릴리스: **13.4.0 — Living Synthesis**.
 
 Lattice AI는 로컬 우선(Local-first) 디지털 브레인(Digital Brain) 플랫폼입니다.
 현재 아키텍처는 프라이빗 브레인, 교체 가능한 모델 런타임, 명시적 도구 레지스트리,
@@ -221,15 +221,15 @@ flowchart TB
 
 ---
 
-## 릴리스 아티팩트 맵 (13.3.1)
+## 릴리스 아티팩트 맵 (13.4.0)
 
-`13.3.1` 정확한 아티팩트 파일명:
+`13.4.0` 정확한 아티팩트 파일명:
 
-- `dist/ltcai-13.3.1-py3-none-any.whl`
-- `dist/ltcai-13.3.1.tar.gz`
-- `ltcai-13.3.1.tgz`
-- `dist/ltcai-13.3.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.3.1_aarch64.dmg`
+- `dist/ltcai-13.4.0-py3-none-any.whl`
+- `dist/ltcai-13.4.0.tar.gz`
+- `ltcai-13.4.0.tgz`
+- `dist/ltcai-13.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.0_aarch64.dmg`
 
 macOS Apple Silicon DMG는 `.github/workflows/release.yml` 및 `publish.yml`에서 빌드·스모크 검증·체크섬(`SHA256SUMS`) 생성 후 GitHub Release에 첨부됩니다(`APPLE_CERTIFICATE` 시크릿 설정 시 Developer ID 서명, 미설정 시 ad-hoc 서명). 와일드카드(`dist/*`) 업로드 명령은 절대 사용하지 않습니다.
 

@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.4.0": {
+    "_why": [
+      "Universal Adaptive Harness (13.4.0) delivers model-agnostic execution",
+      "for small local models (probe scoring, observation-first ranking, deterministic",
+      "UI center resolution, active/superseded evidence cards), empirical benchmark",
+      "reporting (+56.0 pp / 84.0% pass rate), and 100% English <-> Korean bilingual",
+      "documentation parity with zero per-model UI regressions."
+    ],
+    "05-memory-graph.png": {
+      "reason": "Animated knowledge graph canvas rendered by Playwright shows live node layout delta."
+    }
+  },
   "13.3.1": {
     "_why": [
       "Living Synthesis (13.3.1) splits incremental_sync into two-phase async",

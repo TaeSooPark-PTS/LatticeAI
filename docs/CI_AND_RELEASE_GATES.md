@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> Status: canonical (updated 2026-11-19) — Current release: **13.3.1**
+> Status: canonical (updated 2026-11-19) — Current release: **13.4.0**
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection

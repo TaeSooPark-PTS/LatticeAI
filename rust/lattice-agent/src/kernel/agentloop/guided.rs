@@ -140,6 +140,15 @@ impl Runtime {
             .iter()
             .filter(|step| {
                 step.get("state").and_then(Value::as_str) == Some(AgentState::Executing.as_str())
+                    && step.get("action").and_then(Value::as_str) != Some("parse_error")
+                    && !step
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .is_some_and(|err| {
+                            err.starts_with("Unknown action")
+                                || err.starts_with("COPIED_")
+                                || err.starts_with("PREMATURE_FINAL")
+                        })
             })
             .count() as u32;
         let budget = req.max_steps.saturating_sub(executed).max(1);

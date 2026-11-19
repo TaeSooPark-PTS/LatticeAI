@@ -2,7 +2,7 @@
 
 # Lattice AI — 브라우저 확장 (Manifest V3)
 
-현재 릴리스: **13.3.1 — Living Synthesis**.
+현재 릴리스: **13.4.0 — Living Synthesis**.
 
 **로컬** Lattice AI 지식 그래프를 위한 경량 Chrome/Edge(Manifest V3) 확장 프로그램입니다. 클라우드 모델 연동은 호스트 측에 머무르며(선택 사항, 기본값 로컬), 이 확장은 오직 `127.0.0.1`로만 요청을 보냅니다. 핵심 기능은 세 가지입니다.
 

@@ -16,7 +16,7 @@
 
 <br/>
 
-![v13.3.1 Living Brain 둘러보기](output/release/v13.3.1/gifs/v13.3.1-living-brain-walkthrough.gif)
+![v13.4.0 Living Brain 둘러보기](output/release/v13.4.0/gifs/v13.4.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -33,11 +33,30 @@ Lattice AI는 대화, 파일, 폴더, 노트, 웹 캡처를 내가 소유하는 
 
 ---
 
+## 범용 적응형 에이전트 하네스 벤치마크 (v13.4.0)
+
+LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness)**(`rust/lattice-agent/src/kernel/`)를 도입합니다. 이 하네스는 모델별 하드코딩 분기(**Zero per-model code branches**) 없이도 소형 로컬 인스트럭션 튜닝 모델(0.5B ~ 7B 파라미터)이 도구 체인, 웹 탐색, 컴퓨터 유즈, 양방향 시간 축 RAG 그라운딩에서 프론티어 급의 안정성을 발휘하도록 지원합니다.
+
+`Qwen2.5-0.5B-Instruct-Q4_K_M`을 대상으로 25개 실환경 벤치마크 태스크에 걸쳐 실측한 결과:
+
+| 역량 카테고리 | Raw Baseline (하네스 미적용) | Standard Loop (v13.3) | 적응형 하네스 (v13.4.0) | 절대 개선폭 |
+| :--- | :---: | :---: | :---: | :---: |
+| **도구 호출 (Tool Calling)** | 20.0% (1/5) | 0.0% (0/5) | **80.0%** (4/5) | **+60.0 pp** |
+| **웹 탐색 (Web Handling)** | 0.0% (0/5) | 80.0% (4/5) | **80.0%** (4/5) | **+80.0 pp** |
+| **컴퓨터 유즈 (Computer Use)** | 0.0% (0/5) | 0.0% (0/5) | **100.0%** (5/5) | **+100.0 pp** |
+| **답변 품질 (Answer Quality)** | 60.0% (3/5) | 20.0% (1/5) | **60.0%** (3/5) | **0.0 pp** (std 대비 +40 pp) |
+| **RAG 그라운딩 (RAG Grounding)** | 60.0% (3/5) | 20.0% (1/5) | **100.0%** (5/5) | **+40.0 pp** (std 대비 +80 pp) |
+| **전체 작업 통과율** | **28.0%** (7/25) | **24.0%** (6/25) | **84.0%** (21/25) | **+56.0 pp (상대 개선율 +200.0%)** |
+
+실측 벤치마크 상세 보고서 및 재현 방법은 [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md) (또는 [영문 정본](docs/ADAPTIVE_HARNESS_BENCHMARK.md))에서 확인할 수 있습니다.
+
+---
+
 ## 빠른 시작
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_13.3.1_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_13.4.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -66,15 +85,15 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v13.3.1/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v13.3.1/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v13.4.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v13.4.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v13.3.1/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v13.3.1/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v13.4.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v13.4.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v13.3.1/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v13.3.1/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v13.4.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v13.4.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v13.3.1/screenshots/13-chronicle.png) | ![설정 화면](output/release/v13.3.1/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v13.4.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v13.4.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v13.3.1/SCREENSHOT_INDEX.md](output/release/v13.3.1/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v13.3.1/screenshots/01-login.png), [06-capture.png](output/release/v13.3.1/screenshots/06-capture.png), [07-model-library.png](output/release/v13.3.1/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v13.4.0/SCREENSHOT_INDEX.md](output/release/v13.4.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v13.4.0/screenshots/01-login.png), [06-capture.png](output/release/v13.4.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.4.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -86,6 +105,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 | **제품 철학** | [docs/ko/WHY_LATTICE.md](docs/ko/WHY_LATTICE.md) | 개별 AI 모델보다 브레인이 오래 남아야 하는 이유 |
 | **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 20개 라우트 Python AI 워커 |
 | **기능 현황** | [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md) | 현재 출시된 기능과 정직한 시스템 한계 |
+| **적응형 하네스 벤치마크** | [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md) | 25개 태스크 실측 보고서 (`Qwen2.5-0.5B-Instruct-Q4_K_M` `28.0% → 84.0%`) |
 | **운영 & 셀프 호스팅** | [docs/ko/OPERATIONS.md](docs/ko/OPERATIONS.md) | 저장소 구조, `.latticebrain` 백업/복원, 공개 모드 체크리스트 |
 | **엔터프라이즈 & 오픈 코어** | [docs/ko/ENTERPRISE.md](docs/ko/ENTERPRISE.md) | 오픈 코어 경계 및 [EDITION_STRATEGY.md](docs/ko/EDITION_STRATEGY.md) |
 | **보안 & 프라이버시** | [docs/ko/SECURITY.md](docs/ko/SECURITY.md) · [docs/ko/PRIVACY.md](docs/ko/PRIVACY.md) | 위협 모델, 루프백 기본값, 외부 전송 감사, [TRUST_MODEL.md](docs/ko/TRUST_MODEL.md) |
@@ -97,24 +117,24 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **13.3.1 — Living Synthesis**입니다:
+현재 최신 릴리스는 **13.4.0 — Living Synthesis**입니다:
 
-- **시맨틱 임베딩용 2단계 비동기 증분 동기화** — `incremental_sync`를 `plan_incremental_sync` + 비동기 `/worker/embed`(`post_idempotent_compute`) + `commit_incremental_sync`(`watch_deliver.rs`)로 분리하여, 시맨틱 임베딩 계약 활성 상태에서도 감시 파일 수정 시 변경된 청크만 재임베딩하고 미변경 청크 벡터를 재사용합니다.
-- **주장 단위 근거 검증 & 인식론적 통합 UI (Vitest 100%)** — `AnswerProof.tsx`에 주장 검증 지표(`claim_verification`: 지지율 %, 정밀도 %, 수치/극성 불일치, 대체 지식 누수 경고, 기권 사유)를, `BrainIntelligencePanel.tsx`에 개체 통합(`entity_resolution`) 및 시간축 타임라인(`temporal_timeline`) 요약을 한/영 완전 현지화로 노출했습니다.
-- **공급망 및 릴리스 하드닝** — Python·npm·Cargo·Tauri·GitHub Actions 주간 자동 모니터링(`.github/dependabot.yml`)을 추가했으며, 비테스트 Rust `.unwrap()` **0건**과 800줄 초과 수기 프로덕션 파일 **0건**을 유지합니다.
+- **범용 적응형 에이전트 하네스 (모델별 분기 0건)** — 런타임 3턴 마이크로 프로브(`probe.rs`), 관찰 우선 도구 순위화·한/영 도메인 분류(`ranking.rs`, `domain.rs`), 결정론적 UI 요소 중앙 좌표 해석(`ui_resolve.rs`), JSON 구문 복구·ChatML 프리필(`repair.rs`, `action_salvage_text.rs`), 활성/폐기 증거 분리 합성(`rag_grounding.rs`, `summaries.rs`)을 통합했습니다.
+- **25개 태스크 실증 벤치마크 (`28.0% → 84.0%`, +56.0 pp / 상대 +200.0%)** — 로컬 `Qwen2.5-0.5B-Instruct-Q4_K_M` 대상 실측 결과 **도구 호출 80.0%**(+60.0 pp), **웹 탐색 80.0%**(+80.0 pp), **컴퓨터 유즈 100.0%**(+100.0 pp), **답변 품질 60.0%**(Standard 대비 +40.0 pp), **RAG 그라운딩 100.0%**(Raw 대비 +40.0 pp / Standard 대비 +80.0 pp)를 달성하고 비보정 표준 루프 대비 평균 지연 시간을 **63.3% 단축**했습니다.
+- **100% 영문 ↔ 한국어 문서 대등성** — 루트, 크레이트, GitHub 가이드 및 벤치마크 보고서의 순수 한국어 미러(`docs/ko/**`)와 양방향 언어 전환 배지를 완성했습니다(`npm run docs:check-languages`).
 
 <details>
-<summary>13.3.1 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>13.4.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.3.1.md](docs/ko/releases/RELEASE_NOTES_v13.3.1.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.4.0.md](docs/ko/releases/RELEASE_NOTES_v13.4.0.md).
 
-13.3.1 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+13.4.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-13.3.1-py3-none-any.whl`
-- `dist/ltcai-13.3.1.tar.gz`
-- `ltcai-13.3.1.tgz`
-- `dist/ltcai-13.3.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.3.1_aarch64.dmg`
+- `dist/ltcai-13.4.0-py3-none-any.whl`
+- `dist/ltcai-13.4.0.tar.gz`
+- `ltcai-13.4.0.tgz`
+- `dist/ltcai-13.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -136,6 +156,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 13.4.0 | Living Synthesis | [RELEASE_NOTES_v13.4.0.md](docs/ko/releases/RELEASE_NOTES_v13.4.0.md) |
 | 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](docs/ko/releases/RELEASE_NOTES_v13.3.1.md) |
 | 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](docs/ko/releases/RELEASE_NOTES_v13.3.0.md) |
 | 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](docs/ko/releases/RELEASE_NOTES_v13.2.1.md) |

@@ -6,12 +6,12 @@ import base64
 import ipaddress
 import json
 import os
-from os import environ as _os_environ
 import platform
 import subprocess
 import tempfile
 import urllib.parse
 import urllib.request
+from os import environ as _os_environ
 from typing import Any, Dict, Optional
 
 from latticeai.core.quiet import quiet

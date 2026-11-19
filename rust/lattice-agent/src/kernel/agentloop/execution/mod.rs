@@ -52,6 +52,10 @@ pub fn url_named_in_request(request: &str) -> Option<String> {
     crate::kernel::agentloop::guided::url_named_in_request(request)
 }
 
+pub(in crate::kernel::agentloop) use repair::{
+    find_request_ui_element_center, url_from_transcript,
+};
+
 /// One action the executor decided on, however it decided.
 ///
 /// The JSON loop reads these four out of a parsed object; the guided loop
@@ -224,7 +228,7 @@ impl Runtime {
                             repeated,
                         };
                         if self.note_parse_failure(ctx, &raw, &error.0, slip, profile) {
-                            if self.demote_to_guided(ctx, profile) {
+                            if self.demote_to_guided(ctx, req, profile) {
                                 return self
                                     .execute_guided(ctx, req, crate::kernel::profile::GUIDED)
                                     .await;
@@ -299,7 +303,7 @@ step has not been carried out — send that tool call instead of finishing.";
                 );
                 parse_failures += 1;
                 if parse_failures >= parse_budget {
-                    if self.demote_to_guided(ctx, profile) {
+                    if self.demote_to_guided(ctx, req, profile) {
                         return self
                             .execute_guided(ctx, req, crate::kernel::profile::GUIDED)
                             .await;
@@ -376,7 +380,7 @@ Choose one of these exact names: {known}."
                     );
                 }
                 if parse_failures >= parse_budget {
-                    if self.demote_to_guided(ctx, profile) {
+                    if self.demote_to_guided(ctx, req, profile) {
                         return self
                             .execute_guided(ctx, req, crate::kernel::profile::GUIDED)
                             .await;
@@ -465,7 +469,12 @@ Choose one of these exact names: {known}."
     /// * the dial is not already `guided`;
     /// * nothing has worked yet — a run with execution evidence is making
     ///   progress, and restarting it in another mode would throw that away.
-    fn demote_to_guided(&mut self, ctx: &mut AgentRunContext, profile: AgentProfile) -> bool {
+    fn demote_to_guided(
+        &mut self,
+        ctx: &mut AgentRunContext,
+        req: &RunRequest,
+        profile: AgentProfile,
+    ) -> bool {
         if profile.decomposed || self.deps.probe.is_none() || self.deps.agent_profile.is_some() {
             return false;
         }
@@ -485,6 +494,19 @@ Choose one of these exact names: {known}."
             &[("profile", json!({"profile": "guided", "source": decision}))],
         );
         self.set_resolved_profile(crate::kernel::profile::GUIDED);
+        if let Some(config) = &self.deps.probe {
+            if let Some(model_id) = ctx
+                .executing_model
+                .as_deref()
+                .or(req.executing_model.as_deref())
+            {
+                let verdict = crate::kernel::probe::verdict_for(
+                    crate::kernel::probe::ActionScore::Failed,
+                    true,
+                );
+                crate::kernel::probe::store(config, model_id, crate::VERSION, &verdict);
+            }
+        }
         true
     }
 
@@ -567,7 +589,7 @@ Choose one of these exact names: {known}."
                         &[("action", json!(original)), ("args", json!(filled))],
                     );
                 }
-                let stated = self.fill_stated_request_args(entry, &mut args, req, &catalog);
+                let stated = self.fill_stated_request_args(ctx, entry, &mut args, req, &catalog);
                 if !stated.is_empty() {
                     ctx.trace.decision(
                         "execute",
@@ -576,7 +598,7 @@ Choose one of these exact names: {known}."
                     );
                 }
                 if let Some((element, cx, cy)) =
-                    self.resolve_ui_element_coords(ctx, &original, &mut args)
+                    self.resolve_ui_element_coords(ctx, req, &original, &mut args)
                 {
                     ctx.trace.decision(
                         "execute",
@@ -893,8 +915,17 @@ never uses [SUPERSEDED] facts, and cites active sources (e.g. [1], [2]). Reply w
             stripped.trim().to_string()
         };
         if !candidate.is_empty() {
+            let draft_before = ctx.final_message.trim().to_string();
             ctx.final_message = candidate;
-            let after = verify_grounded_answer(&ctx.final_message, &passages);
+            let mut after = verify_grounded_answer(&ctx.final_message, &passages);
+            if !after.is_clean() && ctx.final_message.trim() != draft_before {
+                if let Some(synthesized) =
+                    crate::kernel::transcript::synthesize_active_evidence_answer(&passages)
+                {
+                    ctx.final_message = synthesized;
+                    after = verify_grounded_answer(&ctx.final_message, &passages);
+                }
+            }
             ctx.trace.decision(
                 "execute",
                 "grounded_answer_repaired",

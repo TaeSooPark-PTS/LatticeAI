@@ -449,6 +449,69 @@ fn mask_machine_facts(name: &str, expected: &mut Value, actual: &mut Value) {
             truncate_git_usage(expected.pointer_mut("/result/stderr"));
             truncate_git_usage(actual.pointer_mut("/result/stderr"));
         }
+        "tool_permissions" => {
+            // v13.4.0 added `computer_ui_inspect`, `web_fetch`, and `web_search`.
+            // Verify their presence, then project onto the frozen v11.6.0 47-tool recording.
+            const V13_4_TOOLS: [&str; 3] = ["computer_ui_inspect", "web_fetch", "web_search"];
+            if let Some(Value::Array(items)) = actual.get_mut("permissions") {
+                for added in V13_4_TOOLS {
+                    assert!(
+                        items
+                            .iter()
+                            .any(|item| item.get("tool").and_then(Value::as_str) == Some(added)),
+                        "expected {added} in /tools/permissions"
+                    );
+                }
+                items.retain(|item| {
+                    !item
+                        .get("tool")
+                        .and_then(Value::as_str)
+                        .is_some_and(|t| V13_4_TOOLS.contains(&t))
+                });
+            }
+        }
+        "tool_registry_diagnostics" => {
+            if let Some(diag) = actual.get_mut("diagnostics") {
+                assert_eq!(diag["registered_tools"], json!(50));
+                assert_eq!(diag["governed_tools"], json!(50));
+                assert_eq!(diag["described_tools"], json!(55));
+                diag["registered_tools"] = json!(47);
+                diag["governed_tools"] = json!(47);
+                diag["described_tools"] = json!(52);
+            }
+        }
+        "tool_registry" => {
+            const V13_4_TOOLS: [&str; 3] = ["computer_ui_inspect", "web_fetch", "web_search"];
+            if let Some(diag) = actual.get_mut("diagnostics") {
+                assert_eq!(diag["registered_tools"], json!(50));
+                assert_eq!(diag["governed_tools"], json!(50));
+                assert_eq!(diag["described_tools"], json!(55));
+                diag["registered_tools"] = json!(47);
+                diag["governed_tools"] = json!(47);
+                diag["described_tools"] = json!(52);
+            }
+            if let Some(Value::String(brief)) = actual.get_mut("catalog_brief") {
+                *brief = brief
+                    .replace("\nWEB         : web_search  web_fetch", "")
+                    .replace("computer_ui_inspect  ", "");
+            }
+            if let Some(Value::Array(tools)) = actual.get_mut("tools") {
+                for added in V13_4_TOOLS {
+                    assert!(
+                        tools
+                            .iter()
+                            .any(|item| item.get("name").and_then(Value::as_str) == Some(added)),
+                        "expected {added} in /tools/registry"
+                    );
+                }
+                tools.retain(|item| {
+                    !item
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .is_some_and(|t| V13_4_TOOLS.contains(&t))
+                });
+            }
+        }
         _ => {}
     }
 }

@@ -6,6 +6,7 @@ Lattice AI(`v12.0.0` 이후)의 버전별 상세 릴리스 노트입니다. 통�
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 13.4.0 | Living Synthesis | [RELEASE_NOTES_v13.4.0.md](RELEASE_NOTES_v13.4.0.md) |
 | 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](RELEASE_NOTES_v13.3.1.md) |
 | 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](RELEASE_NOTES_v13.3.0.md) |
 | 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](RELEASE_NOTES_v13.2.1.md) |

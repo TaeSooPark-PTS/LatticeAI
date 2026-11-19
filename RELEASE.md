@@ -17,6 +17,18 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.4.0 — Living Synthesis (2026-11-20)
+
+Universal adaptive execution release uniting the **model-agnostic Universal Adaptive Agent Harness (`rust/lattice-agent/src/kernel/{probe.rs,agentloop/,transcript/,parse/}`) with zero per-model code branches**, **modular native web fetching & Computer Use bridge parity (`rust/lattice-agent/src/tools/web/`, `latticeai/tools/{web.py,computer.py}`)**, **a reproducible 25-task live empirical benchmark on `Qwen2.5-0.5B-Instruct-Q4_K_M` lifting overall pass rate from `28.0%` raw (`24.0%` standard loop) to `84.0%` (`+56.0 pp` / `+200.0%` relative gain)**, and **100% EN <-> KO bidirectional GitHub Markdown parity (`npm run docs:check-languages`)**.
+
+- **Universal Adaptive Agent Harness:** Added 3-turn runtime micro-probing (`probe.rs`), observation-first tool ranking (`ranking.rs`) and bilingual domain classification (`domain.rs`), deterministic UI bounding-box center resolution (`ui_resolve.rs` -> `100.0%` Computer Use), malformed-JSON repair and ChatML completion prefill (`repair.rs`, `action_salvage_text.rs`), and active vs. superseded evidence separation (`rag_grounding.rs`, `summaries.rs` -> `100.0%` RAG Grounding).
+- **25-task live benchmark & showcase report:** Orchestrated `rust/lattice-host/examples/harness_bench.rs` via `scripts/benchmark_adaptive_harness.py` against local `llama-server`, achieving **80.0% Tool Calling** (`+60.0 pp`), **80.0% Web Handling** (`+80.0 pp`), **100.0% Computer Use** (`+100.0 pp`), **60.0% Answer Quality** (`+40.0 pp` vs standard), and **100.0% RAG Grounding** (`+40.0 pp` vs raw / `+80.0 pp` vs standard), while reducing average task latency by **63.3%** vs standard loop.
+- **100% bilingual documentation parity:** Completed pure-Korean mirrors across root, crate, GitHub, and benchmark docs (`docs/ko/**`) with verified bidirectional language switcher badges.
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.4.0.md](docs/releases/RELEASE_NOTES_v13.4.0.md). Benchmark: [docs/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ADAPTIVE_HARNESS_BENCHMARK.md).
+
+Build artifacts: `dist/ltcai-13.4.0-py3-none-any.whl`, `dist/ltcai-13.4.0.tar.gz`, `ltcai-13.4.0.tgz`, `dist/ltcai-13.4.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.0_aarch64.dmg`.
+
 ## v13.3.1 — Living Synthesis (2026-11-19)
 
 Polish and completeness release uniting **two-phase async incremental chunk synchronization for semantic embedding contracts (`plan_incremental_sync` + async `/worker/embed` + `commit_incremental_sync`, `watch_deliver.rs`)**, **`AnswerProof.tsx` claim verification telemetry (`claim_verification`) and `BrainIntelligencePanel.tsx` entity resolution & temporal timeline summary cards (full Korean/English i18n at 100% Vitest coverage)**, and **weekly full-stack Dependabot monitoring (`.github/dependabot.yml`)**.

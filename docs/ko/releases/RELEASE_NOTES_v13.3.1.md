@@ -2,7 +2,7 @@
 
 # Lattice AI 13.3.1 — Living Synthesis
 
-> **상태: canonical** — 현재 최신 릴리스 노트입니다.
+> **상태: historical** — v13.3.1 보존된 릴리스 노트입니다.
 
 2026-11-19
 
