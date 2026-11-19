@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES_v12.0.0.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../ko/releases/RELEASE_NOTES_v12.0.0.md)
+
 # Lattice AI v12.0.0 — Open House (2026-08-18)
 
 > **Status: historical** — point-in-time release note.

@@ -91,7 +91,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 | **보안 & 프라이버시** | [docs/ko/SECURITY.md](docs/ko/SECURITY.md) · [docs/ko/PRIVACY.md](docs/ko/PRIVACY.md) | 위협 모델, 루프백 기본값, 외부 전송 감사, [TRUST_MODEL.md](docs/ko/TRUST_MODEL.md) |
 | **기여자 가이드** | [docs/ko/DEVELOPMENT.md](docs/ko/DEVELOPMENT.md) · [docs/ko/CONTRIBUTING.md](docs/ko/CONTRIBUTING.md) | 로컬 빌드, Rust 크레이트 구조, 품질 게이트, [ROADMAP.md](docs/ko/ROADMAP.md) |
 | **CI / CD & 릴리스 게이트** | [docs/ko/CI_AND_RELEASE_GATES.md](docs/ko/CI_AND_RELEASE_GATES.md) | CI 통과 강제, 자동 릴리스/CD 체이닝, 병렬 테스트 구조 |
-| **릴리스 & 변경 이력** | [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) | 릴리스 절차, [RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 영문 개별 노트 ([`docs/releases/`](docs/releases/)) |
+| **릴리스 & 변경 이력** | [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) | 릴리스 절차, [RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 버전별 릴리스 노트 ([`docs/ko/releases/`](docs/ko/releases/README.md)) |
 
 ---
 
@@ -106,7 +106,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 <details>
 <summary>13.3.1 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 영문 상세 노트: [docs/releases/RELEASE_NOTES_v13.3.1.md](docs/releases/RELEASE_NOTES_v13.3.1.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.3.1.md](docs/ko/releases/RELEASE_NOTES_v13.3.1.md).
 
 13.3.1 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
@@ -132,25 +132,25 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 ## 릴리스 히스토리
 
-이 저장소의 공개 릴리스 히스토리는 `v12.0.0+`(Rust 호스트 + 도메인 그룹 아키텍처)부터 유지됩니다. 한국어 요약은 [docs/ko/RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 버전별 원문 노트는 [docs/releases/](docs/releases/)에서 확인할 수 있습니다.
+이 저장소의 공개 릴리스 히스토리는 `v12.0.0+`(Rust 호스트 + 도메인 그룹 아키텍처)부터 유지됩니다. 한국어 요약은 [docs/ko/RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 버전별 상세 노트는 [docs/ko/releases/](docs/ko/releases/README.md)에서 확인할 수 있습니다.
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
-| 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](docs/releases/RELEASE_NOTES_v13.3.1.md) |
-| 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md) |
-| 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](docs/releases/RELEASE_NOTES_v13.2.1.md) |
-| 13.2.0 | Living Synthesis | [RELEASE_NOTES_v13.2.0.md](docs/releases/RELEASE_NOTES_v13.2.0.md) |
-| 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](docs/releases/RELEASE_NOTES_v13.1.0.md) |
-| 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md) |
-| 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) |
-| 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md) |
-| 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) |
-| 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) |
-| 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md) |
-| 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md) |
-| 12.4.0 | Sharp Weight | [RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md) |
-| 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md) |
-| 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md) |
-| 12.2.0 | Small Voice | [RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md) |
-| 12.1.0 | Fast Path | [RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md) |
-| 12.0.0 | Open House | [RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) |
+| 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](docs/ko/releases/RELEASE_NOTES_v13.3.1.md) |
+| 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](docs/ko/releases/RELEASE_NOTES_v13.3.0.md) |
+| 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](docs/ko/releases/RELEASE_NOTES_v13.2.1.md) |
+| 13.2.0 | Living Synthesis | [RELEASE_NOTES_v13.2.0.md](docs/ko/releases/RELEASE_NOTES_v13.2.0.md) |
+| 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](docs/ko/releases/RELEASE_NOTES_v13.1.0.md) |
+| 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](docs/ko/releases/RELEASE_NOTES_v13.0.0.md) |
+| 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](docs/ko/releases/RELEASE_NOTES_v12.10.0.md) |
+| 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](docs/ko/releases/RELEASE_NOTES_v12.9.0.md) |
+| 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/ko/releases/RELEASE_NOTES_v12.8.0.md) |
+| 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/ko/releases/RELEASE_NOTES_v12.7.0.md) |
+| 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](docs/ko/releases/RELEASE_NOTES_v12.6.0.md) |
+| 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](docs/ko/releases/RELEASE_NOTES_v12.5.0.md) |
+| 12.4.0 | Sharp Weight | [RELEASE_NOTES_v12.4.0.md](docs/ko/releases/RELEASE_NOTES_v12.4.0.md) |
+| 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](docs/ko/releases/RELEASE_NOTES_v12.3.0.md) |
+| 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](docs/ko/releases/RELEASE_NOTES_v12.2.1.md) |
+| 12.2.0 | Small Voice | [RELEASE_NOTES_v12.2.0.md](docs/ko/releases/RELEASE_NOTES_v12.2.0.md) |
+| 12.1.0 | Fast Path | [RELEASE_NOTES_v12.1.0.md](docs/ko/releases/RELEASE_NOTES_v12.1.0.md) |
+| 12.0.0 | Open House | [RELEASE_NOTES_v12.0.0.md](docs/ko/releases/RELEASE_NOTES_v12.0.0.md) |

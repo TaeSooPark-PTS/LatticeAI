@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./README.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../ko/releases/README.md)
+
 # Release Notes (`v12.0.0+`)
 
 Per-version release notes for Lattice AI (`v12.0.0` and later). The rolling summary index is [`RELEASE_NOTES.md`](../../RELEASE_NOTES.md) at the repository root, the release checklist is [`RELEASE.md`](../../RELEASE.md), and the detailed changelog is [`CHANGELOG.md`](../CHANGELOG.md).

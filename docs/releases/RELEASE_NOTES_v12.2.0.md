@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES_v12.2.0.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../ko/releases/RELEASE_NOTES_v12.2.0.md)
+
 # Lattice AI v12.2.0 — Small Voice (2026-08-29)
 
 > **Status: historical** — point-in-time release note.
