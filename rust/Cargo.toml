@@ -45,7 +45,7 @@ walkdir = "2"
 # hashing/encoding, and the SSE stream wrapper for the live step timeline.
 fancy-regex = "0.14"
 sha2 = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 getrandom = "0.4"
 futures-core = "0.3"
 
