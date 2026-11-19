@@ -62,7 +62,7 @@ dependencies = [
   "pydantic>=2.7,<3",
   "httpx>=0.27,<1",
   "pillow>=13,<14",
-  "openai>=1.30,<3",
+  "openai>=1.30,<4",
   "python-docx>=1.1,<2",
   "openpyxl>=3.1,<4",
   "python-pptx>=0.6.23,<2",
@@ -74,7 +74,7 @@ dependencies = [
   # a worker that 500s on a route its own allowlist promises, and
   # `tests/unit/test_worker_compute.py` imports reportlab at module scope to
   # locate `Vera.ttf`, so a CI leg without the extra died at collection.
-  "reportlab>=4,<5",
+  "reportlab>=4,<6",
   # `latticeai/services/model_runtime/download.py` — `HfApi`, `model_info`,
   # `list_repo_files`, `hf_hub_download` — reached from `POST /models/load` and
   # `POST /engines/prepare-model` through `services/model_loading.py`. Those are
@@ -86,7 +86,7 @@ dependencies = [
   # which read like a deliberate opt-in and was really a missing dependency.
   # Floor at the 1.0 line (the API above is unchanged across it), ceiling at the
   # next major.
-  "huggingface_hub>=1.0,<2",
+  "huggingface_hub>=1.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -116,7 +116,7 @@ all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub
 # Development-only checkers. Coverage became measurable in 10.2.0: before the
 # connection-leak fix, running under a tracer exhausted file descriptors and
 # ~400 tests failed, so the real number was unknown.
-dev = ["pytest-cov>=7,<8", "mypy>=1.14,<2"]
+dev = ["pytest-cov>=7,<8", "mypy>=1.14,<3"]
 
 [project.scripts]
 LTCAI = "latticeai.cli.entrypoint:main"
