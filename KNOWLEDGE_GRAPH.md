@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./KNOWLEDGE_GRAPH.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/KNOWLEDGE_GRAPH.md)
+
 # Knowledge Graph
 
 The Knowledge Graph is durable infrastructure inside the Lattice AI Brain.

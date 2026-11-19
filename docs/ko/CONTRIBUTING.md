@@ -62,9 +62,15 @@ PR에는 변경사항에 대한 테스트를 포함해 주세요.
 - 불필요한 주석 지양 (코드가 스스로 설명하도록)
 - 로컬 런타임 상태(`.ltcai/`, `.ltcai-brain/`, 로그, 세션 파일)는 커밋하지 않기
 
+## 이슈 및 PR 템플릿 (한국어 안내)
+
+- [버그 리포트 템플릿](./github/bug_report.md)
+- [기능 요청 템플릿](./github/feature_request.md)
+- [풀 리퀘스트 템플릿](./github/pull_request_template.md)
+
 ## 아키텍처 개요
 
-[docs/architecture.md](../architecture.md) 참고
+[docs/ko/architecture-overview.md](./architecture-overview.md) (영문 원본: [docs/architecture.md](../architecture.md)) 참고
 
 ## 보안 취약점 제보
 

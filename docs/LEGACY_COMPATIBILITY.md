@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./LEGACY_COMPATIBILITY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/LEGACY_COMPATIBILITY.md)
+
 # Legacy Compatibility Map
 
 Current target: **9.9.1 — Legacy debt paydown**.

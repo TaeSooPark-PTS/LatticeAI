@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./ARCHITECTURE.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../../docs/ko/crates/lattice-platform-ARCHITECTURE.md)
+
 # `lattice-platform` — the domain map
 
 Seven domains, one rule: **this crate is the product's surface.** It offers

@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./REALTIME_COLLABORATION.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/REALTIME_COLLABORATION.md)
+
 # Lattice AI Realtime Collaboration
 
 Realtime Collaboration is the subsystem that gives a Lattice AI workspace a live

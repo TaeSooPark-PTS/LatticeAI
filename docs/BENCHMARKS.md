@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./BENCHMARKS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/BENCHMARKS.md)
+
 # Model Robustness Benchmarks
 
 > Status: reference 2026-07-21
