@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./ENTERPRISE.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/ENTERPRISE.md)
+
 # Lattice AI — Enterprise Edition
 
 > **Status:** Foundation / extension seam only. The open-source Community

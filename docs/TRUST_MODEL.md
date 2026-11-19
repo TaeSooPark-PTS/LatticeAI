@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./TRUST_MODEL.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/TRUST_MODEL.md)
+
 # Lattice AI Trust Model
 
 Current release: **13.3.1 — Living Synthesis**.

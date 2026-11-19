@@ -1,106 +1,121 @@
-# 개인정보 및 데이터 정책
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./privacy.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/privacy-details.md)
 
-## 요약
+# Privacy and Data Policy
 
-**Lattice AI는 기본 상태에서 텔레메트리를 수집하거나 사용자 데이터를 외부로
-전송하지 않습니다.** 사용자가 명시적으로 선택한 클라우드 모델, 모델 다운로드,
-웹 페이지 읽기, Telegram/Brain Network 같은 외부 기능은 해당 대상과 통신합니다.
+## Summary
 
-모든 데이터는 사용자의 로컬 머신에만 저장됩니다.
+**By default, Lattice AI collects no telemetry and transmits no user data
+externally.** External features explicitly chosen by the user—such as cloud
+models, model downloads, web page reading, Telegram, or Brain Network—communicate
+only with their configured targets.
 
-## 저장되는 데이터
+All data is stored exclusively on the user's local machine.
 
-| 데이터 | 저장 위치 | 설명 |
-|--------|-----------|------|
-| 사용자 계정 | `~/.ltcai/users.json` | 이름, scrypt 해시 비밀번호, 역할 |
-| 세션 토큰 | `~/.ltcai/sessions.json` | SHA-256 토큰 해시, 만료/갱신 시각(평문 bearer 미저장) |
-| 채팅 히스토리 | `~/.ltcai/chat_history.json` | 사용자-AI 대화 내용 |
-| 지식 그래프 | `~/.ltcai/knowledge_graph.sqlite` | 채팅/문서/웹/탭 노드·엣지, 프로비넌스 |
-| 업로드/수집 파일 | `~/.ltcai/knowledge_graph_blobs/` | 원본 PDF/DOCX/웹 텍스트 등 |
-| 수집 출처 기록(프로비넌스) | `~/.ltcai/knowledge_graph.sqlite` (`ingestion_provenance`) | 각 노드의 출처/시각/처리 방식 — 외부 전송 없음 |
-| 그래프 내보내기/백업 | `~/.ltcai/workspace_exports/` | 사용자가 직접 만든 로컬 export/backup 파일 (클라우드 미사용) |
-| 지식 정원 | `~/.ltcai-brain/` | P-Reinforce 분류 저장 |
-| 설정 | `~/.ltcai/config.json` | 모델 설정, API 키 (keyring) |
+## Data Stored Locally
 
-## 수집하지 않는 데이터
+| Data | Storage Location | Description |
+|------|------------------|-------------|
+| User accounts | `~/.ltcai/users.json` | Name, scrypt-hashed password, role |
+| Session tokens | `~/.ltcai/sessions.json` | SHA-256 token hash, expiry/refresh timestamps (no plaintext bearer stored) |
+| Chat history | `~/.ltcai/chat_history.json` | User-AI conversation content |
+| Knowledge Graph | `~/.ltcai/knowledge_graph.sqlite` | Chat/document/web/tab nodes, edges, and provenance |
+| Uploaded / ingested files | `~/.ltcai/knowledge_graph_blobs/` | Original PDF/DOCX/web text blobs |
+| Ingestion provenance | `~/.ltcai/knowledge_graph.sqlite` (`ingestion_provenance`) | Source, timestamp, and processing metadata per node — never sent externally |
+| Graph exports / backups | `~/.ltcai/workspace_exports/` | Local export/backup files created by the user (no cloud dependency) |
+| Knowledge Garden | `~/.ltcai-brain/` | P-Reinforce classification store |
+| Configuration | `~/.ltcai/config.json` | Model settings; API keys stored via OS keyring |
 
-- 사용 통계, 세션 길이, 클릭 이벤트
-- 오류 리포트 (로컬 `server.log`에만 기록)
-- 기기 정보, IP 주소
-- 프롬프트/응답 내용
+## Data Not Collected
 
-## 클라우드 모델 사용 시
+- Usage statistics, session length, or click events
+- Error reports (written only to local `server.log`)
+- Device identifiers or IP addresses
+- Prompt or response content
 
-사용자가 직접 OpenAI, Groq, Together, OpenRouter 등의 API 키를 설정하고 클라우드 모델을 선택한 경우, 해당 프롬프트와 응답은 각 클라우드 제공업체의 서버를 경유합니다. 이는 각 제공업체의 개인정보처리방침을 따릅니다.
+## When Using Cloud Models
+
+If you configure an API key for OpenAI, Groq, Together, OpenRouter, or another
+provider and select a cloud model, prompts and responses travel through that
+provider's servers and are governed by their privacy policies:
 
 - OpenAI: https://openai.com/privacy
 - Groq: https://groq.com/privacy-policy
 - Together AI: https://www.together.ai/privacy
 - OpenRouter: https://openrouter.ai/privacy
 
-Apple Silicon MLX 로컬 모델 사용 시에는 프롬프트가 외부로 전송되지 않습니다.
+When using local Apple Silicon MLX models, prompts never leave your machine.
 
-## Telegram 및 권한 알림
+## Telegram and Permission Notifications
 
-Telegram bridge는 사용자가 명시적으로 활성화하고 chat ID를
-`LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`에 등록한 경우에만 해당 chat의 메시지와
-callback query를 처리합니다. 로컬 Lattice API 호출에는 전용
-`LATTICEAI_SERVER_SESSION_TOKEN`을 사용하며 세션 저장 파일에서 bearer를 찾지
-않습니다.
+The Telegram bridge only processes messages and callback queries from chat IDs
+explicitly registered in `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` when enabled by
+the user. Local Lattice API calls require a dedicated
+`LATTICEAI_SERVER_SESSION_TOKEN` and never read bearer tokens out of the session
+store file.
 
-Discord 등의 권한 요청 알림에는 전체 승인 토큰이 아닌 짧은 hint만 포함됩니다.
-운영자가 `LATTICEAI_PERMISSION_UI_URL`을 설정하면 검토 페이지 링크를 제공할 수
-있지만, 승인 토큰 자체는 메시지나 URL에 넣지 않습니다.
+Permission request notifications (e.g., Discord) include only a short hint
+rather than the full approval token. Operators may optionally configure
+`LATTICEAI_PERMISSION_UI_URL` to link to the review page, but the approval token
+itself is never embedded in the message or URL.
 
-## 웹/브라우저 수집 (v3.6.0)
+## Web and Browser Ingestion (v3.6.0)
 
-- **URL 읽기**(`/api/browser/read-url`): 사용자가 명시적으로 요청한 URL을 **로컬
-  런타임이 직접** 가져와 텍스트만 추출해 그래프에 색인합니다. Lattice AI가 임의로
-  크롤링하지 않으며, 가져온 페이지는 외부로 다시 전송되지 않습니다. private/local
-  주소와 DNS rebinding을 차단하고 redirect마다 다시 검증하며 최대 4MB의 textual
-  응답만 스트리밍합니다.
-- **브라우저 탭 수집**(`/api/browser/ingest-current-tab`) 및 Manifest V3 확장:
-  확장 프로그램은 **오직 `127.0.0.1`(로컬)** 로만 전송합니다. 클라우드 엔드포인트가
-  존재하지 않습니다(`browser-extension/` 소스에서 단일 `fetch` 대상 확인 가능).
+- **URL reader** (`/api/browser/read-url`): The **local runtime directly**
+  fetches a URL explicitly requested by the user, extracts text, and indexes it
+  into the graph. Lattice AI never crawls autonomously and never forwards
+  fetched pages externally. Private/local addresses and DNS rebinding are
+  blocked, every redirect is re-validated, and only textual responses up to
+  4 MB are streamed.
+- **Browser tab capture** (`/api/browser/ingest-current-tab`) and the Manifest
+  V3 extension: The extension transmits **exclusively to `127.0.0.1` (local)**.
+  There is no cloud endpoint (verifiable via the single `fetch` target in
+  `browser-extension/`).
 
-## 그래프 내보내기/백업 (v3.6.0)
+## Graph Export and Backup (v3.6.0)
 
-지식 그래프 export/import 및 백업/복원은 **전적으로 로컬**에서 동작하며 클라우드
-서비스를 요구하지 않습니다. 내보낸 파일의 이동·공유는 사용자 책임입니다.
+Knowledge Graph export/import and backup/restore operate **entirely locally**
+and require no cloud service. Moving or sharing exported files is the user's
+responsibility.
 
-## API 키 보안
+## API Key Security
 
-- API 키는 OS keyring(macOS Keychain, Windows Credential Manager, Linux Secret Service)에 저장됩니다
-- `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true` 설정 없이는 디스크에 평문 저장되지 않습니다
-- 채팅 히스토리 저장 전 API key/token/password 패턴 자동 마스킹
+- API keys are stored in the OS keyring (macOS Keychain, Windows Credential
+  Manager, Linux Secret Service).
+- Keys are never written to disk in plaintext unless
+  `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true` is explicitly set.
+- API key, token, and password patterns are automatically masked before saving
+  chat history.
 
-## 데이터 삭제
+## Deleting Data
 
 ```bash
-# 채팅 히스토리만 삭제
+# Delete chat history only
 rm ~/.ltcai/chat_history.json
 
-# 지식 그래프 삭제
+# Delete Knowledge Graph
 rm ~/.ltcai/knowledge_graph.sqlite
 rm -rf ~/.ltcai/knowledge_graph_blobs/
 
-# 전체 데이터 삭제
+# Delete all data
 rm -rf ~/.ltcai/
 rm -rf ~/.ltcai-brain/
 ```
 
-웹 UI에서: `/clear` 명령 (현재 대화 삭제), 어드민 패널에서 사용자별 데이터 관리
+In the web UI: use `/clear` to clear the active conversation, or manage per-user
+data from the admin panel.
 
-## 퍼블릭 배포 시
+## Public Deployments
 
-외부 사용자가 접근할 수 있는 환경에 배포하는 경우, 사용자에게 다음을 고지하세요:
+If you deploy Lattice AI in an environment accessible to external users, clearly
+disclose to your users:
 
-1. 어떤 데이터가 서버에 저장되는지
-2. 사용하는 클라우드 AI 제공업체
-3. 채팅 내용의 보존 기간 및 삭제 방법
+1. What data is stored on the server
+2. Which cloud AI providers are used
+3. How long chat contents are retained and how users can delete them
 
-Lattice AI 자체는 퍼블릭 배포 운영자의 데이터 처리 방식에 대해 책임지지 않습니다.
+Lattice AI itself is not responsible for the data-handling practices of public
+deployment operators.
 
-## 문의
+## Contact
 
-개인정보 관련 문의: rnlgnquvk@gmail.com
+Privacy inquiries: rnlgnquvk@gmail.com

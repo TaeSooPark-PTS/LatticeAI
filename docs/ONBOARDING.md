@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./ONBOARDING.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/ONBOARDING.md)
+
 # Lattice AI Onboarding
 
 Current release: **13.3.1 — Living Synthesis**.
@@ -35,14 +37,14 @@ read the docs first.
   not exist yet.
 - Core-service failures show an unavailable/error state and recovery guidance;
   they are never presented as an empty or healthy Brain. Since 12.0.0 every
-  route and every heavy panel sits inside an error boundary with a 다시 시도
+  route and every heavy panel sits inside an error boundary with a Retry
   action, so one failing panel costs its own card rather than the screen.
 - The first source can be added on any model the machine can hold: the agent
   profile is measured on load, and a model that cannot emit a tool call is
   guided through numbered choices instead of failing the run.
 - Re-scanning a folder that has not changed is nearly free, so re-indexing is
   a safe habit rather than a cost. A file deleted from disk keeps its memory
-  until the user confirms the 「삭제된 파일 정리」 action.
+  until the user confirms the "Prune Deleted Files" action.
 - Upload, note, browser, and message ingestion all converge through the unified
   ingestion pipeline when it is available.
 - Workspace-scoped content must not leak or overwrite another workspace's graph

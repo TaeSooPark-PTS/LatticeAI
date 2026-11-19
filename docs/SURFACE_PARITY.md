@@ -1,110 +1,142 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./SURFACE_PARITY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/SURFACE_PARITY.md)
+
 # Lattice AI — Surface Parity Matrix
 
 > **Status: reference**
-> 도입: v9.9.4 (2026-07-25, 리뷰 Wave 1.4 "표면 패리티 체크리스트").
-> 갱신: v9.9.7 — 표에 남아 있던 ✖ 갭을 **전부** 해소.
-> 갱신: **v10.4.0 — 남아 있던 ◐(부분 제공)를 전부 해소.** 표에 ◐ 는 더 이상 없다.
-> 목적: 각 표면(서피스)이 Brain 계약의 어디까지를 제공하는지 **정직하게** 기록한다.
-> "앱마다 다른 Lattice"를 방지하는 기준표이며, 기능을 과장하지 않는다.
+> Introduced: v9.9.4 (2026-07-25, Review Wave 1.4 "Surface Parity Checklist").
+> Updated: v9.9.7 — closed **every** remaining `✖` gap in the table.
+> Updated: **v10.4.0 — closed every remaining `◐` (partial) entry.** No `◐` remains in the matrix.
+> Purpose: **honestly** record how much of the Brain contract each surface provides.
+> This is the reference contract preventing "a different Lattice per app" without overstating capabilities.
 
-## 표면 정의
+## Surface Definitions
 
-| 표면 | 진입점 | 성격 |
+| Surface | Entry Point | Role |
 | --- | --- | --- |
-| Web `/app` | FastAPI sidecar가 서빙하는 SPA (`static/app`) | 1차 표면 — 모든 기능의 기준 |
-| Desktop | Tauri 셸 (`src-tauri/`) | 동일 SPA를 감싸는 셸 — 웹과 구조적 동일 |
-| VS Code | `vscode-extension/` (`ltcai.*` 커맨드) | 에디터 보조 표면 |
-| Browser | `browser-extension/` | 캡처 + 회상 + 승인 가시성 (v9.9.7) |
-| Telegram | 봇 어댑터 | 대화 전용 표면 |
+| Web `/app` | SPA served by the local host (`static/app`) | Primary surface — baseline for every capability |
+| Desktop | Tauri shell (`src-tauri/`) | Shell wrapping the same SPA — structurally identical to Web |
+| VS Code | `vscode-extension/` (`ltcai.*` commands) | Editor companion surface |
+| Browser | `browser-extension/` | Capture + recall + pending-approval visibility (v9.9.7) |
+| Telegram | Bot adapter | Conversation-only surface |
 
-## 네 가지 루프 순간 × 표면
+## Four Core Loop Moments × Surfaces
 
-✅ 제공 · ◐ 부분 제공 · — 미제공(의도) · ✖ 갭(백로그)
+`✅` Supported · `◐` Partial · `—` Not offered (intentional) · `✖` Gap (backlog)
 
-| 루프 순간 | Web `/app` | Desktop | VS Code | Browser | Telegram |
+| Loop Moment | Web `/app` | Desktop | VS Code | Browser | Telegram |
 | --- | --- | --- | --- | --- | --- |
-| 첫 저장 (Capture) | ✅ DnD·폴더·웹 수집, 품질 경고 | ✅ (웹과 동일) | ✅ `sendToLattice` 파일/선택 + `captureFolder` 폴더 수집 (v10.4.0) | ✅ 페이지 캡처 (단일 목적) | ✅ 메시지 + 문서/사진 업로드 수집 |
-| 첫 회상 (Recall) | ✅ 하이브리드 검색 + grounding 배지 + 출처→청크 | ✅ (동일) | ✅ `askCurrentFile`/`askBrain` — 동일 `/chat` grounding 배지 | ✅ 팝업 질문 + 동일 grounding 배지 (v9.9.7) | ✅ 답변 + grounding 배지 (v9.9.7) |
-| 첫 산출물 (Artifact) | ✅ artifacts[] 카드·미리보기·Brain 기억 칩 | ✅ (동일) | ✅ `createFile` + `showArtifacts` 카드(보정/검증 플래그 포함, v10.4.0) | — (의도: 브라우저에서 파일 쓰기 없음) | ✅ 파일 + artifacts[] 카드 요약 (v10.4.0) |
-| 첫 보호 (Approval) | ✅ 승인 카드 + TTL 카운트다운 + 재시작 생존 | ✅ (동일) | ✅ List/Approve/Reject 커맨드 + 토큰 캐시 | ✅ 대기 건수 표시 (승인은 웹에서, v9.9.7) | ✅ 인라인 Done/Cancel + run_id/token 재개 |
+| First Capture | ✅ Drag-and-drop, folder & web ingest, quality warnings | ✅ (same as Web) | ✅ `sendToLattice` file/selection + `captureFolder` folder ingest (v10.4.0) | ✅ Page capture (focused purpose) | ✅ Messages + document/photo upload ingest |
+| First Recall | ✅ Hybrid search + grounding badge + source→chunk | ✅ (same) | ✅ `askCurrentFile` / `askBrain` — same `/chat` grounding badge | ✅ Popup Q&A + same grounding badge (v9.9.7) | ✅ Answer + grounding badge (v9.9.7) |
+| First Artifact | ✅ `artifacts[]` cards, preview, Brain memory chip | ✅ (same) | ✅ `createFile` + `showArtifacts` cards (with repair/validation flags, v10.4.0) | — (intentional: browser never writes local files) | ✅ Files + `artifacts[]` card summary (v10.4.0) |
+| First Protection (Approval) | ✅ Approval card + TTL countdown + restart persistence | ✅ (same) | ✅ List / Approve / Reject commands + token cache | ✅ Pending count badge (approve in Web, v9.9.7) | ✅ Inline Done/Cancel + `run_id`/token resume |
 
-## 기능 상세 × 표면
+## Feature Detail × Surfaces
 
-| 기능 | Web `/app` | Desktop | VS Code | Browser | Telegram |
+| Feature | Web `/app` | Desktop | VS Code | Browser | Telegram |
 | --- | --- | --- | --- | --- | --- |
-| 에이전트 스텝 타임라인 (v9.9.4) | ✅ 라이브 SSE | ✅ | ✅ `runAgentLive` — `POST /agent` `stream:true`의 동일 `agent_step` 프레임 (v9.9.7) | — (의도) | — (의도) |
-| 실행 결과 평문 설명 (v9.9.6) | ✅ 메시지 하단 노트 | ✅ | ✅ `runAgent` 출력 채널 | — | ✅ 답변 뒤 요약 메시지 |
-| 근거 → 행동 원클릭 (v9.9.6) | ✅ 답변 근거 카드 | ✅ | ✅ `ltcai.evidenceActions` (v9.9.7) | — (의도) | — (의도) |
-| 지식 정원 4화단 (v9.9.7) | ✅ 홈 패널 | ✅ | — (의도) | — (의도) | — (의도) |
-| 폴더별 기억 상태 (v9.9.7) | ✅ Capture 카드 | ✅ | — (의도) | — (의도) | — (의도) |
-| 음성 메모 캡처 (v9.9.7) | ✅ `POST /api/capture/voice` | ✅ | — (의도) | — (의도) | — (의도) |
-| 승인 재개 (`/agent/resume`) | ✅ | ✅ | ✅ `ltcai.approveAgent` / `rejectAgent` | — | ✅ callback → resume |
-| 대기 중 승인 목록 (`GET /agent/approvals`, v9.9.4) | ✅ | ✅ | ✅ `ltcai.listApprovals` | — | — (봇 로컬 pending map) |
-| Watch 상태 신호 (v9.9.4) | ✅ 홈 카드 | ✅ | — | — | — |
-| Review Center (제안 승인/거절) | ✅ | ✅ | ✅ `ltcai.reviewCenter` (409 충돌 정직 보고) | — (의도: 승인은 웹/에디터/봇에서) | ✅ `/review` + 인라인 승인/거절 (v9.9.7) |
-| 데모 코퍼스 First Value Loop | ✅ | ✅ | — | — | — |
-| 모델 로드/추천 | ✅ | ✅ | ✅ `loadModel` + 하드웨어 기반 추천·근거 (v10.4.0) | — (의도) | — (의도) |
-| 코드 편집 보조 (edit/explain/refactor/tests) | — | — | ✅ | — | — |
+| Agent step timeline (v9.9.4) | ✅ Live SSE | ✅ | ✅ `runAgentLive` — same `agent_step` frames from `POST /agent` `stream:true` (v9.9.7) | — (intentional) | — (intentional) |
+| Plain-language run explanation (v9.9.6) | ✅ Message footer note | ✅ | ✅ `runAgent` output channel | — | ✅ Post-answer summary message |
+| Evidence → Action one-click (v9.9.6) | ✅ Answer evidence card | ✅ | ✅ `ltcai.evidenceActions` (v9.9.7) | — (intentional) | — (intentional) |
+| Knowledge Garden 4 beds (v9.9.7) | ✅ Home panel | ✅ | — (intentional) | — (intentional) | — (intentional) |
+| Per-folder memory status (v9.9.7) | ✅ Capture card | ✅ | — (intentional) | — (intentional) | — (intentional) |
+| Voice memo capture (v9.9.7) | ✅ `POST /api/capture/voice` | ✅ | — (intentional) | — (intentional) | — (intentional) |
+| Approval resume (`/agent/resume`) | ✅ | ✅ | ✅ `ltcai.approveAgent` / `rejectAgent` | — | ✅ callback → resume |
+| Pending approvals list (`GET /agent/approvals`, v9.9.4) | ✅ | ✅ | ✅ `ltcai.listApprovals` | — | — (bot-local pending map) |
+| Watch status signal (v9.9.4) | ✅ Home card | ✅ | — | — | — |
+| Review Center (proposal approve/reject) | ✅ | ✅ | ✅ `ltcai.reviewCenter` (honestly reports 409 conflicts) | — (intentional: approve in Web/editor/bot) | ✅ `/review` + inline approve/reject (v9.9.7) |
+| Demo corpus First Value Loop | ✅ | ✅ | — | — | — |
+| Model load / recommendation | ✅ | ✅ | ✅ `loadModel` + hardware-based recommendation & rationale (v10.4.0) | — (intentional) | — (intentional) |
+| Code editing assistant (edit/explain/refactor/tests) | — | — | ✅ | — | — |
 
-## 규칙
+## Rules
 
-1. **API 계약이 기준이다.** 모든 표면은 동일한 sidecar API를 소비한다. 표면별 전용 API를 만들지 않는다.
-2. **◐/✖ 는 문서화된 상태로만 존재한다.** 새 기능을 Web에 추가할 때 이 표를 갱신하고, 다른 표면에 제공하지 않을 경우 "—(의도)" 인지 "✖(갭)" 인지 명시한다.
-3. **✖ 갭은 릴리스 노트의 Honest Limitations 후보다.** v9.9.7 이후 표에 남은 ✖는 **없고**, v10.4.0 이후 ◐ 도 **없다**.
-   - 남은 "—"는 전부 **설계 경계**이며, 각 항목에 이유를 함께 적는다. 예: 브라우저 확장은 파일을 쓰지 않으므로 산출물 생성이 없고, 승인 *결정*은 서명된 토큰이 필요한 흐름이라 대기 건수만 보여 주고 승인은 웹/에디터/봇에서 한다.
-   - 경계를 새로 만들 때는 "왜 제공하지 않는가"를 이 문서에 남긴다. 이유 없는 "—"는 갭이지 경계가 아니다.
-4. 릴리스마다 이 표를 검토한다 (release checklist의 docs 단계).
+1. **The API contract is the source of truth.** Every surface consumes the same
+   sidecar/host API. Never invent surface-specific private APIs.
+2. **`◐` and `✖` exist only when documented.** Whenever a new feature lands in
+   Web, update this matrix and mark every other surface explicitly as
+   `— (intentional)` or `✖ (gap)`.
+3. **`✖` gaps are candidates for Honest Limitations in release notes.** After
+   v9.9.7 no `✖` remains in the table, and after v10.4.0 no `◐` remains.
+   - Every remaining `—` is an intentional **design boundary**, with its
+     rationale stated inline. For example, the browser extension does not write
+     local files so it has no artifact generation, and approval *decisions*
+     require signed tokens so it shows pending counts while decisions happen in
+     Web, the editor, or the bot.
+   - When introducing a new boundary, record *why* it is excluded here. An
+     unexplained `—` is a gap, not a boundary.
+4. Review this table on every release (during the docs step of the release
+   checklist).
 
-## VS Code / Telegram 승인 메모 (v9.9.5)
+## VS Code / Telegram Approval Notes (v9.9.5)
 
-- **토큰은 GET `/agent/approvals`에 다시 내려가지 않는다** (보안). Web은 일시 중지 응답의 토큰을 클라이언트에 보관하고, VS Code도 동일하게 pause 응답의 토큰을 확장 세션 캐시에 둔다. 캐시에 없으면 붙여넣기 또는 웹 UI로 유도한다.
-- **Telegram**은 `waiting_approval`(레거시 `human_in_loop`)과 `awaiting_approval`(토큰) 둘 다 인라인 키보드로 처리하며, resume 시 run_id+token을 우선한다.
+- **Tokens are never re-issued by `GET /agent/approvals`** (security). Web
+  retains the pause-response token client-side, and VS Code likewise keeps the
+  pause-response token in the extension session cache. If it is not in cache,
+  the UI prompts the user to paste it or switch to the Web UI.
+- **Telegram** handles both `waiting_approval` (legacy `human_in_loop`) and
+  `awaiting_approval` (token-based) via inline keyboards, prioritizing
+  `run_id` + `token` on resume.
 
-## VS Code 회상·검토 메모 (v9.9.6)
+## VS Code Recall & Review Notes (v9.9.6)
 
-- **회상 배지**: `askCurrentFile` / `askBrain`은 웹과 동일한 `POST /chat` 응답의 `grounding` 판정을 그대로 읽는다. 판정이 없으면 "근거 있음"으로 승격하지 않고 `unknown`으로 보고한다 (`vscode-extension/surface.ts::groundingBadge`).
-- **Review Center**: `ltcai.reviewCenter`는 웹과 같은 `/api/proposals` 표면을 쓴다. 승인은 검토한 내용 그대로 적용하고, 409(스테이징 이후 파일 변경)는 "아무것도 쓰지 않았다"고 정직하게 알린다.
-- **스텝 요약**: `ltcai.runAgent`는 실행 후 `steps`/`created_files`/`explanation`을 출력 채널에 요약한다. (라이브 SSE 타임라인은 v9.9.7의 `ltcai.runAgentLive`가 같은 `agent_step` 프레임으로 제공한다 — 이 메모는 v9.9.6 시점 기준이었다.)
-- 파싱 계약은 `tests/vscode-extension.test.cjs`가 sidecar 페이로드 모양 그대로 검증한다.
+- **Recall badge**: `askCurrentFile` and `askBrain` read the exact `grounding`
+  verdict from `POST /chat` just like Web. If the verdict is missing, they
+  never promote it to "grounded" and instead report `unknown`
+  (`vscode-extension/surface.ts::groundingBadge`).
+- **Review Center**: `ltcai.reviewCenter` uses the same `/api/proposals`
+  surface as Web. Approval applies the exact reviewed diff, and a `409` (file
+  changed since staging) honestly tells the user that nothing was written.
+- **Step summary**: `ltcai.runAgent` summarizes `steps`, `created_files`, and
+  `explanation` in the output channel after completion. (Live SSE timelines
+  were added in v9.9.7 via `ltcai.runAgentLive` using the same `agent_step`
+  frames — this note captured the v9.9.6 state.)
+- Parsing contracts are pinned verbatim against sidecar payload shapes in
+  `tests/vscode-extension.test.cjs`.
 
-## v9.9.7 — 남은 갭을 닫은 방법
+## v9.9.7 — How the Remaining Gaps Were Closed
 
-- **VS Code 라이브 스텝**: `POST /agent`에 `stream: true`가 생겼다. 웹이 채팅
-  경로로 받던 것과 **같은** `agent_step` 프레임을 그대로 내보내고, 마지막 프레임의
-  터미널 페이로드는 JSON 응답과 동일하다 (`tests/unit/test_agent_stream_parity.py`가
-  두 경로의 동등성을 고정한다).
-- **VS Code 근거→행동**: 회상 응답의 `grounding.cited`를 확장이 기억했다가
-  `/api/evidence/actions`로 보낸다. 파일을 만드는 액션은 에이전트로 흘려보내
-  실제 산출물이 나오게 하고, 대화 액션은 채팅 패널로 보낸다.
-- **Telegram 회상 배지 / Review Center**: 서버가 낸 판정을 그대로 렌더하고,
-  `/review`가 `/api/proposals`를 그대로 소비한다. 409는 "아무것도 쓰지 않았다"로
-  보고한다.
-- **Browser 확장**: 캡처 전용 경계를 넘어 `/chat` 질문과 `agent/approvals` 대기
-  건수를 보여 준다. **판정을 로컬에서 계산하지 않는다** — 판정이 없으면
-  "근거 확인 불가"이며 절대 "근거 있음"으로 승격하지 않는다.
+- **VS Code live steps**: `POST /agent` gained `stream: true`, emitting the
+  **exact same** `agent_step` frames Web received over the chat path, with a
+  terminal payload identical to the JSON response
+  (`tests/unit/test_agent_stream_parity.py` pins parity between both paths).
+- **VS Code evidence → action**: The extension remembers `grounding.cited` from
+  recall responses and sends it to `/api/evidence/actions`. File-creating
+  actions route through the agent to produce real artifacts; conversational
+  actions route to the chat panel.
+- **Telegram recall badge / Review Center**: Renders server verdicts verbatim
+  and consumes `/api/proposals` directly via `/review`, reporting `409`
+  honestly as "nothing was written."
+- **Browser extension**: Extended beyond capture-only to support `/chat`
+  questions and pending `agent/approvals` counts. **It never computes verdicts
+  locally** — missing verdicts display as "unable to verify grounding" and are
+  never promoted to "grounded."
 
-## v10.4.0 — 마지막 ◐ 셋을 닫은 방법
+## v10.4.0 — How the Last Three `◐` Entries Were Closed
 
-세 갭 모두 **계약의 문제가 아니라 렌더링의 문제**였다. 사이드카는 이미 필요한
-데이터를 내고 있었고, 에디터/봇이 그것을 버리고 있었다.
+All three gaps were **rendering gaps, not contract gaps**. The sidecar already
+returned the required data, and the editor/bot had been discarding it.
 
-- **VS Code 폴더 수집** (`ltcai.captureFolder`): 웹 Capture 와 **같은**
-  `POST /api/ingestion/folder` 를 쓴다. 로컬 디스크를 읽으므로 승인 절차도
-  동일하다 — 토큰 없는 첫 호출은 `permission_required` 이고, 확장은 그것을
-  그대로 보여 준다(조용히 재시도하지 않는다). 백그라운드 job 으로 큐잉되며
-  진행 상황은 웹에서 본다.
-- **VS Code 산출물 카드** (`ltcai.showArtifacts`): `/agent` 응답의
-  `artifacts[]` 를 그대로 읽는다. 결정적으로 **보정된(repaired) 스캐폴드와
-  깨끗한 모델 출력이 구분된다** — 이전에는 평평한 경로 목록이라 둘이 같아
-  보였다. 서버의 `valid=false` 판정을 확장이 성공으로 승격하지 않는다.
-  구형 사이드카(`created_files` 만 있는 응답)는 "세부 정보 없음"이라고
-  정직하게 말한다.
-- **VS Code 모델 추천**: `GET /setup/scan` 의 `zero_config.recommend` 를
-  읽어 **이 기기에 왜 이 모델인지**를 근거와 함께 보여 준다. 스캔이 없으면
-  배너도 없다 — 이유를 지어내지 않는다.
-- **Telegram 산출물 카드**: 같은 `artifacts[]` 플래그를 파일 전송 직전에
-  요약한다. 8개까지 나열하고 나머지는 `… +N` 으로 정직하게 줄인다.
+- **VS Code folder ingest** (`ltcai.captureFolder`): Uses the **same**
+  `POST /api/ingestion/folder` endpoint as Web Capture. Because it reads local
+  disk, the approval flow is identical — an initial call without a token
+  returns `permission_required`, which the extension displays verbatim (never
+  retrying silently). Work is queued as a background job with progress visible
+  in Web.
+- **VS Code artifact cards** (`ltcai.showArtifacts`): Reads `artifacts[]` from
+  the `/agent` response verbatim. Crucially, **repaired scaffolds are
+  distinguished from clean model output** — previously a flat path list made
+  them look identical. The extension never promotes a server `valid=false`
+  verdict to success, and older sidecars returning only `created_files` are
+  honestly labeled as having no metadata details.
+- **VS Code model recommendation**: Reads `zero_config.recommend` from
+  `GET /setup/scan` to show **why this model fits this machine** with concrete
+  rationale. When no scan exists, no banner appears — reasons are never
+  fabricated.
+- **Telegram artifact cards**: Summarizes the same `artifacts[]` flags right
+  before sending files, listing up to 8 entries and honestly truncating the
+  rest as `… +N`.
 
-계약 테스트: `tests/vscode-extension.test.cjs` (19), `tests/unit/test_telegram_security.py`.
-전부 사이드카 페이로드 모양 그대로 검증하며, 확장/봇이 서버 판정을 재계산하지
-않는지도 함께 고정한다.
+Contract tests: `tests/vscode-extension.test.cjs` (19),
+`tests/unit/test_telegram_security.py`. Every test asserts exact sidecar
+payload shapes and verifies that extensions and bots never recompute server
+verdicts.

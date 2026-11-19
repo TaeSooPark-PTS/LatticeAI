@@ -1,9 +1,10 @@
 <div align="center">
 
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=for-the-badge)](README.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=for-the-badge)](README.ko.md)
+
 # Lattice AI
 
-**Your model is the voice you use today. Your Brain is the asset you keep.**<br/>
-*모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.*
+**Your model is the voice you use today. Your Brain is the asset you keep.**
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -20,8 +21,6 @@
 </div>
 
 Lattice AI is a **local-first Digital Brain** that unifies your conversations, files, folders, notes, and web captures into one private Knowledge Graph you own. Local inference is the default; cloud models are strictly optional, and nothing leaves your machine without explicit consent.
-
-대화·파일·폴더·노트·웹페이지가 모두 내 컴퓨터 안의 단일 지식 그래프로 축적됩니다. 기본값은 100% 로컬이며, 클라우드 연결은 사용자가 직접 선택한 경우에만 동작합니다.
 
 ---
 
@@ -90,7 +89,8 @@ Full visual index: [output/release/v13.3.1/SCREENSHOT_INDEX.md](output/release/v
 | **Operations & Self-Hosting** | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Storage layout, `.latticebrain` backup/restore, and public mode checklist |
 | **Enterprise & Open Core** | [docs/ENTERPRISE.md](docs/ENTERPRISE.md) | Open-core capability seam and [EDITION_STRATEGY.md](docs/EDITION_STRATEGY.md) |
 | **Security & Privacy** | [SECURITY.md](SECURITY.md) · [PRIVACY.md](PRIVACY.md) | Threat model, loopback defaults, egress audit, and [TRUST_MODEL.md](docs/TRUST_MODEL.md) |
-| **Contributor Guide** | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local build, Rust crate maps, quality gates, and [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **Contributor Guide** | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) · [CONTRIBUTING.md](CONTRIBUTING.md) | Local build, Rust crate maps, quality gates, and [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **CI / CD & Release Gates** | [docs/CI_AND_RELEASE_GATES.md](docs/CI_AND_RELEASE_GATES.md) | Hard CI-gated auto-CD, parallel test matrix, and supply-chain hardening |
 | **Releases & Changelog** | [RELEASE.md](RELEASE.md) · [docs/CHANGELOG.md](docs/CHANGELOG.md) | Per-release notes ([`docs/releases/`](docs/releases/)) and [RELEASE_NOTES.md](RELEASE_NOTES.md) |
 
 ---

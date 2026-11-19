@@ -2,7 +2,10 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const readme = path.join(root, "README.md");
+const entryReadmes = [
+  path.join(root, "README.md"),
+  path.join(root, "README.ko.md"),
+].filter((file) => existsSync(file));
 const checkedMarkdown = new Set();
 const failures = [];
 
@@ -56,13 +59,15 @@ function checkMarkdownFile(file) {
   }
 }
 
-checkMarkdownFile(readme);
+for (const readme of entryReadmes) {
+  checkMarkdownFile(readme);
 
-for (const target of links(readFileSync(readme, "utf8"))) {
-  const resolved = localPath(readme, target);
-  if (!resolved || !existsSync(resolved)) continue;
-  if (statSync(resolved).isFile() && resolved.endsWith(".md")) {
-    checkMarkdownFile(resolved);
+  for (const target of links(readFileSync(readme, "utf8"))) {
+    const resolved = localPath(readme, target);
+    if (!resolved || !existsSync(resolved)) continue;
+    if (statSync(resolved).isFile() && resolved.endsWith(".md")) {
+      checkMarkdownFile(resolved);
+    }
   }
 }
 
@@ -72,4 +77,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Markdown link check passed for README and ${checkedMarkdown.size - 1} README-linked Markdown files.`);
+console.log(
+  `Markdown link check passed for ${entryReadmes.length} root README(s) and ${checkedMarkdown.size - entryReadmes.length} linked Markdown files.`,
+);

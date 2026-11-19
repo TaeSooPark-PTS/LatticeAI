@@ -6,7 +6,7 @@
 
 12.5.0 Deep Vector brought native Google EmbeddingGemma 2 embeddings and hardware-aware recommendations. **12.6.0 Hybrid Graph** upgrades the retrieval and embedding stack end-to-end: genuine **3-Way BM25F + Vector + Knowledge Graph RRF Hybrid Indexing**, graph-aware agent skills and MCP search tools, a **multi-scale subword `FallbackTextEmbedder`**, **unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks**, **real-time SSE download progress streaming with speed (`MB/s`) and `ETA`**, **Pillow 13+ cleanup**, **Ubuntu 24.04/26.04 `t64` & Chromium CI resilience**, and a **modular `scripts/bump_version/` CLI**.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**. 쓰기는 계속 `GraphWriter` 하나입니다.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**. Writes still go through a single `GraphWriter`.
 
 ## What landed
 

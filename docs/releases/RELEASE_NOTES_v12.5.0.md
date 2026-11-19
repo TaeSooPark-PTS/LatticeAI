@@ -6,7 +6,7 @@
 
 12.4.0 Sharp Weight expanded the verified model catalog with Qwen 3.8 27B and Gemma 4 26B QAT/OptiQ 4-bit builds. 12.5.0 Deep Vector integrates **Google EmbeddingGemma 2** (`google/embeddinggemma-2`, 768-dim) natively into Lattice AI with Hugging Face mean-pooling and L2 normalization, adds **hardware-aware embedding model recommendations** that calculate host RAM/VRAM reservations before recommending LLMs, migrates screenshot pixel diffing to Pillow 13+ `get_flattened_data()`, upgrades GitHub Actions CI/CD to Node 24 native major versions, and automates full OpenAPI specification and fragment synchronization in `scripts/bump_version.py`.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**. 쓰기는 계속 `GraphWriter` 하나입니다.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**. Writes still go through a single `GraphWriter`.
 
 ## What landed
 

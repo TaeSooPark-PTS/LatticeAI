@@ -127,8 +127,8 @@ front of the model, and the run still has to pick a real tool. `lattice-host`'s
 directory `POST /mcp` scans.
 
 **A skill the request names by name is consulted first.** When the user's own
-sentence names an installed skill by its catalog name — `code_review 스킬을
-참고해서 …` — the harness performs that one consult deterministically as the
+sentence names an installed skill by its catalog name — e.g., `using the
+code_review skill, …` — the harness performs that one consult deterministically as the
 run's first step, on every dial, and then hands control straight back to the
 model (`execution::Runtime::consult_named_skill`). The `SKILL.md` lands on the
 transcript, where the executor prompt and the guided brief already read it, and

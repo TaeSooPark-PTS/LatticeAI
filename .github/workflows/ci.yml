@@ -46,6 +46,7 @@ jobs:
           npm run check:max-file-lines
           npm run docs:check-current
           npm run docs:check-links
+          npm run docs:check-languages
           node scripts/check_ubuntu_runner_compat.mjs --diagnostic
 
       - name: Browser and VS Code extension tests
@@ -208,10 +209,10 @@ jobs:
           name: dist
           path: dist/
 
-  rust:
-    name: Rust workspace
+  rust-core:
+    name: Rust (lint & core crates)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -225,6 +226,14 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: rust
+          key: rust-core
+
+      - name: Install cargo-nextest
+        run: |
+          if ! command -v cargo-nextest >/dev/null 2>&1; then
+            mkdir -p "${CARGO_HOME:-$HOME/.cargo}/bin"
+            curl -LsSf --retry 3 https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+          fi
 
       - name: Format
         working-directory: rust
@@ -234,9 +243,41 @@ jobs:
         working-directory: rust
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Test
+      - name: Test core crates (nextest + doctests)
         working-directory: rust
-        run: cargo test --workspace
+        run: |
+          cargo nextest run --no-fail-fast -p lattice-core -p lattice-retrieval -p lattice-ingest -p lattice-jobs -p lattice-auth
+          cargo test --doc -p lattice-core -p lattice-retrieval -p lattice-ingest -p lattice-jobs -p lattice-auth
+
+  rust-runtime:
+    name: Rust (agent, platform, chat & host)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Cache cargo registry and build output
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: rust
+          key: rust-runtime
+
+      - name: Install cargo-nextest
+        run: |
+          if ! command -v cargo-nextest >/dev/null 2>&1; then
+            mkdir -p "${CARGO_HOME:-$HOME/.cargo}/bin"
+            curl -LsSf --retry 3 https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+          fi
+
+      - name: Test runtime crates (nextest + doctests)
+        working-directory: rust
+        run: |
+          cargo nextest run --no-fail-fast -p lattice-agent -p lattice-platform -p lattice-chat -p lattice-host
+          cargo test --doc -p lattice-agent -p lattice-platform -p lattice-chat -p lattice-host
 
   visual:
     name: Playwright visual smoke
@@ -255,29 +296,50 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure APT mirror timeouts
-        run: |
-          printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "2";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' | sudo tee /etc/apt/apt.conf.d/99fast-failover >/dev/null || true
+      - name: Cache Playwright Chromium browser
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
+      - name: Ensure Chromium Ubuntu 24.04 / 26.04 (t64) shared libraries
         env:
           DEBIAN_FRONTEND: noninteractive
           NEEDRESTART_MODE: l
         run: |
+          LDCACHE="$(ldconfig -p 2>/dev/null || true)"
+          MISSING=""
+          for pair in \
+            "libasound.so.2:libasound2t64" \
+            "libatk-1.0.so.0:libatk1.0-0t64" \
+            "libatk-bridge-2.0.so.0:libatk-bridge2.0-0t64" \
+            "libcups.so.2:libcups2t64" \
+            "libgtk-3.so.0:libgtk-3-0t64" \
+            "libgbm.so.1:libgbm1" \
+            "libnss3.so:libnss3" \
+            "libxkbcommon.so.0:libxkbcommon0"; do
+            SONAME="${pair%%:*}"
+            PKG="${pair##*:}"
+            if ! grep -q "${SONAME}" <<< "${LDCACHE}"; then
+              MISSING="${MISSING} ${PKG}"
+            fi
+          done
+          if [ -z "${MISSING}" ]; then
+            echo "All Chromium shared libraries are already present on the runner; skipping apt-get."
+            exit 0
+          fi
+          printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "2";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' | sudo tee /etc/apt/apt.conf.d/99fast-failover >/dev/null || true
+          echo "Installing missing Chromium libraries:${MISSING}"
           sudo -E apt-get update -y || true
-          sudo -E apt-get install -y --no-install-recommends \
-            libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libgtk-3-0t64 \
-            libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 libwebkit2gtk-4.1-0 || {
-            sudo -E apt-get install -y --no-install-recommends libasound2t64 || sudo -E apt-get install -y --no-install-recommends libasound2 || true
-            sudo -E apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk1.0-0 || true
-            sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo -E apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
-            sudo -E apt-get install -y --no-install-recommends libcups2t64 || sudo -E apt-get install -y --no-install-recommends libcups2 || true
-            sudo -E apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo -E apt-get install -y --no-install-recommends libgtk-3-0 || true
-            sudo -E apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
-            sudo -E apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo -E apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+          sudo -E apt-get install -y --no-install-recommends ${MISSING} || {
+            for pkg in ${MISSING}; do
+              sudo -E apt-get install -y --no-install-recommends "${pkg}" || sudo -E apt-get install -y --no-install-recommends "${pkg%t64}" || true
+            done
           }
 
       - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium
 
       - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries

@@ -6,7 +6,7 @@
 
 12.6.0 Hybrid Graph introduced 3-way BM25F + Vector + Knowledge Graph RRF hybrid search. **12.7.0 Fast Index** eliminates query-time re-tokenization and graph-link re-parsing with a **Pre-Tokenized BM25F Sidecar**, **SQLite `bm25_node_stats` persistence**, and an **inverted posting-list & GraphRAG adjacency cache**, while polishing the repository around a **product-first `README.md`** and a clean **`v12.0.0+` release-history floor**.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**. 쓰기는 계속 `GraphWriter` 하나입니다.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**. Writes still go through a single `GraphWriter`.
 
 ## What landed
 

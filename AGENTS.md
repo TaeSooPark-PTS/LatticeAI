@@ -310,7 +310,8 @@ For release work:
 - Validate release artifacts before reporting completion
 - Use exact artifact paths
 - Do not use `dist/*` for upload or release commands
-- After `main` CI and Visual Smoke pass on a release commit, autonomously create and push the `vX.Y.Z` tag, ensure `.github/workflows/release.yml` attaches exact-version artifacts and publishes the GitHub Release, and verify `.github/workflows/publish.yml` (CD) completes package publication
+- After `main` CI (including Visual Smoke) passes on a release commit, `.github/workflows/release.yml` automatically verifies green CI on that exact SHA, runs `bump_version.py --check` + `docs:check-current` + `docs:check-languages`, creates/pushes `vX.Y.Z`, attaches exact-version artifacts to the GitHub Release, and chains `.github/workflows/publish.yml` (CD). Include `[skip release]` in the commit message if a pre-release version bump must not trigger automatic release/CD yet.
+- Keep GitHub Markdown documentation strictly separated by language (`npm run docs:check-languages`): canonical root and `docs/*.md` files must be pure English (zero Hangul outside the Korean language-switcher badge), and Korean mirrors live in `README.ko.md` and `docs/ko/*.md`.
 
 Expected artifact naming:
 

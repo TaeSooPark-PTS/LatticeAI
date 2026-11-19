@@ -30,18 +30,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache Playwright Chromium browser
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Configure APT mirror timeouts
         run: |
           printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "2";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' | sudo tee /etc/apt/apt.conf.d/99fast-failover >/dev/null || true
 
       - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
         # Ubuntu 24.04 and upcoming Ubuntu 26.04 (`ubuntu-latest` / `ubuntu-26.04`)
-        # transitioned 32-bit time_t packages to `t64` suffixes. Batch the fast
-        # path into a single apt transaction and fall back per-library if needed.
+        # transitioned 32-bit time_t packages to `t64` suffixes. Skip apt-get
+        # altogether when all Chromium shared libraries are already present.
         env:
           DEBIAN_FRONTEND: noninteractive
           NEEDRESTART_MODE: l
         run: |
+          LDCACHE="$(ldconfig -p 2>/dev/null || true)"
+          MISSING=""
+          for soname in libasound.so.2 libatk-1.0.so.0 libatk-bridge-2.0.so.0 libcups.so.2 libgtk-3.so.0 libgbm.so.1 libnss3.so libxkbcommon.so.0; do
+            if ! grep -q "${soname}" <<< "${LDCACHE}"; then
+              MISSING="${MISSING} ${soname}"
+            fi
+          done
+          if [ -z "${MISSING}" ]; then
+            echo "All Chromium shared libraries are already present on the runner; skipping apt-get."
+            exit 0
+          fi
           sudo -E apt-get update -y || true
           sudo -E apt-get install -y --no-install-recommends \
             libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libgtk-3-0t64 \
@@ -56,8 +74,7 @@ jobs:
           }
 
       - name: Install Chromium
-        # System libraries were already installed in the batched t64 step above;
-        # skip `--with-deps` to avoid a second redundant apt-get transaction.
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium
 
       - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries

@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../reviews/CODEBASE_REVIEW_AND_IMPROVEMENT_ROADMAP.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./CODEBASE_REVIEW_AND_IMPROVEMENT_ROADMAP.md)
+
 # Lattice AI 전체 소스코드 리뷰 및 개선 로드맵
 
 - **검토 기준일:** 2026-11-18

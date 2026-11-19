@@ -12,7 +12,7 @@ and all npm lockfile vulnerabilities across root and `vscode-extension`,
 hardens HTTP scheme validation in `model_engines`, and scopes Tailwind CSS v4's
 oxide scanner to `frontend/`.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**. 쓰기는 계속 `GraphWriter` 하나입니다.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**. Writes still go through a single `GraphWriter`.
 
 ## What landed
 

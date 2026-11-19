@@ -27,7 +27,7 @@
   - `rust/lattice-host/src/gateway/onedoor.rs` and `rust/lattice-platform/src/adminops/admin/{audit,handlers}.rs`: `probe_store_graph_stats` explicitly distinguishes uninitialized (`empty`), healthy (`ok`), and SQL failure (`unavailable`) states instead of reporting `0` nodes on broken queries.
 - **Section 16 End-to-End Product Verification Suite (`rust/lattice-host/tests/roadmap_section16_suite.rs`):**
   - **16.1** Separated RAG accuracy (`Recall@5 >= 0.99`, `MRR >= 0.90`), `1.0` superseded exclusion, `1.0` unanswerable abstention, and Gemma/Qwen/Cloud model-swap invariance.
-  - **16.2** Bi-temporal `Jan → Mar → May` point-in-time and current-state policy evolution plus cross-lingual `Project Alpha` / `프로젝트 알파` entity consolidation.
+  - **16.2** Bi-temporal `Jan → Mar → May` point-in-time and current-state policy evolution plus cross-lingual English/Korean (`Project Alpha`) entity consolidation.
   - **16.3** Cloud boundary zero egress in `local_only`, sensitive/`local_only`/`.env.production` exclusion in `cloud_allowed`, and review-staged cloud KG expansion (`auto_commit == false`).
   - **16.4** Fault recovery under unreachable Python worker (fast fail + native SQLite search `200`), mid-indexing crash recovery (0 duplicates, 0 lost files), and `WaitingApproval` workflow resume across full restarts without re-running completed steps.
 

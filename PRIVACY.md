@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./PRIVACY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/PRIVACY.md)
+
 # Privacy
 
 Current release: **13.3.1 — Living Synthesis**.
@@ -5,10 +7,6 @@ Current release: **13.3.1 — Living Synthesis**.
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
 contact third parties, and those paths are listed below.
-
-Lattice AI는 기본적으로 로컬 우선입니다. 프롬프트, 파일, 그래프, Brain archive를
-기본값으로 Lattice 소유 서버에 보내지 않습니다. 사용자가 선택한 일부 기능은
-외부 서비스와 통신할 수 있으며, 아래에 명시되어 있습니다.
 
 ## What Is Stored Locally
 

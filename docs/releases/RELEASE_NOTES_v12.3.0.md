@@ -4,13 +4,9 @@
 
 2026-10-19
 
-12.2.1 True Count가 검색·스킵·워치·작은 모델 요약을 정직하게 세었습니다.
-12.3.0 Live Wire는 Hugging Face 실저장소와 클라우드 공급자 카탈로그를
-전수 검증해 태그·경로 불일치를 바로잡고, 작은 로컬 모델의 툴콜/MCP 호출과
-HTML 생성·구조 점검(`POST /tools/inspect_html`)·UTF-8 다운로드(`GET /tools/download`)를
-실제 `mlx-community/gemma-4-e2b-it-4bit` 로드 상태에서 끝까지 검증했습니다.
+12.2.1 True Count made search, skip stamps, watch pruning, and small-model summaries count honestly. 12.3.0 Live Wire exhaustively audits live Hugging Face repositories and cloud provider catalogs to fix tag and route mismatches, and verifies small local model tool/MCP calling, HTML generation, structure inspection (`POST /tools/inspect_html`), and UTF-8 downloads (`GET /tools/download`) end-to-end against a loaded `mlx-community/gemma-4-e2b-it-4bit` model.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**. 쓰기는 계속 `GraphWriter` 하나입니다.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**. Writes still go through a single `GraphWriter`.
 
 ## What landed
 

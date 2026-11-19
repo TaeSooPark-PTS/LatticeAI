@@ -34,6 +34,7 @@
     "docs:check-links": "node scripts/check_markdown_links.mjs && node scripts/check_doc_status.mjs",
     "docs:check-status": "node scripts/check_doc_status.mjs",
     "docs:check-current": "node scripts/check_current_release_docs.mjs",
+    "docs:check-languages": "node scripts/check_doc_languages.mjs",
     "typecheck": "npm run typecheck:frontend",
     "typecheck:frontend": "npx tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run_python.mjs -m pytest tests/ -v",

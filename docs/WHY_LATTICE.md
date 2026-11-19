@@ -1,11 +1,11 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./WHY_LATTICE.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/WHY_LATTICE.md)
+
 # Why Lattice AI Exists
 
 Current release: **13.3.1 — Living Synthesis**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
-
-**모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.**
 
 AI models change quickly. A model you use today may be replaced tomorrow, and a
 cloud chat history can become scattered across tools. Lattice AI exists so the

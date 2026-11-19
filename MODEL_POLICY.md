@@ -1,8 +1,8 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./MODEL_POLICY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/MODEL_POLICY.md)
+
 # Model Policy
 
-Lattice AI v9.6.0 uses a multimodal-first model policy. The Brain is the
-durable product surface; model choice is a replaceable execution voice that must
-preserve source facts, memory proof, and model-continuity evidence.
+Lattice AI v9.6.0 introduced a multimodal-first model policy that continues to guide model selection. The Brain is the durable product surface; model choice is a replaceable execution voice that must preserve source facts, memory proof, and model-continuity evidence.
 
 ## Recommendation Rules
 
@@ -18,11 +18,11 @@ preserve source facts, memory proof, and model-continuity evidence.
 
 Every recommended model must expose these fields in this order:
 
-1. 제작 국가
-2. 제작 회사
-3. 실행 방식
-4. 인터넷 사용 여부
-5. 모델명
+1. Maker country
+2. Maker company
+3. Run mode
+4. Internet usage
+5. Model name
 
 ## Current Families
 

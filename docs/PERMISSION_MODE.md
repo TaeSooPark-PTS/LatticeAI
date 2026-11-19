@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./PERMISSION_MODE.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/PERMISSION_MODE.md)
+
 # Permission Mode (v9.9.8)
 
 Frontier agents expose an autonomy dial. LatticeAI maps the same idea onto
@@ -36,19 +38,19 @@ Env default: `LATTICEAI_PERMISSION_MODE=strict|trusted|bypass`.
 
 ## UI
 
-`PermissionModePanel` renders in **설정 → 혼자 해도 되는 일** (`SystemPage`
-settings tab; the section was called 에이전트 자율성 before 10.5.0). The same
+`PermissionModePanel` renders in **Settings → Autonomous Actions** (`SystemPage`
+settings tab; the section was called "Agent Autonomy" before 10.5.0). The same
 dial is reachable on the home screen through `BrainQuickControls`.
 
 It still renders whatever modes the catalog `/api/permission-mode/catalog`
 returns rather than a hardcoded list, so a mode added server-side appears with
 no frontend change. Since 10.5.0 the *wording* is no longer taken from the
 server for modes the app knows: `frontend/src/lib/permissionCopy.ts` maps mode
-id → plain-language label and summary (`strict` → 먼저 물어보기, `trusted` →
-웬만하면 알아서, `bypass` → 거의 다 알아서), and both surfaces read that one
-module so the dial cannot be named two ways. The server's own localized label
-is the fallback for an id the map does not know — renaming a mode server-side
-therefore changes the UI only for ids the app has no copy for.
+id → plain-language label and summary (`strict` → Ask first, `trusted` →
+Mostly autonomous, `bypass` → Almost everything autonomously), and both surfaces
+read that one module so the dial cannot be named two ways. The server's own
+localized label is the fallback for an id the map does not know — renaming a
+mode server-side therefore changes the UI only for ids the app has no copy for.
 
 The apply button stays disabled until
 

@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./SECURITY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/SECURITY.md)
+
 # Security Policy
 
 > **Status: canonical** — current security model, kept in sync with the current

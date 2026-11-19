@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./ARCHITECTURE.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/ARCHITECTURE.md)
+
 # Lattice AI Current Architecture
 
 > **Status: canonical** — current-truth architecture document, kept in sync
@@ -314,7 +316,7 @@ Key boundaries:
   `scripts/check_bundle_budget.mjs` against a 150 KiB budget — instead of
   carrying ~3,000 lines of copy for routes the user has not opened. 12.0.0
   splits the Act and Brain sub-routes into their own lazy chunks and wraps
-  every route **and every heavy panel** in an `ErrorBoundary` with a 다시 시도
+  every route **and every heavy panel** in an `ErrorBoundary` with a Retry
   action, so one panel that throws costs its own card rather than the screen.
   `scripts/check_i18n_namespace_coverage.mjs` fails the build when a chunk
   reads a key whose namespace it never imports — otherwise `t()` silently
@@ -391,10 +393,10 @@ clicking the Brain itself.
 flowchart TB
   subgraph shell["Top bar — on every screen"]
     direction LR
-    nav["대화 · 자료 · 기억 · 작업"]
-    lang["한국어 / English"]
+    nav["Chat · Library · Memory · Work"]
+    lang["Language (KO / EN)"]
     theme["light / dark"]
-    more["더보기"]
+    more["More"]
     nav ~~~ lang ~~~ theme ~~~ more
   end
 
@@ -405,13 +407,13 @@ flowchart TB
     subgraph composer["2 · BrainComposer"]
       direction TB
       input["textarea — the one thing you do here"]
-      capture["문서 · 이미지 · 파일 · 폴더 · 노트 · 웹<br/>BrainIngestionDock variant=inline"]
+      capture["Docs · Images · Files · Folders · Notes · Web<br/>BrainIngestionDock variant=inline"]
       dial["3 · BrainQuickControls — autonomy dial"]
       input --> capture --> dial
     end
 
     chips["suggested questions"]
-    quiet["4 · quiet row — 지난 대화 · Brain이 정리한 내용"]
+    quiet["4 · quiet row — Past chats · Brain insights"]
     hero --> composer --> chips --> quiet
   end
 
@@ -604,7 +606,7 @@ Current UX rules:
   run is titled by its workflow name, and its database id renders only in
   advanced mode.
 - Enum-shaped payload values are translated per token with a named fallback
-  (`act.runStatus.<token>` → "알 수 없음"), never printed raw. A token the table
+  (`act.runStatus.<token>` → "Unknown"), never printed raw. A token the table
   does not know must degrade to a written phrase, not to itself.
 - Where two surfaces show the same setting, the copy has one home. Permission
   modes live in `frontend/src/lib/permissionCopy.ts`, read by both the home
@@ -1486,7 +1488,7 @@ flowchart LR
 
 Test counts move on every commit, so this diagram states the *gates* and
 leaves the counts to the release run that produces them; the figures for this
-release are in [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) §게이트.
+release are in [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) (Gates section).
 Both coverage figures are enforced floors, but they are not the same floor.
 Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0 and
 still does. **Python coverage moved in 11.8.0 from `fail_under = 100` on lines
@@ -1601,12 +1603,12 @@ the aliases exist for the consumers, not for us.
 
 ### Agent-native workspace reorganization (11.1.0)
 
-`latticeai/core/workspace_reorganization.py` answers "이 프로젝트를 정리해줘"
+`latticeai/core/workspace_reorganization.py` answers "Organize this project"
 without handing an agent the filesystem. It scans a workspace-relative folder
 through the caller's sandboxed `resolve_path`, asks the graph what each file is
 about (one `graph()` window for the file-node index, then one `neighbors()` hop
 per matched file, strongest edge first with ties broken on the topic title),
-and returns a plan of moves into `topics/<주제>/`.
+and returns a plan of moves into `topics/<topic>/`.
 
 Three properties are structural rather than configured:
 
@@ -1801,7 +1803,7 @@ is no settings service" reach the same answer instead of two.
 Making the gates movable did not make them *reachable*: a person still had to
 know a variable's name and restart the server. `FeatureToggleService`
 (`latticeai/services/feature_toggles.py`) is the reachable half, mounted at
-`GET/POST /api/features` and rendered as the home dock's **기능** drawer.
+`GET/POST /api/features` and rendered as the home dock's **Features** drawer.
 
 * **The server renders the catalog.** Ids, labels, one-line explanations,
   defaults, and which choices are installable all come from `CATALOG`, so the
@@ -1877,15 +1879,15 @@ cloud model comes from the provider config, never the local MLX id, and
 a cloud turn may run with no local model loaded. Escalation is
 `hybrid_policy.json` `escalation`: `always` / `auto` (default) /
 `manual`. `auto` sends only when no local model is loaded, local context
-is thin, or the user prefixes `/cloud ` / `클라우드:`. A per-request
+is thin, or the user prefixes `/cloud ` (or the localized Korean cloud prefix). A per-request
 `network_mode: "local_only"` always wins. `GET /api/cloud/status` reports
 `{configured, mode, provider, model, detail}`.
 
 Token budgets (`cloud_token_guard.py`) cap per-turn and per-session spend, so
 an opted-in session has a ceiling rather than an open tap.
 
-**Surface (10.1.1):** `NetworkBoundaryPanel` in **환경설정 → 내 지식이 나가는
-범위**, beside the autonomy dial. Like that dial it renders the server's own
+**Surface (10.1.1):** `NetworkBoundaryPanel` in **Settings → Knowledge Sharing
+Boundary**, beside the autonomy dial. Like that dial it renders the server's own
 catalog rather than a hardcoded mode list, and it will not send a switch to
 `cloud_allowed` until the acknowledgement the server requires is ticked — the
 client refuses the request the server would refuse.

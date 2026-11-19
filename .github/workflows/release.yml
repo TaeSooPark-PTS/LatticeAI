@@ -99,13 +99,23 @@ jobs:
           fi
 
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            COMMIT_MSG="$(git log -1 --pretty=%B "${SHA}")"
+            if echo "${COMMIT_MSG}" | grep -qiE '\[(skip release|no release)\]'; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::Commit ${SHA} includes [skip release] / [no release] — skipping automatic Release & CD."
+              exit 0
+            fi
             if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
               echo "should_release=false" >> "$GITHUB_OUTPUT"
               echo "Tag ${TAG} already exists on origin — ordinary main commit, skipping Release & CD."
               exit 0
             fi
-            # Ensure release docs match before auto-tagging a new version.
+            # Guard against accidental partial version bumps: require every manifest
+            # (package.json, pyproject.toml, Cargo.toml, tauri.conf.json, VSIX, markers)
+            # AND release docs / language gates to match VERSION before auto-tagging.
+            python3 scripts/bump_version.py "${VERSION}" --check
             node scripts/check_current_release_docs.mjs
+            node scripts/check_doc_languages.mjs
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "${TAG}" -m "Lattice AI ${TAG} — Living Synthesis" "${SHA}"
@@ -150,6 +160,7 @@ jobs:
       - name: Release readiness gates
         run: |
           npm run docs:check-current
+          npm run docs:check-languages
           node scripts/check_ubuntu_runner_compat.mjs --diagnostic
           npm run build:assets
           python scripts/product_readiness.py

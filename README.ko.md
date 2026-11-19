@@ -1,0 +1,156 @@
+<div align="center">
+
+[![English](https://img.shields.io/badge/English-Switch-475569?style=for-the-badge)](README.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=for-the-badge)](README.ko.md)
+
+# Lattice AI
+
+**모델은 오늘 쓰는 목소리이고, 브레인은 평생 남는 나의 자산입니다.**
+
+[![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
+[![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
+[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
+[![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
+[![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+<br/>
+
+![v13.3.1 Living Brain 둘러보기](output/release/v13.3.1/gifs/v13.3.1-living-brain-walkthrough.gif)
+
+</div>
+
+Lattice AI는 대화, 파일, 폴더, 노트, 웹 캡처를 내가 소유하는 단일 프라이빗 지식 그래프로 통합하는 **로컬 우선 디지털 브레인**입니다. 기본값은 100% 로컬 추론이며, 클라우드 모델 연결은 선택 사항입니다. 사용자의 명시적 동의 없이는 어떤 데이터도 기기 밖으로 전송되지 않습니다.
+
+---
+
+## 왜 Lattice AI인가요?
+
+- **로컬 우선 디지털 브레인 & 하드웨어 자동 맞춤** — 모든 기억, 출처 이력, 그래프 관계는 로컬 SQLite와 이식 가능한 암호화 `.latticebrain` 아카이브에 저장됩니다. 초기 설치 직후 오프라인에서도 결정론적 `lattice-local-hash-v1` 임베딩으로 즉시 동작하며, 기기 사양에 맞는 로컬 **EmbeddingGemma 2**(`768d`) 또는 시맨틱 프로바이더(`mlx-community`, `ggml-org` GGUF, `onnx-community`)로 **실시간 SSE 다운로드 진행률(`MB/s`, `ETA`)**과 함께 매끄럽게 업그레이드할 수 있습니다.
+- **하이브리드 GraphRAG (BM25F + 벡터 + 2-Hop 지식 그래프 RRF)** — 한국어 조사 제거·CJK 바이그램·식별자 서브워드를 지원하는 필드 가중 Okapi BM25F, 밀집/서브워드 벡터 검색, 1-Hop/2-Hop 지식 그래프 구조 확장(`RELATES_TO`, `MENTIONS`, `PART_OF`, `[[위키링크]]`, `#태그`)을 Reciprocal Rank Fusion(RRF)으로 결합합니다.
+- **제안 우선 안전 자율성 & 검토 센터** — 새 파일 생성 같은 추가 작업은 최소 마찰로 실행되고, 기존 사용자 파일 수정·삭제나 클라우드 추출 기억은 해시 검증된 **검토 센터** 제안으로 스테이징되어 전후 비교(diff) 승인 후에만 반영됩니다. 2B급 소형 로컬 모델도 가이드 프롬프트로 안전하게 동작하며, LLM이 로드되지 않은 상태의 워크플로우/에이전트 시뮬레이션은 모델을 호출하지 않는 **결정론적 LLM-free 동작**임을 명시합니다.
+- **모든 화면에서 하나의 브레인** — **macOS 데스크톱 앱(`.dmg`)**, **웹 스튜디오(`/app`)**, **VS Code / Cursor / Open VSX 확장**, **브라우저 확장**, **`LTCAI` CLI**가 모두 동일한 로컬 브레인을 공유합니다.
+
+---
+
+## 빠른 시작
+
+### 1. 데스크톱 앱 (macOS)
+
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_13.3.1_aarch64.dmg`를 내려받아 실행하세요.
+
+### 2. 한 줄 명령 CLI & 웹 스튜디오
+
+```bash
+pip install ltcai          # 또는: npm install -g ltcai
+LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
+```
+
+- **Apple Silicon 로컬 모델 (MLX)**: `pip install "ltcai[local]"`
+- **포인터 자동화 도구 (선택)**: `pip install "ltcai[pointer]"`
+
+### 3. 에디터 확장 (VS Code · Cursor · Antigravity)
+
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) 또는 [Open VSX](https://open-vsx.org/extension/parktaesoo/ltcai)에서 `parktaesoo.ltcai`를 설치하면 에디터 안에서 바로 파일 동기화, 브레인 기반 질의, 변경 제안 검토를 수행할 수 있습니다.
+
+### 처음 5분 흐름
+
+1. **브레인 깨우기** — 로컬 소유자 프로필을 확인합니다.
+2. **추천 로컬 모델 및 임베더 선택** — 내 하드웨어에 맞는 모델을 실시간 SSE 진행률과 함께 설치합니다.
+3. **자료 담기** — 폴더, 문서, 노트, 웹페이지를 추가합니다.
+4. **내 말로 질문하기** — 근거 출처, 지식 그래프 연결, 검토 센터 diff를 직접 확인합니다.
+
+---
+
+## 제품 둘러보기
+
+| 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
+| --- | --- |
+| ![추천 모델](output/release/v13.3.1/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v13.3.1/screenshots/03-install-load-progress.png) |
+| **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
+| ![브레인 채팅 홈](output/release/v13.3.1/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v13.3.1/screenshots/05-memory-graph.png) |
+| **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
+| ![자료에서 기억으로](output/release/v13.3.1/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v13.3.1/screenshots/12-review-center.png) |
+| **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
+| ![브레인 연대기](output/release/v13.3.1/screenshots/13-chronicle.png) | ![설정 화면](output/release/v13.3.1/screenshots/08-system.png) |
+
+전체 화면 인덱스: [output/release/v13.3.1/SCREENSHOT_INDEX.md](output/release/v13.3.1/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v13.3.1/screenshots/01-login.png), [06-capture.png](output/release/v13.3.1/screenshots/06-capture.png), [07-model-library.png](output/release/v13.3.1/screenshots/07-model-library.png)).
+
+---
+
+## 한국어 문서 & 아키텍처 허브
+
+| 영역 | 문서 | 주요 내용 |
+| --- | --- | --- |
+| **시작 가이드** | [docs/ko/ONBOARDING.md](docs/ko/ONBOARDING.md) | 처음 5분 제품 흐름 및 첫 실행 보장 |
+| **제품 철학** | [docs/ko/WHY_LATTICE.md](docs/ko/WHY_LATTICE.md) | 개별 AI 모델보다 브레인이 오래 남아야 하는 이유 |
+| **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 20개 라우트 Python AI 워커 |
+| **기능 현황** | [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md) | 현재 출시된 기능과 정직한 시스템 한계 |
+| **운영 & 셀프 호스팅** | [docs/ko/OPERATIONS.md](docs/ko/OPERATIONS.md) | 저장소 구조, `.latticebrain` 백업/복원, 공개 모드 체크리스트 |
+| **엔터프라이즈 & 오픈 코어** | [docs/ko/ENTERPRISE.md](docs/ko/ENTERPRISE.md) | 오픈 코어 경계 및 [EDITION_STRATEGY.md](docs/ko/EDITION_STRATEGY.md) |
+| **보안 & 프라이버시** | [docs/ko/SECURITY.md](docs/ko/SECURITY.md) · [docs/ko/PRIVACY.md](docs/ko/PRIVACY.md) | 위협 모델, 루프백 기본값, 외부 전송 감사, [TRUST_MODEL.md](docs/ko/TRUST_MODEL.md) |
+| **기여자 가이드** | [docs/ko/DEVELOPMENT.md](docs/ko/DEVELOPMENT.md) · [docs/ko/CONTRIBUTING.md](docs/ko/CONTRIBUTING.md) | 로컬 빌드, Rust 크레이트 구조, 품질 게이트, [ROADMAP.md](docs/ko/ROADMAP.md) |
+| **CI / CD & 릴리스 게이트** | [docs/ko/CI_AND_RELEASE_GATES.md](docs/ko/CI_AND_RELEASE_GATES.md) | CI 통과 강제, 자동 릴리스/CD 체이닝, 병렬 테스트 구조 |
+| **릴리스 & 변경 이력** | [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) | 릴리스 절차, [RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 영문 개별 노트 ([`docs/releases/`](docs/releases/)) |
+
+---
+
+## 현재 릴리스
+
+현재 최신 릴리스는 **13.3.1 — Living Synthesis**입니다:
+
+- **시맨틱 임베딩용 2단계 비동기 증분 동기화** — `incremental_sync`를 `plan_incremental_sync` + 비동기 `/worker/embed`(`post_idempotent_compute`) + `commit_incremental_sync`(`watch_deliver.rs`)로 분리하여, 시맨틱 임베딩 계약 활성 상태에서도 감시 파일 수정 시 변경된 청크만 재임베딩하고 미변경 청크 벡터를 재사용합니다.
+- **주장 단위 근거 검증 & 인식론적 통합 UI (Vitest 100%)** — `AnswerProof.tsx`에 주장 검증 지표(`claim_verification`: 지지율 %, 정밀도 %, 수치/극성 불일치, 대체 지식 누수 경고, 기권 사유)를, `BrainIntelligencePanel.tsx`에 개체 통합(`entity_resolution`) 및 시간축 타임라인(`temporal_timeline`) 요약을 한/영 완전 현지화로 노출했습니다.
+- **공급망 및 릴리스 하드닝** — Python·npm·Cargo·Tauri·GitHub Actions 주간 자동 모니터링(`.github/dependabot.yml`)을 추가했으며, 비테스트 Rust `.unwrap()` **0건**과 800줄 초과 수기 프로덕션 파일 **0건**을 유지합니다.
+
+<details>
+<summary>13.3.1 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 영문 상세 노트: [docs/releases/RELEASE_NOTES_v13.3.1.md](docs/releases/RELEASE_NOTES_v13.3.1.md).
+
+13.3.1 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+
+- `dist/ltcai-13.3.1-py3-none-any.whl`
+- `dist/ltcai-13.3.1.tar.gz`
+- `ltcai-13.3.1.tgz`
+- `dist/ltcai-13.3.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.3.1_aarch64.dmg`
+
+와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
+
+</details>
+
+---
+
+## 정직한 경계
+
+- **기본값은 로컬**: SQLite가 실제 운영 브레인 저장소입니다. 클라우드 모델(`cli_oauth` 또는 `api_key`), 모델 다운로드, 브레인 네트워크, 업데이트 확인은 모두 사용자의 명시적 행동이 있어야만 동작합니다.
+- **정직한 검색 & 시뮬레이션**: 로드된 LLM이 없을 때 에이전트/워크플로우 시뮬레이션은 모델을 호출하지 않는 결정론적 동작이며 화면에 명시됩니다. 벡터 검색 기본값은 정확 전수 검색이며 `LATTICEAI_VECTOR_INDEX=hnsw` 설정 시 512개 이상 벡터에서 `hnsw+rescore`를 활성화합니다.
+- **안전한 삭제 & 코드 서명**: 감시 폴더 정리는 확인 후 지식 그래프에서만 제거하며 디스크 원본 파일은 삭제하지 않습니다. macOS `.dmg`는 ad-hoc 서명되므로 첫 실행 시 macOS Gatekeeper 허용 절차가 필요합니다. 남은 개선 항목은 [docs/ko/ROADMAP.md](docs/ko/ROADMAP.md) 및 [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md)에 투명하게 기록합니다.
+
+---
+
+## 릴리스 히스토리
+
+이 저장소의 공개 릴리스 히스토리는 `v12.0.0+`(Rust 호스트 + 도메인 그룹 아키텍처)부터 유지됩니다. 한국어 요약은 [docs/ko/RELEASE_NOTES.md](docs/ko/RELEASE_NOTES.md), 버전별 원문 노트는 [docs/releases/](docs/releases/)에서 확인할 수 있습니다.
+
+| 버전 | 테마 | 릴리스 노트 |
+| --- | --- | --- |
+| 13.3.1 | Living Synthesis | [RELEASE_NOTES_v13.3.1.md](docs/releases/RELEASE_NOTES_v13.3.1.md) |
+| 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md) |
+| 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](docs/releases/RELEASE_NOTES_v13.2.1.md) |
+| 13.2.0 | Living Synthesis | [RELEASE_NOTES_v13.2.0.md](docs/releases/RELEASE_NOTES_v13.2.0.md) |
+| 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](docs/releases/RELEASE_NOTES_v13.1.0.md) |
+| 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md) |
+| 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) |
+| 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md) |
+| 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) |
+| 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) |
+| 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md) |
+| 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md) |
+| 12.4.0 | Sharp Weight | [RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md) |
+| 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md) |
+| 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md) |
+| 12.2.0 | Small Voice | [RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md) |
+| 12.1.0 | Fast Path | [RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md) |
+| 12.0.0 | Open House | [RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) |

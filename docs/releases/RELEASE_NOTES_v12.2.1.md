@@ -4,13 +4,9 @@
 
 2026-08-29
 
-12.2.0 Small Voice가 작은 모델에게 *도구*를 주었습니다. 12.2.1은 그
-뒤에 남아 있던 숫자를 정직하게 셉니다. 벡터 쿼리는 COUNT 다음에
-빠진 행만 읽고, 같은 바이트의 touch는 스탬프를 다시 찍고, 워치에서
-사라진 파일은 그래프에서 빠지며, 얇은 요약은 읽은 파일의 문장으로
-채워지거나 검토로 갑니다. 쓰기는 계속 `GraphWriter` 하나입니다.
+12.2.0 Small Voice gave small models *tools*. 12.2.1 counts the remaining numbers honestly: vector queries run `COUNT` first and read only missing rows, touching a file with unchanged bytes updates its stamp, files removed under watch are pruned from the graph, and thin summaries are either filled from sentences in the files already read or routed to review. Writes still go through a single `GraphWriter`.
 
-문은 **422 operations / 41 families**, 워커는 **20 routes**.
+The door serves **422 operations / 41 families**, and the Python worker stays at **20 routes**.
 
 ## What landed
 

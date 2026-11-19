@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./README.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../docs/ko/VSCODE_EXTENSION.md)
+
 # Lattice AI — VS Code Extension
 
 **Extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.**

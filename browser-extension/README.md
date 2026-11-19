@@ -1,20 +1,23 @@
-# Lattice AI — browser extension (Manifest V3)
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./README.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](../docs/ko/BROWSER_EXTENSION.md)
 
-Current release: **12.4.0 — Sharp Weight**.
+# Lattice AI — Browser Extension (Manifest V3)
+
+Current release: **13.3.1 — Living Synthesis**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this
 extension still posts only to `127.0.0.1`. It does three things:
 
 1. **Capture** — send the current page into the graph;
-2. **Recall** (v9.9.7) — ask your Brain a question and see the *server's own*
+2. **Recall** — ask your Brain a question and see the *server's own*
    grounding verdict on the answer;
-3. **Approvals** (v9.9.7) — show how many agent runs are waiting for approval,
+3. **Approvals** — show how many agent runs are waiting for approval,
    so a paused run is never invisible from here.
 
 Recall and approvals use the same `/chat` and `/agent/approvals` endpoints
 every other surface uses. The extension never computes a grounding verdict
-itself: an absent verdict renders as "근거 확인 불가", never as "근거 있음".
+itself: an absent verdict renders as "Unverifiable" (unable to verify grounding),
+never as "Grounded".
 
 ## Local-first guarantee
 

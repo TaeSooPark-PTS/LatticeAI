@@ -1,8 +1,11 @@
-# MCP 도구 카탈로그 (v9.6.0)
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./mcp-tools.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/mcp-tools.md)
 
-Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop, Cursor 등에서 직접 도구를 사용할 수 있습니다.
+# MCP Tool Catalog (v9.6.0)
 
-## 연결 설정
+Lattice AI runs as an MCP (Model Context Protocol) server so clients such as
+Claude Desktop and Cursor can invoke governed tools directly.
+
+## Connection Setup
 
 The MCP surface is **streamable HTTP JSON-RPC** at `POST /mcp` on the
 loopback gateway (default `http://localhost:4825`). There is no separate
@@ -51,7 +54,7 @@ spec like every other product route. Two consequences worth knowing:
   governs takes the stricter native path instead, so the MCP prefix can never
   be the quieter way to call the same tool.
 
-## 도구 목록
+## Tool List
 
 MCP exposes a **curated, read-oriented** subset of Lattice native tools,
 plus each installed skill as a prompt asset. Writes, shell, desktop control,
@@ -60,15 +63,15 @@ routes (with their own approval gates) for those.
 
 ### Native (governed)
 
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `list_dir` | 워크스페이스 디렉터리 목록 (sandbox) | 낮음 |
-| `read_file` | 워크스페이스 UTF-8 파일 읽기 (offset/limit) | 낮음 |
-| `workspace_tree` | 재귀 트리 (깊이 제한) | 낮음 |
-| `grep` | 워크스페이스 정규식 검색 | 낮음 |
-| `knowledge_search` | 지식 정원 검색 (workspace scope, 승인 정책 적용) | 낮음 |
-| `knowledge_tree` | 지식 정원 파일 목록 (동일 정책) | 낮음 |
-| `git_status` | 워크스페이스 안 read-only `git status` | 낮음 |
+| Tool | Description | Risk |
+|------|-------------|------|
+| `list_dir` | Workspace directory listing (sandboxed) | Low |
+| `read_file` | Read UTF-8 file inside the workspace (offset/limit) | Low |
+| `workspace_tree` | Recursive workspace tree (depth-limited) | Low |
+| `grep` | Regular-expression search inside the workspace | Low |
+| `knowledge_search` | Search the Knowledge Garden (workspace-scoped, approval policy enforced) | Low |
+| `knowledge_tree` | List files in the Knowledge Garden (same policy) | Low |
+| `git_status` | Read-only `git status` inside the workspace | Low |
 
 ### Skills (prompt assets)
 
@@ -119,7 +122,7 @@ curl -s -b "session_token=<token>" -X POST http://localhost:4825/tools/edit_file
 operators, executable paths, absolute paths, `..` traversal, workspace-outside
 symlinks, `rg --pre`, and `find -exec/-delete` are refused.
 
-## 도구 카탈로그 조회
+## Querying the Tool Catalog
 
 ```bash
 curl -b "session_token=<token>" http://localhost:4825/mcp/tools

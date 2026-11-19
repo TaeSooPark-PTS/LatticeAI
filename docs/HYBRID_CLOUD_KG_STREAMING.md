@@ -1,8 +1,10 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./HYBRID_CLOUD_KG_STREAMING.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/HYBRID_CLOUD_KG_STREAMING.md)
+
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
 > Status: **shipped in 10.1.0**; in-app control added in **10.1.1**  
 > Principle: **Local Brain is the asset. Cloud is an opt-in worker.**  
-> Surface: `환경설정 → 내 지식이 나가는 범위`
+> Surface: `Settings → Knowledge Network Boundary`
 > (`frontend/src/components/NetworkBoundaryPanel.tsx`), plus
 > `/api/network-boundary` and `LATTICEAI_NETWORK_MODE`.
 

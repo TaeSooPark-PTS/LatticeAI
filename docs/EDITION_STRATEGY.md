@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./EDITION_STRATEGY.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/EDITION_STRATEGY.md)
+
 # Lattice AI — Edition Strategy (Open Core)
 
 This document records the principles behind the Community / Enterprise split so
