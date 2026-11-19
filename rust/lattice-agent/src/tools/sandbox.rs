@@ -127,22 +127,6 @@ impl Workspace {
         })
     }
 
-    /// Derive an authorized shared workspace under `base_root/workspaces/<sanitized>`.
-    pub fn shared_workspace(
-        base_root: impl AsRef<Path>,
-        workspace_id: &str,
-        authorized: bool,
-    ) -> Result<Self, ToolError> {
-        Self::for_isolated_scope(&IsolatedRootSpec {
-            base_root: base_root.as_ref().to_path_buf(),
-            user_id: None,
-            tenant_id: None,
-            workspace_id: Some(workspace_id.to_string()),
-            shared_authorized: authorized,
-            require_user_isolation: true,
-        })
-    }
-
     /// Mark whether all file tools (including `local_write`) must stay inside this root.
     pub fn with_confined(mut self, confined: bool) -> Self {
         self.confined = confined;

@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BrainCircuit, DatabaseBackup, Layers3, Search, Share2, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { LazyPanel } from "@/components/ErrorBoundary";
-import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, LoadingPanel, OperationResult, StatGrid, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { MultiHopSynthesisView } from "@/features/brain/MultiHopSynthesisView";
 import { SelfModelPanel } from "@/features/brain/SelfModelPanel";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
-import { asArray, fmtNumber, titleize } from "@/lib/utils";
+import { asArray, fmtNumber } from "@/lib/utils";
 import { isRecord } from "./brain/graphExplorer";
 import { sourceCreatedAt, sourceType } from "./brain/sourceMeta";
 import { navigateHash } from "@/features/brain/navigation";
@@ -157,65 +157,6 @@ export function viewLabel(language: Language, view: BrainView) {
   if (view === "graph") return t(language, "brain.tab.graph");
   const labelKey = tabs.find((item) => item.id === view)?.labelKey;
   return labelKey ? t(language, labelKey) : t(language, "brain.title");
-}
-
-// Currently unreferenced by the page (kept for the advanced status panels);
-// exported so tests exercise it until a product decision retires it.
-export function GraphStatus({ data }: { data: Record<string, unknown> }) {
-  const mode = useAppStore((state) => state.mode);
-  const language = useAppStore((state) => state.language);
-  // Computed once and reused below: re-deriving `(data.nodes || {})` a second
-  // time inside the reduce made its own `|| {}` fallback unreachable (the
-  // `nodeTypes`/`edgeTypes` keys it iterates already prove the map is real).
-  const nodeCounts = (data.nodes as Record<string, unknown>) || {};
-  const edgeCounts = (data.edges as Record<string, unknown>) || {};
-  const nodeTypes = Object.keys(nodeCounts);
-  const edgeTypes = Object.keys(edgeCounts);
-  return (
-    <div className="space-y-3">
-      <StatGrid stats={[
-        { label: t(language, "brain.stats.memories"), value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(nodeCounts[key] || 0), 0) },
-        { label: t(language, "brain.stats.links"), value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(edgeCounts[key] || 0), 0) },
-        { label: t(language, "brain.stats.memoryKinds"), value: nodeTypes.length },
-        { label: t(language, "brain.stats.linkKinds"), value: edgeTypes.length },
-      ]} />
-      {mode === "basic" ? (
-        <div className="flex flex-wrap gap-1">
-          {[...nodeTypes, ...edgeTypes].slice(0, 10).map((item) => <Badge key={item} variant="muted">{titleize(item)}</Badge>)}
-        </div>
-      ) : <StructuredView value={{ memory_kinds: nodeTypes, link_kinds: edgeTypes }} />}
-    </div>
-  );
-}
-
-// Currently unreferenced by the page — see note on GraphStatus.
-export function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
-  const language = useAppStore((state) => state.language);
-  const pipelines = isRecord(data.pipelines) ? data.pipelines : {};
-  const rows = Object.entries(pipelines).map(([name, value]) => ({
-    name: titleize(name),
-    status: isRecord(value) ? String(value.state || value.status || t(language, "brain.value.reported")) : t(language, "brain.value.reported"),
-    description: isRecord(value) ? Object.entries(value).filter(([key]) => key !== "state" && key !== "status").slice(0, 3).map(([key, item]) => `${titleize(key)}: ${String(item)}`).join(" · ") : String(value),
-  }));
-  return rows.length ? <EntityList items={rows} titleKey="name" metaKey="status" /> : <StructuredView value={data} />;
-}
-
-// Currently unreferenced by the page — see note on GraphStatus.
-export function MemoryStatus({ data }: { data: Record<string, unknown> }) {
-  const language = useAppStore((state) => state.language);
-  const usage = isRecord(data.usage) ? data.usage : {};
-  const sources = asArray<Record<string, unknown>>(data.sources || data.tiers);
-  return (
-    <div className="space-y-3">
-      <StatGrid stats={[
-        { label: t(language, "brain.stats.sources"), value: usage.sources ?? asArray(data.sources).length },
-        { label: t(language, "brain.stats.items"), value: usage.total_items ?? asArray(data.sources).reduce((sum, item) => sum + Number(isRecord(item) ? item.count || 0 : 0), 0) },
-        { label: t(language, "brain.stats.bytes"), value: usage.total_bytes ?? 0 },
-        { label: t(language, "brain.stats.health"), value: data.health || t(language, "brain.value.reported") },
-      ]} />
-      <SourceProvenanceList items={sources} limit={6} />
-    </div>
-  );
 }
 
 function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) => void }) {

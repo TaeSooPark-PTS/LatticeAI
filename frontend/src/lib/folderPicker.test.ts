@@ -4,7 +4,6 @@ import { latticeApi } from "@/api/client";
 import {
   browserDirectoryInputProps,
   browserFolderNameFromFiles,
-  canPickFolder,
   filesFromBrowserDirectory,
   hasBrowserFolderPicker,
   hasDesktopFolderPicker,
@@ -69,13 +68,11 @@ describe("shell detection", () => {
   it("finds no picker in a plain browser", () => {
     expect(hasDesktopFolderPicker()).toBe(false);
     expect(hasBrowserFolderPicker()).toBe(false);
-    expect(canPickFolder()).toBe(false);
   });
 
   it("recognises the Tauri core bridge", () => {
     shell().__TAURI__ = { core: { invoke: vi.fn() } };
     expect(hasDesktopFolderPicker()).toBe(true);
-    expect(canPickFolder()).toBe(true);
   });
 
   it("recognises the Electron preload bridge", () => {
@@ -93,7 +90,6 @@ describe("shell detection", () => {
   it("recognises the File System Access API", () => {
     shell().showDirectoryPicker = vi.fn();
     expect(hasBrowserFolderPicker()).toBe(true);
-    expect(canPickFolder()).toBe(true);
   });
 });
 

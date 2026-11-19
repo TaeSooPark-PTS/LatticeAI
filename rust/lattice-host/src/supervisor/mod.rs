@@ -125,12 +125,6 @@ impl SupervisorConfig {
         }
     }
 
-    /// Declare that this worker is fronted by a gateway on `port`.
-    pub fn behind_gateway(mut self, port: u16) -> Self {
-        self.gateway_port = Some(port);
-        self
-    }
-
     /// The agent workspace the worker will be given.
     ///
     /// Order matches [`crate::gateway::mounts::resolve_agent_root`]: an

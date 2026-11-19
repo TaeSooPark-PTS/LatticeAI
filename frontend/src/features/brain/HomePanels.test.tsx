@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@/i18n";
-import { makeBrief, makeConversations, makeProof, makeReadiness } from "@/test/brainFixtures";
-import type { BrainBriefAction, BrainProof, EmergenceEvent } from "./types";
+import { makeBrief, makeConversations, makeProof } from "@/test/brainFixtures";
+import type { BrainBriefAction, BrainProof } from "./types";
 import {
   BrainBriefPanel,
   formatConversationTime,
@@ -11,7 +11,6 @@ import {
   ModelContinuityDemo,
   ModelMissingNotice,
   PastConversationsPanel,
-  ProductCommandCenter,
 } from "./HomePanels";
 
 afterEach(() => {
@@ -248,110 +247,6 @@ describe("BrainBriefPanel", () => {
       />,
     );
     expect(container.querySelectorAll(".brain-brief-actions button svg")).toHaveLength(2);
-  });
-});
-
-describe("ProductCommandCenter", () => {
-  const baseProps = {
-    language: "ko" as const,
-    readiness: makeReadiness(),
-    proof: makeProof(),
-    modelName: "fallback-model",
-    memories: [],
-    concepts: [],
-    emergenceEvents: [] as EmergenceEvent[],
-  };
-
-  it("wires the four actions to their destinations", () => {
-    const onOpenDepth = vi.fn();
-    const onVerify = vi.fn();
-    render(<ProductCommandCenter {...baseProps} onOpenDepth={onOpenDepth} onVerifyModelContinuity={onVerify} />);
-
-    fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.command.action.add") }));
-    expect(window.location.hash).toBe("#/capture");
-    fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.command.action.find") }));
-    expect(onOpenDepth).toHaveBeenCalledWith(3);
-    fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.command.action.proof") }));
-    expect(onVerify).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.command.action.own") }));
-    expect(window.location.hash).toBe("#/settings");
-
-    // Proven continuity shows the active model on the proof action.
-    expect(screen.getByText("mlx-community/test-model")).toBeTruthy();
-    expect(screen.getByText(t("ko", "brain.command.next.alive"))).toBeTruthy();
-    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "62");
-  });
-
-  it("labels the next step per readiness state", () => {
-    const noop = () => {};
-    const { rerender } = render(
-      <ProductCommandCenter {...baseProps} readiness={makeReadiness({ state: "forming" })} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.next.forming"))).toBeTruthy();
-
-    rerender(
-      <ProductCommandCenter {...baseProps} readiness={makeReadiness({ state: "quiet" })} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.next.empty"))).toBeTruthy();
-  });
-
-  it("counts recallable proof from recall items, then durable items, then one", () => {
-    const noop = () => {};
-    const { rerender } = render(
-      <ProductCommandCenter {...baseProps} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.metric.proof", { count: 1 }))).toBeTruthy();
-
-    const noRecall = { ...makeProof(), recall: undefined as unknown as BrainProof["recall"] };
-    rerender(
-      <ProductCommandCenter {...baseProps} proof={noRecall} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.metric.proof", { count: 5 }))).toBeTruthy();
-
-    const zeroDurable = {
-      ...makeProof({ proofs: { ...makeProof().proofs, durableItems: 0 } }),
-      recall: undefined as unknown as BrainProof["recall"],
-    };
-    rerender(
-      <ProductCommandCenter {...baseProps} proof={zeroDurable} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.metric.proof", { count: 1 }))).toBeTruthy();
-
-    const noProofs = {
-      ...makeProof(),
-      recall: undefined as unknown as BrainProof["recall"],
-      proofs: undefined as unknown as BrainProof["proofs"],
-    };
-    rerender(
-      <ProductCommandCenter {...baseProps} proof={noProofs} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText(t("ko", "brain.command.metric.proof", { count: 1 }))).toBeTruthy();
-  });
-
-  it("shows the latest source label and model fallbacks", () => {
-    const noop = () => {};
-    const events: EmergenceEvent[] = [
-      { id: "e1", sourceType: "file", label: "보고서.pdf", newMemories: 2, newEntities: 1, nodeIds: [], at: 1 },
-    ];
-    const { rerender } = render(
-      <ProductCommandCenter {...baseProps} emergenceEvents={events} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getByText("보고서.pdf")).toBeTruthy();
-
-    // Proven but with an empty active model name → the passed model name.
-    const provenNoName = makeProof();
-    provenNoName.modelContinuity = { ...provenNoName.modelContinuity, activeModel: "" };
-    rerender(
-      <ProductCommandCenter {...baseProps} proof={provenNoName} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getAllByText("fallback-model").length).toBeGreaterThan(0);
-
-    const unproven = makeProof();
-    unproven.modelContinuity = { ...unproven.modelContinuity, proven: false };
-    rerender(
-      <ProductCommandCenter {...baseProps} proof={unproven} onOpenDepth={noop} onVerifyModelContinuity={noop} />,
-    );
-    expect(screen.getAllByText("fallback-model").length).toBeGreaterThan(0);
   });
 });
 

@@ -56,10 +56,6 @@ export function hasBrowserFolderPicker() {
   return typeof (window as BrowserDirectoryPickerWindow).showDirectoryPicker === "function";
 }
 
-/** True when some folder route exists, given a `<input webkitdirectory>` fallback. */
-export function canPickFolder() {
-  return hasDesktopFolderPicker() || hasBrowserFolderPicker();
-}
 
 export function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";

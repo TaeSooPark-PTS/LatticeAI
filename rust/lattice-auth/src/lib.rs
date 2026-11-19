@@ -77,6 +77,7 @@ pub mod pyjson;
 pub mod ratelimit;
 pub mod response;
 pub mod routes;
+pub mod scim;
 pub mod scope;
 pub mod sessions;
 pub mod setcookie;

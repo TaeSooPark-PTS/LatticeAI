@@ -288,12 +288,12 @@ pub(in crate::kernel::agentloop) struct FileObligation {
 
 impl FileObligation {
     /// A file the request asked for is not on disk.
-    pub fn owes(self) -> bool {
+    pub(in crate::kernel::agentloop) fn owes(self) -> bool {
         self.declared && self.missing
     }
 
     /// Every file the request asked for is on disk.
-    pub fn satisfied(self) -> bool {
+    pub(in crate::kernel::agentloop) fn satisfied(self) -> bool {
         self.declared && !self.missing
     }
 }

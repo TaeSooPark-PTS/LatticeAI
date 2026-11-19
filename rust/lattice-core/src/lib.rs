@@ -24,6 +24,7 @@ pub use db::{open_read_only, CoreError};
 pub use embeddings::{
     EmbeddingIndexContract, FallbackTextEmbedder, LocalEmbeddingModel, DEFAULT_FALLBACK_DIM,
 };
+pub use graph_write::pyaux::{sha256_bytes, sha256_text};
 pub use graph_write::{
     read_lifecycle_from_metadata, IngestStatus, KnowledgeLifecycleMetadata,
     KnowledgeLifecycleState, KnowledgeLifecycleUpdate, LifecycleHistoryEntry,

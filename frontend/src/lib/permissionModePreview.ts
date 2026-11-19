@@ -31,7 +31,6 @@ export const FLAG_KEYS = [
   "circuit_breakers",
 ] as const;
 
-export type FlagKey = (typeof FLAG_KEYS)[number];
 
 export function flagsForCatalogMode(id: string): ModeFlags | null {
   if (id === "strict") {

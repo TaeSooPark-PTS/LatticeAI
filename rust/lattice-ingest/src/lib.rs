@@ -50,6 +50,7 @@ pub mod api;
 pub mod browser_api;
 pub mod chunk;
 pub mod document_structure;
+mod document_structure_parsers;
 pub mod filters;
 pub mod fingerprint;
 pub mod hashes;

@@ -1,8 +1,6 @@
 import * as React from "react";
 import {
   ArrowRight,
-  BrainCircuit,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Cpu,
@@ -21,13 +19,8 @@ import { focusComposer, navigateHash } from "./navigation";
 import type {
   BrainBrief,
   BrainBriefAction,
-  BrainDepth,
   BrainProof,
-  BrainReadiness,
   ConversationSummary,
-  EmergenceEvent,
-  KnowledgeConcept,
-  MemoryFragment,
 } from "./types";
 
 // A friendly, actionable path out of the "no model loaded" dead end: the chat
@@ -240,95 +233,6 @@ function briefActionIcon(id: string) {
   if (id === "verify_model") return <Repeat2 className="h-4 w-4" />;
   if (id === "backup_brain") return <HardDrive className="h-4 w-4" />;
   return <ArrowRight className="h-4 w-4" />;
-}
-
-export function ProductCommandCenter({
-  language,
-  readiness,
-  proof,
-  modelName,
-  memories,
-  concepts,
-  emergenceEvents,
-  onOpenDepth,
-  onVerifyModelContinuity,
-}: {
-  language: Language;
-  readiness: BrainReadiness;
-  proof: BrainProof;
-  modelName: string;
-  memories: MemoryFragment[];
-  concepts: KnowledgeConcept[];
-  emergenceEvents: EmergenceEvent[];
-  onOpenDepth: (depth: BrainDepth) => void;
-  onVerifyModelContinuity: () => void;
-}) {
-  const score = Math.max(0, Math.min(100, readiness.score));
-  const nextKey =
-    readiness.state === "alive"
-      ? "brain.command.next.alive"
-      : readiness.state === "forming"
-        ? "brain.command.next.forming"
-        : "brain.command.next.empty";
-  const recallable = (proof.recall && proof.recall.items) ? proof.recall.items.length : (proof.proofs ? (proof.proofs.durableItems || 1) : 1);
-  const latestSource = emergenceEvents[0]?.label ?? t(language, "brain.command.source.empty");
-
-  return (
-    <section className="brain-command-center" aria-label={t(language, "brain.command.aria")}>
-      <div className="brain-command-head">
-        <div>
-          <span>{t(language, "brain.command.kicker")}</span>
-          <strong>{t(language, "brain.command.title")}</strong>
-        </div>
-        <div className="brain-command-score" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={score}>
-          <span>{t(language, "brain.command.score")}</span>
-          <strong>{score}%</strong>
-        </div>
-      </div>
-
-      <div className="brain-command-next">
-        <BrainCircuit className="h-4 w-4" />
-        <span>{t(language, "brain.command.next")}</span>
-        <strong>{t(language, nextKey)}</strong>
-      </div>
-
-      <div className="brain-command-metrics" aria-label={t(language, "brain.command.metrics")}>
-        <span>{t(language, "brain.command.metric.memories", { count: memories.length })}</span>
-        <span>{t(language, "brain.command.metric.topics", { count: concepts.length })}</span>
-        <span>{t(language, "brain.command.metric.sources", { count: readiness.signals.healthySources })}</span>
-        <span>{t(language, "brain.command.metric.proof", { count: recallable })}</span>
-      </div>
-
-      <div className="brain-command-actions">
-        <button type="button" aria-label={t(language, "brain.command.action.add")} onClick={() => navigateHash("/capture")}>
-          <FileUp className="h-4 w-4" />
-          <span>{t(language, "brain.command.action.add")}</span>
-          <small>{latestSource}</small>
-        </button>
-        <button type="button" aria-label={t(language, "brain.command.action.find")} onClick={() => onOpenDepth(3)}>
-          <Search className="h-4 w-4" />
-          <span>{t(language, "brain.command.action.find")}</span>
-          <small>{t(language, "brain.command.action.find.detail")}</small>
-        </button>
-        <button type="button" aria-label={t(language, "brain.command.action.proof")} onClick={onVerifyModelContinuity}>
-          <Repeat2 className="h-4 w-4" />
-          <span>{t(language, "brain.command.action.proof")}</span>
-          <small>{proof.modelContinuity.proven ? proof.modelContinuity.activeModel || modelName : modelName}</small>
-        </button>
-        <button type="button" aria-label={t(language, "brain.command.action.own")} onClick={() => navigateHash("/settings")}>
-          <HardDrive className="h-4 w-4" />
-          <span>{t(language, "brain.command.action.own")}</span>
-          <small>{t(language, "brain.command.action.own.detail")}</small>
-        </button>
-      </div>
-
-      <div className="brain-command-signals">
-        <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.command.signal.local")}</span>
-        <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.command.signal.private")}</span>
-        <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.command.signal.portable")}</span>
-      </div>
-    </section>
-  );
 }
 
 export function ModelContinuityDemo({

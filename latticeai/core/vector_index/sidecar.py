@@ -56,15 +56,6 @@ def sidecar_fingerprint(model_id: str, dim: int, size: int) -> str:
     return f"{model_id}|{int(dim)}|{int(size)}"
 
 
-def store_vector_count(conn: sqlite3.Connection, model_id: str, dim: int) -> int:
-    row = conn.execute(
-        "SELECT COUNT(*) FROM vector_embeddings "
-        "WHERE embedding_model=? AND embedding_dim=?",
-        (model_id, int(dim)),
-    ).fetchone()
-    return int(row[0]) if row else 0
-
-
 def store_vector_stamp(
     conn: sqlite3.Connection, model_id: str, dim: int
 ) -> Tuple[int, str]:
@@ -107,16 +98,6 @@ def load_store_items(
             continue
         items.append((str(item_id), vector, {}))
     return items
-
-
-def load_store_ids(conn: sqlite3.Connection, model_id: str, dim: int) -> List[str]:
-    """Item ids only — the COUNT+delta path must not pull embedding blobs."""
-    rows = conn.execute(
-        "SELECT item_id FROM vector_embeddings "
-        "WHERE embedding_model=? AND embedding_dim=? ORDER BY indexed_at ASC, item_id ASC",
-        (model_id, int(dim)),
-    )
-    return [str(item_id) for (item_id,) in rows]
 
 
 def load_store_items_for(
@@ -190,23 +171,6 @@ def _load_all_items(
         return []
     try:
         return load_store_items(conn, model_id, dim)
-    finally:
-        conn.close()
-
-
-def _load_missing_items(
-    path: Path,
-    model_id: str,
-    dim: int,
-    have: Sequence[str],
-) -> List[Tuple[str, List[float], Dict[str, Any]]]:
-    conn = _open_readonly(path)
-    if conn is None:
-        return []
-    try:
-        have_set = set(have)
-        missing = [item_id for item_id in load_store_ids(conn, model_id, dim) if item_id not in have_set]
-        return load_store_items_for(conn, model_id, dim, missing)
     finally:
         conn.close()
 
@@ -515,8 +479,6 @@ __all__ = [
     "sidecar_fingerprint",
     "sidecar_freshness",
     "sidecar_meta_size",
-    "store_vector_count",
-    "load_store_ids",
     "load_store_items",
     "load_store_items_for",
 ]

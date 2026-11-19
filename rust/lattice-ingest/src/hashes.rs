@@ -17,27 +17,11 @@
 //! UTF-8 encode for lone surrogates — a `&str` cannot hold one, so the two are
 //! the same function here.
 
-use sha2::{Digest, Sha256};
-
 use lattice_core::clean_text;
+pub use lattice_core::{sha256_bytes, sha256_text};
 
 /// How many hex characters of a digest an id carries.
 pub const ID_DIGEST_CHARS: usize = 24;
-
-/// `_sha256_text` — lowercase hex sha256 of the UTF-8 encoding.
-pub fn sha256_text(text: &str) -> String {
-    sha256_bytes(text.as_bytes())
-}
-
-/// `_sha256_bytes` — lowercase hex sha256 of raw bytes.
-pub fn sha256_bytes(data: &[u8]) -> String {
-    let digest = Sha256::digest(data);
-    let mut out = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        out.push_str(&format!("{byte:02x}"));
-    }
-    out
-}
 
 /// `chunk:{sha256(f"{source_node_id}:{index}:{chunk_text}")[:24]}`.
 pub fn chunk_id(source_node_id: &str, index: usize, chunk_text: &str) -> String {

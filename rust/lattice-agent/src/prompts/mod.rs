@@ -132,18 +132,6 @@ pub const GRAPH_SKILL_BRIEFS: [(&str, &str, &str); 3] = [
     ),
 ];
 
-/// Return the built-in Graph-aware [`SkillBrief`] catalog entries.
-pub fn graph_skill_briefs() -> Vec<SkillBrief> {
-    GRAPH_SKILL_BRIEFS
-        .iter()
-        .map(|(name, brief, when)| SkillBrief {
-            name: (*name).to_string(),
-            brief: (*brief).to_string(),
-            when: (*when).to_string(),
-        })
-        .collect()
-}
-
 /// `name{args}` for one tool, or just `name` when no signature is known.
 ///
 /// An `mcp.`-qualified name is looked up under its bare form (v12.0.0): the

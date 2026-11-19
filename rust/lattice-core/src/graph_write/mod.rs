@@ -58,8 +58,10 @@ mod curation;
 mod documents;
 mod ingest;
 mod primitives;
+mod projection_v2;
 mod provenance;
 mod vectors;
+mod vectors_contract;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

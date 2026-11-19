@@ -54,6 +54,7 @@ use crate::seam::worker::WorkerError;
 mod answers;
 mod args;
 mod ranking;
+mod suggestions;
 mod verdict;
 use args::*;
 pub(super) use ranking::*;

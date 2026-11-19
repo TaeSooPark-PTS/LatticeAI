@@ -1,5 +1,3 @@
-import type { BrainState } from "@/components/LivingBrain";
-
 export type ApiRecord = Record<string, unknown>;
 export type BrainDepth = 1 | 2 | 3 | 4 | 5;
 
@@ -462,18 +460,3 @@ export type EmergenceEvent = {
   at: number;
 };
 
-export const INGESTION_STAGE_ORDER: IngestionPipelineStage[] = [
-  "preparing",
-  "parsing",
-  "embedding",
-  "indexing",
-  "complete",
-];
-
-export const DEPTHS: Array<{ level: BrainDepth; labelKey: string; state: BrainState }> = [
-  { level: 1, labelKey: "brain.depthLabel.1", state: "idle" },
-  { level: 2, labelKey: "brain.depthLabel.2", state: "recalling" },
-  { level: 3, labelKey: "brain.depthLabel.3", state: "synthesizing" },
-  { level: 4, labelKey: "brain.depthLabel.4", state: "planning" },
-  { level: 5, labelKey: "brain.depthLabel.5", state: "synthesizing" },
-];

@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.2.1 — Living Synthesis (2026-11-19)
+
+**전 스택 모듈화 리팩터링(`lattice-auth`, `lattice-core`, `lattice-ingest`, `lattice-retrieval`, `lattice-agent`, `lattice-platform`, `lattice-host`, `model_capability_registry.py`, `worker_compute.py`, `brainData.ts`)**, **Rust·Python·Frontend 미사용 데드 코드 및 은퇴 레이어 정리(Vitest 100% 유지)**, **Ubuntu `t64` 시각 회귀 CI 미러 페일오버 하드닝**을 통합한 유지보수·아키텍처 정돈 릴리스.
+
+- **전 크레이트 Rust 모듈 분할:** `lattice-agent`(`guided/suggestions.rs`, `proposals_store.rs`, `action_salvage.rs`, `catalog_args.rs`, `tests_governance.rs`), `lattice-platform`(`run_handlers.rs`, `probe_sysinfo.rs`, `handlers_orgs.rs`, `handlers_snapshots.rs`, `share_bundle.rs`, `network_boundary_stores.rs`, `executor_steps.rs`, `mcp_streamable.rs`), `lattice-host`(`gateway/tests.rs`, `gateway_source_contracts.rs`) 및 `lattice-auth`·`lattice-core`·`lattice-ingest`·`lattice-retrieval`의 대형 파일을 응집도 높은 서브모듈로 분리했다.
+- **Python·Frontend 모듈화 및 데드 코드 제거:** `model_capability_registry.py`(`model_capability_types.py`, `model_capability_catalog.py`), `worker_compute.py`(`worker_compute_render.py`), `brainData.ts`(`brainDataReaders.ts`, `brainDataReadiness.ts`)를 분할하고, 미참조 빌더/헬퍼 및 구형 오비탈 Brain 레이어(`BrainGraphLayer`, `BrainMemoryLayer`, `BrainRelationshipLayer`, `graphLayout` 등)를 정리하면서 Vitest 100% 커버리지를 유지했다.
+- **시각 회귀 CI 복원력 강화:** Ubuntu `t64` 패키지 탐색을 단일 패스로 묶고 `15s` 미러 타임아웃 및 `mirrors.ubuntu.com` 자동 페일오버를 적용했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.2.1.md](docs/releases/RELEASE_NOTES_v13.2.1.md).
+
+빌드 산출물은 `dist/ltcai-13.2.1-py3-none-any.whl`,
+`dist/ltcai-13.2.1.tar.gz`, `ltcai-13.2.1.tgz`, `dist/ltcai-13.2.1.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.2.1_aarch64.dmg` 입니다.
+
 ## v13.2.0 — Living Synthesis (2026-11-19)
 
 **이중 시간축(Bi-temporal) 지식 그래프·비파괴 한/영 개체 통합(`temporal.rs`, `entity_resolution.rs`)**, **주장 단위 근거 검증·기권(`grounding.rs`) 및 검색/생성 분리형 모델 무관 RAG 평가(`rag_eval_grounded.rs`)**, **OS 이벤트 디바운스 감시·청크 단위 증분 재임베딩·표/페이지/OCR 구조 보존 수집(`incremental_watch.rs`, `incremental_sync.rs`, `document_structure.rs`)**, **원자적 체크포인트·멱등 원장·승인 재시작 복구·롤백을 갖춘 내구성 DAG 에이전트 워크플로 엔진(`kernel/workflow.rs`)**, **워커 멱등 재시도·타임아웃 격리(`worker.rs`, `worker_resilience.py`)·클라우드 비밀 파일 차단(`boundary.rs`)·정직한 그래프 상태 프로브(`onedoor.rs`, `audit.rs`) 및 Section 16 종단간 검증 스위트(`roadmap_section16_suite.rs`)**를 통합한 로드맵 완성 릴리스.

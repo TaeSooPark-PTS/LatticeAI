@@ -64,13 +64,9 @@ impl DecodeError {
     }
 
     /// 1-based line, as CPython computes it.
-    pub fn line_of(&self) -> usize {
+    #[cfg(test)]
+    fn line_of(&self) -> usize {
         self.line
-    }
-
-    /// 1-based column, as CPython computes it.
-    pub fn column_of(&self) -> usize {
-        self.column
     }
 }
 

@@ -24,15 +24,16 @@ use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 
 pub(crate) mod enrich;
 mod folder;
 pub mod http;
 pub(crate) mod ingest;
+mod jobs_store;
 mod knowledge;
 mod local;
 pub(crate) mod prune;
+pub(crate) mod upload_parse;
 mod watch_bridge;
 
 // The watch bridge moved out of `ingest` in v11.7.0; the crate-level names
@@ -516,12 +517,7 @@ fn resolve_token(map: &HashMap<String, Approval>, token: &str) -> Option<String>
 }
 
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
-    let mut out = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        out.push_str(&format!("{byte:02x}"));
-    }
-    out
+    lattice_core::sha256_bytes(bytes)
 }
 
 pub(crate) fn token_urlsafe(nbytes: usize) -> String {

@@ -1,0 +1,553 @@
+"""Curated recommended and legacy entries for the Model Capability Registry."""
+
+from __future__ import annotations
+
+from typing import List
+
+from .embedding_recommendation import build_embedding_capabilities
+from .model_capability_types import (
+    LEGACY,
+    HardwareProfile,
+    ModelCapability,
+    VerificationStatus,
+)
+
+# ── Curated registry ──────────────────────────────────────────────────────────
+# Every field below was measured against the public HF REST API on 2026-08-10:
+# repo existence, gated flag, library_name/tags, config ``model_type``, sibling
+# file list and the exact byte sum of those siblings (``size`` and
+# ``download_size_gb``). Nothing here was inferred from a model card, and no
+# weights were downloaded to produce it — re-run
+# ``scripts/verify_hf_model_registry.py`` to re-measure.
+#
+# Repo ids are stored in the Hub's own canonical casing (the API echoes the
+# canonical id even when queried with different case, e.g. requesting
+# ``gemma-4-12b-it-4bit`` answers with ``gemma-4-12B-it-4bit``). Storing the
+# canonical form keeps the download path, the on-disk cache directory and the
+# catalog key identical.
+
+_REGISTRY: List[ModelCapability] = [
+    # ── Ultralight tier (≤8GB RAM) ───────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/LFM2.5-2.6B-4bit",
+        hf_repo_id="mlx-community/LFM2.5-2.6B-4bit",
+        name="LFM2.5 2.6B",
+        family="LFM2.5",
+        tag="local-llm",
+        size="1.5GB",
+        modality="text",
+        architecture="lfm2",
+        download_size_gb=1.54,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_lm",
+        hardware=HardwareProfile(
+            min_ram_gb=6.0, recommended_ram_gb=8.0, apple_silicon_pref=True,
+            notes="Smallest model that still answers in Korean. Text only — no image understanding.",
+        ),
+        source_country="미국", source_company="Liquid AI",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="text-generation", likes=3, license="apache-2.0",
+            notes="library_name=mlx, ungated, 1 safetensors shard.", verified_by="hf-api-light",
+        ),
+        recommended_default=True,
+        display_priority=5,
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-e2b-it-4bit",
+        hf_repo_id="mlx-community/gemma-4-e2b-it-4bit",
+        name="Gemma 4 E2B Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="3.6GB",
+        architecture="gemma4",
+        download_size_gb=3.58,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=8.0, recommended_ram_gb=8.0, apple_silicon_pref=True,
+            notes="Smallest model here that can still read pictures. Good first local VLM.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=25, license="apache-2.0",
+            notes="library_name=mlx, ungated, 1 safetensors shard.", verified_by="hf-api-light",
+        ),
+        recommended_default=True,
+        display_priority=10,
+    ),
+
+    # ── Light tier (16GB RAM) ────────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/gemma-4-e4b-it-4bit",
+        hf_repo_id="mlx-community/gemma-4-e4b-it-4bit",
+        name="Gemma 4 E4B Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="5.2GB",
+        architecture="gemma4",
+        download_size_gb=5.18,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=10.0, recommended_ram_gb=16.0, apple_silicon_pref=True,
+            notes="Step up from E2B with the same tiny footprint discipline.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=35, license="apache-2.0",
+            notes="library_name=mlx, ungated, 1 safetensors shard.", verified_by="hf-api-light",
+        ),
+        display_priority=15,
+    ),
+
+    # ── Mid tier (24GB RAM) ──────────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/gemma-4-12B-it-4bit",
+        hf_repo_id="mlx-community/gemma-4-12B-it-4bit",
+        name="Gemma 4 12B Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="6.8GB",
+        architecture="gemma4_unified",
+        download_size_gb=6.77,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=12.0, recommended_ram_gb=16.0, apple_silicon_pref=True,
+            notes="Sweet spot for local multimodal on M-series 16GB+. Uses the gemma4_unified MLX loader.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=16, license="apache-2.0",
+            notes="library_name=mlx, ungated, 2 safetensors shards. Canonical id capitalises the B.",
+            verified_by="hf-api-light",
+        ),
+        recommended_default=True,
+        display_priority=25,
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3.5-9B-MLX-4bit",
+        hf_repo_id="mlx-community/Qwen3.5-9B-MLX-4bit",
+        name="Qwen3.5 9B",
+        family="Qwen3.5",
+        tag="local-vlm",
+        size="6.0GB",
+        architecture="qwen3_5",
+        download_size_gb=5.98,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=12.0, recommended_ram_gb=16.0, apple_silicon_pref=True,
+            notes="Mid-size vision-language model; replaces the retired Qwen2.5-VL / Llama-3.2-Vision slot.",
+        ),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=153, license="apache-2.0",
+            notes="library_name=mlx, ungated, 2 safetensors shards.", verified_by="hf-api-light",
+        ),
+        recommended_default=True,
+        display_priority=20,
+    ),
+
+    # ── General-purpose ──────────────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/gpt-oss-20b-MXFP4-Q8",
+        hf_repo_id="mlx-community/gpt-oss-20b-MXFP4-Q8",
+        name="GPT-OSS 20B",
+        family="GPT-OSS",
+        tag="local-llm",
+        size="12.1GB",
+        modality="text",
+        architecture="gpt_oss",
+        download_size_gb=12.10,
+        quantization="MXFP4-Q8",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_lm",
+        hardware=HardwareProfile(
+            min_ram_gb=18.0, recommended_ram_gb=24.0, apple_silicon_pref=True,
+            notes="Most-downloaded entry in this catalog. Text only — no image understanding.",
+        ),
+        source_country="미국", source_company="OpenAI",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="text-generation", likes=84, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=30,
+    ),
+
+    # ── MoE tier (32GB+ RAM) ─────────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        hf_repo_id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        name="Gemma 4 26B A4B QAT Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="15.6GB",
+        architecture="gemma4",
+        download_size_gb=15.64,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=22.0, recommended_ram_gb=32.0, apple_silicon_pref=True,
+            notes="Quantization-Aware Trained (QAT) 4-bit MoE with 8-bit shared MLP and router layers; higher accuracy than standard 4-bit PTQ on 32GB+ Apple Silicon.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=9, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards, official Google QAT base.",
+            verified_by="hf-api-light",
+        ),
+        display_priority=48,
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-26b-a4b-it-4bit",
+        hf_repo_id="mlx-community/gemma-4-26b-a4b-it-4bit",
+        name="Gemma 4 26B A4B Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="15.4GB",
+        architecture="gemma4",
+        download_size_gb=15.37,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=22.0, recommended_ram_gb=32.0, apple_silicon_pref=True,
+            notes="Mixture-of-experts; practical on 32GB+ Apple Silicon. Long first download.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=80, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=50,
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        hf_repo_id="mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        name="Gemma 4 26B A4B QAT OptiQ Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="21.9GB",
+        architecture="gemma4",
+        download_size_gb=21.89,
+        quantization="OptiQ-4bit",
+        provider_hints=["local_mlx"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=28.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Sensitivity-guided mixed 4-bit/8-bit OptiQ quantization built on Google's QAT Gemma 4 26B A4B base for higher reasoning and tool-calling fidelity.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="text-generation", likes=4, license="apache-2.0",
+            notes="library_name=mlx, ungated, 5 safetensors shards, mlx-optiq sensitivity-guided mixed 4/8-bit.",
+            verified_by="hf-api-light",
+        ),
+        display_priority=51,
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3.6-35B-A3B-4bit",
+        hf_repo_id="mlx-community/Qwen3.6-35B-A3B-4bit",
+        name="Qwen3.6 35B A3B",
+        family="Qwen3.6",
+        tag="local-vlm",
+        size="20.4GB",
+        architecture="qwen3_5_moe",
+        download_size_gb=20.43,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=28.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Mixture-of-experts; replaces the retired Llama 4 Scout slot. Long first download.",
+        ),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=94, license="apache-2.0",
+            notes="library_name=mlx, ungated, 4 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=65,
+    ),
+
+    # ── Large tier (48GB+ RAM) ───────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/Qwen3.8-27B-4bit",
+        hf_repo_id="mlx-community/Qwen3.8-27B-4bit",
+        name="Qwen3.8 27B",
+        family="Qwen3.8",
+        tag="local-vlm",
+        size="16.1GB",
+        architecture="qwen3_5",
+        download_size_gb=16.08,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=24.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Latest Qwen 3.8 27B dense multimodal model; higher coding, reasoning, and agentic tool accuracy than Qwen 3.6 27B at identical 16.1GB 4-bit footprint.",
+        ),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=237, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=52,
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3.6-27B-4bit",
+        hf_repo_id="mlx-community/Qwen3.6-27B-4bit",
+        name="Qwen3.6 27B",
+        family="Qwen3.6",
+        tag="local-vlm",
+        size="16.1GB",
+        architecture="qwen3_5",
+        download_size_gb=16.08,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=24.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Dense top tier — every parameter runs on every token, so it is slower but steadier than the MoE.",
+        ),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=50, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=55,
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-31b-it-4bit",
+        hf_repo_id="mlx-community/gemma-4-31b-it-4bit",
+        name="Gemma 4 31B Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="18.4GB",
+        architecture="gemma4",
+        download_size_gb=18.44,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=26.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Largest Gemma 4 here; high-end local only. Consider a cloud path on lower RAM.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=46, license="apache-2.0",
+            notes="library_name=mlx, ungated, 4 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=60,
+    ),
+]
+_REGISTRY.extend(build_embedding_capabilities(ModelCapability, HardwareProfile, VerificationStatus))
+
+
+# ── Recognised-only entries (LEGACY) ──────────────────────────────────────────
+# Superseded generations that are still on the Hub and still loadable. They are
+# deliberately absent from ENGINE_MODEL_CATALOG, from the recommendation tiers
+# and from every download path — their only job is to keep a model somebody
+# already downloaded identifiable (name, family, size, runtime profile) instead
+# of surfacing as an unknown blob. Verified on 2026-08-10 like the rest.
+
+_LEGACY_REGISTRY: List[ModelCapability] = [
+    ModelCapability(
+        id="mlx-community/gemma-4-e2b-4bit",
+        hf_repo_id="mlx-community/gemma-4-e2b-4bit",
+        name="Gemma 4 E2B Base",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="3.6GB",
+        architecture="gemma4",
+        download_size_gb=3.61,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=8.0, recommended_ram_gb=8.0, apple_silicon_pref=True,
+                                 notes="Base (not instruction-tuned) — the Instruct build answers chat far better."),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="any-to-any", likes=3, license="apache-2.0",
+            notes="Superseded by gemma-4-e2b-it-4bit for chat.", verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-e4b-4bit",
+        hf_repo_id="mlx-community/gemma-4-e4b-4bit",
+        name="Gemma 4 E4B Base",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="5.3GB",
+        architecture="gemma4",
+        download_size_gb=5.25,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=10.0, recommended_ram_gb=16.0, apple_silicon_pref=True,
+                                 notes="Base (not instruction-tuned) — the Instruct build answers chat far better."),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="any-to-any", likes=6, license="apache-2.0",
+            notes="Superseded by gemma-4-e4b-it-4bit for chat.", verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3-VL-4B-Instruct-4bit",
+        hf_repo_id="mlx-community/Qwen3-VL-4B-Instruct-4bit",
+        name="Qwen3-VL 4B",
+        family="Qwen3-VL",
+        tag="local-vlm",
+        size="3.1GB",
+        architecture="qwen3_vl",
+        download_size_gb=3.11,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=5.0, recommended_ram_gb=8.0, apple_silicon_pref=True),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=7, license="apache-2.0",
+            notes="2025-10 generation; superseded by Qwen3.5 / Qwen3.6.", verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3-VL-8B-Instruct-4bit",
+        hf_repo_id="mlx-community/Qwen3-VL-8B-Instruct-4bit",
+        name="Qwen3-VL 8B",
+        family="Qwen3-VL",
+        tag="local-vlm",
+        size="5.8GB",
+        architecture="qwen3_vl",
+        download_size_gb=5.78,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=8.0, recommended_ram_gb=12.0, apple_silicon_pref=True),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=6, license="apache-2.0",
+            notes="2025-10 generation; superseded by Qwen3.5 9B.", verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit",
+        hf_repo_id="mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit",
+        name="Qwen3-VL 30B A3B",
+        family="Qwen3-VL",
+        tag="local-vlm",
+        size="18.3GB",
+        architecture="qwen3_vl_moe",
+        download_size_gb=18.27,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=24.0, recommended_ram_gb=32.0, apple_silicon_pref=True),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=8, license="apache-2.0",
+            notes="2025-10 generation; superseded by Qwen3.6 35B A3B.", verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+        hf_repo_id="mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+        name="Qwen2.5-VL 7B",
+        family="Qwen2.5-VL",
+        tag="local-vlm",
+        size="5.7GB",
+        architecture="qwen2_5_vl",
+        download_size_gb=5.65,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=8.0, recommended_ram_gb=12.0, apple_silicon_pref=True),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=4, license="apache-2.0",
+            notes="2025-02 generation, library_name=transformers; superseded by Qwen3.5 9B.",
+            verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Llama-3.2-11B-Vision-Instruct-4bit",
+        hf_repo_id="mlx-community/Llama-3.2-11B-Vision-Instruct-4bit",
+        name="Llama 3.2 11B Vision Instruct",
+        family="Llama 3.2 Vision",
+        tag="local-vlm",
+        size="6.0GB",
+        architecture="mllama",
+        download_size_gb=6.02,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(min_ram_gb=10.0, recommended_ram_gb=14.0, apple_silicon_pref=True),
+        source_country="미국", source_company="Meta",
+        license="llama3.2",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=7, license="llama3.2",
+            notes="2024-10 generation, library_name=transformers; superseded by Qwen3.5 9B.",
+            verified_by="hf-api-light",
+        ),
+    ),
+    ModelCapability(
+        id="mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
+        hf_repo_id="mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
+        name="Llama 4 Scout 17B 16E",
+        family="Llama 4",
+        tag="local-vlm",
+        size="61.1GB",
+        architecture="llama4",
+        download_size_gb=61.14,
+        lifecycle=LEGACY,
+        quantization="4bit",
+        hardware=HardwareProfile(
+            min_ram_gb=72.0, recommended_ram_gb=96.0, apple_silicon_pref=True,
+            notes="61GB on disk despite the \"4bit\" name — 12 shards. The registry claimed 11.8GB "
+                  "until it was measured; only a very high-RAM machine can load it.",
+        ),
+        source_country="미국", source_company="Meta",
+        license="llama4",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-08-10", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=12, license="llama4",
+            notes="2025-05 generation, library_name=transformers; the MoE slot is now Qwen3.6 35B A3B. "
+                  "Meta's own repo is gated, so this port is the only anonymous route.",
+            verified_by="hf-api-light",
+        ),
+    ),
+]
+
+

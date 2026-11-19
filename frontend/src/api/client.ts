@@ -311,13 +311,6 @@ export type NeighborhoodConflictItem = {
   relation: string;
 };
 
-export type MultiHopSynthesis = {
-  direct_hits: number;
-  multi_hop_hits: number;
-  reasoning_path_count: number;
-  bridge_concepts: BridgeConceptItem[];
-  contradictions: NeighborhoodConflictItem[];
-};
 
 export type EvidenceAction = {
   id: string;

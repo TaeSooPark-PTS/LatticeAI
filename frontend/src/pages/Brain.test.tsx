@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { latticeApi } from "@/api/client";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { useAppStore } from "@/store/appStore";
-import { BrainPage, GraphStatus, MemoryStatus, RetrievalStatus, SourceProvenanceList, viewLabel } from "./Brain";
+import { BrainPage, SourceProvenanceList, viewLabel } from "./Brain";
 
 // Cytoscape draws into a real 2D canvas context, which jsdom does not provide
 // ("Could not create canvas of type 2d"). That is an environment gap, not the
@@ -255,82 +255,6 @@ describe("BrainPage", () => {
 describe("standalone status panels (kept for future advanced views)", () => {
   beforeEach(() => {
     useAppStore.setState({ mode: "advanced", language: "ko" } as never);
-  });
-
-  describe("GraphStatus", () => {
-    it("prefers explicit totals and shows a structured view outside basic mode", () => {
-      renderComponent(<GraphStatus data={{ nodes: { Document: 3 }, edges: { mentions: 1 }, total_nodes: 42, total_edges: 9 }} />);
-      expect(screen.getByText("기억 종류")).toBeTruthy();
-      expect(screen.getByText("연결 종류")).toBeTruthy();
-    });
-
-    it("reduces raw type counts into totals, including a zero-count type, and shows badges in basic mode", () => {
-      useAppStore.setState({ mode: "basic", language: "ko" } as never);
-      renderComponent(<GraphStatus data={{ nodes: { Document: 3, Concept: 2, Empty: 0 }, edges: { mentions: 4, Blank: 0 } }} />);
-      expect(screen.getByText("Document")).toBeTruthy();
-      expect(screen.getByText("Mentions")).toBeTruthy();
-    });
-
-    it("copes with entirely missing node/edge maps", () => {
-      renderComponent(<GraphStatus data={{}} />);
-      expect(screen.getByText("기억 종류")).toBeTruthy();
-    });
-  });
-
-  describe("RetrievalStatus", () => {
-    it("summarises each pipeline's state and extra fields", () => {
-      renderComponent(<RetrievalStatus data={{
-        pipelines: {
-          vector: { state: "ready", model: "bge-small", dims: 384 },
-          keyword: "degraded",
-          parser: { status: "partial" },
-          blank: {},
-        },
-      }} />);
-      expect(screen.getByText("Vector")).toBeTruthy();
-      // The row's own state is looked up as an entity type badge ("ready" ->
-      // "준비됨"); the extra fields print verbatim in the description line.
-      expect(screen.getByText("Model: bge-small · Dims: 384")).toBeTruthy();
-      // A non-record pipeline value carries no state/status of its own, so the
-      // row falls back to the generic "reported" copy for both fields.
-      expect(screen.getByText("Keyword")).toBeTruthy();
-      expect(screen.getByText("degraded")).toBeTruthy();
-      // `status` (no `state`) and neither at all both fall back correctly.
-      expect(screen.getByText("Parser")).toBeTruthy();
-      expect(screen.getByText("Blank")).toBeTruthy();
-    });
-
-    it("falls back to a structured view when there are no pipelines to list", () => {
-      renderComponent(<RetrievalStatus data={{ status: "unknown" }} />);
-      expect(screen.getByText("상태")).toBeTruthy();
-      expect(screen.getByText("unknown")).toBeTruthy();
-    });
-  });
-
-  describe("MemoryStatus", () => {
-    it("prefers explicit usage counts and lists sources", () => {
-      renderComponent(<MemoryStatus data={{
-        usage: { sources: 3, total_items: 90, total_bytes: 512 },
-        health: "good",
-        sources: [{ id: "src-1", title: "Workspace" }],
-      }} />);
-      expect(screen.getByText("good")).toBeTruthy();
-      expect(screen.getByText("Workspace")).toBeTruthy();
-    });
-
-    it("derives counts from the raw source list when usage is absent", () => {
-      // A mix of a real count, a record with none, and a non-record entry —
-      // the reduce callback itself only runs at all when `data.sources` (not
-      // `tiers`) is a non-empty array.
-      renderComponent(<MemoryStatus data={{ sources: [{ count: 5 }, {}, "not-a-record"] }} />);
-      expect(screen.getByText("보고됨")).toBeTruthy();
-      expect(screen.getByText("5")).toBeTruthy();
-    });
-
-    it("reads the tiers list when there is no `sources` field at all", () => {
-      renderComponent(<MemoryStatus data={{ tiers: [{ count: 2 }, { count: 3 }] }} />);
-      expect(screen.getByText("보고됨")).toBeTruthy();
-    });
   });
 
   describe("viewLabel", () => {

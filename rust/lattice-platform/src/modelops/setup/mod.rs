@@ -129,12 +129,6 @@ impl SetupState {
         self.worker = Some(worker);
         self
     }
-
-    /// Replace the process runner (tests).
-    pub fn with_runner(mut self, runner: install::InstallRunner) -> Self {
-        self.runner = Some(runner);
-        self
-    }
 }
 
 impl axum::extract::FromRef<SetupState> for Arc<AuthState> {

@@ -735,3 +735,5 @@ with its own path and its own content.";
 mod tests;
 #[cfg(test)]
 mod tests_dispatch;
+#[cfg(test)]
+mod tests_governance;

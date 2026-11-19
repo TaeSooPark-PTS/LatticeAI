@@ -133,12 +133,6 @@ impl ModelsCatalogState {
         self.port = port;
         self
     }
-
-    /// Pin the compat-profile list. The fixture environment serves `[]`.
-    pub fn with_compat_profiles(mut self, profiles: Vec<Value>) -> Self {
-        self.compat_profiles = Arc::new(profiles);
-        self
-    }
 }
 
 /// Router factory.

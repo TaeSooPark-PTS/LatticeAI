@@ -4,6 +4,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.2.1] - 2026-11-19 — Living Synthesis
+
+### Changed
+- Modularized high-density Rust modules across `lattice-auth` (`scim.rs`), `lattice-core` (`graph_write/{vectors_sqlite,vectors_postgres}.rs`), `lattice-ingest` (`document_structure_parsers.rs`, `local_files_api/{enrich_sections,ingest_archive}.rs`, `worker_parse.rs`), `lattice-retrieval` (`bm25/sidecar_sync.rs`, `brain_api/proposal_candidates.rs`, `memory_api/{brief_actions,kg_vector_status,request_parse,self_model_write_tests}.rs`, `rag_eval_grounded_fixtures.rs`, `history_tests.rs`), `lattice-agent` (`guided/suggestions.rs`, `proposals_{store,tests}.rs`, `parse/action_salvage.rs`, `tools/catalog_{args,tests}.rs`, `execution/tests_governance.rs`), `lattice-platform` (`agents/run_handlers.rs`, `probe_{sysinfo,tests}.rs`, `handlers_{orgs,snapshots}.rs`, `share_bundle.rs`, `network_boundary_stores.rs`, `executor_{steps,tests}.rs`, `crypto_tests.rs`, `tests/mcp_streamable.rs`), and `lattice-host` (`gateway/tests.rs`, `tests/gateway_source_contracts.rs`).
+- Modularized `latticeai/services/model_capability_registry.py` (`model_capability_types.py`, `model_capability_catalog.py`), `latticeai/api/worker_compute.py` (`worker_compute_render.py`), and `frontend/src/features/brain/brainData.ts` (`brainDataReaders.ts`, `brainDataReadiness.ts`) with full re-export compatibility.
+- Removed unreferenced helpers, builders, and retired UI layers across Rust (`lattice-agent`, `lattice-platform`, `lattice-host`), Python (`latticeai/core/vector_index/sidecar.py`), and Frontend (`BrainGraphLayer`, `BrainMemoryLayer`, `BrainRelationshipLayer`, `graphLayout`, `ProductCommandCenter`, `GraphStatus`, `RetrievalStatus`, `MemoryStatus`, `canPickFolder`, `INGESTION_STAGE_ORDER`, `DEPTHS`, `MultiHopSynthesis`, `FlagKey`) while maintaining 100% Vitest coverage.
+
+### Fixed
+- Hardened `.github/workflows/ci.yml` visual regression setup to batch Ubuntu `t64` Chromium shared-library lookups with `15s` mirror timeouts and `mirrors.ubuntu.com` failover.
+
 ## [13.2.0] - 2026-11-19 — Living Synthesis
 
 ### Added

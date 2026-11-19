@@ -69,11 +69,6 @@ impl PluginsState {
             plugins_dir,
         }
     }
-
-    pub fn with_plugins_dir(mut self, dir: impl AsRef<Path>) -> Self {
-        self.plugins_dir = dir.as_ref().to_path_buf();
-        self
-    }
 }
 
 pub fn router(state: PluginsState) -> Router {
