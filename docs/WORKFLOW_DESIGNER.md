@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./WORKFLOW_DESIGNER.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/WORKFLOW_DESIGNER.md)
+
 # Lattice AI Workflow Designer
 
 The Workflow Designer (introduced in **v2.0.0** and hardened in **v2.2.0**) lets

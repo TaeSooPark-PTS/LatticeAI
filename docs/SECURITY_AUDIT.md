@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./SECURITY_AUDIT.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/SECURITY_AUDIT.md)
+
 # Security Audit — Static Scan & Supply-Chain Snapshot
 
 > Status: audit snapshot 2026-11-16

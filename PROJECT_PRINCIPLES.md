@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./PROJECT_PRINCIPLES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/PROJECT_PRINCIPLES.md)
+
 # Project Principles — the Digital Brain constitution
 
 Lattice AI is a local-first **Digital Brain Platform**. Models are temporary;

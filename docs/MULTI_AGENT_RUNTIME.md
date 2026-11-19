@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./MULTI_AGENT_RUNTIME.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/MULTI_AGENT_RUNTIME.md)
+
 # Lattice AI Multi-Agent Runtime 2.1
 
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and

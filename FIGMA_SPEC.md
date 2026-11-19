@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FIGMA_SPEC.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FIGMA_SPEC.md)
+
 # Lattice AI Figma-Equivalent Spec (v6.1.0)
 
 This repository does not currently contain an editable Figma component library.

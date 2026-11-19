@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./architecture.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/architecture-overview.md)
+
 # Lattice AI Architecture
 
 > **Status: historical** — subsystem note preserved for background. The

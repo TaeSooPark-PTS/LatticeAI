@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./CHANGELOG.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/CHANGELOG_INDEX.md)
+
 # Changelog
 
 The detailed changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).

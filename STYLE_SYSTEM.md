@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./STYLE_SYSTEM.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/STYLE_SYSTEM.md)
+
 # Lattice AI — Style System (v3.3.1)
 
 This document is the single written reference for the Lattice AI `/app` design
