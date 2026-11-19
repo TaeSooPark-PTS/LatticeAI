@@ -197,7 +197,7 @@
     "@types/node": "^25.6.2",
     "@types/vscode": "^1.105.0",
     "@vscode/vsce": "^3.9.2",
-    "ovsx": "^0.10.6",
+    "ovsx": "^1.4.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
