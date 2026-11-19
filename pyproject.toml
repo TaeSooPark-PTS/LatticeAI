@@ -86,7 +86,7 @@ dependencies = [
   # which read like a deliberate opt-in and was really a missing dependency.
   # Floor at the 1.0 line (the API above is unchanged across it), ceiling at the
   # next major.
-  "huggingface_hub>=1.0,<2",
+  "huggingface_hub>=1.0,<3",
 ]
 
 [project.optional-dependencies]
