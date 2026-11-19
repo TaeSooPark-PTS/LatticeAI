@@ -167,28 +167,8 @@ pub fn local_epoch(raw: &str) -> Option<f64> {
 }
 
 /// The UTC offset this machine was at, for a wall-clock reading of `naive`.
-#[cfg(unix)]
 fn local_offset_at(naive: f64) -> f64 {
-    let stamp = naive as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `gmtime_r` fills the caller-owned `tm` we just zeroed; nothing
-    // else is read or written. A null answer leaves the offset at zero.
-    if unsafe { libc::gmtime_r(&stamp, &mut broken) }.is_null() {
-        return 0.0;
-    }
-    broken.tm_isdst = -1;
-    // SAFETY: `mktime` reads the `tm` we own and may normalise it in place.
-    let back = unsafe { libc::mktime(&mut broken) };
-    if back == -1 {
-        return 0.0;
-    }
-    naive - back as f64
-}
-
-/// Non-unix hosts have no `mktime`; this crate targets macOS and Linux.
-#[cfg(not(unix))]
-fn local_offset_at(_naive: f64) -> f64 {
-    0.0
+    lattice_core::graph_write::clock::local_offset_for_naive_wall(naive)
 }
 
 /// `re.findall(r"\w+", text)`.

@@ -177,12 +177,15 @@ async fn excel_via_worker(state: &SecurityState, rows: &[Value]) -> Result<Vec<u
     body.insert("filename", json!("security_export.xlsx"));
     body.insert("sheet_name", json!("security_export"));
     let payload = serde_json::to_value(&body).unwrap_or(json!({}));
-    let reply = worker.post_json(RENDER_XLSX, &payload).await.map_err(|e| {
-        detail_status(
-            StatusCode::from_u16(e.status().unwrap_or(502)).unwrap_or(StatusCode::BAD_GATEWAY),
-            &e.to_string(),
-        )
-    })?;
+    let reply = worker
+        .post_idempotent_compute(RENDER_XLSX, &payload)
+        .await
+        .map_err(|e| {
+            detail_status(
+                StatusCode::from_u16(e.status().unwrap_or(502)).unwrap_or(StatusCode::BAD_GATEWAY),
+                &e.to_string(),
+            )
+        })?;
     // The render seam answers with the bytes themselves — it never names a
     // path, because the file it would name lives on the worker's disk and this
     // process is the one that decides where a document lands.

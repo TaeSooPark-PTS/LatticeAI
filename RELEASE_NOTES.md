@@ -1,3 +1,9 @@
+# [v13.3.0 - Living Synthesis] (2026-11-19)
+
+v13.2.0 핵심 서브시스템(`post_idempotent_compute`, `verify_grounding_and_abstention`, `entity_resolution`·`temporal`, `DebouncedWatchEngine`·`sync_document_incremental`, `DurableWorkflowStore`)을 실제 HTTP·채팅·감시·워크플로 경로에 전면 연결하고, `worker_resilience.py` 동시성/취소/스트리밍 타임아웃 버그 및 `ingest.rs` 임시 파일 충돌·오버레이 오류 침묵을 수정했으며, Rust 비테스트 `.unwrap()` 0건 달성, 중복 `unsafe libc` 시간 블록 7개 단일화(`clock.rs`), 전 스택 800줄 초과 프로덕션 파일 0건 달성(Vitest 100% 유지)을 완료했습니다.
+
+See [docs/releases/RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md).
+
 # [v13.2.1 - Living Synthesis] (2026-11-19)
 
 Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `lattice-retrieval`, `lattice-agent`, `lattice-platform`, `lattice-host`)와 Python(`model_capability_registry.py`, `worker_compute.py`), Frontend(`brainData.ts`) 대형 모듈 분할 리팩터링, 전 스택 미참조 데드 코드 및 구형 오비탈 Brain 레이어 제거(Vitest 100% 유지), Ubuntu `t64` 시각 회귀 CI 미러 페일오버 하드닝을 적용했습니다.
@@ -119,10 +125,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.2.1** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.3.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
+- [v13.3.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.3.0.md)
 - [v13.2.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.2.1.md)
 - [v13.2.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.2.0.md)
 - [v13.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.1.0.md)

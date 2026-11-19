@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.3.0 — Living Synthesis (2026-11-19)
+
+**v13.2.0 핵심 엔진 프로덕션 전면 연결(`post_idempotent_compute`, `verify_grounding_and_abstention`, `entity_resolution`·`temporal`, `DebouncedWatchEngine`·`sync_document_incremental`, `DurableWorkflowStore`)**, **`worker_resilience.py` 동시성·취소·스트리밍 타임아웃 및 `ingest.rs` 임시 파일 충돌/오버레이 오류 하드닝**, **Rust 비테스트 `.unwrap()` 0건 달성·중복 `unsafe libc` 시간 블록 7개 단일화(`clock.rs`)·전 스택 800줄 초과 프로덕션 파일 0건 달성(Vitest 100% 유지)**을 통합한 프로덕션 완성·하드닝 릴리스.
+
+- **핵심 브레인·워크플로 엔진 라이브 경로 연결:** `WorkerSeamClient::post_idempotent_compute`(`/worker/{parse,extract,embed,render/*}` 및 `query_embed.rs` 단일 시도 코얼레싱), `assess_answer_grounding` 내 `claim_verification` 검증 텔레메트리(`helpers.rs`), `BrainIntelligenceService::consolidate` 내 `entity_resolution`·`temporal_timeline`(`consistency.rs`), 비블로킹 `DebouncedWatchEngine` + `sync_document_incremental`(`watch_bridge.rs`), `DurableWorkflowStore` 원자적 체크포인트(`executor.rs`)를 실트래픽 경로에 연결했다.
+- **워커 복원력·인제스트 안전성 하드닝:** `worker_resilience.py` 코얼레싱 대기자 `504`/`503` 구조화 오류 응답, 응답 바디 스트리밍 타임아웃 포함, `CancelledError` 발생 시 `_inflight` 즉시 해제를 적용하고 회귀 테스트를 추가했으며, `local_files_api/ingest.rs`의 원자적 카운터 임시 파일명과 `structure_overlay_warning` 오류 노출을 도입했다.
+- **안전성·모듈화 최종 정리:** `rust/lattice-platform/src/`의 잔여 비테스트 `.unwrap()` 9건을 전량 제거(워크스페이스 비테스트 `.unwrap()` 0건)하고, 중복된 `unsafe libc` 로컬 시간 블록 7개를 `rust/lattice-core/src/graph_write/clock.rs` 단일 안전 API로 통합했으며(`lattice-retrieval`의 미사용 `libc` 의존성 제거), `provider.rs`·`intents.rs`·`helpers.rs`·`extraction.py`를 분할해 전 스택 수기 프로덕션 파일 800줄 초과 0건을 달성했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md).
+
+빌드 산출물은 `dist/ltcai-13.3.0-py3-none-any.whl`,
+`dist/ltcai-13.3.0.tar.gz`, `ltcai-13.3.0.tgz`, `dist/ltcai-13.3.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.3.0_aarch64.dmg` 입니다.
+
 ## v13.2.1 — Living Synthesis (2026-11-19)
 
 **전 스택 모듈화 리팩터링(`lattice-auth`, `lattice-core`, `lattice-ingest`, `lattice-retrieval`, `lattice-agent`, `lattice-platform`, `lattice-host`, `model_capability_registry.py`, `worker_compute.py`, `brainData.ts`)**, **Rust·Python·Frontend 미사용 데드 코드 및 은퇴 레이어 정리(Vitest 100% 유지)**, **Ubuntu `t64` 시각 회귀 CI 미러 페일오버 하드닝**을 통합한 유지보수·아키텍처 정돈 릴리스.

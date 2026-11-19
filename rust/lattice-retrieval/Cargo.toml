@@ -17,9 +17,6 @@ rusqlite = { workspace = true }
 # engines also owns their HTTP contract; the host only mounts it.
 axum = { workspace = true }
 tokio = { workspace = true }
-# Only for `localtime_r(3)`: the recency decay compares against naive local
-# stamps, and there is no timezone crate in this workspace.
-libc = { workspace = true }
 # fancy-regex, not regex: the Python originals this crate ports use lookbehind
 # and negative lookahead (`(?<![A-Za-z0-9_])`, `(?![\s\-]*…)`), and its
 # backtracking leftmost-first semantics are the ones `re` has.

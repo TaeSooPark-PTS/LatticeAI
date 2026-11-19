@@ -15,7 +15,7 @@
 
 <br/>
 
-![v13.2.1 Living Brain walkthrough](output/release/v13.2.1/gifs/v13.2.1-living-brain-walkthrough.gif)
+![v13.3.0 Living Brain walkthrough](output/release/v13.3.0/gifs/v13.3.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -38,7 +38,7 @@ Lattice AI is a **local-first Digital Brain** that unifies your conversations, f
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_13.2.1_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_13.3.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -67,15 +67,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v13.2.1/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v13.2.1/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v13.3.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v13.3.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v13.2.1/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v13.2.1/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v13.3.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v13.3.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v13.2.1/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v13.2.1/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v13.3.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v13.3.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v13.2.1/screenshots/13-chronicle.png) | ![Settings](output/release/v13.2.1/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v13.3.0/screenshots/13-chronicle.png) | ![Settings](output/release/v13.3.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v13.2.1/SCREENSHOT_INDEX.md](output/release/v13.2.1/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v13.2.1/screenshots/01-login.png), [06-capture.png](output/release/v13.2.1/screenshots/06-capture.png), [07-model-library.png](output/release/v13.2.1/screenshots/07-model-library.png)).
+Full visual index: [output/release/v13.3.0/SCREENSHOT_INDEX.md](output/release/v13.3.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v13.3.0/screenshots/01-login.png), [06-capture.png](output/release/v13.3.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.3.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -97,24 +97,24 @@ Full visual index: [output/release/v13.2.1/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **13.2.1 — Living Synthesis**:
+The current release is **13.3.0 — Living Synthesis**:
 
-- **Bi-Temporal Knowledge Graph, Entity Resolution & Grounded RAG** — Bi-temporal valid/transaction timeline queries & evolution classification (`temporal.rs`), reversible cross-lingual `SAME_AS` entity consolidation (`entity_resolution.rs`), deterministic claim-level citation/numeric/polarity verification & fail-closed `ko`/`en` abstention (`grounding.rs`), and separated Retrieval vs. Generation RAG benchmarking with Gemma/Qwen/Cloud model-swap invariance (`rag_eval_grounded.rs`).
-- **Incremental Multimodal Ingestion & Durable DAG Workflows** — Event-driven `DebouncedWatchEngine` (`incremental_watch.rs`), chunk-level incremental re-embedding & move relocation (`incremental_sync.rs`), structured table/page/slide/caption + local OCR ingestion (`document_structure.rs`), and checkpointed `DurableWorkflowStore` (`kernel/workflow.rs`) with SHA-256 idempotency ledger, constant-time `WaitingApproval` restart recovery, file rollback snapshots, and Brain provenance edges.
-- **Worker Resilience, Secret-File Cloud Boundary & Section 16 E2E Suite** — Idempotent worker seam retries & compute timeout isolation (`worker.rs`, `worker_resilience.py`), outbound cloud `.env`/private-key blocking (`boundary.rs`), honest `empty`/`ok`/`unavailable` graph health telemetry (`onedoor.rs`, `audit.rs`), and full Section 16 E2E verification (`roadmap_section16_suite.rs`, 16.1–16.4).
+- **Live Production Wiring of Core Brain & Workflow Engines** — Wired idempotent worker compute retries (`post_idempotent_compute`), claim-level grounding telemetry (`claim_verification` in `helpers.rs`), bi-temporal timeline & reversible `SAME_AS` entity consolidation (`consistency.rs`), non-blocking OS-event `DebouncedWatchEngine` + chunk-level `sync_document_incremental` (`watch_bridge.rs`), and atomic `DurableWorkflowStore` run checkpointing (`executor.rs`) directly into live HTTP/chat/watch/workflow paths.
+- **Concurrency, Upload & Reliability Hardening** — Fixed `worker_resilience.py` coalesced-waiter error handling, streaming body timeouts, and `CancelledError` in-flight cleanup; eliminated temp-file collisions and silent multimodal overlay error swallowing in `local_files_api/ingest.rs`.
+- **Zero Non-Test `.unwrap()`, Single `libc` Clock Wrapper & ≤800-Line Modularity** — Eliminated all remaining non-test `.unwrap()` calls in Rust, unified 7 duplicated `unsafe libc` time blocks into `lattice_core::graph_write::clock`, removed unused `libc` from `lattice-retrieval`, and split all remaining >800-line hand-written production files while keeping **100% Vitest coverage**.
 
 <details>
-<summary>Release notes & exact 13.2.1 distribution artifacts</summary>
+<summary>Release notes & exact 13.3.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v13.2.1.md](docs/releases/RELEASE_NOTES_v13.2.1.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 13.2.1 must use exact filenames:
+Expected artifacts for 13.3.0 must use exact filenames:
 
-- `dist/ltcai-13.2.1-py3-none-any.whl`
-- `dist/ltcai-13.2.1.tar.gz`
-- `ltcai-13.2.1.tgz`
-- `dist/ltcai-13.2.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.2.1_aarch64.dmg`
+- `dist/ltcai-13.3.0-py3-none-any.whl`
+- `dist/ltcai-13.3.0.tar.gz`
+- `ltcai-13.3.0.tgz`
+- `dist/ltcai-13.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.3.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -136,6 +136,7 @@ Public release history in this repository covers `v12.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 13.3.0 | Living Synthesis | [RELEASE_NOTES_v13.3.0.md](docs/releases/RELEASE_NOTES_v13.3.0.md) |
 | 13.2.1 | Living Synthesis | [RELEASE_NOTES_v13.2.1.md](docs/releases/RELEASE_NOTES_v13.2.1.md) |
 | 13.2.0 | Living Synthesis | [RELEASE_NOTES_v13.2.0.md](docs/releases/RELEASE_NOTES_v13.2.0.md) |
 | 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](docs/releases/RELEASE_NOTES_v13.1.0.md) |

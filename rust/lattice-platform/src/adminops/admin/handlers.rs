@@ -518,13 +518,11 @@ pub(crate) async fn admin_update_user(
     let (admin, users) = require_admin(&state, &headers)?;
     let email = email.trim_start_matches('/').to_string();
     let parsed = parse_object_body(&body)?;
-    if users.get(&email).is_none() {
+    let Some(existing_user) = users.get(&email) else {
         return Err(message_error(404, "auth.user_not_found", lang, &[]));
-    }
-    let before = state
-        .auth
-        .public_user(&email, users.get(&email).unwrap(), &users);
-    let mut record = users.get(&email).unwrap().clone();
+    };
+    let before = state.auth.public_user(&email, existing_user, &users);
+    let mut record = existing_user.clone();
     if let Some(role) = parsed.get("role") {
         if !role.is_null() {
             let role = role.as_str().unwrap_or("");
@@ -544,11 +542,11 @@ pub(crate) async fn admin_update_user(
         }
     }
     let mut next = users;
-    next.insert(email.clone(), record);
+    next.insert(email.clone(), record.clone());
     state.auth.users().save(&next);
     let after = state
         .auth
-        .public_user(&email, next.get(&email).unwrap(), &next);
+        .public_user(&email, next.get(&email).unwrap_or(&record), &next);
     let mut payload = Map::new();
     payload.insert("user_email".into(), json!(admin.email));
     payload.insert("target_email".into(), json!(email));

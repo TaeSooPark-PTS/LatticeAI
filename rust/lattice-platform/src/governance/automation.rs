@@ -357,9 +357,9 @@ fn activity_run_row(mut run: Value, source: &str) -> Value {
             .to_ascii_lowercase();
         if existing == "workflow" || existing == "agent" {
             obj.insert("source".into(), json!(existing));
-        } else if obj.get("workflow_id").is_some() && !obj.get("workflow_id").unwrap().is_null() {
+        } else if obj.get("workflow_id").is_some_and(|v| !v.is_null()) {
             obj.insert("source".into(), json!("workflow"));
-        } else if obj.get("agent_id").is_some() && !obj.get("agent_id").unwrap().is_null() {
+        } else if obj.get("agent_id").is_some_and(|v| !v.is_null()) {
             obj.insert("source".into(), json!("agent"));
         } else if !existing.is_empty() {
             obj.insert("source".into(), json!(existing));

@@ -628,7 +628,11 @@ async fn extract_for_turn(state: &ChatState, text: &str) -> ExtractReply {
         return ExtractReply::default();
     };
     let body = json!({"text": text, "kind": "message"});
-    match worker.client().post_json(EXTRACT_PATH, &body).await {
+    match worker
+        .client()
+        .post_idempotent_compute(EXTRACT_PATH, &body)
+        .await
+    {
         Ok(payload) => ExtractReply::from_json(&payload),
         Err(_) => ExtractReply::default(),
     }

@@ -135,7 +135,10 @@ impl ChatWorker {
     /// a vector filed under anything else is a vector `similarity()` will refuse.
     pub async fn embed(&self, texts: &[String], kind: &str) -> Result<EmbedReply, WorkerSeamError> {
         let body = json!({"texts": texts, "kind": kind});
-        let payload = self.client.post_json(EMBED_PATH, &body).await?;
+        let payload = self
+            .client
+            .post_idempotent_compute(EMBED_PATH, &body)
+            .await?;
         Ok(EmbedReply {
             vectors: payload
                 .get("vectors")

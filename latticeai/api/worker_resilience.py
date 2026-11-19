@@ -236,14 +236,47 @@ def install_worker_compute_resilience(
                 },
             )
         if inflight_fut is not None:
-            joined = await asyncio.wait_for(asyncio.shield(inflight_fut), timeout=timeout_s)
+            try:
+                joined = await asyncio.wait_for(asyncio.shield(inflight_fut), timeout=timeout_s)
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "coalesced worker compute timeout after %.2fs on %s",
+                    timeout_s,
+                    request.url.path,
+                )
+                return JSONResponse(
+                    status_code=504,
+                    content={
+                        "detail": f"worker compute timed out after {timeout_s:.2f}s",
+                        "code": "worker_compute_timeout",
+                        "retryable": True,
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    "coalesced worker compute observed leader failure on %s",
+                    request.url.path,
+                )
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": "worker compute isolated an unexpected error",
+                        "code": "worker_compute_isolated_fault",
+                        "retryable": True,
+                    },
+                )
             return _to_response(joined, replay=True)
+
+        async def _execute_and_buffer() -> Tuple[Response, bytes]:
+            resp = await call_next(request)
+            chunks = [chunk async for chunk in resp.body_iterator]
+            return resp, b"".join(chunks)
 
         idem_store.register_inflight(scope_key, body_sha)
         try:
-            response = await asyncio.wait_for(call_next(request), timeout=timeout_s)
-            chunks = [chunk async for chunk in response.body_iterator]
-            payload_bytes = b"".join(chunks)
+            response, payload_bytes = await asyncio.wait_for(
+                _execute_and_buffer(), timeout=timeout_s
+            )
             media_type = response.media_type or response.headers.get("content-type", "application/json")
             entry = CachedComputeResponse(
                 body_sha256=body_sha,
@@ -288,6 +321,11 @@ def install_worker_compute_resilience(
                     "retryable": True,
                 },
             )
+        except BaseException as exc:
+            # CancelledError (client disconnect / task cancel) inherits from BaseException
+            # in Python 3.8+; always release the inflight slot so retries never wedge.
+            idem_store.finish_inflight_error(scope_key, exc)
+            raise
 
     return idem_store
 

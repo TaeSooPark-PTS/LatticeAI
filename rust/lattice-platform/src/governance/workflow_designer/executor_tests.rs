@@ -60,6 +60,19 @@ fn a_trigger_output_workflow_reaches_ok_with_step_results() {
         .collect();
     assert!(events.contains(&"step_completed"));
     assert!(events.contains(&"workflow_finished"));
+    let durable = lattice_agent::kernel::workflow::DurableWorkflowStore::new(
+        dir.path().join("durable_workflows"),
+    );
+    let checkpoint = durable
+        .load(run_id, 0.0)
+        .expect("load durable checkpoint")
+        .expect("durable checkpoint exists");
+    assert_eq!(checkpoint.spec.workflow_id, run_id);
+    assert_eq!(
+        checkpoint.status,
+        lattice_agent::kernel::workflow::WorkflowStatus::Completed
+    );
+    assert_eq!(checkpoint.steps.len(), 2);
 }
 
 #[test]

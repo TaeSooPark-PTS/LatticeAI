@@ -177,23 +177,18 @@ impl DemoStore {
 }
 
 fn require_demo(state: &SetupState, headers: &HeaderMap) -> Result<DemoStore, Response> {
-    if !state.pipeline_available || state.demo.is_none() {
-        if !state.pipeline_available {
-            return Err(message_error(
-                503,
-                "capture.ingestion_disabled",
-                language_from(headers),
-                &[],
-            ));
-        }
+    if !state.pipeline_available {
         return Err(message_error(
             503,
-            "common.graph_disabled",
+            "capture.ingestion_disabled",
             language_from(headers),
             &[],
         ));
     }
-    Ok(state.demo.clone().unwrap())
+    state
+        .demo
+        .clone()
+        .ok_or_else(|| message_error(503, "common.graph_disabled", language_from(headers), &[]))
 }
 
 fn demo_workspace(

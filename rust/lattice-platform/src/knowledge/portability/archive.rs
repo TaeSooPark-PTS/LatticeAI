@@ -612,16 +612,17 @@ fn execute_archive_restore(
     let pre_restore_str = pre_restore_path.to_string_lossy().to_string();
     let _ = write_backup_zip(state, Some(&pre_restore_str))?;
 
-    let apply_result =
-        apply_decrypted_payload(state, &decrypted.plaintext, &decrypted.manifest, mode);
-    if let Err(err) = apply_result {
-        // Attempt rollback from pre-restore backup so DB is never left half-restored.
-        if pre_restore_path.exists() {
-            let _ = restore_backup_zip(state, &pre_restore_path, false);
-        }
-        return Err(err);
-    }
-    let (blobs_restored, live_counts) = apply_result.unwrap();
+    let (blobs_restored, live_counts) =
+        match apply_decrypted_payload(state, &decrypted.plaintext, &decrypted.manifest, mode) {
+            Ok(res) => res,
+            Err(err) => {
+                // Attempt rollback from pre-restore backup so DB is never left half-restored.
+                if pre_restore_path.exists() {
+                    let _ = restore_backup_zip(state, &pre_restore_path, false);
+                }
+                return Err(err);
+            }
+        };
 
     let mut map = OrderedMap::new();
     map.insert(

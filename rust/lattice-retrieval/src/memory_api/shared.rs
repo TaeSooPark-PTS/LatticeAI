@@ -389,30 +389,8 @@ pub fn now_iso() -> String {
     local_iso(secs).unwrap_or_else(|| "1970-01-01T00:00:00".to_string())
 }
 
-#[cfg(unix)]
 fn local_iso(utc_secs: i64) -> Option<String> {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
-        return None;
-    }
-    Some(format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
-        broken.tm_year + 1900,
-        broken.tm_mon + 1,
-        broken.tm_mday,
-        broken.tm_hour,
-        broken.tm_min,
-        broken.tm_sec,
-    ))
-}
-
-/// Non-unix hosts have no `localtime_r`; this crate targets macOS and Linux.
-#[cfg(not(unix))]
-fn local_iso(_utc_secs: i64) -> Option<String> {
-    None
+    lattice_core::graph_write::clock::local_iso_for(utc_secs)
 }
 
 /// The language the catalog renders a refusal in.

@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **13.2.1 — Living Synthesis**.
+Current release: **13.3.0 — Living Synthesis**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

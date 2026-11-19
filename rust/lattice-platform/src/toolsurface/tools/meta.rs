@@ -261,7 +261,7 @@ async fn create_document(
         }
     };
     match worker
-        .post_json(&format!("/worker/render/{kind}"), &payload)
+        .post_idempotent_compute(&format!("/worker/render/{kind}"), &payload)
         .await
     {
         Ok(answer) => {

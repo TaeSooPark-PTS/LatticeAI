@@ -247,16 +247,16 @@ fn drive_run(
     let mut saw_success = false;
     let mut saw_manual = false;
 
-    for step in steps {
-        let id = step_id(&step);
+    for step in &steps {
+        let id = step_id(step);
         if skipping {
             if resume.after_node.as_deref() == Some(id.as_str()) {
                 skipping = false;
             }
             continue;
         }
-        let kind = step_kind(&step);
-        if requires_approval(&step) && resume.approved_node.as_deref() != Some(id.as_str()) {
+        let kind = step_kind(step);
+        if requires_approval(step) && resume.approved_node.as_deref() != Some(id.as_str()) {
             paused_on = Some(id.clone());
             timeline.push(json!({
                 "event": "awaiting_approval",
@@ -268,7 +268,7 @@ fn drive_run(
             break;
         }
         let outcome = execute_step(
-            &step, &kind, inputs, tools, data_dir, scope, user_email, store,
+            step, &kind, inputs, tools, data_dir, scope, user_email, store,
         );
         let status = outcome
             .get("status")
@@ -304,6 +304,19 @@ fn drive_run(
     }
 
     if let Some(node) = paused_on {
+        if let Some(dir) = data_dir {
+            persist_durable_checkpoint(
+                dir,
+                workflow,
+                run_id,
+                scope,
+                user_email,
+                &steps,
+                &results,
+                Some(node.as_str()),
+                "awaiting_approval",
+            );
+        }
         let pause = json!({"node": node, "reason": "step requires approval"});
         return serde_json::to_value(
             store
@@ -323,6 +336,11 @@ fn drive_run(
     }
 
     let status = terminal_status(saw_failure, saw_success, saw_manual, results.is_empty());
+    if let Some(dir) = data_dir {
+        persist_durable_checkpoint(
+            dir, workflow, run_id, scope, user_email, &steps, &results, None, status,
+        );
+    }
     timeline.push(json!({
         "event": "workflow_finished",
         "status": status,
@@ -344,6 +362,121 @@ fn drive_run(
             .unwrap_or_default(),
     )
     .unwrap_or(json!({}))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn persist_durable_checkpoint(
+    data_dir: &Path,
+    workflow: &Value,
+    run_id: &str,
+    scope: &str,
+    user_email: Option<&str>,
+    steps: &[Value],
+    results: &[Value],
+    paused_node: Option<&str>,
+    status: &str,
+) {
+    use lattice_agent::kernel::workflow::{
+        DurableWorkflowStore, WorkflowRunRecord, WorkflowSpec, WorkflowStatus, WorkflowStepSpec,
+        WorkflowStepStatus,
+    };
+
+    if steps.is_empty() || run_id.trim().is_empty() {
+        return;
+    }
+    let safe_id: String = run_id
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if safe_id.is_empty() {
+        return;
+    }
+    let goal = workflow
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or("workflow")
+        .to_string();
+    let mut step_specs = Vec::with_capacity(steps.len());
+    let mut prev_id: Option<String> = None;
+    let mut seen_ids = HashSet::new();
+    for (idx, step) in steps.iter().enumerate() {
+        let mut sid = step_id(step);
+        if sid.is_empty() || !seen_ids.insert(sid.clone()) {
+            sid = format!("step_{idx}");
+            seen_ids.insert(sid.clone());
+        }
+        let kind = step_kind(step);
+        let depends_on = prev_id.iter().cloned().collect();
+        step_specs.push(WorkflowStepSpec {
+            step_id: sid.clone(),
+            title: step
+                .get("label")
+                .or_else(|| step.get("name"))
+                .and_then(Value::as_str)
+                .unwrap_or(&kind)
+                .to_string(),
+            action: kind,
+            args: step.get("config").cloned().unwrap_or_else(|| json!({})),
+            depends_on,
+            mutating: matches!(step_kind(step).as_str(), "tool" | "graph" | "notification"),
+            requires_approval: requires_approval(step),
+            max_retries: 0,
+            rollback_path: None,
+            consulted_node_ids: Vec::new(),
+        });
+        prev_id = Some(sid);
+    }
+    let spec = WorkflowSpec {
+        workflow_id: safe_id,
+        goal,
+        user_email: user_email.map(str::to_string),
+        workspace_id: Some(scope.to_string()),
+        rollback_on_failure: false,
+        steps: step_specs,
+    };
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0);
+    let Ok(mut record) = WorkflowRunRecord::from_spec(spec, now_secs) else {
+        return;
+    };
+    for result in results {
+        let node = result.get("node").and_then(Value::as_str).unwrap_or("");
+        if let Some(step_state) = record.steps.get_mut(node) {
+            let st = result.get("status").and_then(Value::as_str).unwrap_or("ok");
+            step_state.attempts = 1;
+            step_state.status = if st == "failed" {
+                step_state.last_error = result
+                    .get("detail")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                WorkflowStepStatus::Failed
+            } else {
+                WorkflowStepStatus::Completed
+            };
+        }
+    }
+    if let Some(node) = paused_node {
+        if let Some(step_state) = record.steps.get_mut(node) {
+            step_state.status = WorkflowStepStatus::WaitingApproval;
+        }
+        record.status = WorkflowStatus::WaitingApproval;
+    } else {
+        record.status = match status {
+            "failed" => WorkflowStatus::Failed,
+            _ => WorkflowStatus::Completed,
+        };
+    }
+    record.updated_at = now_secs;
+    let durable_store = DurableWorkflowStore::new(data_dir.join("durable_workflows"));
+    let _ = durable_store.save(&record);
 }
 
 fn terminal_status(failed: bool, success: bool, manual: bool, empty: bool) -> &'static str {

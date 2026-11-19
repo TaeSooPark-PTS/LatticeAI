@@ -42,7 +42,7 @@ async fn extract_via_seam(
         return ExtractReply::default();
     };
     match seam
-        .post_json(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
+        .post_idempotent_compute(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
         .await
     {
         Ok(payload) => ExtractReply::from_json(&payload),
@@ -59,7 +59,7 @@ async fn embed_via_seam(
     }
     let seam = seam?;
     let payload = seam
-        .post_json(EMBED_PATH, &json!({"texts": [text], "kind": "passage"}))
+        .post_idempotent_compute(EMBED_PATH, &json!({"texts": [text], "kind": "passage"}))
         .await
         .ok()?;
     let values = payload

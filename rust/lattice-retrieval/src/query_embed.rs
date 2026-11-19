@@ -183,7 +183,14 @@ pub async fn resolve_query_embedding_with_contract(
         "texts": [trimmed],
         "kind": "query",
     });
-    match client.post_json(EMBED_PATH, &body).await {
+    let policy = lattice_core::worker::WorkerRetryPolicy {
+        max_retries: 0,
+        ..lattice_core::worker::WorkerRetryPolicy::default()
+    };
+    match client
+        .post_idempotent_compute_with_policy(EMBED_PATH, &body, policy)
+        .await
+    {
         Ok(payload) => match parse_query_embed_payload(&payload) {
             Ok(query_vector) => QueryEmbedResolution {
                 semantic_contract: Some(contract),

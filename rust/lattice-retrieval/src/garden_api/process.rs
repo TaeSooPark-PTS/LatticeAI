@@ -139,7 +139,7 @@ async fn extract_via_seam(seam: Option<&WorkerSeamClient>, text: &str, kind: &st
         return ExtractReply::default();
     };
     match seam
-        .post_json(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
+        .post_idempotent_compute(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
         .await
     {
         Ok(payload) => ExtractReply::from_json(&payload),
@@ -169,7 +169,7 @@ async fn embed_texts_via_seam(
     }
     let seam = seam?;
     let payload = seam
-        .post_json(EMBED_PATH, &json!({"texts": texts, "kind": "passage"}))
+        .post_idempotent_compute(EMBED_PATH, &json!({"texts": texts, "kind": "passage"}))
         .await
         .ok()?;
     let rows = payload.get("vectors").and_then(Value::as_array)?;

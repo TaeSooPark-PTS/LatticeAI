@@ -28,7 +28,7 @@ pub(crate) async fn parse_via_seam(
 ) -> Option<Map<String, Value>> {
     let seam = seam?;
     let payload = seam
-        .post_json(
+        .post_idempotent_compute(
             PARSE_PATH,
             &json!({
                 "filename": filename,
@@ -69,7 +69,7 @@ pub(crate) async fn extract_via_seam_status(
         return (ExtractReply::default(), false);
     };
     match seam
-        .post_json(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
+        .post_idempotent_compute(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
         .await
     {
         Ok(payload) => (ExtractReply::from_json(&payload), true),
@@ -322,7 +322,7 @@ pub(crate) async fn embed_texts_with_contract(
         return SeamEmbedOutcome::Unavailable;
     };
     let Ok(payload) = seam
-        .post_json(EMBED_PATH, &json!({"texts": texts, "kind": "passage"}))
+        .post_idempotent_compute(EMBED_PATH, &json!({"texts": texts, "kind": "passage"}))
         .await
     else {
         return SeamEmbedOutcome::Unavailable;

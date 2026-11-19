@@ -512,15 +512,16 @@ async fn update_agent(
             }
         }
     } else if let Some(obj) = stored.as_object_mut() {
-        let ov = obj
-            .entry("config_overrides")
-            .or_insert(json!({}))
-            .as_object_mut()
-            .unwrap();
-        let slot = ov.entry(agent_id.clone()).or_insert(json!({}));
-        slot["config"] = config;
-        if let Some(en) = enabled {
-            slot["enabled"] = json!(en);
+        let overrides_val = obj.entry("config_overrides").or_insert(json!({}));
+        if !overrides_val.is_object() {
+            *overrides_val = json!({});
+        }
+        if let Some(ov) = overrides_val.as_object_mut() {
+            let slot = ov.entry(agent_id.clone()).or_insert(json!({}));
+            slot["config"] = config;
+            if let Some(en) = enabled {
+                slot["enabled"] = json!(en);
+            }
         }
     }
     state.save(&stored);

@@ -232,6 +232,39 @@ impl WorkerSeamClient {
         read_json(request, path).await
     }
 
+    /// `POST {origin}{path}` for stateless compute endpoints (`/worker/extract`,
+    /// `/worker/embed`, `/worker/render/*`), deriving a deterministic SHA-256
+    /// `x-lattice-idempotency-key` from `(path, body)` and applying bounded
+    /// retry via [`Self::post_idempotent_json`].
+    pub async fn post_idempotent_compute(
+        &self,
+        path: &str,
+        body: &Value,
+    ) -> Result<Value, WorkerSeamError> {
+        self.post_idempotent_compute_with_policy(path, body, WorkerRetryPolicy::default())
+            .await
+    }
+
+    /// Like [`Self::post_idempotent_compute`], with a caller-supplied retry policy
+    /// (for interactive paths such as query-time embedding that coalesce via
+    /// `x-lattice-idempotency-key` without multi-attempt backoff).
+    pub async fn post_idempotent_compute_with_policy(
+        &self,
+        path: &str,
+        body: &Value,
+        policy: WorkerRetryPolicy,
+    ) -> Result<Value, WorkerSeamError> {
+        let payload =
+            serde_json::to_vec(body).map_err(|error| WorkerSeamError::Client(error.to_string()))?;
+        let mut key_input = Vec::with_capacity(path.len() + 1 + payload.len());
+        key_input.extend_from_slice(path.as_bytes());
+        key_input.push(b'\n');
+        key_input.extend_from_slice(&payload);
+        let digest = crate::sha256_bytes(&key_input);
+        let key = format!("compute-{}", &digest[..32]);
+        self.post_idempotent_json(path, &key, body, policy).await
+    }
+
     /// `POST {origin}{path}` with an explicit `x-lattice-idempotency-key` header
     /// and bounded retry on transient worker failures (`is_transient()`).
     pub async fn post_idempotent_json(

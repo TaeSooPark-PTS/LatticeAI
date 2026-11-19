@@ -20,6 +20,25 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.3.0": {
+    "_why": [
+      "Living Synthesis (13.3.0) wires v13.2.0 backend engines into live",
+      "production paths (post_idempotent_compute, claim_verification in",
+      "assess_answer_grounding, entity_resolution & temporal_timeline in",
+      "Brain consolidate, non-blocking DebouncedWatchEngine &",
+      "sync_document_incremental in watch_bridge, DurableWorkflowStore",
+      "checkpointing in workflow_designer), fixes worker_resilience.py",
+      "concurrency/cancellation/body-timeout bugs and ingest.rs temp-file",
+      "collisions & silent overlay error swallowing, eliminates all remaining",
+      "non-test Rust .unwrap() calls, consolidates 7 duplicated unsafe libc",
+      "clock blocks into lattice-core, and splits all remaining >800-line",
+      "hand-written production files.",
+      "",
+      "No frontend screen shell was redesigned in 13.3.0 (05-memory-graph",
+      "carries normal ~3.1% Cytoscape layout jitter). Empty claim set on",
+      "purpose; unclaimed screens are still measured and printed."
+    ]
+  },
   "13.2.0": {
     "_why": [
       "Living Synthesis (13.2.0) completes the backend roadmap and Section 16",

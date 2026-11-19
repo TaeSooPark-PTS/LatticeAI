@@ -425,14 +425,15 @@ impl FeatureService {
         })?;
         if matches!(def.kind, Kind::Choice) {
             let id = coerced.as_str().unwrap_or("");
-            let choice = def.choices.iter().find(|c| c.id == id).unwrap();
-            let (available, reason) = self.availability(choice);
-            if !available {
-                return Err(FeatureError::Invalid(messages::text(
-                    "features.choice.install_required",
-                    language,
-                    &[("reason", reason.as_str())],
-                )));
+            if let Some(choice) = def.choices.iter().find(|c| c.id == id) {
+                let (available, reason) = self.availability(choice);
+                if !available {
+                    return Err(FeatureError::Invalid(messages::text(
+                        "features.choice.install_required",
+                        language,
+                        &[("reason", reason.as_str())],
+                    )));
+                }
             }
         }
         let _g = self.lock.lock().unwrap_or_else(|e| e.into_inner());

@@ -395,31 +395,18 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m as u32, d as u32)
 }
 
-/// The system zone's wall clock for a UTC instant, via `localtime_r(3)`.
-#[cfg(unix)]
+/// The system zone's wall clock for a UTC instant, delegated to `lattice-core`.
 fn system_local(utc_secs: i64) -> Option<Naive> {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
-        return None;
-    }
+    let parts = lattice_core::graph_write::clock::local_wall_parts(utc_secs)?;
     Some(Naive {
-        year: broken.tm_year + 1900,
-        month: broken.tm_mon as u32 + 1,
-        day: broken.tm_mday as u32,
-        hour: broken.tm_hour as u32,
-        minute: broken.tm_min as u32,
-        second: broken.tm_sec as u32,
+        year: parts.year,
+        month: parts.month,
+        day: parts.day,
+        hour: parts.hour,
+        minute: parts.minute,
+        second: parts.second,
         micro: 0,
     })
-}
-
-/// Non-unix hosts have no `localtime_r`; this crate targets macOS and Linux.
-#[cfg(not(unix))]
-fn system_local(_utc_secs: i64) -> Option<Naive> {
-    None
 }
 
 #[cfg(test)]

@@ -341,7 +341,11 @@ pub(super) fn ensure_poller(state: &Arc<LocalFilesState>) -> bool {
     drop(live);
     let state = Arc::clone(state);
     let interval = interval_from_env();
+    let event_tick = std::time::Duration::from_secs(2).min(interval);
     tokio::spawn(async move {
+        let engines: Arc<Mutex<HashMap<String, crate::incremental_watch::DebouncedWatchEngine>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut last_reconcile = std::time::Instant::now();
         loop {
             tokio::select! {
                 changed = stop_rx.changed() => {
@@ -349,15 +353,81 @@ pub(super) fn ensure_poller(state: &Arc<LocalFilesState>) -> bool {
                         return;
                     }
                 }
-                // Waits first, exactly as `poll_watch` does: the baseline was
-                // taken at enable, so the first tick must see changes only.
-                () = tokio::time::sleep(interval) => {
-                    scan_watches(&state).await;
+                () = tokio::time::sleep(event_tick) => {
+                    let data_dir = state.config.data_dir().to_path_buf();
+                    let engines_ref = Arc::clone(&engines);
+                    let os_triggered = tokio::task::spawn_blocking(move || {
+                        let now_ms = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as u64)
+                            .unwrap_or(0);
+                        let Ok(mut guard) = engines_ref.lock() else {
+                            return false;
+                        };
+                        sync_os_watch_engines(&data_dir, &mut guard);
+                        let mut triggered = false;
+                        for engine in guard.values_mut() {
+                            if !engine.poll_batch(now_ms, false).is_empty() {
+                                triggered = true;
+                            }
+                        }
+                        triggered
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if os_triggered || last_reconcile.elapsed() >= interval {
+                        scan_watches(&state).await;
+                        last_reconcile = std::time::Instant::now();
+                    }
                 }
             }
         }
     });
     true
+}
+
+fn sync_os_watch_engines(
+    data_dir: &Path,
+    engines: &mut HashMap<String, crate::incremental_watch::DebouncedWatchEngine>,
+) {
+    let active_watches = stored_watches(data_dir);
+    let mut active_ids = std::collections::BTreeSet::new();
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    for entry in &active_watches {
+        if !entry
+            .get("enabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let id = entry.get("id").and_then(Value::as_str).unwrap_or_default();
+        let root = entry
+            .get("path")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if id.is_empty() || root.is_empty() {
+            continue;
+        }
+        active_ids.insert(id.to_string());
+        if !engines.contains_key(id) {
+            let recursive = entry
+                .get("recursive")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
+            let cfg = crate::incremental_watch::DebouncedWatchConfig {
+                watch: watch_config(recursive),
+                ..crate::incremental_watch::DebouncedWatchConfig::default()
+            };
+            let mut engine = crate::incremental_watch::DebouncedWatchEngine::new(root, cfg, now_ms);
+            let _ = engine.start_os_watcher();
+            engines.insert(id.to_string(), engine);
+        }
+    }
+    engines.retain(|id, _| active_ids.contains(id));
 }
 
 /// Resume the pollers a previous run left declared in `folder_watch.json`.
@@ -656,6 +726,39 @@ async fn deliver(
     }
     let mut note = NoteSubmission::from_watched_file(root, relative_path, &text, Some(watch_id));
     crate::fingerprint::attach(&mut note.metadata, size, mtime, &sha);
+    if stored.is_some() {
+        if let Ok(Some(contract)) = ingestor.graph().current_index_contract() {
+            if !contract.is_semantic() || seam.is_none() {
+                let sync_req = crate::incremental_sync::IncrementalSyncRequest {
+                    title: note.title.clone(),
+                    text: note.content.clone(),
+                    source_uri: uri.clone(),
+                    moved_from_uri: None,
+                    workspace_id: workspace_id.map(str::to_string),
+                    owner: owner.map(str::to_string),
+                    modified_at: None,
+                    metadata: note.metadata.clone(),
+                };
+                let graph = ingestor.graph().clone();
+                let contract_clone = contract.clone();
+                let sync_res = tokio::task::spawn_blocking(move || {
+                    let local_fallback = lattice_core::embeddings::LocalEmbeddingModel::new(
+                        contract_clone.dimension,
+                    );
+                    crate::incremental_sync::sync_document_incremental(
+                        &graph,
+                        &sync_req,
+                        &contract_clone,
+                        |texts| Ok(texts.iter().map(|t| local_fallback.embed(t)).collect()),
+                    )
+                })
+                .await;
+                if let Ok(Ok(_receipt)) = sync_res {
+                    return Ok(Delivered::Ingested);
+                }
+            }
+        }
+    }
     ingestor
         .ingest_note(&note, owner, workspace_id)
         .await

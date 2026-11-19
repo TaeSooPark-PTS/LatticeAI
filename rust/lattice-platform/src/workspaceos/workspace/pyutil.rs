@@ -51,21 +51,8 @@ fn naive_local_secs_now() -> i64 {
     naive_local_secs(utc).unwrap_or(utc)
 }
 
-#[cfg(unix)]
 fn naive_local_secs(utc_secs: i64) -> Option<i64> {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
-        return None;
-    }
-    Some(utc_secs + i64::from(broken.tm_gmtoff as i32))
-}
-
-#[cfg(not(unix))]
-fn naive_local_secs(utc_secs: i64) -> Option<i64> {
-    Some(utc_secs)
+    lattice_core::graph_write::clock::naive_local_secs(utc_secs)
 }
 
 /// Howard Hinnant's `civil_from_days`: days since 1970-01-01 → `(y, m, d)`.

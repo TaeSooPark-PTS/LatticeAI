@@ -237,6 +237,9 @@ pub async fn consolidate(
         None
     };
 
+    let (entity_resolution, temporal_timeline) =
+        run_epistemic_consolidation(state, apply, workspace_id).await;
+
     let mut out = OrderedMap::new();
     out.insert(
         "mode",
@@ -277,6 +280,98 @@ pub async fn consolidate(
             .map(|map| serde_json::to_value(&map).unwrap_or(Value::Null))
             .unwrap_or(Value::Null),
     );
+    out.insert("entity_resolution", entity_resolution);
+    out.insert("temporal_timeline", temporal_timeline);
     out.insert("generated_at", Value::String(state.now()));
     out
+}
+
+async fn run_epistemic_consolidation(
+    state: &BrainState,
+    apply: bool,
+    workspace_id: Option<&str>,
+) -> (Value, Value) {
+    let ws = workspace_id.map(str::to_string);
+    let now = state.now();
+    let entity_resolution = if apply {
+        if let Some(graph) = state.graph().cloned() {
+            let ws_apply = ws.clone();
+            let now_apply = now.clone();
+            tokio::task::spawn_blocking(move || {
+                let alias_book = lattice_core::entity_resolution::EntityAliasBook::default();
+                graph.store().with_write_txn(|txn| {
+                    lattice_core::entity_resolution::apply_entity_consolidation(
+                        txn,
+                        ws_apply.as_deref(),
+                        &alias_book,
+                        &now_apply,
+                    )
+                })
+            })
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .map(|summary| {
+                serde_json::json!({
+                    "applied": true,
+                    "total_entities_scanned": summary.total_entities_scanned,
+                    "clusters_with_merges": summary.clusters_with_merges,
+                    "duplicate_nodes_linked": summary.duplicate_nodes_linked,
+                    "same_as_edges_upserted": summary.same_as_edges_upserted,
+                })
+            })
+            .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        }
+    } else {
+        let ws_read = ws.clone();
+        state
+            .read(move |conn| {
+                let alias_book = lattice_core::entity_resolution::EntityAliasBook::default();
+                lattice_core::entity_resolution::resolve_entities_in_conn(
+                    conn,
+                    ws_read.as_deref(),
+                    &alias_book,
+                )
+            })
+            .await
+            .ok()
+            .map(|clusters| {
+                let clusters_with_merges = clusters
+                    .iter()
+                    .filter(|c| c.member_node_ids.len() > 1)
+                    .count();
+                let duplicate_nodes = clusters
+                    .iter()
+                    .map(|c| c.member_node_ids.len().saturating_sub(1))
+                    .sum::<usize>();
+                serde_json::json!({
+                    "applied": false,
+                    "total_entities_scanned": clusters.iter().map(|c| c.member_node_ids.len()).sum::<usize>(),
+                    "clusters_with_merges": clusters_with_merges,
+                    "duplicate_nodes_candidate": duplicate_nodes,
+                })
+            })
+            .unwrap_or(Value::Null)
+    };
+
+    let ws_temporal = ws;
+    let temporal_timeline = state
+        .read(move |conn| {
+            lattice_core::temporal::query_temporal_timeline(conn, ws_temporal.as_deref(), "", None)
+        })
+        .await
+        .ok()
+        .map(|summary| {
+            serde_json::json!({
+                "active_facts": summary.active_facts.len(),
+                "historical_facts": summary.historical_facts.len(),
+                "unreached_facts": summary.unreached_facts.len(),
+                "has_active_contradiction": summary.has_active_contradiction(),
+            })
+        })
+        .unwrap_or(Value::Null);
+
+    (entity_resolution, temporal_timeline)
 }

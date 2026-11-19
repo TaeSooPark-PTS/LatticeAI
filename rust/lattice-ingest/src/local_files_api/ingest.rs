@@ -571,8 +571,11 @@ pub(super) async fn upload_document(
             .and_then(super::enrich::SeamEmbedOutcome::batch),
         true,
     );
+    static UPLOAD_TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let tmp_seq = UPLOAD_TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let tmp = std::env::temp_dir().join(format!(
-        "lattice-upload-{}",
+        "lattice-upload-{}-{}-{tmp_seq}",
+        std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
@@ -607,7 +610,7 @@ pub(super) async fn upload_document(
         embedding,
         ..Default::default()
     };
-    let (outcome, reindex_required, active_contract) =
+    let (outcome, reindex_required, active_contract, overlay_warning) =
         match tokio::task::spawn_blocking(move || {
             let prior_contract = graph.current_index_contract().ok().flatten();
             let reindex = prior_contract
@@ -615,21 +618,31 @@ pub(super) async fn upload_document(
                 .zip(incoming_contract.as_ref())
                 .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
             let outcome = graph.ingest_file(&request)?;
-            let _ = crate::document_structure::persist_structure_and_multimodal_overlay(
-                &graph,
-                &outcome.node_id,
-                &chunks_for_overlay,
-                &outcome.chunk_ids,
-                &structure_plan,
-                None,
-                None,
-            );
+            let overlay_warning =
+                match crate::document_structure::persist_structure_and_multimodal_overlay(
+                    &graph,
+                    &outcome.node_id,
+                    &chunks_for_overlay,
+                    &outcome.chunk_ids,
+                    &structure_plan,
+                    None,
+                    None,
+                ) {
+                    Ok(_) => None,
+                    Err(err) => {
+                        eprintln!(
+                            "[lattice-ingest] structure overlay persist failed for {}: {err}",
+                            outcome.node_id
+                        );
+                        Some(err.to_string())
+                    }
+                };
             let active = graph
                 .current_index_contract()
                 .ok()
                 .flatten()
                 .or(incoming_contract);
-            Ok::<_, lattice_core::CoreError>((outcome, reindex, active))
+            Ok::<_, lattice_core::CoreError>((outcome, reindex, active, overlay_warning))
         })
         .await
         {
@@ -656,6 +669,9 @@ pub(super) async fn upload_document(
     let mut payload = outcome.to_json();
     if let Some(object) = payload.as_object_mut() {
         telemetry.apply_to_json(object);
+        if let Some(warning) = overlay_warning {
+            object.insert("structure_overlay_warning".into(), json!(warning));
+        }
     }
     ok(&payload)
 }

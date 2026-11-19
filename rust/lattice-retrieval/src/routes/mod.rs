@@ -232,33 +232,9 @@ pub fn naive_local_now() -> f64 {
 
 /// Naive local seconds for a UTC epoch second, or `None` when the platform
 /// cannot say (and the caller falls back to UTC rather than guess).
-#[cfg(unix)]
 fn naive_local_secs(utc_secs: i64) -> Option<f64> {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    let result = unsafe { libc::localtime_r(&stamp, &mut broken) };
-    if result.is_null() {
-        return None;
-    }
-    parse_iso(Some(&format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
-        broken.tm_year + 1900,
-        broken.tm_mon + 1,
-        broken.tm_mday,
-        broken.tm_hour,
-        broken.tm_min,
-        broken.tm_sec,
-    )))
-}
-
-/// Non-unix hosts have no `localtime_r`; the caller falls back to UTC, which is
-/// the truth on a machine configured for UTC and an honest approximation
-/// anywhere else. This crate targets macOS and Linux.
-#[cfg(not(unix))]
-fn naive_local_secs(_utc_secs: i64) -> Option<f64> {
-    None
+    let iso = lattice_core::graph_write::clock::local_iso_for(utc_secs)?;
+    parse_iso(Some(&iso))
 }
 
 #[cfg(test)]

@@ -415,31 +415,9 @@ fn round_half_even_micros(nanos: u32) -> u32 {
 }
 
 /// `datetime.fromtimestamp(secs).isoformat(timespec="seconds")` — naive local
-/// time, through `localtime_r(3)` for the same reason
-/// `memory_api::shared::now_iso` uses it: there is no timezone crate here.
-#[cfg(unix)]
+/// time, delegated to `lattice-core`'s single `localtime_r` wrapper.
 fn local_iso(utc_secs: i64) -> String {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
-        return String::new();
-    }
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
-        broken.tm_year + 1900,
-        broken.tm_mon + 1,
-        broken.tm_mday,
-        broken.tm_hour,
-        broken.tm_min,
-        broken.tm_sec,
-    )
-}
-
-#[cfg(not(unix))]
-fn local_iso(_utc_secs: i64) -> String {
-    String::new()
+    lattice_core::graph_write::clock::local_iso_for(utc_secs).unwrap_or_default()
 }
 
 // ── clock readings ──────────────────────────────────────────────────────────
