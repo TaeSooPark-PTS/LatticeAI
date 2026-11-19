@@ -25,7 +25,7 @@ futures-core = { workspace = true }
 fancy-regex = { workspace = true }
 # WP-R9: device identity / peer pairing (Ed25519, same raw 32-byte keys as
 # lattice_brain.graph.identity) and ZIP backups of knowledge_graph.sqlite.
-ed25519-dalek = "2"
+ed25519-dalek = "3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # WP-R1: `datetime.now()` is naive *local* time, and there is no timezone crate
 # in this workspace — `localtime_r(3)` is how lattice-retrieval already answers
