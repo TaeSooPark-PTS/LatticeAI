@@ -244,8 +244,8 @@ export function parseContextQuality(value: unknown): MessageContextQuality | nul
 }
 
 // Answer-citation binding verdict from the backend ("grounding"): defensive
-// parse of {status, reason}. The backend's Korean `label` field is
-// intentionally ignored so display copy always comes from i18n keys.
+// parse of {status, reason, claim_verification}. The backend's Korean `label`
+// field is intentionally ignored so display copy always comes from i18n keys.
 export function parseGrounding(value: unknown): MessageGrounding | null {
   const root = isRecord(value) ? value : {};
   const direct = isRecord(root.grounding) ? root.grounding : null;
@@ -254,7 +254,28 @@ export function parseGrounding(value: unknown): MessageGrounding | null {
   const status = textValue(grounding, ["status"]);
   if (!["supported", "unsupported", "no_context"].includes(status)) return null;
   const reason = typeof grounding.reason === "string" && grounding.reason.trim() ? grounding.reason.trim() : null;
-  return { status, reason };
+  const cv = isRecord(grounding.claim_verification) ? grounding.claim_verification : null;
+  if (!cv) return { status, reason };
+  const abstentionReason =
+    typeof cv.abstention_reason === "string" && cv.abstention_reason.trim() ? cv.abstention_reason.trim() : null;
+  return {
+    status,
+    reason,
+    claimVerification: {
+      claimSupportRatio: clampRatio(numberValue(cv, ["claim_support_ratio"])),
+      citationPrecision: clampRatio(numberValue(cv, ["citation_precision"])),
+      citationRecall: clampRatio(numberValue(cv, ["citation_recall"])),
+      supersededCitationLeaks: Math.max(0, Math.round(numberValue(cv, ["superseded_citation_leaks"]))),
+      numericMismatches: Math.max(0, Math.round(numberValue(cv, ["numeric_mismatches"]))),
+      polarityMismatches: Math.max(0, Math.round(numberValue(cv, ["polarity_mismatches"]))),
+      shouldAbstain: booleanValue(cv, ["should_abstain"], false),
+      abstentionReason,
+    },
+  };
+}
+
+function clampRatio(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 // Hybrid `{"type":"hybrid_context", node_ids, keywords, ...}` — keep the ids

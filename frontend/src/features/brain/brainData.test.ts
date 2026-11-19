@@ -522,6 +522,66 @@ describe("brainData parser edges", () => {
     expect(parseGrounding(null)).toBeNull();
   });
 
+  it("grounding parses claim_verification metrics and clamps ratios safely", () => {
+    expect(
+      parseGrounding({
+        grounding: {
+          status: "supported",
+          reason: null,
+          claim_verification: {
+            claim_support_ratio: 1.5,
+            citation_precision: 0.75,
+            citation_recall: -0.2,
+            superseded_citation_leaks: 1,
+            numeric_mismatches: 2,
+            polarity_mismatches: 1,
+            should_abstain: true,
+            abstention_reason: " 수치 불일치 ",
+          },
+        },
+      }),
+    ).toEqual({
+      status: "supported",
+      reason: null,
+      claimVerification: {
+        claimSupportRatio: 1,
+        citationPrecision: 0.75,
+        citationRecall: 0,
+        supersededCitationLeaks: 1,
+        numericMismatches: 2,
+        polarityMismatches: 1,
+        shouldAbstain: true,
+        abstentionReason: "수치 불일치",
+      },
+    });
+    expect(
+      parseGrounding({
+        grounding: {
+          status: "supported",
+          claim_verification: {
+            claim_support_ratio: 0.9,
+            citation_precision: 1,
+            citation_recall: 1,
+            abstention_reason: "   ",
+          },
+        },
+      }),
+    ).toEqual({
+      status: "supported",
+      reason: null,
+      claimVerification: {
+        claimSupportRatio: 0.9,
+        citationPrecision: 1,
+        citationRecall: 1,
+        supersededCitationLeaks: 0,
+        numericMismatches: 0,
+        polarityMismatches: 0,
+        shouldAbstain: false,
+        abstentionReason: null,
+      },
+    });
+  });
+
   it("step events keep decision, state and error detail", () => {
     expect(parseAgentStepEvent({ phase: "plan", event: "decision", decision: "approve", state: "PLANNING", detail: "이유" }))
       .toEqual({ phase: "plan", event: "decision", decision: "approve", state: "PLANNING", detail: "이유" });

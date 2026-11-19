@@ -558,6 +558,168 @@ async fn a_deleted_watched_file_is_pruned_from_the_graph() {
     );
 }
 
+#[tokio::test]
+async fn semantic_watched_edit_reembeds_only_changed_chunks_via_two_phase_sync() {
+    let data = tempfile::tempdir().expect("data");
+    let vault = tempfile::tempdir().expect("vault");
+    seed_users(data.path());
+
+    let embed_batch_sizes: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::new()));
+    let model_id = "huggingface:google/embeddinggemma-2:4".to_string();
+    let app = Router::new()
+        .route(
+            "/worker/extract",
+            post(|| async { Json(json!({"concepts": [], "triples": [], "semantic": []})) }),
+        )
+        .route(
+            "/worker/embed",
+            post({
+                let embed_batch_sizes = Arc::clone(&embed_batch_sizes);
+                let model_id = model_id.clone();
+                move |Json(body): Json<Value>| {
+                    let embed_batch_sizes = Arc::clone(&embed_batch_sizes);
+                    let model_id = model_id.clone();
+                    async move {
+                        let texts = body["texts"].as_array().cloned().unwrap_or_default();
+                        embed_batch_sizes.lock().expect("lock").push(texts.len());
+                        let vectors: Vec<Vec<f64>> = texts
+                            .iter()
+                            .enumerate()
+                            .map(|(i, _)| vec![1.0, (i as f64) * 0.1, 0.2, 0.3])
+                            .collect();
+                        Json(json!({
+                            "provider": "huggingface",
+                            "model_id": model_id,
+                            "dim": 4,
+                            "vectors": vectors,
+                        }))
+                    }
+                }
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind worker");
+    let worker_origin = format!("http://{}", listener.local_addr().expect("addr"));
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, app.into_make_service()).await;
+    });
+
+    let mut env = HashMap::new();
+    env.insert("LATTICEAI_REQUIRE_AUTH".into(), "1".into());
+    env.insert("LATTICEAI_RATE_LIMIT".into(), "0".into());
+    env.insert(
+        "LATTICEAI_DATA_DIR".into(),
+        data.path().to_string_lossy().into_owned(),
+    );
+    let mut config = AuthConfig::from_map(&env, None);
+    config.data_dir = data.path().to_path_buf();
+    let auth = AuthState::with_clock(config, Clock::frozen(1_786_000_000.0));
+    let token = auth
+        .sessions()
+        .create("user:owner", Some("owner@lattice.test"));
+
+    let db = data.path().join("knowledge_graph.sqlite");
+    let store = Arc::new(Store::open(&db).expect("store"));
+    let graph = GraphWriter::open(
+        Arc::clone(&store),
+        data.path().join("knowledge_graph_blobs"),
+    )
+    .expect("writer");
+    let contract = lattice_core::embedding_contract::EmbeddingIndexContract::from_semantic(
+        "huggingface",
+        &model_id,
+        4,
+    );
+    graph
+        .record_supplied_contract(&contract)
+        .expect("set semantic contract");
+
+    let runtime = RuntimeConfig::resolve(
+        Some(data.path().to_str().unwrap()),
+        None,
+        None,
+        Some(data.path()),
+    );
+    let permissions = LocalApprovals::new();
+    let state = Arc::new(
+        LocalFilesState::new(auth, Some(store), runtime)
+            .with_graph(graph.clone())
+            .with_seam(WorkerSeamClient::new(&worker_origin).expect("seam"))
+            .with_permissions(Arc::clone(&permissions)),
+    );
+    let router = local_files_api::router(Arc::clone(&state));
+    let api_listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind api");
+    let api_addr = api_listener.local_addr().expect("addr");
+    tokio::spawn(async move {
+        let _ = axum::serve(
+            api_listener,
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await;
+    });
+    let install = Install {
+        origin: format!("http://{api_addr}"),
+        token,
+        permissions,
+        state,
+        graph,
+        seams: SeamLog::default(),
+    };
+    install.enable(vault.path()).await;
+
+    let p1 = format!(
+        "# Section 1\n{}",
+        "Alpha invariant section body. ".repeat(25)
+    );
+    let p2 = format!(
+        "# Section 2\n{}",
+        "Beta stable architecture note. ".repeat(25)
+    );
+    let p3 = format!(
+        "# Section 3\n{}",
+        "Gamma original draft details. ".repeat(25)
+    );
+    let note_path = vault.path().join("handbook.md");
+    std::fs::write(&note_path, format!("{p1}\n\n{p2}\n\n{p3}")).unwrap();
+
+    let first = local_files_api::scan_watches(&install.state).await;
+    assert_eq!(first["watches"][0]["ingested"], 1, "{first}");
+
+    let initial_batch = embed_batch_sizes
+        .lock()
+        .expect("lock")
+        .last()
+        .copied()
+        .unwrap_or(0);
+    assert!(
+        initial_batch >= 4,
+        "initial full ingest should embed doc + all >=3 chunks, got {initial_batch}"
+    );
+
+    let p3_updated = format!(
+        "# Section 3\n{}",
+        "Delta updated semantic incremental note. ".repeat(25)
+    );
+    std::fs::write(&note_path, format!("{p1}\n\n{p2}\n\n{p3_updated}")).unwrap();
+
+    let second = local_files_api::scan_watches(&install.state).await;
+    assert_eq!(second["watches"][0]["ingested"], 1, "{second}");
+
+    let incremental_batch = embed_batch_sizes
+        .lock()
+        .expect("lock")
+        .last()
+        .copied()
+        .unwrap_or(0);
+    assert!(
+        incremental_batch < initial_batch,
+        "two-phase semantic incremental sync must reuse unchanged chunks: initial={initial_batch}, incremental={incremental_batch}"
+    );
+}
+
 /// Percent-encode a filesystem path for a query string. Small on purpose.
 fn urlencode(value: &str) -> String {
     let mut out = String::new();

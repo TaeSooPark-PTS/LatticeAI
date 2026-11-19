@@ -123,11 +123,24 @@ export type PendingApprovalSummary = {
   expiresAt: string;
 };
 
+// Deterministic claim-level grounding metrics emitted by `verify_grounding_and_abstention`.
+export type MessageClaimVerification = {
+  claimSupportRatio: number;
+  citationPrecision: number;
+  citationRecall: number;
+  supersededCitationLeaks: number;
+  numericMismatches: number;
+  polarityMismatches: number;
+  shouldAbstain: boolean;
+  abstentionReason: string | null;
+};
+
 // Honest answer-grounding signal: whether the reply actually used retrieved
 // sources. `no_context` means nothing was retrieved at all.
 export type MessageGrounding = {
   status: "supported" | "unsupported" | "no_context" | string;
   reason: string | null;
+  claimVerification?: MessageClaimVerification;
 };
 
 // Additive chat meta ("context_quality") flowing on the same channel as

@@ -26,12 +26,15 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use lattice_auth::OrderedMap;
 use lattice_core::graph_write::{Clock, SystemClock};
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
 
-use super::{enrich, LocalFilesState};
+use super::LocalFilesState;
 use crate::watch::{interval_from_env, Snapshot, WatchConfig, WatchScanner};
-use crate::worker::{NoteIngestor, NoteSubmission};
+use crate::worker::NoteIngestor;
+
+#[path = "watch_deliver.rs"]
+mod watch_deliver;
+use watch_deliver::{deliver, Delivered};
 
 fn watch_path(data_dir: &Path) -> PathBuf {
     data_dir.join("folder_watch.json")
@@ -656,123 +659,5 @@ async fn collect_watch_join(
         Ok((_, Ok(Delivered::Skipped))) => *hash_skipped += 1,
         Ok((relative, Err(detail))) => errors.push(json!({"path": relative, "detail": detail})),
         Err(error) => errors.push(json!({"path": "", "detail": error.to_string()})),
-    }
-}
-
-/// What delivering one watched file did.
-enum Delivered {
-    /// Parse / extract / embed ran.
-    Ingested,
-    /// Fingerprint (stamp or content hash) said the file is unchanged.
-    Skipped,
-}
-
-/// One detected file → one note in the Brain, through the shared enrich chain.
-///
-/// The binary half is F-ING's: a `.pdf` / `.docx` in a watched vault goes
-/// through `POST /worker/parse` exactly as the upload door sends it, so the
-/// note carries the document's text rather than its bytes. A file the seam
-/// cannot read is a named per-file failure, never a failed scan.
-///
-/// Unchanged bytes (mtime/size moved, sha256 did not) skip parse/extract/embed
-/// using the same provenance fingerprint folder ingest records.
-#[allow(clippy::too_many_arguments)]
-async fn deliver(
-    ingestor: &NoteIngestor,
-    store: Option<&lattice_core::db::Store>,
-    seam: Option<&WorkerSeamClient>,
-    root: &Path,
-    relative_path: &str,
-    watch_id: &str,
-    owner: Option<&str>,
-    workspace_id: Option<&str>,
-) -> Result<Delivered, String> {
-    let absolute = root.join(relative_path);
-    let uri = absolute.display().to_string();
-    let metadata = std::fs::metadata(&absolute).map_err(|error| error.to_string())?;
-    let size = metadata.len();
-    let mtime = crate::pystr::round3(mtime_seconds(&metadata));
-    let stored = store.and_then(|store| crate::fingerprint::lookup(store, &uri));
-    if let Some(fp) = stored.as_ref() {
-        if fp.stamp_matches(size, mtime) {
-            return Ok(Delivered::Skipped);
-        }
-    }
-    let bytes = std::fs::read(&absolute).map_err(|error| error.to_string())?;
-    let sha = crate::fingerprint::hash_bytes(&bytes);
-    if let Some(fp) = stored.as_ref() {
-        if fp.hash_matches(&sha) {
-            let _ = crate::fingerprint::restamp(ingestor.graph(), &uri, size, mtime, &sha);
-            return Ok(Delivered::Skipped);
-        }
-    }
-    let filename = Path::new(relative_path)
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| relative_path.to_string());
-    let text = if enrich::needs_parse(&filename, &bytes) {
-        enrich::parse_via_seam(seam, &filename, &bytes)
-            .await
-            .as_ref()
-            .map(enrich::parsed_text)
-            .unwrap_or_default()
-    } else {
-        String::from_utf8_lossy(&bytes).into_owned()
-    };
-    if text.trim().is_empty() {
-        return Err(
-            "no readable text: the file is binary and the parse seam did not answer".into(),
-        );
-    }
-    let mut note = NoteSubmission::from_watched_file(root, relative_path, &text, Some(watch_id));
-    crate::fingerprint::attach(&mut note.metadata, size, mtime, &sha);
-    if stored.is_some() {
-        if let Ok(Some(contract)) = ingestor.graph().current_index_contract() {
-            if !contract.is_semantic() || seam.is_none() {
-                let sync_req = crate::incremental_sync::IncrementalSyncRequest {
-                    title: note.title.clone(),
-                    text: note.content.clone(),
-                    source_uri: uri.clone(),
-                    moved_from_uri: None,
-                    workspace_id: workspace_id.map(str::to_string),
-                    owner: owner.map(str::to_string),
-                    modified_at: None,
-                    metadata: note.metadata.clone(),
-                };
-                let graph = ingestor.graph().clone();
-                let contract_clone = contract.clone();
-                let sync_res = tokio::task::spawn_blocking(move || {
-                    let local_fallback = lattice_core::embeddings::LocalEmbeddingModel::new(
-                        contract_clone.dimension,
-                    );
-                    crate::incremental_sync::sync_document_incremental(
-                        &graph,
-                        &sync_req,
-                        &contract_clone,
-                        |texts| Ok(texts.iter().map(|t| local_fallback.embed(t)).collect()),
-                    )
-                })
-                .await;
-                if let Ok(Ok(_receipt)) = sync_res {
-                    return Ok(Delivered::Ingested);
-                }
-            }
-        }
-    }
-    ingestor
-        .ingest_note(&note, owner, workspace_id)
-        .await
-        .map(|_| Delivered::Ingested)
-        .map_err(|error| error.to_string())
-}
-
-fn mtime_seconds(metadata: &std::fs::Metadata) -> f64 {
-    use std::time::UNIX_EPOCH;
-    let Ok(modified) = metadata.modified() else {
-        return 0.0;
-    };
-    match modified.duration_since(UNIX_EPOCH) {
-        Ok(since) => since.as_secs_f64(),
-        Err(error) => -error.duration().as_secs_f64(),
     }
 }

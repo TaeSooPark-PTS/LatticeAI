@@ -20,6 +20,20 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.3.1": {
+    "_why": [
+      "Living Synthesis (13.3.1) splits incremental_sync into two-phase async",
+      "plan_incremental_sync + /worker/embed + commit_incremental_sync for",
+      "semantic watched-folder edits (watch_deliver.rs), adds ClaimVerificationStrip",
+      "in AnswerProof.tsx and ConsolidationEpistemicSummary in",
+      "BrainIntelligencePanel.tsx (100% Vitest coverage), and enables weekly",
+      "Dependabot coverage (.github/dependabot.yml).",
+      "",
+      "The new claim verification strip and consolidation epistemic summary card",
+      "mount conditionally when a live reply carries claim_verification or after",
+      "a user triggers Brain consolidation, so idle baseline shells are unchanged."
+    ]
+  },
   "13.3.0": {
     "_why": [
       "Living Synthesis (13.3.0) wires v13.2.0 backend engines into live",

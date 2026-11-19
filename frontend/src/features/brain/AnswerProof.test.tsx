@@ -337,6 +337,77 @@ describe("SourceChunkModal", () => {
     // Nothing to assert visually — the guard just must not warn or crash.
     expect(screen.queryByTestId("source-chunk-modal")).toBeNull();
   });
+
+  it("renders claim_verification support ratios and warning badges when present", () => {
+    const { rerender } = render(
+      <AnswerProofCard
+        language="ko"
+        proof={proof()}
+        messageId="m-cv-ok"
+        claimVerification={{
+          claimSupportRatio: 0.92,
+          citationPrecision: 1,
+          citationRecall: 0.8,
+          supersededCitationLeaks: 0,
+          numericMismatches: 0,
+          polarityMismatches: 0,
+          shouldAbstain: false,
+          abstentionReason: null,
+        }}
+      />,
+    );
+    const okStrip = screen.getByTestId("claim-verification-strip");
+    expect(okStrip.className).toContain("is-ok");
+    expect(okStrip.textContent).toContain("주장 검증 92%");
+    expect(okStrip.textContent).toContain("인용 정확도 100%");
+    expect(screen.queryByTestId("claim-numeric-mismatch")).toBeNull();
+    expect(screen.queryByTestId("claim-polarity-mismatch")).toBeNull();
+    expect(screen.queryByTestId("claim-superseded-leak")).toBeNull();
+    expect(screen.queryByTestId("claim-abstain-warning")).toBeNull();
+
+    rerender(
+      <AnswerProofCard
+        language="en"
+        proof={proof()}
+        messageId="m-cv-warn"
+        claimVerification={{
+          claimSupportRatio: 0.35,
+          citationPrecision: 0.5,
+          citationRecall: 0.4,
+          supersededCitationLeaks: 2,
+          numericMismatches: 1,
+          polarityMismatches: 3,
+          shouldAbstain: true,
+          abstentionReason: "conflicting numbers",
+        }}
+      />,
+    );
+    const warnStrip = screen.getByTestId("claim-verification-strip");
+    expect(warnStrip.className).toContain("is-warning");
+    expect(screen.getByTestId("claim-numeric-mismatch").textContent).toContain("1 numeric mismatch(es)");
+    expect(screen.getByTestId("claim-polarity-mismatch").textContent).toContain("3 polarity mismatch(es)");
+    expect(screen.getByTestId("claim-superseded-leak").textContent).toContain("2 superseded source(s)");
+    expect(screen.getByTestId("claim-abstain-warning").textContent).toContain("Abstention recommended · conflicting numbers");
+
+    rerender(
+      <AnswerProofCard
+        language="ko"
+        proof={proof()}
+        messageId="m-cv-abstain-bare"
+        claimVerification={{
+          claimSupportRatio: 0,
+          citationPrecision: 0,
+          citationRecall: 0,
+          supersededCitationLeaks: 0,
+          numericMismatches: 0,
+          polarityMismatches: 0,
+          shouldAbstain: true,
+          abstentionReason: null,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("claim-abstain-warning").textContent).toBe("근거 부족 기권 권고");
+  });
 });
 
 describe("InlineCitationMarkers", () => {

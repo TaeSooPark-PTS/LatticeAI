@@ -181,17 +181,46 @@ fn find_active_prior_revision(
     })
 }
 
-/// Synchronize one document incrementally, reusing unchanged chunk embeddings and
-/// retiring stale chunks from superseded revisions.
-pub fn sync_document_incremental<F>(
+/// Prepared two-phase incremental sync plan produced by [`plan_incremental_sync`].
+///
+/// Separates read-only diffing (identifying cached vs. uncached chunk hashes)
+/// from asynchronous embedding (e.g. `POST /worker/embed`) and final SQLite
+/// commit ([`commit_incremental_sync`]) so async callers never block a Tokio
+/// runtime thread on HTTP or invoke `Handle::block_on` inside `spawn_blocking`.
+#[derive(Debug)]
+pub struct IncrementalSyncPlan {
+    req: IncrementalSyncRequest,
+    prior: Option<PriorRevision>,
+    chunks: Vec<ChunkPiece>,
+    new_hash_set: BTreeSet<String>,
+    reused_chunks: usize,
+    missing_chunk_indices: Vec<usize>,
+    need_doc_embed: bool,
+    doc_embedding: Option<SuppliedVector>,
+    batch_inputs: Vec<String>,
+    duplicate_receipt: Option<IncrementalSyncReceipt>,
+}
+
+impl IncrementalSyncPlan {
+    /// Texts that must be embedded before calling [`commit_incremental_sync`].
+    /// Empty when every chunk and the document summary vector are already cached.
+    pub fn texts_to_embed(&self) -> &[String] {
+        &self.batch_inputs
+    }
+
+    /// True when the document is an exact unchanged duplicate with cached vectors.
+    pub fn is_duplicate(&self) -> bool {
+        self.duplicate_receipt.is_some()
+    }
+}
+
+/// Phase 1: inspect the active prior revision and plan which chunks can reuse
+/// cached vectors versus which texts must be embedded.
+pub fn plan_incremental_sync(
     writer: &GraphWriter,
     req: &IncrementalSyncRequest,
     contract: &EmbeddingIndexContract,
-    mut embed_texts: F,
-) -> Result<IncrementalSyncReceipt, CoreError>
-where
-    F: FnMut(&[String]) -> Result<Vec<Vec<f64>>, String>,
-{
+) -> Result<IncrementalSyncPlan, CoreError> {
     let cleaned_body = clean_text(&req.text);
     if cleaned_body.is_empty() {
         return Err(CoreError::InvalidRequest(
@@ -236,7 +265,7 @@ where
                 .iter()
                 .all(|h| prev.cached_vectors.contains_key(h))
         {
-            return Ok(IncrementalSyncReceipt {
+            let receipt = IncrementalSyncReceipt {
                 node_id: prev.node_id.clone(),
                 previous_node_id: Some(prev.node_id.clone()),
                 moved_from_uri: None,
@@ -247,6 +276,18 @@ where
                 embedder_calls: 0,
                 embedded_text_count: 0,
                 duplicate: true,
+            };
+            return Ok(IncrementalSyncPlan {
+                req: req.clone(),
+                prior,
+                chunks,
+                new_hash_set,
+                reused_chunks: receipt.reused_chunks,
+                missing_chunk_indices: Vec::new(),
+                need_doc_embed: false,
+                doc_embedding: None,
+                batch_inputs: Vec::new(),
+                duplicate_receipt: Some(receipt),
             });
         }
     }
@@ -255,12 +296,7 @@ where
     let mut missing_chunk_indices: Vec<usize> = Vec::new();
     let mut batch_inputs: Vec<String> = Vec::new();
 
-    let summary_probe = format!(
-        "{}
-{}",
-        clean_text(&req.title),
-        cleaned_body
-    );
+    let summary_probe = format!("{}\n{}", clean_text(&req.title), cleaned_body);
     let summary_probe_hash = sha256_text(&summary_probe);
     let reused_doc_vec = prior.as_ref().and_then(|prev| {
         prev.doc_vector.as_ref().and_then(|(h, vec)| {
@@ -282,11 +318,7 @@ where
 
     let need_doc_embed = reused_doc_vec.is_none();
     if need_doc_embed {
-        batch_inputs.push(format!(
-            "{}
-{}",
-            req.title, req.text
-        ));
+        batch_inputs.push(format!("{}\n{}", req.title, req.text));
     }
 
     for (idx, piece) in chunks.iter_mut().enumerate() {
@@ -304,33 +336,63 @@ where
         }
     }
 
-    let mut embedder_calls = 0usize;
-    let embedded_text_count = batch_inputs.len();
-    let mut doc_embedding = reused_doc_vec;
+    Ok(IncrementalSyncPlan {
+        req: req.clone(),
+        prior,
+        chunks,
+        new_hash_set,
+        reused_chunks,
+        missing_chunk_indices,
+        need_doc_embed,
+        doc_embedding: reused_doc_vec,
+        batch_inputs,
+        duplicate_receipt: None,
+    })
+}
 
-    if !batch_inputs.is_empty() {
+/// Phase 2: commit a prepared [`IncrementalSyncPlan`] with vectors computed for
+/// [`IncrementalSyncPlan::texts_to_embed`], reusing cached vectors and retiring
+/// superseded chunks atomically.
+pub fn commit_incremental_sync(
+    writer: &GraphWriter,
+    mut plan: IncrementalSyncPlan,
+    contract: &EmbeddingIndexContract,
+    computed_vectors: Option<Vec<Vec<f64>>>,
+) -> Result<IncrementalSyncReceipt, CoreError> {
+    if let Some(receipt) = plan.duplicate_receipt {
+        return Ok(receipt);
+    }
+
+    let mut embedder_calls = 0usize;
+    let embedded_text_count = plan.batch_inputs.len();
+    if !plan.batch_inputs.is_empty() {
+        let computed = computed_vectors.ok_or_else(|| {
+            CoreError::InvalidRequest(format!(
+                "incremental commit requires {} computed vectors",
+                plan.batch_inputs.len()
+            ))
+        })?;
         embedder_calls = 1;
-        let computed = embed_texts(&batch_inputs).map_err(CoreError::InvalidRequest)?;
-        if computed.len() != batch_inputs.len() {
+        if computed.len() != plan.batch_inputs.len() {
             return Err(CoreError::InvalidRequest(format!(
                 "incremental embedder returned {} vectors for {} inputs",
                 computed.len(),
-                batch_inputs.len()
+                plan.batch_inputs.len()
             )));
         }
         let mut iter = computed.into_iter();
-        if need_doc_embed {
+        if plan.need_doc_embed {
             if let Some(vec) = iter.next() {
-                doc_embedding = Some(SuppliedVector {
+                plan.doc_embedding = Some(SuppliedVector {
                     values: vec,
                     model_id: contract.model_id.clone(),
                     dim: contract.dimension,
                 });
             }
         }
-        for idx in &missing_chunk_indices {
+        for idx in &plan.missing_chunk_indices {
             if let Some(vec) = iter.next() {
-                chunks[*idx].embedding = Some(SuppliedVector {
+                plan.chunks[*idx].embedding = Some(SuppliedVector {
                     values: vec,
                     model_id: contract.model_id.clone(),
                     dim: contract.dimension,
@@ -338,6 +400,14 @@ where
             }
         }
     }
+
+    let req = &plan.req;
+    let chunks = &plan.chunks;
+    let doc_embedding = &plan.doc_embedding;
+    let reused_chunks = plan.reused_chunks;
+    let missing_chunk_indices = &plan.missing_chunk_indices;
+    let new_hash_set = &plan.new_hash_set;
+    let prior = plan.prior;
 
     let mut meta = req.metadata.clone();
     if let Some(moved) = &req.moved_from_uri {
@@ -366,7 +436,7 @@ where
 
     let outcome = writer.ingest_content(&ingest_req)?;
     let overlay = sections::build_overlay(
-        &chunks,
+        chunks,
         &outcome.chunk_ids,
         &outcome.node_id,
         req.owner.as_deref(),
@@ -397,7 +467,7 @@ where
         if prev.source_uri != req.source_uri {
             resolved_move = Some(prev.source_uri.clone());
         }
-        removed_chunks = prev.chunk_hashes.difference(&new_hash_set).count();
+        removed_chunks = prev.chunk_hashes.difference(new_hash_set).count();
         if prev.node_id != outcome.node_id {
             let now_iso = req
                 .modified_at
@@ -469,6 +539,29 @@ where
         embedded_text_count,
         duplicate: outcome.duplicate,
     })
+}
+
+/// Synchronize one document incrementally, reusing unchanged chunk embeddings and
+/// retiring stale chunks from superseded revisions.
+pub fn sync_document_incremental<F>(
+    writer: &GraphWriter,
+    req: &IncrementalSyncRequest,
+    contract: &EmbeddingIndexContract,
+    mut embed_texts: F,
+) -> Result<IncrementalSyncReceipt, CoreError>
+where
+    F: FnMut(&[String]) -> Result<Vec<Vec<f64>>, String>,
+{
+    let plan = plan_incremental_sync(writer, req, contract)?;
+    if plan.is_duplicate() {
+        return commit_incremental_sync(writer, plan, contract, None);
+    }
+    let computed = if plan.texts_to_embed().is_empty() {
+        None
+    } else {
+        Some(embed_texts(plan.texts_to_embed()).map_err(CoreError::InvalidRequest)?)
+    };
+    commit_incremental_sync(writer, plan, contract, computed)
 }
 
 /// Reconcile vanished file URIs by deleting their active Document subgraphs cleanly.

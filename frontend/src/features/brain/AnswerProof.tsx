@@ -7,7 +7,7 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useAppStore } from "@/store/appStore";
 import { isRecord, textValue } from "./brainData";
 import { navigateHash } from "./navigation";
-import type { Message } from "./types";
+import type { Message, MessageClaimVerification } from "./types";
 
 function citationDomId(messageId: string, citationId: string): string {
   return `${messageId}-cite-${citationId}`;
@@ -56,11 +56,13 @@ export function AnswerProofCard({
   language,
   proof,
   messageId,
+  claimVerification,
   onUseEvidence,
 }: {
   language: Language;
   proof: NonNullable<Message["proof"]>;
   messageId: string;
+  claimVerification?: MessageClaimVerification | null;
   onUseEvidence?: (prompt: string) => void;
 }) {
   const [openCitation, setOpenCitation] = React.useState<Citation | null>(null);
@@ -73,6 +75,9 @@ export function AnswerProofCard({
           <small className="brain-answer-proof-count">{t(language, "brain.answerProof.citationsLabel", { count: proof.citations.length })}</small>
         ) : null}
       </div>
+      {claimVerification ? (
+        <ClaimVerificationStrip language={language} verification={claimVerification} />
+      ) : null}
       {proof.citations.length ? (
         <ol>
           {proof.citations.map((citation, index) => (
@@ -128,6 +133,63 @@ export function AnswerProofCard({
         />
       ) : null}
     </section>
+  );
+}
+
+function ClaimVerificationStrip({
+  language,
+  verification,
+}: {
+  language: Language;
+  verification: MessageClaimVerification;
+}) {
+  const supportPct = Math.round(verification.claimSupportRatio * 100);
+  const precisionPct = Math.round(verification.citationPrecision * 100);
+  const hasWarnings =
+    verification.numericMismatches > 0 ||
+    verification.polarityMismatches > 0 ||
+    verification.supersededCitationLeaks > 0 ||
+    verification.shouldAbstain;
+
+  return (
+    <div
+      className={`brain-claim-verification flex flex-wrap items-center gap-1.5 text-xs mt-1.5 ${hasWarnings ? "is-warning" : "is-ok"}`}
+      role="status"
+      aria-label={t(language, "brain.claimVerification.aria")}
+      data-testid="claim-verification-strip"
+    >
+      <span className="rounded bg-muted px-1.5 py-0.5">
+        {t(language, "brain.claimVerification.support", { percent: String(supportPct) })}
+      </span>
+      <span className="rounded bg-muted px-1.5 py-0.5">
+        {t(language, "brain.claimVerification.precision", { percent: String(precisionPct) })}
+      </span>
+      {verification.numericMismatches > 0 ? (
+        <span className="rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5" data-testid="claim-numeric-mismatch">
+          {t(language, "brain.claimVerification.numericMismatch", { count: String(verification.numericMismatches) })}
+        </span>
+      ) : null}
+      {verification.polarityMismatches > 0 ? (
+        <span className="rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5" data-testid="claim-polarity-mismatch">
+          {t(language, "brain.claimVerification.polarityMismatch", { count: String(verification.polarityMismatches) })}
+        </span>
+      ) : null}
+      {verification.supersededCitationLeaks > 0 ? (
+        <span className="rounded bg-destructive/15 text-destructive px-1.5 py-0.5" data-testid="claim-superseded-leak">
+          {t(language, "brain.claimVerification.supersededLeak", { count: String(verification.supersededCitationLeaks) })}
+        </span>
+      ) : null}
+      {verification.shouldAbstain ? (
+        <span
+          className="rounded bg-destructive/15 text-destructive px-1.5 py-0.5"
+          data-testid="claim-abstain-warning"
+          title={verification.abstentionReason || undefined}
+        >
+          {t(language, "brain.claimVerification.abstain")}
+          {verification.abstentionReason ? ` · ${verification.abstentionReason}` : ""}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

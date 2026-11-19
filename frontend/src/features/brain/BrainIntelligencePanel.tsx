@@ -178,25 +178,84 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
                 ) : null}
               </div>
               {consolidation ? (
-                <p className="brain-care-note" role="status">
-                  {consolidation.mode === "applied"
-                    ? t(language, "intelligence.consolidate.applied", {
-                        count: String(numberValue(consolidation.pruned)),
-                      })
-                    : numberValue(consolidation.duplicate_memory_count) > 0 ||
-                        numberValue(consolidation.duplicate_edge_count) > 0
-                      ? t(language, "intelligence.consolidate.found", {
-                          memories: String(numberValue(consolidation.duplicate_memory_count)),
-                          edges: String(numberValue(consolidation.duplicate_edge_count)),
+                <>
+                  <p className="brain-care-note" role="status">
+                    {consolidation.mode === "applied"
+                      ? t(language, "intelligence.consolidate.applied", {
+                          count: String(numberValue(consolidation.pruned)),
                         })
-                      : t(language, "intelligence.consolidate.none")}
-                </p>
+                      : numberValue(consolidation.duplicate_memory_count) > 0 ||
+                          numberValue(consolidation.duplicate_edge_count) > 0
+                        ? t(language, "intelligence.consolidate.found", {
+                            memories: String(numberValue(consolidation.duplicate_memory_count)),
+                            edges: String(numberValue(consolidation.duplicate_edge_count)),
+                          })
+                        : t(language, "intelligence.consolidate.none")}
+                  </p>
+                  <ConsolidationEpistemicSummary language={language} consolidation={consolidation} />
+                </>
               ) : null}
             </>
           )}
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ConsolidationEpistemicSummary({
+  language,
+  consolidation,
+}: {
+  language: Language;
+  consolidation: Record<string, unknown>;
+}) {
+  const entity = isRecord(consolidation.entity_resolution) ? consolidation.entity_resolution : null;
+  const temporal = isRecord(consolidation.temporal_timeline) ? consolidation.temporal_timeline : null;
+  if (!entity && !temporal) return null;
+
+  return (
+    <div
+      className="brain-consolidation-epistemic mt-2 grid gap-1 rounded border border-border/60 bg-muted/30 p-2 text-xs"
+      role="region"
+      aria-label={t(language, "intelligence.consolidate.epistemicAria")}
+      data-testid="consolidation-epistemic-summary"
+    >
+      {entity ? (
+        <div data-testid="consolidation-entity-summary">
+          {entity.applied === true
+            ? t(language, "intelligence.consolidate.entitiesApplied", {
+                scanned: String(numberValue(entity.total_entities_scanned)),
+                clusters: String(numberValue(entity.clusters_with_merges)),
+                edges: String(numberValue(entity.same_as_edges_upserted)),
+              })
+            : t(language, "intelligence.consolidate.entitiesPreview", {
+                scanned: String(numberValue(entity.total_entities_scanned)),
+                clusters: String(numberValue(entity.clusters_with_merges)),
+                candidates: String(numberValue(entity.duplicate_nodes_candidate)),
+              })}
+        </div>
+      ) : null}
+      {temporal ? (
+        <div className="flex flex-wrap items-center gap-1.5" data-testid="consolidation-temporal-summary">
+          <span>
+            {t(language, "intelligence.consolidate.temporal", {
+              active: String(numberValue(temporal.active_facts)),
+              historical: String(numberValue(temporal.historical_facts)),
+              unreached: String(numberValue(temporal.unreached_facts)),
+            })}
+          </span>
+          {temporal.has_active_contradiction === true ? (
+            <span
+              className="rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5"
+              data-testid="consolidation-temporal-conflict"
+            >
+              {t(language, "intelligence.consolidate.temporalConflict")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

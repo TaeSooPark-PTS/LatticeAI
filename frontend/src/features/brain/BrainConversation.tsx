@@ -294,6 +294,7 @@ export function BrainConversation({
                           language={language}
                           proof={proof}
                           messageId={messageId}
+                          claimVerification={message.grounding?.claimVerification}
                           onUseEvidence={onSendText}
                         />
                       ) : null}

@@ -249,5 +249,97 @@ describe("BrainIntelligencePanel", () => {
       await waitFor(() => expect(consolidate).toHaveBeenCalledTimes(2));
       expect(screen.queryByText("중복된 기억이 없습니다.")).toBeNull();
     });
+
+    it("renders entity_resolution and temporal_timeline consolidation summaries in preview and applied modes", async () => {
+      const consolidate = vi.fn((apply: boolean) =>
+        Promise.resolve(
+          apply
+            ? ok({
+                mode: "applied",
+                pruned: 1,
+                entity_resolution: {
+                  applied: true,
+                  total_entities_scanned: 14,
+                  clusters_with_merges: 3,
+                  same_as_edges_upserted: 5,
+                },
+                temporal_timeline: {
+                  active_facts: 8,
+                  historical_facts: 4,
+                  unreached_facts: 1,
+                  has_active_contradiction: false,
+                },
+              })
+            : ok({
+                mode: "dry_run",
+                duplicate_memory_count: 1,
+                duplicate_edge_count: 0,
+                entity_resolution: {
+                  applied: false,
+                  total_entities_scanned: 14,
+                  clusters_with_merges: 3,
+                  duplicate_nodes_candidate: 4,
+                },
+                temporal_timeline: {
+                  active_facts: 8,
+                  historical_facts: 4,
+                  unreached_facts: 1,
+                  has_active_contradiction: true,
+                },
+              }),
+        ),
+      );
+      renderPanel({ brainHealth: ok(fullHealth), brainConsolidate: consolidate });
+      await expand();
+      await screen.findByText("신선도");
+
+      await userEvent.click(screen.getByRole("button", { name: "중복 정리 미리보기" }));
+      expect(await screen.findByTestId("consolidation-entity-summary")).toHaveTextContent(
+        "개체 통합 미리보기: 스캔 14개 · 병합 클러스터 3개 · 후보 4개",
+      );
+      expect(screen.getByTestId("consolidation-temporal-summary")).toHaveTextContent(
+        "시간축 사실: 활성 8건 · 이력 4건 · 미도달 1건",
+      );
+      expect(screen.getByTestId("consolidation-temporal-conflict")).toHaveTextContent("활성 시간축 상충 감지");
+
+      await userEvent.click(screen.getByRole("button", { name: "중복 기억 정리 실행" }));
+      expect(await screen.findByTestId("consolidation-entity-summary")).toHaveTextContent(
+        "개체 통합 적용: 스캔 14개 · 병합 클러스터 3개 · SAME_AS 연결 5건",
+      );
+      expect(screen.queryByTestId("consolidation-temporal-conflict")).toBeNull();
+    });
+
+    it("renders partial epistemic summary when only temporal_timeline or only entity_resolution is present", async () => {
+      const consolidate = vi.fn()
+        .mockResolvedValueOnce(
+          ok({
+            mode: "dry_run",
+            duplicate_memory_count: 0,
+            duplicate_edge_count: 0,
+            entity_resolution: null,
+            temporal_timeline: { active_facts: 2, historical_facts: 0, unreached_facts: 0, has_active_contradiction: false },
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            mode: "dry_run",
+            duplicate_memory_count: 0,
+            duplicate_edge_count: 0,
+            entity_resolution: { applied: false, total_entities_scanned: 5, clusters_with_merges: 1, duplicate_nodes_candidate: 1 },
+            temporal_timeline: null,
+          }),
+        );
+      renderPanel({ brainHealth: ok(fullHealth), brainConsolidate: consolidate });
+      await expand();
+      await screen.findByText("신선도");
+
+      await userEvent.click(screen.getByRole("button", { name: "중복 정리 미리보기" }));
+      expect(await screen.findByTestId("consolidation-temporal-summary")).toBeTruthy();
+      expect(screen.queryByTestId("consolidation-entity-summary")).toBeNull();
+
+      await userEvent.click(screen.getByRole("button", { name: "중복 정리 미리보기" }));
+      expect(await screen.findByTestId("consolidation-entity-summary")).toBeTruthy();
+      expect(screen.queryByTestId("consolidation-temporal-summary")).toBeNull();
+    });
   });
 });

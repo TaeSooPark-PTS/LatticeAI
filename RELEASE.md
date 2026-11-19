@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.3.1 — Living Synthesis (2026-11-19)
+
+**시맨틱 임베딩 계약용 2단계 비동기 증분 청크 동기화(`plan_incremental_sync` + 비동기 `/worker/embed` + `commit_incremental_sync`, `watch_deliver.rs`)**, **`AnswerProof.tsx` 주장 검증 텔레메트리(`claim_verification`) 및 `BrainIntelligencePanel.tsx` 개체 통합·시간축 요약 카드(한/영 i18n · Vitest 100%)**, **전 스택 주간 Dependabot(`.github/dependabot.yml`) 자동 감시**를 통합한 완성도 업그레이드 릴리스.
+
+- **2단계 비동기 시맨틱 증분 동기화:** `incremental_sync.rs`를 `plan_incremental_sync`와 `commit_incremental_sync`로 분리하고 `watch_deliver.rs`를 추출해, 로컬 해시 및 시맨틱 임베딩 계약 모두에서 변경된 청크만 비동기 `/worker/embed`로 재임베딩하고 미변경 청크 벡터를 재사용하도록 완성했다(`vault_watch_bridge.rs` 종단간 검증 포함).
+- **주장 검증·개체 통합·시간축 UI 연결:** `AnswerProof.tsx`에 주장 검증률·인용 정확도·수치/극성 불일치·대체 출처 인용·기권 권고 배지를 추가하고, `BrainIntelligencePanel.tsx`에 `entity_resolution`(스캔·클러스터·후보/`SAME_AS` 연결)과 `temporal_timeline`(활성·이력·미도달 사실·상충 경고) 요약 카드를 한/영 완전 로컬라이제이션 및 Vitest 100% 커버리지로 연결했다.
+- **공급망 자동 감시:** `.github/dependabot.yml`을 추가해 Python(`pip`), Node(`npm`, `vscode-extension`), Rust(`rust`, `src-tauri`), GitHub Actions 의존성 권고를 매주 자동 점검한다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.3.1.md](docs/releases/RELEASE_NOTES_v13.3.1.md).
+
+빌드 산출물은 `dist/ltcai-13.3.1-py3-none-any.whl`,
+`dist/ltcai-13.3.1.tar.gz`, `ltcai-13.3.1.tgz`, `dist/ltcai-13.3.1.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.3.1_aarch64.dmg` 입니다.
+
 ## v13.3.0 — Living Synthesis (2026-11-19)
 
 **v13.2.0 핵심 엔진 프로덕션 전면 연결(`post_idempotent_compute`, `verify_grounding_and_abstention`, `entity_resolution`·`temporal`, `DebouncedWatchEngine`·`sync_document_incremental`, `DurableWorkflowStore`)**, **`worker_resilience.py` 동시성·취소·스트리밍 타임아웃 및 `ingest.rs` 임시 파일 충돌/오버레이 오류 하드닝**, **Rust 비테스트 `.unwrap()` 0건 달성·중복 `unsafe libc` 시간 블록 7개 단일화(`clock.rs`)·전 스택 800줄 초과 프로덕션 파일 0건 달성(Vitest 100% 유지)**을 통합한 프로덕션 완성·하드닝 릴리스.

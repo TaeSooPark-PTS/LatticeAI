@@ -4,6 +4,14 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.3.1] - 2026-11-19 — Living Synthesis
+
+### Added
+- Split `rust/lattice-ingest/src/incremental_sync.rs` into two-phase `plan_incremental_sync` + `commit_incremental_sync` (`IncrementalSyncPlan`) and extracted `rust/lattice-ingest/src/local_files_api/watch_deliver.rs` (`try_incremental_sync_async`) so watched-folder edits under semantic `EmbeddingIndexContract`s run async `/worker/embed` only for modified chunks and reuse cached vectors for unchanged sections (verified end-to-end in `rust/lattice-ingest/tests/vault_watch_bridge.rs`).
+- Added claim-level verification telemetry (`MessageClaimVerification`, `parseGrounding` parsing, and bilingual `ClaimVerificationStrip` in `frontend/src/features/brain/AnswerProof.tsx` + `BrainConversation.tsx`) surfacing claim support %, citation precision %, numeric/polarity mismatches, superseded source leaks, and abstention recommendations at 100% Vitest coverage.
+- Added bilingual `ConsolidationEpistemicSummary` in `frontend/src/features/brain/BrainIntelligencePanel.tsx` surfacing `entity_resolution` (scanned entities, merge clusters, preview candidates / applied `SAME_AS` edges) and `temporal_timeline` (active, historical, unreached facts, and active temporal conflict badge) at 100% Vitest coverage.
+- Added `.github/dependabot.yml` for weekly dependency monitoring across `pip`, `npm` (root + `vscode-extension`), `cargo` (`rust` + `src-tauri`), and `github-actions`.
+
 ## [13.3.0] - 2026-11-19 — Living Synthesis
 
 ### Added
