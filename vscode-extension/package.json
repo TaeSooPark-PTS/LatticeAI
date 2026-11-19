@@ -198,7 +198,7 @@
     "@types/vscode": "^1.105.0",
     "@vscode/vsce": "^3.9.2",
     "ovsx": "^0.10.6",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "glob": "^14.0.4",
