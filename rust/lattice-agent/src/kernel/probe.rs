@@ -63,6 +63,30 @@ const ACTION_TOKENS: u32 = 160;
 /// Tokens the menu turn may spend. One digit.
 const MENU_TOKENS: u32 = 8;
 
+/// Tokens the grounding micro-probe may spend. One short answer.
+const GROUNDING_TOKENS: u32 = 32;
+
+/// Markers indicating a model wrapped its reply in reasoning/thinking framing.
+const REASONING_MARKERS: &[&str] = &[
+    "<think>",
+    "<thinking>",
+    "<reasoning>",
+    "<|channel|>",
+    "<|channel>",
+    "thinking process:",
+];
+
+/// Tiny 2-line card with one superseded and one active fact.
+const GROUNDING_PROBE_CONTEXT: &str = concat!(
+    "Read these two facts and answer with ONLY the current port number:\n",
+    "- [SUPERSEDED - do not use] service_port = 4040\n",
+    "- [ACTIVE] service_port = 8443"
+);
+
+const GROUNDING_PROBE_MESSAGE: &str = "What is the current service_port?";
+const GROUNDING_ACTIVE_VALUE: &str = "8443";
+const GROUNDING_SUPERSEDED_VALUE: &str = "4040";
+
 /// The toy task. Deliberately contains the two characters that break a weak
 /// model inside a JSON string — a newline and a double quote — because a probe
 /// that only asks for `{"action": "final"}` measures nothing a real step needs.
@@ -131,7 +155,7 @@ impl ProbeConfig {
         }
     }
 
-    fn cache_path(&self) -> PathBuf {
+    pub fn cache_path(&self) -> PathBuf {
         self.cache_dir.join(CACHE_FILE)
     }
 }
@@ -164,6 +188,10 @@ pub struct ProbeVerdict {
     pub action: ActionScore,
     /// Whether the menu turn picked the right number.
     pub menu_ok: bool,
+    /// Whether the action reply carried reasoning/thinking framing.
+    pub reasoning_framed: bool,
+    /// Whether the grounding micro-probe recalled the active fact without the superseded one.
+    pub grounding_ok: bool,
     /// Where the verdict came from, for the trace: `probe` or `cache`.
     pub source: &'static str,
 }
@@ -176,6 +204,8 @@ impl ProbeVerdict {
             "profile": self.profile.name,
             "action": self.action.as_str(),
             "menu_ok": self.menu_ok,
+            "reasoning_framed": self.reasoning_framed,
+            "grounding_ok": self.grounding_ok,
             "harness": harness,
         })
     }
@@ -186,6 +216,8 @@ impl ProbeVerdict {
             "profile": self.profile.name,
             "action": self.action.as_str(),
             "menu_ok": self.menu_ok,
+            "reasoning_framed": self.reasoning_framed,
+            "grounding_ok": self.grounding_ok,
             "source": self.source,
         })
     }
@@ -243,6 +275,20 @@ pub fn score_action(reply: &str) -> ActionScore {
 /// floor — whether `guided` is even viable — and a model that fails it has no
 /// better option than `guided` anyway, so letting it change the choice could
 /// only ever promote a model that had already failed the action turn.
+/// Detect whether a reply contains reasoning/thinking framing markers.
+pub fn detect_reasoning_framed(reply: &str) -> bool {
+    let lower = reply.to_ascii_lowercase();
+    REASONING_MARKERS
+        .iter()
+        .any(|marker| lower.contains(marker))
+}
+
+/// Score the grounding micro-probe reply: true iff it recalls the active value
+/// and does not leak the superseded one.
+pub fn score_grounding(reply: &str) -> bool {
+    reply.contains(GROUNDING_ACTIVE_VALUE) && !reply.contains(GROUNDING_SUPERSEDED_VALUE)
+}
+
 pub fn verdict_for(action: ActionScore, menu_ok: bool) -> ProbeVerdict {
     let profile = match action {
         ActionScore::Clean => crate::kernel::profile::STANDARD,
@@ -253,6 +299,8 @@ pub fn verdict_for(action: ActionScore, menu_ok: bool) -> ProbeVerdict {
         profile,
         action,
         menu_ok,
+        reasoning_framed: false,
+        grounding_ok: false,
         source: "probe",
     }
 }
@@ -300,6 +348,14 @@ pub fn cached(config: &ProbeConfig, model_id: &str, harness: &str) -> Option<Pro
         },
         menu_ok: entry
             .get("menu_ok")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        reasoning_framed: entry
+            .get("reasoning_framed")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        grounding_ok: entry
+            .get("grounding_ok")
             .and_then(Value::as_bool)
             .unwrap_or(false),
         source: "cache",
@@ -388,6 +444,7 @@ pub async fn measure(
         return None;
     }
     let action = score_action(&action_reply);
+    let reasoning_framed = detect_reasoning_framed(&action_reply);
     // **Asked the way the loop asks it** (v12.0.0). The menu turn is scored
     // with the loop's own parser, and it must be *sent* with the loop's own
     // instrument for the same reason: a probe that omits
@@ -409,7 +466,22 @@ pub async fn measure(
         .unwrap_or_default();
     let menu_ok =
         crate::kernel::agentloop::guided::parse_choice(&menu_reply, 3) == Some(MENU_ANSWER);
-    let verdict = verdict_for(action, menu_ok);
+    let grounding_reply = worker
+        .llm(Completion {
+            model_id: Some(model_id),
+            message: GROUNDING_PROBE_MESSAGE,
+            context: GROUNDING_PROBE_CONTEXT,
+            max_tokens: GROUNDING_TOKENS,
+            temperature: 0.0,
+            stop: &[],
+            prefix: "",
+        })
+        .await
+        .unwrap_or_default();
+    let grounding_ok = score_grounding(&grounding_reply);
+    let mut verdict = verdict_for(action, menu_ok);
+    verdict.reasoning_framed = reasoning_framed;
+    verdict.grounding_ok = grounding_ok;
     store(config, model_id, harness, &verdict);
     Some(verdict)
 }
@@ -580,5 +652,52 @@ mod tests {
             "compact"
         );
         assert_eq!(fallback_profile(Some("qwen2.5-0.5b")).name, "guided");
+    }
+
+    #[test]
+    fn detects_reasoning_framing_and_scores_grounding_probe() {
+        assert!(!detect_reasoning_framed(r#"{"action":"write_file"}"#));
+        for marker in [
+            "<think>plan</think>",
+            "<thinking>plan</thinking>",
+            "<reasoning>plan</reasoning>",
+            "<|channel|>thought",
+            "<|channel>thought",
+            "Thinking Process:\n1. step",
+        ] {
+            assert!(detect_reasoning_framed(marker), "missing {marker}");
+        }
+
+        assert!(score_grounding("8443"));
+        assert!(score_grounding("The current service_port is 8443."));
+        assert!(!score_grounding("4040"));
+        assert!(!score_grounding("8443 (previously 4040)"));
+        assert!(!score_grounding(""));
+    }
+
+    #[test]
+    fn older_cache_entries_without_new_fields_still_deserialize() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config = ProbeConfig::new(dir.path());
+        std::fs::write(
+            config.cache_path(),
+            r#"{"verdicts":{"12.0.0|legacy/model":{"profile":"compact","action":"repaired","menu_ok":true,"harness":"12.0.0"}}}"#,
+        )
+        .expect("write");
+        let hit = cached(&config, "legacy/model", "12.0.0").expect("legacy hit");
+        assert_eq!(hit.profile, COMPACT);
+        assert!(hit.menu_ok);
+        assert!(!hit.reasoning_framed);
+        assert!(!hit.grounding_ok);
+
+        let mut full = verdict_for(ActionScore::Clean, true);
+        full.reasoning_framed = true;
+        full.grounding_ok = true;
+        assert_eq!(full.to_detail()["reasoning_framed"], json!(true));
+        assert_eq!(full.to_detail()["grounding_ok"], json!(true));
+        store(&config, "new/model", "12.0.0", &full);
+        let round = cached(&config, "new/model", "12.0.0").expect("round trip");
+        assert!(round.reasoning_framed);
+        assert!(round.grounding_ok);
     }
 }

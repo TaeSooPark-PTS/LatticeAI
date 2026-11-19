@@ -377,6 +377,7 @@ Call write_file with that path and the content you write."
     pub(super) fn refuse_incomplete_call(
         &mut self,
         ctx: &mut AgentRunContext,
+        entry: &crate::tools::catalog::CatalogEntry,
         action: &str,
         args: &Map<String, Value>,
         missing: &str,
@@ -388,8 +389,19 @@ Call write_file with that path and the content you write."
             "args": Value::Object(args.clone()),
             "error": error,
         }));
+        let signature = entry.signature();
+        let param_hint = entry
+            .required
+            .iter()
+            .find(|spec| spec.name == missing)
+            .map(|spec| spec.hint.trim())
+            .filter(|text| !text.is_empty());
+        let detail = match param_hint {
+            Some(ph) => format!("Signature: {signature} ({missing}: {ph})."),
+            None => format!("Signature: {signature}."),
+        };
         let hint = format!(
-            "Your last call to {action} carried no {missing}. \
+            "Your last call to {action} carried no {missing}. {detail} \
 Send it again with that argument's value."
         );
         if !ctx.corrections.iter().any(|known| py_str(known) == hint) {
@@ -399,7 +411,11 @@ Send it again with that argument's value."
         ctx.trace.decision(
             "execute",
             "missing_required_arg",
-            &[("action", json!(action)), ("arg", json!(missing))],
+            &[
+                ("action", json!(action)),
+                ("arg", json!(missing)),
+                ("signature", json!(signature)),
+            ],
         );
         self.emit_step(
             "execute",
@@ -407,6 +423,59 @@ Send it again with that argument's value."
             &[("action", json!(action)), ("reason", json!("missing_arg"))],
         );
         StepFlow::Continue
+    }
+
+    /// Resolve `element_id` or an element label/title against the most recent
+    /// `computer_ui_inspect` result on `ctx.transcript` into `(x, y)` center
+    /// coordinates for `computer_click`, `computer_scroll`, and `computer_move`.
+    pub(super) fn resolve_ui_element_coords(
+        &self,
+        ctx: &AgentRunContext,
+        action: &str,
+        args: &mut Map<String, Value>,
+    ) -> Option<(String, i64, i64)> {
+        let bare = action
+            .strip_prefix(crate::tools::catalog::MCP_PREFIX)
+            .unwrap_or(action);
+        if !matches!(bare, "computer_click" | "computer_scroll" | "computer_move") {
+            return None;
+        }
+        let has_numeric_xy = args.get("x").is_some_and(Value::is_number)
+            && args.get("y").is_some_and(Value::is_number);
+        let needle = [
+            "element_id",
+            "element",
+            "label",
+            "target",
+            "id",
+            "name",
+            "text",
+        ]
+        .into_iter()
+        .find_map(|key| {
+            args.get(key).and_then(|v| match v {
+                Value::String(s) if !s.trim().is_empty() => Some(s.trim().to_string()),
+                Value::Number(n) => Some(n.to_string()),
+                _ => None,
+            })
+        })
+        .or_else(|| {
+            if has_numeric_xy {
+                return None;
+            }
+            args.get("x")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty() && s.parse::<f64>().is_err())
+                .map(String::from)
+        })?;
+        if has_numeric_xy && !args.contains_key("element_id") && !args.contains_key("element") {
+            return None;
+        }
+        let (cx, cy) = find_ui_element_center(&ctx.transcript, &needle)?;
+        args.insert("x".into(), json!(cx));
+        args.insert("y".into(), json!(cy));
+        Some((needle, cx, cy))
     }
 
     /// Run one host-catalog entry: an MCP tool the run does not govern, or a
@@ -545,7 +614,7 @@ Send it again with that argument's value."
 \n\nUser request: {}{}\n\nExecution transcript:\n{}",
             self.deps.prompts.executor_prompt(
                 profile,
-                &self.prompt_action_names_for(&req.message, profile),
+                &self.prompt_action_names_with_ctx(ctx, &req.message, profile),
                 &req.skills,
             ),
             req.language_hint,
@@ -578,23 +647,59 @@ Send it again with that argument's value."
     /// Everything else keeps the catalog's own order, so the list a run reads is
     /// stable across its steps, and `final` stays last
     /// ([`crate::prompts::action_list`] owns that).
-    pub(in crate::kernel::agentloop) fn prompt_action_names(&self, request: &str) -> Vec<String> {
-        let (named, rest): (Vec<_>, Vec<_>) = self
-            .run_catalog(request)
-            .into_iter()
-            .partition(|entry| entry.name != "final" && guided::request_names(request, entry));
-        named
-            .into_iter()
-            .chain(rest)
-            .map(|entry| entry.name)
-            .collect()
+    pub fn prompt_action_names(&self, request: &str) -> Vec<String> {
+        self.prompt_action_names_ranked(request, false)
     }
 
-    /// Copy a path or search term the *request already named* into a missing
-    /// required argument. Nothing is invented: the same two readers the guided
-    /// dial uses ([`guided::term_named_in_request`], [`guided::path_named_in_request`]).
-    /// A compact 2B that emits `mcp.grep` with no `pattern` still searched
-    /// `"LatticeAI"` when that was the only quoted term in the request.
+    pub(in crate::kernel::agentloop) fn prompt_action_names_ranked(
+        &self,
+        request: &str,
+        ui_observed: bool,
+    ) -> Vec<String> {
+        let catalog = self.run_catalog(request);
+        let domain = guided::domain_priority_tools(request, ui_observed);
+        let mut ordered: Vec<String> = Vec::with_capacity(catalog.len());
+        if guided::request_wants_computer_use(request) && !ui_observed {
+            for obs in [
+                "computer_ui_inspect",
+                "computer_screenshot",
+                "mcp.computer_ui_inspect",
+                "mcp.computer_screenshot",
+            ] {
+                if catalog.iter().any(|entry| entry.name == obs)
+                    && !ordered.iter().any(|name| name == obs)
+                {
+                    ordered.push(obs.to_string());
+                }
+            }
+        }
+        for entry in &catalog {
+            if entry.name != "final"
+                && guided::request_names(request, entry)
+                && !ordered.contains(&entry.name)
+            {
+                ordered.push(entry.name.clone());
+            }
+        }
+        for candidate in &domain {
+            if catalog.iter().any(|entry| entry.name == *candidate)
+                && !ordered.iter().any(|name| name == candidate)
+            {
+                ordered.push((*candidate).to_string());
+            }
+        }
+        for entry in catalog {
+            if !ordered.contains(&entry.name) {
+                ordered.push(entry.name);
+            }
+        }
+        ordered
+    }
+
+    /// Copy a path, URL, or search term the *request already named* into a missing
+    /// required argument. Nothing is invented: the same readers the guided
+    /// dial uses ([`guided::term_named_in_request`], [`guided::path_named_in_request`],
+    /// [`guided::url_named_in_request`]).
     pub(super) fn fill_stated_request_args(
         &self,
         entry: &crate::tools::catalog::CatalogEntry,
@@ -605,6 +710,13 @@ Send it again with that argument's value."
         let mut filled = Vec::new();
         for spec in &entry.required {
             if !matches!(args.get(&spec.name), None | Some(Value::Null)) {
+                continue;
+            }
+            if spec.name == "url" {
+                if let Some(url) = guided::url_named_in_request(&req.message) {
+                    args.insert(spec.name.clone(), json!(url));
+                    filled.push(spec.name.clone());
+                }
                 continue;
             }
             if crate::tools::catalog::is_search_arg(&spec.name) {
@@ -632,16 +744,40 @@ Send it again with that argument's value."
     /// [`crate::kernel::agentloop::guided::MENU_LIMIT`] the numbered menu uses
     /// — a 2B that is shown forty MCP rows loses the contract the compact
     /// prefix exists to keep.
-    pub(in crate::kernel::agentloop) fn prompt_action_names_for(
+    pub fn prompt_action_names_for(
         &self,
         request: &str,
         profile: crate::kernel::profile::AgentProfile,
     ) -> Vec<String> {
-        let names = self.prompt_action_names(request);
+        let names = self.prompt_action_names_ranked(request, false);
         if !profile.lean_context {
             return names;
         }
-        cap_lean_action_names(names, crate::kernel::agentloop::guided::MENU_LIMIT)
+        cap_lean_action_names_for(
+            request,
+            false,
+            names,
+            crate::kernel::agentloop::guided::MENU_LIMIT,
+        )
+    }
+
+    pub(in crate::kernel::agentloop) fn prompt_action_names_with_ctx(
+        &self,
+        ctx: &AgentRunContext,
+        request: &str,
+        profile: crate::kernel::profile::AgentProfile,
+    ) -> Vec<String> {
+        let ui_observed = guided::has_ui_observation(ctx);
+        let names = self.prompt_action_names_ranked(request, ui_observed);
+        if !profile.lean_context {
+            return names;
+        }
+        cap_lean_action_names_for(
+            request,
+            ui_observed,
+            names,
+            crate::kernel::agentloop::guided::MENU_LIMIT,
+        )
     }
 
     /// Loop guard: the same file-create action+args re-issued right after a result.
@@ -708,7 +844,220 @@ fn phrase_hits(hay: &str, source: &str) -> bool {
         .any(|needle| hay.contains(&needle))
 }
 
+fn value_as_i64(value: &Value) -> Option<i64> {
+    value
+        .as_i64()
+        .or_else(|| value.as_f64().map(|f| f.round() as i64))
+        .or_else(|| {
+            value
+                .as_str()
+                .and_then(|s| s.trim().parse::<f64>().ok())
+                .map(|f| f.round() as i64)
+        })
+}
+
+fn element_center_coords(elem: &Value) -> Option<(i64, i64)> {
+    let obj = elem.as_object()?;
+    if let (Some(cx), Some(cy)) = (
+        obj.get("center_x").and_then(value_as_i64),
+        obj.get("center_y").and_then(value_as_i64),
+    ) {
+        return Some((cx, cy));
+    }
+    if let Some(center) = obj.get("center") {
+        if let (Some(cx), Some(cy)) = (
+            center.get("x").and_then(value_as_i64),
+            center.get("y").and_then(value_as_i64),
+        ) {
+            return Some((cx, cy));
+        }
+        if let Some(arr) = center.as_array() {
+            if arr.len() >= 2 {
+                if let (Some(cx), Some(cy)) = (value_as_i64(&arr[0]), value_as_i64(&arr[1])) {
+                    return Some((cx, cy));
+                }
+            }
+        }
+    }
+    for key in ["bounds", "bbox", "rect", "frame"] {
+        let Some(box_val) = obj.get(key) else {
+            continue;
+        };
+        if let Some(bobj) = box_val.as_object() {
+            if let (Some(x), Some(y), Some(w), Some(h)) = (
+                bobj.get("x").and_then(value_as_i64),
+                bobj.get("y").and_then(value_as_i64),
+                bobj.get("width")
+                    .or_else(|| bobj.get("w"))
+                    .and_then(value_as_i64),
+                bobj.get("height")
+                    .or_else(|| bobj.get("h"))
+                    .and_then(value_as_i64),
+            ) {
+                return Some((x + w / 2, y + h / 2));
+            }
+            if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
+                bobj.get("x1")
+                    .or_else(|| bobj.get("left"))
+                    .and_then(value_as_i64),
+                bobj.get("y1")
+                    .or_else(|| bobj.get("top"))
+                    .and_then(value_as_i64),
+                bobj.get("x2")
+                    .or_else(|| bobj.get("right"))
+                    .and_then(value_as_i64),
+                bobj.get("y2")
+                    .or_else(|| bobj.get("bottom"))
+                    .and_then(value_as_i64),
+            ) {
+                return Some(((x1 + x2) / 2, (y1 + y2) / 2));
+            }
+        }
+        if let Some(arr) = box_val.as_array() {
+            if arr.len() >= 4 {
+                if let (Some(a), Some(b), Some(c), Some(d)) = (
+                    value_as_i64(&arr[0]),
+                    value_as_i64(&arr[1]),
+                    value_as_i64(&arr[2]),
+                    value_as_i64(&arr[3]),
+                ) {
+                    return Some(((a + c) / 2, (b + d) / 2));
+                }
+            }
+        }
+    }
+    if let (Some(x), Some(y), Some(w), Some(h)) = (
+        obj.get("x").and_then(value_as_i64),
+        obj.get("y").and_then(value_as_i64),
+        obj.get("width")
+            .or_else(|| obj.get("w"))
+            .and_then(value_as_i64),
+        obj.get("height")
+            .or_else(|| obj.get("h"))
+            .and_then(value_as_i64),
+    ) {
+        return Some((x + w / 2, y + h / 2));
+    }
+    if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
+        obj.get("x1").and_then(value_as_i64),
+        obj.get("y1").and_then(value_as_i64),
+        obj.get("x2").and_then(value_as_i64),
+        obj.get("y2").and_then(value_as_i64),
+    ) {
+        return Some(((x1 + x2) / 2, (y1 + y2) / 2));
+    }
+    if let (Some(x), Some(y)) = (
+        obj.get("x").and_then(value_as_i64),
+        obj.get("y").and_then(value_as_i64),
+    ) {
+        return Some((x, y));
+    }
+    None
+}
+
+fn find_ui_element_center(transcript: &[Value], needle: &str) -> Option<(i64, i64)> {
+    let needle_trimmed = needle.trim();
+    if needle_trimmed.is_empty() {
+        return None;
+    }
+    let needle_lower = needle_trimmed.to_lowercase();
+    for step in transcript.iter().rev() {
+        if step.get("error").is_some_and(is_truthy) {
+            continue;
+        }
+        let Some(action) = step.get("action").and_then(Value::as_str) else {
+            continue;
+        };
+        let bare = action
+            .strip_prefix(crate::tools::catalog::MCP_PREFIX)
+            .unwrap_or(action);
+        if bare != "computer_ui_inspect" {
+            continue;
+        }
+        let Some(result) = step.get("result") else {
+            continue;
+        };
+        let mut elements: Vec<&Value> = Vec::new();
+        for key in ["elements", "nodes", "items", "ui_elements", "targets"] {
+            if let Some(arr) = result.get(key).and_then(Value::as_array) {
+                elements.extend(arr.iter());
+            }
+        }
+        if elements.is_empty() {
+            continue;
+        }
+        let field_str = |elem: &Value, key: &str| -> Option<String> {
+            match elem.get(key)? {
+                Value::String(s) if !s.trim().is_empty() => Some(s.trim().to_string()),
+                Value::Number(n) => Some(n.to_string()),
+                _ => None,
+            }
+        };
+        // 1. Exact ID match.
+        for elem in &elements {
+            for key in ["id", "element_id", "uid", "ref"] {
+                if field_str(elem, key).is_some_and(|val| val.eq_ignore_ascii_case(needle_trimmed))
+                {
+                    if let Some(coords) = element_center_coords(elem) {
+                        return Some(coords);
+                    }
+                }
+            }
+        }
+        // 2. Exact label/title/name/text match.
+        for elem in &elements {
+            for key in [
+                "label",
+                "title",
+                "name",
+                "text",
+                "value",
+                "description",
+                "ax_title",
+            ] {
+                if field_str(elem, key).is_some_and(|val| val.to_lowercase() == needle_lower) {
+                    if let Some(coords) = element_center_coords(elem) {
+                        return Some(coords);
+                    }
+                }
+            }
+        }
+        // 3. Case-insensitive substring match against label/title/name/text/id.
+        for elem in &elements {
+            for key in [
+                "label",
+                "title",
+                "name",
+                "text",
+                "value",
+                "description",
+                "id",
+                "element_id",
+            ] {
+                if field_str(elem, key)
+                    .is_some_and(|val| val.to_lowercase().contains(&needle_lower))
+                {
+                    if let Some(coords) = element_center_coords(elem) {
+                        return Some(coords);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
 fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
+    cap_lean_action_names_for("", false, names, limit)
+}
+
+pub(in crate::kernel::agentloop) fn cap_lean_action_names_for(
+    request: &str,
+    ui_observed: bool,
+    names: Vec<String>,
+    limit: usize,
+) -> Vec<String> {
     const CORE: [&str; 8] = [
         "write_file",
         "read_file",
@@ -719,6 +1068,12 @@ fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
         "mcp.read_file",
         "mcp.knowledge_search",
     ];
+    let domain = guided::domain_priority_tools(request, ui_observed);
+    let is_protected = |name: &str| {
+        CORE.contains(&name)
+            || domain.contains(&name)
+            || (!request.trim().is_empty() && guided::named_in(request, name))
+    };
     let has_final = names.iter().any(|name| name == "final");
     let present: std::collections::BTreeSet<&str> = names.iter().map(String::as_str).collect();
     let mut kept = Vec::new();
@@ -730,14 +1085,14 @@ fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
             kept.push(name.clone());
         }
     }
-    for core in CORE {
-        if !present.contains(core) || kept.iter().any(|name| name == core) {
+    for priority in domain.iter().copied().chain(CORE) {
+        if !present.contains(priority) || kept.iter().any(|name| name == priority) {
             continue;
         }
-        if let Some(index) = kept.iter().rposition(|name| !CORE.contains(&name.as_str())) {
-            kept[index] = core.to_string();
+        if let Some(index) = kept.iter().rposition(|name| !is_protected(name.as_str())) {
+            kept[index] = priority.to_string();
         } else if kept.len() + 1 < limit {
-            kept.push(core.to_string());
+            kept.push(priority.to_string());
         }
     }
     if has_final {

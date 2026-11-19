@@ -47,8 +47,8 @@ use super::host::{CallScope, ToolFuture};
 #[path = "catalog_args.rs"]
 mod catalog_args;
 pub use catalog_args::{
-    adopt_named_args, arg_synonyms, defaulted_arg, entry_for, fill_documented_defaults,
-    is_search_arg, missing_required,
+    adopt_named_args, arg_synonyms, coerce_and_unwrap_args, defaulted_arg, entry_for,
+    fill_documented_defaults, is_search_arg, missing_required,
 };
 use catalog_args::{native_args, native_summary};
 

@@ -18,6 +18,7 @@ mod counts;
 pub use counts::*;
 mod grounding;
 pub use grounding::*;
+pub mod rag_grounding;
 mod summaries;
 pub use summaries::*;
 
@@ -164,13 +165,81 @@ pub fn truncate_strings(value: &Value, limit: usize) -> Value {
     }
 }
 
+fn strip_screenshot_b64(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut out = Map::with_capacity(map.len());
+            for (k, v) in map {
+                if k == "screenshot_b64" {
+                    if let Some(s) = v.as_str() {
+                        if s.starts_with("[screenshot omitted:") {
+                            out.insert(k.clone(), Value::String(s.to_string()));
+                        } else {
+                            out.insert(
+                                k.clone(),
+                                Value::String(format!("[screenshot omitted: {} bytes]", s.len())),
+                            );
+                        }
+                        continue;
+                    }
+                }
+                out.insert(k.clone(), strip_screenshot_b64(v));
+            }
+            Value::Object(out)
+        }
+        Value::Array(items) => Value::Array(items.iter().map(strip_screenshot_b64).collect()),
+        other => other.clone(),
+    }
+}
+
+fn is_superseded_item(item: &Value) -> bool {
+    item.get("is_superseded").and_then(Value::as_bool) == Some(true)
+}
+
+/// Distill a transcript step before placing it in the bounded prompt view:
+/// - Replaces `screenshot_b64` blobs with `"[screenshot omitted: N bytes]"`.
+/// - Filters `is_superseded: true` items from `knowledge_search`,
+///   `knowledge_graph_context`, and `obsidian_search` result lists while
+///   recording `superseded_filtered`.
+/// - Preserves `web_fetch` / `web_search` fields as is.
+pub fn distill_step_result(step: &Value) -> Value {
+    let mut distilled = strip_screenshot_b64(step);
+    let action = distilled
+        .get("action")
+        .and_then(Value::as_str)
+        .map(|a| a.strip_prefix("mcp.").unwrap_or(a))
+        .unwrap_or("");
+    let should_filter_superseded = matches!(
+        action,
+        "knowledge_search" | "knowledge_graph_context" | "obsidian_search"
+    );
+    if should_filter_superseded {
+        if let Some(result_obj) = distilled.get_mut("result").and_then(Value::as_object_mut) {
+            let mut filtered_count: usize = 0;
+            for key in [
+                "results", "items", "hits", "matches", "nodes", "facts", "passages",
+            ] {
+                if let Some(Value::Array(items)) = result_obj.get_mut(key) {
+                    let before = items.len();
+                    items.retain(|item| !is_superseded_item(item));
+                    filtered_count += before - items.len();
+                }
+            }
+            if filtered_count > 0 {
+                result_obj.insert("superseded_filtered".into(), json!(filtered_count));
+            }
+        }
+    }
+    distilled
+}
+
 /// Bounded executor view of a transcript: `window` recent steps in full, the
 /// rest reduced to one line each behind a count.
 pub fn compact_transcript(transcript: &[Value], window: usize, result_chars: usize) -> Vec<Value> {
     if transcript.len() <= window {
         return transcript
             .iter()
-            .map(|step| truncate_strings(step, result_chars))
+            .map(|step| truncate_strings(&distill_step_result(step), result_chars))
             .collect();
     }
     let split = transcript.len() - window;
@@ -212,7 +281,7 @@ pub fn compact_transcript(transcript: &[Value], window: usize, result_chars: usi
     out.extend(
         recent
             .iter()
-            .map(|step| truncate_strings(step, result_chars)),
+            .map(|step| truncate_strings(&distill_step_result(step), result_chars)),
     );
     out
 }

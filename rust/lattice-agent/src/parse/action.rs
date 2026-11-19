@@ -23,6 +23,13 @@
 //! 12. **`args_string`** — `arguments` arrived as a JSON string, not an object.
 //! 13. **`xml_call`** — Qwen/Hermes `<function=name><parameter=…>` or a
 //!     tool name plus `<path>…</path>` tags, with no JSON object at all.
+//! 14. **`unescaped_newline`** — literal raw `\n`/`\r`/`\t` inside double-quoted
+//!     JSON strings (tried before `truncated_close` / `python_literal` only
+//!     after strict + `trailing_comma` parsing fail).
+//! 15. **`react_format`** — ReAct `Action: <tool>\nAction Input: <json-or-kv>`
+//!     or `Tool: <tool>\nInput: <json-or-kv>`.
+//! 16. **`python_call`** — Python keyword-call syntax `tool(k=v, …)` for
+//!     known or host-qualified actions.
 //!
 //! Rung 9 reads `text`, not `repaired` — a detail worth stating because it is
 //! easy to "clean up" into a behaviour change: a Python dict literal with a
@@ -87,6 +94,41 @@ fn fenced_block() -> &'static Regex {
 fn trailing_comma() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     compiled(&RE, r",\s*([}\]])")
+}
+
+/// Escape literal raw newline, carriage return, and tab characters inside
+/// double-quoted JSON strings while preserving whitespace outside strings.
+pub(super) fn escape_unescaped_newlines(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut in_string = false;
+    let mut escaped = false;
+    for ch in text.chars() {
+        if in_string {
+            if escaped {
+                escaped = false;
+                out.push(ch);
+            } else if ch == '\\' {
+                escaped = true;
+                out.push(ch);
+            } else if ch == '"' {
+                in_string = false;
+                out.push(ch);
+            } else {
+                match ch {
+                    '\n' => out.push_str("\\n"),
+                    '\r' => out.push_str("\\r"),
+                    '\t' => out.push_str("\\t"),
+                    _ => out.push(ch),
+                }
+            }
+        } else {
+            if ch == '"' {
+                in_string = true;
+            }
+            out.push(ch);
+        }
+    }
+    out
 }
 
 /// The tool-call wrappers small instruct models put around their JSON.
@@ -317,6 +359,23 @@ pub fn extract_json_object(raw: &str) -> Result<(Value, Vec<String>), ActionErro
                     // failure is discarded, exactly as Python discards it.
                     let refuse =
                         || ActionError(format!("Agent did not return valid JSON: {error}"));
+                    // Only fires after strict + trailing_comma parsing fail, so
+                    // valid JSON and existing goldens never change.
+                    let escaped_text = escape_unescaped_newlines(&text);
+                    if escaped_text != text {
+                        if let Ok(value) = pyjson::loads(&escaped_text) {
+                            repairs.push("unescaped_newline".into());
+                            return Ok((value, repairs));
+                        }
+                        let escaped_comma = trailing_comma().replace_all(&escaped_text, "$1");
+                        if escaped_comma != escaped_text {
+                            if let Ok(value) = pyjson::loads(&escaped_comma) {
+                                repairs.push("trailing_comma".into());
+                                repairs.push("unescaped_newline".into());
+                                return Ok((value, repairs));
+                            }
+                        }
+                    }
                     // A cut reply may still be wearing the fence it never
                     // closed, or the prose it opened with — neither rung above
                     // could strip those, because both look for a terminator
@@ -326,6 +385,17 @@ pub fn extract_json_object(raw: &str) -> Result<(Value, Vec<String>), ActionErro
                         Some(brace) => &text[brace..],
                         None => text.as_str(),
                     };
+                    let escaped_tail = escape_unescaped_newlines(tail);
+                    if escaped_tail != tail {
+                        if let Some(value) = truncation_repairs(&escaped_tail)
+                            .into_iter()
+                            .find_map(|candidate| pyjson::loads(&candidate).ok())
+                        {
+                            repairs.push("unescaped_newline".into());
+                            repairs.push("truncated_close".into());
+                            return Ok((value, repairs));
+                        }
+                    }
                     let closed = truncation_repairs(tail)
                         .into_iter()
                         .find_map(|candidate| pyjson::loads(&candidate).ok());
