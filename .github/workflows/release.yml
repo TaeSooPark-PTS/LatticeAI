@@ -106,21 +106,28 @@ jobs:
               exit 0
             fi
             if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-              echo "Tag ${TAG} already exists on origin — ordinary main commit, skipping Release & CD."
-              exit 0
+              if gh release view "${TAG}" >/dev/null 2>&1; then
+                echo "should_release=false" >> "$GITHUB_OUTPUT"
+                echo "Tag ${TAG} and GitHub Release already exist on origin — ordinary main commit, skipping Release & CD."
+                exit 0
+              fi
+              echo "::notice::Tag ${TAG} exists on origin without a published GitHub Release — resuming Release & CD."
+              python3 scripts/bump_version.py "${VERSION}" --check
+              node scripts/check_current_release_docs.mjs
+              node scripts/check_doc_languages.mjs
+            else
+              # Guard against accidental partial version bumps: require every manifest
+              # (package.json, pyproject.toml, Cargo.toml, tauri.conf.json, VSIX, markers)
+              # AND release docs / language gates to match VERSION before auto-tagging.
+              python3 scripts/bump_version.py "${VERSION}" --check
+              node scripts/check_current_release_docs.mjs
+              node scripts/check_doc_languages.mjs
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag -a "${TAG}" -m "Lattice AI ${TAG} — Living Synthesis" "${SHA}"
+              git push origin "${TAG}"
+              echo "Auto-created and pushed tag ${TAG} at CI-verified commit ${SHA}."
             fi
-            # Guard against accidental partial version bumps: require every manifest
-            # (package.json, pyproject.toml, Cargo.toml, tauri.conf.json, VSIX, markers)
-            # AND release docs / language gates to match VERSION before auto-tagging.
-            python3 scripts/bump_version.py "${VERSION}" --check
-            node scripts/check_current_release_docs.mjs
-            node scripts/check_doc_languages.mjs
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "${TAG}" -m "Lattice AI ${TAG} — Living Synthesis" "${SHA}"
-            git push origin "${TAG}"
-            echo "Auto-created and pushed tag ${TAG} at CI-verified commit ${SHA}."
           fi
 
           echo "should_release=true" >> "$GITHUB_OUTPUT"
@@ -153,7 +160,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          pip install --upgrade build twine
+          pip install "." --upgrade build twine
           npm ci
           (cd vscode-extension && npm ci)
 
