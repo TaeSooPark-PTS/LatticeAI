@@ -74,7 +74,7 @@ dependencies = [
   # a worker that 500s on a route its own allowlist promises, and
   # `tests/unit/test_worker_compute.py` imports reportlab at module scope to
   # locate `Vera.ttf`, so a CI leg without the extra died at collection.
-  "reportlab>=4,<5",
+  "reportlab>=4,<6",
   # `latticeai/services/model_runtime/download.py` — `HfApi`, `model_info`,
   # `list_repo_files`, `hf_hub_download` — reached from `POST /models/load` and
   # `POST /engines/prepare-model` through `services/model_loading.py`. Those are
