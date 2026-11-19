@@ -14,7 +14,7 @@ reqwest = { workspace = true }
 lattice-core = { workspace = true }
 lattice-auth = { path = "../lattice-auth" }
 lattice-agent = { workspace = true }
-tower-http = { version = "0.5", features = ["fs"] }
+tower-http = { version = "0.6", features = ["fs"] }
 # WP-I4 (static/UI): the invite gate's cookie is an HMAC-SHA256 over an expiry
 # and a `secrets.token_urlsafe` nonce, verbatim from `api/static_routes.py`.
 sha2 = { workspace = true }
@@ -25,8 +25,8 @@ futures-core = { workspace = true }
 fancy-regex = { workspace = true }
 # WP-R9: device identity / peer pairing (Ed25519, same raw 32-byte keys as
 # lattice_brain.graph.identity) and ZIP backups of knowledge_graph.sqlite.
-ed25519-dalek = "2"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+ed25519-dalek = "3"
+zip = { version = "9", default-features = false, features = ["deflate"] }
 # WP-R1: `datetime.now()` is naive *local* time, and there is no timezone crate
 # in this workspace — `localtime_r(3)` is how lattice-retrieval already answers
 # the same question (`routes/mod.rs::naive_local_now`).
