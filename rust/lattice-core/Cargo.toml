@@ -14,7 +14,7 @@ rusqlite = { workspace = true }
 # blake2b with an 8-byte digest is part of the embedding contract: the digest
 # length rides in BLAKE2's parameter block, so this is NOT a truncation of the
 # 64-byte digest and cannot be emulated by slicing one.
-blake2 = "0.10"
+blake2 = "0.11"
 # One Door (v11.6.0). `db::Store` dispatches its blocking pool work onto
 # tokio's blocking threads, and `worker` is the seam client every ported route
 # family calls; reqwest is pinned by the workspace without TLS or the `json`
