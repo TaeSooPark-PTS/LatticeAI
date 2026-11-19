@@ -194,11 +194,11 @@
     "install:all": "bash ./scripts/install-all-editors.sh"
   },
   "devDependencies": {
-    "@types/node": "^25.6.2",
-    "@types/vscode": "^1.105.0",
-    "@vscode/vsce": "^3.9.2",
-    "ovsx": "^0.10.6",
-    "typescript": "^5.9.3"
+    "@types/node": "^26.6.6",
+    "@types/vscode": "^1.146.0",
+    "@vscode/vsce": "^4.1.1",
+    "ovsx": "^1.4.0",
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "glob": "^14.0.4",
