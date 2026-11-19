@@ -54,7 +54,8 @@ GIT (read)  : git_status  git_diff  git_log  git_show
 LOCAL FS    : local_list  local_read  local_write  read_document
 DOCS        : create_docx  create_xlsx  create_pptx  create_pdf
 KNOWLEDGE   : knowledge_save  knowledge_search  knowledge_tree
-COMPUTER    : computer_screenshot  computer_open_app  computer_open_url  computer_click  computer_type  computer_key
+WEB         : web_search  web_fetch
+COMPUTER    : computer_screenshot  computer_ui_inspect  computer_open_app  computer_open_url  computer_click  computer_type  computer_key
 MISC        : network_status  clear_history  final
 """
 
@@ -248,6 +249,19 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
         auto_approve=False, sandbox="system", rollback="none",
     ),
     "vision_analyze": _r(sandbox="system"),
+    "web_fetch": ToolPolicy(
+        risk="read", destructive=False, shell=False, network=True,
+        auto_approve=True, sandbox="system", rollback="none",
+    ),
+    "web_search": ToolPolicy(
+        risk="read", destructive=False, shell=False, network=True,
+        auto_approve=True, sandbox="system", rollback="none",
+    ),
+    "computer_ui_inspect": ToolPolicy(
+        risk="read", destructive=False, shell=False, network=False,
+        auto_approve=True, sandbox="system", rollback="none",
+        capability="desktop:control", scope="host",
+    ),
 }
 
 TOOL_GOVERNANCE_DEFAULT = ToolPolicy(
@@ -277,7 +291,10 @@ MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "local_read": "Read any local file (requires user permission via UI).",
     "local_write": "Write any local file (requires user permission via UI).",
     "read_document": "Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files.",
+    "web_fetch": "Fetch a web URL with SSRF protection, HTML distillation, and prompt-injection sanitization.",
+    "web_search": "Search the web and return structured citations with sanitized titles and snippets.",
     "computer_screenshot": "Capture the current Mac screen as base64 PNG.",
+    "computer_ui_inspect": "Inspect the active desktop UI and accessibility element tree.",
     "computer_open_app": "Open or focus a Mac app, e.g. Google Chrome.",
     "computer_open_url": "Open a URL in a Mac app, e.g. Google Chrome.",
     "computer_click": "Click at screen coordinates (x, y).",
@@ -343,12 +360,31 @@ class ToolRegistry:
         registered = set(self.registered_tools())
         governed = set(self.governance)
         described = set(self.descriptions)
+        native_host_tools = {
+            "build_project",
+            "computer_open_app",
+            "computer_open_url",
+            "create_docx",
+            "create_pdf",
+            "create_pptx",
+            "create_web_project",
+            "create_xlsx",
+            "deploy_project",
+            "edit_file",
+            "knowledge_save",
+            "local_write",
+            "obsidian_save",
+            "run_command",
+            "todo_write",
+            "write_file",
+        }
+        unhandled_governed = (governed - registered) - native_host_tools
         return {
-            "ready": not (governed - registered or registered - governed or registered - described),
+            "ready": not (unhandled_governed or registered - governed or registered - described),
             "registered_tools": len(registered),
             "governed_tools": len(governed),
             "described_tools": len(described),
-            "governance_without_handler": sorted(governed - registered),
+            "governance_without_handler": sorted(unhandled_governed),
             "handler_without_governance": sorted(registered - governed),
             "handler_without_description": sorted(registered - described),
             "description_without_handler": sorted(described - registered),

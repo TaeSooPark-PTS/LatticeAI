@@ -83,6 +83,9 @@ fn gov_named_keys() -> Vec<&'static str> {
         "computer_open_app",
         "computer_open_url",
         "vision_analyze",
+        "web_fetch",
+        "web_search",
+        "computer_ui_inspect",
     ]
 }
 
@@ -302,5 +305,36 @@ async fn create_document(
             StatusCode::from_u16(err.status().unwrap_or(502)).unwrap_or(StatusCode::BAD_GATEWAY),
             &err.to_string(),
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::toolsurface::tools::gov::governance_for;
+
+    #[test]
+    fn registry_diagnostics_remain_ready_with_web_and_inspect_tools() {
+        let diag = diagnostics_value();
+        assert!(diag.ready, "diagnostics not ready: {:?}", diag.to_value());
+        assert!(HANDLERS.contains(&"web_fetch"));
+        assert!(HANDLERS.contains(&"web_search"));
+        assert!(HANDLERS.contains(&"computer_ui_inspect"));
+        assert!(TOOL_CATALOG_BRIEF.contains("web_fetch"));
+        assert!(TOOL_CATALOG_BRIEF.contains("web_search"));
+        assert!(TOOL_CATALOG_BRIEF.contains("computer_ui_inspect"));
+
+        let wf = governance_for("web_fetch");
+        assert_eq!(wf.get("risk"), Some(&json!("read")));
+        assert_eq!(wf.get("network"), Some(&json!(true)));
+        assert_eq!(wf.get("auto_approve"), Some(&json!(true)));
+        assert_eq!(wf.get("sandbox"), Some(&json!("system")));
+
+        let ui = governance_for("computer_ui_inspect");
+        assert_eq!(ui.get("risk"), Some(&json!("read")));
+        assert_eq!(ui.get("auto_approve"), Some(&json!(true)));
+        assert_eq!(ui.get("sandbox"), Some(&json!("system")));
+        assert_eq!(ui.get("capability"), Some(&json!("desktop:control")));
+        assert_eq!(ui.get("scope"), Some(&json!("host")));
     }
 }

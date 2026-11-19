@@ -38,7 +38,8 @@ GIT (read)  : git_status  git_diff  git_log  git_show
 LOCAL FS    : local_list  local_read  local_write  read_document
 DOCS        : create_docx  create_xlsx  create_pptx  create_pdf
 KNOWLEDGE   : knowledge_save  knowledge_search  knowledge_tree
-COMPUTER    : computer_screenshot  computer_open_app  computer_open_url  computer_click  computer_type  computer_key
+WEB         : web_search  web_fetch
+COMPUTER    : computer_screenshot  computer_ui_inspect  computer_open_app  computer_open_url  computer_click  computer_type  computer_key
 MISC        : network_status  clear_history  final";
 
 pub(crate) const HANDLERS: &[&str] = &[
@@ -63,7 +64,10 @@ pub(crate) const HANDLERS: &[&str] = &[
     "local_write",
     "read_document",
     "network_status",
+    "web_fetch",
+    "web_search",
     "computer_screenshot",
+    "computer_ui_inspect",
     "computer_open_app",
     "computer_open_url",
     "computer_click",
@@ -113,7 +117,10 @@ pub(crate) const DESCRIPTIONS: &[(&str, &str)] = &[
     ("local_read", "Read any local file (requires user permission via UI)."),
     ("local_write", "Write any local file (requires user permission via UI)."),
     ("read_document", "Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files."),
+    ("web_fetch", "Fetch a web URL with SSRF protection, HTML distillation, and prompt-injection sanitization."),
+    ("web_search", "Search the web and return structured citations with sanitized titles and snippets."),
     ("computer_screenshot", "Capture the current Mac screen as base64 PNG."),
+    ("computer_ui_inspect", "Inspect the active desktop UI and accessibility element tree."),
     ("computer_open_app", "Open or focus a Mac app, e.g. Google Chrome."),
     ("computer_open_url", "Open a URL in a Mac app, e.g. Google Chrome."),
     ("computer_click", "Click at screen coordinates (x, y)."),
@@ -338,6 +345,28 @@ pub(crate) fn gov_named(name: &str) -> Option<Gov> {
             rollback: "none",
             capability: None,
             scope: None,
+        },
+        "web_fetch" | "web_search" => Gov {
+            risk: "read",
+            destructive: false,
+            shell: false,
+            network: true,
+            auto_approve: true,
+            sandbox: "system",
+            rollback: "none",
+            capability: None,
+            scope: None,
+        },
+        "computer_ui_inspect" => Gov {
+            risk: "read",
+            destructive: false,
+            shell: false,
+            network: false,
+            auto_approve: true,
+            sandbox: "system",
+            rollback: "none",
+            capability: Some("desktop:control"),
+            scope: Some("host"),
         },
         _ => return None,
     })

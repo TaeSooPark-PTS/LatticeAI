@@ -16,6 +16,7 @@
 //! the handlers are deleted. Closing it means a native actuator, not a
 //! resurrected Python path.
 
+use std::net::IpAddr;
 use std::time::Duration;
 
 use serde_json::{json, Map, Value};
@@ -25,6 +26,9 @@ use crate::tools::sandbox::ToolError;
 
 /// `subprocess.run(..., timeout=10)`.
 const OPEN_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Short timeout for UI inspection and bridge actuation calls.
+const INSPECT_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// The six pointer/keyboard tools' refusal when `_CU_AVAILABLE` is false.
 pub const NO_POINTER_CONTROL: &str = "pyautogui를 사용할 수 없습니다.";
@@ -38,6 +42,254 @@ pub const POINTER_TOOLS: [&str; 6] = [
     "computer_scroll",
     "computer_type",
 ];
+
+/// Read and validate `LATTICEAI_COMPUTER_BRIDGE_URL`, enforcing a strict
+/// loopback-only policy (`127.0.0.1`, `localhost`, `[::1]`).
+pub fn bridge_url() -> Result<Option<String>, ToolError> {
+    let raw = match std::env::var("LATTICEAI_COMPUTER_BRIDGE_URL") {
+        Ok(val) => val,
+        Err(_) => return Ok(None),
+    };
+    let trimmed = raw.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let Some((scheme_raw, after_scheme)) = trimmed.split_once("://") else {
+        return Err(ToolError::tool(
+            "LATTICEAI_COMPUTER_BRIDGE_URL must use http:// or https:// on loopback.",
+        ));
+    };
+    let scheme = scheme_raw.to_ascii_lowercase();
+    if scheme != "http" && scheme != "https" {
+        return Err(ToolError::tool(format!(
+            "LATTICEAI_COMPUTER_BRIDGE_URL scheme '{scheme}' is not allowed."
+        )));
+    }
+    let authority_end = after_scheme
+        .find(['/', '?', '#'])
+        .unwrap_or(after_scheme.len());
+    let authority = &after_scheme[..authority_end];
+    if authority.is_empty() || authority.contains('@') {
+        return Err(ToolError::tool(
+            "LATTICEAI_COMPUTER_BRIDGE_URL contains an invalid authority.",
+        ));
+    }
+
+    let host = if authority.starts_with('[') {
+        let Some(close_idx) = authority.find(']') else {
+            return Err(ToolError::tool(
+                "LATTICEAI_COMPUTER_BRIDGE_URL has a malformed IPv6 host.",
+            ));
+        };
+        let rest = &authority[close_idx + 1..];
+        if !rest.is_empty() {
+            let Some(port_str) = rest.strip_prefix(':') else {
+                return Err(ToolError::tool(
+                    "LATTICEAI_COMPUTER_BRIDGE_URL has an invalid authority after IPv6 host.",
+                ));
+            };
+            let port = port_str.parse::<u16>().map_err(|_| {
+                ToolError::tool("LATTICEAI_COMPUTER_BRIDGE_URL has an invalid port.")
+            })?;
+            if port == 0 {
+                return Err(ToolError::tool(
+                    "LATTICEAI_COMPUTER_BRIDGE_URL port cannot be 0.",
+                ));
+            }
+        }
+        authority[1..close_idx].to_ascii_lowercase()
+    } else if let Some((h, port_str)) = authority.rsplit_once(':') {
+        if h.contains(':') || h.is_empty() {
+            return Err(ToolError::tool(
+                "LATTICEAI_COMPUTER_BRIDGE_URL has an invalid host.",
+            ));
+        }
+        let port = port_str
+            .parse::<u16>()
+            .map_err(|_| ToolError::tool("LATTICEAI_COMPUTER_BRIDGE_URL has an invalid port."))?;
+        if port == 0 {
+            return Err(ToolError::tool(
+                "LATTICEAI_COMPUTER_BRIDGE_URL port cannot be 0.",
+            ));
+        }
+        h.to_ascii_lowercase()
+    } else {
+        authority.to_ascii_lowercase()
+    };
+
+    let clean_host = host.trim_end_matches('.');
+    let is_loopback = clean_host == "localhost"
+        || clean_host
+            .parse::<IpAddr>()
+            .map(|ip| ip.is_loopback())
+            .unwrap_or(false);
+    if !is_loopback {
+        return Err(ToolError::tool(format!(
+            "LATTICEAI_COMPUTER_BRIDGE_URL must target a loopback host (127.0.0.1, localhost, or [::1]), got '{clean_host}'."
+        )));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+fn encode_query_component(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for b in input.as_bytes() {
+        match *b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(*b as char)
+            }
+            b' ' => out.push_str("%20"),
+            other => out.push_str(&format!("%{other:02X}")),
+        }
+    }
+    out
+}
+
+async fn bridge_post_act(base: &str, payload: Value) -> Result<Value, ToolError> {
+    let client = reqwest::Client::builder()
+        .timeout(INSPECT_TIMEOUT)
+        .build()
+        .map_err(|err| ToolError::tool(format!("failed to build bridge client: {err}")))?;
+    let body_bytes =
+        serde_json::to_vec(&payload).map_err(|err| ToolError::tool(err.to_string()))?;
+    let response = client
+        .post(format!("{base}/ui/act"))
+        .header("content-type", "application/json")
+        .body(body_bytes)
+        .send()
+        .await
+        .map_err(|err| ToolError::tool(format!("computer bridge /ui/act failed: {err}")))?;
+    let status = response.status();
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|err| ToolError::tool(format!("computer bridge response unreadable: {err}")))?;
+    if !status.is_success() {
+        let text = String::from_utf8_lossy(&bytes);
+        return Err(ToolError::tool(format!(
+            "computer bridge /ui/act returned {}: {}",
+            status.as_u16(),
+            text.trim()
+        )));
+    }
+    let parsed: Value = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
+    let mut merged = match payload {
+        Value::Object(map) => map,
+        _ => Map::new(),
+    };
+    if let Value::Object(resp_map) = parsed {
+        for (k, v) in resp_map {
+            merged.insert(k, v);
+        }
+    }
+    merged.insert("mode".into(), json!("bridge"));
+    Ok(Value::Object(merged))
+}
+
+async fn query_macos_frontmost_app() -> Option<String> {
+    let mut child = tokio::process::Command::new("osascript");
+    child
+        .args([
+            "-e",
+            "tell application \"System Events\" to get name of first application process whose frontmost is true",
+        ])
+        .kill_on_drop(true);
+    let output = tokio::time::timeout(INSPECT_TIMEOUT, child.output())
+        .await
+        .ok()?
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if name.is_empty() {
+        None
+    } else {
+        Some(name)
+    }
+}
+
+/// `computer_ui_inspect(app=None)` — observe active window and accessibility UI elements.
+pub async fn computer_ui_inspect(args: &Map<String, Value>) -> Result<Value, ToolError> {
+    let app_filter = args
+        .get("app")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+
+    if let Some(base) = bridge_url()? {
+        let url = match app_filter {
+            Some(app) => format!("{base}/ui/inspect?app={}", encode_query_component(app)),
+            None => format!("{base}/ui/inspect"),
+        };
+        let client = reqwest::Client::builder()
+            .timeout(INSPECT_TIMEOUT)
+            .build()
+            .map_err(|err| ToolError::tool(format!("failed to build bridge client: {err}")))?;
+        let response =
+            client.get(&url).send().await.map_err(|err| {
+                ToolError::tool(format!("computer bridge /ui/inspect failed: {err}"))
+            })?;
+        let status = response.status();
+        let bytes = response.bytes().await.map_err(|err| {
+            ToolError::tool(format!(
+                "computer bridge /ui/inspect response unreadable: {err}"
+            ))
+        })?;
+        if !status.is_success() {
+            let text = String::from_utf8_lossy(&bytes);
+            return Err(ToolError::tool(format!(
+                "computer bridge /ui/inspect returned {}: {}",
+                status.as_u16(),
+                text.trim()
+            )));
+        }
+        let parsed: Value = serde_json::from_slice(&bytes).map_err(|err| {
+            ToolError::tool(format!(
+                "computer bridge /ui/inspect returned invalid JSON: {err}"
+            ))
+        })?;
+        let mut obj = parsed.as_object().cloned().unwrap_or_default();
+        obj.insert("available".into(), json!(true));
+        obj.insert("mode".into(), json!("bridge"));
+        obj.entry("frontmost_app".to_string())
+            .or_insert_with(|| json!(app_filter.unwrap_or("")));
+        obj.entry("window_title".to_string())
+            .or_insert_with(|| json!(""));
+        obj.entry("screen_size".to_string())
+            .or_insert_with(|| json!({"width": 0, "height": 0}));
+        if !obj.get("elements").is_some_and(Value::is_array) {
+            obj.insert("elements".into(), json!([]));
+        }
+        return Ok(Value::Object(obj));
+    }
+
+    if std::env::consts::OS == "macos" {
+        let frontmost = query_macos_frontmost_app()
+            .await
+            .or_else(|| app_filter.map(str::to_string))
+            .unwrap_or_default();
+        return Ok(json!({
+            "available": false,
+            "mode": "osascript_limited",
+            "frontmost_app": frontmost,
+            "window_title": "",
+            "screen_size": {"width": 0, "height": 0},
+            "elements": [],
+            "note": "Accessibility element tree requires LATTICEAI_COMPUTER_BRIDGE_URL or macOS Accessibility permissions.",
+        }));
+    }
+
+    Ok(json!({
+        "available": false,
+        "mode": "unsupported",
+        "frontmost_app": app_filter.unwrap_or(""),
+        "window_title": "",
+        "screen_size": {"width": 0, "height": 0},
+        "elements": [],
+        "note": "UI accessibility inspection is not supported on this platform without LATTICEAI_COMPUTER_BRIDGE_URL.",
+    }))
+}
 
 /// `platform.system()`'s three branches, as this build sees them.
 fn opener(target: &str, app: Option<&str>) -> Vec<String> {
@@ -97,6 +349,9 @@ pub async fn computer_open_app(args: &Map<String, Value>) -> Result<Value, ToolE
     if app.is_empty() {
         return Err(ToolError::tool("앱 이름이 필요합니다."));
     }
+    if let Some(base) = bridge_url()? {
+        return bridge_post_act(&base, json!({"action": "open_app", "app": app})).await;
+    }
     // macOS opens an *app*, so the app is the target and there is no `-a`.
     let command = match std::env::consts::OS {
         "macos" => vec!["open".to_string(), "-a".to_string(), app.clone()],
@@ -124,10 +379,26 @@ pub async fn computer_open_url(args: &Map<String, Value>) -> Result<Value, ToolE
         } else {
             url
         };
+    let resolved_app = if app.is_empty() {
+        "default".to_string()
+    } else {
+        app.clone()
+    };
+    if let Some(base) = bridge_url()? {
+        return bridge_post_act(
+            &base,
+            json!({
+                "action": "open_url",
+                "app": resolved_app,
+                "url": url,
+            }),
+        )
+        .await;
+    }
     open_with(opener(&url, Some(&app)), "URL 열기 실패", &url).await?;
     Ok(json!({
         "action": "open_url",
-        "app": if app.is_empty() { "default".to_string() } else { app },
+        "app": resolved_app,
         "url": url,
     }))
 }
@@ -280,5 +551,138 @@ mod tests {
             "{}",
             error.message
         );
+    }
+
+    static BRIDGE_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    struct BridgeEnvGuard(Option<String>);
+
+    impl BridgeEnvGuard {
+        fn set(val: Option<&str>) -> Self {
+            let prev = std::env::var("LATTICEAI_COMPUTER_BRIDGE_URL").ok();
+            match val {
+                Some(v) => std::env::set_var("LATTICEAI_COMPUTER_BRIDGE_URL", v),
+                None => std::env::remove_var("LATTICEAI_COMPUTER_BRIDGE_URL"),
+            }
+            Self(prev)
+        }
+    }
+
+    impl Drop for BridgeEnvGuard {
+        fn drop(&mut self) {
+            match &self.0 {
+                Some(v) => std::env::set_var("LATTICEAI_COMPUTER_BRIDGE_URL", v),
+                None => std::env::remove_var("LATTICEAI_COMPUTER_BRIDGE_URL"),
+            }
+        }
+    }
+
+    #[test]
+    fn bridge_url_accepts_loopback_and_rejects_remote_hosts_fail_closed() {
+        let _lock = BRIDGE_ENV_LOCK.blocking_lock();
+        let _g = BridgeEnvGuard::set(None);
+        assert_eq!(bridge_url().expect("none"), None);
+
+        for valid in [
+            "http://127.0.0.1:9911/",
+            "http://localhost:9911",
+            "http://[::1]:9911/",
+        ] {
+            let _g = BridgeEnvGuard::set(Some(valid));
+            let resolved = bridge_url().expect("valid loopback").expect("some");
+            assert!(!resolved.ends_with('/'));
+        }
+
+        for invalid in [
+            "http://192.168.1.50:9911",
+            "https://evil.example.com/bridge",
+            "http://169.254.169.254",
+            "ftp://127.0.0.1:9911",
+        ] {
+            let _g = BridgeEnvGuard::set(Some(invalid));
+            assert!(
+                bridge_url().is_err(),
+                "expected non-loopback bridge URL '{invalid}' to be rejected"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn computer_ui_inspect_and_openers_route_through_loopback_bridge() {
+        let app = axum::Router::new()
+            .route(
+                "/ui/inspect",
+                axum::routing::get(|| async {
+                    axum::Json(json!({
+                        "frontmost_app": "Safari",
+                        "window_title": "LatticeAI Docs",
+                        "screen_size": {"width": 1440, "height": 900},
+                        "elements": [
+                            {"id": "btn-1", "role": "AXButton", "label": "Run", "x": 120, "y": 240}
+                        ]
+                    }))
+                }),
+            )
+            .route(
+                "/ui/act",
+                axum::routing::post(|axum::Json(payload): axum::Json<Value>| async move {
+                    axum::Json(json!({
+                        "status": "ok",
+                        "verified": true,
+                        "echo": payload
+                    }))
+                }),
+            );
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let origin = format!("http://{}", listener.local_addr().expect("addr"));
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+
+        let _lock = BRIDGE_ENV_LOCK.lock().await;
+        let _g = BridgeEnvGuard::set(Some(&origin));
+
+        let inspected = computer_ui_inspect(&args(json!({"app": "Safari"})))
+            .await
+            .expect("inspect via bridge");
+        assert_eq!(inspected["available"], true);
+        assert_eq!(inspected["mode"], "bridge");
+        assert_eq!(inspected["frontmost_app"], "Safari");
+        assert_eq!(inspected["window_title"], "LatticeAI Docs");
+        assert_eq!(inspected["elements"].as_array().unwrap().len(), 1);
+
+        let opened_app = computer_open_app(&args(json!({"app": "Safari"})))
+            .await
+            .expect("open_app via bridge");
+        assert_eq!(opened_app["action"], "open_app");
+        assert_eq!(opened_app["app"], "Safari");
+        assert_eq!(opened_app["mode"], "bridge");
+        assert_eq!(opened_app["verified"], true);
+
+        let opened_url = computer_open_url(&args(json!({"url": "example.com", "app": "Safari"})))
+            .await
+            .expect("open_url via bridge");
+        assert_eq!(opened_url["action"], "open_url");
+        assert_eq!(opened_url["url"], "https://example.com");
+        assert_eq!(opened_url["mode"], "bridge");
+    }
+
+    #[tokio::test]
+    async fn computer_ui_inspect_gracefully_falls_back_without_bridge() {
+        let _lock = BRIDGE_ENV_LOCK.lock().await;
+        let _g = BridgeEnvGuard::set(None);
+
+        let inspected = computer_ui_inspect(&Map::new())
+            .await
+            .expect("fallback inspect");
+        assert_eq!(inspected["available"], false);
+        assert!(matches!(
+            inspected["mode"].as_str(),
+            Some("osascript_limited" | "unsupported")
+        ));
+        assert_eq!(inspected["elements"], json!([]));
     }
 }

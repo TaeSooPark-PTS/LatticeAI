@@ -78,6 +78,7 @@ pub mod sandbox;
 pub mod scaffold;
 pub mod shell;
 pub mod vault;
+pub mod web;
 
 // The dispatcher's own vocabulary reads as `tools::NativeTools`,
 // `tools::ToolHost`, `tools::is_native` everywhere it is used — inside this
@@ -88,5 +89,5 @@ pub use catalog::{
 };
 pub use host::{
     is_native, CallScope, HookSink, NativeCall, NativeTools, ToolConfig, ToolFuture, ToolHost,
-    MUTATING_TOOLS, RENDER_TOOLS,
+    MUTATING_TOOLS, RENDER_TOOLS, WEB_AND_INSPECT_TOOLS,
 };

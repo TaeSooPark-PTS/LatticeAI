@@ -56,7 +56,7 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
-use super::{authorize, desktop, files, local, render, scaffold, shell, vault};
+use super::{authorize, desktop, files, local, render, scaffold, shell, vault, web};
 use crate::kernel::policy::ToolPolicy;
 use crate::seam::worker::{ToolOutcome, WorkerClient};
 use crate::tools::sandbox::{ToolError, Workspace};
@@ -90,10 +90,13 @@ pub const MUTATING_TOOLS: [&str; 18] = [
 /// The four document creators, sorted: compute in the worker, write here.
 pub const RENDER_TOOLS: [&str; 4] = ["create_docx", "create_pdf", "create_pptx", "create_xlsx"];
 
+/// Native web research and structured computer-use inspection tools, sorted.
+pub const WEB_AND_INSPECT_TOOLS: [&str; 3] = ["computer_ui_inspect", "web_fetch", "web_search"];
+
 /// Whether the loop should execute `tool` itself instead of calling the worker.
 ///
-/// [`MUTATING_TOOLS`] minus [`desktop::POINTER_TOOLS`], plus [`RENDER_TOOLS`] —
-/// **twelve plus four**. The six pointer tools are a deliberate exception
+/// [`MUTATING_TOOLS`] minus [`desktop::POINTER_TOOLS`], plus [`RENDER_TOOLS`]
+/// and [`WEB_AND_INSPECT_TOOLS`]. The six pointer tools are a deliberate exception
 /// (v11.6.0 gateway integration §4b): mouse and keyboard actuation is
 /// `pyautogui`, a *capability of the worker's interpreter*, not a file write
 /// this crate can perform. Native versions could only reproduce the refusal,
@@ -108,6 +111,7 @@ pub fn is_native(tool: &str) -> bool {
     }
     crate::kernel::policy::in_set(&MUTATING_TOOLS, tool)
         || crate::kernel::policy::in_set(&RENDER_TOOLS, tool)
+        || crate::kernel::policy::in_set(&WEB_AND_INSPECT_TOOLS, tool)
 }
 
 /// Who the run belongs to — the seam's `user_email` / `workspace_id` fields.
@@ -303,6 +307,9 @@ impl NativeTools {
             "deploy_project" => shell::deploy_project(&self.workspace, call.args).await,
             "computer_open_app" => desktop::computer_open_app(call.args).await,
             "computer_open_url" => desktop::computer_open_url(call.args).await,
+            "computer_ui_inspect" => desktop::computer_ui_inspect(call.args).await,
+            "web_fetch" => web::web_fetch(call.args).await,
+            "web_search" => web::web_search(call.args).await,
             // Unreachable through the loop since §4b — `handles` says no, so
             // the six pointer tools go to the worker. Kept for a direct caller
             // (and for the harness), where answering Python's own message is
@@ -686,5 +693,16 @@ mod tests {
             "user",
             "an absent role keeps the safe default"
         );
+    }
+
+    #[test]
+    fn web_and_inspect_tools_are_sorted_and_native() {
+        assert_eq!(WEB_AND_INSPECT_TOOLS.len(), 3);
+        let mut sorted = WEB_AND_INSPECT_TOOLS.to_vec();
+        sorted.sort_unstable();
+        assert_eq!(WEB_AND_INSPECT_TOOLS.to_vec(), sorted);
+        for tool in WEB_AND_INSPECT_TOOLS {
+            assert!(is_native(tool), "{tool} must be dispatched natively");
+        }
     }
 }
