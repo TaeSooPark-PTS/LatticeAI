@@ -21,11 +21,11 @@ getrandom = { workspace = true }
 # every stable user id that way and the ids are already on disk, so the digest
 # is a compatibility requirement, not a choice. 0.10 shares `digest 0.10` with
 # the sha2 the workspace already pins, so the tree keeps one digest version.
-sha1 = "0.10"
+sha1 = "0.11"
 # `hashlib.scrypt(n=16384, r=8, p=1)` is the stored password KDF
 # (`core/security.py`). default-features = false drops the `simple` PHC-string
 # layer we do not use (and its rand_core dependency); we only need the raw KDF.
-scrypt = { version = "0.11", default-features = false }
+scrypt = { version = "0.12", default-features = false }
 
 [dev-dependencies]
 tempfile = { workspace = true }

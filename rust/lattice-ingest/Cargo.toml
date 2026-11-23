@@ -14,7 +14,7 @@ serde = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 # Chunk ids and content hashes are sha256 over UTF-8 bytes; the digest *is* the
 # contract, so it comes from a maintained implementation rather than a local one.
-sha2 = "0.10"
+sha2 = "0.11"
 # The poll loop (timer) and the dry-run routes.
 tokio = { workspace = true }
 axum = { workspace = true }
