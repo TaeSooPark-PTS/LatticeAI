@@ -29,7 +29,7 @@ lattice-agent = { workspace = true }
 lattice-platform = { path = "../lattice-platform" }
 # The Python originals lean on lookbehind (`(?<![\w.-])`), which `regex`
 # refuses; `fancy-regex` has `re`'s backtracking semantics.
-fancy-regex = "0.14"
+fancy-regex = "0.20"
 # `_json_hash` is sha256 over a `json.dumps(..., sort_keys=True)` payload; the
 # answer-trace id is that digest's first 16 hex characters.
 sha2 = { workspace = true }
