@@ -501,7 +501,7 @@ impl axum::extract::FromRef<FeaturesState> for Arc<AuthState> {
 pub fn router(state: FeaturesState) -> Router {
     Router::new()
         .route("/api/features", get(list_features))
-        .route("/api/features/:feature_id", post(set_feature))
+        .route("/api/features/{feature_id}", post(set_feature))
         .with_state(state)
 }
 

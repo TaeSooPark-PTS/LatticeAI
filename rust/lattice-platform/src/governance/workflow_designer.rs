@@ -141,29 +141,29 @@ pub fn router(state: WorkflowDesignerState) -> Router {
             get(list_definitions).post(create_definition),
         )
         .route(
-            "/workflows/api/definitions/:workflow_id",
+            "/workflows/api/definitions/{workflow_id}",
             get(get_definition).patch(update_definition),
         )
         .route(
-            "/workflows/api/definitions/:workflow_id/run",
+            "/workflows/api/definitions/{workflow_id}/run",
             post(run_definition),
         )
         .route(
-            "/workflows/api/definitions/:workflow_id/runs",
+            "/workflows/api/definitions/{workflow_id}/runs",
             get(list_definition_runs),
         )
         .route("/workflows/api/validate", post(validate_workflow))
         .route("/workflows/api/runs", get(list_all_runs))
-        .route("/workflows/api/runs/:run_id/stop", post(stop_run))
-        .route("/workflows/api/runs/:run_id/resume", post(resume_run))
-        .route("/workflows/api/runs/:run_id/replay", get(run_replay))
+        .route("/workflows/api/runs/{run_id}/stop", post(stop_run))
+        .route("/workflows/api/runs/{run_id}/resume", post(resume_run))
+        .route("/workflows/api/runs/{run_id}/replay", get(run_replay))
         .route("/workflows/api/triggers", get(trigger_status))
         .route("/workflows/api/automation/recipes", get(automation_recipes))
         .route(
-            "/workflows/api/automation/recipes/:recipe_id",
+            "/workflows/api/automation/recipes/{recipe_id}",
             post(install_recipe),
         )
-        .route("/workflows/api/export/:workflow_id", get(export_definition))
+        .route("/workflows/api/export/{workflow_id}", get(export_definition))
         .route("/workflows/api/import", post(import_definition))
         .with_state(state)
 }

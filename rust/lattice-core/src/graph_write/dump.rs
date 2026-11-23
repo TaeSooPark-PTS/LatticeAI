@@ -212,7 +212,6 @@ fn select_rows(
     let mut statement = conn.prepare(sql)?;
     let columns: Vec<String> = statement
         .column_names()
-        .into_iter()
         .map(str::to_string)
         .collect();
     let mut query = statement.query([])?;

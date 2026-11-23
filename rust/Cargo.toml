@@ -36,7 +36,7 @@ rusqlite = { version = "0.43", features = ["bundled"] }
 # Host / gateway.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "time", "signal", "io-util", "sync"] }
 axum = "0.8"
-reqwest = { version = "0.13", default-features = false, features = ["stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["stream", "query"] }
 libc = "0.2"
 # Phase 2-4 additions: file watching for lattice-ingest.
 notify = "8"

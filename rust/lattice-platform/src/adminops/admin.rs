@@ -142,7 +142,7 @@ pub fn router(state: AdminState) -> Router {
         .route("/vpc/status", get(vpc_status))
         .route("/admin/vpc", patch(admin_update_vpc))
         .route(
-            "/admin/users/*email",
+            "/admin/users/{*email}",
             patch(admin_update_user).delete(admin_delete_user),
         )
         .route("/admin/invite-link", get(admin_invite_link))

@@ -128,7 +128,7 @@ async fn spawn_worker(script: Script) -> String {
             }),
         )
         .route(
-            "/worker/render/:kind",
+            "/worker/render/{kind}",
             post({
                 let script = script.clone();
                 move |AxumPath(kind): AxumPath<String>, Json(body): Json<Value>| {

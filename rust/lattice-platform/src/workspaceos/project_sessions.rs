@@ -61,12 +61,12 @@ pub fn router(state: ProjectSessionsState) -> Router {
     Router::new()
         .route("/api/projects", get(list_projects).post(create_project))
         .route(
-            "/api/projects/:session_id",
+            "/api/projects/{session_id}",
             get(get_project)
                 .patch(update_project)
                 .delete(delete_project),
         )
-        .route("/api/projects/:session_id/todos", put(set_todos))
+        .route("/api/projects/{session_id}/todos", put(set_todos))
         .with_state(state)
 }
 

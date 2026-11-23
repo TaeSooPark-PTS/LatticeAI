@@ -75,7 +75,7 @@ pub fn router(state: PluginsState) -> Router {
     Router::new()
         .route("/plugins/sdk", get(plugins_sdk))
         .route("/plugins/registry", get(plugins_registry))
-        .route("/plugins/registry/:plugin_id", get(plugin_detail))
+        .route("/plugins/registry/{plugin_id}", get(plugin_detail))
         .route("/plugins/validate", post(plugin_validate))
         .route("/plugins/install", post(plugin_install))
         .route("/plugins/uninstall", post(plugin_uninstall))

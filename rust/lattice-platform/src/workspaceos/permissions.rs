@@ -360,9 +360,9 @@ impl axum::extract::FromRef<PermissionsState> for Arc<AuthState> {
 pub fn router(state: PermissionsState) -> Router {
     Router::new()
         .route("/permissions/pending", get(pending))
-        .route("/permissions/approve/:token", post(approve))
-        .route("/permissions/deny/:token", post(deny))
-        .route("/permissions/status/:token", get(status))
+        .route("/permissions/approve/{token}", post(approve))
+        .route("/permissions/deny/{token}", post(deny))
+        .route("/permissions/status/{token}", get(status))
         .with_state(state)
 }
 

@@ -142,12 +142,12 @@ pub fn router(state: SetupState) -> Router {
         .route("/setup/scan", get(setup_scan))
         .route("/setup/auto", get(setup_auto))
         .route("/setup/install", post(setup_install))
-        .route("/setup/open-auth/:mcp_id", post(setup_open_auth))
+        .route("/setup/open-auth/{mcp_id}", post(setup_open_auth))
         .route(
             "/api/setup/demo-corpus",
             get(demo_status).post(demo_install).delete(demo_remove),
         )
-        .route("/permissions/open/:permission_id", post(open_permission))
+        .route("/permissions/open/{permission_id}", post(open_permission))
         .with_state(state)
 }
 

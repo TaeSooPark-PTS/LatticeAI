@@ -430,7 +430,7 @@ pub(crate) mod tests_support {
         let seen: Arc<Mutex<Vec<Value>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&seen);
         let app = axum::Router::new().route(
-            "/worker/render/:kind",
+            "/worker/render/{kind}",
             axum::routing::post(
                 move |axum::extract::Path(kind): axum::extract::Path<String>,
                       axum::Json(request): axum::Json<Value>| {

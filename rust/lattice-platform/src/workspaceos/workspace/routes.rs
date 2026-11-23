@@ -166,15 +166,15 @@ pub fn router(state: WorkspaceState) -> Router {
         .route("/workspace/traces", get(handlers_core::traces))
         .route("/workspace/indexing", get(handlers_core::indexing))
         .route(
-            "/workspace/indexing/:source_id/pause",
+            "/workspace/indexing/{source_id}/pause",
             post(handlers_core::indexing_pause),
         )
         .route(
-            "/workspace/indexing/:source_id/resume",
+            "/workspace/indexing/{source_id}/resume",
             post(handlers_core::indexing_resume),
         )
         .route(
-            "/workspace/indexing/:source_id/remove",
+            "/workspace/indexing/{source_id}/remove",
             post(handlers_core::indexing_remove),
         )
         .route(
@@ -186,24 +186,24 @@ pub fn router(state: WorkspaceState) -> Router {
             post(handlers_core::snapshots_compare),
         )
         .route(
-            "/workspace/snapshots/:snapshot_id",
+            "/workspace/snapshots/{snapshot_id}",
             get(handlers_core::snapshots_get),
         )
         .route(
-            "/workspace/snapshots/:snapshot_id/:area",
+            "/workspace/snapshots/{snapshot_id}/{area}",
             get(handlers_core::snapshots_area),
         )
         .route(
-            "/workspace/snapshots/:snapshot_id/export",
+            "/workspace/snapshots/{snapshot_id}/export",
             post(handlers_core::snapshots_export),
         )
         .route(
-            "/workspace/snapshots/:snapshot_id/restore",
+            "/workspace/snapshots/{snapshot_id}/restore",
             post(handlers_core::snapshots_restore),
         )
         .route("/workspace/time-machine", get(handlers_core::time_machine))
         .route(
-            "/workspace/time-machine/:snapshot_id/:area",
+            "/workspace/time-machine/{snapshot_id}/{area}",
             get(handlers_core::time_machine_view),
         )
         .route(
@@ -215,13 +215,13 @@ pub fn router(state: WorkspaceState) -> Router {
             get(handlers_core::memories_search),
         )
         .route(
-            "/workspace/memories/:memory_id",
+            "/workspace/memories/{memory_id}",
             delete(handlers_core::memories_delete),
         )
         .route("/workspace/agents", get(handlers_more::agents_list))
         .route("/workspace/agents/runs", post(handlers_more::agents_run))
         .route(
-            "/workspace/relationships/*node_id",
+            "/workspace/relationships/{*node_id}",
             get(handlers_more::relationships),
         )
         .route(
@@ -237,7 +237,7 @@ pub fn router(state: WorkspaceState) -> Router {
             get(handlers_more::workflows_list).post(handlers_more::workflows_create),
         )
         .route(
-            "/workspace/workflows/:workflow_id/events",
+            "/workspace/workflows/{workflow_id}/events",
             post(handlers_more::workflows_event),
         )
         .route("/workspace/skills", get(handlers_more::skills_list))
@@ -275,23 +275,23 @@ pub fn router(state: WorkspaceState) -> Router {
         .route("/workspace/activate", post(handlers_more::activate))
         .route("/workspace/orgs", post(handlers_more::org_create))
         .route(
-            "/workspace/orgs/:workspace_id",
+            "/workspace/orgs/{workspace_id}",
             get(handlers_more::org_get).patch(handlers_more::org_update),
         )
         .route(
-            "/workspace/orgs/:workspace_id/summary",
+            "/workspace/orgs/{workspace_id}/summary",
             get(handlers_more::org_summary),
         )
         .route(
-            "/workspace/orgs/:workspace_id/archive",
+            "/workspace/orgs/{workspace_id}/archive",
             post(handlers_more::org_archive),
         )
         .route(
-            "/workspace/orgs/:workspace_id/members",
+            "/workspace/orgs/{workspace_id}/members",
             post(handlers_more::org_add_member),
         )
         .route(
-            "/workspace/orgs/:workspace_id/members/:user_id",
+            "/workspace/orgs/{workspace_id}/members/{user_id}",
             patch(handlers_more::org_update_member).delete(handlers_more::org_remove_member),
         )
         .with_state(state)

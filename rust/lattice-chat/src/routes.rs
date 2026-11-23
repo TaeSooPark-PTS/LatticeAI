@@ -46,7 +46,7 @@ pub fn router_from_arc(state: Arc<ChatState>) -> Router {
         )
         .route("/history/conversations", get(history::fetch_conversations))
         .route(
-            "/history/conversations/*conversation_id",
+            "/history/conversations/{*conversation_id}",
             get(history::fetch_conversation).delete(history::delete_conversation),
         )
         .route("/history/search", get(history::search))
