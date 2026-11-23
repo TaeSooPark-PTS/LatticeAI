@@ -99,6 +99,7 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
 
     engine_map = {
         "local_mlx": ["local_mlx"],
+        "omlx": ["omlx"],
         "ollama": ["ollama"],
         "vllm": ["vllm"],
         "lmstudio": ["lmstudio"],
@@ -115,7 +116,9 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
                 # (Until 11.2.0 the ollama branch *fabricated* a repo path from
                 # the family name — `ggml-org/<family>-12B-it-GGUF` — which
                 # resolved to a 404 for anything but Gemma 4 12B.)
-                if eng_key == "ollama" and not legacy["id"].startswith("ollama:"):
+                if eng_key == "omlx" and not legacy["id"].startswith("omlx:"):
+                    legacy["id"] = f"omlx:{cap.hf_repo_id.replace('/', '--')}"
+                elif eng_key == "ollama" and not legacy["id"].startswith("ollama:"):
                     legacy["id"] = f"ollama:{cap.hf_repo_id.split('/')[-1].lower()}"
                 elif eng_key == "vllm" and not legacy["id"].startswith("vllm:"):
                     legacy["id"] = f"vllm:{cap.hf_repo_id}"

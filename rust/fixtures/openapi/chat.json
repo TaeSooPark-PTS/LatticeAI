@@ -896,7 +896,7 @@
   },
   "schema_count": 6,
   "source": "frontend/openapi.json",
-  "spec_version": "13.4.1",
+  "spec_version": "13.4.2",
   "summary": "Chat orchestration, chat history and the agent-loop HTTP surface.",
   "target": "lattice-chat",
   "wp": "R4"

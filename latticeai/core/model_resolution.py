@@ -43,10 +43,11 @@ class PrepareState(str, Enum):
     FAILED = "FAILED"
 
 
-LOCAL_ENGINES = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+LOCAL_ENGINES = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
 ENGINE_ALIASES = {
     "mlx": "local_mlx",
     "local-mlx": "local_mlx",
+    "openmlx": "omlx",
     "llama.cpp": "llamacpp",
     "llama-cpp": "llamacpp",
     "lm-studio": "lmstudio",

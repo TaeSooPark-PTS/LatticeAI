@@ -1,6 +1,6 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/OPERATIONS.md)
 
-# Lattice AI — Operations Guide (v13.4.1)
+# Lattice AI — Operations Guide (v13.4.2)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the

@@ -65,6 +65,13 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "default_model": "llama.cpp-model",
         "api_key_fallback": "llamacpp",
     },
+    "omlx": {
+        "env_key": "OMLX_API_KEY",
+        "base_url_env": "OMLX_BASE_URL",
+        "base_url": "http://127.0.0.1:8000/v1",
+        "default_model": "mlx-community--Qwen3.8-27B-4bit",
+        "api_key_fallback": "omlx",
+    },
 }
 
 PROVIDER_MODEL_CATALOG = {

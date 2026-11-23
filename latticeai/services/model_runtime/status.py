@@ -94,6 +94,12 @@ def engine_status(
                 lmstudio_models.append({**m, "pulled": False})
     lmstudio_models = filter_lower_family_versions(lmstudio_models)
 
+    omlx_models = []
+    for m in ENGINE_MODEL_CATALOG.get("omlx", []):
+        repo_id = m.get("hf_repo_id") or m["id"].removeprefix("omlx:")
+        omlx_models.append({**m, "pulled": hf_model_ready(str(repo_id), "omlx")})
+    omlx_models = filter_lower_family_versions(omlx_models)
+
     llamacpp_models = []
     for m in ENGINE_MODEL_CATALOG.get("llamacpp", []):
         repo_id = m["id"].removeprefix("llamacpp:")
@@ -101,6 +107,13 @@ def engine_status(
     llamacpp_models = filter_lower_family_versions(llamacpp_models)
 
     local_server_specs: List[Dict[str, Any]] = [
+        {
+            "id": "omlx",
+            "name": "oMLX",
+            "description": "Apple Silicon 전용 oMLX 서버(연속 배칭 · RAM/SSD 계층형 KV 캐시)에 연결합니다.",
+            "requires": "OMLX_BASE_URL",
+            "note": engine_support_status("omlx").get("reason"),
+        },
         {
             "id": "vllm",
             "name": "vLLM",
@@ -171,7 +184,8 @@ def engine_status(
             ),
             "requires": spec["requires"],
             "models": (
-                vllm_models if spec["id"] == "vllm"
+                omlx_models if spec["id"] == "omlx"
+                else vllm_models if spec["id"] == "vllm"
                 else lmstudio_models if spec["id"] == "lmstudio"
                 else llamacpp_models if spec["id"] == "llamacpp"
                 else ENGINE_MODEL_CATALOG.get(spec["id"], [])

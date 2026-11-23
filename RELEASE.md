@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.4.2 — Living Synthesis (2026-11-24)
+
+Added **oMLX (`jundot/omlx`)** engine integration with hardware-tuned tiered RAM/SSD KV caching (`--memory-guard balanced`, `--hot-cache-max-size`, `--paged-ssd-cache-dir`, `--max-concurrent-requests 2`, `--initial-cache-blocks 128`) and elevated **`mlx-community/Qwen3.8-27B-4bit`** to recommended & downloadable status on 32GB+ Apple Silicon Macs (`recommended_ram_gb=32.0`).
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.4.2.md](docs/releases/RELEASE_NOTES_v13.4.2.md).
+
+Build artifacts: `dist/ltcai-13.4.2-py3-none-any.whl`, `dist/ltcai-13.4.2.tar.gz`, `ltcai-13.4.2.tgz`, `dist/ltcai-13.4.2.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.2_aarch64.dmg`.
+
 ## v13.4.1 — Living Synthesis (2026-11-23)
 
 Dependency compatibility & maintenance release resolving Dependabot PRs `#58`, `#60`, and `#61` across the full stack:

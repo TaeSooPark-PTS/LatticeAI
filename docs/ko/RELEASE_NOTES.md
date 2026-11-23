@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v13.4.2 - Living Synthesis] (2026-11-24)
+
+계층형 RAM/SSD KV 캐시를 지원하는 **oMLX (`jundot/omlx`)** 엔진을 통합하고, **`mlx-community/Qwen3.8-27B-4bit`** 모델을 32GB+ Apple Silicon Mac의 추천 및 다운로드 가능 카탈로그에 등록했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.4.2.md](./releases/RELEASE_NOTES_v13.4.2.md).
+
 # [v13.4.1 - Living Synthesis] (2026-11-23)
 
 프론트엔드(`typescript@7.0.2`, `vitest@5.1.1`, `jsdom@31`, `@testing-library/jest-dom@8`), Rust 워크스페이스(`axum@0.8`, `rusqlite@0.43`, `sha2@0.11`, `scrypt@0.12`, `fancy-regex@0.20`, `zip@9`, `reqwest@0.13`, `ed25519-dalek@3`, `notify@8`), Tauri 데스크톱(`tauri@2.11.6`, `plist@1.8.0`, `time@0.3.55`)의 메이저/브레이킹 의존성 업그레이드 호환성을 해결하고 Vitest 100% 커버리지 및 전체 워크스페이스 빌드를 복구했습니다.
@@ -124,10 +130,11 @@ Hugging Face 실저장소 양자화 태그(`Q4_0`·`MXFP4`)와 GGUF 라우팅, �
 
 # 릴리스 노트 색인
 
-이 저장소는 **12.0.0부터 13.4.1까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **12.0.0부터 13.4.2까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (12.0.0+)
 
+- [v13.4.2 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.2.md)
 - [v13.4.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.1.md)
 - [v13.4.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.0.md)
 - [v13.3.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.3.1.md)

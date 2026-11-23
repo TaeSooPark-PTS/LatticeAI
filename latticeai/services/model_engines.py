@@ -104,6 +104,77 @@ def vllm_metal_python() -> Optional[str]:
     return None
 
 
+def omlx_executable() -> Optional[str]:
+    found = local_binary("omlx")
+    if found:
+        return found
+    for candidate in (
+        Path("/opt/homebrew/bin/omlx"),
+        Path("/opt/homebrew/opt/omlx/bin/omlx"),
+        Path.home() / ".omlx" / "bin" / "omlx",
+    ):
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def _host_ram_gb() -> float:
+    try:
+        pages = os.sysconf("SC_PHYS_PAGES")
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        if pages > 0 and page_size > 0:
+            return (pages * page_size) / (1024 ** 3)
+    except Exception:
+        quiet()
+    return 16.0
+
+
+def omlx_serve_args(ram_gb: Optional[float] = None, port: int = 8000) -> List[str]:
+    """Return hardware-tuned CLI flags for ``omlx serve`` (KV cache & memory guard)."""
+    effective_ram = float(ram_gb) if ram_gb is not None else _host_ram_gb()
+    memory_guard = (os.getenv("LATTICEAI_OMLX_MEMORY_GUARD") or "").strip().lower()
+    if memory_guard not in {"off", "safe", "balanced", "aggressive"}:
+        memory_guard = "safe" if effective_ram < 32.0 else "balanced"
+
+    hot_cache = (os.getenv("LATTICEAI_OMLX_HOT_CACHE_MAX_SIZE") or "").strip()
+    if not hot_cache:
+        hot_cache = "4GB" if effective_ram >= 48.0 else ("2GB" if effective_ram >= 32.0 else "0")
+
+    max_concurrent = (os.getenv("LATTICEAI_OMLX_MAX_CONCURRENT_REQUESTS") or "").strip()
+    if not max_concurrent:
+        max_concurrent = "4" if effective_ram >= 48.0 else "2"
+
+    ssd_cache_dir = (os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_DIR") or "").strip()
+    if not ssd_cache_dir:
+        ssd_cache_dir = str(Path.home() / ".omlx" / "kv-cache")
+
+    ssd_max_size = (os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_MAX_SIZE") or "32GB").strip()
+    initial_blocks = (os.getenv("LATTICEAI_OMLX_INITIAL_CACHE_BLOCKS") or "128").strip()
+
+    args = [
+        "serve",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(port),
+        "--headless",
+        "--hf-cache",
+        "--memory-guard",
+        memory_guard,
+        "--hot-cache-max-size",
+        hot_cache,
+        "--paged-ssd-cache-dir",
+        ssd_cache_dir,
+        "--paged-ssd-cache-max-size",
+        ssd_max_size,
+        "--max-concurrent-requests",
+        max_concurrent,
+        "--initial-cache-blocks",
+        initial_blocks,
+    ]
+    return args
+
+
 def _json_request(
     url: str,
     *,
@@ -473,7 +544,66 @@ def get_ollama_pulled_models() -> set:
         return set()
 
 
+def ensure_omlx_server(model_name: str) -> str:
+    """Ensure oMLX is running with tuned KV-cache/memory-guard and serving ``model_name``."""
+    from urllib.parse import urlparse
+
+    from latticeai.services.model_runtime import (
+        OPENAI_COMPATIBLE_PROVIDERS,
+        download_hf_model,
+        hf_model_ready,
+    )
+
+    raw_name = str(model_name or "").strip()
+    hf_repo = raw_name.replace("--", "/", 1) if "/" not in raw_name and "--" in raw_name else raw_name
+    served_name = hf_repo.replace("/", "--") if "/" in hf_repo else raw_name
+
+    if not hf_model_ready(hf_repo, "omlx"):
+        download_hf_model(hf_repo, "local_mlx")
+
+    served_models = get_openai_compatible_server_models("omlx")
+    if served_name in served_models:
+        return served_name
+    if hf_repo in served_models:
+        return hf_repo
+
+    omlx_bin = omlx_executable()
+    if not omlx_bin:
+        raise ModelRuntimeError(
+            status_code=400,
+            detail="oMLX가 설치되지 않았습니다. `brew tap jundot/omlx https://github.com/jundot/omlx && brew install jundot/omlx/omlx`로 설치하세요.",
+        )
+
+    prov = OPENAI_COMPATIBLE_PROVIDERS.get("omlx") or {}
+    base_url = (os.getenv(prov.get("base_url_env", "")) or prov.get("base_url") or "http://127.0.0.1:8000/v1").strip()
+    parsed = urlparse(base_url)
+    port = parsed.port or 8000
+
+    running = LOCAL_SERVER_PROCESSES.get("omlx")
+    if not running or running.poll() is not None:
+        if not served_models:
+            command = [omlx_bin, *omlx_serve_args(port=port)]
+            LOCAL_SERVER_PROCESSES["omlx"] = subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+    if not wait_for_openai_compatible_server("omlx", served_name, timeout=90):
+        # Fallback: check if oMLX exposed the original repo id
+        if hf_repo in get_openai_compatible_server_models("omlx"):
+            return hf_repo
+        raise ModelRuntimeError(status_code=500, detail=f"oMLX 서버가 모델({served_name})을 로드하지 못했습니다.")
+    return served_name
+
+
 def engine_support_status(engine: str) -> Dict[str, Any]:
+    if engine == "omlx":
+        is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
+        if not is_apple_silicon:
+            return {"supported": False, "reason": "oMLX는 Apple Silicon macOS에서만 지원됩니다."}
+        return {"supported": True, "reason": None}
     if engine != "vllm":
         return {"supported": True, "reason": None}
     is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
