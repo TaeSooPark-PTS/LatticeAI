@@ -9,7 +9,7 @@ members = ["lattice-core", "lattice-retrieval", "lattice-host", "lattice-ingest"
 [workspace.package]
 # Kept in lockstep with the product version by scripts/bump_version.py and
 # guarded by tests/unit/test_version_consistency.py.
-version = "13.4.0"
+version = "13.4.1"
 edition = "2021"
 license = "MIT"
 
@@ -32,20 +32,20 @@ serde_json = "1"
 # Storage / retrieval. FTS5 must be verifiably available — lattice-core
 # carries a unit test that creates a trigram fts5 table and fails loudly if
 # the bundled build lacks the module.
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
 # Host / gateway.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "time", "signal", "io-util", "sync"] }
-axum = "0.7"
-reqwest = { version = "0.12", default-features = false, features = ["stream"] }
+axum = "0.8"
+reqwest = { version = "0.13", default-features = false, features = ["stream", "query"] }
 libc = "0.2"
 # Phase 2-4 additions: file watching for lattice-ingest.
-notify = "6"
+notify = "8"
 walkdir = "2"
 # Agent loop (v11.5.1): Python-compatible regex (lookbehind), approval-token
 # hashing/encoding, and the SSE stream wrapper for the live step timeline.
-fancy-regex = "0.14"
-sha2 = "0.10"
-base64 = "0.22"
+fancy-regex = "0.20"
+sha2 = "0.11"
+base64 = "0.23"
 getrandom = "0.4"
 futures-core = "0.3"
 

@@ -79,9 +79,9 @@ pub fn router(state: GovernanceState) -> Router {
     Router::new()
         .route("/api/proposals", get(list_proposals))
         .route("/api/proposals/counts", get(proposal_counts))
-        .route("/api/proposals/:item_id", get(get_proposal))
-        .route("/api/proposals/:item_id/approve", post(approve_proposal))
-        .route("/api/proposals/:item_id/reject", post(reject_proposal))
+        .route("/api/proposals/{item_id}", get(get_proposal))
+        .route("/api/proposals/{item_id}/approve", post(approve_proposal))
+        .route("/api/proposals/{item_id}/reject", post(reject_proposal))
         .with_state(state)
 }
 

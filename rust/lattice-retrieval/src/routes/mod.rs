@@ -87,7 +87,7 @@ pub fn router(db: impl Into<PathBuf>) -> Router {
         // FastAPI declares this one `{conversation_id:path}`, so a conversation
         // id containing a slash still resolves; the wildcard is that promise.
         .route(
-            "/rust/history/conversations/*conversation_id",
+            "/rust/history/conversations/{*conversation_id}",
             both(Endpoint::ConversationMessages),
         )
         .route(

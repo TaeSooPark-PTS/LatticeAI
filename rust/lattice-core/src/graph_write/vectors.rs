@@ -553,9 +553,9 @@ impl GraphWriter {
                  WHERE id=?",
                 rusqlite::params![
                     self.clock.now_iso(),
-                    total,
-                    indexed,
-                    skipped,
+                    total as i64,
+                    indexed as i64,
+                    skipped as i64,
                     json_of(&closing),
                     op_id,
                 ],

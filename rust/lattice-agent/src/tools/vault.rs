@@ -35,6 +35,15 @@ pub fn default_brain_dir() -> PathBuf {
     PathBuf::from(home).join(".ltcai-brain")
 }
 
+fn hex_lower(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        let _ = write!(&mut out, "{b:02x}");
+    }
+    out
+}
+
 /// `_scope_digest`: `sha256(f"{kind}\0{value}")[:24]`, prefixed by the kind.
 fn scope_digest(kind: &str, value: &str) -> String {
     use sha2::{Digest, Sha256};
@@ -42,7 +51,7 @@ fn scope_digest(kind: &str, value: &str) -> String {
     hasher.update(kind.as_bytes());
     hasher.update([0u8]);
     hasher.update(value.as_bytes());
-    let hex = format!("{:x}", hasher.finalize());
+    let hex = hex_lower(&hasher.finalize());
     format!("{kind}-{}", &hex[..24])
 }
 
@@ -249,7 +258,7 @@ mod tests {
 
     fn sha256_hex(text: &str) -> String {
         use sha2::{Digest, Sha256};
-        format!("{:x}", Sha256::digest(text.as_bytes()))
+        hex_lower(&Sha256::digest(text.as_bytes()))
     }
 
     #[test]

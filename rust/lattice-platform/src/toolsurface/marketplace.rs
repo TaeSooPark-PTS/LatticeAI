@@ -49,13 +49,13 @@ pub fn router(state: MarketplaceState) -> Router {
     Router::new()
         .route("/marketplace/templates", get(list_templates))
         .route(
-            "/marketplace/templates/:kind/:template_id/export",
+            "/marketplace/templates/{kind}/{template_id}/export",
             get(export_template),
         )
         .route("/marketplace/templates/import", post(import_template))
         .route("/marketplace/templates/install", post(install_template))
         .route(
-            "/marketplace/templates/:kind/:template_id/clone",
+            "/marketplace/templates/{kind}/{template_id}/clone",
             post(clone_template),
         )
         .route("/marketplace/templates/registry", get(template_registry))

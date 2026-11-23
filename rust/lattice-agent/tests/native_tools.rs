@@ -90,7 +90,7 @@ async fn start_worker() -> Server {
             }),
         )
         .route(
-            "/worker/render/:kind",
+            "/worker/render/{kind}",
             axum::routing::post({
                 let state = Arc::clone(&worker);
                 move |axum::extract::Path(kind): axum::extract::Path<String>,

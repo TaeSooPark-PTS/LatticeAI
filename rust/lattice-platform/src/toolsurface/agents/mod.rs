@@ -144,13 +144,13 @@ pub fn router(state: AgentsState) -> Router {
         .route("/agents/api/runtime/status", get(runtime_status))
         .route("/agents/api/runtime/health", get(runtime_health))
         .route("/agents/api/runtime/config", get(runtime_config))
-        .route("/agents/api/runs/:run_id/events", get(run_events))
-        .route("/agents/api/runs/:run_id/stop", post(run_stop))
+        .route("/agents/api/runs/{run_id}/events", get(run_events))
+        .route("/agents/api/runs/{run_id}/stop", post(run_stop))
         .route("/agents/api/roles", get(agent_roles))
         .route("/agents/api/runs", get(agent_runs))
         .route("/agents/api/handoffs", get(agent_handoffs))
-        .route("/agents/api/runs/:run_id", get(run_detail))
-        .route("/agents/api/runs/:run_id/replay", get(run_replay))
+        .route("/agents/api/runs/{run_id}", get(run_detail))
+        .route("/agents/api/runs/{run_id}/replay", get(run_replay))
         .route(
             "/agents/api/memory/snapshots",
             get(list_snapshots).post(create_snapshot),

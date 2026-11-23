@@ -155,7 +155,7 @@ pub(crate) fn validate_archive_entry_name(name: &str) -> Result<(), String> {
 }
 
 /// Detect POSIX symlink entries (`S_IFLNK = 0o120000`) inside a ZIP archive.
-pub(crate) fn is_zip_symlink(entry: &zip::read::ZipFile<'_>) -> bool {
+pub(crate) fn is_zip_symlink<R: Read>(entry: &zip::read::ZipFile<'_, R>) -> bool {
     entry
         .unix_mode()
         .is_some_and(|mode| (mode & 0o170_000) == 0o120_000)
@@ -172,7 +172,10 @@ pub(crate) fn validate_zip_entries<R: Read + std::io::Seek>(
         let entry = archive
             .by_index(idx)
             .map_err(|e| format!("Corrupt archive entry at index {idx}: {e}"))?;
-        let name = entry.name().to_string();
+        let name = entry
+            .name()
+            .map_err(|e| format!("Corrupt archive entry name at index {idx}: {e}"))?
+            .into_owned();
         if entry.is_dir() && name.ends_with('/') {
             let trimmed = name.trim_end_matches('/');
             validate_archive_entry_name(trimmed)?;

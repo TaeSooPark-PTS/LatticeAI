@@ -5,6 +5,13 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
 
+## [13.4.1] - 2026-11-23 — Living Synthesis
+
+### 수정됨
+- **메이저/브레이킹 의존성 업그레이드 호환성 해결 (`#58`, `#60`, `#61`):**
+  - **프론트엔드 (`package.json`, `tsconfig.json`, `frontend/src/vite-env.d.ts`):** `overrides`를 통해 `openapi-typescript@7.13.0`과 `typescript@7.0.2` 피어 의존성 충돌을 해결하고, `tsconfig.json`에서 제거된 `baseUrl`을 정리하며, `vite/client` 타입 참조를 추가해 Vitest 5.1.1 100% 커버리지를 유지했습니다.
+  - **Rust 워크스페이스 (`rust/`, `src-tauri/`):** `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-chat`, `lattice-ingest`, `lattice-retrieval`, `lattice-platform`을 `sha2` 0.11, `rusqlite` 0.43, `fancy-regex` 0.20, `axum` 0.8, `scrypt` 0.12, `zip` 9, `reqwest` 0.13, `tauri` 2.11.6에 맞게 업데이트했습니다.
+
 ## [13.4.0] - 2026-11-20 — Living Synthesis
 
 ### 추가됨

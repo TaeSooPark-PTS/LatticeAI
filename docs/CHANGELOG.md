@@ -6,6 +6,13 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.4.1] - 2026-11-23 — Living Synthesis
+
+### Fixed
+- **Dependency Major/Breaking Upgrades (`#58`, `#60`, `#61`):**
+  - **Frontend (`package.json`, `tsconfig.json`, `frontend/src/vite-env.d.ts`):** Resolved `openapi-typescript@7.13.0` peer dependency conflict with `typescript@7.0.2` via `overrides`, migrated `tsconfig.json` away from removed `baseUrl` to relative `paths`, added `vite/client` reference types for CSS side-effect imports, and maintained 100% Vitest 5.1.1 coverage across all 111 test files.
+  - **Rust Workspace (`rust/`, `src-tauri/`):** Updated `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-chat`, `lattice-ingest`, `lattice-retrieval`, and `lattice-platform` for `sha2` 0.11 / `digest` 0.11, `rusqlite` 0.43, `fancy-regex` 0.20, `axum` 0.8, `scrypt` 0.12, `zip` 9, `reqwest` 0.13, and `tauri` 2.11.6.
+
 ## [13.4.0] - 2026-11-20 — Living Synthesis
 
 ### Added

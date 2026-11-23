@@ -78,7 +78,7 @@ jobs:
       - name: Set up Node 20
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
@@ -209,7 +209,7 @@ jobs:
       - name: Set up Node 20
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
 
       - name: Set up Rust

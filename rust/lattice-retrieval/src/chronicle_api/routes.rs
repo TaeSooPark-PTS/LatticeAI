@@ -21,7 +21,7 @@ pub const MOUNTED: &[(&str, &str)] = &[
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/chronicle/overview", get(overview))
-        .route("/api/chronicle/day/:date", get(day))
+        .route("/api/chronicle/day/{date}", get(day))
         .route("/api/chronicle/as-of", get(as_of))
         .with_state(state)
 }

@@ -57,19 +57,19 @@ pub fn redact_secret_text(text: &str) -> String {
     let set = patterns();
     let mut out = set
         .telegram_bot
-        .replace_all(text, |captures: &Captures| {
+        .replace_all(text, |captures: &Captures<'_, str>| {
             format!("bot{}:REDACTED", &captures[1])
         })
         .into_owned();
     out = set
         .telegram_bare
-        .replace_all(&out, |captures: &Captures| {
+        .replace_all(&out, |captures: &Captures<'_, str>| {
             format!("bot{}:REDACTED", &captures[1])
         })
         .into_owned();
     for (index, regex) in set.secrets.iter().enumerate() {
         out = regex
-            .replace_all(&out, |captures: &Captures| {
+            .replace_all(&out, |captures: &Captures<'_, str>| {
                 if index == TWO_GROUP_PATTERN {
                     format!("{}={REDACTION}", &captures[1])
                 } else {

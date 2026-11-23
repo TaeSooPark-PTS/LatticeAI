@@ -289,14 +289,12 @@ pub fn build_graph_trace(
 /// product that is not the compact `","`, and the reason this renders the list
 /// by hand instead of calling `serde_json::to_string`.
 fn json_hash(values: &[Value]) -> String {
-    use sha2::{Digest, Sha256};
-
     let rendered: Vec<String> = values
         .iter()
         .map(|value| serde_json::to_string(value).unwrap_or_else(|_| "null".into()))
         .collect();
     let payload = format!("[{}]", rendered.join(", "));
-    format!("{:x}", Sha256::digest(payload.as_bytes()))
+    lattice_core::graph_write::pyaux::sha256_text(&payload)
 }
 
 /// `record_trace`'s row, without the storage.

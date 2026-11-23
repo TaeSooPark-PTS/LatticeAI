@@ -82,10 +82,10 @@ pub fn router(state: NetworkState) -> Router {
         .route("/network/identity", get(network_identity))
         .route("/network/peers", get(network_peers).post(network_pair))
         .route(
-            "/network/peers/:peer_id",
+            "/network/peers/{peer_id}",
             axum::routing::delete(network_unpair),
         )
-        .route("/network/push/:peer_id", post(network_push))
+        .route("/network/push/{peer_id}", post(network_push))
         .route("/network/receive", post(network_receive))
         .with_state(state)
 }

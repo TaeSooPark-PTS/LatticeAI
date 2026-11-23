@@ -425,9 +425,9 @@ pub fn router(state: Arc<LocalFilesState>) -> Router {
         .route("/local/serve", get(local::serve))
         .route("/local/write", post(local::write_post))
         .route("/api/ingestion/jobs", get(ingest::jobs))
-        .route("/api/ingestion/jobs/:job_id", get(ingest::job_detail))
+        .route("/api/ingestion/jobs/{job_id}", get(ingest::job_detail))
         .route(
-            "/api/ingestion/jobs/:job_id/resume",
+            "/api/ingestion/jobs/{job_id}/resume",
             post(ingest::job_resume),
         )
         .route("/api/ingestion/folder", post(ingest::folder))

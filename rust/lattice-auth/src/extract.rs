@@ -25,7 +25,6 @@
 
 use std::sync::Arc;
 
-use axum::async_trait;
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use axum::response::Response;
@@ -55,7 +54,6 @@ pub struct RequestedWorkspace(pub Option<String>);
 #[derive(Debug, Clone)]
 pub struct ClientIp(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for CurrentUser
 where
     Arc<AuthState>: FromRef<S>,
@@ -69,7 +67,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AdminUser
 where
     Arc<AuthState>: FromRef<S>,
@@ -83,7 +80,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RequestedWorkspace
 where
     S: Send + Sync,
@@ -98,7 +94,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ClientIp
 where
     Arc<AuthState>: FromRef<S>,

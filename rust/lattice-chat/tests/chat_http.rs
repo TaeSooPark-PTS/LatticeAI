@@ -286,7 +286,7 @@ async fn spawn_fake_worker(
             // UTF-8 on purpose: the Brain files a file node under the hash of
             // what is on disk, and a test that cannot compute that hash cannot
             // prove the document rather than the prose was ingested.
-            "/worker/render/:kind",
+            "/worker/render/{kind}",
             post({
                 let seams = seams.clone();
                 move |AxumPath(kind): AxumPath<String>, Json(body): Json<Value>| {

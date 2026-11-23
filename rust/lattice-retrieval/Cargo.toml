@@ -20,7 +20,7 @@ tokio = { workspace = true }
 # fancy-regex, not regex: the Python originals this crate ports use lookbehind
 # and negative lookahead (`(?<![A-Za-z0-9_])`, `(?![\s\-]*…)`), and its
 # backtracking leftmost-first semantics are the ones `re` has.
-fancy-regex = "0.14"
+fancy-regex = "0.20"
 # WP-R5: the vector index keys freshness on sha256(clean_text(item)); the
 # port has to compute the same digest to tell "indexed" from "stale".
 sha2 = { workspace = true }

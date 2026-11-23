@@ -320,7 +320,7 @@ pub fn router(state: InvitationsState) -> Router {
             "/invitations",
             get(list_invitations).post(create_invitation),
         )
-        .route("/invitations/:token/accept", post(accept_invitation))
+        .route("/invitations/{token}/accept", post(accept_invitation))
         .with_state(state)
 }
 

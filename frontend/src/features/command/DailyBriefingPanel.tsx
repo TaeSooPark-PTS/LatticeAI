@@ -68,7 +68,7 @@ export function DailyBriefingPanel({
   // sentence — never raw errors, never a grid of dashes.
   const briefingEmpty =
     Boolean(briefingQ.data) &&
-    (!briefingQ.data?.ok || Object.keys((data.sections || {}) as Record<string, unknown>).length === 0);
+    (!briefingQ.data!.ok || Object.keys((data.sections || {}) as Record<string, unknown>).length === 0);
   const knowledge = section(data, "knowledge");
   const conversations = section(data, "conversations");
   const automations = section(data, "automations");

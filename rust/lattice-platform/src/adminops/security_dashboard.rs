@@ -83,21 +83,21 @@ pub fn router(state: SecurityState) -> Router {
         .route("/admin/security/users", get(security_users))
         .route("/admin/security/events", get(security_events))
         .route(
-            "/admin/security/events/:event_id",
+            "/admin/security/events/{event_id}",
             get(security_event_detail),
         )
         .route(
-            "/admin/security/conversations/:conversation_id",
+            "/admin/security/conversations/{conversation_id}",
             get(security_conversation_summary),
         )
         .route(
-            "/admin/security/conversations/:conversation_id/raw",
+            "/admin/security/conversations/{conversation_id}/raw",
             get(security_conversation_raw),
         )
         .route("/admin/security/files", get(security_files))
-        .route("/admin/security/files/:file_id", get(security_file_detail))
+        .route("/admin/security/files/{file_id}", get(security_file_detail))
         .route(
-            "/admin/security/files/:file_id/content",
+            "/admin/security/files/{file_id}/content",
             get(security_file_content),
         )
         .route("/admin/security/raw", get(security_raw))

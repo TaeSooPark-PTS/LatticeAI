@@ -142,7 +142,7 @@ pub fn router(state: PortabilityState) -> Router {
         .route("/api/knowledge-graph/share/archive", post(share_archive))
         .route("/api/knowledge-graph/share/import", post(share_import))
         .route(
-            "/api/knowledge-graph/share/proposals/:item_id/accept",
+            "/api/knowledge-graph/share/proposals/{item_id}/accept",
             post(share_accept),
         )
         .route("/api/brain/storage/postgres/docker", post(postgres_docker))

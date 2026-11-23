@@ -17,6 +17,16 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.4.1 — Living Synthesis (2026-11-23)
+
+Dependency compatibility & maintenance release resolving Dependabot PRs `#58`, `#60`, and `#61` across the full stack:
+- **Frontend (`npm` / TypeScript 7.0.2 / Vitest 5.1.1):** Added `typescript` override for `openapi-typescript@7.13.0` peer resolution, updated `tsconfig.json` for TS 7 (`paths` without `baseUrl`) and `frontend/src/vite-env.d.ts` (`vite/client` side-effect CSS types), and preserved 100% Vitest branch/line/function/statement coverage across all 111 test files.
+- **Rust Workspace (`rust/` & `src-tauri/`):** Migrated to `sha2` 0.11 / `digest` 0.11 (`hex_lower` / `sha256_text`), `rusqlite` 0.43 (`i64` `ToSql` bindings), `fancy-regex` 0.20 (`Captures<'_, str>`), `axum` 0.8 (native async `FromRequestParts`), `scrypt` 0.12 (3-arg `Params::new`), `zip` 9 (`ZipFile<'_, R>`, `Result<Cow<'_, str>, ZipError>`, `SimpleFileOptions`), `reqwest` 0.13, and `tauri` 2.11.6.
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.4.1.md](docs/releases/RELEASE_NOTES_v13.4.1.md).
+
+Build artifacts: `dist/ltcai-13.4.1-py3-none-any.whl`, `dist/ltcai-13.4.1.tar.gz`, `ltcai-13.4.1.tgz`, `dist/ltcai-13.4.1.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.1_aarch64.dmg`.
+
 ## v13.4.0 — Living Synthesis (2026-11-20)
 
 Universal adaptive execution release uniting the **model-agnostic Universal Adaptive Agent Harness (`rust/lattice-agent/src/kernel/{probe.rs,agentloop/,transcript/,parse/}`) with zero per-model code branches**, **modular native web fetching & Computer Use bridge parity (`rust/lattice-agent/src/tools/web/`, `latticeai/tools/{web.py,computer.py}`)**, **a reproducible 25-task live empirical benchmark on `Qwen2.5-0.5B-Instruct-Q4_K_M` lifting overall pass rate from `28.0%` raw (`24.0%` standard loop) to `84.0%` (`+56.0 pp` / `+200.0%` relative gain)**, and **100% EN <-> KO bidirectional GitHub Markdown parity (`npm run docs:check-languages`)**.

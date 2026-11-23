@@ -528,9 +528,9 @@ fn read_archive_manifest(archive: &mut zip::ZipArchive<File>) -> Value {
 
 fn archive_has_blobs(archive: &zip::ZipArchive<File>) -> bool {
     (0..archive.len()).any(|i| {
-        archive
-            .name_for_index(i)
-            .is_some_and(|name| name.starts_with(BLOBS_PREFIX) && !name.ends_with('/'))
+        archive.name_for_index(i).is_some_and(|res| {
+            res.is_ok_and(|name| name.starts_with(BLOBS_PREFIX) && !name.ends_with('/'))
+        })
     })
 }
 
@@ -559,7 +559,12 @@ pub(super) fn restore_blobs_from_archive<R: Read + std::io::Seek>(
     let _ = std::fs::remove_dir_all(&tmp);
     let mut count = 0usize;
     let names: Vec<String> = (0..archive.len())
-        .filter_map(|i| archive.name_for_index(i).map(str::to_string))
+        .filter_map(|i| {
+            archive
+                .name_for_index(i)
+                .and_then(|res| res.ok())
+                .map(|name| name.into_owned())
+        })
         .collect();
     for name in names {
         let Some(rel) = name.strip_prefix(BLOBS_PREFIX) else {

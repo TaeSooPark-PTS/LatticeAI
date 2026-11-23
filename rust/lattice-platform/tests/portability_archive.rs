@@ -838,7 +838,7 @@ fn rewrite_outer_zip_entry(
     let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
     for i in 0..zr.len() {
         let mut entry = zr.by_index(i).unwrap();
-        let name = entry.name().to_string();
+        let name = entry.name().expect("entry name").into_owned();
         let mut buf = Vec::new();
         std::io::Read::read_to_end(&mut entry, &mut buf).unwrap();
         if name == target_entry {

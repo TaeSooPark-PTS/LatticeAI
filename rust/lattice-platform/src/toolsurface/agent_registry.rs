@@ -91,7 +91,7 @@ pub fn router(state: AgentRegistryState) -> Router {
         .route("/agents/api/registry/capabilities", get(capabilities))
         .route("/agents/api/registry/discover", get(discover))
         .route(
-            "/agents/api/registry/*agent_id",
+            "/agents/api/registry/{*agent_id}",
             get(get_agent).patch(update_agent).delete(remove_agent),
         )
         .with_state(state)

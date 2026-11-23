@@ -23,7 +23,6 @@ use lattice_auth::OrderedMap;
 use lattice_core::graph_write::types::{ExtractReply, IngestionRecord, SuppliedVector};
 use lattice_core::messages::{self, LANGUAGE_HEADER};
 use serde_json::{json, Map, Value};
-use sha2::{Digest, Sha256};
 
 use crate::contracts::ChatRequest;
 use crate::helpers::{file_action_target, format_network_status};
@@ -329,12 +328,12 @@ pub(crate) fn write_bytes(
 
 /// `file:` + sha256(workspace|digest)[:24], matching `_scoped_hash_id`.
 pub fn scoped_file_id(content: &str, workspace_id: Option<&str>) -> String {
-    let digest = format!("{:x}", Sha256::digest(content.as_bytes()));
+    let digest = lattice_core::graph_write::pyaux::sha256_text(content);
     let identity = match workspace_id.filter(|id| !id.is_empty()) {
         Some(workspace) => format!("{workspace}|{digest}"),
         None => digest,
     };
-    let hashed = format!("{:x}", Sha256::digest(identity.as_bytes()));
+    let hashed = lattice_core::graph_write::pyaux::sha256_text(&identity);
     format!("file:{}", &hashed[..24.min(hashed.len())])
 }
 

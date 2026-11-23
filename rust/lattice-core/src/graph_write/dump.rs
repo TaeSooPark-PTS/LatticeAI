@@ -11,8 +11,8 @@ use std::collections::BTreeMap;
 use rusqlite::types::ValueRef;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
-use sha2::{Digest, Sha256};
 
+use super::pyaux::{sha256_bytes, sha256_text};
 use crate::db::CoreError;
 
 /// Every logical table the write engine touches, in the golden's order.
@@ -186,7 +186,7 @@ pub fn digest_dump(dump: &Value) -> Value {
                     name.clone(),
                     json!({
                         "rows": items.len(),
-                        "sha256": format!("{:x}", Sha256::digest(payload.as_bytes())),
+                        "sha256": sha256_text(&payload),
                     }),
                 );
             }
@@ -210,11 +210,7 @@ fn select_rows(
     substitutions: &[(String, String)],
 ) -> Result<Vec<Value>, CoreError> {
     let mut statement = conn.prepare(sql)?;
-    let columns: Vec<String> = statement
-        .column_names()
-        .into_iter()
-        .map(str::to_string)
-        .collect();
+    let columns: Vec<String> = statement.column_names().map(str::to_string).collect();
     let mut query = statement.query([])?;
     let mut rows = Vec::new();
     while let Some(row) = query.next()? {
@@ -246,7 +242,7 @@ fn cell(value: ValueRef<'_>, blobs: Blobs, substitutions: &[(String, String)]) -
         }
         ValueRef::Blob(bytes) => Value::String(match blobs {
             Blobs::Hex => bytes.iter().map(|byte| format!("{byte:02x}")).collect(),
-            Blobs::Digest => format!("sha256:{:x}", Sha256::digest(bytes)),
+            Blobs::Digest => format!("sha256:{}", sha256_bytes(bytes)),
         }),
     }
 }

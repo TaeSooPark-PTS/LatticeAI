@@ -1,11 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v13.4.0)
+# Lattice AI Feature Status (v13.4.1)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **13.4.0 — Living Synthesis**.
+Current release: **13.4.1 — Living Synthesis**.
 
 This file describes the current product state and known limitations (including interactive Knowledge Graph neighborhood synthesis & conflict filtering, one-click contradiction staging/resolution, Chat Save-to-Brain & inline proposal approval, live embedding drain controls, and cooperative download cancellation). Historical
 change history is intentionally limited to 12.0.0 and later in `RELEASE.md` and

@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.4.1": {
+    "_why": [
+      "Living Synthesis (13.4.1) resolves major/breaking dependency upgrades",
+      "from Dependabot PRs #58, #60, and #61 across frontend (vitest 5.1.1,",
+      "jsdom 31, @testing-library/jest-dom 8, @types/node 26, playwright 1.60),",
+      "Rust workspace (axum 0.8, rusqlite 0.43, sha2 0.11, scrypt 0.12,",
+      "fancy-regex 0.20, zip 9, reqwest 0.13, ed25519-dalek 3, notify 8),",
+      "and Tauri desktop (tauri 2.11.6, plist 1.8.0, time 0.3.55).",
+      "",
+      "No UI screen layout changed in 13.4.1; empty claim set on purpose."
+    ]
+  },
   "13.4.0": {
     "_why": [
       "Universal Adaptive Harness (13.4.0) delivers model-agnostic execution",

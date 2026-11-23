@@ -131,7 +131,10 @@ pub fn router(state: Arc<RetrievalApiState>) -> Router {
         .route("/knowledge-graph/documents", get(documents_route))
         .route("/knowledge-graph/search", get(search_route))
         .route("/knowledge-graph/context", get(context_route))
-        .route("/knowledge-graph/neighbors/*node_id", get(neighbors_route))
+        .route(
+            "/knowledge-graph/neighbors/{*node_id}",
+            get(neighbors_route),
+        )
         .with_state(state)
 }
 
