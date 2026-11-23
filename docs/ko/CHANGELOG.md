@@ -5,6 +5,13 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
 
+## [13.4.2] - 2026-11-24 — Living Synthesis
+
+### 추가됨
+- **oMLX 엔진 및 Qwen3.8 27B 4-bit 지원 (`latticeai/models/model_providers.py`, `latticeai/services/model_engines.py`, `latticeai/services/model_runtime/`, `latticeai/services/model_capability_catalog.py`):**
+  - 계층형 RAM/SSD KV 캐시와 메모리 가드 자동 튜닝(`ensure_omlx_server`, `omlx_serve_args`), Hugging Face 캐시 `org--repo` 정규화, `/engines` 상태 API를 포함한 `omlx` 로컬 서버 엔진을 통합했습니다.
+  - Apple M5 32GB 환경 실측 검증을 바탕으로 `mlx-community/Qwen3.8-27B-4bit`의 `recommended_ram_gb`를 `32.0`으로 조정하고, 추천 및 다운로드 카탈로그에 등록했습니다.
+
 ## [13.4.1] - 2026-11-23 — Living Synthesis
 
 ### 수정됨

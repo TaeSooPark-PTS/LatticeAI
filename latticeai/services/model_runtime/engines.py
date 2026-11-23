@@ -52,6 +52,9 @@ from latticeai.services.model_engines import (
 from latticeai.services.model_engines import (
     ensure_ollama_server as ensure_ollama_server,
 )
+from latticeai.services.model_engines import (
+    ensure_omlx_server as ensure_omlx_server,
+)
 from latticeai.services.model_engines import ensure_vllm_server as ensure_vllm_server
 from latticeai.services.model_engines import find_lmstudio_cli as find_lmstudio_cli
 from latticeai.services.model_engines import (
@@ -65,6 +68,8 @@ from latticeai.services.model_engines import (
     lmstudio_native_api_base as lmstudio_native_api_base,
 )
 from latticeai.services.model_engines import local_binary as local_binary
+from latticeai.services.model_engines import omlx_executable as omlx_executable
+from latticeai.services.model_engines import omlx_serve_args as omlx_serve_args
 from latticeai.services.model_engines import (
     pull_ollama_model_with_progress as pull_ollama_model_with_progress,
 )
@@ -227,6 +232,10 @@ def engine_installed(engine: str) -> bool:
             importlib.util.find_spec("mlx")
             and (importlib.util.find_spec("mlx_vlm") or importlib.util.find_spec("mlx_lm"))
         )
+    if engine == "omlx":
+        from latticeai.services.model_engines import omlx_executable
+
+        return omlx_executable() is not None
     if engine == "ollama":
         return local_binary("ollama") is not None
     if engine == "vllm":

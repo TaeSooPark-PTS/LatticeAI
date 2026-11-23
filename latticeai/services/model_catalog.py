@@ -80,6 +80,15 @@ ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
         "label": "Install llama.cpp",
         "requires_binary": "brew",
     },
+    "omlx": {
+        "command": [
+            "/bin/bash",
+            "-lc",
+            "brew tap jundot/omlx https://github.com/jundot/omlx && brew install jundot/omlx/omlx",
+        ],
+        "label": "Install oMLX",
+        "requires_binary": "brew",
+    },
 }
 
 # 5.2.0 delegation: the rich catalog (with verification, hf_repo_id, strategies, hardware, license etc)
@@ -118,6 +127,7 @@ def _gguf_routes(
     """One model's engine map: MLX weights, a GGUF repo, and the upstream HF repo."""
     return {
         "local_mlx": mlx_repo,
+        "omlx": mlx_repo.replace("/", "--"),
         "ollama": f"hf.co/{gguf_repo}:{ollama_tag}",
         "vllm": hf_repo,
         "lmstudio": gguf_repo,
@@ -316,6 +326,15 @@ def _normalize_engine_entry(engine: str, model: Dict[str, Any]) -> Dict[str, Any
     mapped = aliases.get(engine) if aliases else None
     if mapped:
         entry["id"] = f"{engine}:{mapped}"
+    if engine == "omlx":
+        entry = dict(model)
+        hf_repo = str(entry.get("hf_repo_id") or entry.get("id") or "")
+        short = hf_repo.split("/")[-1].lower()
+        aliases = MODEL_ENGINE_ALIASES.get(short) or MODEL_ENGINE_ALIASES.get(hf_repo.lower())
+        mapped = aliases.get("omlx") if aliases else hf_repo.replace("/", "--")
+        entry["id"] = f"omlx:{mapped}"
+        entry["hf_repo_id"] = hf_repo
+        return entry
     # Tool-managed engines (ollama/vllm/lmstudio/llamacpp) pull on demand; the
     # registry's MLX on-disk size does not apply to them.
     entry["size"] = "실행 도구에서 관리"

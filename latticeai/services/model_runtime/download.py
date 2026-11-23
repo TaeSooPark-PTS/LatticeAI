@@ -36,7 +36,7 @@ _CANCELLED_DOWNLOADS: Set[str] = set()
 
 def _normalize_cancel_key(model_id: Optional[str]) -> str:
     raw = str(model_id or "").strip().lower()
-    if ":" in raw and raw.split(":", 1)[0] in {"local_mlx", "mlx", "huggingface", "ollama", "vllm", "llamacpp"}:
+    if ":" in raw and raw.split(":", 1)[0] in {"local_mlx", "mlx", "omlx", "huggingface", "ollama", "vllm", "llamacpp"}:
         return raw.split(":", 1)[1].strip()
     return raw
 
@@ -181,8 +181,10 @@ def _shards_complete(model_dir: Path) -> bool:
 
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
+    if provider == "omlx" and "/" not in repo_id and "--" in repo_id:
+        repo_id = repo_id.replace("--", "/", 1)
     model_dir = hf_model_dir(repo_id)
-    if provider in {"local_mlx", "vllm"} and (not model_dir.exists() or not model_dir.is_dir()):
+    if provider in {"local_mlx", "omlx", "vllm"} and (not model_dir.exists() or not model_dir.is_dir()):
         hf_cache_repo = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
         if hf_cache_repo.exists() and any(hf_cache_repo.glob("snapshots/*")):
             if provider == "vllm":

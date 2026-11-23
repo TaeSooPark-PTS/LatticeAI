@@ -20,6 +20,16 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.4.2": {
+    "_why": [
+      "Living Synthesis (13.4.2) integrates the oMLX (jundot/omlx) Apple Silicon",
+      "engine with hardware-tuned tiered RAM/SSD KV caching and memory guard,",
+      "and elevates mlx-community/Qwen3.8-27B-4bit to recommended and",
+      "downloadable status on 32GB+ Apple Silicon Macs.",
+      "",
+      "No frontend screen layout changed in 13.4.2; empty claim set on purpose."
+    ]
+  },
   "13.4.1": {
     "_why": [
       "Living Synthesis (13.4.1) resolves major/breaking dependency upgrades",

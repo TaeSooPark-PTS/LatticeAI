@@ -32,7 +32,7 @@ def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
     if ":" in raw:
         prefix, rest = raw.split(":", 1)
         prefix = prefix.strip().lower()
-        if prefix in {"ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
+        if prefix in {"omlx", "ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
             provider = "local_mlx" if prefix in {"local_mlx", "mlx"} else prefix
             model_name = rest.strip()
     provider = provider or ("local_mlx" if engine_hint in {"", "local_mlx", "mlx"} else engine_hint)
@@ -103,7 +103,7 @@ def build_model_resolution(
     )
 
 
-_LOCAL_SMOKE_ENGINES = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+_LOCAL_SMOKE_ENGINES = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
 
 
 async def _smoke_test_loaded_model(

@@ -62,6 +62,7 @@ const OPENAI_COMPATIBLE_PROVIDERS: &[&str] = &[
     "groq",
     "together",
     "xai",
+    "omlx",
     "ollama",
     "vllm",
     "lmstudio",

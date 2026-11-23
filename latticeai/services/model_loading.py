@@ -37,6 +37,7 @@ def _get_model_runtime_deps(runtime_state: Any):
         ensure_llamacpp_server,
         ensure_lmstudio_model,
         ensure_ollama_server,
+        ensure_omlx_server,
         ensure_vllm_server,
         get_lmstudio_models,
         get_ollama_pulled_models,
@@ -62,6 +63,7 @@ def _get_model_runtime_deps(runtime_state: Any):
         "ensure_llamacpp_server": ensure_llamacpp_server,
         "ensure_lmstudio_model": ensure_lmstudio_model,
         "ensure_ollama_server": ensure_ollama_server,
+        "ensure_omlx_server": ensure_omlx_server,
         "ensure_vllm_server": ensure_vllm_server,
         "get_current_user": runtime_state.get_current_user,
         "get_lmstudio_models": get_lmstudio_models,
@@ -113,7 +115,7 @@ def _prepare_model_sources(
     Returns the four values the caller needs back, including the two the
     LM Studio branch rewrites (``parsed_model`` and ``model_id``).
     """
-    local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+    local_engines = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
     install_result: Dict[str, object] = {}
     download_result: Optional[Dict[str, object]] = None
 
@@ -149,6 +151,13 @@ def _prepare_model_sources(
             if completed.returncode != 0:
                 raise ModelRuntimeError(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
             download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
+    elif parsed_provider == "omlx":
+        if not deps["hf_model_ready"](parsed_model, "omlx") and not deps["_download_allowed"](allow_download):
+            deps["_download_block"](parsed_provider, parsed_model)
+        served_model = deps["ensure_omlx_server"](parsed_model)
+        parsed_model = served_model
+        model_id = f"omlx:{served_model}"
+        download_result = {"provider": "omlx", "model": served_model, "server_ready": True}
     elif parsed_provider == "vllm":
         if not deps["hf_model_ready"](parsed_model, "vllm") and not deps["_download_allowed"](allow_download):
             deps["_download_block"](parsed_provider, parsed_model)
@@ -268,6 +277,39 @@ def sse_event(event: str, data: Dict[str, object]) -> str:
     return sse_frame(event, data)
 
 
+def _prepare_stream_omlx(
+    deps: Any,
+    parsed_model: str,
+    allow_download: bool,
+    emit_progress: Any,
+) -> tuple[str, str, Dict[str, object]]:
+    if not deps["hf_model_ready"](parsed_model, "omlx"):
+        if not deps["_download_allowed"](allow_download):
+            deps["_download_block"]("omlx", parsed_model)
+        download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress)
+    else:
+        download_result = {"provider": "omlx", "model": parsed_model, "cached": True}
+        emit_progress(deps["model_download_progress_payload"](
+            "download",
+            "이미 다운로드된 모델을 확인했습니다.",
+            percent=100,
+            detail=parsed_model,
+            eta_seconds=0,
+        ))
+    emit_progress(deps["model_download_progress_payload"](
+        "server",
+        "oMLX 서버를 시작하는 중입니다.",
+        percent=92,
+        indeterminate=True,
+    ))
+    served_model = deps["ensure_omlx_server"](parsed_model)
+    return (
+        served_model,
+        f"omlx:{served_model}",
+        {**(download_result or {}), "provider": "omlx", "model": served_model, "server_ready": True},
+    )
+
+
 async def prepare_and_load_model_stream(
     model_id: str,
     request: Any,
@@ -297,7 +339,7 @@ async def prepare_and_load_model_stream(
 
     def blocking_prepare() -> None:
         try:
-            local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+            local_engines = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
             install_result: Dict[str, object] = {}
             download_result: Optional[Dict[str, object]] = None
             prepared_model_id = model_id
@@ -367,6 +409,10 @@ async def prepare_and_load_model_stream(
                         detail=parsed_model,
                         eta_seconds=0,
                     ))
+            elif parsed_provider == "omlx":
+                prepared_model_name, prepared_model_id, download_result = _prepare_stream_omlx(
+                    deps, parsed_model, allow_download, emit_progress
+                )
             elif parsed_provider == "vllm":
                 if not deps["hf_model_ready"](parsed_model, "vllm"):
                     if not deps["_download_allowed"](allow_download):

@@ -2,7 +2,7 @@
 
 # Lattice AI v13.4.1 — Living Synthesis (2026-11-23)
 
-> **Status: canonical** — current release note (Dependency Compatibility & Maintenance).
+> **Status: historical** — 13.4.1 release note (Dependency Compatibility & Maintenance).
 
 Dependency compatibility & maintenance release resolving Dependabot PRs `#58`, `#60`, and `#61` across the full stack.
 

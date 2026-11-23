@@ -6,7 +6,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **13.4.1 — Living Synthesis**.
+Current release: **13.4.2 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -1908,13 +1908,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-13.4.1 exact artifact names:
+13.4.2 exact artifact names:
 
-- `dist/ltcai-13.4.1-py3-none-any.whl`
-- `dist/ltcai-13.4.1.tar.gz`
-- `ltcai-13.4.1.tgz`
-- `dist/ltcai-13.4.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.1_aarch64.dmg`
+- `dist/ltcai-13.4.2-py3-none-any.whl`
+- `dist/ltcai-13.4.2.tar.gz`
+- `ltcai-13.4.2.tgz`
+- `dist/ltcai-13.4.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.2_aarch64.dmg`
 
 The macOS DMG is built, smoke-verified, checksummed, and attached to GitHub
 Releases by `.github/workflows/release.yml` and `publish.yml` — Developer ID

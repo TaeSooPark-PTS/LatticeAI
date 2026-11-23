@@ -14,10 +14,10 @@
     },
     "info": {
       "title": "Lattice AI Server (local)",
-      "version": "13.4.1"
+      "version": "13.4.2"
     },
     "openapi": "3.1.0"
   },
-  "spec_version": "13.4.1",
+  "spec_version": "13.4.2",
   "unattributed_schemas": []
 }

@@ -162,6 +162,9 @@ from latticeai.services.model_runtime.engines import (
     ensure_ollama_server as ensure_ollama_server,
 )
 from latticeai.services.model_runtime.engines import (
+    ensure_omlx_server as ensure_omlx_server,
+)
+from latticeai.services.model_runtime.engines import (
     ensure_vllm_server as ensure_vllm_server,
 )
 from latticeai.services.model_runtime.engines import (
@@ -184,6 +187,12 @@ from latticeai.services.model_runtime.engines import (
 )
 from latticeai.services.model_runtime.engines import (
     local_binary as local_binary,
+)
+from latticeai.services.model_runtime.engines import (
+    omlx_executable as omlx_executable,
+)
+from latticeai.services.model_runtime.engines import (
+    omlx_serve_args as omlx_serve_args,
 )
 from latticeai.services.model_runtime.engines import (
     pull_ollama_model_with_progress as pull_ollama_model_with_progress,

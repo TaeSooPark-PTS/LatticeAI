@@ -6,6 +6,13 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.4.2] - 2026-11-24 — Living Synthesis
+
+### Added
+- **oMLX Engine & Qwen3.8 27B 4-bit Support (`latticeai/models/model_providers.py`, `latticeai/services/model_engines.py`, `latticeai/services/model_runtime/`, `latticeai/services/model_capability_catalog.py`):**
+  - Integrated `omlx` (`jundot/omlx`) as a first-class local server engine with hardware-tuned KV cache & memory-guard flags (`ensure_omlx_server`, `omlx_serve_args`), Hugging Face cache `org--repo` normalization, and `/engines` status reporting.
+  - Lowered `mlx-community/Qwen3.8-27B-4bit` `recommended_ram_gb` from `48.0` to `32.0` after Apple M5 32GB verification and exposed `omlx` models in both recommended and downloadable catalogs.
+
 ## [13.4.1] - 2026-11-23 — Living Synthesis
 
 ### Fixed
