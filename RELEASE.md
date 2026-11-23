@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.5.0 — Living Synthesis (2026-11-24)
+
+Cross-platform one-click engine installation and **Qwen3.8 27B 4-bit** setup across **macOS** (`omlx` Homebrew + zero-Homebrew universal2 wheel fallback, `local_mlx`), **Windows** (`winget` Ollama / llama.cpp / LM Studio + `pip` `llama-cpp-python[server]` fallback), and **Linux** (Ollama official install script + `pip` / `vllm`), live available-RAM pressure tuning (`host_available_ram_gb`, `omlx_serve_args`, `llamacpp_serve_args`), workspace upgrade to **TypeScript 7.0.2 (`tsgo`)** with `@babel/parser` i18n AST checking, and modular `engine_adapters.py` / `model_loading.py` refactoring with dead-code and obsolete-test removal.
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.5.0.md](docs/releases/RELEASE_NOTES_v13.5.0.md).
+
+Build artifacts: `dist/ltcai-13.5.0-py3-none-any.whl`, `dist/ltcai-13.5.0.tar.gz`, `ltcai-13.5.0.tgz`, `dist/ltcai-13.5.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.5.0_aarch64.dmg`.
+
 ## v13.4.2 — Living Synthesis (2026-11-24)
 
 Added **oMLX (`jundot/omlx`)** engine integration with hardware-tuned tiered RAM/SSD KV caching (`--memory-guard balanced`, `--hot-cache-max-size`, `--paged-ssd-cache-dir`, `--max-concurrent-requests 2`, `--initial-cache-blocks 128`) and elevated **`mlx-community/Qwen3.8-27B-4bit`** to recommended & downloadable status on 32GB+ Apple Silicon Macs (`recommended_ram_gb=32.0`).

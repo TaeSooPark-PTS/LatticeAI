@@ -243,7 +243,9 @@ def engine_installed(engine: str) -> bool:
     if engine == "lmstudio":
         return find_lmstudio_cli() is not None or Path("/Applications/LM Studio.app").exists()
     if engine == "llamacpp":
-        return shutil.which("llama-server") is not None
+        from latticeai.services.engine_adapters import llamacpp_python_available
+
+        return shutil.which("llama-server") is not None or local_binary("llama-server") is not None or llamacpp_python_available()
     if engine in {"openai", "openrouter", "groq", "together", "xai"}:
         return AsyncOpenAI is not None
     return False

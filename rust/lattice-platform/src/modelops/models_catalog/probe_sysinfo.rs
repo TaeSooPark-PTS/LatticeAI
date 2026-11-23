@@ -12,7 +12,22 @@ pub fn read_ram_bytes() -> Option<u64> {
     {
         parse_meminfo_total(&std::fs::read_to_string("/proc/meminfo").ok()?)
     }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(target_os = "windows")]
+    {
+        let out = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory",
+            ])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        String::from_utf8_lossy(&out.stdout).trim().parse().ok()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         None
     }
@@ -118,6 +133,7 @@ pub(super) fn disk_free_bytes(path: &Path) -> Option<u64> {
 pub(super) fn detect_package_manager() -> String {
     for (bin, name) in [
         ("brew", "brew"),
+        ("winget", "winget"),
         ("apt-get", "apt"),
         ("dnf", "dnf"),
         ("pacman", "pacman"),

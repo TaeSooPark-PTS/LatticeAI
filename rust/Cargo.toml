@@ -9,7 +9,7 @@ members = ["lattice-core", "lattice-retrieval", "lattice-host", "lattice-ingest"
 [workspace.package]
 # Kept in lockstep with the product version by scripts/bump_version.py and
 # guarded by tests/unit/test_version_consistency.py.
-version = "13.4.2"
+version = "13.5.0"
 edition = "2021"
 license = "MIT"
 
@@ -40,7 +40,6 @@ reqwest = { version = "0.13", default-features = false, features = ["stream", "q
 libc = "0.2"
 # Phase 2-4 additions: file watching for lattice-ingest.
 notify = "8"
-walkdir = "2"
 # Agent loop (v11.5.1): Python-compatible regex (lookbehind), approval-token
 # hashing/encoding, and the SSE stream wrapper for the live step timeline.
 fancy-regex = "0.20"

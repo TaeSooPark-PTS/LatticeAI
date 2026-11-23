@@ -52,10 +52,6 @@ export function hasDesktopFolderPicker() {
   );
 }
 
-export function hasBrowserFolderPicker() {
-  return typeof (window as BrowserDirectoryPickerWindow).showDirectoryPicker === "function";
-}
-
 
 export function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";

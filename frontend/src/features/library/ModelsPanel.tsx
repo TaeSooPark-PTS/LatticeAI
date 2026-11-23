@@ -179,6 +179,7 @@ export function ModelsPanel() {
                 const modelHardware = asRecord(model.hardware);
                 const recommendationHardware = asRecord(recommendation.hardware);
                 const downloadRequired = Boolean(model.download_required);
+                const installRequired = Boolean(model.install_required);
                 const recommendedRam = modelHardware.recommended_ram_gb || recommendationHardware.recommended_ram_gb;
                 const hardwareNote = recommendedRam
                   ? t(language, "library.model.ramRecommended", { ram: String(recommendedRam) })
@@ -203,7 +204,8 @@ export function ModelsPanel() {
                 const badgeLabel = unsupported && mode === "basic"
                   ? t(language, "library.model.needsAttention")
                   : statusLabel;
-                const canPrepare = loadAvailable || downloadRequired;
+                const canPrepare = loadAvailable || downloadRequired || installRequired;
+                const needsConsentGate = downloadRequired || installRequired;
                 const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
                 const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
                 return (
@@ -267,16 +269,16 @@ export function ModelsPanel() {
                       ) : (
                         <Button
                           variant="outline"
-                          disabled={busy || unsupported || !canPrepare || (downloadRequired && !consent)}
+                          disabled={busy || unsupported || !canPrepare || (needsConsentGate && !consent)}
                           title={
                             unsupported ? t(language, "library.model.status.unsupported")
-                            : downloadRequired && !consent ? t(language, "library.btn.needsConsent")
+                            : needsConsentGate && !consent ? t(language, "library.btn.needsConsent")
                             : !canPrepare ? unavailableReason
                             : undefined
                           }
                           onClick={() => prepareModel(loadId, engine, consent)}
                         >
-                          {activeModel === loadId && busy ? t(language, "library.btn.preparing") : downloadRequired ? t(language, "library.btn.installLoad") : t(language, "library.btn.validateLoad")}
+                          {activeModel === loadId && busy ? t(language, "library.btn.preparing") : needsConsentGate ? t(language, "library.btn.installLoad") : t(language, "library.btn.validateLoad")}
                         </Button>
                       )}
                     </div>

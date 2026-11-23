@@ -87,7 +87,6 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
 };
 
 export const primaryRoutes = productShellRoutes;
-export const routeAliases = compatibilityRouteAliases;
 
 // The command palette's page list. This used to be a second, parallel copy of
 // the same destinations that the palette did not read — so re-pointing "작업"

@@ -52,7 +52,12 @@ pub(crate) fn scan_environment(probe: &HostProbe, catalog: &WorkerCatalog) -> Or
 }
 
 pub(super) fn auto_state(probe: &HostProbe, catalog: &WorkerCatalog) -> OrderedMap {
-    let (recs, _) = recommend_from_catalog(probe, "local_mlx", catalog);
+    let preferred_engine = if probe.apple_silicon {
+        "local_mlx"
+    } else {
+        "ollama"
+    };
+    let (recs, _) = recommend_from_catalog(probe, preferred_engine, catalog);
     let top = recs.get("top_pick").cloned().unwrap_or(Value::Null);
     let embedding_rec = recs
         .get("embedding_recommendation")
@@ -320,22 +325,32 @@ fn plan_steps(probe: &HostProbe, catalog: &WorkerCatalog, top_id: &str) -> Vec<V
                 "detail": "recommended model is already loaded",
             }));
         } else {
+            let default_engine = if probe.apple_silicon {
+                "local_mlx"
+            } else {
+                "ollama"
+            };
             steps.push(json!({
                 "id": "model",
                 "kind": "prepare_model",
                 "action": "prepare_model",
                 "model_id": top_id,
-                "engine": "local_mlx",
+                "engine": default_engine,
                 "detail": format!("download and load {top_id} via /engines/prepare-model"),
             }));
         }
     }
     if probe.package_manager == "none" {
+        let pm_command = match probe.os.as_str() {
+            "windows" => "install App Installer (winget) from Microsoft Store",
+            "linux" => "curl -fsSL https://ollama.com/install.sh | sh",
+            _ => "install Homebrew from https://brew.sh",
+        };
         steps.push(json!({
             "id": "package_manager",
             "kind": "manual",
             "action": "install_package_manager",
-            "command": "install Homebrew from https://brew.sh",
+            "command": pm_command,
             "detail": "no host package manager was found",
         }));
     }

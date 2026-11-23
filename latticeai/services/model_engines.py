@@ -23,6 +23,26 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from latticeai.core.quiet import quiet
+from latticeai.services.engine_adapters import (
+    ENGINE_ADAPTERS,
+    default_local_engine_for_host,
+    llamacpp_python_available,
+    llamacpp_serve_args,
+    omlx_serve_args,
+    resolve_engine_installer,
+)
+from latticeai.services.engine_adapters import (
+    host_available_ram_gb as _host_available_ram_gb,
+)
+from latticeai.services.engine_adapters import (
+    host_ram_gb as _host_ram_gb,
+)
+from latticeai.services.engine_adapters import (
+    smoke_test_loaded_model as _smoke_test_loaded_model,
+)
+from latticeai.services.engine_adapters import (
+    windows_binary_candidates as _windows_binary_candidates,
+)
 from latticeai.services.model_catalog import ENGINE_INSTALLERS
 from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.process_audit import (
@@ -60,24 +80,7 @@ def local_binary(binary: str) -> Optional[str]:
 
 
 def windows_binary_candidates(binary: str) -> List[Path]:
-    local_appdata = os.environ.get("LOCALAPPDATA", "")
-    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
-    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    candidates: Dict[str, List[Optional[Path]]] = {
-        "ollama": [
-            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
-            Path(program_files) / "Ollama" / "ollama.exe",
-        ],
-        "lms": [
-            Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe" if local_appdata else None,
-            Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe",
-        ],
-        "nvidia-smi": [
-            Path(program_files) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
-            Path(program_files_x86) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
-        ],
-    }
-    return [item for item in candidates.get(binary, []) if item is not None]
+    return _windows_binary_candidates(binary)
 
 
 def find_lmstudio_cli() -> Optional[str]:
@@ -116,63 +119,6 @@ def omlx_executable() -> Optional[str]:
         if candidate.exists():
             return str(candidate)
     return None
-
-
-def _host_ram_gb() -> float:
-    try:
-        pages = os.sysconf("SC_PHYS_PAGES")
-        page_size = os.sysconf("SC_PAGE_SIZE")
-        if pages > 0 and page_size > 0:
-            return (pages * page_size) / (1024 ** 3)
-    except Exception:
-        quiet()
-    return 16.0
-
-
-def omlx_serve_args(ram_gb: Optional[float] = None, port: int = 8000) -> List[str]:
-    """Return hardware-tuned CLI flags for ``omlx serve`` (KV cache & memory guard)."""
-    effective_ram = float(ram_gb) if ram_gb is not None else _host_ram_gb()
-    memory_guard = (os.getenv("LATTICEAI_OMLX_MEMORY_GUARD") or "").strip().lower()
-    if memory_guard not in {"off", "safe", "balanced", "aggressive"}:
-        memory_guard = "safe" if effective_ram < 32.0 else "balanced"
-
-    hot_cache = (os.getenv("LATTICEAI_OMLX_HOT_CACHE_MAX_SIZE") or "").strip()
-    if not hot_cache:
-        hot_cache = "4GB" if effective_ram >= 48.0 else ("2GB" if effective_ram >= 32.0 else "0")
-
-    max_concurrent = (os.getenv("LATTICEAI_OMLX_MAX_CONCURRENT_REQUESTS") or "").strip()
-    if not max_concurrent:
-        max_concurrent = "4" if effective_ram >= 48.0 else "2"
-
-    ssd_cache_dir = (os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_DIR") or "").strip()
-    if not ssd_cache_dir:
-        ssd_cache_dir = str(Path.home() / ".omlx" / "kv-cache")
-
-    ssd_max_size = (os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_MAX_SIZE") or "32GB").strip()
-    initial_blocks = (os.getenv("LATTICEAI_OMLX_INITIAL_CACHE_BLOCKS") or "128").strip()
-
-    args = [
-        "serve",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        str(port),
-        "--headless",
-        "--hf-cache",
-        "--memory-guard",
-        memory_guard,
-        "--hot-cache-max-size",
-        hot_cache,
-        "--paged-ssd-cache-dir",
-        ssd_cache_dir,
-        "--paged-ssd-cache-max-size",
-        ssd_max_size,
-        "--max-concurrent-requests",
-        max_concurrent,
-        "--initial-cache-blocks",
-        initial_blocks,
-    ]
-    return args
 
 
 def _json_request(
@@ -418,7 +364,9 @@ def ensure_llamacpp_server(model_name: str) -> None:
         _reap_local_server(running, "llama.cpp")
     elif served_models:
         raise ModelRuntimeError(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
-    if not shutil.which("llama-server"):
+    llama_bin = local_binary("llama-server")
+    has_python_server = llamacpp_python_available()
+    if not llama_bin and not has_python_server:
         raise ModelRuntimeError(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
     if not hf_model_ready(model_name, "llamacpp"):
         download_hf_model(model_name, "llamacpp")
@@ -433,20 +381,29 @@ def ensure_llamacpp_server(model_name: str) -> None:
         None,
     )
     model_file = preferred or primary_ggufs[0]
-    command = [
-        "llama-server",
-        "-m",
-        str(model_file),
-        "--alias",
-        model_name,
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8080",
-    ]
     mmprojs = [p for p in gguf_files if p.name.lower().startswith("mmproj-")]
-    if mmprojs:
-        command.extend(["--mmproj", str(mmprojs[0])])
+    mmproj_file = mmprojs[0] if mmprojs else None
+    if llama_bin:
+        command = [
+            llama_bin,
+            *llamacpp_serve_args(model_file, model_name, mmproj_file=mmproj_file),
+        ]
+    else:
+        command = [
+            sys.executable,
+            "-m",
+            "llama_cpp.server",
+            "--model",
+            str(model_file),
+            "--model_alias",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8080",
+            "--n_gpu_layers",
+            "-1",
+        ]
     LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
         command,
         stdout=subprocess.DEVNULL,
@@ -599,14 +556,17 @@ def ensure_omlx_server(model_name: str) -> str:
 
 
 def engine_support_status(engine: str) -> Dict[str, Any]:
+    is_apple_silicon = sys.platform == "darwin" and str(platform.machine() or "").lower() in {"arm64", "aarch64"}
+    if engine == "local_mlx":
+        if not is_apple_silicon:
+            return {"supported": False, "reason": "MLX는 Apple Silicon macOS에서만 지원됩니다."}
+        return {"supported": True, "reason": None}
     if engine == "omlx":
-        is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
         if not is_apple_silicon:
             return {"supported": False, "reason": "oMLX는 Apple Silicon macOS에서만 지원됩니다."}
         return {"supported": True, "reason": None}
     if engine != "vllm":
         return {"supported": True, "reason": None}
-    is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
     if sys.platform.startswith("win"):
         return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
     if sys.platform == "darwin" and not is_apple_silicon:
@@ -623,24 +583,13 @@ def _engine_install_command(
     *,
     base_dir: Optional[Path] = None,
 ) -> tuple[list[str], str, bool]:
-    if engine not in ENGINE_INSTALLERS:
-        raise ModelRuntimeError(status_code=400, detail="지원하지 않는 엔진입니다.")
-    installer = ENGINE_INSTALLERS[engine]
-    required_binary = str(installer.get("requires_binary") or "")
-    if required_binary and shutil.which(required_binary) is None:
-        raise ModelRuntimeError(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-    command = list(installer["command"])
-
-    if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
-        command = [
-            "/bin/bash",
-            "-lc",
-            "set -euo pipefail; "
-            "if [ ! -x /opt/homebrew/bin/python3.12 ]; then brew install python@3.12; fi; "
-            "/opt/homebrew/bin/python3.12 -m venv ~/.venv-vllm-metal; "
-            "~/.venv-vllm-metal/bin/pip install -U pip setuptools wheel; "
-            "~/.venv-vllm-metal/bin/pip install vllm-metal",
-        ]
+    command = resolve_engine_installer(
+        engine,
+        ENGINE_INSTALLERS,
+        sys_mod=sys,
+        platform_mod=platform,
+        which_fn=shutil.which,
+    )
     requires_admin = bool(command and command[0] in {"apt", "apt-get", "dnf", "pacman"})
     return command, str(base_dir or Path.cwd()), requires_admin
 
@@ -753,95 +702,16 @@ def install_engine(
     return result
 
 
-# --- Smoke test extracted for server decomp wave ---
-async def _smoke_test_loaded_model(
-    resolution: Any,
-    *,
-    api_key_override: Optional[str] = None,
-    model_router: Any = None,
-) -> Dict[str, Any]:
-    """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
-
-    Cloud models are skipped to avoid cost.
-    Failures are swallowed.
-    """
-    # late imports to avoid circular and keep lattice_brain/latticeai clean
-    try:
-        import asyncio
-
-        from latticeai.core.model_compat import (
-            classify_smoke_response as _classify_smoke_response,
-        )
-        from latticeai.core.model_compat import (
-            ensure_profile as _ensure_compat_profile,
-        )
-        from latticeai.core.model_compat import (
-            fast_postprocess as _compat_fast_postprocess,
-        )
-        from latticeai.core.model_compat import (
-            record_smoke_result as _record_smoke_result,
-        )
-        from latticeai.services.model_runtime import (
-            _LOCAL_SMOKE_ENGINES,
-            _SMOKE_PROMPT,
-        )
-    except Exception as e:
-        return {"ok": False, "reason": f"smoke import failed: {e}", "skipped": True}
-
-    if model_router is None:
-        return {"ok": False, "reason": "model router is not configured", "skipped": True}
-
-    if (getattr(resolution, "engine", "") or "").lower() not in _LOCAL_SMOKE_ENGINES:
-        profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
-        return {
-            "ok": True,
-            "reason": "skipped (cloud model — smoke test would incur cost)",
-            "answer": None,
-            "profile": profile.to_dict(),
-            "skipped": True,
-        }
-    try:
-        text = await asyncio.wait_for(
-            model_router.generate(
-                _SMOKE_PROMPT,
-                context=None,
-                max_tokens=128,
-                temperature=0.1,
-            ),
-            timeout=30,
-        )
-    except Exception as exc:
-        reason = str(exc)[:200] or "generation_failed"
-        profile = _record_smoke_result(
-            getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), False, reason, status="failed"
-        )
-        return {
-            "ok": False,
-            "status": "failed",
-            "reason": reason,
-            "answer": None,
-            "profile": profile.to_dict(),
-        }
-
-    profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
-    cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
-    status, reason = _classify_smoke_response(cleaned)
-    ok = status != "failed"
-    profile = _record_smoke_result(
-        getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), ok, reason, status=status
-    )
-    return {
-        "ok": ok,
-        "status": status,
-        "reason": reason,
-        "answer": cleaned,
-        "profile": profile.to_dict(),
-    }
-
-
 __all__ = [
+    "ENGINE_ADAPTERS",
+    "default_local_engine_for_host",
+    "_host_available_ram_gb",
+    "_host_ram_gb",
+    "llamacpp_serve_args",
+    "omlx_serve_args",
     "ensure_lmstudio_server",
     "ensure_ollama_server",
+    "ensure_omlx_server",
     "ensure_vllm_server",
     "ensure_llamacpp_server",
     "pull_ollama_model_with_progress",

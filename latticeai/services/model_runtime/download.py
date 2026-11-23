@@ -327,6 +327,7 @@ def _call_hf_hub_download(
     local_dir: str,
     tqdm_class: Any,
 ) -> str:
+    os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
     env_endpoint = (
         os.environ.get("HF_ENDPOINT") or os.environ.get("HUGGINGFACE_HUB_ENDPOINT") or ""
     ).strip()

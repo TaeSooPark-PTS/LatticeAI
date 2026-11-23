@@ -488,7 +488,7 @@ const CATALOG_HINTS: &[(&str, CatalogHint)] = &[
         CatalogHint {
             family: "Qwen3.8",
             min_ram_gb: 24.0,
-            recommended_ram_gb: 48.0,
+            recommended_ram_gb: 32.0,
             recommended_default: false,
             display_priority: 52,
         },
@@ -526,11 +526,37 @@ const CATALOG_HINTS: &[(&str, CatalogHint)] = &[
 ];
 
 fn catalog_hints(id: &str) -> Option<&'static CatalogHint> {
-    CATALOG_HINTS
+    if let Some((_, hint)) = CATALOG_HINTS.iter().find(|(known, _)| *known == id) {
+        return Some(hint);
+    }
+    let normalized = id
+        .strip_prefix("omlx:")
+        .or_else(|| id.strip_prefix("ollama:"))
+        .or_else(|| id.strip_prefix("llamacpp:"))
+        .or_else(|| id.strip_prefix("lmstudio:"))
+        .or_else(|| id.strip_prefix("vllm:"))
+        .or_else(|| id.strip_prefix("local_mlx:"))
+        .unwrap_or(id);
+    let normalized = normalized.strip_prefix("hf.co/").unwrap_or(normalized);
+    let normalized = normalized.split(':').next().unwrap_or(normalized);
+    let repo_norm = if !normalized.contains('/') && normalized.contains("--") {
+        normalized.replacen("--", "/", 1)
+    } else {
+        normalized.to_string()
+    };
+    if let Some((_, hint)) = CATALOG_HINTS
         .iter()
-        .find(|(known, _)| *known == id)
-        .map(|(_, hint)| hint)
-        .or_else(|| super::embedding::embedding_catalog_hints(id))
+        .find(|(known, _)| known.eq_ignore_ascii_case(&repo_norm))
+    {
+        return Some(hint);
+    }
+    if repo_norm.to_ascii_lowercase().contains("qwen3.8-27b") {
+        return CATALOG_HINTS
+            .iter()
+            .find(|(known, _)| *known == "mlx-community/Qwen3.8-27B-4bit")
+            .map(|(_, hint)| hint);
+    }
+    super::embedding::embedding_catalog_hints(id)
 }
 
 fn merge_catalog_rows(payload: &Value) -> Vec<Value> {

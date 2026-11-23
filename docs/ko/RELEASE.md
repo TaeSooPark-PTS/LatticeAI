@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.5.0 — Living Synthesis (2026-11-24)
+
+**macOS**(`omlx` Homebrew 및 무-Homebrew universal2 휠 폴백, `local_mlx`), **Windows**(`winget` Ollama / llama.cpp / LM Studio 및 `pip` `llama-cpp-python[server]` 폴백), **Linux**(공식 Ollama 설치 스크립트 및 `pip` / `vllm`) 전 환경 원클릭 **Qwen3.8 27B 4-bit** 설치·다운로드·실행, 실시간 가용 메모리 압박 자동 튜닝(`host_available_ram_gb`, `omlx_serve_args`, `llamacpp_serve_args`), **TypeScript 7.0.2 (`tsgo`)** 및 `@babel/parser` i18n AST 전환, `engine_adapters.py` / `model_loading.py` 모듈화 및 데드코드·불필요 테스트 정리를 적용했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.5.0.md](./releases/RELEASE_NOTES_v13.5.0.md).
+
+빌드 산출물은 `dist/ltcai-13.5.0-py3-none-any.whl`, `dist/ltcai-13.5.0.tar.gz`, `ltcai-13.5.0.tgz`, `dist/ltcai-13.5.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.5.0_aarch64.dmg` 입니다.
+
 ## v13.4.2 — Living Synthesis (2026-11-24)
 
 Apple Silicon 환경에서 계층형 RAM/SSD KV 캐시를 지원하는 **oMLX (`jundot/omlx`)** 엔진을 통합하고(`--memory-guard balanced`, `--hot-cache-max-size`, `--paged-ssd-cache-dir`, `--max-concurrent-requests 2`, `--initial-cache-blocks 128`), **`mlx-community/Qwen3.8-27B-4bit`**를 32GB+ Mac의 추천 및 다운로드 가능 모델로 등록했습니다(`recommended_ram_gb=32.0`).

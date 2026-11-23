@@ -118,7 +118,16 @@ fn top_pick_honors_ram_tier_then_recommended_default_then_priority() {
 fn catalog_hints_cover_qwen38_and_gemma4_qat_models() {
     let qwen38 = catalog_hints("mlx-community/Qwen3.8-27B-4bit").expect("qwen3.8 hint");
     assert_eq!(qwen38.family, "Qwen3.8");
+    assert_eq!(qwen38.recommended_ram_gb, 32.0);
     assert_eq!(qwen38.display_priority, 52);
+
+    let qwen38_omlx =
+        catalog_hints("omlx:mlx-community--Qwen3.8-27B-4bit").expect("omlx qwen3.8 hint");
+    assert_eq!(qwen38_omlx.recommended_ram_gb, 32.0);
+
+    let qwen38_gguf =
+        catalog_hints("ollama:hf.co/ggml-org/Qwen3.8-27B-GGUF:Q4_K_M").expect("gguf qwen3.8 hint");
+    assert_eq!(qwen38_gguf.recommended_ram_gb, 32.0);
 
     let qat = catalog_hints("mlx-community/gemma-4-26B-A4B-it-qat-4bit").expect("qat hint");
     assert_eq!(qat.family, "Gemma 4");

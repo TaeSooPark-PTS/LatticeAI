@@ -2,7 +2,7 @@
 
 # Lattice AI v13.4.2 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (oMLX Engine & Qwen3.8 27B 4-bit Support).
+> **Status: historical** — 13.4.2 release note (oMLX Engine & Qwen3.8 27B 4-bit Support).
 
 Adds first-class **oMLX (`jundot/omlx`)** engine integration with hardware-tuned tiered RAM/SSD KV caching and makes **`mlx-community/Qwen3.8-27B-4bit`** recommended and downloadable on 32GB+ Apple Silicon Macs.
 

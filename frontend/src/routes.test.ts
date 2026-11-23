@@ -17,7 +17,6 @@ import {
   parseHash,
   primaryRoutes,
   productShellRoutes,
-  routeAliases,
 } from "./routes";
 
 function setHash(value: string) {
@@ -135,7 +134,6 @@ describe("route tables", () => {
     expect(productShellRoutes).toHaveLength(7);
     expect(productShellRoutes.map((route) => route.id)).toContain("chronicle");
     expect(primaryRoutes).toBe(productShellRoutes);
-    expect(routeAliases).toBe(compatibilityRouteAliases);
   });
 
   it("gives every shell route a label key and an icon", () => {

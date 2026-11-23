@@ -1,10 +1,10 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../ADAPTIVE_HARNESS_BENCHMARK.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./ADAPTIVE_HARNESS_BENCHMARK.md)
 
-# 범용 적응형 에이전트 하네스 벤치마크 (v13.4.0)
+# 범용 적응형 에이전트 하네스 벤치마크 (v13.5.0)
 
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화된 실측 하네스 벤치마크 보고서입니다.
 
-현재 릴리스: **13.4.0 — Living Synthesis**.
+현재 릴리스: **13.5.0 — Living Synthesis**.
 
 본 보고서는 `13.4.0`에 도입된 **LatticeAI 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness)**의 실증적 성능 평가 결과를 기록합니다. 이 하네스는 모델 이름에 따른 하드코딩 분기(**Zero per-model code branches**) 없이 런타임에서 로드된 모델의 동작을 직접 실측하고 실행 구조를 적응시켜, 소형 로컬 인스트럭션 튜닝 모델도 도구 호출, 웹 탐색, 컴퓨터 유즈, 답변 품질, 양방향 시간 축 RAG 그라운딩 전반에서 높은 신뢰도를 발휘하도록 만듭니다.
 
@@ -35,7 +35,7 @@ flowchart LR
     Std["Standard Loop (비보정) - 24.0% (6/25)"] -->|"+60.0 pp (상대 +250.0%)"| Adaptive
 ```
 
-| 지표 | Raw Baseline | Standard Loop | 적응형 하네스 (v13.4.0) | Raw 대비 변화 | Standard 대비 변화 |
+| 지표 | Raw Baseline | Standard Loop | 적응형 하네스 (v13.5.0) | Raw 대비 변화 | Standard 대비 변화 |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **전체 통과율** | **28.0%** (7/25) | **24.0%** (6/25) | **84.0%** (21/25) | **+56.0 pp (+200.0% 상대 향상)** | **+60.0 pp (+250.0% 상대 향상)** |
 | **복구 트리거 횟수** | 0 | 36 | **3** | +3 | -33회 (-91.7% 반복 재시도 감소) |
@@ -45,7 +45,7 @@ flowchart LR
 
 ## 역량 카테고리별 결과
 
-| 역량 카테고리 | Raw Baseline | Standard Loop | 적응형 하네스 (v13.4.0) | Raw 대비 (pp) | Standard 대비 (pp) |
+| 역량 카테고리 | Raw Baseline | Standard Loop | 적응형 하네스 (v13.5.0) | Raw 대비 (pp) | Standard 대비 (pp) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **도구 호출 (Tool Calling)** | 20.0% (1/5) | 0.0% (0/5) | **80.0%** (4/5) | **+60.0 pp** | **+80.0 pp** |
 | **웹 탐색 (Web Handling)** | 0.0% (0/5) | 80.0% (4/5) | **80.0%** (4/5) | **+80.0 pp** | **0.0 pp** |

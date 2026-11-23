@@ -6,6 +6,22 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.5.0] - 2026-11-24 — Living Synthesis
+
+### Added
+- **Cross-Platform One-Way Qwen3.8 27B 4-bit Setup & Memory-Pressure Tuning (`latticeai/services/engine_adapters.py`, `latticeai/services/model_engines.py`, `latticeai/services/model_runtime/`, `rust/lattice-platform/src/modelops/`, `frontend/src/features/library/ModelsPanel.tsx`):**
+  - Added OS-aware `resolve_engine_installer()` supporting Windows `winget` (`Ollama.Ollama`, `ggml.llamacpp`, `ElementLabs.LMStudio`) + `pip` `llama-cpp-python[server]` fallback, Linux `curl` Ollama installer + `pip` fallbacks, and macOS Apple Silicon `omlx` Homebrew + zero-Homebrew GitHub Release universal2 wheel fallback (`~/.omlx/venv`).
+  - Added automatic cross-platform routing (`resolve_cross_platform_model_request`, `_recommended_with_engine_options`, Rust `probe.rs`, `scan.rs`, `probe_sysinfo.rs` Windows RAM & `winget` detection), `unsloth/Qwen3.8-27B-GGUF` public mirror fallback, and default `HF_XET_HIGH_PERFORMANCE=1` high-speed transfers.
+  - Added live available-RAM pressure detection (`host_available_ram_gb`) across macOS, Linux, and Windows so `omlx_serve_args` dynamically switches to `--memory-guard safe`, `--hot-cache-max-size 1GB`, and `--max-concurrent-requests 1` when concurrent apps tighten 32GB memory, plus GPU/quantized-KV `llamacpp_serve_args`.
+  - Connected automatic plan confirmation token binding in `status.install_engine` and `install_required` consent gating in `ModelsPanel.tsx` for true single-click engine installation, download, server startup, and model load.
+
+### Changed
+- **TypeScript 7 (`tsgo`) & `@babel/parser` AST Migration (`package.json`, `scripts/check_i18n_literals.mjs`, `scripts/run_openapi_typescript.mjs`):**
+  - Upgraded root `typescript` from `^5.9.3` to `^7.0.2`, migrated `scripts/check_i18n_literals.mjs` from the TypeScript 5 compiler AST API to `@babel/parser`, and isolated `openapi-typescript` behind `scripts/run_openapi_typescript.mjs`.
+- **Modular Refactoring & Dead-Code Cleanup (`latticeai/services/{engine_adapters.py,model_engines.py,model_loading.py,model_catalog.py}`, `latticeai/core/policy.py`, `frontend/src/{routes.ts,lib/folderPicker.ts}`, `rust/Cargo.toml`):**
+  - Extracted `engine_adapters.py` (`EngineAdapter` registry) from `model_engines.py` and unified duplicated blocking/SSE 7-way engine preparation logic in `model_loading.py` (`716 -> 492` lines).
+  - Removed orphaned `recommend_models_for_pc` (`model_catalog.py`), unused `capabilities_for_role` (`policy.py`), unused `routeAliases` (`routes.ts`), unused `hasBrowserFolderPicker` (`folderPicker.ts`), unused workspace crate `walkdir` (`rust/Cargo.toml`), and redundant `tests/unit/test_model_loading_deps.py`.
+
 ## [13.4.2] - 2026-11-24 — Living Synthesis
 
 ### Added

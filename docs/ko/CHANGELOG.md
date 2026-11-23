@@ -5,6 +5,22 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
 
+## [13.5.0] - 2026-11-24 — Living Synthesis
+
+### 추가됨
+- **크로스플랫폼 원웨이 Qwen3.8 27B 4-bit 설치 및 가용 메모리 압박 자동 튜닝 (`latticeai/services/engine_adapters.py`, `latticeai/services/model_engines.py`, `latticeai/services/model_runtime/`, `rust/lattice-platform/src/modelops/`, `frontend/src/features/library/ModelsPanel.tsx`):**
+  - Windows `winget`(`Ollama.Ollama`, `ggml.llamacpp`, `ElementLabs.LMStudio`) + `pip` `llama-cpp-python[server]` 폴백, Linux `curl` Ollama 설치 스크립트 + `pip` 폴백, macOS Apple Silicon `omlx` Homebrew 및 무-Homebrew GitHub Release universal2 휠 폴백(`~/.omlx/venv`)을 지원하는 `resolve_engine_installer()`를 추가했습니다.
+  - 자동 크로스플랫폼 라우팅(`resolve_cross_platform_model_request`, `_recommended_with_engine_options`, Rust `probe.rs`, `scan.rs`, `probe_sysinfo.rs` Windows RAM 및 `winget` 감지), `unsloth/Qwen3.8-27B-GGUF` 공개 미러 폴백, `HF_XET_HIGH_PERFORMANCE=1` 고속 전송 기본 활성화를 적용했습니다.
+  - macOS, Linux, Windows 실시간 가용 메모리 감지(`host_available_ram_gb`)를 통해 32GB 환경에서 동시 실행 앱 메모리 압박 시 `omlx_serve_args`가 자동으로 `--memory-guard safe`, `--hot-cache-max-size 1GB`, `--max-concurrent-requests 1`로 조정되도록 개선하고, GPU·양자화 KV 캐시(`q8_0`) 기반 `llamacpp_serve_args`를 추가했습니다.
+  - `status.install_engine` 확인 토큰 자동 바인딩과 `ModelsPanel.tsx`의 `install_required` 동의 게이트를 연결해 원클릭 설치·다운로드·로드를 완성했습니다.
+
+### 변경됨
+- **TypeScript 7 (`tsgo`) 및 `@babel/parser` AST 전환 (`package.json`, `scripts/check_i18n_literals.mjs`, `scripts/run_openapi_typescript.mjs`):**
+  - 루트 `typescript`를 `^5.9.3`에서 `^7.0.2`로 업그레이드하고, `scripts/check_i18n_literals.mjs`를 `@babel/parser` 기반으로 전환했으며, `openapi-typescript` 실행을 `scripts/run_openapi_typescript.mjs`로 격리했습니다.
+- **모듈 리팩토링 및 데드코드·불필요 테스트 삭제 (`latticeai/services/{engine_adapters.py,model_engines.py,model_loading.py,model_catalog.py}`, `latticeai/core/policy.py`, `frontend/src/{routes.ts,lib/folderPicker.ts}`, `rust/Cargo.toml`):**
+  - `model_engines.py`에서 `engine_adapters.py`(`EngineAdapter` 레지스트리)를 분리하고, `model_loading.py`의 동기/SSE 중복 분기를 단일 파이프라인으로 통합했습니다(`716 -> 492`줄).
+  - 미사용 코드(`recommend_models_for_pc`, `capabilities_for_role`, `routeAliases`, `hasBrowserFolderPicker`, `rust/Cargo.toml`의 `walkdir`) 및 중복 테스트(`tests/unit/test_model_loading_deps.py`)를 삭제했습니다.
+
 ## [13.4.2] - 2026-11-24 — Living Synthesis
 
 ### 추가됨

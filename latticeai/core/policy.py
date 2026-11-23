@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Set
+from typing import Dict, Set
 
 ROLE_CAPABILITIES: Dict[str, Set[str]] = {
     "owner": {"all"},
@@ -31,11 +31,6 @@ ROLE_CAPABILITIES: Dict[str, Set[str]] = {
 def normalize_role(role: str) -> str:
     role = str(role or "user").lower()
     return role if role in ROLE_CAPABILITIES else "user"
-
-
-def capabilities_for_role(role: str) -> List[str]:
-    caps = ROLE_CAPABILITIES.get(normalize_role(role), ROLE_CAPABILITIES["user"])
-    return sorted(caps)
 
 
 def role_has_capability(role: str, capability: str) -> bool:

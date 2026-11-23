@@ -17,7 +17,6 @@ from latticeai.core.io_utils import atomic_write_json, sha256_file
 from latticeai.core.messages import http_error, translate
 from latticeai.core.module_probe import module_available
 from latticeai.core.policy import (
-    capabilities_for_role,
     normalize_role,
     require_capability,
     role_has_capability,
@@ -85,7 +84,6 @@ def test_policy_roles():
     require_capability("admin", "admin:users")
     with pytest.raises(PermissionError):
         require_capability("user", "admin:users")
-    assert "chat" in capabilities_for_role("member")
 
 
 def test_messages_unknown_key():

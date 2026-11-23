@@ -155,13 +155,14 @@ def create_models_router(
             for model in list(engine.get("models") or []):
                 if isinstance(model, dict):
                     model_lookup[str(model.get("id") or "")] = {**model, "_engine": engine_id}
+        engine_order = ("local_mlx", "omlx", "ollama", "lmstudio", "llamacpp", "vllm")
         loaded = set(loaded_ids or [])
         out: List[Dict[str, Any]] = []
         for item in items:
             short_id = str(item["id"]).lower()
             aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
             options: List[Dict[str, Any]] = []
-            for engine_name in ("local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"):
+            for engine_name in engine_order:
                 real = aliases.get(engine_name)
                 if not real:
                     continue
@@ -170,7 +171,8 @@ def create_models_router(
                 model_info = model_lookup.get(load_id) or model_lookup.get(real) or {}
                 option_loaded = load_id in loaded or real in loaded or current_id in {load_id, real}
                 option_runtime = model_runtime_compatibility(load_id, engine=engine_name)
-                option_supported = option_runtime.get("supported") is not False
+                engine_supported = engine_info.get("supported") is not False
+                option_supported = (option_runtime.get("supported") is not False) and engine_supported
                 option_pulled = bool(model_info.get("pulled"))
                 option_download_required = bool(item.get("pullable", True) and not option_pulled and not option_loaded)
                 options.append({
@@ -178,6 +180,7 @@ def create_models_router(
                     "model_id": real,
                     "load_id": load_id,
                     "installed": bool(engine_info.get("installed")),
+                    "installable": bool(engine_info.get("installable", engine_supported)),
                     "pulled": option_pulled,
                     "loaded": option_loaded,
                     "download_required": option_download_required,
@@ -192,16 +195,18 @@ def create_models_router(
                 option_loaded = raw_id in loaded or current_id == raw_id
                 option_pulled = bool(model_info.get("pulled"))
                 runtime_compatibility = model_runtime_compatibility(str(item["id"]), engine="local_mlx")
+                engine_supported = engine_info.get("supported") is not False
                 options.append({
                     "engine": "local_mlx",
                     "model_id": item["id"],
                     "load_id": item["id"],
                     "installed": bool(engine_info.get("installed")),
+                    "installable": bool(engine_info.get("installable", engine_supported)),
                     "pulled": option_pulled,
                     "loaded": option_loaded,
                     "download_required": bool(item.get("pullable", True) and not option_pulled and not option_loaded),
                     "runtime_compatibility": runtime_compatibility,
-                    "runtime_supported": runtime_compatibility.get("supported") is not False,
+                    "runtime_supported": (runtime_compatibility.get("supported") is not False) and engine_supported,
                     "runtime_label": str(runtime_compatibility.get("preferred_runtime") or "MLX"),
                 })
 
@@ -210,11 +215,12 @@ def create_models_router(
                 installed = bool(option.get("installed"))
                 loaded_option = bool(option.get("loaded"))
                 ready_without_download = installed and not bool(option.get("download_required"))
+                eng_key = str(option.get("engine") or "vllm")
                 return (
                     0 if runtime_supported else 1,
                     0 if loaded_option or ready_without_download else 1,
                     0 if installed else 1,
-                    ["local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"].index(str(option.get("engine") or "vllm")),
+                    engine_order.index(eng_key) if eng_key in engine_order else len(engine_order),
                 )
 
             primary_option = options[0]
@@ -237,10 +243,12 @@ def create_models_router(
             pulled = bool(selected_option.get("pulled") or model_info.get("pulled"))
             is_loaded = bool(selected_option.get("loaded"))
             engine_installed = bool(selected_option.get("installed"))
+            engine_installable = bool(selected_option.get("installable"))
             pullable = bool(item.get("pullable", True))
             runtime_compatibility = dict(selected_option.get("runtime_compatibility") or {})
-            runtime_supported = runtime_compatibility.get("supported") is not False
+            runtime_supported = bool(selected_option.get("runtime_supported"))
             download_required = bool(selected_option.get("download_required") and pullable and not is_loaded)
+            install_required = bool(runtime_supported and not engine_installed and engine_installable)
             if is_loaded:
                 load_status = "loaded"
                 unavailable_reason = None
@@ -249,7 +257,7 @@ def create_models_router(
                 unavailable_reason = str(runtime_compatibility.get("user_message") or "This model is not supported by the installed runtime.")
             elif not engine_installed:
                 load_status = "unavailable"
-                unavailable_reason = f"{engine_info.get('name') or recommended_engine} runtime is not installed."
+                unavailable_reason = f"{(engine_lookup.get(recommended_engine) or {}).get('name') or recommended_engine} runtime is not installed."
             elif download_required:
                 load_status = "download_required"
                 unavailable_reason = "Model files are not present locally. Downloads are opt-in and never start from token/model presence alone."
@@ -277,6 +285,7 @@ def create_models_router(
                 "source_display_order": item.get("source_display_order"),
                 "pulled": pulled,
                 "download_required": download_required,
+                "install_required": install_required,
                 "load_available": is_loaded or (runtime_supported and engine_installed and not download_required),
                 "load_status": load_status,
                 "unavailable_reason": unavailable_reason,
