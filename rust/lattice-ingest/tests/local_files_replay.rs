@@ -137,8 +137,7 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
 
     // GET /local/list always probes.
     let probe = client
-        .get(format!("{origin}/local/list"))
-        .query(&[("path", corpus_s.as_str())])
+        .get(format!("{origin}/local/list?path={corpus_s}"))
         .header("cookie", format!("session_token={token}"))
         .send()
         .await

@@ -964,4 +964,12 @@ describe("MarketplacePanel", () => {
     const recCard = await screen.findByTestId("library-embedding-recommendation");
     expect(recCard.textContent).toContain(t("ko", "library.embedding.recommend.active"));
   });
+
+  it("handles recommendation rows without id or embedding metadata gracefully", async () => {
+    renderLibrary({
+      modelRecommendations: ok({ recommendations: { models: [{ category: "chat" }] } }),
+    });
+    const recCard = await screen.findByTestId("library-embedding-recommendation");
+    expect(recCard.textContent).toContain("google/embeddinggemma-2");
+  });
 });

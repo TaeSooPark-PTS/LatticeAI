@@ -48,7 +48,7 @@ pub fn stored_is_hashed(stored: &str) -> bool {
 
 fn derive(password: &str, salt: &[u8]) -> [u8; DKLEN] {
     let mut out = [0u8; DKLEN];
-    let params = Params::new(LOG_N, R, P, DKLEN).expect("scrypt parameters are constants");
+    let params = Params::new(LOG_N, R, P).expect("scrypt parameters are constants");
     // `scrypt` only fails on an output length its parameters disallow, which
     // `Params::new` has already validated.
     scrypt(password.as_bytes(), salt, &params, &mut out)

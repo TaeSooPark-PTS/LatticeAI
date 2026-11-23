@@ -17,6 +17,16 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.4.1 — Living Synthesis (2026-11-23)
+
+전 스택 Dependabot PR `#58`, `#60`, `#61`의 메이저/브레이킹 의존성 업그레이드 호환성 및 컴파일 실패를 해결한 유지보수 릴리스:
+- **프론트엔드 (`npm` / TypeScript 7.0.2 / Vitest 5.1.1):** `openapi-typescript@7.13.0` 피어 의존성 충돌을 `overrides`로 해결하고, TS 7 대응 `tsconfig.json`(`baseUrl` 제거, 상대 `paths`) 및 `frontend/src/vite-env.d.ts`를 추가했으며, 111개 전체 테스트 파일에서 100% 커버리지를 유지했습니다.
+- **Rust 워크스페이스 (`rust/` 및 `src-tauri/`):** `sha2` 0.11 / `digest` 0.11(`hex_lower` / `sha256_text`), `rusqlite` 0.43(`i64` 바인딩), `fancy-regex` 0.20(`Captures<'_, str>`), `axum` 0.8(네이티브 비동기 `FromRequestParts`), `scrypt` 0.12(3인자 `Params::new`), `zip` 9(`ZipFile<'_, R>`, `Result<Cow<'_, str>, ZipError>`, `SimpleFileOptions`), `reqwest` 0.13, `tauri` 2.11.6 호환성을 반영했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.4.1.md](./releases/RELEASE_NOTES_v13.4.1.md).
+
+빌드 산출물은 `dist/ltcai-13.4.1-py3-none-any.whl`, `dist/ltcai-13.4.1.tar.gz`, `ltcai-13.4.1.tgz`, `dist/ltcai-13.4.1.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.4.1_aarch64.dmg` 입니다.
+
 ## v13.4.0 — Living Synthesis (2026-11-20)
 
 모델별 코드 분기 없이 동작하는 **범용 적응형 에이전트 하네스(`rust/lattice-agent/src/kernel/{probe.rs,agentloop/,transcript/,parse/}`)**, **모듈화된 네이티브 웹 하네스 및 컴퓨터 유즈 브리지 정합성(`rust/lattice-agent/src/tools/web/`, `latticeai/tools/{web.py,computer.py}`)**, **로컬 `Qwen2.5-0.5B-Instruct-Q4_K_M` 대상 25개 태스크 실측 통과율을 `28.0%`(Raw) / `24.0%`(Standard) → `84.0%`(`+56.0 pp` / 상대 `+200.0%`)로 끌어올린 실증 벤치마크**, **100% 영문 ↔ 한국어 양방향 문서 대등성(`npm run docs:check-languages`)**을 담은 범용 적응형 실행 릴리스.

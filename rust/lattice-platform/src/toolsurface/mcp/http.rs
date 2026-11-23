@@ -7,7 +7,6 @@ use axum::response::Response;
 use lattice_auth::{AuthState, Identity, OrderedMap};
 use lattice_core::messages;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 
 // ── shared HTTP / time / store (used by sibling R8 modules) ────────────────
 
@@ -204,9 +203,7 @@ pub(crate) fn dump_indent2(value: &Value) -> String {
 }
 
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
+    lattice_core::graph_write::pyaux::sha256_bytes(bytes)
 }
 
 pub(crate) fn json_hash(value: &Value) -> String {

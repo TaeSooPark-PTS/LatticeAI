@@ -213,8 +213,8 @@ pub fn export_snapshot(store: &WorkspaceOsStore, snapshot_id: &str) -> Result<Va
     let file = std::fs::File::create(&export_path)
         .map_err(|error| StoreError::Value(format!("export failed: {error}")))?;
     let mut archive = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<'_, ()> =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
     for (member, key) in EXPORT_MEMBERS {
         let payload = if key.is_empty() {
             snapshot.clone()
@@ -557,7 +557,10 @@ mod tests {
         let file = std::fs::File::open(&path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
         assert_eq!(archive.len(), 6);
-        let names: Vec<String> = archive.file_names().map(str::to_string).collect();
+        let names: Vec<String> = archive
+            .file_names()
+            .filter_map(|res| res.ok().map(|s| s.into_owned()))
+            .collect();
         for (member, _) in EXPORT_MEMBERS {
             assert!(names.contains(&member.to_string()), "{member}");
         }

@@ -135,7 +135,7 @@ pub(crate) fn seed_embedding_padding(conn: &rusqlite::Connection) {
         let id = format!("p-pad-{i:02}");
         let title = format!("Preference pad {i:02}");
         let text = lattice_core::clean_text(&format!("{title}\n\n"));
-        let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
+        let hash = lattice_core::graph_write::pyaux::sha256_text(&text);
         if has_raw {
             conn.execute(
                 "INSERT OR IGNORE INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at)
@@ -496,7 +496,7 @@ pub(crate) fn seed_capture_graph(conn: &rusqlite::Connection) {
     let mut hashes = Vec::new();
     for (id, kind, title) in visible {
         let text = lattice_core::clean_text(&format!("{title}\n\n"));
-        let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
+        let hash = lattice_core::graph_write::pyaux::sha256_text(&text);
         hashes.push((id.to_string(), hash));
         conn.execute(
             "INSERT INTO nodes(id, type, title, summary, metadata_json, created_at, updated_at)
@@ -514,7 +514,7 @@ pub(crate) fn seed_capture_graph(conn: &rusqlite::Connection) {
     for i in 0..28 {
         let title = format!("Preference {i:02}");
         let text = lattice_core::clean_text(&format!("{title}\n\n"));
-        let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
+        let hash = lattice_core::graph_write::pyaux::sha256_text(&text);
         hashes.push((format!("p{i:02}"), hash));
         conn.execute(
             "INSERT INTO nodes(id, type, title, summary, metadata_json, created_at, updated_at)

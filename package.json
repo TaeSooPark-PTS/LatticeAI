@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "13.4.0",
+  "version": "13.4.1",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -156,7 +156,7 @@
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
-    "typescript": "^7.0.2",
+    "typescript": "^5.9.3",
     "vite": "^8.0.16",
     "vitest": "^5.1.1",
     "zustand": "^5.0.14"

@@ -163,7 +163,10 @@ fn extract_zip_file(zip_path: &Path, name: &str, dest: &Path) {
 fn zip_names(zip_path: &Path) -> Vec<String> {
     let file = std::fs::File::open(zip_path).expect("zip");
     let archive = zip::ZipArchive::new(file).expect("archive");
-    archive.file_names().map(str::to_string).collect()
+    archive
+        .file_names()
+        .filter_map(|res| res.ok().map(|s| s.into_owned()))
+        .collect()
 }
 
 fn wal_path(db: &Path) -> PathBuf {

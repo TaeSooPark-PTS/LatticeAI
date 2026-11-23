@@ -241,16 +241,26 @@ fn write_py_string(out: &mut String, text: &str) {
     out.push('"');
 }
 
+/// Format a byte slice as lowercase hexadecimal.
+pub fn hex_lower(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        let _ = write!(&mut out, "{b:02x}");
+    }
+    out
+}
+
 /// `hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()`.
 ///
 /// A Rust `&str` is already valid UTF-8, so `errors="replace"` never fires.
 pub fn sha256_text(text: &str) -> String {
-    format!("{:x}", Sha256::digest(text.as_bytes()))
+    hex_lower(&Sha256::digest(text.as_bytes()))
 }
 
 /// `hashlib.sha256(data).hexdigest()`.
 pub fn sha256_bytes(data: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(data))
+    hex_lower(&Sha256::digest(data))
 }
 
 /// `_kg_fsutil._slug` — the id-safe form of a label.

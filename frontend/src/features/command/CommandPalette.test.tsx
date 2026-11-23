@@ -330,6 +330,13 @@ describe("DailyBriefingPanel", () => {
     expect(screen.queryByText("질문")).toBeNull();
   });
 
+  it("degrades to a friendly one-liner when the briefing has no sections", async () => {
+    mockBriefing({ quick_actions: [] });
+    renderWithClient(<DailyBriefingPanel language="ko" variant="home" />);
+    await screen.findByTestId("daily-briefing-empty");
+    expect(screen.queryByText("질문")).toBeNull();
+  });
+
   it("shows zeros and a dash rather than blanks when the sections are bare", async () => {
     // One section present keeps this out of the "empty briefing" path, so the
     // stat grid renders with nothing behind it — the case that used to print

@@ -2,7 +2,7 @@
 
 # Lattice AI 13.4.0 — Living Synthesis
 
-> **Status: canonical** — current release note (Universal Adaptive Harness & 100% Bilingual Parity).
+> **Status: historical** — 13.4.0 release note (Universal Adaptive Harness & 100% Bilingual Parity).
 
 2026-11-20
 
