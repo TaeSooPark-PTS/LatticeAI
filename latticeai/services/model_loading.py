@@ -1,7 +1,9 @@
 """Model loading, prepare and stream logic extracted from model_runtime for server decomp.
 
-This moves the large prepare_and_load_model and stream functions out of the monolith.
-Re-exports will be added in model_runtime for compat.
+Unifies the synchronous ``_prepare_model_sources`` path and the streaming
+``prepare_and_load_model_stream`` worker onto a single engine-dispatched source
+preparation pipeline so engine installation, download consent, progress
+reporting, and local-server startup never diverge between blocking and SSE flows.
 """
 from __future__ import annotations
 
@@ -12,16 +14,17 @@ import subprocess
 import threading
 from functools import partial
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Callable, Dict, Optional
 
 from latticeai.core.sse import sse_frame
 
 from .model_errors import ModelRuntimeError
 
+ProgressEmitter = Optional[Callable[[Dict[str, object]], None]]
+_LOCAL_ENGINES = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
 
-# Late imports to avoid circulars during extraction. The state argument is
-# mandatory so this module cannot fall back to ambient process configuration.
-def _get_model_runtime_deps(runtime_state: Any):
+
+def _get_model_runtime_deps(runtime_state: Any) -> Dict[str, Any]:
     from .model_runtime import (
         MODEL_ENGINE_ALIASES,
         _download_allowed,
@@ -81,6 +84,11 @@ def _get_model_runtime_deps(runtime_state: Any):
     }
 
 
+def _emit(deps: Any, emit_progress: ProgressEmitter, stage: str, message: str, **kwargs: Any) -> None:
+    if emit_progress is not None:
+        emit_progress(deps["model_download_progress_payload"](stage, message, **kwargs))
+
+
 def _apply_gated_fallback_result(
     download_result: Any,
     parsed_provider: str,
@@ -99,48 +107,49 @@ def _apply_gated_fallback_result(
     return current_model, current_model_id
 
 
-def _prepare_model_sources(
+def _prepare_mlx_or_hf(
     deps: Any,
     parsed_provider: str,
     parsed_model: str,
     model_id: str,
     allow_download: bool,
-) -> Dict[str, Any]:
-    """Make sure the engine and weights this model needs exist locally.
+    emit_progress: ProgressEmitter,
+) -> tuple[str, str, Optional[Dict[str, object]]]:
+    explicit_path = Path(parsed_model).expanduser()
+    if explicit_path.exists():
+        if emit_progress is None:
+            return parsed_model, model_id, None
+        _emit(deps, emit_progress, "download", "로컬 모델 경로를 확인했습니다.", percent=100, detail=str(explicit_path), eta_seconds=0)
+        return parsed_model, model_id, {"model": parsed_model, "path": str(explicit_path), "cached": True}
+    if not deps["hf_model_ready"](parsed_model, "local_mlx"):
+        if not deps["_download_allowed"](allow_download):
+            deps["_download_block"](parsed_provider, parsed_model)
+        dl_kwargs = {"progress_emit": emit_progress} if emit_progress is not None else {}
+        download_result = deps["download_hf_model"](parsed_model, "local_mlx", **dl_kwargs)
+        next_model, next_id = _apply_gated_fallback_result(download_result, parsed_provider, parsed_model, model_id)
+        return next_model, next_id, download_result
+    if emit_progress is None:
+        return parsed_model, model_id, None
+    _emit(deps, emit_progress, "download", "이미 다운로드된 모델을 확인했습니다.", percent=100, eta_seconds=0)
+    return parsed_model, model_id, {"model": parsed_model, "path": str(deps["hf_model_dir"](parsed_model)), "cached": True}
 
-    Every branch here shells out, downloads, or waits on a child server, so this
-    is deliberately a plain sync function: callers run it on a worker thread
-    (see :func:`prepare_and_load_model`) rather than on the event loop.
 
-    Returns the four values the caller needs back, including the two the
-    LM Studio branch rewrites (``parsed_model`` and ``model_id``).
-    """
-    local_engines = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
-    install_result: Dict[str, object] = {}
-    download_result: Optional[Dict[str, object]] = None
-
-    if parsed_provider in local_engines:
-        if not deps["engine_installed"](parsed_provider) and not deps["_download_allowed"](allow_download):
-            deps["_engine_install_block"](parsed_provider)
-        install_result = deps["ensure_engine_ready"](parsed_provider)
-
-    if parsed_provider in {"local_mlx", "huggingface"}:
-        explicit_path = Path(parsed_model).expanduser()
-        if not explicit_path.exists() and not deps["hf_model_ready"](parsed_model, "local_mlx"):
-            if not deps["_download_allowed"](allow_download):
-                deps["_download_block"](parsed_provider, parsed_model)
-            download_result = deps["download_hf_model"](parsed_model, "local_mlx")
-            parsed_model, model_id = _apply_gated_fallback_result(
-                download_result, parsed_provider, parsed_model, model_id
-            )
-    elif parsed_provider == "ollama":
-        deps["ensure_ollama_server"]()
+def _prepare_ollama(
+    deps: Any,
+    parsed_model: str,
+    model_id: str,
+    allow_download: bool,
+    emit_progress: ProgressEmitter,
+) -> tuple[str, str, Optional[Dict[str, object]]]:
+    _emit(deps, emit_progress, "engine", "Ollama 서버를 확인하는 중입니다.", percent=12, indeterminate=True)
+    deps["ensure_ollama_server"]()
+    if emit_progress is None:
         ollama = deps["local_binary"]("ollama")
         if not ollama:
             raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
         if parsed_model not in deps["get_ollama_pulled_models"]():
             if not deps["_download_allowed"](allow_download):
-                deps["_download_block"](parsed_provider, parsed_model)
+                deps["_download_block"]("ollama", parsed_model)
             completed = subprocess.run(
                 [ollama, "pull", parsed_model],
                 capture_output=True,
@@ -150,41 +159,140 @@ def _prepare_model_sources(
             )
             if completed.returncode != 0:
                 raise ModelRuntimeError(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
-            download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
+            return parsed_model, model_id, {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
+        return parsed_model, model_id, None
+
+    if parsed_model not in deps["get_ollama_pulled_models"]():
+        if not deps["_download_allowed"](allow_download):
+            deps["_download_block"]("ollama", parsed_model)
+        return parsed_model, model_id, deps["pull_ollama_model_with_progress"](parsed_model, progress_emit=emit_progress)
+    _emit(deps, emit_progress, "download", "이미 다운로드된 Ollama 모델을 확인했습니다.", percent=100, detail=parsed_model, eta_seconds=0)
+    return parsed_model, model_id, {"provider": "ollama", "model": parsed_model, "cached": True}
+
+
+def _prepare_omlx(
+    deps: Any,
+    parsed_model: str,
+    allow_download: bool,
+    emit_progress: ProgressEmitter,
+) -> tuple[str, str, Dict[str, object]]:
+    download_result: Dict[str, object] = {}
+    if not deps["hf_model_ready"](parsed_model, "omlx"):
+        if not deps["_download_allowed"](allow_download):
+            deps["_download_block"]("omlx", parsed_model)
+        if emit_progress is not None:
+            download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress) or {}
+    elif emit_progress is not None:
+        download_result = {"provider": "omlx", "model": parsed_model, "cached": True}
+        _emit(deps, emit_progress, "download", "이미 다운로드된 모델을 확인했습니다.", percent=100, detail=parsed_model, eta_seconds=0)
+    _emit(deps, emit_progress, "server", "oMLX 서버를 시작하는 중입니다.", percent=92, indeterminate=True)
+    served_model = deps["ensure_omlx_server"](parsed_model)
+    return (
+        served_model,
+        f"omlx:{served_model}",
+        {**download_result, "provider": "omlx", "model": served_model, "server_ready": True},
+    )
+
+
+def _prepare_hf_server_engine(
+    deps: Any,
+    provider: str,
+    ensure_key: str,
+    cached_msg: str,
+    server_msg: str,
+    parsed_model: str,
+    model_id: str,
+    allow_download: bool,
+    emit_progress: ProgressEmitter,
+) -> tuple[str, str, Dict[str, object]]:
+    download_result: Dict[str, object] = {}
+    ready = deps["hf_model_ready"](parsed_model, provider)
+    if not ready:
+        if not deps["_download_allowed"](allow_download):
+            deps["_download_block"](provider, parsed_model)
+        if emit_progress is not None:
+            download_result = deps["download_hf_model"](parsed_model, provider, progress_emit=emit_progress) or {}
+            parsed_model, model_id = _apply_gated_fallback_result(download_result, provider, parsed_model, model_id)
+    elif emit_progress is not None:
+        download_result = {"provider": provider, "model": parsed_model, "cached": True}
+        _emit(deps, emit_progress, "download", cached_msg, percent=100, detail=parsed_model, eta_seconds=0)
+    _emit(deps, emit_progress, "server", server_msg, percent=92, indeterminate=True)
+    deps[ensure_key](parsed_model)
+    return parsed_model, model_id, {**download_result, "provider": provider, "model": parsed_model, "server_ready": True}
+
+
+def _prepare_lmstudio(
+    deps: Any,
+    parsed_model: str,
+    allow_download: bool,
+    emit_progress: ProgressEmitter,
+) -> tuple[str, str, Dict[str, object]]:
+    downloaded = {
+        str(item.get("key") or "").strip()
+        for item in deps["get_lmstudio_models"]()
+        if isinstance(item, dict)
+    }
+    if parsed_model not in downloaded and not deps["_download_allowed"](allow_download):
+        deps["_download_block"]("lmstudio", parsed_model)
+    _emit(deps, emit_progress, "download", "LM Studio 모델을 확인하는 중입니다.", percent=35, indeterminate=True)
+    ensured = deps["ensure_lmstudio_model"](parsed_model)
+    resolved_model = str(
+        ensured.get("instance_id")
+        or ensured.get("resolved_model")
+        or parsed_model
+    ).strip()
+    return resolved_model, f"lmstudio:{resolved_model}", ensured
+
+
+def _prepare_model_sources(
+    deps: Any,
+    parsed_provider: str,
+    parsed_model: str,
+    model_id: str,
+    allow_download: bool,
+    emit_progress: ProgressEmitter = None,
+) -> Dict[str, Any]:
+    """Make sure the engine and weights this model needs exist locally."""
+    install_result: Dict[str, object] = {}
+    download_result: Optional[Dict[str, object]] = None
+
+    if parsed_provider in _LOCAL_ENGINES:
+        _emit(deps, emit_progress, "engine", "실행 엔진을 확인하는 중입니다.", percent=2, indeterminate=True)
+        if not deps["engine_installed"](parsed_provider) and not deps["_download_allowed"](allow_download):
+            deps["_engine_install_block"](parsed_provider)
+        install_result = deps["ensure_engine_ready"](parsed_provider)
+        _emit(deps, emit_progress, "engine", "실행 엔진 준비가 완료되었습니다.", percent=10, indeterminate=False)
+
+    if parsed_provider in {"local_mlx", "huggingface"}:
+        parsed_model, model_id, download_result = _prepare_mlx_or_hf(
+            deps, parsed_provider, parsed_model, model_id, allow_download, emit_progress
+        )
+    elif parsed_provider == "ollama":
+        parsed_model, model_id, download_result = _prepare_ollama(
+            deps, parsed_model, model_id, allow_download, emit_progress
+        )
     elif parsed_provider == "omlx":
-        if not deps["hf_model_ready"](parsed_model, "omlx") and not deps["_download_allowed"](allow_download):
-            deps["_download_block"](parsed_provider, parsed_model)
-        served_model = deps["ensure_omlx_server"](parsed_model)
-        parsed_model = served_model
-        model_id = f"omlx:{served_model}"
-        download_result = {"provider": "omlx", "model": served_model, "server_ready": True}
+        parsed_model, model_id, download_result = _prepare_omlx(
+            deps, parsed_model, allow_download, emit_progress
+        )
     elif parsed_provider == "vllm":
-        if not deps["hf_model_ready"](parsed_model, "vllm") and not deps["_download_allowed"](allow_download):
-            deps["_download_block"](parsed_provider, parsed_model)
-        deps["ensure_vllm_server"](parsed_model)
-        download_result = {"provider": "vllm", "model": parsed_model, "server_ready": True}
+        parsed_model, model_id, download_result = _prepare_hf_server_engine(
+            deps, "vllm", "ensure_vllm_server",
+            "이미 다운로드된 모델을 확인했습니다.", "vLLM 서버를 시작하는 중입니다.",
+            parsed_model, model_id, allow_download, emit_progress,
+        )
     elif parsed_provider == "llamacpp":
-        if not deps["hf_model_ready"](parsed_model, "llamacpp") and not deps["_download_allowed"](allow_download):
-            deps["_download_block"](parsed_provider, parsed_model)
-        deps["ensure_llamacpp_server"](parsed_model)
-        download_result = {"provider": "llamacpp", "model": parsed_model, "server_ready": True}
+        parsed_model, model_id, download_result = _prepare_hf_server_engine(
+            deps, "llamacpp", "ensure_llamacpp_server",
+            "이미 다운로드된 GGUF 모델을 확인했습니다.", "llama.cpp 서버를 시작하는 중입니다.",
+            parsed_model, model_id, allow_download, emit_progress,
+        )
     elif parsed_provider == "lmstudio":
-        downloaded = {
-            str(item.get("key") or "").strip()
-            for item in deps["get_lmstudio_models"]()
-            if isinstance(item, dict)
-        }
-        if parsed_model not in downloaded and not deps["_download_allowed"](allow_download):
-            deps["_download_block"](parsed_provider, parsed_model)
-        ensured = deps["ensure_lmstudio_model"](parsed_model)
-        resolved_model = str(
-            ensured.get("instance_id")
-            or ensured.get("resolved_model")
-            or parsed_model
-        ).strip()
-        parsed_model = resolved_model
-        model_id = f"lmstudio:{resolved_model}"
-        download_result = ensured
+        parsed_model, model_id, download_result = _prepare_lmstudio(
+            deps, parsed_model, allow_download, emit_progress
+        )
+    else:
+        _emit(deps, emit_progress, "engine", "모델 연결을 준비하는 중입니다.", percent=30, indeterminate=True)
 
     return {
         "install_result": install_result,
@@ -224,10 +332,6 @@ async def prepare_and_load_model(
     if compatibility.get("supported") is False:
         raise ModelRuntimeError(status_code=400, detail=compatibility)
 
-    # Engine install, model download and local-server startup are all blocking
-    # and all measured in minutes. Run on the event loop they froze the whole
-    # server for the duration — the UI could not even poll /health to find out
-    # why. One hop to a worker thread; the async shape above is unchanged.
     sources = await asyncio.to_thread(
         _prepare_model_sources, deps, parsed_provider, parsed_model, model_id, allow_download
     )
@@ -277,39 +381,6 @@ def sse_event(event: str, data: Dict[str, object]) -> str:
     return sse_frame(event, data)
 
 
-def _prepare_stream_omlx(
-    deps: Any,
-    parsed_model: str,
-    allow_download: bool,
-    emit_progress: Any,
-) -> tuple[str, str, Dict[str, object]]:
-    if not deps["hf_model_ready"](parsed_model, "omlx"):
-        if not deps["_download_allowed"](allow_download):
-            deps["_download_block"]("omlx", parsed_model)
-        download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress)
-    else:
-        download_result = {"provider": "omlx", "model": parsed_model, "cached": True}
-        emit_progress(deps["model_download_progress_payload"](
-            "download",
-            "이미 다운로드된 모델을 확인했습니다.",
-            percent=100,
-            detail=parsed_model,
-            eta_seconds=0,
-        ))
-    emit_progress(deps["model_download_progress_payload"](
-        "server",
-        "oMLX 서버를 시작하는 중입니다.",
-        percent=92,
-        indeterminate=True,
-    ))
-    served_model = deps["ensure_omlx_server"](parsed_model)
-    return (
-        served_model,
-        f"omlx:{served_model}",
-        {**(download_result or {}), "provider": "omlx", "model": served_model, "server_ready": True},
-    )
-
-
 async def prepare_and_load_model_stream(
     model_id: str,
     request: Any,
@@ -339,161 +410,15 @@ async def prepare_and_load_model_stream(
 
     def blocking_prepare() -> None:
         try:
-            local_engines = {"local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"}
-            install_result: Dict[str, object] = {}
-            download_result: Optional[Dict[str, object]] = None
-            prepared_model_id = model_id
-            prepared_model_name = parsed_model
-
-            if parsed_provider in local_engines:
-                emit_progress(deps["model_download_progress_payload"](
-                    "engine",
-                    "실행 엔진을 확인하는 중입니다.",
-                    percent=2,
-                    indeterminate=True,
-                ))
-                if not deps["engine_installed"](parsed_provider) and not deps["_download_allowed"](allow_download):
-                    deps["_engine_install_block"](parsed_provider)
-                install_result = deps["ensure_engine_ready"](parsed_provider)
-                emit_progress(deps["model_download_progress_payload"](
-                    "engine",
-                    "실행 엔진 준비가 완료되었습니다.",
-                    percent=10,
-                    indeterminate=False,
-                ))
-
-            if parsed_provider in {"local_mlx", "huggingface"}:
-                explicit_path = Path(parsed_model).expanduser()
-                if explicit_path.exists():
-                    download_result = {"model": parsed_model, "path": str(explicit_path), "cached": True}
-                    emit_progress(deps["model_download_progress_payload"](
-                        "download",
-                        "로컬 모델 경로를 확인했습니다.",
-                        percent=100,
-                        detail=str(explicit_path),
-                        eta_seconds=0,
-                    ))
-                elif not deps["hf_model_ready"](parsed_model, "local_mlx"):
-                    if not deps["_download_allowed"](allow_download):
-                        deps["_download_block"](parsed_provider, parsed_model)
-                    download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress)
-                    prepared_model_name, prepared_model_id = _apply_gated_fallback_result(
-                        download_result, parsed_provider, prepared_model_name, prepared_model_id
-                    )
-                else:
-                    download_result = {"model": parsed_model, "path": str(deps["hf_model_dir"](parsed_model)), "cached": True}
-                    emit_progress(deps["model_download_progress_payload"](
-                        "download",
-                        "이미 다운로드된 모델을 확인했습니다.",
-                        percent=100,
-                        eta_seconds=0,
-                    ))
-            elif parsed_provider == "ollama":
-                emit_progress(deps["model_download_progress_payload"](
-                    "engine",
-                    "Ollama 서버를 확인하는 중입니다.",
-                    percent=12,
-                    indeterminate=True,
-                ))
-                deps["ensure_ollama_server"]()
-                if parsed_model not in deps["get_ollama_pulled_models"]():
-                    if not deps["_download_allowed"](allow_download):
-                        deps["_download_block"](parsed_provider, parsed_model)
-                    download_result = deps["pull_ollama_model_with_progress"](parsed_model, progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "ollama", "model": parsed_model, "cached": True}
-                    emit_progress(deps["model_download_progress_payload"](
-                        "download",
-                        "이미 다운로드된 Ollama 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-            elif parsed_provider == "omlx":
-                prepared_model_name, prepared_model_id, download_result = _prepare_stream_omlx(
-                    deps, parsed_model, allow_download, emit_progress
-                )
-            elif parsed_provider == "vllm":
-                if not deps["hf_model_ready"](parsed_model, "vllm"):
-                    if not deps["_download_allowed"](allow_download):
-                        deps["_download_block"](parsed_provider, parsed_model)
-                    download_result = deps["download_hf_model"](parsed_model, "vllm", progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "vllm", "model": parsed_model, "cached": True}
-                    emit_progress(deps["model_download_progress_payload"](
-                        "download",
-                        "이미 다운로드된 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-                emit_progress(deps["model_download_progress_payload"](
-                    "server",
-                    "vLLM 서버를 시작하는 중입니다.",
-                    percent=92,
-                    indeterminate=True,
-                ))
-                deps["ensure_vllm_server"](parsed_model)
-                download_result = {**(download_result or {}), "provider": "vllm", "model": parsed_model, "server_ready": True}
-            elif parsed_provider == "llamacpp":
-                if not deps["hf_model_ready"](parsed_model, "llamacpp"):
-                    if not deps["_download_allowed"](allow_download):
-                        deps["_download_block"](parsed_provider, parsed_model)
-                    download_result = deps["download_hf_model"](parsed_model, "llamacpp", progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "llamacpp", "model": parsed_model, "cached": True}
-                    emit_progress(deps["model_download_progress_payload"](
-                        "download",
-                        "이미 다운로드된 GGUF 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-                emit_progress(deps["model_download_progress_payload"](
-                    "server",
-                    "llama.cpp 서버를 시작하는 중입니다.",
-                    percent=92,
-                    indeterminate=True,
-                ))
-                deps["ensure_llamacpp_server"](parsed_model)
-                download_result = {**(download_result or {}), "provider": "llamacpp", "model": parsed_model, "server_ready": True}
-            elif parsed_provider == "lmstudio":
-                downloaded = {
-                    str(item.get("key") or "").strip()
-                    for item in deps["get_lmstudio_models"]()
-                    if isinstance(item, dict)
-                }
-                if parsed_model not in downloaded and not deps["_download_allowed"](allow_download):
-                    deps["_download_block"](parsed_provider, parsed_model)
-                emit_progress(deps["model_download_progress_payload"](
-                    "download",
-                    "LM Studio 모델을 확인하는 중입니다.",
-                    percent=35,
-                    indeterminate=True,
-                ))
-                ensured = deps["ensure_lmstudio_model"](parsed_model)
-                resolved_model = str(
-                    ensured.get("instance_id")
-                    or ensured.get("resolved_model")
-                    or parsed_model
-                ).strip()
-                prepared_model_name = resolved_model
-                prepared_model_id = f"lmstudio:{resolved_model}"
-                download_result = ensured
-            else:
-                emit_progress(deps["model_download_progress_payload"](
-                    "engine",
-                    "모델 연결을 준비하는 중입니다.",
-                    percent=30,
-                    indeterminate=True,
-                ))
-
+            sources = _prepare_model_sources(
+                deps, parsed_provider, parsed_model, model_id, allow_download, emit_progress=emit_progress
+            )
             work_result.update({
-                "model_id": prepared_model_id,
+                "model_id": sources["model_id"],
                 "parsed_provider": parsed_provider,
-                "parsed_model": prepared_model_name,
-                "install_result": install_result,
-                "download_result": download_result,
+                "parsed_model": sources["parsed_model"],
+                "install_result": sources["install_result"],
+                "download_result": sources["download_result"],
             })
             work_queue.put({"kind": "done"})
         except ModelRuntimeError as exc:
@@ -711,6 +636,3 @@ def _maybe_build_embedding_done_payload(
         ),
         sse_event("done", result),
     ]
-
-
-# To maintain exact public API, model_runtime will re-export these.

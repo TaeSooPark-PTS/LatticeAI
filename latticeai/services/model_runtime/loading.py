@@ -14,6 +14,10 @@ from typing import Any, AsyncIterator, Dict, Optional
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
 from latticeai.core.sse import sse_frame
 from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS, ensure_mlx_runtime
+from latticeai.services.engine_adapters import (
+    default_local_engine_for_host,
+    is_apple_silicon,
+)
 from latticeai.services.model_catalog import ENGINE_INSTALLERS, MODEL_ENGINE_ALIASES
 from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.model_runtime.engines import (
@@ -27,6 +31,8 @@ from latticeai.services.model_runtime.status import install_engine
 def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
     raw = model_id.strip()
     engine_hint = (engine or "").strip().lower()
+    if engine_hint == "auto":
+        engine_hint = default_local_engine_for_host(engine_installed_fn=engine_installed)
     provider: Optional[str] = None
     model_name = raw
     if ":" in raw:
@@ -36,13 +42,38 @@ def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
             provider = "local_mlx" if prefix in {"local_mlx", "mlx"} else prefix
             model_name = rest.strip()
     provider = provider or ("local_mlx" if engine_hint in {"", "local_mlx", "mlx"} else engine_hint)
-    aliases = MODEL_ENGINE_ALIASES.get(model_name.lower())
+    lookup_name = model_name.replace("--", "/", 1) if "/" not in model_name and "--" in model_name else model_name
+    aliases = MODEL_ENGINE_ALIASES.get(model_name.lower()) or MODEL_ENGINE_ALIASES.get(lookup_name.lower())
     if not aliases:
         return raw
     mapped = aliases.get(provider)
     if not mapped:
         return raw
     return mapped if provider == "local_mlx" else f"{provider}:{mapped}"
+
+
+def resolve_cross_platform_model_request(
+    model_id: str,
+    engine: Optional[str] = None,
+) -> tuple[str, Optional[str]]:
+    """Auto-route Apple-Silicon-only MLX/oMLX catalog IDs onto Ollama/llama.cpp on Windows & Linux."""
+    engine_hint = (engine or "").strip().lower()
+    if engine_hint == "auto":
+        chosen = default_local_engine_for_host(engine_installed_fn=engine_installed)
+        return normalize_local_model_request(model_id, chosen), chosen
+    if is_apple_silicon():
+        return normalize_local_model_request(model_id, engine), engine
+    raw = model_id.strip()
+    raw_prefix = raw.split(":", 1)[0].lower() if ":" in raw else ""
+    bare_name = raw.split(":", 1)[1].strip() if raw_prefix in {"local_mlx", "mlx", "omlx"} else raw
+    lookup_name = bare_name.replace("--", "/", 1) if "/" not in bare_name and "--" in bare_name else bare_name
+    aliases = MODEL_ENGINE_ALIASES.get(bare_name.lower()) or MODEL_ENGINE_ALIASES.get(lookup_name.lower())
+    if aliases and engine_hint in {"", "local_mlx", "mlx", "omlx"} and not engine_installed("local_mlx"):
+        chosen = default_local_engine_for_host(engine_installed_fn=engine_installed, apple_silicon=False)
+        mapped = aliases.get(chosen)
+        if mapped:
+            return f"{chosen}:{mapped}", chosen
+    return normalize_local_model_request(model_id, engine), engine
 
 
 def normalize_local_model_request(model_id: str, engine: Optional[str] = None) -> str:
@@ -138,10 +169,11 @@ async def prepare_and_load_model(
 ) -> Dict[str, Any]:
     from latticeai.services.model_loading import prepare_and_load_model as _impl
 
+    resolved_id, resolved_engine = resolve_cross_platform_model_request(model_id, engine)
     return await _impl(
-        model_id,
+        resolved_id,
         request,
-        engine=engine,
+        engine=resolved_engine,
         user_email=user_email,
         adapter_path=adapter_path,
         draft_model_id=draft_model_id,
@@ -167,10 +199,11 @@ async def prepare_and_load_model_stream(
         prepare_and_load_model_stream as _impl,
     )
 
+    resolved_id, resolved_engine = resolve_cross_platform_model_request(model_id, engine)
     async for event in _impl(
-        model_id,
+        resolved_id,
         request,
-        engine=engine,
+        engine=resolved_engine,
         user_email=user_email,
         allow_download=allow_download,
         runtime_state=state,

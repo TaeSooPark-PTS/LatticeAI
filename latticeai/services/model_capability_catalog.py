@@ -307,12 +307,12 @@ _REGISTRY: List[ModelCapability] = [
         architecture="qwen3_5",
         download_size_gb=16.08,
         quantization="4bit",
-        provider_hints=["local_mlx", "omlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        provider_hints=["local_mlx", "omlx", "ollama", "vllm", "lmstudio", "llamacpp"],
         download_strategy="hf_hub",
         load_strategy="mlx_vlm",
         hardware=HardwareProfile(
-            min_ram_gb=24.0, recommended_ram_gb=32.0, apple_silicon_pref=True,
-            notes="Latest Qwen 3.8 27B dense multimodal model; verified on 32GB Apple Silicon with oMLX tiered KV cache and higher coding, reasoning, and agentic tool accuracy than Qwen 3.6 27B at 16.1GB 4-bit footprint.",
+            min_ram_gb=24.0, recommended_ram_gb=32.0, apple_silicon_pref=False,
+            notes="Latest Qwen 3.8 27B dense multimodal model; one-click setup on 32GB+ macOS (oMLX/MLX) and Windows/Linux (Ollama/llama.cpp Q4_K_M GGUF & vLLM) at 16.1GB 4-bit footprint.",
         ),
         source_country="중국", source_company="Alibaba",
         verification=VerificationStatus(

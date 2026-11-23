@@ -1,7 +1,7 @@
 {
   "envelope": {
     "file": "_envelope.json",
-    "sha256": "030e4f6305363d8d4363bae8f4ba3cc32e09b0ea2e356b5bb172f1481d965eee",
+    "sha256": "12b6ee5fea6469c11605e365e12dad10c36803fd2ae5bab8512fc1387b1b2628",
     "unattributed_schemas": 0
   },
   "fragments": [
@@ -11,7 +11,7 @@
       "operations": 41,
       "paths": 37,
       "schemas": 9,
-      "sha256": "0c90d2961943eb8a999dccbd96671afc4d4efb01dacddb739cbd42d44ed9f633"
+      "sha256": "86f9869116fe80d4ef0171576233c4417be97e9569fbe4086fa5b692d7408692"
     },
     {
       "family": "auth",
@@ -19,7 +19,7 @@
       "operations": 9,
       "paths": 8,
       "schemas": 6,
-      "sha256": "9a85d1e20ea8d08c34fc55ab0d20c75f5157bd5c10885d34d8ec74ad86f49e49"
+      "sha256": "c7e1eb2224f1edba9b00880a2f904db900e996d286344954c685e8629b0f85ec"
     },
     {
       "family": "chat",
@@ -27,7 +27,7 @@
       "operations": 12,
       "paths": 10,
       "schemas": 6,
-      "sha256": "3eec6eca7507174e62a414b66f4947300f645347b5c316b1482364baa4c9955d"
+      "sha256": "8240ee593f5de2db30b1147e32b9c924cbefd691ab85c0778fd0d92561203c1f"
     },
     {
       "family": "knowledge_search",
@@ -35,7 +35,7 @@
       "operations": 55,
       "paths": 46,
       "schemas": 22,
-      "sha256": "b54875b7205c0fe15ca5b77cd776e5cc01ced843215cf8992119f0716420de8c"
+      "sha256": "2851e2902a92b0086523eea7040341dec50fc22b24d3e1bdb6ff8f4b97f1f50a"
     },
     {
       "family": "mcp_market",
@@ -43,7 +43,7 @@
       "operations": 87,
       "paths": 82,
       "schemas": 36,
-      "sha256": "eb7042321591d5436a5b5c5f5602249d234547f522341700ce3d3b5286e05791"
+      "sha256": "792b6129acdcb5d3225fd37ce93d636f964705722899dbf195020ab2f9ea609c"
     },
     {
       "family": "memory_brain",
@@ -51,7 +51,7 @@
       "operations": 37,
       "paths": 36,
       "schemas": 13,
-      "sha256": "726f2bb5d7a2cfbf1fa6ff24c5009c98b31be93382c3de1e55b62d54729b6492"
+      "sha256": "e1cf680e0aaa419644d8c89491042e5ae21cc562aef7498c33704a440be40234"
     },
     {
       "family": "models_misc",
@@ -59,7 +59,7 @@
       "operations": 27,
       "paths": 24,
       "schemas": 13,
-      "sha256": "28076a530f507e225ce93cf3be750b62253fcb68d69aa96183e85eaa609b3a1d"
+      "sha256": "c2a17eaad8e338d40c4cde20d4280a0d4cc28e4eb09c21e5c3220e3b184249e7"
     },
     {
       "family": "portability_network",
@@ -67,7 +67,7 @@
       "operations": 60,
       "paths": 54,
       "schemas": 34,
-      "sha256": "27eb41bac2bdf65a4032697fe6894874dcb36c82e08ec0d3a1c32fcb22af5609"
+      "sha256": "ff64f8748abad87d58c02f1c8bbd6633bd641db6be612fd5f4c6f1a98c1e0005"
     },
     {
       "family": "review_proposals",
@@ -75,7 +75,7 @@
       "operations": 33,
       "paths": 31,
       "schemas": 18,
-      "sha256": "b77e79e512be7864ed024748f322ffa2867f0085d59a947882ec8d0e78905b31"
+      "sha256": "b333b7c59f3e7037bd4c7170ce894d5fd8d58f9351f4f7566cfba9e9e0397375"
     },
     {
       "family": "static_ui",
@@ -83,7 +83,7 @@
       "operations": 9,
       "paths": 9,
       "schemas": 2,
-      "sha256": "e01ac3ce3d658498a68af756f2ef2e7ebaea13e9bd2d37c8a64e6b4b45af3349"
+      "sha256": "e23c2ac658881b78d488fed4bfe1acedc3af9f7a3f656391742394d176e06174"
     },
     {
       "family": "ui_redirects",
@@ -91,7 +91,7 @@
       "operations": 7,
       "paths": 7,
       "schemas": 0,
-      "sha256": "f04b1dbeb5a7de7d9911d3fae830968defb96aa22f91117179e0ee44e709db67"
+      "sha256": "02a46ec5c1f383a4c258d918ff590d8721ebef48b6eb0a519209a62104f11cb9"
     },
     {
       "family": "worker_keep",
@@ -99,7 +99,7 @@
       "operations": 19,
       "paths": 19,
       "schemas": 16,
-      "sha256": "99d4f01b29aeb561befb87daae0e846d089a591536d34db1f81e2cd6036af303"
+      "sha256": "8426dfe959c408c7b202754fbeb0ecd5aba447ea4498a5a2e10cc10878f9f7f3"
     },
     {
       "family": "workspace",
@@ -107,7 +107,7 @@
       "operations": 61,
       "paths": 53,
       "schemas": 21,
-      "sha256": "b270d86414649e62457c377cce9871a03dbb7c1230b406416fece22f4d745597"
+      "sha256": "fc981c7c944d74b3fb733d1265534617ec8bd48dbcccaac5cc51d8991b001210"
     }
   ],
   "generated_by": "scripts/gen_openapi_fragments.py",
@@ -126,7 +126,7 @@
     "trailing_newline": true
   },
   "source": "frontend/openapi.json",
-  "spec_version": "13.4.2",
+  "spec_version": "13.5.0",
   "totals": {
     "families": 13,
     "operations": 457,

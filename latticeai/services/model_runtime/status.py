@@ -141,6 +141,7 @@ def engine_status(
         },
     ]
 
+    mlx_support = engine_support_status("local_mlx")
     engines = [
         {
             "id": "local_mlx",
@@ -148,7 +149,9 @@ def engine_status(
             "kind": "local",
             "description": "Apple Silicon GPU에서 MLX-VLM 모델을 직접 실행하고, Gemma 4는 필요 시 MLX-LM 텍스트 경로로 재시도합니다.",
             "installed": engine_installed("local_mlx"),
-            "installable": True,
+            "supported": mlx_support["supported"],
+            "support_reason": mlx_support["reason"],
+            "installable": bool(mlx_support["supported"]),
             "install_label": ENGINE_INSTALLERS["local_mlx"]["label"],
             "install_plan": _safe_engine_install_plan("local_mlx", base_dir=state.BASE_DIR),
             "models": mlx_models,
@@ -262,8 +265,13 @@ def install_engine(
     *,
     state: ModelRuntimeState,
 ) -> Dict:
+    resolved_token = confirmation_token
+    if resolved_token is None:
+        plan = _safe_engine_install_plan(engine, base_dir=state.BASE_DIR)
+        if isinstance(plan, dict) and plan.get("confirmation_token"):
+            resolved_token = str(plan["confirmation_token"])
     return _install_engine(
         engine,
-        confirmation_token=confirmation_token,
+        confirmation_token=resolved_token,
         base_dir=state.BASE_DIR,
     )

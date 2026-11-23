@@ -5,7 +5,6 @@ import {
   browserDirectoryInputProps,
   browserFolderNameFromFiles,
   filesFromBrowserDirectory,
-  hasBrowserFolderPicker,
   hasDesktopFolderPicker,
   isAbortError,
   pickFolder,
@@ -67,7 +66,6 @@ afterEach(() => {
 describe("shell detection", () => {
   it("finds no picker in a plain browser", () => {
     expect(hasDesktopFolderPicker()).toBe(false);
-    expect(hasBrowserFolderPicker()).toBe(false);
   });
 
   it("recognises the Tauri core bridge", () => {
@@ -85,11 +83,6 @@ describe("shell detection", () => {
     // serves http, so this is the negative half of that condition.
     shell().__TAURI_INTERNALS__ = {};
     expect(hasDesktopFolderPicker()).toBe(false);
-  });
-
-  it("recognises the File System Access API", () => {
-    shell().showDirectoryPicker = vi.fn();
-    expect(hasBrowserFolderPicker()).toBe(true);
   });
 });
 

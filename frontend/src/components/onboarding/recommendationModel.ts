@@ -113,7 +113,7 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   const bestId = best?.id;
   const faster = pool.find((item) => item.id !== bestId && /qwen|8b|7b/i.test(`${item.name} ${item.id}`)) || pool.find((item) => item.id !== bestId);
   const fasterId = faster?.id;
-  const advanced = pool.find((item) => item.id !== bestId && item.id !== fasterId && /26b|32b|70b|advanced/i.test(`${item.name} ${item.id}`))
+  const advanced = pool.find((item) => item.id !== bestId && item.id !== fasterId && /26b|27b|31b|32b|35b|70b|advanced/i.test(`${item.name} ${item.id}`))
     || pool.find((item) => item.id !== bestId && item.id !== fasterId);
   return [
     best ? { ...best, role: "best" as const, reason: best.reason || "best" } : null,

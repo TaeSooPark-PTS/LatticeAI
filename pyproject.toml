@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "13.4.2"
+version = "13.5.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -266,6 +266,7 @@ max-complexity = 30
 "latticeai/cli/*.py" = ["E402", "S603", "S604", "S607", "SIM"]
 "latticeai/tools/*.py" = ["S404", "S603", "S607", "SIM", "B007"]
 "latticeai/core/tool_registry.py" = ["S603", "S604", "S606", "S607", "SIM", "B007"]
+"latticeai/services/engine_adapters.py" = ["S603", "S607", "SIM"]
 "latticeai/services/model_engines.py" = ["S603", "S604", "S607", "SIM"]
 "latticeai/services/model_loading.py" = ["S603", "S607", "SIM"]
 "latticeai/services/tool_dispatch.py" = ["S603", "S604", "S607", "SIM"]
@@ -397,6 +398,7 @@ files = [
   "latticeai/runtime/security_runtime.py",
   "latticeai/runtime/stages.py",
   "latticeai/services/__init__.py",
+  "latticeai/services/engine_adapters.py",
   "latticeai/services/model_capability_registry.py",
   "latticeai/services/model_catalog.py",
   "latticeai/services/model_engines.py",

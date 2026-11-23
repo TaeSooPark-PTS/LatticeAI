@@ -76,8 +76,18 @@ def resolve_hf_endpoint(env: Optional[Mapping[str, str]] = None) -> str:
     return DEFAULT_HF_ENDPOINT
 
 
+PUBLIC_GGUF_MIRRORS: Dict[str, List[str]] = {
+    "ggml-org/qwen3.8-27b-gguf": [
+        "unsloth/Qwen3.8-27B-GGUF",
+    ],
+}
+
+
 def get_public_mirror_repos(repo_id: str, provider: str = "local_mlx") -> List[str]:
-    """Return ordered unauthenticated public mirror / quantized repos for an embedding model."""
+    """Return ordered unauthenticated public mirror / quantized repos for an embedding or GGUF model."""
+    norm_repo = str(repo_id or "").strip().lower()
+    if norm_repo in PUBLIC_GGUF_MIRRORS:
+        return list(PUBLIC_GGUF_MIRRORS[norm_repo])
     canonical = _canonical_embedding_repo(repo_id)
     if canonical is None:
         return []

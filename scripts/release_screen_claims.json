@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.5.0": {
+    "_why": [
+      "Living Synthesis (13.5.0) adds one-click cross-platform engine installation",
+      "and Qwen3.8-27B 4-bit setup across macOS (oMLX Homebrew + wheel fallback),",
+      "Windows (winget Ollama/llama.cpp/LM Studio + pip fallback), and Linux",
+      "(Ollama install script + pip/vLLM), upgrades TypeScript to 7.0.2 with",
+      "@babel/parser i18n AST checking, and modularizes model engine/loading services.",
+      "",
+      "No visual screen layout changed in 13.5.0; empty claim set on purpose."
+    ]
+  },
   "13.4.2": {
     "_why": [
       "Living Synthesis (13.4.2) integrates the oMLX (jundot/omlx) Apple Silicon",

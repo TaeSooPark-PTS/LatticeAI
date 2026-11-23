@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.5.0 - Living Synthesis] (2026-11-24)
+
+Delivered one-click cross-platform engine installation and **Qwen3.8 27B 4-bit** setup across macOS (`omlx` Homebrew + zero-Homebrew universal2 wheel fallback, `local_mlx`), Windows (`winget` Ollama / llama.cpp / LM Studio + `pip` fallback), and Linux (Ollama install script + `pip` / `vllm`) with real-time available-RAM pressure tuning, upgraded the workspace typechecker to **TypeScript 7.0.2 (`tsgo`)** and `scripts/check_i18n_literals.mjs` to `@babel/parser`, and refactored `engine_adapters.py` and `model_loading.py` while removing dead code and obsolete tests.
+
+See [docs/releases/RELEASE_NOTES_v13.5.0.md](docs/releases/RELEASE_NOTES_v13.5.0.md).
+
 # [v13.4.2 - Living Synthesis] (2026-11-24)
 
 Added first-class **oMLX (`jundot/omlx`)** engine integration with hardware-tuned tiered RAM/SSD KV caching and elevated **`mlx-community/Qwen3.8-27B-4bit`** to recommended and downloadable status on 32GB+ Apple Silicon Macs.
@@ -130,10 +136,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.4.2** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.5.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
+- [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)
 - [v13.4.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.2.md)
 - [v13.4.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.1.md)
 - [v13.4.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.0.md)
