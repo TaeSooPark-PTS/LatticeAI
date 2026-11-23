@@ -210,10 +210,7 @@ fn select_rows(
     substitutions: &[(String, String)],
 ) -> Result<Vec<Value>, CoreError> {
     let mut statement = conn.prepare(sql)?;
-    let columns: Vec<String> = statement
-        .column_names()
-        .map(str::to_string)
-        .collect();
+    let columns: Vec<String> = statement.column_names().map(str::to_string).collect();
     let mut query = statement.query([])?;
     let mut rows = Vec::new();
     while let Some(row) = query.next()? {

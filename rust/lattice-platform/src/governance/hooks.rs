@@ -136,7 +136,10 @@ pub fn router(state: HooksState) -> Router {
         .route("/api/hooks/disable", post(disable_hook))
         .route("/api/hooks/reorder", post(reorder_hooks))
         .route("/api/hooks/register", post(register_hook))
-        .route("/api/hooks/{*hook_id}", get(inspect_hook).delete(remove_hook))
+        .route(
+            "/api/hooks/{*hook_id}",
+            get(inspect_hook).delete(remove_hook),
+        )
         .with_state(state)
 }
 

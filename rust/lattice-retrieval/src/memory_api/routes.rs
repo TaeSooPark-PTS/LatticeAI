@@ -67,7 +67,10 @@ pub fn router(state: BrainState) -> Router {
         )
         .route("/api/memory/self-model/propose", post(self_model_propose))
         .route("/api/memory/self-model/apply", post(self_model_apply))
-        .route("/api/memory/self-model/{node_id}", delete(self_model_delete))
+        .route(
+            "/api/memory/self-model/{node_id}",
+            delete(self_model_delete),
+        )
         .with_state(state)
 }
 

@@ -528,9 +528,9 @@ fn read_archive_manifest(archive: &mut zip::ZipArchive<File>) -> Value {
 
 fn archive_has_blobs(archive: &zip::ZipArchive<File>) -> bool {
     (0..archive.len()).any(|i| {
-        archive
-            .name_for_index(i)
-            .is_some_and(|res| res.is_ok_and(|name| name.starts_with(BLOBS_PREFIX) && !name.ends_with('/')))
+        archive.name_for_index(i).is_some_and(|res| {
+            res.is_ok_and(|name| name.starts_with(BLOBS_PREFIX) && !name.ends_with('/'))
+        })
     })
 }
 

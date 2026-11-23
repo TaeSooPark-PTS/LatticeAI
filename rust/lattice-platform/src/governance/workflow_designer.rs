@@ -163,7 +163,10 @@ pub fn router(state: WorkflowDesignerState) -> Router {
             "/workflows/api/automation/recipes/{recipe_id}",
             post(install_recipe),
         )
-        .route("/workflows/api/export/{workflow_id}", get(export_definition))
+        .route(
+            "/workflows/api/export/{workflow_id}",
+            get(export_definition),
+        )
         .route("/workflows/api/import", post(import_definition))
         .with_state(state)
 }
