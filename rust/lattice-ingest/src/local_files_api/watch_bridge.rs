@@ -439,7 +439,10 @@ fn sync_os_watch_engines(
             .get("enabled")
             .and_then(Value::as_bool)
             .unwrap_or(false)
-            || entry.get("paused").and_then(Value::as_bool).unwrap_or(false)
+            || entry
+                .get("paused")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
         {
             continue;
         }
@@ -505,7 +508,10 @@ pub async fn scan_watches(state: &Arc<LocalFilesState>) -> Value {
             .get("enabled")
             .and_then(Value::as_bool)
             .unwrap_or(false)
-            || entry.get("paused").and_then(Value::as_bool).unwrap_or(false)
+            || entry
+                .get("paused")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
         {
             continue;
         }

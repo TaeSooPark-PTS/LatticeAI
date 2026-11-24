@@ -216,7 +216,8 @@ pub fn create_web_project(
         if !workspace.contains(&target) {
             return Err(ToolError::tool("Path escapes the agent workspace."));
         }
-        let written = crate::tools::safe_io::safe_write_bytes(workspace, &target, content.as_bytes())?;
+        let written =
+            crate::tools::safe_io::safe_write_bytes(workspace, &target, content.as_bytes())?;
         created.push(workspace.relative(&target));
         total += written;
     }

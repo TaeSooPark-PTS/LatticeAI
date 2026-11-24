@@ -179,7 +179,8 @@ fn save_note(brain_dir: &Path, args: &Map<String, Value>) -> Result<(Value, Path
         };
         let rel = format!("{folder}/{filename}");
         let candidate = scoped_ws.resolve(&rel)?;
-        if crate::tools::safe_io::safe_create_new_bytes(&scoped_ws, &candidate, content.as_bytes())? {
+        if crate::tools::safe_io::safe_create_new_bytes(&scoped_ws, &candidate, content.as_bytes())?
+        {
             break filename;
         }
         counter += 1;

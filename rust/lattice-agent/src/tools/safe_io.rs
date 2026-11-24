@@ -39,7 +39,9 @@ fn relative_components(workspace: &Workspace, target: &Path) -> Result<Vec<Strin
         }
     }
     if parts.is_empty() {
-        return Err(ToolError::tool("Target path resolves to the workspace root."));
+        return Err(ToolError::tool(
+            "Target path resolves to the workspace root.",
+        ));
     }
     Ok(parts)
 }
@@ -98,7 +100,12 @@ mod unix_fd {
             Ok(Self(fd))
         }
 
-        fn open_file(&self, name: &str, flags: libc::c_int, mode: libc::c_uint) -> io::Result<File> {
+        fn open_file(
+            &self,
+            name: &str,
+            flags: libc::c_int,
+            mode: libc::c_uint,
+        ) -> io::Result<File> {
             let c_name = str_to_cstring(name)?;
             // SAFETY: O_NOFOLLOW rejects symlink leaf atomically; returned fd is owned by File.
             let fd = unsafe {
@@ -133,8 +140,9 @@ mod unix_fd {
     }
 
     fn str_to_cstring(s: &str) -> io::Result<CString> {
-        CString::new(s)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "interior NUL byte in segment"))
+        CString::new(s).map_err(|_| {
+            io::Error::new(io::ErrorKind::InvalidInput, "interior NUL byte in segment")
+        })
     }
 
     fn fstat_dev_ino(fd: RawFd) -> io::Result<(u64, u64)> {
@@ -206,7 +214,11 @@ fn map_safe_io_err(err: io::Error) -> ToolError {
 }
 
 /// Read a workspace file via handle-relative `O_NOFOLLOW` descriptor traversal.
-pub fn safe_read_bytes(workspace: &Workspace, target: &Path, max_bytes: u64) -> Result<Vec<u8>, ToolError> {
+pub fn safe_read_bytes(
+    workspace: &Workspace,
+    target: &Path,
+    max_bytes: u64,
+) -> Result<Vec<u8>, ToolError> {
     let parts = relative_components(workspace, target)?;
     #[cfg(unix)]
     let mut file = unix_fd::open_for_read(workspace.root(), &parts).map_err(map_safe_io_err)?;
@@ -214,7 +226,9 @@ pub fn safe_read_bytes(workspace: &Workspace, target: &Path, max_bytes: u64) -> 
     let mut file = {
         let meta = std::fs::symlink_metadata(target).map_err(map_safe_io_err)?;
         if meta.file_type().is_symlink() {
-            return Err(ToolError::tool("Symlink traversal refused inside workspace sandbox."));
+            return Err(ToolError::tool(
+                "Symlink traversal refused inside workspace sandbox.",
+            ));
         }
         std::fs::File::open(target).map_err(map_safe_io_err)?
     };
@@ -231,10 +245,15 @@ pub fn safe_read_bytes(workspace: &Workspace, target: &Path, max_bytes: u64) -> 
 }
 
 /// Write bytes to a workspace file via handle-relative `O_NOFOLLOW` descriptor traversal.
-pub fn safe_write_bytes(workspace: &Workspace, target: &Path, bytes: &[u8]) -> Result<u64, ToolError> {
+pub fn safe_write_bytes(
+    workspace: &Workspace,
+    target: &Path,
+    bytes: &[u8],
+) -> Result<u64, ToolError> {
     let parts = relative_components(workspace, target)?;
     #[cfg(unix)]
-    let mut file = unix_fd::open_for_write(workspace.root(), &parts, false).map_err(map_safe_io_err)?;
+    let mut file =
+        unix_fd::open_for_write(workspace.root(), &parts, false).map_err(map_safe_io_err)?;
     #[cfg(not(unix))]
     let mut file = {
         if let Some(parent) = target.parent() {
@@ -242,7 +261,9 @@ pub fn safe_write_bytes(workspace: &Workspace, target: &Path, bytes: &[u8]) -> R
         }
         if let Ok(meta) = std::fs::symlink_metadata(target) {
             if meta.file_type().is_symlink() {
-                return Err(ToolError::tool("Symlink traversal refused inside workspace sandbox."));
+                return Err(ToolError::tool(
+                    "Symlink traversal refused inside workspace sandbox.",
+                ));
             }
         }
         std::fs::File::create(target).map_err(map_safe_io_err)?
@@ -254,7 +275,11 @@ pub fn safe_write_bytes(workspace: &Workspace, target: &Path, bytes: &[u8]) -> R
 
 /// Atomically create a brand-new workspace file (`O_CREAT | O_EXCL | O_NOFOLLOW`),
 /// returning `Ok(true)` if created or `Ok(false)` if it already existed.
-pub fn safe_create_new_bytes(workspace: &Workspace, target: &Path, bytes: &[u8]) -> Result<bool, ToolError> {
+pub fn safe_create_new_bytes(
+    workspace: &Workspace,
+    target: &Path,
+    bytes: &[u8],
+) -> Result<bool, ToolError> {
     let parts = relative_components(workspace, target)?;
     #[cfg(unix)]
     let file_res = unix_fd::open_for_write(workspace.root(), &parts, true);

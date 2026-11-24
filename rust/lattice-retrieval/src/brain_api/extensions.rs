@@ -28,21 +28,46 @@ pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/brain/integrity", get(brain_integrity_check))
         .route("/api/brain/integrity/repair", post(brain_integrity_repair))
-        .route("/api/brain/entities/candidates", get(brain_entity_candidates))
+        .route(
+            "/api/brain/entities/candidates",
+            get(brain_entity_candidates),
+        )
         .route("/api/brain/entities/merge", post(brain_entity_merge))
         .route("/api/brain/entities/rollback", post(brain_entity_rollback))
-        .route("/api/brain/entities/{entity_id}/timeline", get(brain_entity_timeline))
-        .route("/api/brain/relationships/evolution", get(brain_relationship_evolution))
+        .route(
+            "/api/brain/entities/{entity_id}/timeline",
+            get(brain_entity_timeline),
+        )
+        .route(
+            "/api/brain/relationships/evolution",
+            get(brain_relationship_evolution),
+        )
         .route("/api/brain/clusters", get(brain_topic_clusters))
         .route("/api/brain/gaps", get(brain_knowledge_gaps))
-        .route("/api/brain/corrections", get(brain_list_corrections).post(brain_create_correction))
-        .route("/api/brain/corrections/{correction_id}/status", post(brain_update_correction_status))
-        .route("/api/brain/corrections/{correction_id}/revert", post(brain_revert_correction))
-        .route("/api/brain/embeddings/registry", get(brain_embedding_registry))
+        .route(
+            "/api/brain/corrections",
+            get(brain_list_corrections).post(brain_create_correction),
+        )
+        .route(
+            "/api/brain/corrections/{correction_id}/status",
+            post(brain_update_correction_status),
+        )
+        .route(
+            "/api/brain/corrections/{correction_id}/revert",
+            post(brain_revert_correction),
+        )
+        .route(
+            "/api/brain/embeddings/registry",
+            get(brain_embedding_registry),
+        )
         .with_state(state)
 }
 
-fn auth_scope(state: &BrainState, req: &Request, write: bool) -> Result<(String, String), Response> {
+fn auth_scope(
+    state: &BrainState,
+    req: &Request,
+    write: bool,
+) -> Result<(String, String), Response> {
     let identity = state.require_user(req.headers())?;
     let ws = if write {
         state.gate_write(req.headers(), req.uri().query(), &identity.email)?
@@ -59,8 +84,7 @@ async fn parse_json_body(req: Request) -> Result<Value, Response> {
     if bytes.is_empty() {
         return Ok(json!({}));
     }
-    serde_json::from_slice(&bytes)
-        .map_err(|e| detail_response(400, &format!("invalid JSON: {e}")))
+    serde_json::from_slice(&bytes).map_err(|e| detail_response(400, &format!("invalid JSON: {e}")))
 }
 
 async fn brain_integrity_check(State(state): State<BrainState>, req: Request) -> Response {
@@ -158,7 +182,15 @@ async fn brain_entity_merge(State(state): State<BrainState>, req: Request) -> Re
     let path = state.store().path().to_path_buf();
     let res = tokio::task::spawn_blocking(move || {
         let mut conn = rusqlite::Connection::open(&path)?;
-        execute_audited_entity_merge(&mut conn, &ws, &canonical_id, &duplicate_id, &email, &rationale, signals)
+        execute_audited_entity_merge(
+            &mut conn,
+            &ws,
+            &canonical_id,
+            &duplicate_id,
+            &email,
+            &rationale,
+            signals,
+        )
     })
     .await;
     match res {
@@ -209,18 +241,16 @@ async fn brain_entity_timeline(
     };
     let q = Query::from_uri(req.uri());
     let as_of = q.get("as_of").map(str::to_string);
-    let res = state
-        .store()
-        .with_read_conn(move |conn| {
-            let subject: String = conn
-                .query_row(
-                    "SELECT COALESCE(NULLIF(TRIM(title), ''), id) FROM nodes WHERE id = ?1",
-                    rusqlite::params![entity_id],
-                    |r| r.get(0),
-                )
-                .unwrap_or(entity_id);
-            query_temporal_timeline(conn, Some(&ws), &subject, as_of.as_deref())
-        });
+    let res = state.store().with_read_conn(move |conn| {
+        let subject: String = conn
+            .query_row(
+                "SELECT COALESCE(NULLIF(TRIM(title), ''), id) FROM nodes WHERE id = ?1",
+                rusqlite::params![entity_id],
+                |r| r.get(0),
+            )
+            .unwrap_or(entity_id);
+        query_temporal_timeline(conn, Some(&ws), &subject, as_of.as_deref())
+    });
     match res {
         Ok(summary) => ok_json(&serde_json::to_value(summary).unwrap_or(Value::Null)),
         Err(err) => detail_response(500, &err.to_string()),
@@ -292,66 +322,74 @@ async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> 
         Err(r) => return r,
     };
     let ws_c = ws.clone();
-    let res = state
-        .store()
-        .with_read_conn(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT n.id, COALESCE(n.title, n.id), n.type
+    let res = state.store().with_read_conn(move |conn| {
+        let mut stmt = conn.prepare(
+            "SELECT n.id, COALESCE(n.title, n.id), n.type
                  FROM nodes n LEFT JOIN nodes_v2 v ON v.id = n.id
                  WHERE COALESCE(NULLIF(TRIM(v.workspace_id), ''), 'personal') = ?1
                    AND COALESCE(v.superseded_by, '') = ''
                  ORDER BY n.id ASC LIMIT 500",
-            )?;
-            let nodes: Vec<(String, String, String)> = stmt
-                .query_map(rusqlite::params![ws_c], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
-                .filter_map(Result::ok)
-                .collect();
-            let mut label: HashMap<String, String> =
-                nodes.iter().map(|(id, _, _)| (id.clone(), id.clone())).collect();
-            let mut adj: HashMap<String, Vec<String>> = HashMap::new();
-            let mut estmt = conn.prepare("SELECT from_node, to_node FROM edges")?;
-            for (u, v) in estmt
-                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
-                .filter_map(Result::ok)
-            {
-                if label.contains_key(&u) && label.contains_key(&v) {
-                    adj.entry(u.clone()).or_default().push(v.clone());
-                    adj.entry(v).or_default().push(u);
-                }
+        )?;
+        let nodes: Vec<(String, String, String)> = stmt
+            .query_map(rusqlite::params![ws_c], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })?
+            .filter_map(Result::ok)
+            .collect();
+        let mut label: HashMap<String, String> = nodes
+            .iter()
+            .map(|(id, _, _)| (id.clone(), id.clone()))
+            .collect();
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        let mut estmt = conn.prepare("SELECT from_node, to_node FROM edges")?;
+        for (u, v) in estmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+            .filter_map(Result::ok)
+        {
+            if label.contains_key(&u) && label.contains_key(&v) {
+                adj.entry(u.clone()).or_default().push(v.clone());
+                adj.entry(v).or_default().push(u);
             }
-            for _ in 0..4 {
-                for (id, _, _) in &nodes {
-                    if let Some(nbrs) = adj.get(id) {
-                        let mut freq: BTreeMap<String, usize> = BTreeMap::new();
-                        for n in nbrs {
-                            if let Some(l) = label.get(n) {
-                                *freq.entry(l.clone()).or_insert(0) += 1;
-                            }
+        }
+        for _ in 0..4 {
+            for (id, _, _) in &nodes {
+                if let Some(nbrs) = adj.get(id) {
+                    let mut freq: BTreeMap<String, usize> = BTreeMap::new();
+                    for n in nbrs {
+                        if let Some(l) = label.get(n) {
+                            *freq.entry(l.clone()).or_insert(0) += 1;
                         }
-                        if let Some((best, _)) = freq.into_iter().max_by_key(|(k, c)| (*c, std::cmp::Reverse(k.clone()))) {
-                            label.insert(id.clone(), best);
-                        }
+                    }
+                    if let Some((best, _)) = freq
+                        .into_iter()
+                        .max_by_key(|(k, c)| (*c, std::cmp::Reverse(k.clone())))
+                    {
+                        label.insert(id.clone(), best);
                     }
                 }
             }
-            let mut grouped: BTreeMap<String, Vec<Value>> = BTreeMap::new();
-            for (id, title, ntype) in nodes {
-                let cid = label.get(&id).cloned().unwrap_or_else(|| id.clone());
-                grouped.entry(cid).or_default().push(json!({"id": id, "title": title, "type": ntype}));
-            }
-            let clusters: Vec<Value> = grouped
-                .into_iter()
-                .filter(|(_, members)| members.len() >= 2)
-                .map(|(cid, members)| {
-                    json!({
-                        "cluster_id": cid,
-                        "size": members.len(),
-                        "members": members,
-                    })
+        }
+        let mut grouped: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        for (id, title, ntype) in nodes {
+            let cid = label.get(&id).cloned().unwrap_or_else(|| id.clone());
+            grouped
+                .entry(cid)
+                .or_default()
+                .push(json!({"id": id, "title": title, "type": ntype}));
+        }
+        let clusters: Vec<Value> = grouped
+            .into_iter()
+            .filter(|(_, members)| members.len() >= 2)
+            .map(|(cid, members)| {
+                json!({
+                    "cluster_id": cid,
+                    "size": members.len(),
+                    "members": members,
                 })
-                .collect();
-            Ok(clusters)
-        });
+            })
+            .collect();
+        Ok(clusters)
+    });
     match res {
         Ok(clusters) => ok_json(&json!({"workspace_id": ws, "clusters": clusters})),
         Err(err) => detail_response(500, &err.to_string()),
@@ -419,13 +457,17 @@ async fn brain_list_corrections(State(state): State<BrainState>, req: Request) -
         Err(r) => return r,
     };
     let q = Query::from_uri(req.uri());
-    let status = q.get("status").and_then(|s| CorrectionStatus::parse(s).ok());
+    let status = q
+        .get("status")
+        .and_then(|s| CorrectionStatus::parse(s).ok());
     let ws_c = ws.clone();
     let res = state
         .store()
         .with_read_conn(move |conn| list_corrections(conn, &ws_c, status));
     match res {
-        Ok(items) => ok_json(&json!({"workspace_id": ws, "external_training_upload_allowed": false, "corrections": items})),
+        Ok(items) => ok_json(
+            &json!({"workspace_id": ws, "external_training_upload_allowed": false, "corrections": items}),
+        ),
         Err(err) => detail_response(500, &err.to_string()),
     }
 }
@@ -440,13 +482,17 @@ async fn brain_create_correction(State(state): State<BrainState>, req: Request) 
         Err(r) => return r,
     };
     let target_kind = match CorrectionTargetKind::parse(
-        body.get("target_kind").and_then(Value::as_str).unwrap_or("fact"),
+        body.get("target_kind")
+            .and_then(Value::as_str)
+            .unwrap_or("fact"),
     ) {
         Ok(k) => k,
         Err(e) => return detail_response(400, &e.to_string()),
     };
     let status = match CorrectionStatus::parse(
-        body.get("status").and_then(Value::as_str).unwrap_or("pending"),
+        body.get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("pending"),
     ) {
         Ok(s) => s,
         Err(e) => return detail_response(400, &e.to_string()),
@@ -454,12 +500,26 @@ async fn brain_create_correction(State(state): State<BrainState>, req: Request) 
     let req_payload = RecordCorrectionRequest {
         workspace_id: ws,
         target_kind,
-        target_id: body.get("target_id").and_then(Value::as_str).unwrap_or("").to_string(),
+        target_id: body
+            .get("target_id")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
         status,
         actor: email,
-        reason: body.get("reason").and_then(Value::as_str).unwrap_or("").to_string(),
-        before_snapshot: body.get("before_snapshot").cloned().unwrap_or_else(|| json!({})),
-        after_snapshot: body.get("after_snapshot").cloned().unwrap_or_else(|| json!({})),
+        reason: body
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        before_snapshot: body
+            .get("before_snapshot")
+            .cloned()
+            .unwrap_or_else(|| json!({})),
+        after_snapshot: body
+            .get("after_snapshot")
+            .cloned()
+            .unwrap_or_else(|| json!({})),
     };
     let path = state.store().path().to_path_buf();
     let res = tokio::task::spawn_blocking(move || {
@@ -487,7 +547,9 @@ async fn brain_update_correction_status(
         Err(r) => return r,
     };
     let status = match CorrectionStatus::parse(
-        body.get("status").and_then(Value::as_str).unwrap_or("confirmed"),
+        body.get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("confirmed"),
     ) {
         Ok(s) => s,
         Err(e) => return detail_response(400, &e.to_string()),

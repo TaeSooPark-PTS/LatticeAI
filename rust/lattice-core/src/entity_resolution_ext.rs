@@ -145,7 +145,9 @@ pub fn register_persistent_alias(
     ensure_entity_resolution_tables(conn)?;
     let key = canonical_entity_key(alias);
     if key.is_empty() {
-        return Err(CoreError::InvalidRequest("alias cannot be empty".to_string()));
+        return Err(CoreError::InvalidRequest(
+            "alias cannot be empty".to_string(),
+        ));
     }
     conn.execute(
         "INSERT OR REPLACE INTO entity_aliases(workspace_id, canonical_id, alias, alias_key, source, created_at)
@@ -461,7 +463,9 @@ fn node_effective_workspace(conn: &Connection, node_id: &str) -> Result<String, 
         )
         .optional()?;
     let Some((v_ws, m_ws)) = row else {
-        return Err(CoreError::InvalidRequest(format!("unknown entity node: {node_id}")));
+        return Err(CoreError::InvalidRequest(format!(
+            "unknown entity node: {node_id}"
+        )));
     };
     Ok(v_ws
         .or(m_ws)
@@ -483,7 +487,9 @@ pub fn execute_audited_entity_merge(
 ) -> Result<EntityMergeAuditRecord, CoreError> {
     ensure_entity_resolution_tables(conn)?;
     if canonical_id == duplicate_id {
-        return Err(CoreError::InvalidRequest("cannot merge entity with itself".to_string()));
+        return Err(CoreError::InvalidRequest(
+            "cannot merge entity with itself".to_string(),
+        ));
     }
     let ws_a = node_effective_workspace(conn, canonical_id)?;
     let ws_b = node_effective_workspace(conn, duplicate_id)?;
@@ -496,7 +502,9 @@ pub fn execute_audited_entity_merge(
     let now = utc_now_iso();
     let merge_id = format!(
         "emerge:{}",
-        &sha256_text(&format!("{workspace_id}|{canonical_id}|{duplicate_id}|{now}"))[..20]
+        &sha256_text(&format!(
+            "{workspace_id}|{canonical_id}|{duplicate_id}|{now}"
+        ))[..20]
     );
     let tx = conn.transaction()?;
 
@@ -532,12 +540,10 @@ pub fn execute_audited_entity_merge(
             continue;
         }
         // Only migrate when it won't violate UNIQUE(from_node, to_node, type).
-        if tx
-            .execute(
-                "UPDATE OR IGNORE edges SET from_node = ?1, to_node = ?2 WHERE id = ?3",
-                params![new_from, new_to, eid],
-            )?
-            > 0
+        if tx.execute(
+            "UPDATE OR IGNORE edges SET from_node = ?1, to_node = ?2 WHERE id = ?3",
+            params![new_from, new_to, eid],
+        )? > 0
         {
             migrated.push(MigratedEdgeSnapshot {
                 edge_id: eid,
@@ -669,7 +675,9 @@ pub fn rollback_entity_merge(
         existing_rb,
     }) = rec
     else {
-        return Err(CoreError::InvalidRequest(format!("unknown merge_id: {merge_id}")));
+        return Err(CoreError::InvalidRequest(format!(
+            "unknown merge_id: {merge_id}"
+        )));
     };
     if existing_rb.is_some() {
         return Err(CoreError::InvalidRequest(format!(
@@ -762,13 +770,18 @@ mod tests {
         .unwrap();
 
         // Type-scoped exact clustering keeps Person and Organization separate.
-        let clusters = resolve_entities_in_conn(&conn, Some("ws-1"), &EntityAliasBook::new()).unwrap();
-        assert!(!clusters.iter().any(|c| c.member_node_ids.contains(&"p-apple".to_string())
-            && c.member_node_ids.contains(&"o-apple".to_string())));
+        let clusters =
+            resolve_entities_in_conn(&conn, Some("ws-1"), &EntityAliasBook::new()).unwrap();
+        assert!(!clusters
+            .iter()
+            .any(|c| c.member_node_ids.contains(&"p-apple".to_string())
+                && c.member_node_ids.contains(&"o-apple".to_string())));
 
         // Candidate evaluator flags Person/Org collision as RejectedHomonym and Apple/Apple Inc as ReviewCandidate.
         let cands = evaluate_merge_candidates(&conn, "ws-1").unwrap();
-        assert!(cands.iter().any(|c| c.decision == MergeDecisionBand::RejectedHomonym));
+        assert!(cands
+            .iter()
+            .any(|c| c.decision == MergeDecisionBand::RejectedHomonym));
 
         // Cross-workspace merge MUST be rejected.
         let cross = execute_audited_entity_merge(
@@ -795,7 +808,11 @@ mod tests {
         .unwrap();
         assert_eq!(merged.migrated_edges.len(), 1);
         let target: String = conn
-            .query_row("SELECT to_node FROM edges WHERE id = 'e-mention'", [], |r| r.get(0))
+            .query_row(
+                "SELECT to_node FROM edges WHERE id = 'e-mention'",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(target, "o-apple");
 
@@ -803,7 +820,11 @@ mod tests {
         let rolled = rollback_entity_merge(&mut conn, &merged.merge_id, true).unwrap();
         assert!(rolled.rolled_back_at.is_some());
         let restored_target: String = conn
-            .query_row("SELECT to_node FROM edges WHERE id = 'e-mention'", [], |r| r.get(0))
+            .query_row(
+                "SELECT to_node FROM edges WHERE id = 'e-mention'",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(restored_target, "o-apple-inc");
         let blocked = load_do_not_merge_pairs(&conn).unwrap();

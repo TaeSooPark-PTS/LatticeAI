@@ -88,8 +88,8 @@ pub fn detect_sensitive_findings(text: &str) -> Vec<SensitiveFinding> {
     }
     let set = patterns();
     let mut findings = Vec::new();
-    let mut secret_hits = set.telegram_bot.find_iter(text).count()
-        + set.telegram_bare.find_iter(text).count();
+    let mut secret_hits =
+        set.telegram_bot.find_iter(text).count() + set.telegram_bare.find_iter(text).count();
     for regex in &set.secrets {
         secret_hits += regex.find_iter(text).count();
     }

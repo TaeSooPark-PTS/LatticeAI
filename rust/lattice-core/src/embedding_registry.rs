@@ -79,7 +79,9 @@ impl EmbeddingModelSpec {
         self.model_id == other.model_id
             && self.version == other.version
             && self.dimensions == other.dimensions
-            && self.normalization.eq_ignore_ascii_case(&other.normalization)
+            && self
+                .normalization
+                .eq_ignore_ascii_case(&other.normalization)
             && self
                 .distance_metric
                 .eq_ignore_ascii_case(&other.distance_metric)
@@ -115,7 +117,11 @@ pub fn builtin_embedding_registry() -> Vec<EmbeddingModelSpec> {
             dimensions: 1024,
             normalization: "l2".to_string(),
             distance_metric: "cosine".to_string(),
-            languages: vec!["ko".to_string(), "en".to_string(), "multilingual".to_string()],
+            languages: vec![
+                "ko".to_string(),
+                "en".to_string(),
+                "multilingual".to_string(),
+            ],
             modalities: vec!["text".to_string()],
             semantic: true,
             status: EmbeddingModelStatus::Active,
@@ -127,7 +133,11 @@ pub fn builtin_embedding_registry() -> Vec<EmbeddingModelSpec> {
             dimensions: 384,
             normalization: "l2".to_string(),
             distance_metric: "cosine".to_string(),
-            languages: vec!["ko".to_string(), "en".to_string(), "multilingual".to_string()],
+            languages: vec![
+                "ko".to_string(),
+                "en".to_string(),
+                "multilingual".to_string(),
+            ],
             modalities: vec!["text".to_string()],
             semantic: true,
             status: EmbeddingModelStatus::Shadow,
@@ -293,11 +303,9 @@ pub fn register_embedding_model(
 /// List registered embedding models (seeding built-ins if the registry table is empty).
 pub fn list_embedding_models(conn: &Connection) -> Result<Vec<EmbeddingModelSpec>, CoreError> {
     ensure_embedding_registry_schema(conn)?;
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM embedding_model_registry",
-        [],
-        |r| r.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM embedding_model_registry", [], |r| {
+        r.get(0)
+    })?;
     if count == 0 {
         for spec in builtin_embedding_registry() {
             register_embedding_model(conn, &spec)?;
@@ -501,7 +509,11 @@ pub fn evaluate_shadow_generation(
             generation_id,
             shadow_recall_at_5,
             active_recall_at_5,
-            if passed { "evaluated_pass" } else { "evaluated_fail" },
+            if passed {
+                "evaluated_pass"
+            } else {
+                "evaluated_fail"
+            },
             now
         ],
     )?;
@@ -545,11 +557,8 @@ pub fn cutover_shadow_generation(
         .unwrap_or_else(|| format!("gen-pre-{}", generation_id));
 
     // Archive current active vectors into shadow storage under `backup_gen` for instant rollback.
-    let active_count: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM vector_embeddings",
-        [],
-        |r| r.get(0),
-    )?;
+    let active_count: i64 =
+        tx.query_row("SELECT COUNT(*) FROM vector_embeddings", [], |r| r.get(0))?;
     if active_count > 0 {
         tx.execute(
             "INSERT OR REPLACE INTO vector_embeddings_shadow(
@@ -629,7 +638,9 @@ pub fn rollback_index_generation(conn: &mut Connection) -> Result<CutoverReceipt
             |r| r.get(0),
         )
         .optional()?
-        .ok_or_else(|| CoreError::InvalidRequest("no previous generation available for rollback".to_string()))?;
+        .ok_or_else(|| {
+            CoreError::InvalidRequest("no previous generation available for rollback".to_string())
+        })?;
     cutover_shadow_generation(conn, &prev)
 }
 
@@ -685,7 +696,11 @@ mod tests {
         let models = list_embedding_models(&conn).unwrap();
         assert!(models.iter().any(|m| m.model_id == "BAAI/bge-m3"));
 
-        let bge = models.iter().find(|m| m.model_id == "BAAI/bge-m3").unwrap().clone();
+        let bge = models
+            .iter()
+            .find(|m| m.model_id == "BAAI/bge-m3")
+            .unwrap()
+            .clone();
         let e5 = models
             .iter()
             .find(|m| m.model_id == "intfloat/multilingual-e5-small")

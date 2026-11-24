@@ -223,7 +223,11 @@ pub struct MultiAgentSession {
 }
 
 impl MultiAgentSession {
-    pub fn new(session_id: impl Into<String>, workspace_id: impl Into<String>, budget: OrchestrationBudget) -> Self {
+    pub fn new(
+        session_id: impl Into<String>,
+        workspace_id: impl Into<String>,
+        budget: OrchestrationBudget,
+    ) -> Self {
         Self {
             session_id: session_id.into(),
             workspace_id: workspace_id.into(),
@@ -258,7 +262,12 @@ impl MultiAgentSession {
     }
 
     /// Authorize a tool call for `role` against both least-privilege scope and hierarchical budgets.
-    pub fn authorize_tool_call(&mut self, role: AgentRole, tool_name: &str, est_tokens: usize) -> Result<(), String> {
+    pub fn authorize_tool_call(
+        &mut self,
+        role: AgentRole,
+        tool_name: &str,
+        est_tokens: usize,
+    ) -> Result<(), String> {
         let scope = RoleToolScope::for_role(role);
         scope.check_tool(tool_name)?;
         if self.total_tool_calls + 1 > self.budget.max_total_tool_calls
@@ -273,7 +282,10 @@ impl MultiAgentSession {
             .or_insert(0);
         if *per_role + 1 > self.budget.max_per_role_tool_calls {
             self.status = OrchestrationStatus::BudgetExhausted;
-            return Err(format!("per-role tool budget exhausted for '{}'", role.as_str()));
+            return Err(format!(
+                "per-role tool budget exhausted for '{}'",
+                role.as_str()
+            ));
         }
         *per_role += 1;
         self.total_tool_calls += 1;
@@ -359,7 +371,8 @@ impl MultiAgentSession {
         });
         if has_unresolved_high {
             for c in &mut self.conflicts {
-                if c.severity == ConflictSeverity::High && c.resolution == ConflictResolution::Open {
+                if c.severity == ConflictSeverity::High && c.resolution == ConflictResolution::Open
+                {
                     c.resolution = ConflictResolution::EscalatedNeedsReview;
                 }
             }
@@ -381,13 +394,24 @@ mod tests {
         let mut session = MultiAgentSession::new("sess-1", "ws-1", OrchestrationBudget::default());
 
         // Least-privilege tool scoping: Researcher & Reviewer cannot write/exec; Executor can.
-        assert!(session.authorize_tool_call(AgentRole::Researcher, "knowledge_search", 200).is_ok());
-        assert!(session.authorize_tool_call(AgentRole::Researcher, "write_file", 100).is_err());
-        assert!(session.authorize_tool_call(AgentRole::Reviewer, "run_command", 100).is_err());
-        assert!(session.authorize_tool_call(AgentRole::Executor, "write_file", 300).is_ok());
+        assert!(session
+            .authorize_tool_call(AgentRole::Researcher, "knowledge_search", 200)
+            .is_ok());
+        assert!(session
+            .authorize_tool_call(AgentRole::Researcher, "write_file", 100)
+            .is_err());
+        assert!(session
+            .authorize_tool_call(AgentRole::Reviewer, "run_command", 100)
+            .is_err());
+        assert!(session
+            .authorize_tool_call(AgentRole::Executor, "write_file", 300)
+            .is_ok());
 
         // Context isolation + redacted shared blackboard.
-        session.append_private_note(AgentRole::Researcher, "found secret sk-proj-abcdefghijklmnop1234");
+        session.append_private_note(
+            AgentRole::Researcher,
+            "found secret sk-proj-abcdefghijklmnop1234",
+        );
         assert_eq!(session.private_notes(AgentRole::Executor).len(), 0);
         assert!(session.private_notes(AgentRole::Researcher)[0].contains("[REDACTED_SECRET]"));
 
@@ -402,9 +426,15 @@ mod tests {
         assert_eq!(art.content["owner_email"], "[REDACTED_EMAIL]");
 
         // Handoff cycle prevention halts repeated Executor <-> Reviewer ping-pong.
-        assert!(session.record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a").is_ok());
-        assert!(session.record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a").is_ok());
-        assert!(session.record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a").is_err());
+        assert!(session
+            .record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a")
+            .is_ok());
+        assert!(session
+            .record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a")
+            .is_ok());
+        assert!(session
+            .record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a")
+            .is_err());
         assert_eq!(session.status, OrchestrationStatus::CycleHalted);
 
         // High-severity unresolved conflict forces fail-closed NeedsReview.
@@ -420,7 +450,13 @@ mod tests {
             resolution: ConflictResolution::Open,
             rationale: None,
         });
-        assert_eq!(session2.finalize_by_supervisor(), OrchestrationStatus::NeedsReview);
-        assert_eq!(session2.conflicts[0].resolution, ConflictResolution::EscalatedNeedsReview);
+        assert_eq!(
+            session2.finalize_by_supervisor(),
+            OrchestrationStatus::NeedsReview
+        );
+        assert_eq!(
+            session2.conflicts[0].resolution,
+            ConflictResolution::EscalatedNeedsReview
+        );
     }
 }

@@ -314,22 +314,33 @@ mod tests {
 
     #[test]
     fn evaluates_versioned_320_query_dataset_with_zero_workspace_leaks_and_honest_mode_labels() {
-        let dataset_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../datasets/rag_eval_v1.json");
+        let dataset_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../datasets/rag_eval_v1.json");
         let ds = load_versioned_dataset(&dataset_path).expect("load rag_eval_v1.json");
         assert!(ds.total_queries >= 300, "got {}", ds.total_queries);
         assert_eq!(ds.categories.len(), 9);
 
         let report = evaluate_versioned_dataset_retrieval(&ds, None).expect("eval");
         assert_eq!(report.metadata.dataset_version, "rag-eval-v1.0.0");
-        assert_eq!(report.metadata.execution_mode, EvalExecutionMode::RetrievalOnly);
+        assert_eq!(
+            report.metadata.execution_mode,
+            EvalExecutionMode::RetrievalOnly
+        );
         assert_eq!(report.live_model_status, EvalModelStatus::Skipped);
         assert_eq!(report.workspace_boundary_queries, 32);
         assert_eq!(report.workspace_boundary_leaks, 0);
         assert_eq!(report.workspace_boundary_compliance, 1.0);
         assert_eq!(report.superseded_exclusion_rate, 1.0);
         assert_eq!(report.duplication_rate, 0.0);
-        assert!(report.recall_at_5 >= 0.85, "recall@5={}", report.recall_at_5);
-        assert!(report.recall_at_10 >= 0.90, "recall@10={}", report.recall_at_10);
+        assert!(
+            report.recall_at_5 >= 0.85,
+            "recall@5={}",
+            report.recall_at_5
+        );
+        assert!(
+            report.recall_at_10 >= 0.90,
+            "recall@10={}",
+            report.recall_at_10
+        );
     }
 }

@@ -66,9 +66,13 @@ impl StepErrorKind {
             || lower.contains("temporarily unavailable")
         {
             Self::TransientNetwork
-        } else if lower.contains("permission") || lower.contains("unauthorized") || lower.contains("mismatch") {
+        } else if lower.contains("permission")
+            || lower.contains("unauthorized")
+            || lower.contains("mismatch")
+        {
             Self::PermissionDenied
-        } else if lower.contains("blocked") || lower.contains("policy") || lower.contains("sandbox") {
+        } else if lower.contains("blocked") || lower.contains("policy") || lower.contains("sandbox")
+        {
             Self::PolicyBlocked
         } else if lower.contains("invalid") || lower.contains("missing required") {
             Self::InvalidArgs
@@ -78,7 +82,10 @@ impl StepErrorKind {
     }
 
     pub fn is_retryable(self) -> bool {
-        matches!(self, Self::TransientNetwork | Self::RateLimited | Self::Timeout)
+        matches!(
+            self,
+            Self::TransientNetwork | Self::RateLimited | Self::Timeout
+        )
     }
 }
 

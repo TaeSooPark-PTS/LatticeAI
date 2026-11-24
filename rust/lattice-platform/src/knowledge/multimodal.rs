@@ -95,7 +95,12 @@ pub fn default_provider_contracts() -> [ProviderContract; 4] {
             provider_id: "worker.video.indexer",
             modality: Modality::Video,
             worker_endpoint: "/worker/parse",
-            allowed_mime_types: &["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"],
+            allowed_mime_types: &[
+                "video/mp4",
+                "video/webm",
+                "video/quicktime",
+                "video/x-matroska",
+            ],
             max_payload_bytes: MAX_VIDEO_BYTES,
             requires_local_worker: true,
             default_embedding_dim: Some(512),

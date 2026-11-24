@@ -98,6 +98,8 @@ mod tests {
         assert!(res.injection_signals.len() >= 2);
         assert!(!res.framed_text.contains("<|system|>"));
         assert!(res.framed_text.contains("&lt;/untrusted_data&gt;"));
-        assert!(res.framed_text.starts_with("<untrusted_data source=\"rag:doc-1\""));
+        assert!(res
+            .framed_text
+            .starts_with("<untrusted_data source=\"rag:doc-1\""));
     }
 }

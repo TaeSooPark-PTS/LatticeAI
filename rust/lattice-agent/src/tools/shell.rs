@@ -127,7 +127,9 @@ async fn run_script(
         .current_dir(&workdir)
         .env_clear()
         .kill_on_drop(true);
-    for key in ["PATH", "HOME", "USER", "TMPDIR", "TEMP", "TMP", "NODE_ENV", "LANG", "LC_ALL"] {
+    for key in [
+        "PATH", "HOME", "USER", "TMPDIR", "TEMP", "TMP", "NODE_ENV", "LANG", "LC_ALL",
+    ] {
         if let Ok(val) = std::env::var(key) {
             command.env(key, val);
         }

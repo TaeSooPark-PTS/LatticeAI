@@ -40,7 +40,7 @@ pub use read::{
     workspace_membership_sql, workspaces_of, NodeRow, VectorRow, DEFAULT_WORKSPACE_ID,
 };
 pub use redact::{
-    detect_sensitive_findings, is_secret_key, redact_pii_and_secrets,
-    redact_pii_and_secrets_value, redact_pii_text, redact_secret_text, redact_secrets,
-    redact_structure, SensitiveFinding, PII_REDACTION, REDACTION,
+    detect_sensitive_findings, is_secret_key, redact_pii_and_secrets, redact_pii_and_secrets_value,
+    redact_pii_text, redact_secret_text, redact_secrets, redact_structure, SensitiveFinding,
+    PII_REDACTION, REDACTION,
 };

@@ -44,7 +44,10 @@ fn rejects_symlink_escape_and_toctou_swap_inside_workspace() {
     assert!(ws.resolve("escape.txt").is_err());
     assert!(safe_io::safe_read_bytes(&ws, &escape_link, 65_536).is_err());
     assert!(safe_io::safe_write_bytes(&ws, &escape_link, b"pwned").is_err());
-    assert_eq!(std::fs::read_to_string(&secret).unwrap(), "TOP_SECRET_VALUE");
+    assert_eq!(
+        std::fs::read_to_string(&secret).unwrap(),
+        "TOP_SECRET_VALUE"
+    );
 
     // 2. Simulated TOCTOU: resolve legitimate path first, then swap directory with symlink
     // before safe_io writes -> O_NOFOLLOW must refuse the write atomically!

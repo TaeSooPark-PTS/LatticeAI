@@ -484,11 +484,17 @@ pub(crate) async fn search_files(
                     }
                 }
             }
-            if std::fs::symlink_metadata(&path).map(|m| m.is_dir()).unwrap_or(false) {
+            if std::fs::symlink_metadata(&path)
+                .map(|m| m.is_dir())
+                .unwrap_or(false)
+            {
                 walk(&path, ws, query_lower, max_results, out);
                 continue;
             }
-            if !std::fs::symlink_metadata(&path).map(|m| m.is_file()).unwrap_or(false) {
+            if !std::fs::symlink_metadata(&path)
+                .map(|m| m.is_file())
+                .unwrap_or(false)
+            {
                 continue;
             }
             if path.metadata().map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES {
@@ -592,7 +598,10 @@ pub(crate) fn run_grep(state: &ToolsState, args: &Value) -> Result<Value, ToolEx
                     }
                 }
             }
-            if std::fs::symlink_metadata(&path).map(|m| m.is_dir()).unwrap_or(false) {
+            if std::fs::symlink_metadata(&path)
+                .map(|m| m.is_dir())
+                .unwrap_or(false)
+            {
                 let name = path.file_name().unwrap_or_default().to_string_lossy();
                 if GREP_BINARY_DIRS.contains(&name.as_ref()) {
                     continue;
@@ -608,7 +617,10 @@ pub(crate) fn run_grep(state: &ToolsState, args: &Value) -> Result<Value, ToolEx
                 );
                 continue;
             }
-            if !std::fs::symlink_metadata(&path).map(|m| m.is_file()).unwrap_or(false) {
+            if !std::fs::symlink_metadata(&path)
+                .map(|m| m.is_file())
+                .unwrap_or(false)
+            {
                 continue;
             }
             let ext = path

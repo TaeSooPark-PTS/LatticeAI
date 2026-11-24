@@ -141,7 +141,9 @@ pub fn ensure_learning_loop_schema(conn: &Connection) -> Result<(), CoreError> {
 }
 
 /// Invariant guard: user corrections are NEVER eligible for external model training uploads.
-pub fn assert_external_training_upload_forbidden(record: &KnowledgeCorrectionRecord) -> Result<(), CoreError> {
+pub fn assert_external_training_upload_forbidden(
+    record: &KnowledgeCorrectionRecord,
+) -> Result<(), CoreError> {
     if !record.local_only || record.external_training_upload_allowed {
         return Err(CoreError::InvalidRequest(
             "policy violation: user knowledge corrections may never be uploaded for external model training"
@@ -244,7 +246,8 @@ fn apply_confirmed_correction_and_selective_reindex(
                     .get("summary")
                     .and_then(Value::as_str)
                     .unwrap_or(&old_summary);
-                let mut meta: Value = serde_json::from_str(&old_meta_raw).unwrap_or_else(|_| json!({}));
+                let mut meta: Value =
+                    serde_json::from_str(&old_meta_raw).unwrap_or_else(|_| json!({}));
                 if let Some(obj) = meta.as_object_mut() {
                     // Never overwrite original raw provenance; attach correction overlay only.
                     obj.insert("verification_status".to_string(), json!("confirmed"));
@@ -261,7 +264,10 @@ fn apply_confirmed_correction_and_selective_reindex(
                     params![target_id, new_title, new_summary, meta_str, now],
                 );
                 // Selective FTS5 re-index for ONLY this target node.
-                let _ = tx.execute("DELETE FROM node_fts WHERE node_id = ?1", params![target_id]);
+                let _ = tx.execute(
+                    "DELETE FROM node_fts WHERE node_id = ?1",
+                    params![target_id],
+                );
                 let _ = tx.execute(
                     "INSERT INTO node_fts(node_id, title, summary) VALUES (?1, ?2, ?3)",
                     params![target_id, new_title, new_summary],
@@ -314,7 +320,12 @@ pub fn update_correction_status(
         "UPDATE knowledge_corrections
          SET status = ?2, reindex_triggered = ?3, updated_at = ?4
          WHERE correction_id = ?1",
-        params![correction_id, new_status.as_str(), if reindex { 1 } else { 0 }, now],
+        params![
+            correction_id,
+            new_status.as_str(),
+            if reindex { 1 } else { 0 },
+            now
+        ],
     )?;
     tx.commit()?;
     load_correction(conn, correction_id)?
@@ -476,7 +487,11 @@ mod tests {
 
         // Raw source_uri provenance must remain untouched.
         let meta_raw: String = conn
-            .query_row("SELECT metadata_json FROM nodes WHERE id = 'fact-1'", [], |r| r.get(0))
+            .query_row(
+                "SELECT metadata_json FROM nodes WHERE id = 'fact-1'",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         let meta: Value = serde_json::from_str(&meta_raw).unwrap();
         assert_eq!(meta["source_uri"], "file:///orig.md");
@@ -497,7 +512,9 @@ mod tests {
         assert_eq!(reverted.status, CorrectionStatus::Rejected);
         assert!(reverted.reverted_at.is_some());
         let restored_summary: String = conn
-            .query_row("SELECT summary FROM nodes WHERE id = 'fact-1'", [], |r| r.get(0))
+            .query_row("SELECT summary FROM nodes WHERE id = 'fact-1'", [], |r| {
+                r.get(0)
+            })
             .unwrap();
         assert_eq!(restored_summary, "Alice leads Project X");
     }
