@@ -75,19 +75,25 @@ impl GatewayState {
     /// Build state with a fresh HTTP client.
     pub fn new(provider: Arc<dyn StatusProvider>) -> Result<Self, GatewayError> {
         let client = http_client().map_err(|err| GatewayError::Client(err.to_string()))?;
-        Ok(Self::with_client(provider, client))
+        Self::with_client(provider, client)
     }
 
     /// Build state reusing an existing client (the supervisor's, so the
     /// connection pool is shared).
     ///
-    /// The *proxy* client is always this state's own: the shared one follows
-    /// redirects, which is right for an API caller and destroys a proxied
-    /// `Set-Cookie` (see [`proxy`]). Should that builder ever fail, the shared
-    /// client is a worse front door but still a working one.
-    pub fn with_client(provider: Arc<dyn StatusProvider>, client: reqwest::Client) -> Self {
-        let proxy_client = proxy_client().unwrap_or_else(|_| client.clone());
-        Self {
+    /// The *proxy* client is always this state's own and fails closed if it
+    /// cannot be built: falling back to a redirect-following client would strip
+    /// proxied `Set-Cookie` headers and violate redirect boundaries.
+    pub fn with_client(
+        provider: Arc<dyn StatusProvider>,
+        client: reqwest::Client,
+    ) -> Result<Self, GatewayError> {
+        let proxy_client = proxy_client().map_err(|err| {
+            GatewayError::Client(format!(
+                "failed to build no-redirect proxy HTTP client: {err}"
+            ))
+        })?;
+        Ok(Self {
             provider,
             client,
             proxy_client,
@@ -102,7 +108,7 @@ impl GatewayState {
             observed_posture: Mutex::new(None),
             product: None,
             allowlist: None,
-        }
+        })
     }
 
     /// Front a worker whose surface is not the product's.

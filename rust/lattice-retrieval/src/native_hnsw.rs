@@ -361,6 +361,8 @@ fn decode_f32_blob(blob: &[u8], dim: usize) -> Option<Vec<f32>> {
     }
 }
 
+const MAX_CACHED_GRAPHS: usize = 32;
+
 static NATIVE_CACHE: OnceLock<Mutex<HashMap<String, NativeHnswGraph>>> = OnceLock::new();
 
 fn cache() -> &'static Mutex<HashMap<String, NativeHnswGraph>> {
@@ -386,7 +388,12 @@ pub fn query_native_hnsw(
     if let Some(key) = db_key {
         let mut guard = cache()
             .lock()
-            .map_err(|_| "native HNSW cache poisoned".to_string())?;
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !guard.contains_key(&key) && guard.len() >= MAX_CACHED_GRAPHS {
+            if let Some(evict) = guard.keys().next().cloned() {
+                guard.remove(&evict);
+            }
+        }
         let graph = guard
             .entry(key)
             .or_insert_with(|| NativeHnswGraph::new(dim));

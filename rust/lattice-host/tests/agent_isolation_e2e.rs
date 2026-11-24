@@ -95,7 +95,10 @@ fn seed_users(data_dir: &std::path::Path) {
         ("bob@globex.test", "owner", "globex"),
     ] {
         let mut rec = Map::new();
-        rec.insert("password".into(), json!(hash_password("Pass1234")));
+        rec.insert(
+            "password".into(),
+            json!(hash_password("Pass1234").expect("hash password")),
+        );
         rec.insert("role".into(), json!(role));
         rec.insert("tenant_id".into(), json!(tenant));
         rec.insert("disabled".into(), json!(false));

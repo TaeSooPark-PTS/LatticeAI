@@ -1,5 +1,17 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.0.0 - Living Synthesis] (2026-11-25)
+
+풀스택 보안·동시성·데스크톱/확장·CI/CD 고도화를 완료했습니다: `lattice-auth` 버전화 `$scrypt$` `Result` 기반 해싱, 상한 레이트 리미터 및 통합 `429` + `Retry-After` 응답과 영문 CSRF 거부; `lattice-core` 순수 Rust UTC 시계(`unsafe` `libc` 제거); `lattice-ingest`/`lattice-chat` 논블로킹 `spawn_blocking` I/O, 상한 HNSW/클라우드 예산 캐시, fail-closed 프록시 클라이언트, `EnvOverlayProbe`; Python 플랫폼 가드 MLX extra, `ContextVar` DI, Ruff 보안 규칙 복원; 엄격 TypeScript 7 플래그 및 `AppRouteView.tsx`(Vitest 100%); 직렬화 Tauri 게이트웨이 생명주기 및 `127.0.0.1:4825` 고정 CSP/권한; VS Code·브라우저 확장 강화; 실제 `windows-latest` Rust CI, `macos-latest` Tauri CI, 다이제스트 고정 멀티스테이지 Docker 스모크 CI; `14.0.0` 아키텍처 문서 최신화를 포함합니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.0.0.md](./releases/RELEASE_NOTES_v14.0.0.md).
+
+# [v13.9.0 - Living Synthesis] (2026-11-24)
+
+PR #69 보안·무결성 지적 6건을 모두 해결하고, 16개 디지털 브레인 확장 엔드포인트를 정본 `brain_api::MOUNTED`와 `memory_brain.json`에 통합하며 5개 대화형 React 브레인 거버넌스 패널과 `.github/workflows/nightly-rag-eval.yml`을 추가했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.9.0.md](./releases/RELEASE_NOTES_v13.9.0.md).
+
 # [v13.8.0 - Living Synthesis] (2026-11-24)
 
 디지털 브레인 플랫폼 통합 고도화 로드맵(P0–P3)을 완수했습니다: 결정론적 픽스처와 실제 로컬/클라우드 모델 평가를 분리하고 320개 질의 버전 데이터셋(`datasets/rag_eval_v1.json`)을 추가한 진정성 있는 RAG 평가, 자동 백업·드라이런·장애 주입 테스트를 갖춘 지식 그래프 무결성 검사/복구, 동음이의어 차단·퍼지 점수·선택적 롤백 엔티티 해석, OS 수준 `O_NOFOLLOW` FD 샌드박스 및 클라우드 이그레스 PII/비밀 마스킹, 섀도우 재색인·컷오버·롤백 임베딩 모델 레지스트리, 최소 권한 5역할 멀티에이전트 협업, 지식 학습 루프, OS 감시 파일 이동·일시중지, 모델 출처 계층 UX, 데스크톱 워치독 및 마스킹 `/host/diagnostics`, 토픽 클러스터/지식 공백/비디오 모달리티/감사 보존 정책/오프보딩 취소 영수증을 모두 반영했습니다.
@@ -94,13 +106,13 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 13.7.2까지**의 공개 릴리스 이력을 유지합니다(최신 `v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.0.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
-- [v13.5.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.5.0.md)
-- [v13.4.2 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.2.md)
-- [v13.4.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.1.md)
+- [v14.0.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.0.0.md)
+- [v13.9.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.9.0.md)
+- [v13.8.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.8.0.md)
 - [v13.7.2 - Living Synthesis](./releases/RELEASE_NOTES_v13.7.2.md)
 - [v13.7.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.7.1.md)
 - [v13.7.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.7.0.md)

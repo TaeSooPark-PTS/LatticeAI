@@ -187,7 +187,7 @@ describe("friendlyCaughtError", () => {
  * request at the wrong place.
  */
 
-import { apiBase, selectFolder, tauriInvoke } from "./base";
+import { selectFolder, tauriInvoke } from "./base";
 
 const tauriCore = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: tauriCore.invoke }));
@@ -312,12 +312,19 @@ describe("apiBase inside the desktop shell", () => {
     expect(store.getState().apiBase).toBeNull();
   });
 
-  it("treats a failed origin probe as 'no sidecar' instead of throwing", async () => {
+  it("invalidates a failed origin probe so subsequent calls can retry and recover", async () => {
     shell().__TAURI_INTERNALS__ = {};
-    tauriCore.invoke.mockRejectedValue(new Error("not ready"));
-    const { base } = await freshBase();
+    tauriCore.invoke
+      .mockRejectedValueOnce(new Error("not ready"))
+      .mockResolvedValueOnce("http://127.0.0.1:4825");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { base, store } = await freshBase();
 
     expect(await base.apiBase()).toBe("");
+    expect(warn).toHaveBeenCalled();
+    expect(await base.apiBase()).toBe("http://127.0.0.1:4825");
+    expect(store.getState().apiBase).toBe("http://127.0.0.1:4825");
+    expect(tauriCore.invoke).toHaveBeenCalledTimes(2);
   });
 });
 

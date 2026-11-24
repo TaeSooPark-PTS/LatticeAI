@@ -8,6 +8,11 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -19,5 +24,5 @@
       "@/*": ["./frontend/src/*"]
     }
   },
-  "include": ["frontend/src", "vite.config.mts"]
+  "include": ["frontend/src", "vite.config.mts", "vitest.config.mts"]
 }

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,7 +126,7 @@ describe("ProductFlow", () => {
   });
 
   it("completes the flow when the install finishes and the person enters", async () => {
-    const prepare = vi.fn(async (body: unknown, handlers: { onDone?: (d: Record<string, unknown>) => void }) => {
+    const prepare = vi.fn(async (_body: unknown, handlers: { onDone?: (d: Record<string, unknown>) => void }) => {
       handlers.onDone?.({ status: "done" });
       return ok({ status: "done" });
     });

@@ -4,7 +4,7 @@
   "description": "Default Lattice AI desktop capability set.",
   "windows": ["main"],
   "remote": {
-    "urls": ["http://127.0.0.1:*", "http://localhost:*"]
+    "urls": ["http://127.0.0.1:4825", "http://localhost:4825"]
   },
   "permissions": ["core:default"]
 }

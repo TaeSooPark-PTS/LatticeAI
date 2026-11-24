@@ -57,7 +57,6 @@ const viewPaths: Record<BrainView, string> = {
 };
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
-  const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const [view, setView] = React.useState<BrainView>(() => normalizeBrainView(initialTab));
   React.useEffect(() => {
@@ -219,8 +218,8 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
 
 function UnifiedMemoryPanel() {
   const qc = useQueryClient();
-  const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
+  const mode = useAppStore((state) => state.mode);
   const [recallQuery, setRecallQuery] = React.useState("");
   const [importArtifact, setImportArtifact] = React.useState("");
   const [expandedSection, setExpandedSection] = React.useState<"recall" | "sources" | "backup" | null>("recall");
@@ -242,7 +241,6 @@ function UnifiedMemoryPanel() {
 
   const managerData = isRecord((manager.data as Record<string, unknown>)?.data) ? (manager.data as Record<string, unknown>).data as Record<string, unknown> : {};
   const portData = isRecord((port.data as Record<string, unknown>)?.data) ? (port.data as Record<string, unknown>).data as Record<string, unknown> : {};
-  const portStats = isRecord(portData.stats) ? portData.stats : {};
   const portStorage = isRecord(portData.storage) ? portData.storage : {};
   const usage = isRecord(managerData.usage) ? managerData.usage : {};
 

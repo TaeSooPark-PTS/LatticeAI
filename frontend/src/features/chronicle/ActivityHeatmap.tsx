@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { t, type Language } from "@/i18n";
 import { fmtNumber } from "@/lib/utils";

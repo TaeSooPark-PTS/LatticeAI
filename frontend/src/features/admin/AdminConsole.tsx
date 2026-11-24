@@ -4,7 +4,7 @@ import * as React from "react";
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ListFilter, RotateCcw, Search, ShieldCheck } from "lucide-react";
-import { latticeApi, type AdminAuditFilters, type ApiResult } from "@/api/client";
+import { latticeApi, type AdminAuditFilters } from "@/api/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";

@@ -2,7 +2,7 @@
 
 # Lattice AI 신뢰 모델
 
-현재 릴리스: **13.8.0 — Living Synthesis**.
+현재 릴리스: **14.0.0 — Living Synthesis**.
 
 Lattice AI는 로컬 우선(local-first)으로 동작하며, 외부 통신을 명시적으로 다루고, 기능을 사용할 수 없을 때는 정직하게 그 상태를 알립니다.
 

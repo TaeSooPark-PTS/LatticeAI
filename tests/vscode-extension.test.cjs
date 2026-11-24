@@ -274,3 +274,46 @@ test("no recommendation means no banner, not a made-up one", () => {
   assert.equal(parseModelRecommendation({ zero_config: { recommend: { runtime: "mlx" } } }), null);
   assert.equal(parseModelRecommendation(null), null);
 });
+
+const http = require("node:http");
+const { LatticeAIClient } = require("../vscode-extension/out/client.js");
+
+test("LatticeAIClient approvalTokenCache is single-use and attaches Bearer Authorization", async () => {
+  const client = new LatticeAIClient("http://127.0.0.1:1", "tok-123");
+  client.cacheApprovalToken("run-1", "secret-token");
+  assert.equal(client.takeCachedApprovalToken("run-1"), "secret-token");
+  assert.equal(client.takeCachedApprovalToken("run-1"), undefined, "token must be single-use");
+
+  let receivedAuth = null;
+  const server = http.createServer((req, res) => {
+    receivedAuth = req.headers.authorization || null;
+    if (req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+    if (req.url === "/chat") {
+      res.writeHead(502, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "upstream down" }));
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    const port = server.address().port;
+    client.setBaseUrl(`http://127.0.0.1:${port}`);
+    const health = await client.health();
+    assert.equal(health.status, "ok");
+    assert.equal(receivedAuth, "Bearer tok-123");
+
+    await assert.rejects(async () => {
+      for await (const _chunk of client.streamGenerate("hi")) {
+        // should reject on 502 instead of silently returning empty
+      }
+    }, /HTTP 502/);
+  } finally {
+    server.close();
+  }
+});

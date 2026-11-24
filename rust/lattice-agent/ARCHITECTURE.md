@@ -41,7 +41,7 @@ process reaches Python compute through. A handler that answers "is this allowed"
 itself has forked `kernel::permission`; a kernel module that knows how a caller
 phrased something has been handed the wrong argument.
 
-## The small-model harness (v12.0.0)
+## The small-model harness
 
 The product runs on whatever model fits the machine, and a 0.5B model is not a
 smaller 70B — it is a model that cannot hold a tool-call contract at all. Three
@@ -104,7 +104,7 @@ the README, then summarise it* reached the write with no README in sight and a
 live model fabricated the summary, and a plan of one `list_dir` or one
 `mcp.grep` produced nothing at all. A run that is failing the same way twice —
 the same action, the same arguments, the same tool error — takes the same hatch
-(`guided::REPEAT_FAILURE_LIMIT`, enforced on both dials since v12.0.0) rather
+(`guided::REPEAT_FAILURE_LIMIT`, enforced on all dials) rather
 than spending its whole step budget on a refusal it has already had.
 
 **Refusing our own text.** Weak models continue the nearest complete shape, and
@@ -144,7 +144,7 @@ of three). It fires only when the request names a skill row this run actually
 offers, only before anything has executed, and only once per run; a request that
 names none leaves the choice entirely to the model, as it always did.
 
-**MCP dispatch (v12.0.0):** `lattice_platform::mcp::dispatch_for_agent` is
+**MCP dispatch:** `lattice_platform::mcp::dispatch_for_agent` is
 public and is the same `check_governance` `POST /mcp` runs. `resolve` still
 sends a prefixed name the run already governs through the kernel's stricter
 chain; a name the run does *not* govern reaches `PlatformCatalog::execute`,
@@ -184,11 +184,10 @@ under `rust/fixtures/agent/`, and reordering them is a behaviour change.
 **…a new route?** `surface/`, with its body in `runbody.rs` and its 400 through
 `surface::bad_request`. The route translates, calls the kernel, translates back.
 
-## Public API Surface (13.7.2+)
+## Public API Surface (14.0.0)
 
 `src/lib.rs` exposes only the canonical domain groups (`content`, `kernel`,
-`parse`, `prompts`, `seam`, `surface`, `tools`) and `VERSION`. The flat
-pre-12.0.0 compatibility re-export map was retired in `13.7.2`; every internal
+`parse`, `prompts`, `seam`, `surface`, `tools`) and `VERSION`. Every internal
 and external caller imports directly from canonical paths (e.g.,
 `lattice_agent::kernel::state`, `lattice_agent::tools::sandbox`,
 `lattice_agent::surface::looproutes`).

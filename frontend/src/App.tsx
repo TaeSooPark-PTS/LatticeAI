@@ -9,10 +9,10 @@ import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { Brain, Ellipsis, Moon, Sun, X } from "lucide-react";
-import { navigateHash } from "@/features/brain/navigation";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
 import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
 import { LazyRoute } from "@/components/ErrorBoundary";
+import { AdminRouteView, PageLoader, resolveAppRoute } from "@/AppRouteView";
 import {
   pointerDownHitsMenu,
   restoreFocusTo,
@@ -22,22 +22,9 @@ import {
 
 export { pointerDownHitsMenu, restoreFocusTo };
 
-// Heavy first-run onboarding and the conversation home each carry large subtrees
-// (setup flow, chat panels, markdown, memory rings). They are code-split so the
-// initial shell chunk stays small; the natural gates (onboarding vs. returning
-// user) mean only one is ever fetched on first paint.
-const ProductFlow = React.lazy(() => import("@/components/ProductFlow").then((module) => ({ default: module.ProductFlow })));
-const BrainHome = React.lazy(() => import("@/features/brain/BrainHome").then((module) => ({ default: module.BrainHome })));
-
-const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
-const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
-const CapturePage = React.lazy(() => import("@/pages/Capture").then((module) => ({ default: module.CapturePage })));
-const ChroniclePage = React.lazy(() => import("@/pages/Chronicle").then((module) => ({ default: module.ChroniclePage })));
-const LibraryPage = React.lazy(() => import("@/pages/Library").then((module) => ({ default: module.LibraryPage })));
-const SystemPage = React.lazy(() => import("@/pages/System").then((module) => ({ default: module.SystemPage })));
-// The admin console is a rare, separate surface and carries the whole
-// workspace copy namespace. Splitting it keeps both off first paint.
-const AdminConsole = React.lazy(() => import("@/features/admin/AdminConsole").then((module) => ({ default: module.AdminConsole })));
+const ProductFlow = React.lazy(() =>
+  import("@/components/ProductFlow").then((module) => ({ default: module.ProductFlow })),
+);
 
 export default function App() {
   const { language, rawRoute, parsed, brainState, intensity, setBrain } = useAppBootstrap();
@@ -51,61 +38,25 @@ export default function App() {
     );
   }
 
+  const resolved = resolveAppRoute({
+    rawRoute,
+    parsed,
+    brainState,
+    intensity,
+    onBrainChange: setBrain,
+  });
+
   return (
     <div className="brain-space">
       <div className="brain-field" />
       <CoreServiceUnavailableBanner />
       <CommandPaletteHost language={language} />
-      {rawRoute.startsWith("/admin") ? (
-        <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-          <AdminConsole onBack={() => navigateHash("/brain")} />
-        </LazyRoute>
-      ) : parsed.primary === "act" ? (
-        <BrainShell active={parsed.primary}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <ActPage initialTab={parsed.tab} />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "capture" ? (
-        <BrainShell active={parsed.primary}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <CapturePage initialTab={parsed.tab} />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "chronicle" ? (
-        <BrainShell active={parsed.primary}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <ChroniclePage />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "library" ? (
-        <BrainShell active={parsed.primary}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <LibraryPage initialTab={parsed.tab} />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "system" ? (
-        <BrainShell active={parsed.primary}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <SystemPage initialTab={parsed.tab} />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "memory" ? (
-        <BrainShell active="memory">
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <BrainPage initialTab="memory" />
-          </LazyRoute>
-        </BrainShell>
-      ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
-        <BrainShell active={parsed.tab === "graph" || parsed.tab === "knowledge" || parsed.tab === "memory" ? "memory" : "brain"}>
-          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <BrainPage initialTab={parsed.tab} />
-          </LazyRoute>
-        </BrainShell>
+      {resolved.kind === "admin" ? (
+        <AdminRouteView language={language} rawRoute={rawRoute} />
       ) : (
-        <BrainShell active="brain" contentOwnsMain>
+        <BrainShell active={resolved.active} contentOwnsMain={resolved.contentOwnsMain}>
           <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
-            <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+            {resolved.element}
           </LazyRoute>
         </BrainShell>
       )}
@@ -419,13 +370,5 @@ function VsCodeSyncStatusInner({ language }: { language: Language }) {
         <small>{t(language, labelKey)}</small>
       </span>
     </button>
-  );
-}
-
-function PageLoader({ language }: { language: Language }) {
-  return (
-    <div className="brain-shell-loader" role="status">
-      {t(language, "shell.loading")}
-    </div>
   );
 }

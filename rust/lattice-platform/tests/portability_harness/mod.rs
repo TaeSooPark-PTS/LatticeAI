@@ -277,7 +277,10 @@ fn account(
     role: &str,
 ) -> serde_json::Map<String, Value> {
     let mut record = serde_json::Map::new();
-    record.insert("password".into(), json!(hash_password(password)));
+    record.insert(
+        "password".into(),
+        json!(hash_password(password).expect("hash password")),
+    );
     record.insert("name".into(), json!(name));
     record.insert("nickname".into(), json!(nickname));
     record.insert("role".into(), json!(role));

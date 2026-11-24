@@ -27,7 +27,6 @@ import type {
   IngestionEvidence,
   IngestionJob,
   IngestionWatch,
-  IngestionWatchError,
   IngestionWatchStatus,
   KnowledgeConcept,
   KnowledgeGraphModel,

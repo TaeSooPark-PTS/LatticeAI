@@ -13,8 +13,8 @@ use lattice_host::gateway::{
     bind_gateway, ensure_bind_allowed, mounts, serve_gateway_with_auth_guard, GatewayState,
 };
 use lattice_host::supervisor::{
-    find_free_port, preferred_port, HostProbe, Supervisor, SupervisorConfig, SystemProbe,
-    DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
+    find_free_port, preferred_port, EnvOverlayProbe, HostProbe, Supervisor, SupervisorConfig,
+    SystemProbe, DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
 };
 
 const USAGE: &str = "\
@@ -223,25 +223,30 @@ fn ensure_supported_storage_engine(probe: &dyn HostProbe) -> Result<(), String> 
 }
 
 async fn run(options: Options) -> Result<(), String> {
+    let mut env_overrides: Vec<(String, String)> = Vec::new();
     if let Some(cmd) = options.worker_cmd.as_ref() {
-        std::env::set_var("LATTICEAI_DESKTOP_BACKEND_CMD", cmd);
+        env_overrides.push(("LATTICEAI_DESKTOP_BACKEND_CMD".to_string(), cmd.clone()));
     }
-    let probe = SystemProbe;
-    ensure_supported_storage_engine(&probe)?;
-    let bind_ip = resolve_bind_ip(&options, &probe)?;
-    let require_auth = parse_require_auth(&probe);
-    let gateway_port = choose_gateway_port(&options, &probe)?;
+    let probe: Arc<dyn HostProbe> = if env_overrides.is_empty() {
+        Arc::new(SystemProbe)
+    } else {
+        Arc::new(EnvOverlayProbe::new(Arc::new(SystemProbe), env_overrides))
+    };
+    ensure_supported_storage_engine(&*probe)?;
+    let bind_ip = resolve_bind_ip(&options, &*probe)?;
+    let require_auth = parse_require_auth(&*probe);
+    let gateway_port = choose_gateway_port(&options, &*probe)?;
     let addr = SocketAddr::new(bind_ip, gateway_port);
     ensure_bind_allowed(&addr, require_auth).map_err(|err| err.to_string())?;
-    let worker_port = choose_worker_port(&options, &probe, gateway_port)?;
+    let worker_port = choose_worker_port(&options, &*probe, gateway_port)?;
 
-    let mut config = SupervisorConfig::new(worker_port).with_system_dirs(&probe);
+    let mut config = SupervisorConfig::new(worker_port).with_system_dirs(&*probe);
     config.supervise = !options.no_spawn;
     // The worker sits behind this gateway, so it is told to trust the gateway's
     // origin for cookie-authenticated writes (plan §2a).
     config.gateway_port = Some(gateway_port);
     let agent_root = config.agent_root();
-    let supervisor = Supervisor::with_probe(config, Arc::new(SystemProbe))
+    let supervisor = Supervisor::with_probe(config, Arc::clone(&probe))
         .map_err(|err| format!("cannot create the supervisor: {err}"))?;
 
     let listener = bind_gateway(addr, require_auth)
@@ -262,7 +267,8 @@ async fn run(options: Options) -> Result<(), String> {
         log("--no-spawn: fronting an existing worker, nothing will be started");
     }
 
-    let mut state = GatewayState::with_client(Arc::new(supervisor.clone()), supervisor.client());
+    let mut state = GatewayState::with_client(Arc::new(supervisor.clone()), supervisor.client())
+        .map_err(|err| format!("cannot build gateway state: {err}"))?;
     if let Some(root) = agent_root {
         state = state.with_agent_root(root);
     }
@@ -287,7 +293,7 @@ async fn run(options: Options) -> Result<(), String> {
     // serves.
     let graph = state
         .product()
-        .expect("open_product just succeeded")
+        .ok_or_else(|| "product surface missing after open_product".to_string())?
         .graph
         .clone();
     let scheduler =

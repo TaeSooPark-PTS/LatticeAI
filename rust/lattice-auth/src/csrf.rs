@@ -24,9 +24,9 @@ use crate::response::json_response_utf8;
 /// Methods that must not change state; everything else is guarded.
 pub const SAFE_METHODS: [&str; 4] = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
-/// The refusal text, byte-identical to `_DENIED_DETAIL`.
+/// Standard English refusal detail for rejected cross-site origins.
 pub const DENIED_DETAIL: &str =
-    "요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.";
+    "Request origin could not be verified and was rejected. It may have been sent from another site.";
 
 /// Why a request was allowed or refused.
 #[derive(Debug, Clone, PartialEq, Eq)]

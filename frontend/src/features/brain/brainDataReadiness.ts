@@ -12,8 +12,6 @@ import {
 import type {
   ApiRecord,
   BrainBrief,
-  BrainBriefAction,
-  BrainBriefEvidence,
   BrainDepth,
   BrainProof,
   BrainReadiness,

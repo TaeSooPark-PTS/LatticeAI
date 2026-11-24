@@ -3,15 +3,15 @@
 # Lattice AI Current Architecture
 
 > **Status: canonical** — current-truth architecture document, kept in sync
-> with the current release. Historical subsystem notes live in
-> [`docs/architecture.md`](docs/architecture.md).
+> with the current release. Subsystem design principles and operational views
+> live in [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **13.9.0 — Living Synthesis**.
+Current release: **14.0.0 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
 Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
 (`latticeai.worker_app`), a private SQLite Knowledge Graph, a model-agnostic
-Adaptive Agent Harness, and a React / Vite 8 / TypeScript 7 UI.
+Adaptive Agent Harness, and a strict TypeScript 7 / React / Vite 8 UI.
 
 ## System Map
 
@@ -21,8 +21,8 @@ flowchart TB
 
   subgraph surfaces["Surfaces"]
     direction LR
-    ui["React / Vite 8 / TS 7.0.2 app<br/>lazy routes · per-route i18n · ko · en"]
-    desktop["Tauri 2.11 desktop shell<br/>boots the host topology"]
+    ui["React / Vite 8 / TS 7.0.2 app<br/>lazy routes · AppRouteView · per-route i18n · ko · en"]
+    desktop["Tauri 2.11 desktop shell<br/>serialized gateway lifecycle · pinned 127.0.0.1:4825 CSP"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
     desktop ~~~ ui ~~~ editor ~~~ browser
@@ -34,14 +34,14 @@ flowchart TB
     subgraph crates["Nine Workspace Crates"]
       direction TB
       plat["lattice-platform (317 ops · 7 domains)<br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
-      retr["lattice-retrieval (65 ops)<br/>BM25F sidecar · NativeHnswIndex · 3-way RRF<br/>grounding · chronicle as_of · self_model"]
-      ingestc["lattice-ingest (28 ops)<br/>incremental chunk sync · debounced watch<br/>native Obsidian wikilinks · Notion/Git/Mail interop"]
-      chatc["lattice-chat (8 ops)<br/>chat · history · native ingest_generated"]
-      jobsc["lattice-jobs (4 ops)<br/>index · adaptive drain scheduler"]
-      authc["lattice-auth<br/>password login · sessions · CSRF"]
-      agentc["lattice-agent (6 groups)<br/>kernel · parse · content · tools · surface · prompts<br/>Adaptive Harness · DurableWorkflowStore"]
-      corec["lattice-core<br/>Store (generation epoch) · GraphWriter (single writer)<br/>temporal · entity_resolution · embedding_contract"]
-      hostc["lattice-host<br/>gateway · supervisor · static UI"]
+      retr["lattice-retrieval (65 ops)<br/>BM25F sidecar · bounded NativeHnswIndex · 3-way RRF<br/>grounding · chronicle as_of · self_model"]
+      ingestc["lattice-ingest (28 ops)<br/>incremental chunk sync · debounced watch · spawn_blocking fs<br/>native Obsidian wikilinks · Notion/Git/Mail interop"]
+      chatc["lattice-chat (8 ops)<br/>chat · history · non-blocking doc sessions · bounded cloud budget"]
+      jobsc["lattice-jobs (4 ops)<br/>index · adaptive drain scheduler · loopback/Bearer guard"]
+      authc["lattice-auth<br/>versioned $scrypt$ · bounded rate limiter · sessions · CSRF"]
+      agentc["lattice-agent (6 groups)<br/>kernel · parse · content · tools · surface · prompts<br/>Adaptive Harness · DurableWorkflowStore · safe_io"]
+      corec["lattice-core<br/>Store (generation epoch) · GraphWriter (single writer)<br/>pure-Rust UTC clock · temporal · entity_resolution"]
+      hostc["lattice-host<br/>fail-closed gateway · EnvOverlayProbe supervisor · static UI"]
     end
     supervisor["Supervisor<br/>uvicorn worker spawn · /health gate · backoff restart"]
     door --> crates
@@ -93,15 +93,15 @@ flowchart TB
 
 | Crate | Responsibility | Key Modules |
 | --- | --- | --- |
-| `lattice-host` | Product composition root, One Door router, static UI server, Python worker supervisor | `gateway/onedoor.rs`, `gateway/product.rs` |
-| `lattice-core` | SQLite `Store` with live-restore generation epoch, single-writer `GraphWriter`, bi-temporal facts, entity resolution, `EmbeddingIndexContract`, idempotent worker seam client | `graph_write/`, `temporal.rs`, `entity_resolution.rs`, `embedding_contract.rs`, `worker.rs` |
-| `lattice-auth` | Password authentication, session management, CSRF origin guard | `session.rs`, `config.rs` |
-| `lattice-agent` | Safety kernel, Universal Adaptive Agent Harness (`probe.rs` 3-turn micro-probing, `ui_resolve.rs`, `rag_grounding.rs`), fail-closed verifier, `DurableWorkflowStore` | `kernel/`, `parse/`, `content/`, `tools/`, `surface/`, `prompts/` |
-| `lattice-retrieval` | Pre-tokenized BM25F sidecar (`bm25_node_stats`), pure-Rust `NativeHnswIndex`, 3-way BM25F + Vector + Graph RRF hybrid search, claim-level grounding & abstention, `as_of` temporal chronicle, Self-Model | `bm25/`, `native_hnsw.rs`, `hybrid.rs`, `grounding.rs`, `chronicle_api/`, `self_model.rs` |
-| `lattice-ingest` | Chunk-level incremental sync, `DebouncedWatchEngine`, PDF/table/OCR structure preservation, native Obsidian (`[[wikilink]]` `LINKS_TO` edges) and Notion/Git/Mail interop bridges through `GraphWriter` | `incremental_sync.rs`, `incremental_watch.rs`, `document_structure.rs`, `local_files_api/{folder.rs,interop.rs}` |
-| `lattice-jobs` | Background embedding & vector index drain scheduler | `index.rs` |
+| `lattice-host` | Product composition root, One Door router, fail-closed no-redirect proxy client, static UI server, `EnvOverlayProbe` worker supervisor | `gateway/mod.rs`, `gateway/onedoor.rs`, `gateway/product.rs`, `supervisor/` |
+| `lattice-core` | SQLite `Store` with live-restore generation epoch & single-writer pool, `GraphWriter`, pure-Rust UTC clock (zero `libc` `unsafe`), bi-temporal facts, entity resolution, integrity checker, `EmbeddingModelRegistry`, idempotent worker seam client | `graph_write/`, `integrity/`, `temporal.rs`, `entity_resolution.rs`, `embedding_registry.rs`, `worker.rs` |
+| `lattice-auth` | Versioned `$scrypt$` password hashing (`Result`-based, legacy verify compatible), bounded memory rate limiter with unified HTTP `429` + `Retry-After` contract, session management, CSRF origin guard | `password.rs`, `ratelimit.rs`, `session.rs`, `csrf.rs`, `config.rs` |
+| `lattice-agent` | Safety kernel, Universal Adaptive Agent Harness (`probe.rs` 3-turn micro-probing, `ui_resolve.rs`, `rag_grounding.rs`), fail-closed verifier, `DurableWorkflowStore`, 5-role `MultiAgentSession`, TOCTOU-safe `safe_io` (Unix `openat`/`O_NOFOLLOW` + Windows handle-pinned traversal) | `kernel/`, `parse/`, `content/`, `tools/`, `surface/`, `prompts/` |
+| `lattice-retrieval` | Pre-tokenized BM25F sidecar (`bm25_node_stats`), bounded pure-Rust `NativeHnswIndex` cache, 3-way BM25F + Vector + Graph RRF hybrid search, claim-level grounding & abstention, `as_of` temporal chronicle, Self-Model, Brain Governance API | `bm25/`, `native_hnsw.rs`, `hybrid.rs`, `grounding.rs`, `brain_api/`, `chronicle_api/`, `self_model.rs` |
+| `lattice-ingest` | Chunk-level incremental sync, `DebouncedWatchEngine`, non-blocking `spawn_blocking` local filesystem API, PDF/table/OCR structure preservation, native Obsidian (`[[wikilink]]` `LINKS_TO` edges) and Notion/Git/Mail interop bridges through `GraphWriter` | `incremental_sync.rs`, `incremental_watch.rs`, `document_structure.rs`, `local_files_api/{local.rs,folder.rs,interop.rs}` |
+| `lattice-jobs` | Background embedding & vector index drain scheduler with partial-progress preservation and loopback/Bearer route guard | `index_api/{engine.rs,scheduler.rs,routes.rs}` |
 | `lattice-platform` | 7 domain route families: `workspaceos`, `toolsurface` (native `POST /mcp`, tools, plugins, computer use), `governance` (Review Center, change proposals, hooks, workflows), `knowledge` (portability, X25519/Ed25519 selective subgraph share, network boundary, multimodal, voice), `modelops`, `adminops`, `shell` | `workspaceos/`, `toolsurface/`, `governance/`, `knowledge/`, `modelops/`, `adminops/`, `shell/` |
-| `lattice-chat` | Grounded chat orchestration, history, native `ingest_generated`, opt-in cloud escalation | `chat.rs`, `history.rs` |
+| `lattice-chat` | Grounded chat orchestration, history, non-blocking document session persistence, LRU-bounded cloud token budget tracker, native `ingest_generated`, opt-in cloud escalation | `chat.rs`, `history.rs`, `documents.rs`, `cloud/budget.rs` |
 
 Crate-level ownership maps live in
 [`rust/lattice-agent/ARCHITECTURE.md`](rust/lattice-agent/ARCHITECTURE.md) and
@@ -126,17 +126,19 @@ flowchart LR
 ```
 
 - **Single-writer SQLite (`GraphWriter`):** All writes serialize through
-  `lattice-core::graph_write`. Restoring a `.latticebrain` archive bumps the
-  store generation epoch so stale pooled connections close automatically without
-  restarting the host.
+  `lattice-core::graph_write` and `Store::write_conn`. Restoring a
+  `.latticebrain` archive bumps the store generation epoch so stale pooled
+  connections close automatically without restarting the host.
 - **Native Interop Bridges:** `POST /api/ingestion/obsidian` parses `.md` notes
   and creates `LINKS_TO` edges from `[[wikilink]]` references directly through
   `GraphWriter`; `POST /api/ingestion/interop` natively ingests Notion directory
   or `.zip` exports, local Git commit logs, and `.eml`/`.ics` mail/calendar
   files behind human-in-the-loop permission tokens.
-- **Grounded Retrieval:** Active vs. superseded claims are separated at query
-  time (`include_historical = false` by default), `as_of` enables point-in-time
-  chronicle queries, and `grounding.rs` verifies citations before answering.
+- **Grounded Retrieval & Governance:** Active vs. superseded claims are
+  separated at query time (`include_historical = false` by default), `as_of`
+  enables point-in-time chronicle queries, `grounding.rs` verifies citations
+  before answering, and workspace-scoped integrity checks, entity merges,
+  knowledge corrections, and shadow embedding cutovers run through `brain_api`.
 
 ## Python AI Worker & Cross-Platform Model Runtime
 
@@ -145,13 +147,17 @@ serving **20** allow-listed routes (`/agent/{llm,tool}`,
 `/worker/{llm/stream,sysinfo,embed,extract,parse,asr,render/{docx,pdf,pptx,xlsx},vector/query}`,
 `/models*`, `/engines/*`, `GET /api/embeddings/status`, `/health`) with
 `worker_resilience.py` (`x-lattice-idempotency-key` coalescing and unary timeout
-isolation).
+isolation), `ContextVar`-scoped LLM router dependency injection
+(`lattice_brain.graph.runtime.llm_router_scope`), pre-compiled async-capable
+fallback embeddings (`lattice_brain.embeddings`), and bounded rate/proxy
+security primitives (`latticeai.core.security`).
 
 - **Cross-Platform Engine Adapters (`latticeai/services/engine_adapters.py`):**
   - **macOS (Apple Silicon):** `omlx` (Homebrew or zero-Homebrew universal2
     wheel fallback in `~/.omlx/venv`) with tiered RAM/SSD KV caching and live
     available-RAM pressure tuning (`host_available_ram_gb`, `omlx_serve_args`),
-    plus `local_mlx`, `ollama`, `lmstudio`, and `llamacpp`.
+    plus `local_mlx` (platform-guarded in `pyproject.toml` for `darwin`/`arm64`),
+    `ollama`, `lmstudio`, and `llamacpp`.
   - **Windows:** `winget` silent installation for `ollama`, `llamacpp`, and
     `lmstudio`, with automatic `pip install llama-cpp-python[server]` fallback.
   - **Linux:** Official Ollama installer script plus `pip` `llamacpp` / `vllm`
@@ -161,26 +167,45 @@ isolation).
   (`ggml-org/Qwen3.8-27B-GGUF` / `unsloth/Qwen3.8-27B-GGUF`) on Windows and
   Linux with `HF_XET_HIGH_PERFORMANCE=1` enabled by default.
 
-## Frontend, Tooling & Verification Surface
+## Surfaces, Tooling & Verification Gates
 
-- **Frontend (`frontend/src`):** React + Vite 8 + TypeScript 7.0.2 (`tsgo`),
-  native ESM configs ([`vite.config.mts`](vite.config.mts),
-  [`vitest.config.mts`](vitest.config.mts)), lazy route splitting with per-route
-  i18n namespaces (`ko`, `en`), and `ErrorBoundary` isolation around every route
-  and heavy panel.
+- **Frontend (`frontend/src`):** React + Vite 8 + TypeScript 7.0.2 (`tsgo`)
+  enforcing `strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`,
+  `noUnusedLocals`, `noUnusedParameters`, and `verbatimModuleSyntax`; native ESM
+  configs ([`vite.config.mts`](vite.config.mts),
+  [`vitest.config.mts`](vitest.config.mts)); modular route dispatch
+  (`AppRouteView.tsx`); lazy route splitting with per-route i18n namespaces
+  (`ko`, `en`); SSR/non-DOM safe theme/storage guards; and `ErrorBoundary`
+  isolation around every route and heavy panel.
+- **Desktop & Extensions:**
+  - **Tauri 2.11 (`src-tauri/`):** Serialized async gateway lifecycle (`start` /
+    `stop` / `restart`), loopback-validated external origin handling,
+    `spawn_blocking` `/usr/bin/osascript` folder picker, and strict CSP +
+    `127.0.0.1:4825` pinned capabilities without `'unsafe-inline'`.
+  - **VS Code Extension (`vscode-extension/`):** Optional Bearer authentication,
+    TTL single-use approval token cache, HTTP/SSE timeout and error guards,
+    live configuration reload, and cross-platform VSIX packaging.
+  - **Browser Extension (`browser-extension/`):** Port-4825 scoped host
+    permissions with optional custom ports, live DOM visibility extraction,
+    UTF-8 byte-budget truncation, and end-to-end body timeout control.
 - **Zero-TS5 OpenAPI Codegen:** [`scripts/generate_openapi_types.mjs`](scripts/generate_openapi_types.mjs)
-  deterministically generates `frontend/src/api/openapi.ts` (415 paths / 457
-  operations) from `frontend/openapi.json` with zero TypeScript 5 dependencies.
-- **Automated Quality Gates:**
-  - Frontend: `npm run test:frontend:coverage` (100% statements, branches,
-    functions, lines across all 111 test files), `npm run typecheck` (`tsc 7.0.2`),
+  deterministically generates `frontend/src/api/openapi.ts` from
+  `frontend/openapi.json` with zero TypeScript 5 dependencies.
+- **Automated Quality & Cross-Platform CI Gates:**
+  - **Frontend:** `npm run test:frontend:coverage` (100% statements, branches,
+    functions, lines across 113 test files), `npm run typecheck` (`tsc 7.0.2`),
     `npm run check:bundle` (`<= 150 KiB` initial JS gzip), i18n literal &
-    namespace checks.
-  - Python: `npm run test:coverage` (`>= 90%` floor, currently `96%+`), `ruff`,
-    `mypy`, domain-modularized unit tests under `tests/unit/`.
-  - Rust & Desktop: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
-    parallel `cargo-nextest`, `src-tauri` `cargo check`.
-  - Documentation & Visual: `docs:check-current`, `docs:check-links`,
+    namespace checks, extension test suites.
+  - **Python:** `npm run test:coverage` (`>= 90%` floor), `ruff` (with SQL and
+    subprocess security rules enabled), `mypy`, modular unit tests under
+    `tests/unit/`.
+  - **Rust, Windows, Desktop & Container:** `cargo fmt --check`,
+    `cargo clippy --workspace --all-targets -- -D warnings`, parallel
+    `cargo-nextest` on both **Ubuntu (`ubuntu-latest`)** and **Windows
+    (`windows-latest`)**, `src-tauri` tests on **macOS (`macos-latest`)**, and
+    digest-pinned multi-stage `Dockerfile` build + `lattice-host --version`
+    smoke check.
+  - **Documentation & Visual:** `docs:check-current`, `docs:check-links`,
     `docs:check-languages` (100% EN ↔ KO parity), `check:max-file-lines`,
     Playwright visual smoke & release evidence binding.
 
@@ -191,8 +216,8 @@ isolation).
   Review Center and apply only on explicit approval.
 - **Network Boundary:** Defaults to `local_only`. Opt-in `cloud_allowed` strips
   `sensitive` / `private` / `do_not_share` nodes in both modes, enforces
-  per-turn/per-session token budgets, logs shape-only egress audits, and stages
-  cloud extractions as `kg_cloud_expansion` proposals.
+  bounded per-turn/per-session token budgets, logs shape-only egress audits, and
+  stages cloud extractions as `kg_cloud_expansion` proposals.
 - **Portability & Selective Brain Network:** Full Brain backups use
   AEAD-encrypted `.latticebrain` archives (v2 KDF). Selective subgraph sharing
   is opt-in (`LATTICEAI_BRAIN_NETWORK=1`) using X25519 sealed-box encryption and
@@ -200,13 +225,13 @@ isolation).
 
 ## Release Artifact Map
 
-13.9.0 exact artifact names:
+14.0.0 exact artifact names:
 
-- Python wheel: `dist/ltcai-13.9.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-13.9.0.tar.gz`
-- npm tarball: `ltcai-13.9.0.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-13.9.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_13.9.0_aarch64.dmg`
+- Python wheel: `dist/ltcai-14.0.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.0.0.tar.gz`
+- npm tarball: `ltcai-14.0.0.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.0.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
 
 ## Known Boundaries
 

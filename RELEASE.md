@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.0.0 — Living Synthesis (2026-11-25)
+
+Completed full-stack v14.0.0 security, concurrency, packaging, and CI/CD hardening: upgraded `lattice-auth` to versioned `$scrypt$` `Result`-based hashing, bounded rate limiting with unified HTTP `429` + `Retry-After` responses, and standardized English CSRF denials; eliminated all `unsafe` `libc` clock calls from `lattice-core` with pure-Rust UTC calendar arithmetic; offloaded blocking filesystem/session I/O in `lattice-ingest`/`lattice-chat` to `spawn_blocking`, bounded `cloud/budget` and `NativeHnswIndex` caches, hardened `lattice-jobs` partial-drain stats and `/host/jobs` loopback/Bearer guards, and made `lattice-host` proxy creation fail-closed without `std::env::set_var`; platform-guarded Apple Silicon MLX extras and re-enabled Ruff security rules in `pyproject.toml`; enabled strict TypeScript 7 compiler flags and extracted `AppRouteView.tsx` at 100% Vitest coverage; serialized Tauri gateway lifecycle with pinned `127.0.0.1:4825` CSP/capabilities; hardened VS Code and browser extensions; added real `windows-latest` Rust workspace tests, `macos-latest` Tauri tests, and digest-pinned multi-stage `Dockerfile` smoke checks in CI; and modernized all architecture documentation (`ARCHITECTURE.md`, `docs/architecture.md`, Korean mirrors, and crate maps) to `14.0.0`.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.0.0.md](docs/releases/RELEASE_NOTES_v14.0.0.md).
+
+Build artifacts: `dist/ltcai-14.0.0-py3-none-any.whl`, `dist/ltcai-14.0.0.tar.gz`, `ltcai-14.0.0.tgz`, `dist/ltcai-14.0.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`.
+
 ## v13.9.0 — Living Synthesis (2026-11-24)
 
 Resolved all six PR #69 security and integrity findings (strict workspace-scoped integrity checks and repairs with admin-gated global mode, routing all Brain writes through the shared `Store` single-writer pool, workspace ownership validation for all node/edge/correction/merge targets, Windows handle-pinned component-by-component TOCTOU-safe I/O, claim-level grounding & fabricated-citation penalty gate in `run_real_model_rag_eval.py`, and posture-gating `/host/diagnostics`), folded all 16 Digital Brain extension routes directly into `brain_api::MOUNTED` and `memory_brain.json` with regenerated `frontend/src/api/openapi.ts`, built five dedicated interactive React Brain Governance panels with Vitest coverage, and wired `.github/workflows/nightly-rag-eval.yml`.

@@ -44,7 +44,7 @@ from .local_models import (
 # call site keeps its historical name.
 try:
     from openai import AsyncOpenAI as _AsyncOpenAI
-except Exception:
+except ImportError:
     _AsyncOpenAI = None  # type: ignore[assignment,misc]
 AsyncOpenAI: Any = _AsyncOpenAI
 
@@ -55,7 +55,7 @@ executor = ThreadPoolExecutor(max_workers=1)
 
 try:
     import mlx.core as _mx
-except Exception as e:
+except (ImportError, OSError, RuntimeError) as e:
     _mx = None  # type: ignore[assignment]
     print(f"⚠️ MLX core unavailable: {e}")
 mx: Any = _mx
@@ -65,7 +65,7 @@ try:
     from mlx_vlm import load as _vlm_load
     VLM_AVAILABLE = True
     print("✅ MLX-VLM is ready for multimodal models.")
-except Exception as e:
+except (ImportError, OSError, RuntimeError) as e:
     _vlm_load = None  # type: ignore[assignment]
     VLM_AVAILABLE = False
     print(f"⚠️ MLX-VLM unavailable: {e}")
@@ -76,7 +76,7 @@ try:
     from mlx_lm import load as _lm_load
     LM_AVAILABLE = True
     print("✅ MLX-LM is ready for text fallback models.")
-except Exception as e:
+except (ImportError, OSError, RuntimeError) as e:
     _lm_load = None  # type: ignore[assignment]
     LM_AVAILABLE = False
     print(f"⚠️ MLX-LM unavailable: {e}")
@@ -92,7 +92,7 @@ def ensure_mlx_runtime() -> None:
         import mlx.core as mlx_core
         mx = mlx_core
         mx.set_default_device(mx.gpu)
-    except Exception as e:
+    except (ImportError, OSError, RuntimeError) as e:
         errors.append(f"mlx: {e}")
         mx = None
 
@@ -100,7 +100,7 @@ def ensure_mlx_runtime() -> None:
         from mlx_vlm import load as mlx_vlm_load
         vlm_load = mlx_vlm_load
         VLM_AVAILABLE = True
-    except Exception as e:
+    except (ImportError, OSError, RuntimeError) as e:
         vlm_load = None
         VLM_AVAILABLE = False
         errors.append(f"mlx-vlm: {e}")
@@ -109,7 +109,7 @@ def ensure_mlx_runtime() -> None:
         from mlx_lm import load as mlx_lm_load
         lm_load = mlx_lm_load
         LM_AVAILABLE = True
-    except Exception as e:
+    except (ImportError, OSError, RuntimeError) as e:
         lm_load = None
         LM_AVAILABLE = False
         errors.append(f"mlx-lm: {e}")
@@ -119,31 +119,15 @@ def ensure_mlx_runtime() -> None:
 
 
 def _mlx_sampler(temperature: float):
-    """Build an MLX sampler callable for the given temperature.
-
-    Until v11.9.0 this discarded its argument and returned ``None``, which let
-    MLX pick its own default sampler. The cost was invisible and large: the
-    agent loop asks for 0.1 when it wants a tool call and 0.0 on the strict
-    verification re-ask, and **locally neither did anything**. A cloud model got
-    the deterministic re-ask it was designed around; the 2B model on this
-    machine got the same creative sampler it had on the first attempt, and the
-    "one strict retry" was one more roll of the same dice.
-
-    ``mlx_lm.sample_utils.make_sampler`` is the sampler both backends accept —
-    ``mlx_vlm`` takes the callable straight through — and it is already an
-    installed dependency of the text path. If it cannot be imported (an
-    MLX-VLM-only install, a version that moved it) the answer is the old one:
-    ``None``, the backend's default. A missing sampler must never be a failed
-    generation.
-    """
+    """Build an MLX sampler callable for the given temperature."""
     try:
         from mlx_lm.sample_utils import make_sampler
-    except Exception:  # noqa: BLE001 — an absent sampler is not a failure
+    except (ImportError, AttributeError):
         quiet("MLX sampler unavailable; using the backend default")
         return None
     try:
         return make_sampler(temp=float(temperature))
-    except Exception:  # noqa: BLE001 — a signature change must not stop a run
+    except (TypeError, ValueError, RuntimeError):
         quiet("MLX sampler construction failed; using the backend default")
         return None
 

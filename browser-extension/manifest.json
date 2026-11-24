@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lattice AI",
-  "version": "13.9.0",
+  "version": "14.0.0",
   "description": "Capture pages into — and recall from — your local Lattice AI Knowledge Graph. Local-only: talks to 127.0.0.1 on your machine, never to a cloud server.",
   "permissions": [
     "activeTab",
@@ -9,6 +9,10 @@
     "storage"
   ],
   "host_permissions": [
+    "http://127.0.0.1:4825/*",
+    "http://localhost:4825/*"
+  ],
+  "optional_host_permissions": [
     "http://127.0.0.1/*",
     "http://localhost/*"
   ],

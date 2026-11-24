@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import math
 import os
 import re
@@ -10,7 +12,36 @@ import struct
 from dataclasses import dataclass
 from typing import Iterable, List
 
-DEFAULT_EMBEDDING_DIM = int(os.getenv("LATTICEAI_VECTOR_DIM", "384"))
+logger = logging.getLogger(__name__)
+
+_FALLBACK_EMBEDDING_DIM = 384
+_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_.:/+-]{1,}|[가-힣]{2,}")
+_ALPHA_RE = re.compile(r"[a-z]")
+_HANGUL_RE = re.compile(r"[가-힣]")
+
+
+def _parse_default_dim() -> int:
+    raw = os.getenv("LATTICEAI_VECTOR_DIM", str(_FALLBACK_EMBEDDING_DIM))
+    try:
+        dim = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid LATTICEAI_VECTOR_DIM=%r; falling back to %d",
+            raw,
+            _FALLBACK_EMBEDDING_DIM,
+        )
+        return _FALLBACK_EMBEDDING_DIM
+    if dim <= 0:
+        logger.warning(
+            "Non-positive LATTICEAI_VECTOR_DIM=%d; falling back to %d",
+            dim,
+            _FALLBACK_EMBEDDING_DIM,
+        )
+        return _FALLBACK_EMBEDDING_DIM
+    return dim
+
+
+DEFAULT_EMBEDDING_DIM = _parse_default_dim()
 EMBEDDING_MODEL_ID = f"lattice-local-hash-v1:{DEFAULT_EMBEDDING_DIM}"
 
 
@@ -20,20 +51,22 @@ def embedding_model_id(dim: int) -> str:
 
 def _tokenize(text: str) -> List[str]:
     raw = str(text or "").lower()
-    tokens = re.findall(r"[a-z0-9][a-z0-9_.:/+-]{1,}|[가-힣]{2,}", raw)
+    tokens = _TOKEN_RE.findall(raw)
     features: List[str] = []
     for token in tokens:
         features.append(f"tok:{token}")
-        if len(token) >= 5 and re.search(r"[a-z]", token):
+        if len(token) >= 5 and _ALPHA_RE.search(token):
             for i in range(0, len(token) - 2):
                 features.append(f"tri:{token[i:i+3]}")
-        if re.search(r"[가-힣]", token) and len(token) >= 3:
+        if len(token) >= 3 and _HANGUL_RE.search(token):
             for i in range(0, len(token) - 1):
                 features.append(f"ko:{token[i:i+2]}")
     return features
 
 
 def _hash_to_index(feature: str, dim: int) -> tuple[int, float]:
+    if dim <= 0:
+        raise ValueError(f"embedding dimension must be positive, got {dim}")
     digest = hashlib.blake2b(feature.encode("utf-8"), digest_size=8).digest()
     value = int.from_bytes(digest, "big", signed=False)
     sign = 1.0 if (value & 1) == 0 else -1.0
@@ -53,6 +86,8 @@ class LocalEmbeddingModel:
     model_id: str = EMBEDDING_MODEL_ID
 
     def __post_init__(self) -> None:
+        if self.dim <= 0:
+            raise ValueError(f"embedding dimension must be positive, got {self.dim}")
         if self.model_id == EMBEDDING_MODEL_ID and self.dim != DEFAULT_EMBEDDING_DIM:
             object.__setattr__(self, "model_id", embedding_model_id(self.dim))
 
@@ -68,6 +103,10 @@ class LocalEmbeddingModel:
         if norm <= 0:
             return vector
         return [value / norm for value in vector]
+
+    async def embed_async(self, text: str) -> List[float]:
+        """Offload CPU-bound hashing onto a worker thread so async loops stay responsive."""
+        return await asyncio.to_thread(self.embed, text)
 
     def similarity(self, left: Iterable[float], right: Iterable[float]) -> float:
         # strict=True: a dimension mismatch means the two vectors came from

@@ -15,8 +15,13 @@ from typing import Optional
 logger = logging.getLogger("lattice_brain.suppressed")
 
 
-def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
-    """Record the exception currently being handled, then continue."""
+def record_suppressed(
+    target_logger: logging.Logger,
+    reason: Optional[str] = None,
+    *,
+    level: int = logging.DEBUG,
+) -> None:
+    """Shared implementation for recording deliberately suppressed exceptions."""
     exc_type, exc, tb = sys.exc_info()
     if exc is None:
         return
@@ -28,8 +33,8 @@ def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
         frame = deepest.tb_frame
         where = f"{frame.f_code.co_filename}:{frame.f_lineno} in {frame.f_code.co_name}"
     label = f" ({reason})" if reason else ""
-    if logger.isEnabledFor(level):
-        logger.log(
+    if target_logger.isEnabledFor(level):
+        target_logger.log(
             level,
             "suppressed %s at %s%s: %s",
             getattr(exc_type, "__name__", "Exception"),
@@ -40,4 +45,9 @@ def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
         )
 
 
-__all__ = ["quiet"]
+def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
+    """Record the exception currently being handled, then continue."""
+    record_suppressed(logger, reason, level=level)
+
+
+__all__ = ["quiet", "record_suppressed"]

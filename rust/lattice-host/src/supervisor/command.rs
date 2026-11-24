@@ -189,6 +189,45 @@ impl HostProbe for SystemProbe {
     }
 }
 
+/// A [`HostProbe`] wrapper that layers immutable environment overrides on top
+/// of an inner probe without mutating the process environment (`std::env::set_var`).
+pub struct EnvOverlayProbe {
+    inner: std::sync::Arc<dyn HostProbe>,
+    overrides: Vec<(String, String)>,
+}
+
+impl EnvOverlayProbe {
+    /// Wrap `inner` with explicit `(key, value)` overrides (last match wins).
+    pub fn new(inner: std::sync::Arc<dyn HostProbe>, overrides: Vec<(String, String)>) -> Self {
+        Self { inner, overrides }
+    }
+}
+
+impl HostProbe for EnvOverlayProbe {
+    fn env_var(&self, key: &str) -> Option<String> {
+        if let Some((_, value)) = self.overrides.iter().rev().find(|(k, _)| k == key) {
+            return Some(value.clone());
+        }
+        self.inner.env_var(key)
+    }
+
+    fn path_dirs(&self) -> Vec<PathBuf> {
+        self.inner.path_dirs()
+    }
+
+    fn is_file(&self, path: &Path) -> bool {
+        self.inner.is_file(path)
+    }
+
+    fn module_importable(&self, program: &str, module: &str) -> bool {
+        self.inner.module_importable(program, module)
+    }
+
+    fn resource_dir(&self) -> Option<PathBuf> {
+        self.inner.resource_dir()
+    }
+}
+
 /// A scripted [`HostProbe`] for tests: no process spawning, no filesystem.
 #[derive(Debug, Clone, Default)]
 pub struct StaticProbe {

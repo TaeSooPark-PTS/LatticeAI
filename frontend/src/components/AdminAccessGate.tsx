@@ -1,4 +1,3 @@
-import * as React from "react";
 import { ShieldCheck, Lock } from "lucide-react";
 import { t, type Language } from "@/i18n";
 import { useAppStore, type WorkspaceMode } from "@/store/appStore";

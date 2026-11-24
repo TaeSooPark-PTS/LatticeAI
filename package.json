@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "13.9.0",
+  "version": "14.0.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -127,12 +127,24 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.0",
+    "@tauri-apps/api": "~2.11.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cytoscape": "^3.34.0",
+    "lucide-react": "^1.17.0",
+    "openapi-fetch": "^0.17.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "reactflow": "^11.11.4",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.14"
+  },
   "devDependencies": {
     "@babel/parser": "^8.1.3",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
-    "@tanstack/react-query": "^5.101.0",
-    "@tauri-apps/api": "~2.11.1",
     "@tauri-apps/cli": "~2.11.3",
     "@testing-library/jest-dom": "^8.0.0",
     "@testing-library/react": "^16.3.2",
@@ -144,22 +156,12 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^5.1.1",
     "autoprefixer": "^10.5.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "cytoscape": "^3.34.0",
     "jsdom": "^31.0.1",
-    "lucide-react": "^1.17.0",
-    "openapi-fetch": "^0.17.0",
     "postcss": "^8.5.15",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "reactflow": "^11.11.4",
-    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^7.0.2",
     "vite": "^8.0.16",
-    "vitest": "^5.1.1",
-    "zustand": "^5.0.14"
+    "vitest": "^5.1.1"
   },
   "overrides": {
     "js-yaml": "^4.2.0"

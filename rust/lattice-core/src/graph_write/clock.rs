@@ -132,7 +132,7 @@ fn naive_local_secs_now() -> i64 {
     naive_local_secs(utc).unwrap_or(utc)
 }
 
-/// Broken-down local wall-clock fields for a UTC epoch second.
+/// Broken-down UTC wall-clock fields for a UTC epoch second.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalWallParts {
     pub year: i32,
@@ -144,34 +144,25 @@ pub struct LocalWallParts {
     pub gmtoff: i64,
 }
 
-/// Convert a UTC epoch second to broken-down local wall-clock parts via `localtime_r(3)`.
-#[cfg(unix)]
+/// Convert a UTC epoch second to broken-down UTC wall-clock parts using pure
+/// Rust arithmetic (zero `unsafe`, zero `libc`, identical across Unix and
+/// Windows).
 pub fn local_wall_parts(utc_secs: i64) -> Option<LocalWallParts> {
-    let stamp = utc_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `localtime_r` fills the caller-owned `tm` we just zeroed and
-    // returns a pointer to it (or null on failure); nothing else is touched.
-    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
-        return None;
-    }
+    let (year, month, day) = civil_from_days(utc_secs.div_euclid(86_400));
+    let time_of_day = utc_secs.rem_euclid(86_400);
+    let year = i32::try_from(year).ok()?;
     Some(LocalWallParts {
-        year: broken.tm_year + 1900,
-        month: broken.tm_mon as u32 + 1,
-        day: broken.tm_mday as u32,
-        hour: broken.tm_hour as u32,
-        minute: broken.tm_min as u32,
-        second: broken.tm_sec as u32,
-        gmtoff: i64::from(broken.tm_gmtoff as i32),
+        year,
+        month,
+        day,
+        hour: (time_of_day / 3600) as u32,
+        minute: ((time_of_day % 3600) / 60) as u32,
+        second: (time_of_day % 60) as u32,
+        gmtoff: 0,
     })
 }
 
-/// Non-unix fallback: no `localtime_r`, returns `None` so callers fall back honestly.
-#[cfg(not(unix))]
-pub fn local_wall_parts(_utc_secs: i64) -> Option<LocalWallParts> {
-    None
-}
-
-/// `datetime.fromtimestamp(utc_secs).isoformat(timespec="seconds")` in local wall time.
+/// Format a UTC epoch second as `YYYY-MM-DDTHH:MM:SS` (pure Rust, cross-platform).
 pub fn local_iso_for(utc_secs: i64) -> Option<String> {
     let parts = local_wall_parts(utc_secs)?;
     Some(format!(
@@ -180,39 +171,17 @@ pub fn local_iso_for(utc_secs: i64) -> Option<String> {
     ))
 }
 
-/// Naive local seconds since epoch for a UTC epoch second.
+/// Format a UTC epoch second as RFC 3339 (`YYYY-MM-DDTHH:MM:SSZ`).
+pub fn rfc3339_utc_for(utc_secs: i64) -> String {
+    format!("{}Z", iso_seconds_for(utc_secs))
+}
+
+/// UTC seconds since epoch for a UTC epoch second (pure Rust, cross-platform).
 pub fn naive_local_secs(utc_secs: i64) -> Option<i64> {
-    #[cfg(unix)]
-    {
-        local_wall_parts(utc_secs).map(|parts| utc_secs + parts.gmtoff)
-    }
-    #[cfg(not(unix))]
-    {
-        Some(utc_secs)
-    }
+    Some(utc_secs)
 }
 
-/// The UTC offset (in seconds) this machine had at a naive wall-clock timestamp.
-#[cfg(unix)]
-pub fn local_offset_for_naive_wall(naive_secs: f64) -> f64 {
-    let stamp = naive_secs as libc::time_t;
-    let mut broken: libc::tm = unsafe { std::mem::zeroed() };
-    // SAFETY: `gmtime_r` fills the caller-owned `tm` we just zeroed; nothing
-    // else is read or written. A null answer leaves the offset at zero.
-    if unsafe { libc::gmtime_r(&stamp, &mut broken) }.is_null() {
-        return 0.0;
-    }
-    broken.tm_isdst = -1;
-    // SAFETY: `mktime` reads the `tm` we own and may normalise it in place.
-    let back = unsafe { libc::mktime(&mut broken) };
-    if back == -1 {
-        return 0.0;
-    }
-    naive_secs - back as f64
-}
-
-/// Non-unix fallback for `local_offset_for_naive_wall`.
-#[cfg(not(unix))]
+/// UTC offset (seconds) for a naive wall-clock timestamp — `0.0` under UTC-canonical timestamps.
 pub fn local_offset_for_naive_wall(_naive_secs: f64) -> f64 {
     0.0
 }

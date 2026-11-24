@@ -50,12 +50,12 @@ adminops/      설치 환경 운영 및 감사
 
 **…워크플로 노드, 훅, 또는 검토 항목 유형?** `governance/`에 추가합니다. 변경을 스테이징하는 모든 항목은 기반 SHA(base SHA)를 함께 기록합니다. 승인 시점에 기반 SHA가 더 이상 일치하지 않으면 병합이나 조용한 덮어쓰기가 아니라 **409**를 반환해야 합니다.
 
-**…상태(state)?** 이미 해당 파일을 소유한 패밀리를 통해 접근합니다. `workspace_os.json`의 작성자는 오직 하나(`workspaceos::workspace::store::WorkspaceOsStore`)뿐이며, `governance::review_queue::GovernanceState`는 두 번째 복사본이 아니라 *동일한* `Arc` 위의 파사드(facade)입니다. 하나의 문서 위에 두 개의 스토어를 두면 마지막 작성자 승리(last-writer-wins) 버그가 발생하며, 이는 v11.7.0에서 완전히 해결되었습니다.
+**…상태(state)?** 이미 해당 파일을 소유한 패밀리를 통해 접근합니다. `workspace_os.json`의 작성자는 오직 하나(`workspaceos::workspace::store::WorkspaceOsStore`)뿐이며, `governance::review_queue::GovernanceState`는 두 번째 복사본이 아니라 *동일한* `Arc` 위의 파사드(facade)로서 단일 문서에 대한 마지막 작성자 승리(last-writer-wins) 경쟁을 방지합니다.
 
 **…감사 로그(audit line)?** `adminops::admin::append_audit_event`를 사용합니다. 단일 추가 함수, 단일 파일, 단일 포맷을 유지하며 `lattice-chat`과 `lattice-host` 역시 자체 작성자를 늘리지 않고 외부에서 이 함수를 호출합니다.
 
-## 호환성 (Compatibility)
+## 공개 API 표면 (14.0.0)
 
-`src/lib.rs`는 7개의 정본 도메인 모듈(`adminops`, `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)과 `VERSION`만 공개합니다. v12.0.0 이전의 평탄한 호환성 재내보내기 맵은 `13.7.2`에서 제거되었으며, `lattice-host`, `lattice-chat` 및 통합 테스트의 모든 호출자는 정본 도메인 경로(`lattice_platform::adminops::admin`, `lattice_platform::workspaceos::workspace` 등)에서 직접 임포트합니다.
+`src/lib.rs`는 7개의 정본 도메인 모듈(`adminops`, `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)과 `VERSION`만 공개합니다. `lattice-host`, `lattice-chat` 및 통합 테스트의 모든 호출자는 정본 도메인 경로(`lattice_platform::adminops::admin`, `lattice_platform::workspaceos::workspace` 등)에서 직접 임포트합니다.
 
-이 크레이트 내부의 새 코드는 어떤 도메인에서 빌려오고 있는지 한눈에 보이도록 별칭(`crate::admin`) 대신 실제 경로(`crate::adminops::admin`)를 사용합니다. 공유 HTTP JSON 응답, FastAPI 422 검증 엔벌로프, 지역화된 메시지 상세 정보, UTC 타임스탬프 헬퍼는 크레이트 내부 모듈인 `crate::http_reply`(`src/http_reply.rs`)에 위치하여 `knowledge/`와 `toolsurface/`가 전송 포맷팅을 위해 `workspaceos::project_sessions`를 옆으로 참조하지 않도록 합니다. `src/lib.rs`의 별칭은 내부 모듈이 아니라 외부 소비자를 위해 존재합니다.
+공유 HTTP JSON 응답, FastAPI 422 검증 엔벌로프, 지역화된 메시지 상세 정보, UTC 타임스탬프 헬퍼는 크레이트 내부 모듈인 `crate::http_reply`(`src/http_reply.rs`)에 위치하여 `knowledge/`와 `toolsurface/`가 전송 포맷팅을 위해 `workspaceos::project_sessions`를 옆으로 참조하지 않도록 합니다.

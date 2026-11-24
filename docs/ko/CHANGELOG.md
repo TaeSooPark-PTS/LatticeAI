@@ -5,6 +5,41 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.0.0] - 2026-11-25 — Living Synthesis
+
+### 보안 및 안정성
+- **인증 및 레이트 리미팅 (`rust/lattice-auth/src/{password.rs,ratelimit.rs,csrf.rs,routes.rs}`):**
+  - `hash_password`의 패닉 `.expect()`를 `Result<String, PasswordError>`로 교체하고, 신규 비밀번호를 버전화 `$scrypt$n=14,r=8,p=1${salt}:{key}` 형식으로 해싱(레거시 `{salt}:{key}` 검증 호환 유지)하며 `stored_is_hashed` 검증을 강화했습니다.
+  - 레이트 리미터 맵 상한(`MAX_ENTRIES = 10_000`), 만료 우선/최고령 축출, 뮤텍스 포이즈닝 복구, `check_ip`/`enforce` 간 통합 HTTP `429` + `Retry-After` 계약 및 영문 표준 CSRF 거부 메시지를 적용했습니다.
+- **`libc` `unsafe` 없는 순수 Rust 시계 및 Fail-Closed 호스트 (`rust/lattice-core/src/graph_write/clock.rs`, `rust/lattice-host/src/`):**
+  - `lattice-core`에서 모든 `unsafe` `libc` 시계 FFI 호출과 `libc` 의존성을 제거하고 순수 Rust UTC 달력 연산으로 교체했습니다.
+  - 무리다이렉트 프록시 클라이언트 생성 실패 시 `GatewayState::with_client`가 fail-closed 하도록 변경하고 `std::env::set_var`를 `EnvOverlayProbe`로 대체했습니다.
+- **논블로킹 Tokio I/O 및 상한 캐시 (`rust/lattice-ingest/`, `rust/lattice-chat/`, `rust/lattice-retrieval/`, `rust/lattice-jobs/`):**
+  - `local_files_api/local.rs`의 블로킹 `std::fs` 호출과 `documents.rs`의 문서 세션 영속화를 `tokio::task::spawn_blocking`으로 오프로딩하고 디스크 쓰기 전에 뮤텍스를 해제합니다.
+  - `cloud/budget.rs`(`4,096` 스코프)와 `native_hnsw.rs`(`32` 그래프)에 LRU 축출과 포이즈닝 복구를 적용하고, `lattice-jobs` 부분 드레인 보존·클레임 해제 로깅·`/host/jobs` 루프백/Bearer 가드를 추가했습니다.
+- **Python 워커 및 패키징 (`pyproject.toml`, `lattice_brain/`, `latticeai/`):**
+  - `local`/`all` extra의 `mlx-vlm`/`mlx-lm`에 `darwin`/`arm64` 플랫폼 마커를 추가하고, `hnswlib`/`pyautogui`를 `all`에 포함했으며, 빈 extra 제거·Changelog URL 교정·Ruff `S608`/`S105`/`S108`/`S603`/`S604`/`S607` 규칙 재활성화를 완료했습니다.
+  - `ContextVar` 기반 `llm_router_scope` DI, 안전한 `LATTICEAI_VECTOR_DIM` 파싱 및 `embed_async`, 공용 `record_suppressed`, 보안 버킷 상한 및 잘못된 CIDR 경고, 부작용 없는 `todo_read`를 반영했습니다.
+- **데스크톱 셸 및 확장 (`src-tauri/`, `vscode-extension/`, `browser-extension/`):**
+  - Tauri 게이트웨이 `start`/`stop`/`restart` 비동기 직렬화, 루프백 외부 오리진 검증 및 안전 포트 증가, `spawn_blocking` 기반 `/usr/bin/osascript`, `'unsafe-inline'` 제거 `127.0.0.1:4825` 고정 CSP/권한을 적용했습니다.
+  - VS Code 확장(Bearer 인증, TTL 단일 사용 승인 토큰 캐시, 스트림 타임아웃, 실시간 설정 리로드, 크로스플랫폼 VSIX 패키징)과 브라우저 확장(포트 `4825` 권한 축소, 라이브 DOM 가시성 추출, UTF-8 바이트 절단, 종단간 fetch 타임아웃)을 강화했습니다.
+
+### 변경됨
+- **엄격 TypeScript 7 프론트엔드 (`tsconfig.json`, `vitest.config.mts`, `package.json`, `frontend/src/`):**
+  - `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`를 활성화하고 `AppRouteView.tsx` 분리 및 런타임 패키지의 `dependencies` 이동을 완료하며 113개 테스트 파일 Vitest 100% 커버리지를 유지했습니다.
+- **CI/CD 및 다이제스트 고정 멀티스테이지 Docker (`.github/workflows/{ci,release,publish}.yml`, `Dockerfile`, `.dockerignore`):**
+  - `rust-windows`(`windows-latest`), `tauri-check`(`macos-latest`), `docker-smoke` CI 잡과 최상위 `permissions: contents: read`, 핀 고정 `taiki-e/install-action`을 추가하고 모든 `Dockerfile` 베이스 이미지를 SHA256 다이제스트로 고정하며 프론트엔드 빌드 스테이지를 통합했습니다.
+- **14.0.0 아키텍처 문서 최신화 (`ARCHITECTURE.md`, `docs/architecture.md`, `docs/ko/`, `rust/lattice-{agent,platform}/ARCHITECTURE.md`):**
+  - 모든 정본 아키텍처 문서와 한국어 미러를 `14.0.0` 기준으로 최신화하고 삭제된 구형 모듈·별칭 이력을 정리했습니다.
+
+## [13.9.0] - 2026-11-24 — Living Synthesis
+
+### 수정됨
+- 워크스페이스 범위 무결성 검사·복구(`check_graph_integrity_scoped`, `execute_integrity_repair`) 및 관리자 전용 전역 모드, `Store::write_conn` 단일 라이터 풀 강제, 노드/엣지/교정/병합 대상의 교차 워크스페이스 403 차단, Windows 핸들 고정 TOCTOU 방지 `safe_io`, 실모델 RAG 평가 주장 근거 검증 게이트, `/host/diagnostics` 포스처 게이트를 적용했습니다.
+
+### 추가됨
+- 16개 디지털 브레인 확장 엔드포인트를 `brain_api::MOUNTED`와 `memory_brain.json`에 통합하고 5개 대화형 React 브레인 거버넌스 패널 및 `.github/workflows/nightly-rag-eval.yml`을 추가했습니다.
+
 ## [13.8.0] - 2026-11-24 — Living Synthesis
 
 ### 추가됨

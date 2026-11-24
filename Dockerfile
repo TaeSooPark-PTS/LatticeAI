@@ -1,4 +1,15 @@
-FROM rust:1.85-slim-bookworm AS host-builder
+# syntax=docker/dockerfile:1.7
+
+FROM node:22-slim@sha256:be979e5523c76fa4d5ca4ebd3099078f220aa47ec39c48ad5b5df9314debd6eb AS frontend-builder
+
+WORKDIR /build
+COPY package.json package-lock.json vite.config.mts postcss.config.cjs tsconfig.json ./
+COPY frontend/ ./frontend/
+COPY scripts/build_frontend_assets.mjs ./scripts/build_frontend_assets.mjs
+COPY static/ ./static/
+RUN npm ci --no-audit --no-fund && npm run build:assets
+
+FROM rust:1.100-slim-bookworm@sha256:bb875b0f8ce726053e259034848c471840e96bfe591fd52556178ae9a05e6126 AS host-builder
 
 WORKDIR /build/rust
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -9,11 +20,12 @@ COPY rust/ ./
 COPY frontend/openapi.json /build/frontend/openapi.json
 RUN cargo build --release --locked -p lattice-host
 
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim-bookworm@sha256:ef56ae98435cc40d8a27020b0b32a9941515acd5840f0fba34858bb34dd362d1 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     LATTICEAI_PORT=4825 \
     LATTICEAI_DATA_DIR=/data \
     LATTICEAI_AGENT_ROOT=/data/agent_workspace
@@ -29,15 +41,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && chown -R lattice:lattice /data /app
 
 COPY --from=host-builder /build/rust/target/release/lattice-host /usr/local/bin/lattice-host
-COPY requirements.txt pyproject.toml MANIFEST.in README.md LICENSE ./
-COPY latticeai/ ./latticeai/
-COPY lattice_brain/ ./lattice_brain/
-COPY static/ ./static/
-COPY skills/ ./skills/
-COPY plugins/ ./plugins/
+COPY --chown=lattice:lattice pyproject.toml MANIFEST.in README.md LICENSE ./
+COPY --chown=lattice:lattice latticeai/ ./latticeai/
+COPY --chown=lattice:lattice lattice_brain/ ./lattice_brain/
+COPY --chown=lattice:lattice --from=frontend-builder /build/static/ ./static/
+COPY --chown=lattice:lattice skills/ ./skills/
+COPY --chown=lattice:lattice plugins/ ./plugins/
 
-RUN pip install --upgrade pip && pip install -r requirements.txt && pip install --no-deps . \
-    && chown -R lattice:lattice /app
+RUN pip install --no-cache-dir .
 
 USER lattice
 VOLUME ["/data"]

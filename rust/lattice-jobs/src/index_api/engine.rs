@@ -27,7 +27,10 @@ pub(crate) async fn drain_once(
     let claimed = {
         let db = db.clone();
         tokio::task::spawn_blocking(move || {
-            let _ = enqueue_fallback_upgrade_jobs(&db, limit.saturating_mul(2).max(32));
+            let upgraded = enqueue_fallback_upgrade_jobs(&db, limit.saturating_mul(2).max(32));
+            if upgraded > 0 {
+                eprintln!("lattice-jobs: enqueued {upgraded} semantic upgrade job(s)");
+            }
             claim_pending(&db, limit)
         })
         .await
@@ -49,7 +52,15 @@ pub(crate) async fn drain_once(
             // Busy or down: put the claim back and tell the scheduler.
             let db = db.clone();
             let claimed = claimed.clone();
-            let _ = tokio::task::spawn_blocking(move || release_claim(&db, &claimed)).await;
+            match tokio::task::spawn_blocking(move || release_claim(&db, &claimed)).await {
+                Ok(Ok(())) => {}
+                Ok(Err(rel_err)) => {
+                    eprintln!("lattice-jobs: failed to release vector job claim: {rel_err}");
+                }
+                Err(join_err) => {
+                    eprintln!("lattice-jobs: release_claim task panicked/cancelled: {join_err}");
+                }
+            }
             return Err(error);
         }
     };
@@ -133,15 +144,23 @@ async fn embed_texts_batched(
     Ok(supplied)
 }
 
-fn release_claim(db: &std::path::Path, ids: &[String]) {
-    let Ok(conn) = rusqlite::Connection::open(db) else {
-        return;
-    };
+fn release_claim(db: &std::path::Path, ids: &[String]) -> Result<(), String> {
+    let conn = rusqlite::Connection::open(db)
+        .map_err(|err| format!("open {} for release_claim: {err}", db.display()))?;
+    let _ = conn.busy_timeout(std::time::Duration::from_secs(5));
+    let mut errors = Vec::new();
     for node_id in ids {
-        let _ = conn.execute(
+        if let Err(err) = conn.execute(
             "UPDATE vector_jobs SET status='pending' WHERE node_id=?1 AND status='running'",
             [node_id],
-        );
+        ) {
+            errors.push(format!("{node_id}: {err}"));
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
     }
 }
 

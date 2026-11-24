@@ -84,6 +84,7 @@ export function LivingBrain({
       const t = window.setTimeout(() => firePulse(), 180);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [state, intensity, firePulse]);
 
   const dataState = state;

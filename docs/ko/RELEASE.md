@@ -17,6 +17,22 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.0.0 — Living Synthesis (2026-11-25)
+
+풀스택 보안·동시성·패키징·CI/CD 고도화를 완료했습니다: `lattice-auth`를 버전화 `$scrypt$` `Result` 기반 해싱, 상한 메모리 레이트 리미팅 및 통합 HTTP `429` + `Retry-After` 응답, 영문 표준 CSRF 거부 메시지로 강화하고, `lattice-core`에서 `unsafe` `libc` 시계 호출을 순수 Rust UTC 달력 연산으로 완전 제거했습니다. `lattice-ingest`/`lattice-chat`의 블로킹 파일 I/O를 `spawn_blocking`으로 오프로딩하고, `cloud/budget`·`NativeHnswIndex` 상한 캐시, `lattice-jobs` 부분 드레인 보존 및 `/host/jobs` 루프백/Bearer 가드, fail-closed `lattice-host` 프록시 클라이언트와 `EnvOverlayProbe`를 적용했습니다. Python 워커의 Apple Silicon MLX extra 플랫폼 가드와 Ruff 보안 규칙을 복원하고, TypeScript 7 엄격 플래그 및 `AppRouteView.tsx` 분리(Vitest 100%), 직렬화된 Tauri 게이트웨이 생명주기 및 `127.0.0.1:4825` 고정 CSP, VS Code·브라우저 확장 보안 강화를 마쳤으며, CI에 실제 `windows-latest` Rust 워크스페이스 테스트·`macos-latest` Tauri 테스트·다이제스트 고정 멀티스테이지 `Dockerfile` 스모크 검증을 추가하고 아키텍처 문서(`ARCHITECTURE.md`, `docs/architecture.md`, 한국어 미러 및 크레이트 맵)를 `14.0.0` 기준으로 최신화했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.0.0.md](./releases/RELEASE_NOTES_v14.0.0.md).
+
+빌드 산출물은 `dist/ltcai-14.0.0-py3-none-any.whl`, `dist/ltcai-14.0.0.tar.gz`, `ltcai-14.0.0.tgz`, `dist/ltcai-14.0.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg` 입니다.
+
+## v13.9.0 — Living Synthesis (2026-11-24)
+
+PR #69 보안·무결성 지적 6건(워크스페이스 범위 무결성 검사·복구 및 관리자 전용 전역 모드, `Store::write_conn` 단일 라이터 풀 강제, 모든 노드/엣지/교정/병합 대상의 워크스페이스 소유권 403 검증, Windows 핸들 고정 TOCTOU 방지 `safe_io`, 실모델 RAG 평가 주장 근거·인용 검증 게이트, `/host/diagnostics` 포스처 게이트)을 모두 해결하고, 16개 디지털 브레인 확장 라우트를 `brain_api::MOUNTED`와 `memory_brain.json`에 통합하며 5개 대화형 React 브레인 거버넌스 패널과 야간 실모델 RAG 평가 CI(`.github/workflows/nightly-rag-eval.yml`)를 추가했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.9.0.md](./releases/RELEASE_NOTES_v13.9.0.md).
+
+빌드 산출물은 `dist/ltcai-13.9.0-py3-none-any.whl`, `dist/ltcai-13.9.0.tar.gz`, `ltcai-13.9.0.tgz`, `dist/ltcai-13.9.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.9.0_aarch64.dmg` 입니다.
+
 ## v13.8.0 — Living Synthesis (2026-11-24)
 
 디지털 브레인 플랫폼 통합 고도화 로드맵(P0–P3)을 완수했습니다: 결정론적 픽스처와 실제 로컬/클라우드 모델 평가를 분리하고 320개 질의 버전 데이터셋(`datasets/rag_eval_v1.json`)을 추가한 진정성 있는 RAG 평가 프레임워크, 장애 주입 검증 및 자동 백업·안전 복구를 갖춘 지식 그래프 무결성 검사기(`lattice-core::integrity`), 타입별 동음이의어 차단·퍼지 점수·선택적 롤백을 지원하는 엔티티 해석(`entity_resolution_ext`), OS 수준 `O_NOFOLLOW` FD 샌드박스(`safe_io.rs`) 및 클라우드 이그레스 PII/비밀 마스킹, 섀도우 재색인·컷오버·롤백을 지원하는 임베딩 모델 레지스트리, 최소 권한 5역할 멀티에이전트 협업 엔진(`multi_agent.rs`), 지식 학습 루프(`learning_loop.rs`), OS 감시 파일 이동·일시중지, `국가 → 제조사 → 실행 위치` 모델 출처 UX, 워커 워치독 및 마스킹 `/host/diagnostics`, 토픽 클러스터/지식 공백/비디오 모달리티/감사 보존 정책/오프보딩 취소 영수증을 모두 통합했습니다.

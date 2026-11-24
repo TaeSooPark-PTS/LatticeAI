@@ -23,8 +23,8 @@ use tokio::task::JoinHandle;
 
 pub use backoff::BackoffPolicy;
 pub use command::{
-    resolve_worker_command, CommandOrigin, HostProbe, ResolveError, StaticProbe, SystemProbe,
-    WorkerCommand,
+    resolve_worker_command, CommandOrigin, EnvOverlayProbe, HostProbe, ResolveError, StaticProbe,
+    SystemProbe, WorkerCommand,
 };
 pub use health::{
     check_health, http_client, probe_health, proxy_client, wait_for_health, HealthReport,

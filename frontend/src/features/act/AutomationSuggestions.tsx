@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, MessageCircleQuestion, ShieldCheck, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";

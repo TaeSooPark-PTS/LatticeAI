@@ -6,6 +6,35 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.0.0] - 2026-11-25 — Living Synthesis
+
+### Security & Reliability
+- **Auth & Rate Limiting (`rust/lattice-auth/src/{password.rs,ratelimit.rs,csrf.rs,routes.rs}`):**
+  - Replaced panicking `.expect()` calls in `hash_password` with `Result<String, PasswordError>`, upgraded new hashes to versioned `$scrypt$n=14,r=8,p=1${salt}:{key}` (with legacy `{salt}:{key}` verification compatibility), and tightened `stored_is_hashed`.
+  - Bounded rate-limiter maps (`MAX_ENTRIES = 10_000`) with expired-first and oldest-entry eviction, mutex poison recovery, and unified HTTP `429` + `Retry-After` responses across `check_ip` and `enforce`; standardized CSRF denial messages to English.
+- **Zero-`libc` Pure-Rust Clock & Fail-Closed Host (`rust/lattice-core/src/graph_write/clock.rs`, `rust/lattice-host/src/{gateway/mod.rs,supervisor/,main.rs}`):**
+  - Removed all `unsafe` `libc` FFI clock calls and the `libc` dependency from `lattice-core` in favor of pure-Rust UTC arithmetic (`civil_from_days`).
+  - Made `GatewayState::with_client` fail closed when building the no-redirect proxy client fails and replaced `std::env::set_var` with `EnvOverlayProbe`.
+- **Non-Blocking Tokio I/O & Bounded Caches (`rust/lattice-ingest/`, `rust/lattice-chat/`, `rust/lattice-retrieval/`, `rust/lattice-jobs/`):**
+  - Offloaded blocking `std::fs` calls in `local_files_api/local.rs` and document session persistence in `documents.rs` to `tokio::task::spawn_blocking` (releasing mutexes before disk I/O).
+  - Bounded `cloud/budget.rs` (`4,096` scopes) and `native_hnsw.rs` (`32` graphs) with LRU eviction and poison recovery.
+  - Preserved partial drain outcomes on failure in `lattice-jobs`, surfaced claim-release errors, and added a loopback/Bearer defense-in-depth guard on `/host/jobs`.
+- **Python Worker & Packaging (`pyproject.toml`, `lattice_brain/`, `latticeai/`):**
+  - Platform-guarded `mlx-vlm`/`mlx-lm` in `local`/`all` extras (`darwin`/`arm64`), added `hnswlib`/`pyautogui` to `all`, removed empty extras, fixed Changelog URL, and re-enabled Ruff `S608`/`S105`/`S108`/`S603`/`S604`/`S607` security rules.
+  - Added `ContextVar`-scoped `llm_router_scope` DI, safe `LATTICEAI_VECTOR_DIM` parsing + pre-compiled embedder regexes + `embed_async`, shared `record_suppressed`, bounded security rate buckets + CIDR warnings, side-effect-free `todo_read`, and narrowed exception handling.
+- **Desktop Shell & Extensions (`src-tauri/`, `vscode-extension/`, `browser-extension/`):**
+  - Serialized async Tauri gateway `start`/`stop`/`restart` lifecycle without `std::env::set_var` or TOCTOU races, enforced loopback origin validation and safe port wrapping, moved `/usr/bin/osascript` folder picking to `spawn_blocking`, and pinned capabilities & CSP to `127.0.0.1:4825` without `'unsafe-inline'`.
+  - Added optional Bearer auth, TTL single-use approval token cache, stream timeouts, live config reload, and cross-platform VSIX packaging (`scripts/vsix-cli.mjs`) to `vscode-extension`; narrowed `browser-extension` host permissions to port `4825` with live DOM visibility capture, UTF-8 byte truncation, and end-to-end fetch timeouts.
+
+### Changed
+- **Strict TypeScript 7 Frontend (`tsconfig.json`, `vitest.config.mts`, `package.json`, `frontend/src/`):**
+  - Enabled `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, and `verbatimModuleSyntax`; extracted `AppRouteView.tsx`; moved runtime UI packages from `devDependencies` to `dependencies`; added desktop-origin retry and SSR-safe storage guards; kept 100% Vitest coverage across 113 test files.
+- **CI/CD & Digest-Pinned Multi-Stage Docker (`.github/workflows/{ci,release,publish}.yml`, `Dockerfile`, `.dockerignore`):**
+  - Added `rust-windows` (`windows-latest`), `tauri-check` (`macos-latest`), and `docker-smoke` CI jobs, top-level `permissions: contents: read`, and pinned `taiki-e/install-action` for `cargo-nextest`.
+  - Pinned all multi-stage `Dockerfile` base images by SHA256 digest and added a `frontend-builder` stage with `.dockerignore` updated to include `frontend/`.
+- **14.0.0 Architecture Documentation (`ARCHITECTURE.md`, `docs/architecture.md`, `docs/ko/`, `rust/lattice-{agent,platform}/ARCHITECTURE.md`):**
+  - Modernized all canonical architecture documents and Korean mirrors to `14.0.0` and removed obsolete pre-14 dead-module history and stale compatibility alias notes.
+
 ## [13.9.0] - 2026-11-24 — Living Synthesis
 
 ### Fixed

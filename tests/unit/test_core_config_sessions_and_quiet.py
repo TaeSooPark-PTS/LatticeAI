@@ -201,7 +201,7 @@ def test_core_leftovers_users_sessions_config_quiet_permission(
     from latticeai.core import quiet as quiet_mod
 
     monkeypatch.setattr(
-        quiet_mod.sys, "exc_info", lambda: (ValueError, ValueError("x"), None)
+        sys, "exc_info", lambda: (ValueError, ValueError("x"), None)
     )
     quiet_mod.logger.setLevel(logging.DEBUG)
     quiet("no-tb")

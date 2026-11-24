@@ -147,7 +147,7 @@ export function LazyPanel({
 /** A lazy route page: its own boundary so a throw cannot blank the shell. */
 export function LazyRoute({
   children,
-  language,
+  language: _language,
   resetKey,
   fallback,
 }: {

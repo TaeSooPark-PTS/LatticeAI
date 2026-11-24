@@ -1,4 +1,3 @@
-import * as React from "react";
 import ReactFlow, { Background, Controls, type Edge, type Node } from "reactflow";
 
 /**

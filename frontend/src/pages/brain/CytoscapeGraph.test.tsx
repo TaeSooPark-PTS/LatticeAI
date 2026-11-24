@@ -51,6 +51,7 @@ const h = vi.hoisted(() => {
       zoom: (value?: number) => {
         if (value === undefined) return zoom;
         zoom = value;
+        return zoom;
       },
       center: () => {
         cy.centerCalls += 1;
