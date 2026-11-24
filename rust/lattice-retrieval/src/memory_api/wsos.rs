@@ -287,7 +287,7 @@ pub fn list_memory_snapshots(state: &Value, workspace_id: Option<&str>, limit: i
 
 /// The owner of `workspace_os.json` + the `workspace_os_state` row.
 ///
-/// This crate cannot name `lattice_platform::workspace::WorkspaceOsStore` —
+/// This crate cannot name `lattice_platform::workspaceos::workspace::WorkspaceOsStore` —
 /// the dependency runs the other way — so it declares the port and the host
 /// installs the implementation, exactly as `lattice-agent` declares
 /// `ProposalStore` for the Review Center. Without one installed the writes
@@ -316,7 +316,7 @@ pub trait StateWriter: Send + Sync {
 
 /// `review_queue::REVIEW_TIMELINE_AREA`.
 ///
-/// The three constants below are `lattice_platform::review_queue`'s, spelled
+/// The three constants below are `lattice_platform::governance::review_queue`'s, spelled
 /// again because the dependency runs the other way. `lattice-host`'s
 /// `the_review_event_vocabulary_is_one_vocabulary` asserts the two spellings
 /// are equal — it is the one crate that can see both.

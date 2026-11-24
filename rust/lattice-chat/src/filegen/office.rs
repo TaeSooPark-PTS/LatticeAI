@@ -10,7 +10,7 @@
 //! PDF bytes, and it is not this process: `POST /worker/render/{kind}` (on
 //! `rust/fixtures/worker_allowlist.json`, group `compute_seam`) builds them with
 //! python-docx / reportlab. This module reaches that seam through
-//! [`lattice_agent::worker::WorkerClient::render`] — the client the agent's four
+//! [`lattice_agent::seam::worker::WorkerClient::render`] — the client the agent's four
 //! document creators already use — so there is one implementation of the render
 //! call, one base64 decode and one set of error strings for both write surfaces.
 //!

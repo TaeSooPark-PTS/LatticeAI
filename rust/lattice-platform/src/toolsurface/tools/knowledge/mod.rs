@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use lattice_agent::sandbox::MAX_FILE_BYTES;
+use lattice_agent::tools::sandbox::MAX_FILE_BYTES;
 use lattice_auth::{Identity, OrderedMap};
 use serde_json::{json, Value};
 

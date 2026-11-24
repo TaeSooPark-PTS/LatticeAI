@@ -15,14 +15,14 @@ mod support;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use lattice_platform::models_catalog::{
+use lattice_platform::governance::workflow_designer::{
+    router as workflow_router, LocalGraphSink, WorkflowDesignerState, MOUNTED as WORKFLOW,
+};
+use lattice_platform::modelops::models_catalog::{
     self, keep_worker_paths, router as catalog_router, ModelsCatalogState, MOUNTED as CATALOG,
 };
-use lattice_platform::permission_mode::{
+use lattice_platform::workspaceos::permission_mode::{
     router as permission_mode_router, PermissionModeState, MOUNTED as PERMISSION,
-};
-use lattice_platform::workflow_designer::{
-    router as workflow_router, LocalGraphSink, WorkflowDesignerState, MOUNTED as WORKFLOW,
 };
 use serde_json::json;
 

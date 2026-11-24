@@ -7,15 +7,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::pyjson::OrderedMap;
 use lattice_auth::{AuthConfig, AuthState, Clock};
-use lattice_platform::agent_registry::{self, AgentRegistryState};
-use lattice_platform::agents::{self, AgentsState};
-use lattice_platform::marketplace::{self, MarketplaceState};
-use lattice_platform::mcp::{self, McpState};
-use lattice_platform::plugins::{self, PluginsState};
-use lattice_platform::tools::{self, ToolsState};
+use lattice_platform::toolsurface::agent_registry::{self, AgentRegistryState};
+use lattice_platform::toolsurface::agents::{self, AgentsState};
+use lattice_platform::toolsurface::marketplace::{self, MarketplaceState};
+use lattice_platform::toolsurface::mcp::{self, McpState};
+use lattice_platform::toolsurface::plugins::{self, PluginsState};
+use lattice_platform::toolsurface::tools::{self, ToolsState};
 use serde_json::{json, Value};
 
 const OWNER_EMAIL: &str = "owner@lattice.test";

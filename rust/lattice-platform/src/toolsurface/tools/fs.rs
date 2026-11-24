@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::response::Response;
-use lattice_agent::sandbox::{Workspace, MAX_FILE_BYTES};
+use lattice_agent::tools::sandbox::{Workspace, MAX_FILE_BYTES};
 use serde_json::{json, Value};
 
 use crate::toolsurface::mcp::{missing_fields, parse_json_object, require_user};
@@ -294,7 +294,8 @@ pub(crate) async fn write_file(
     // returned byte-for-byte, so a hand-authored file is never rewritten, and
     // the response shape (`{path, bytes}`) is unchanged: `bytes` is what
     // landed, which is what it always claimed to be.
-    let (content, _sanitize) = lattice_agent::sanitize::sanitize_write_content(path, content, "");
+    let (content, _sanitize) =
+        lattice_agent::content::sanitize::sanitize_write_content(path, content, "");
     if content.len() as u64 > MAX_FILE_BYTES {
         return tool_err("Content is too large to write.");
     }

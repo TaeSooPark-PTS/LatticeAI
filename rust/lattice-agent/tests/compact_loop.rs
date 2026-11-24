@@ -21,9 +21,9 @@
 mod common;
 
 use common::{loop_deps, loop_golden, loop_request, start_replay_worker};
-use lattice_agent::agentloop::Runtime;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::{AgentRunContext, AgentState};
+use lattice_agent::kernel::agentloop::Runtime;
+use lattice_agent::kernel::state::{AgentRunContext, AgentState};
+use lattice_agent::tools::sandbox::Workspace;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 

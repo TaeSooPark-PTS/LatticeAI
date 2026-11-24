@@ -16,13 +16,13 @@ mod harness;
 use harness::{
     assert_mounted_matches_fragment, family_cases, load_fixture, openapi_fragment, Install,
 };
-use lattice_platform::computer_use::MOUNTED as COMPUTER_USE_MOUNTED;
-use lattice_platform::network::MOUNTED as NETWORK_MOUNTED;
-use lattice_platform::network_boundary::MOUNTED as NETWORK_BOUNDARY_MOUNTED;
-use lattice_platform::portability::MOUNTED as PORTABILITY_MOUNTED;
-use lattice_platform::project_sessions::MOUNTED as PROJECT_SESSIONS_MOUNTED;
-use lattice_platform::realtime::MOUNTED as REALTIME_MOUNTED;
-use lattice_platform::voice::{KEEP as VOICE_KEEP, MOUNTED as VOICE_MOUNTED};
+use lattice_platform::knowledge::network::MOUNTED as NETWORK_MOUNTED;
+use lattice_platform::knowledge::network_boundary::MOUNTED as NETWORK_BOUNDARY_MOUNTED;
+use lattice_platform::knowledge::portability::MOUNTED as PORTABILITY_MOUNTED;
+use lattice_platform::knowledge::voice::{KEEP as VOICE_KEEP, MOUNTED as VOICE_MOUNTED};
+use lattice_platform::toolsurface::computer_use::MOUNTED as COMPUTER_USE_MOUNTED;
+use lattice_platform::workspaceos::project_sessions::MOUNTED as PROJECT_SESSIONS_MOUNTED;
+use lattice_platform::workspaceos::realtime::MOUNTED as REALTIME_MOUNTED;
 
 // ── portability ────────────────────────────────────────────────────────────
 

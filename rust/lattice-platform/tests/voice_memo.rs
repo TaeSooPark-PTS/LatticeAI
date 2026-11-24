@@ -12,7 +12,7 @@ use lattice_auth::{AuthConfig, AuthState, Clock};
 use lattice_core::db::Store;
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
-use lattice_platform::voice::{self, VoiceState};
+use lattice_platform::knowledge::voice::{self, VoiceState};
 use serde_json::{json, Value};
 
 async fn unavailable_asr(Json(_body): Json<Value>) -> Json<Value> {

@@ -40,7 +40,7 @@
 //! feature over a registry (`hooks.json`) this crate does not own, so the
 //! lifecycle survives as a port — [`HookSink`] — that the gateway wires.
 //!
-//! Since v11.7.0 the gateway does wire it: `lattice_platform::hooks::
+//! Since v11.7.0 the gateway does wire it: `lattice_platform::governance::hooks::
 //! NativeHookSink` is the production implementation (the registry is above this
 //! crate in the dependency graph, so the adapter lives with the registry), it
 //! arrives through `LoopConfig::with_hooks`, and both construction sites —

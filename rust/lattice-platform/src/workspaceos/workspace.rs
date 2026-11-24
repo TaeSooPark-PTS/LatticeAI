@@ -52,7 +52,7 @@
 //! `src/workspaceos/workspace.rs` stays the module root, so no shared file
 //! changed to make room for it. Since v12.0.0 that root is declared by
 //! [`crate::workspaceos`] rather than by `lib.rs` directly, and `lib.rs`
-//! re-exports it so `lattice_platform::workspace` still resolves for the host.
+//! re-exports it so `lattice_platform::workspaceos::workspace` still resolves for the host.
 
 pub mod computer;
 pub mod constants;

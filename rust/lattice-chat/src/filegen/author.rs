@@ -6,7 +6,7 @@
 //! 1. ask the worker over the **existing** llm seam, collected rather than
 //!    streamed ([`collect_completion`] with `document = true`);
 //! 2. judge the reply with the write-side validator the agent path uses
-//!    ([`lattice_agent::sanitize`]);
+//!    ([`lattice_agent::content::sanitize`]);
 //! 3. on a reply that was not a document — one that is *about* the file rather
 //!    than being it, or one only deterministic repair could rescue — ask once
 //!    more with a corrective prompt that names the fault;
@@ -16,7 +16,7 @@
 //!
 //! ## The one thing that is never written
 //!
-//! [`lattice_agent::sanitize::repair_file_content`] always produces *something*:
+//! [`lattice_agent::content::sanitize::repair_file_content`] always produces *something*:
 //! handed a refusal it throws the refusal away and scaffolds a document out of
 //! the user's own request. That scaffold is a legitimate answer to "the model
 //! gave me a truncated page" and a lie in answer to "the model refused" — the

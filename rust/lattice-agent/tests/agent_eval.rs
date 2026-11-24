@@ -1,6 +1,6 @@
 //! Agent Quality Evaluation integration suite (Review §7.3, P2).
 //!
-//! Exercises [`lattice_agent::eval`] end-to-end against real [`Runtime`]
+//! Exercises [`lattice_agent::kernel::eval`] end-to-end against real [`Runtime`]
 //! executions over `ReplayServer` + `NativeTools`, preserving all AGENTS.md
 //! Agent Loop invariants (`LoopTrace`, deterministic `extract_action_details`,
 //! fail-closed `verification.rs`, `probe.rs` profile selection, proposal-first
@@ -12,14 +12,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use common::{loop_deps_with, loop_request, start_replay_worker};
-use lattice_agent::agentloop::Runtime;
-use lattice_agent::eval::{
+use lattice_agent::kernel::agentloop::Runtime;
+use lattice_agent::kernel::eval::{
     aggregate_report, evaluate_run, ClaimAssertion, EvalCase, FileExpectation,
     ProposalAbortExpectation, RequirementSpec,
 };
-use lattice_agent::proposals::JsonProposalStore;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::{AgentRunContext, AgentState};
+use lattice_agent::kernel::proposals::JsonProposalStore;
+use lattice_agent::kernel::state::{AgentRunContext, AgentState};
+use lattice_agent::tools::sandbox::Workspace;
 use serde_json::json;
 
 fn scratch(name: &str) -> std::path::PathBuf {

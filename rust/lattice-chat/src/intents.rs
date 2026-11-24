@@ -309,7 +309,7 @@ pub(crate) fn previewable(path: &str) -> bool {
 /// door v11.7.0 left open — it took a `&str` straight from the request and wrote
 /// it — and the door is closed structurally rather than by a check here: the
 /// only caller is [`crate::filegen`], which runs the same
-/// [`lattice_agent::sanitize`] pipeline `/tools/write_file` and the agent loop
+/// [`lattice_agent::content::sanitize`] pipeline `/tools/write_file` and the agent loop
 /// run before it ever gets this far. Bytes rather than text because a `.docx`
 /// that reaches here is a real document built by the render seam, not prose.
 pub(crate) fn write_bytes(

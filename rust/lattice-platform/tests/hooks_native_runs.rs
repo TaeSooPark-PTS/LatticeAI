@@ -10,14 +10,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use lattice_agent::policy::ToolPolicy;
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::kernel::policy::ToolPolicy;
+use lattice_agent::seam::worker::WorkerClient;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_agent::tools::{CallScope, NativeCall, NativeTools, ToolConfig, ToolHost};
-use lattice_agent::worker::WorkerClient;
 use lattice_auth::pyjson::OrderedMap;
 use lattice_auth::{AuthConfig, AuthState, Clock};
-use lattice_platform::hooks::{self, HooksState, HooksStore, NativeHookSink};
-use lattice_platform::review_queue::GovernanceState;
+use lattice_platform::governance::hooks::{self, HooksState, HooksStore, NativeHookSink};
+use lattice_platform::governance::review_queue::GovernanceState;
 use serde_json::{json, Value};
 
 const OWNER: &str = "owner@lattice.test";

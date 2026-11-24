@@ -1,6 +1,6 @@
 //! Direct tool surface, minus the document-matrix worker routes (v11.6.0, WP-R8).
 //!
-//! Filesystem writes go through [`lattice_agent::sandbox::Workspace`] so the
+//! Filesystem writes go through [`lattice_agent::tools::sandbox::Workspace`] so the
 //! three writers (write_file, edit_file, proposal-approve) share one path
 //! policy. Traversal denials are the exact Python `ToolError` / i18n bodies
 //! the fixtures pin.
@@ -12,7 +12,7 @@ use axum::http::StatusCode;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthState, Identity, OrderedMap};
 use serde_json::{json, Value};
 

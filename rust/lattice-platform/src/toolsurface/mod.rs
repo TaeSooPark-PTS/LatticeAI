@@ -35,7 +35,7 @@
 //! ## What must never go here
 //!
 //! * **A second copy of a tool's behaviour.** Filesystem writes go through
-//!   [`lattice_agent::sandbox::Workspace`] so that the three writers — the
+//!   [`lattice_agent::tools::sandbox::Workspace`] so that the three writers — the
 //!   agent's `write_file`, this domain's `/tools/write_file`, and an approved
 //!   change proposal — share one path policy. A handler that opens a file
 //!   itself has forked the sandbox.

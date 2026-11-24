@@ -8,7 +8,7 @@
 //! wrote the review item. WP-P1a retired that route, so the whole verdict is
 //! computed here now — [`Governor::review`] is a port of that method, and the
 //! payload it stages is the payload the Review Center's approve path reads
-//! (`lattice_platform::change_proposals`).
+//! (`lattice_platform::governance::change_proposals`).
 //!
 //! ## Where a staged proposal is written
 //!
@@ -26,7 +26,7 @@
 //!   [`JsonProposalStore`] appends to the same `workspace_os.json` in the same
 //!   shape, so a proposal staged by a bare `lattice-agent` is listed by a
 //!   Review Center opened over that data directory afterwards. The format's
-//!   owner is `lattice_platform::review_queue` — every field, the id
+//!   owner is `lattice_platform::governance::review_queue` — every field, the id
 //!   derivation and the file layout are that module's, mirrored here.
 //!
 //! Since v11.7.0 the second bullet is no longer a *hazard* in the first
@@ -237,7 +237,7 @@ impl Governor<'_> {
     ///
     /// Truncate the **bytes**, then decode with replacement, so an unchanged
     /// file hashes identically at staging time and at approve time (where
-    /// `lattice_platform::change_proposals` repeats this normalisation).
+    /// `lattice_platform::governance::change_proposals` repeats this normalisation).
     pub fn snapshot(&self, path: &str) -> (bool, String) {
         let Ok(target) = self.workspace.resolve(path) else {
             return (false, String::new());

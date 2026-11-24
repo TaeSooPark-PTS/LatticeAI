@@ -6,7 +6,7 @@
 //! Markdown fence, and it stops mid-document when the token budget runs out.
 //!
 //! The prompts are also written **against the validator that judges the reply**
-//! ([`lattice_agent::sanitize::validate_file_content`]). That is the point of
+//! ([`lattice_agent::content::sanitize::validate_file_content`]). That is the point of
 //! the per-extension anchors: `.html` is judged by "starts with `<!doctype`,
 //! ends with `</html>`, no fences", so the HTML anchor asks for exactly that,
 //! in those words. A prompt that asked for something the validator refuses
@@ -136,7 +136,7 @@ pub fn correction(target: &str, reason: &str) -> String {
 /// The user turn: the request in the user's own words, then the file to write.
 ///
 /// `brief` is the manifest's line about this file when the request is a
-/// multi-file project ([`lattice_agent::inference::infer_project_manifest`]),
+/// multi-file project ([`lattice_agent::parse::inference::infer_project_manifest`]),
 /// so file two knows it is the stylesheet file one links to.
 pub fn user_turn(request: &str, target: &str, brief: Option<&str>) -> String {
     let mut turn = request.trim().to_string();

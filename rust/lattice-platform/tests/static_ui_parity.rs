@@ -17,7 +17,7 @@
 //!
 //! Three things are proven, and the third is the one that rots silently:
 //!
-//! 1. every route in [`lattice_platform::ui_redirects::REDIRECTS`] answers 308
+//! 1. every route in [`lattice_platform::shell::ui_redirects::REDIRECTS`] answers 308
 //!    to the SPA hash route, over real HTTP, with the query where Python puts it;
 //! 2. the table *is* the Python map — same paths, same fragments, same
 //!    `require_user` flags — asserted against `redirects.routes` in the fixture;
@@ -48,13 +48,13 @@ mod static_ui_harness;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use lattice_platform::static_ui::{
+use lattice_platform::shell::static_ui::{
     asset_content_type, host_capacity_readiness, parse_cpu_percent, parse_ram_percent,
     probe_host_capacity, sign_invite_cookie, sysinfo_router, verify_invite_cookie, GpuFuture,
     GpuReading, GpuSource, NoGpu, SysinfoState, WorkerGpuSource, INVITE_DENIED_HTML,
     PRODUCTION_CSP, SYSINFO_READINESS_ROOMY_MAX, SYSINFO_READINESS_TIGHT_MAX, WORKER_SYSINFO_PATH,
 };
-use lattice_platform::ui_redirects::{
+use lattice_platform::shell::ui_redirects::{
     app_redirect, authenticated_router, public_router, router, REDIRECTS, REDIRECT_STATUS,
 };
 use serde_json::Value;

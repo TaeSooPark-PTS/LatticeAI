@@ -6,7 +6,7 @@
 //!
 //! * `lattice_auth::WorkspaceResolver` resolves **one** requested scope into
 //!   the one the caller is allowed to read or write, and
-//!   `lattice_platform::workspace::WorkspaceService` implements it directly;
+//!   `lattice_platform::workspaceos::workspace::WorkspaceService` implements it directly;
 //! * `lattice_retrieval::search_api::AllowedScopes` asks for the **set**, which
 //!   the search lanes intersect a row's `workspace_id` against.
 //!
@@ -20,7 +20,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use lattice_platform::workspace::WorkspaceService;
+use lattice_platform::workspaceos::workspace::WorkspaceService;
 use lattice_retrieval::search_api::AllowedScopes;
 use serde_json::Value;
 

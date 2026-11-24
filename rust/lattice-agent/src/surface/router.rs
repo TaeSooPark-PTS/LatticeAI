@@ -61,8 +61,9 @@ impl AgentState {
 /// The `config` argument arrived with the loop (v11.5.1): the orchestrator
 /// needs to know where its AI worker listens and where paused runs are stored,
 /// and neither is something this crate can discover for itself.
-pub fn router(workspace: Workspace, config: crate::LoopConfig) -> Router {
-    kernel_router(workspace.clone()).merge(crate::loop_router(workspace, config))
+pub fn router(workspace: Workspace, config: crate::surface::looproutes::LoopConfig) -> Router {
+    kernel_router(workspace.clone())
+        .merge(crate::surface::looproutes::loop_router(workspace, config))
 }
 
 /// Just the three decision routes, for callers that want no loop.
@@ -526,7 +527,7 @@ mod tests {
         // Building it is the assertion: axum panics on a duplicate or malformed
         // route at construction time, so a loop route that shadowed a kernel
         // route would fail here.
-        let mut config = crate::LoopConfig::new("http://127.0.0.1:1");
+        let mut config = crate::surface::looproutes::LoopConfig::new("http://127.0.0.1:1");
         config.runs_dir = dir.path().join("rust_agent_runs");
         let _router: Router = router(workspace.clone(), config);
         let _kernel: Router = kernel_router(workspace);

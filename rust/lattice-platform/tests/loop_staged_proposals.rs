@@ -2,7 +2,7 @@
 //! stages, these routes must list and apply.
 //!
 //! `lattice-agent` cannot depend on this crate, so the loop stages through a
-//! port (`lattice_agent::proposals::ProposalStore`) that `GovernanceState`
+//! port (`lattice_agent::kernel::proposals::ProposalStore`) that `GovernanceState`
 //! implements. Both crates having tests that pass in isolation proves nothing
 //! about the seam between them — this file is the seam:
 //!
@@ -21,13 +21,13 @@ mod review_queue_harness;
 
 use std::sync::Arc;
 
-use lattice_agent::policy::ToolPolicy;
-use lattice_agent::proposals::{
+use lattice_agent::kernel::policy::ToolPolicy;
+use lattice_agent::kernel::proposals::{
     Governor, JsonProposalStore, NewReviewItem, ProposalStore, Verdict,
 };
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthConfig, AuthState, Clock};
-use lattice_platform::review_queue::GovernanceState;
+use lattice_platform::governance::review_queue::GovernanceState;
 use review_queue_harness::Install;
 use serde_json::{json, Value};
 
@@ -192,11 +192,11 @@ async fn a_proposal_staged_against_a_drifted_file_conflicts_with_both_shapes() {
     assert_eq!(detail["kind"], json!("file_update"));
     assert_eq!(
         detail["base_sha256"],
-        json!(lattice_agent::proposals::sha256_text("base\n"))
+        json!(lattice_agent::kernel::proposals::sha256_text("base\n"))
     );
     assert_eq!(
         detail["current_sha256"],
-        json!(lattice_agent::proposals::sha256_text("drifted\n"))
+        json!(lattice_agent::kernel::proposals::sha256_text("drifted\n"))
     );
     assert!(detail["rebase_hint"]
         .as_str()

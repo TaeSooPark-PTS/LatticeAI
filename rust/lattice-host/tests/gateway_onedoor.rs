@@ -189,7 +189,7 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
         Some(&worker.origin()),
         None,
     );
-    let loop_config = lattice_agent::LoopConfig {
+    let loop_config = lattice_agent::surface::looproutes::LoopConfig {
         worker_origin: worker.origin(),
         runs_dir: scratch.join("rust_agent_runs"),
         client: Some(client()),
@@ -197,7 +197,7 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
         // default proposal store is `$HOME/.ltcai/workspace_os.json`, which is
         // the Review Center of whoever runs this suite.
         proposals: Some(std::sync::Arc::new(
-            lattice_agent::proposals::JsonProposalStore::new(scratch.join("proposals")),
+            lattice_agent::kernel::proposals::JsonProposalStore::new(scratch.join("proposals")),
         )),
         // `OneDoorState` binds the sink over the registry it opens under
         // `data_dir`, which is scratch here for the same reason.

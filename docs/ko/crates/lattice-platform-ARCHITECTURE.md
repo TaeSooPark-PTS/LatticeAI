@@ -56,6 +56,6 @@ adminops/      설치 환경 운영 및 감사
 
 ## 호환성 (Compatibility)
 
-`src/lib.rs`의 끝에는 호환성 맵이 위치합니다. v12.0.0 재그룹화 이전에 존재했던 모든 `lattice_platform::…` 경로는 철자 그대로 확인됩니다. `lattice-host`는 단일 `use` 문(`gateway/product.rs`)으로 **서른 개**의 패밀리 모듈을 모두 임포트하고, `lattice-chat`은 `admin`을 임포트하며, 이 크레이트 자체의 통합 테스트도 십여 개를 더 참조합니다. 따라서 이 맵은 외부 코드가 무엇에 의존하는지를 보여주는 정직한 목록이며, 관련 크레이트들과의 조율 없이 항목을 제거해서는 안 됩니다.
+`src/lib.rs`는 7개의 정본 도메인 모듈(`adminops`, `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)과 `VERSION`만 공개합니다. v12.0.0 이전의 평탄한 호환성 재내보내기 맵은 `13.7.2`에서 제거되었으며, `lattice-host`, `lattice-chat` 및 통합 테스트의 모든 호출자는 정본 도메인 경로(`lattice_platform::adminops::admin`, `lattice_platform::workspaceos::workspace` 등)에서 직접 임포트합니다.
 
 이 크레이트 내부의 새 코드는 어떤 도메인에서 빌려오고 있는지 한눈에 보이도록 별칭(`crate::admin`) 대신 실제 경로(`crate::adminops::admin`)를 사용합니다. 공유 HTTP JSON 응답, FastAPI 422 검증 엔벌로프, 지역화된 메시지 상세 정보, UTC 타임스탬프 헬퍼는 크레이트 내부 모듈인 `crate::http_reply`(`src/http_reply.rs`)에 위치하여 `knowledge/`와 `toolsurface/`가 전송 포맷팅을 위해 `workspaceos::project_sessions`를 옆으로 참조하지 않도록 합니다. `src/lib.rs`의 별칭은 내부 모듈이 아니라 외부 소비자를 위해 존재합니다.

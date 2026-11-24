@@ -6,6 +6,17 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.7.2] - 2026-11-24 — Living Synthesis
+
+### Changed
+- **Canonical Domain Module Paths (`rust/lattice-agent`, `rust/lattice-platform`, `rust/lattice-host`, `rust/lattice-chat`, `rust/lattice-retrieval`):**
+  - Migrated all 77+ internal callers and integration tests across the Rust workspace to import directly from canonical domain paths (`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`).
+
+### Removed
+- **Obsolete Crate-Root Compatibility Re-export Maps & Scaffold Stub (`rust/lattice-agent/src/lib.rs`, `rust/lattice-platform/src/lib.rs`, `rust/lattice-chat/src/lib.rs`):**
+  - Removed the flat crate-root `pub use` compatibility maps from `lattice-agent` and `lattice-platform` so the public API surface is strictly domain-scoped.
+  - Removed the unused `lattice_chat::crate_ready()` scaffold stub.
+
 ## [13.7.1] - 2026-11-24 — Living Synthesis
 
 ### Removed

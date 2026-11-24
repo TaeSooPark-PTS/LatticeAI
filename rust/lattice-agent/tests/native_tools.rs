@@ -17,14 +17,14 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use common::loop_golden;
-use lattice_agent::agentloop::{LoopDeps, RunRequest, Runtime};
-use lattice_agent::policy::PolicyTable;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::{AgentRunContext, AgentState};
+use lattice_agent::kernel::agentloop::{LoopDeps, RunRequest, Runtime};
+use lattice_agent::kernel::policy::PolicyTable;
+use lattice_agent::kernel::state::{AgentRunContext, AgentState};
+use lattice_agent::seam::worker::WorkerClient;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_agent::tools::{
     NativeCall, NativeTools, ToolConfig, ToolFuture, ToolHost, MUTATING_TOOLS, RENDER_TOOLS,
 };
-use lattice_agent::worker::WorkerClient;
 use serde_json::{json, Value};
 
 /// A worker that answers completions and **counts** every other call.
@@ -181,7 +181,7 @@ fn deps(
         // Scratch, never `from_env()`: these runs are `bypass`, so nothing is
         // staged, but a default pointing at `$HOME` is one mode flag away from
         // writing into the developer's own Review Center.
-        proposals: Arc::new(lattice_agent::proposals::JsonProposalStore::new(
+        proposals: Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::new(
             dir.join("data"),
         )),
         ..LoopDeps::new(WorkerClient::new(&server.origin), workspace.clone())

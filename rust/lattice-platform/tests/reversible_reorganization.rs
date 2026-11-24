@@ -6,11 +6,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use axum::http::HeaderMap;
-use lattice_agent::proposals::{NewReviewItem, ProposalStore};
+use lattice_agent::kernel::proposals::{NewReviewItem, ProposalStore};
 use lattice_auth::{AuthConfig, AuthState, Identity};
 use lattice_platform::governance::change_proposals;
 use lattice_platform::governance::review_queue::GovernanceState;
-use lattice_platform::workspace::WorkspaceOsStore;
+use lattice_platform::workspaceos::workspace::WorkspaceOsStore;
 use serde_json::json;
 
 fn test_governance() -> (

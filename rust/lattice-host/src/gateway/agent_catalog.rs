@@ -35,17 +35,17 @@
 //! What that leaves is a name the loop does *not* govern — a future remote MCP
 //! server, or a curated tool added to the platform and not to the policy table.
 //! [`PlatformCatalog::execute`] sends those through
-//! [`lattice_platform::mcp::dispatch_for_agent`], which is the same
+//! [`lattice_platform::toolsurface::mcp::dispatch_for_agent`], which is the same
 //! `check_governance` `POST /mcp` runs. A refusal — unknown tool, role, or a
 //! missing tool surface — is a [`ToolOutcome::Error`], never a silent success.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use lattice_agent::seam::worker::ToolOutcome;
 use lattice_agent::tools::catalog::{ArgSpec, CatalogEntry, EntryKind, ToolCatalog};
 use lattice_agent::tools::{CallScope, ToolFuture};
-use lattice_agent::worker::ToolOutcome;
-use lattice_platform::workspace::skills::scan_installed_skills;
+use lattice_platform::workspaceos::workspace::skills::scan_installed_skills;
 use serde_json::{json, Map, Value};
 
 /// The tools `POST /mcp`'s `tools/list` offers, with the one argument each of
@@ -53,7 +53,7 @@ use serde_json::{json, Map, Value};
 ///
 /// Read-only, every one — the MCP surface is a *reading* surface by design, and
 /// the loop's writers reach it under their own names. Kept in step with
-/// `lattice_platform::mcp::dispatch::NATIVE_TOOLS` by
+/// `lattice_platform::toolsurface::mcp::dispatch::NATIVE_TOOLS` by
 /// [`tests::every_published_mcp_tool_is_a_governed_tool_of_the_run`], which
 /// fails the moment one of these stops being governed.
 pub const MCP_TOOLS: &[(&str, &str, &str)] = &[
@@ -166,7 +166,7 @@ impl ToolCatalog for PlatformCatalog {
                 // An `mcp.*` name the run does not govern: the platform's own
                 // dispatch, including `check_governance`. Never a bypass.
                 let identity = identity_from_scope(scope);
-                return match lattice_platform::mcp::dispatch_for_agent(
+                return match lattice_platform::toolsurface::mcp::dispatch_for_agent(
                     None,
                     &self.skills_dir,
                     &identity,
@@ -215,7 +215,7 @@ impl ToolCatalog for PlatformCatalog {
 /// `<data>/skills`, then the repo's). Building one throwaway state to read the
 /// answer is cheaper than being wrong about it.
 pub fn skills_dir_for(auth: Arc<lattice_auth::AuthState>, data_dir: &Path) -> PathBuf {
-    lattice_platform::mcp::McpState::new(auth, data_dir).skills_dir
+    lattice_platform::toolsurface::mcp::McpState::new(auth, data_dir).skills_dir
 }
 
 #[cfg(test)]

@@ -13,9 +13,9 @@
 mod common;
 
 use common::start_replay_worker;
-use lattice_agent::runs::{AgentRunStore, PausedRun};
-use lattice_agent::state::AgentRunContext;
-use lattice_agent::{loop_router, LoopConfig};
+use lattice_agent::kernel::runs::{AgentRunStore, PausedRun};
+use lattice_agent::kernel::state::AgentRunContext;
+use lattice_agent::surface::looproutes::{loop_router, LoopConfig};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 
@@ -69,8 +69,8 @@ fn scratch(name: &str) -> PathBuf {
 /// A gateway-less mount of the three loop routes, in front of a fake worker.
 async fn harness(name: &str, completions: &[&str]) -> Harness {
     let dir = scratch(name);
-    let workspace =
-        lattice_agent::sandbox::Workspace::new(dir.join("agent_workspace")).expect("workspace");
+    let workspace = lattice_agent::tools::sandbox::Workspace::new(dir.join("agent_workspace"))
+        .expect("workspace");
     let server = start_replay_worker(workspace.root()).await;
     server.worker.push_completions(
         &completions
@@ -89,7 +89,7 @@ async fn harness(name: &str, completions: &[&str]) -> Harness {
             // `strict`, but the default store must not be one flag away from
             // the developer's own Review Center.
             proposals: Some(std::sync::Arc::new(
-                lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
+                lattice_agent::kernel::proposals::JsonProposalStore::new(dir.join("data")),
             )),
             hooks: None,
             external: None,
@@ -325,7 +325,7 @@ async fn an_expired_approval_is_a_410_with_a_replan_hint() {
             token: "the-token",
             // Expired, but inside the retention window, which is the whole
             // reason the record is still on disk.
-            expires_epoch: lattice_agent::trace::epoch_now() - 60.0,
+            expires_epoch: lattice_agent::kernel::trace::epoch_now() - 60.0,
             expires_at: "2026-08-11T00:00:00+00:00",
             legacy_context: false,
             request: json!({"message": "make a note"}),
@@ -441,8 +441,8 @@ async fn a_run_without_a_message_or_a_reachable_worker_is_refused_honestly() {
 #[tokio::test]
 async fn an_unreachable_worker_ends_the_run_as_a_bad_gateway() {
     let dir = scratch("unreachable");
-    let workspace =
-        lattice_agent::sandbox::Workspace::new(dir.join("agent_workspace")).expect("workspace");
+    let workspace = lattice_agent::tools::sandbox::Workspace::new(dir.join("agent_workspace"))
+        .expect("workspace");
     let router = loop_router(
         workspace,
         LoopConfig {
@@ -452,7 +452,7 @@ async fn an_unreachable_worker_ends_the_run_as_a_bad_gateway() {
             runs_dir: dir.join("rust_agent_runs"),
             client: None,
             proposals: Some(std::sync::Arc::new(
-                lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
+                lattice_agent::kernel::proposals::JsonProposalStore::new(dir.join("data")),
             )),
             hooks: None,
             external: None,

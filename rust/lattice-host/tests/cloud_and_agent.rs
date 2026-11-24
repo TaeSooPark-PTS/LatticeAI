@@ -159,13 +159,13 @@ async fn product_gateway(
         Some(worker_origin),
         None,
     );
-    let loop_config = lattice_agent::LoopConfig {
+    let loop_config = lattice_agent::surface::looproutes::LoopConfig {
         worker_origin: worker_origin.to_string(),
         runs_dir: scratch.join("rust_agent_runs"),
         client: Some(client()),
-        proposals: Some(Arc::new(lattice_agent::proposals::JsonProposalStore::new(
-            scratch.join("proposals"),
-        ))),
+        proposals: Some(Arc::new(
+            lattice_agent::kernel::proposals::JsonProposalStore::new(scratch.join("proposals")),
+        )),
         hooks: None,
         external: None,
     };

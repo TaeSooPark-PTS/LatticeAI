@@ -18,7 +18,7 @@
 //!   recorded run each, and a `pre_*` block short-circuits the rest
 //!   (fail-closed gate semantics).
 //! * `_run_command` — the user hook's `command` is `shlex.split` (CPython's
-//!   lexer, [`lattice_agent::pyshlex`]), run as a subprocess with the context
+//!   lexer, [`lattice_agent::parse::pyshlex`]), run as a subprocess with the context
 //!   JSON on stdin and in `LATTICE_HOOK_CONTEXT`, under a **replaced**
 //!   environment of eleven variables. Exit 0 is `ok`; a non-zero exit or a
 //!   timeout *blocks* a `pre_*` hook and is merely recorded for any other kind.
@@ -256,7 +256,7 @@ fn run_command(
     context_json: &str,
     timeout: Duration,
 ) -> Outcome {
-    let argv = match lattice_agent::pyshlex::split(command) {
+    let argv = match lattice_agent::parse::pyshlex::split(command) {
         Ok(argv) => argv,
         Err(error) => return Outcome::error(format!("invalid command: {}", error.message())),
     };
@@ -391,10 +391,10 @@ fn truncate(text: &str, limit: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lattice_agent::policy::ToolPolicy;
-    use lattice_agent::sandbox::Workspace;
+    use lattice_agent::kernel::policy::ToolPolicy;
+    use lattice_agent::seam::worker::{ToolOutcome, WorkerClient};
+    use lattice_agent::tools::sandbox::Workspace;
     use lattice_agent::tools::{NativeCall, NativeTools, ToolConfig, ToolHost};
-    use lattice_agent::worker::{ToolOutcome, WorkerClient};
     use std::sync::Arc;
 
     /// A registry, a workspace and a host wired to the sink — the production

@@ -36,7 +36,7 @@
 //!   v11.7.0 it kept its own cached copy, and workspace-side writes landing
 //!   between its load and its save were silently erased.
 //! * **The write itself, done directly.** Applying an approved proposal goes
-//!   through [`lattice_agent::sandbox::Workspace`] — the same sandbox the
+//!   through [`lattice_agent::tools::sandbox::Workspace`] — the same sandbox the
 //!   agent's own native `write_file` resolves through — so a proposal can never
 //!   reach a path the agent could not have written in the first place.
 //! * **A page shell.** `GET /workflows` is a 308 owned by

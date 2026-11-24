@@ -10,10 +10,10 @@
 #[allow(dead_code)]
 mod review_queue_harness;
 
-use lattice_platform::automation;
-use lattice_platform::change_proposals;
-use lattice_platform::hooks;
-use lattice_platform::review_queue;
+use lattice_platform::governance::automation;
+use lattice_platform::governance::change_proposals;
+use lattice_platform::governance::hooks;
+use lattice_platform::governance::review_queue;
 use review_queue_harness::{fragment, to_openapi, Install};
 
 #[tokio::test]

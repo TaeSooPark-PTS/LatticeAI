@@ -12,12 +12,12 @@
 #[allow(dead_code)]
 mod mcp_harness;
 
-use lattice_platform::agent_registry;
-use lattice_platform::agents;
-use lattice_platform::marketplace;
-use lattice_platform::mcp;
-use lattice_platform::plugins;
-use lattice_platform::tools;
+use lattice_platform::toolsurface::agent_registry;
+use lattice_platform::toolsurface::agents;
+use lattice_platform::toolsurface::marketplace;
+use lattice_platform::toolsurface::mcp;
+use lattice_platform::toolsurface::plugins;
+use lattice_platform::toolsurface::tools;
 use serde_json::{json, Value};
 
 use mcp_harness::{

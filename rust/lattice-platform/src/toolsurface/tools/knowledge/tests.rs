@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthConfig, AuthState, Clock};
 
 use super::hybrid::search_notes_with_options;

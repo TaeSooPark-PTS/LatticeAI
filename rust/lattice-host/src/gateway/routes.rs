@@ -199,7 +199,7 @@ mod tests {
             declared.push(endpoint.path());
         }
         // The agent kernel's three routes are declared as literals by
-        // `lattice_agent::router`; naming them here keeps them in the sweep.
+        // `lattice_agent::surface::router`; naming them here keeps them in the sweep.
         declared.extend([
             "/rust/agent/preflight",
             "/rust/agent/exec",

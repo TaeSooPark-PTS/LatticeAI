@@ -67,6 +67,6 @@ prompts/   호출자가 프롬프트를 제공하지 않았을 때 모델에 전
 
 ## 호환성 (Compatibility)
 
-`src/lib.rs`의 끝에는 호환성 맵이 위치합니다. v12.0.0 재그룹화 이전에 존재했던 모든 `lattice_agent::…` 경로는 철자 하나 바뀌지 않고 그대로 확인됩니다(`lattice_agent::sandbox`, `lattice_agent::agentloop`, `lattice_agent::sanitize` 등은 모두 새 위치의 `pub use` 재내보내기입니다). `lattice-host`, `lattice-platform`, `lattice-chat`, `lattice-core`가 이 이름들을 임포트하므로 이 맵은 외부 코드가 무엇에 의존하는지를 보여주는 정직한 목록이기도 합니다. 관련 크레이트들과의 조율된 변경 없이 이 맵에서 항목을 제거해서는 안 됩니다.
+`src/lib.rs`는 정본 도메인 그룹(`content`, `kernel`, `parse`, `prompts`, `seam`, `surface`, `tools`)과 `VERSION`만 공개합니다. v12.0.0 이전의 평탄한 호환성 재내보내기 맵은 `13.7.2`에서 제거되었으며, 모든 내부·외부 호출자는 정본 경로(`lattice_agent::kernel::state`, `lattice_agent::tools::sandbox`, `lattice_agent::surface::looproutes` 등)에서 직접 임포트합니다.
 
 이 크레이트 내부의 새 코드는 별칭(`crate::state`)이 아닌 실제 경로(`crate::kernel::state`)를 사용합니다. 별칭은 우리가 아니라 외부 소비자를 위해 존재합니다.

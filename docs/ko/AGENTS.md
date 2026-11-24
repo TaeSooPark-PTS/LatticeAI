@@ -2,7 +2,7 @@
 
 # LatticeAI 프로젝트 AGENTS.md
 
-현재 릴리스: **13.7.1 — Living Synthesis**.
+현재 릴리스: **13.7.2 — Living Synthesis**.
 
 이 파일은 릴리스 문서 게이트(`scripts/check_current_release_docs.mjs`)의 일부입니다. 위 현재 릴리스 표기는 버전 상향(version bump)과 동일한 커밋에서 반드시 함께 업데이트되어야 하며, 이를 통해 릴리스 이후 `AGENTS.md`가 뒤처지는 현상을 방지합니다.
 
@@ -145,7 +145,7 @@ LatticeAI는 로컬 우선(Local-first) AI 워크스페이스 플랫폼입니다
 - 내구성 다단계 워크플로(`rust/lattice-agent/src/kernel/workflow.rs`의 `DurableWorkflowStore`)는 모든 단계 전후에 원자적으로 체크포인트를 기록하고, 재시작 간 SHA-256 `idempotency_ledger` 리플레이를 강제하며, `requires_approval` 단계를 상수 시간 `WaitingApproval` 토큰 뒤에 게이트하고, 최종 실패 시 변이 이전 파일 스냅샷을 복원하며, `USED_BY_AGENT` / `GENERATED_BY` Brain 출처(provenance) 엣지를 방출합니다.
 - 무상태 워커 연산 재시도는 `latticeai/api/worker_resilience.py`(`x-lattice-idempotency-key` 병합 및 단항 타임아웃 격리)와 짝을 이루는 `WorkerSeamClient::post_idempotent_json`(`rust/lattice-core/src/worker.rs`)을 사용하며, `rust/lattice-host/tests/roadmap_section16_suite.rs`가 섹션 16.1~16.4 엔드투엔드 RAG, 이중 시간 진화, 클라우드 시크릿 파일 경계, 장애 복구 불변성을 고정합니다.
 - 소형/약한 모델 허용 오차(tolerance)는 `extract_action_details`에 위치합니다: think 블록 제거, 코드 펜스 추출, 객체 슬라이싱, 후행 쉼표 복구, Python 리터럴 복구. 새로운 복구 규칙은 결정론적이어야 하며 `repairs`에 보고되어야 합니다.
-- 루프 검증기(verifier)는 실패 시 안전하게 닫힙니다(fail-closed): 검증할 수 없는 결과는 성공으로 보고되는 대신 `NEEDS_REVIEW`로 귀결되어 검토 대기열(review queue)로 들어갑니다. 이 로직은 `lattice-agent`(`12.0.0` 재그룹화 이후 `kernel/agentloop/verification.rs`, 기존 `agentloop::verification` 경로도 크레이트 호환성 맵을 통해 계속 확인됨)에 있으며 해당 크레이트의 자체 테스트로 검증됩니다. `scripts/agent_eval.py`는 존재하지 않습니다(스크립트 모델 하니스는 CI 게이트 역할이 종료되어 11.8.0에서 삭제됨).
+- 루프 검증기(verifier)는 실패 시 안전하게 닫힙니다(fail-closed): 검증할 수 없는 결과는 성공으로 보고되는 대신 `NEEDS_REVIEW`로 귀결되어 검토 대기열(review queue)로 들어갑니다. 이 로직은 `lattice-agent`(`kernel/agentloop/verification.rs`)에 있으며 해당 크레이트의 자체 테스트로 검증됩니다. `scripts/agent_eval.py`는 존재하지 않습니다(스크립트 모델 하니스는 CI 게이트 역할이 종료되어 11.8.0에서 삭제됨).
 - 12.0.0부터 가장 큰 두 크레이트는 목적별로 그룹화되었으며, 모든 변경은 해당 주제를 나타내는 그룹에 속해야 합니다. `lattice-agent`는 `kernel` / `parse` / `content` / `tools` / `surface` / `prompts`로, `lattice-platform`은 `workspaceos` / `toolsurface` / `governance` / `adminops` / `knowledge` / `modelops` / `shell`로 구성됩니다. 파일을 추가하기 전에 해당 그룹의 `mod.rs`를 읽어 무엇이 속하고 무엇이 절대 들어오면 안 되는지 확인하십시오. 크레이트 맵은 [`rust/lattice-agent/ARCHITECTURE.md`](./crates/lattice-agent-ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](./crates/lattice-platform-ARCHITECTURE.md)에 있으며, 기여자 가이드는 [`docs/DEVELOPMENT.md`](./DEVELOPMENT.md), 미해결 과제는 [`docs/ROADMAP.md`](./ROADMAP.md)에 있습니다.
 - 에이전트 프로필(`standard` / `compact` / `guided`)은 모델 이름에서 추론하지 않고 `kernel/probe.rs`를 통해 **실측**합니다. 루프 어디에도 모델별 분기(per-model branch)를 추가하지 마십시오. 새로운 허용 오차는 동일하게 동작하는 모든 모델에서 작동해야 하며, 프로필 선택 다이얼은 루프 자체 파서가 실제 완성 결과를 채점하여 결정해야 합니다.
 - 변경 거버넌스는 제안 우선(proposal-first, `latticeai/core/tool_governor.py` + `latticeai/services/change_proposals.py`)입니다. 추가적인 생성(additive create)은 최소한의 마찰로 실행되지만, 기존 파일의 수정/삭제는 검토 제안(출처 `change_proposal`)으로 스테이징되어 승인 시에만 검토된 내용 그대로 적용됩니다. 자율 실행 경로가 기존 사용자 콘텐츠를 직접 수정하거나 삭제하게 두지 마십시오.

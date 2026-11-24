@@ -876,7 +876,7 @@ async fn with_model_stream_passthrough_records_then_dones() {
 
 #[test]
 fn crate_exports_the_router_factory() {
-    assert!(lattice_chat::crate_ready());
+    assert!(!lattice_chat::VERSION.is_empty());
     assert!(lattice_chat::MOUNTED
         .iter()
         .any(|(m, p)| *m == "POST" && *p == "/chat"));

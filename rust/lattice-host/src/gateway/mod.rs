@@ -209,7 +209,7 @@ impl GatewayState {
 
     /// Where paused `/rust/agent/run` approvals are stored.
     ///
-    /// Defaults to `lattice_agent::runs::default_runs_dir`; a caller (a test, or
+    /// Defaults to `lattice_agent::kernel::runs::default_runs_dir`; a caller (a test, or
     /// a host supervising more than one brain) can point it elsewhere.
     pub fn with_agent_runs_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.agent_runs_dir = Some(path.into());
@@ -223,15 +223,15 @@ impl GatewayState {
     /// proposal is visible to them immediately. With no product mounted there is
     /// no Review Center in this process to disagree with, and the standalone
     /// JSON store is the documented writer for that case.
-    fn proposal_store(&self) -> Arc<dyn lattice_agent::proposals::ProposalStore> {
+    fn proposal_store(&self) -> Arc<dyn lattice_agent::kernel::proposals::ProposalStore> {
         match self.product() {
             Some(product) => Arc::new(product.governance.clone()),
-            None => Arc::new(lattice_agent::proposals::JsonProposalStore::from_env()),
+            None => Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::from_env()),
         }
     }
 
     /// The loop orchestrator's configuration for this gateway.
-    pub fn agent_loop_config(&self) -> lattice_agent::LoopConfig {
+    pub fn agent_loop_config(&self) -> lattice_agent::surface::looproutes::LoopConfig {
         let mut config = mounts::agent_loop_config(
             &self.worker_origin(),
             self.client.clone(),

@@ -2,7 +2,7 @@
 
 # LatticeAI Project AGENTS.md
 
-Current release: **13.7.1 — Living Synthesis**.
+Current release: **13.7.2 — Living Synthesis**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -167,9 +167,8 @@ evaluated; changes to them must keep these invariants:
 - The loop verifier fails closed: an outcome that cannot be verified resolves
   to `NEEDS_REVIEW` and enters the review queue rather than being reported as
   success. It lives in `lattice-agent`
-  (`kernel/agentloop/verification.rs` since the 12.0.0 regrouping; the old
-  `agentloop::verification` path still resolves through the crate's
-  compatibility map), and its verdicts are covered by that crate's own tests.
+  (`kernel/agentloop/verification.rs`), and its verdicts are covered by that
+  crate's own tests.
   There is **no** `scripts/agent_eval.py` — the scripted-model harness stopped
   being a CI gate and was deleted in 11.8.0 rather than left as a script that
   looked like one.

@@ -91,20 +91,14 @@ v11.7.0 closed.
 file, one format; `lattice-chat` and `lattice-host` call into it from outside
 rather than growing writers of their own.
 
-## Compatibility
+## Public API Surface (13.7.2+)
 
-`src/lib.rs` ends with the compatibility map: every `lattice_platform::…` path
-that existed before the v12.0.0 regrouping still resolves, spelled exactly as it
-was. `lattice-host` imports **all thirty** family modules by name in one `use`
-(`gateway/product.rs`), `lattice-chat` imports `admin`, and this crate's own
-integration tests name a dozen more — so the map is also the honest list of what
-outside code depends on. Nothing may be dropped from it without a coordinated
-change in those crates.
-
-New code inside this crate uses the real path (`crate::adminops::admin`, not
-`crate::admin`), so a reader of any file sees which domain it is borrowing from.
-Shared HTTP JSON reply, FastAPI 422 validation envelope, localized message
-detail, and UTC timestamp helpers live in crate-internal `crate::http_reply`
-(`src/http_reply.rs`) so `knowledge/` and `toolsurface/` never reach sideways
-into `workspaceos::project_sessions` for transport formatting. The aliases in
-`src/lib.rs` exist for external consumers, not for internal modules.
+`src/lib.rs` exposes only the seven canonical domain modules (`adminops`,
+`governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)
+and `VERSION`. The flat pre-12.0.0 compatibility re-export map was retired in
+`13.7.2`; every caller across `lattice-host`, `lattice-chat`, and integration
+tests imports directly from canonical domain paths (e.g.,
+`lattice_platform::adminops::admin`,
+`lattice_platform::workspaceos::workspace`). Shared HTTP JSON reply, FastAPI 422
+validation envelope, localized message detail, and UTC timestamp helpers live in
+crate-internal `crate::http_reply` (`src/http_reply.rs`).

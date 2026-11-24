@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use axum::extract::State;
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
-use lattice_agent::agentloop::{default_file_create_actions, Runtime};
-use lattice_agent::runbody::{finish_payload, RunBody};
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::AgentRunContext;
-use lattice_agent::worker::WorkerClient;
+use lattice_agent::kernel::agentloop::{default_file_create_actions, Runtime};
+use lattice_agent::kernel::state::AgentRunContext;
+use lattice_agent::seam::worker::WorkerClient;
+use lattice_agent::surface::runbody::{finish_payload, RunBody};
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::response::json_response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
@@ -100,7 +100,7 @@ async fn run_single_agent_pass(
     let mut ctx = AgentRunContext::new();
     ctx.executing_model = body.executing_model.clone();
     ctx.reviewing_model = body.reviewing_model.clone();
-    ctx.state = lattice_agent::state::AgentState::Planning;
+    ctx.state = lattice_agent::kernel::state::AgentState::Planning;
     ctx.state_history.push(ctx.state.as_str().to_string());
     if let Err(err) = runtime.plan(&mut ctx, &request).await {
         return detail(

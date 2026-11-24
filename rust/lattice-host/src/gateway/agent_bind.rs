@@ -24,9 +24,9 @@ use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Router;
-use lattice_agent::policy::{default_blocked_write_prefixes, PolicyTable, ToolPolicy};
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::{loop_router, LoopConfig};
+use lattice_agent::kernel::policy::{default_blocked_write_prefixes, PolicyTable, ToolPolicy};
+use lattice_agent::surface::looproutes::{loop_router, LoopConfig};
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthState, WorkspaceResolver};
 use serde_json::{json, Map, Value};
 use tower::util::ServiceExt;
@@ -365,7 +365,7 @@ fn tool_names_missing(object: &Map<String, Value>) -> bool {
     }
 }
 
-/// Every name `lattice_platform::tools::governance_for` knows.
+/// Every name `lattice_platform::toolsurface::tools::governance_for` knows.
 const GOVERNED_TOOLS: &[&str] = &[
     "list_dir",
     "workspace_tree",
@@ -423,7 +423,7 @@ const GOVERNED_TOOLS: &[&str] = &[
 pub fn product_policy_table() -> PolicyTable {
     let mut tools = BTreeMap::new();
     for name in GOVERNED_TOOLS {
-        let gov = lattice_platform::tools::governance_for(name);
+        let gov = lattice_platform::toolsurface::tools::governance_for(name);
         tools.insert((*name).to_string(), policy_from_gov(&gov));
     }
     PolicyTable {

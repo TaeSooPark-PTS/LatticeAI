@@ -20,12 +20,12 @@ mod review_queue_harness;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use lattice_agent::proposals::{NewReviewItem, ProposalStore};
+use lattice_agent::kernel::proposals::{NewReviewItem, ProposalStore};
 use lattice_auth::{AuthConfig, AuthState, Clock};
-use lattice_platform::review_queue::{
+use lattice_platform::governance::review_queue::{
     GovernanceState, REVIEW_ITEM_CREATED_EVENT, REVIEW_ITEM_UPDATED_EVENT, REVIEW_TIMELINE_AREA,
 };
-use lattice_platform::workspace::WorkspaceOsStore;
+use lattice_platform::workspaceos::workspace::WorkspaceOsStore;
 use review_queue_harness::Install;
 use serde_json::{json, Value};
 
@@ -578,10 +578,12 @@ async fn a_plugin_toggle_and_a_review_write_cannot_erase_one_another() {
         "the registry must hand back the Review Center's own handle"
     );
 
-    let plugins = lattice_platform::plugins::router(lattice_platform::plugins::PluginsState::new(
-        Arc::clone(&install.gov.auth),
-        &install.data_dir,
-    ));
+    let plugins = lattice_platform::toolsurface::plugins::router(
+        lattice_platform::toolsurface::plugins::PluginsState::new(
+            Arc::clone(&install.gov.auth),
+            &install.data_dir,
+        ),
+    );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");

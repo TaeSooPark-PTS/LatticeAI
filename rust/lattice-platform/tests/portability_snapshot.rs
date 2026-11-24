@@ -10,7 +10,7 @@ use lattice_auth::{AuthConfig, AuthState, Clock};
 use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::types::{ChunkPiece, IngestContentRequest};
 use lattice_core::graph_write::GraphWriter;
-use lattice_platform::portability::{self, PortabilityState};
+use lattice_platform::knowledge::portability::{self, PortabilityState};
 use serde_json::{json, Value};
 
 struct Install {

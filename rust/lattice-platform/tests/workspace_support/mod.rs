@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use lattice_platform::workspace::GraphReads;
+use lattice_platform::workspaceos::workspace::GraphReads;
 use serde_json::{json, Value};
 
 pub const WORKSPACE_FIXTURE: &str = "workspace.json";

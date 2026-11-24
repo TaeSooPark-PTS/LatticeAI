@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use axum::routing::post;
 use axum::Router;
 use common::{client, FakeWorker, FixedProvider, TestGateway};
-use lattice_agent::{
+use lattice_agent::kernel::workflow::{
     DurableWorkflowStore, StepExecOutput, WorkflowAdvanceOutcome, WorkflowSpec, WorkflowStatus,
     WorkflowStepSpec,
 };
@@ -348,7 +348,7 @@ data: [DONE]
         Some(&worker.origin()),
         None,
     );
-    let loop_config = lattice_agent::LoopConfig {
+    let loop_config = lattice_agent::surface::looproutes::LoopConfig {
         worker_origin: worker.origin(),
         runs_dir: scratch.path().join("rust_agent_runs"),
         client: Some(client()),
@@ -494,7 +494,7 @@ async fn section_16_4_fault_recovery_worker_down_interrupted_indexing_and_approv
         Some(&dead_origin),
         None,
     );
-    let loop_config = lattice_agent::LoopConfig {
+    let loop_config = lattice_agent::surface::looproutes::LoopConfig {
         worker_origin: dead_origin.clone(),
         runs_dir: scratch.path().join("rust_agent_runs"),
         client: Some(client()),

@@ -15,10 +15,10 @@
 
 use std::sync::Arc;
 
-use lattice_agent::proposals::{
+use lattice_agent::kernel::proposals::{
     install_document_writer, DocumentWriter, JsonProposalStore, NewReviewItem, ProposalStore,
 };
-use lattice_platform::workspace::WorkspaceOsStore;
+use lattice_platform::workspaceos::workspace::WorkspaceOsStore;
 use serde_json::{json, Value};
 
 /// The host's `SharedStateWriter`, in miniature: the platform store answering

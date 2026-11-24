@@ -281,7 +281,7 @@ pub(crate) async fn run_now_item(
     } else {
         Some(user.email.as_str())
     };
-    let workspace = lattice_agent::sandbox::Workspace::new(&state.agent_root).ok();
+    let workspace = lattice_agent::tools::sandbox::Workspace::new(&state.agent_root).ok();
     let tools = workspace.map(|ws| {
         crate::toolsurface::tools::ToolsState::new(
             std::sync::Arc::clone(&state.auth),
