@@ -135,11 +135,12 @@ async fn read_url(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
-    if let Err(refusal) = state.auth.require_user(&headers) {
-        return refusal;
-    }
+    let identity = match state.auth.require_user(&headers) {
+        Ok(identity) => identity,
+        Err(refusal) => return refusal,
+    };
     let lang = language(&headers);
-    let Some(seam) = state.seam.as_ref() else {
+    let Some(graph) = state.graph.clone() else {
         return http_error(503, "capture.ingestion_disabled", lang);
     };
     let url = match validate_http_url(model.str("url")) {
@@ -160,23 +161,37 @@ async fn read_url(
                     "capture_quality": thin_capture()
                 }));
             }
-            let forwarded = json!({
-                "type": "note",
-                "title": title,
-                "content": text,
-                "source": url,
-                "metadata": {"source_type": "web_url"}
-            });
-            match forward(seam, &headers, "/knowledge-graph/ingest", &forwarded).await {
-                Ok(mut payload) => {
-                    if let Some(object) = payload.as_object_mut() {
-                        object
-                            .entry("capture_quality".to_string())
-                            .or_insert_with(thin_capture);
-                    }
-                    ok(&payload)
-                }
-                Err(refusal) => refusal,
+            let owner = if identity.email.is_empty() {
+                None
+            } else {
+                Some(identity.email.clone())
+            };
+            let mut metadata = Map::new();
+            metadata.insert("source_type".into(), json!("web_url"));
+            metadata.insert("url".into(), json!(url));
+            let submission = crate::worker::NoteSubmission {
+                title,
+                content: text,
+                source: Some(url.clone()),
+                metadata,
+            };
+            let ingestor = match state.seam.as_ref() {
+                Some(seam) => crate::worker::NoteIngestor::new(graph).with_seam(seam.clone()),
+                None => crate::worker::NoteIngestor::new(graph),
+            };
+            match ingestor
+                .ingest_note(&submission, owner.as_deref(), None)
+                .await
+            {
+                Ok(receipt) => ok(&json!({
+                    "status": if receipt.duplicate { "duplicate" } else { "ingested" },
+                    "source_type": "web_url",
+                    "url": url,
+                    "node_id": receipt.node_id,
+                    "duplicate": receipt.duplicate,
+                    "capture_quality": thin_capture()
+                })),
+                Err(err) => detail(422, &err.to_string()),
             }
         }
         Err(message) => detail(422, &message),
@@ -409,24 +424,6 @@ async fn ingest_current_tab(
             });
     }
     ok(&payload)
-}
-
-async fn forward(
-    seam: &WorkerSeamClient,
-    headers: &HeaderMap,
-    path: &str,
-    body: &Value,
-) -> Result<Value, Response> {
-    let mut client = seam.clone();
-    if let Some(cookie) = headers.get(axum::http::header::COOKIE) {
-        if let Ok(value) = cookie.to_str() {
-            client = client.with_header("cookie", value);
-        }
-    }
-    match client.post_json(path, body).await {
-        Ok(value) => Ok(value),
-        Err(error) => Err(crate::local_files_api::http::seam_error(error)),
-    }
 }
 
 /// `_validate_http_url` / `_parse_http_url`.

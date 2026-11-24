@@ -182,13 +182,6 @@ impl RetrievalApiState {
         self.store.as_ref().ok_or_else(graph_disabled)
     }
 
-    /// The worker seam, or the 503 a missing one has to answer with.
-    pub fn require_seam(&self, lang: &str) -> Result<&WorkerSeamClient, Response> {
-        self.seam
-            .as_ref()
-            .ok_or_else(|| http_error(503, "capture.ingestion_disabled", lang))
-    }
-
     /// `_allowed_workspaces_for(user)` — the one scope rule, in one place.
     pub fn scope_for(&self, identity: &Identity) -> Scope {
         Scope {

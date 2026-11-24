@@ -403,13 +403,6 @@ impl LocalFilesState {
             .as_ref()
             .ok_or_else(|| http::http_error(503, "capture.ingestion_disabled", lang))
     }
-
-    /// The worker seam, or 503.
-    pub fn require_seam(&self, lang: &str) -> Result<&WorkerSeamClient, Response> {
-        self.seam
-            .as_ref()
-            .ok_or_else(|| http::http_error(503, "capture.ingestion_disabled", lang))
-    }
 }
 
 /// The twenty-four ported routes.
@@ -596,24 +589,6 @@ pub(crate) fn tool_ok(agent_root: &Path, result: Value) -> Response {
 
 pub(crate) fn tool_error(detail_text: &str) -> Response {
     detail(400, detail_text)
-}
-
-pub(crate) async fn forward(
-    seam: &WorkerSeamClient,
-    headers: &HeaderMap,
-    path: &str,
-    body: &Value,
-) -> Result<Value, Response> {
-    let mut client = seam.clone();
-    if let Some(cookie) = headers.get(axum::http::header::COOKIE) {
-        if let Ok(value) = cookie.to_str() {
-            client = client.with_header("cookie", value);
-        }
-    }
-    match client.post_json(path, body).await {
-        Ok(value) => Ok(value),
-        Err(error) => Err(http::seam_error(error)),
-    }
 }
 
 #[cfg(test)]

@@ -6,6 +6,19 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.7.1] - 2026-11-24 — Living Synthesis
+
+### Removed
+- **Dead Legacy `forward()` Fallbacks & Compatibility Scaffolding (`rust/lattice-ingest`, `rust/lattice-platform`, `rust/lattice-retrieval`):**
+  - Removed legacy `forward()` fallbacks in `POST /api/ingestion/jobs/:job_id/resume`, `POST /api/ingestion/folder`, `POST /knowledge-graph/local/index`, and `POST /api/browser/read-url`; all endpoints now write natively via `GraphWriter` / `NoteIngestor` and return HTTP `503` consistently when `GraphWriter` is unwired.
+  - Deleted unused `local_files_api::forward`, `browser_api::forward`, `local_files_api::require_seam`, `local_files_api::http::seam_error`, `search_api::require_seam`, and `lattice_platform::crate_ready()`.
+- **Pre-`13.7.0` Review/Plan/Legacy Docs (`docs/`, `docs/ko/`):**
+  - Deleted pre-`13.7.0` review reports (`CODE_REVIEW_2026-11-20.md`, `reviews/CODEBASE_REVIEW_AND_IMPROVEMENT_ROADMAP.md`), obsolete `v11.x` migration plans, and `LEGACY_COMPATIBILITY.md` (and Korean mirrors) while preserving all benchmark documents (`ADAPTIVE_HARNESS_BENCHMARK.md`, `BENCHMARKS.md`, `PERFORMANCE.md`).
+
+### Added
+- **Git Interop & Unwired-`GraphWriter` 503 Integration Tests (`rust/lattice-ingest/tests/local_files_replay.rs`):**
+  - Added `source: "git"` integration test against a temporary `git init` repository (`dry_run` + live commit ingestion) and `unwired_graph_writer_returns_503_consistently` verifying HTTP `503` across all ingestion endpoints.
+
 ## [13.7.0] - 2026-11-24 — Living Synthesis
 
 ### Added

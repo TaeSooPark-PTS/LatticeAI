@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.7.1 - Living Synthesis] (2026-11-24)
+
+Purged all remaining legacy `forward()` fallbacks and dead compatibility scaffolding in `lattice-ingest`, `lattice-platform`, and `lattice-retrieval` (returning HTTP `503` consistently when `GraphWriter` is unwired), added native `source: "git"` and unwired-`GraphWriter` 503 integration tests in `local_files_replay.rs`, and pruned pre-`13.7.0` review/plan/legacy docs while preserving all benchmark documents.
+
+See [docs/releases/RELEASE_NOTES_v13.7.1.md](docs/releases/RELEASE_NOTES_v13.7.1.md).
+
 # [v13.7.0 - Living Synthesis] (2026-11-24)
 
 Implemented native Rust `GraphWriter` Obsidian vault (`[[wikilink]]` `LINKS_TO` edges) and Notion/Git/Mail interop bridges in `lattice-ingest`, migrated Vite 8 and Vitest 5 configs to native ESM `.mts`, pruned pre-`v13.0.0` release notes (`v13.0.0+` floor), and modernized `ARCHITECTURE.md` and `docs/ko/ARCHITECTURE.md` to `13.7.0`.
@@ -76,13 +82,14 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 13.7.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 13.7.1** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
 - [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)
 - [v13.4.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.2.md)
 - [v13.4.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.1.md)
+- [v13.7.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.1.md)
 - [v13.7.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.0.md)
 - [v13.6.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.6.0.md)
 - [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)

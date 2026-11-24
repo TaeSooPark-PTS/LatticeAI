@@ -2,7 +2,7 @@
 
 # Lattice AI v13.7.0 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (Native Rust Obsidian & Interop Bridges, Pure ESM Vite/Vitest Configs, `v13.0.0+` Release Ledger & Modernized Architecture).
+> **Status: historical** — archived release note for v13.7.0 (Native Rust Obsidian & Interop Bridges, Pure ESM Vite/Vitest Configs, `v13.0.0+` Release Ledger & Modernized Architecture).
 
 Closes the remaining Track 5 interop gap by replacing legacy forwarding to retired Python routes with native Rust `GraphWriter` ingestion for Obsidian vaults (`[[wikilink]]` `LINKS_TO` edges), Notion directory/`.zip` exports, Git commit history, and local `.eml`/`.ics` mail/calendar files; migrates Vite 8 and Vitest 5 configs to native ESM `.mts` (`vite.config.mts`, `vitest.config.mts`) eliminating all `configLoader: 'native'` warnings; prunes pre-`v13.0.0` release notes (`v13.0.0+` floor); and modernizes `ARCHITECTURE.md` and `docs/ko/ARCHITECTURE.md` to the current `13.7.0` architecture.
 

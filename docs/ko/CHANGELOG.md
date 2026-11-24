@@ -5,6 +5,19 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [13.7.1] - 2026-11-24 — Living Synthesis
+
+### 제거됨
+- **죽은 레거시 `forward()` 폴백 및 호환 스캐폴딩 (`rust/lattice-ingest`, `rust/lattice-platform`, `rust/lattice-retrieval`):**
+  - `POST /api/ingestion/jobs/:job_id/resume`, `POST /api/ingestion/folder`, `POST /knowledge-graph/local/index`, `POST /api/browser/read-url`의 레거시 `forward()` 폴백을 제거하고 `GraphWriter` 미연결 시 일관된 HTTP `503`을 반환하도록 통일했습니다.
+  - 미사용 `local_files_api::forward`, `browser_api::forward`, `local_files_api::require_seam`, `local_files_api::http::seam_error`, `search_api::require_seam`, `lattice_platform::crate_ready()`를 삭제했습니다.
+- **`13.7.0` 이전 리뷰·계획·레거시 문서 (`docs/`, `docs/ko/`):**
+  - `CODE_REVIEW_2026-11-20.md`, `reviews/CODEBASE_REVIEW_AND_IMPROVEMENT_ROADMAP.md`, 구형 `v11.x` 계획 문서, `LEGACY_COMPATIBILITY.md`(및 한국어 미러)를 삭제하고, 모든 벤치마크 문서(`ADAPTIVE_HARNESS_BENCHMARK.md`, `BENCHMARKS.md`, `PERFORMANCE.md`)는 그대로 보존했습니다.
+
+### 추가됨
+- **Git 연동 및 `GraphWriter` 미연결 503 통합 테스트 (`rust/lattice-ingest/tests/local_files_replay.rs`):**
+  - 임시 `git init` 저장소 대상 `source: "git"` 통합 테스트(`dry_run` + 실인제스트)와 `unwired_graph_writer_returns_503_consistently` 503 계약 테스트를 추가했습니다.
+
 ## [13.7.0] - 2026-11-24 — Living Synthesis
 
 ### 추가됨

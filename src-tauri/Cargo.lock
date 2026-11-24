@@ -1919,7 +1919,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-agent"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -1936,7 +1936,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-ai-desktop"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "lattice-host",
  "lattice-jobs",
@@ -1951,7 +1951,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-auth"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -1968,7 +1968,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-chat"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "bytes",
@@ -1990,7 +1990,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-core"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "blake2",
  "bytes",
@@ -2007,7 +2007,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-host"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "lattice-agent",
@@ -2029,7 +2029,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-ingest"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "lattice-auth",
@@ -2046,7 +2046,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-jobs"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "lattice-auth",
@@ -2061,7 +2061,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-platform"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -2085,7 +2085,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-retrieval"
-version = "13.7.0"
+version = "13.7.1"
 dependencies = [
  "axum",
  "fancy-regex",
