@@ -148,11 +148,17 @@ async fn register(State(state): State<Arc<AuthState>>, request: Request) -> Resp
         return http_error(StatusCode::BAD_REQUEST, "auth.email_taken", language);
     }
     let role = if users.is_empty() { "admin" } else { "user" };
+    let password_hash = match hash_password(body.str("password")) {
+        Ok(hash) => hash,
+        Err(err) => {
+            return detail_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Failed to secure password: {err}"),
+            );
+        }
+    };
     let mut record = Map::new();
-    record.insert(
-        "password".into(),
-        json!(hash_password(body.str("password"))),
-    );
+    record.insert("password".into(), json!(password_hash));
     record.insert("name".into(), json!(body.str("name")));
     record.insert("nickname".into(), json!(body.str("nickname")));
     record.insert("role".into(), json!(role));
@@ -288,11 +294,17 @@ async fn change_password(State(state): State<Arc<AuthState>>, request: Request) 
             language,
         );
     }
+    let new_hash = match hash_password(body.str("new_password")) {
+        Ok(hash) => hash,
+        Err(err) => {
+            return detail_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Failed to secure password: {err}"),
+            );
+        }
+    };
     let mut record = users.get(&email).cloned().unwrap_or_default();
-    record.insert(
-        "password".into(),
-        json!(hash_password(body.str("new_password"))),
-    );
+    record.insert("password".into(), json!(new_hash));
     users.insert(email, record);
     state.users().save(&users);
     ok(vec![
@@ -429,13 +441,15 @@ fn verify_and_migrate(
     }
     if plain == stored {
         if let Some(mut record) = users.get(email).cloned() {
-            record.insert("password".into(), json!(hash_password(plain)));
-            users.insert(email, record);
-            state.users().save(users);
-            state.record_audit(
-                "auth.password.migrated_from_plaintext",
-                json!({"email": email}),
-            );
+            if let Ok(hashed) = hash_password(plain) {
+                record.insert("password".into(), json!(hashed));
+                users.insert(email, record);
+                state.users().save(users);
+                state.record_audit(
+                    "auth.password.migrated_from_plaintext",
+                    json!({"email": email}),
+                );
+            }
         }
         return true;
     }

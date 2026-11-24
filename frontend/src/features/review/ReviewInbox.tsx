@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ApiResult, latticeApi, type ReviewItem, type ReviewSourceFilter, type ReviewStatusFilter } from "@/api/client";
 import { EmptyState, LoadingPanel, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { ReviewCard } from "./ReviewCard";

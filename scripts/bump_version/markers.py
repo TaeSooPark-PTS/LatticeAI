@@ -104,7 +104,7 @@ def inspect_or_update_marker_file(
             new_text = _replace_artifacts_for_version(new_text, current, version)
         elif rel == "SECURITY.md":
             new_text = re.sub(
-                rf"((?:11|12)\.0\.0 through ){_SEMVER_CAP}",
+                rf"((?:11|12|13)\.0\.0 through ){_SEMVER_CAP}",
                 f"\\g<1>{version}",
                 new_text,
                 count=1,
@@ -218,7 +218,7 @@ def inspect_or_update_marker_file(
             count=1,
         )
         new_text = re.sub(
-            rf"((?:11|12)\.0\.0 through ){esc}",
+            rf"((?:11|12|13)\.0\.0 through ){esc}",
             f"\\g<1>{version}",
             new_text,
             count=1,

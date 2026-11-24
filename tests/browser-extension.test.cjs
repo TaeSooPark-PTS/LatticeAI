@@ -28,30 +28,25 @@ const {
   REQUEST_TIMEOUT_MS,
   RECALL_TIMEOUT_MS,
   approvalsView,
+  fetchJsonWithTimeout,
   fetchWithTimeout,
   groundingView,
   normalizePort,
 } = require("../browser-extension/popup.js");
 
-function runCapture(text, selectedText = "") {
+function runCapture(text, selectedText = "", opts = {}) {
   const context = {
     Date,
     TextDecoder,
     TextEncoder,
     document: {
       title: "Unicode capture",
-      cloneNode() {
-        return {
-          body: { innerText: text },
-          querySelectorAll() {
-            return [];
-          },
-        };
-      },
+      body: { innerText: text },
     },
     location: { href: "https://example.test/page" },
     window: {
       getSelection() {
+        if (opts.nullSelection) return null;
         return { toString: () => selectedText };
       },
     },
@@ -296,5 +291,88 @@ test("extractServerLanguage syncs supported language from server settings or fea
       features: [{ id: "ui_language", current: "fr-FR" }],
     }),
     null,
+  );
+});
+
+test("capture handles null getSelection without throwing and enforces UTF-8 byte limit on selection", () => {
+  const nullSel = runCapture("Visible text", "", { nullSelection: true });
+  assert.equal(nullSel.text, "Visible text");
+  assert.equal(nullSel.selected_text, "");
+
+  const bigSelected = runCapture("Body", "한".repeat(100_000));
+  assert.ok(Buffer.byteLength(bigSelected.selected_text, "utf8") <= 200_000);
+  assert.equal(bigSelected.selected_text.includes("\uFFFD"), false);
+});
+
+test("capture filters hidden and script elements on live DOM via TreeWalker", () => {
+  const body = { tagName: "BODY", parentElement: null };
+  const visibleEl = { tagName: "P", parentElement: body, hidden: false, getAttribute: () => null };
+  const hiddenEl = { tagName: "DIV", parentElement: body, hidden: false, getAttribute: () => null, _display: "none" };
+  const ariaHiddenEl = { tagName: "SPAN", parentElement: body, hidden: false, getAttribute: (k) => (k === "aria-hidden" ? "true" : null) };
+  const scriptEl = { tagName: "SCRIPT", parentElement: body, hidden: false, getAttribute: () => null };
+  const nodes = [
+    { nodeValue: "Hello visible", parentElement: visibleEl },
+    { nodeValue: "Secret hidden", parentElement: hiddenEl },
+    { nodeValue: "Screen reader hidden", parentElement: ariaHiddenEl },
+    { nodeValue: "console.log(1)", parentElement: scriptEl },
+  ];
+  let idx = 0;
+  const payload = vm.runInNewContext(captureSource, {
+    Date,
+    TextDecoder,
+    TextEncoder,
+    NodeFilter: { SHOW_TEXT: 4 },
+    document: {
+      title: "Live DOM",
+      body,
+      createTreeWalker: () => ({ nextNode: () => nodes[idx++] || null }),
+    },
+    location: { href: "https://example.test/live" },
+    window: {
+      getSelection: () => null,
+      getComputedStyle: (el) => ({ display: el._display || "block", visibility: "visible" }),
+    },
+  });
+  assert.equal(payload.text, "Hello visible");
+});
+
+test("fetchWithTimeout forwards caller AbortSignal and fetchJsonWithTimeout guards slow body reads", async () => {
+  const caller = new AbortController();
+  let seenSignal;
+  const p = fetchWithTimeout(
+    "http://127.0.0.1:4825/health",
+    { signal: caller.signal },
+    5_000,
+    (_url, options) => {
+      seenSignal = options.signal;
+      return new Promise((_res, rej) => {
+        options.signal.addEventListener("abort", () => rej(new Error("caller-aborted")));
+      });
+    },
+  );
+  caller.abort();
+  await assert.rejects(p, /caller-aborted/);
+  assert.equal(seenSignal.aborted, true);
+
+  // Body read timeout while headers already arrived
+  await assert.rejects(
+    fetchJsonWithTimeout(
+      "http://127.0.0.1:4825/chat",
+      {},
+      15,
+      async (_url, options) => ({
+        ok: true,
+        status: 200,
+        json: () =>
+          new Promise((_res, rej) => {
+            options.signal.addEventListener("abort", () => {
+              const e = new Error("body timed out");
+              e.name = "AbortError";
+              rej(e);
+            });
+          }),
+      }),
+    ),
+    (err) => err.name === "AbortError",
   );
 });

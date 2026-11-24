@@ -7,7 +7,6 @@
  * rather than their Brain being empty.
  */
 
-import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";

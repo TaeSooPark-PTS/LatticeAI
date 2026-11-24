@@ -114,6 +114,69 @@ pub fn origin_port(origin: &str) -> Option<u16> {
         .filter(|port| *port != 0)
 }
 
+/// Validate an external `LATTICEAI_DESKTOP_BACKEND_ORIGIN` value before the
+/// desktop webview navigates to it: only `http://` or `https://` loopback
+/// origins (`127.0.0.1`, `localhost`, `[::1]`) are permitted.
+pub fn validate_external_origin(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let (scheme, rest) = trimmed.split_once("://")?;
+    let scheme_lower = scheme.to_ascii_lowercase();
+    if scheme_lower != "http" && scheme_lower != "https" {
+        return None;
+    }
+    let authority = rest.split('/').next().unwrap_or_default();
+    if authority.is_empty()
+        || authority.contains('@')
+        || authority.contains('?')
+        || authority.contains('#')
+    {
+        return None;
+    }
+    let host = if let Some(after_open) = authority.strip_prefix('[') {
+        let (ipv6, tail) = after_open.split_once(']')?;
+        if !tail.is_empty() {
+            let port_str = tail.strip_prefix(':')?;
+            let port = port_str.parse::<u16>().ok()?;
+            if port == 0 {
+                return None;
+            }
+        }
+        ipv6.to_ascii_lowercase()
+    } else {
+        match authority.split_once(':') {
+            Some((h, port_str)) => {
+                let port = port_str.parse::<u16>().ok()?;
+                if port == 0 {
+                    return None;
+                }
+                h.to_ascii_lowercase()
+            }
+            None => authority.to_ascii_lowercase(),
+        }
+    };
+    if matches!(host.as_str(), "127.0.0.1" | "localhost" | "::1") {
+        Some(trimmed.to_string())
+    } else {
+        None
+    }
+}
+
+/// Safe non-wrapping fallback port for the internal worker behind `gateway_port`.
+fn next_safe_port(gateway_port: u16) -> u16 {
+    let candidate = gateway_port
+        .checked_add(1)
+        .filter(|&p| p >= 1024)
+        .unwrap_or(DEFAULT_PORT);
+    if candidate == gateway_port {
+        DEFAULT_PORT.saturating_add(1)
+    } else {
+        candidate
+    }
+}
+
 /// The public port: an explicit `LATTICEAI_PORT` verbatim, else 4825 scanning
 /// upward.
 ///
@@ -128,7 +191,15 @@ pub fn resolve_port(probe: &dyn HostProbe) -> u16 {
         .filter(|port| *port != 0);
     match pinned {
         Some(port) => port,
-        None => find_free_port(DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS, &[]).unwrap_or(DEFAULT_PORT),
+        None => match find_free_port(DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS, &[]) {
+            Ok(port) => port,
+            Err(err) => {
+                eprintln!(
+                    "lattice-ai-desktop: port scan from {DEFAULT_PORT} failed ({err}); falling back to {DEFAULT_PORT}"
+                );
+                DEFAULT_PORT
+            }
+        },
     }
 }
 
@@ -139,19 +210,25 @@ fn loopback(port: u16) -> String {
 
 /// Resolve the arrangement from the environment the probe reports.
 pub fn resolve(probe: &dyn HostProbe) -> Plan {
-    let external = probe
+    let raw_external = probe
         .env_var(ORIGIN_ENV)
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
-    if let Some(origin) = external {
-        let host_port = origin_port(&origin).unwrap_or_else(|| resolve_port(probe));
-        return Plan {
-            topology: Topology::External,
-            worker_origin: origin.clone(),
-            origin,
-            worker_port: host_port,
-            gateway_port: None,
-        };
+    if let Some(raw) = raw_external {
+        if let Some(origin) = validate_external_origin(&raw) {
+            let host_port = origin_port(&origin).unwrap_or_else(|| resolve_port(probe));
+            return Plan {
+                topology: Topology::External,
+                worker_origin: origin.clone(),
+                origin,
+                worker_port: host_port,
+                gateway_port: None,
+            };
+        }
+        eprintln!(
+            "lattice-ai-desktop: ignoring invalid {ORIGIN_ENV}={raw:?} \
+             (only http(s):// loopback origins 127.0.0.1, localhost, or [::1] are allowed)"
+        );
     }
 
     // Retired escape hatches: log once so a leftover profile is visible, then
@@ -170,14 +247,19 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
     }
 
     // The default: the gateway takes the public port and the worker moves
-    // behind it, on the first free port above — never the gateway's own.
+    // behind it, on the first free port above — never the gateway's own and
+    // never wrapping 65535 to 0.
     let gateway_port = resolve_port(probe);
-    let worker_port = find_free_port(
-        gateway_port.checked_add(1).unwrap_or(DEFAULT_PORT),
-        DEFAULT_SCAN_ATTEMPTS,
-        &[gateway_port],
-    )
-    .unwrap_or(gateway_port.wrapping_add(1));
+    let start_port = next_safe_port(gateway_port);
+    let worker_port = match find_free_port(start_port, DEFAULT_SCAN_ATTEMPTS, &[gateway_port]) {
+        Ok(port) => port,
+        Err(err) => {
+            eprintln!(
+                "lattice-ai-desktop: worker port scan from {start_port} failed ({err}); falling back to {start_port}"
+            );
+            start_port
+        }
+    };
     Plan {
         topology: Topology::Gateway,
         origin: loopback(gateway_port),
@@ -322,5 +404,46 @@ mod tests {
         ] {
             assert_eq!(topology.as_str(), name);
         }
+    }
+
+    #[test]
+    fn external_origin_validation_blocks_non_loopback_and_non_http_schemes() {
+        assert_eq!(
+            validate_external_origin("http://127.0.0.1:4825"),
+            Some("http://127.0.0.1:4825".to_string())
+        );
+        assert_eq!(
+            validate_external_origin("https://[::1]:4825"),
+            Some("https://[::1]:4825".to_string())
+        );
+        assert_eq!(
+            validate_external_origin("http://localhost"),
+            Some("http://localhost".to_string())
+        );
+        for rejected in [
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "http://evil.example:4825",
+            "https://192.168.1.10:4825",
+            "http://user:pass@127.0.0.1:4825",
+            "http://127.0.0.1:0",
+        ] {
+            assert_eq!(validate_external_origin(rejected), None, "{rejected}");
+        }
+        // Invalid ORIGIN_ENV falls back cleanly to Gateway topology.
+        let plan = resolve(
+            &StaticProbe::new()
+                .with_env(ORIGIN_ENV, "https://evil.example")
+                .with_env(PORT_ENV, "41839"),
+        );
+        assert_eq!(plan.topology, Topology::Gateway);
+        assert_eq!(plan.gateway_port, Some(41839));
+    }
+
+    #[test]
+    fn next_safe_port_never_wraps_to_zero() {
+        assert_eq!(next_safe_port(65535), DEFAULT_PORT);
+        assert_ne!(next_safe_port(65535), 0);
+        assert_eq!(next_safe_port(4825), 4826);
     }
 }

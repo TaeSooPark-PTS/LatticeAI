@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -229,12 +232,10 @@ jobs:
           workspaces: rust
           key: rust-core
 
-      - name: Install cargo-nextest
-        run: |
-          if ! command -v cargo-nextest >/dev/null 2>&1; then
-            mkdir -p "${CARGO_HOME:-$HOME/.cargo}/bin"
-            curl -LsSf --retry 3 https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
-          fi
+      - name: Install cargo-nextest (verified release action)
+        uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
+        with:
+          tool: nextest
 
       - name: Format
         working-directory: rust
@@ -267,18 +268,79 @@ jobs:
           workspaces: rust
           key: rust-runtime
 
-      - name: Install cargo-nextest
-        run: |
-          if ! command -v cargo-nextest >/dev/null 2>&1; then
-            mkdir -p "${CARGO_HOME:-$HOME/.cargo}/bin"
-            curl -LsSf --retry 3 https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
-          fi
+      - name: Install cargo-nextest (verified release action)
+        uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
+        with:
+          tool: nextest
 
       - name: Test runtime crates (nextest + doctests)
         working-directory: rust
         run: |
           cargo nextest run --no-fail-fast -p lattice-agent -p lattice-platform -p lattice-chat -p lattice-host
           cargo test --doc -p lattice-agent -p lattice-platform -p lattice-chat -p lattice-host
+
+  rust-windows:
+    name: Rust (Windows workspace tests)
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Cache cargo registry and build output
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: rust
+          key: rust-windows
+
+      - name: Install cargo-nextest (verified release action)
+        uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
+        with:
+          tool: nextest
+
+      - name: Test Rust workspace on Windows (nextest + doctests)
+        working-directory: rust
+        run: |
+          cargo nextest run --workspace --no-fail-fast
+          cargo test --doc --workspace
+
+  tauri-check:
+    name: Desktop shell (Tauri check & tests)
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Cache cargo registry and Tauri build output
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            rust
+            src-tauri
+          key: tauri-check
+
+      - name: Check & test src-tauri
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  docker-smoke:
+    name: Docker image build smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build multi-stage Docker image & smoke-check lattice-host
+        run: |
+          docker build -t latticeai:ci-smoke .
+          docker run --rm --entrypoint lattice-host latticeai:ci-smoke --version
 
   visual:
     name: Playwright visual smoke
@@ -288,7 +350,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node 20
+      - name: Set up Node 22
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"

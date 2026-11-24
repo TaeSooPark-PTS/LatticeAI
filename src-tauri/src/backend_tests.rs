@@ -121,11 +121,30 @@ fn an_external_shell_reports_no_local_gateway_origin() {
     assert_eq!(value["worker_origin"], value["origin"]);
 }
 
-#[test]
-fn stopping_a_gateway_that_never_started_is_a_no_op() {
+#[tokio::test]
+async fn stopping_a_gateway_that_never_started_is_a_no_op() {
     let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"));
-    shell.stop_gateway();
-    shell.stop_gateway();
+    shell.stop_gateway().await;
+    shell.stop_gateway().await;
+}
+
+#[tokio::test]
+async fn stop_gateway_clears_slot_so_subsequent_restart_is_allowed() {
+    let shell = backend(StaticProbe::new().with_env(PORT_ENV, "41849"));
+    assert!(shell.gateway.lock().unwrap().is_none());
+    let (tx, mut rx) = tokio::sync::oneshot::channel::<()>();
+    let task = tauri::async_runtime::spawn(async move {
+        let _ = (&mut rx).await;
+    });
+    *shell.gateway.lock().unwrap() = Some(RunningGateway {
+        shutdown: Some(tx),
+        task,
+    });
+    shell.stop_gateway().await;
+    assert!(
+        shell.gateway.lock().unwrap().is_none(),
+        "stop_gateway must clear self.gateway so restart can rebind"
+    );
 }
 
 #[test]

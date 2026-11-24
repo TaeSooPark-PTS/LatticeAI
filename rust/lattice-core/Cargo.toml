@@ -27,11 +27,8 @@ reqwest = { workspace = true }
 bytes = "1"
 futures-core = { workspace = true }
 # Wave 2.5 (`graph_write`): the ids the Brain's write path derives are sha256
-# over Python-shaped JSON, and `_now()` is naive *local* time — `localtime_r`
-# is how the offset is read without pulling in a date library that would have
-# its own opinion about what "now" means.
+# over Python-shaped JSON; timestamps use pure-Rust UTC arithmetic with zero libc unsafe.
 sha2 = { workspace = true }
-libc = { workspace = true }
 fancy-regex = { workspace = true }
 
 [dev-dependencies]

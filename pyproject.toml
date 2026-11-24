@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "13.9.0"
+version = "14.0.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -90,32 +90,28 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The `hnsw` and `postgres` extras went with v11.6.0's write flip. v12.0.0
-# brought `ann` back: the worker's HNSW sidecar (latticeai/core/vector_index)
-# imports hnswlib when it is installed and reports an honest fallback when it
-# is not — the exact-scan default needs nothing.
+# The worker's HNSW sidecar (latticeai/core/vector_index) imports hnswlib when
+# installed and reports an honest fallback when absent.
 ann = ["hnswlib>=0.8"]
-local = ["mlx-vlm>=0.6.3", "mlx-lm"]
+local = [
+  "mlx-vlm>=0.6.3; sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "mlx-lm; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
-# Deliberately empty. reportlab moved into `[project.dependencies]` above, so
-# there is nothing left for this extra to install — but `pip install
-# "ltcai[pdf]"` is a published line (README, v11.6.0 release notes), and an
-# extra that no longer exists makes pip warn at people who follow it. An empty
-# alias keeps that command a silent no-op, which is now the truth.
-pdf = []
-# Empty: the Python Postgres writer left in 11.6.0. The extra stays so
-# `pip install "ltcai[postgres]"` (and the scheduled workflow that still
-# names it) is a silent no-op instead of a missing extra.
-postgres = []
 # Pointer actuation (the six pyautogui tools on the worker). Not a core
 # dependency: a stock install answers capabilities.pointer_tools=false and
-# the tools stay "unavailable". `pip install "ltcai[pointer]"` is how a
-# user opts in; the worker probe already keys off find_spec("pyautogui").
+# the tools stay "unavailable". `pip install "ltcai[pointer]"` opts in.
 pointer = ["pyautogui>=0.9.54"]
-all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub"]
-# Development-only checkers. Coverage became measurable in 10.2.0: before the
-# connection-leak fix, running under a tracer exhausted file descriptors and
-# ~400 tests failed, so the real number was unknown.
+all = [
+  "hnswlib>=0.8",
+  "mlx-vlm>=0.6.3; sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "mlx-lm; sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "openai-whisper",
+  "SpeechRecognition",
+  "pydub",
+  "pyautogui>=0.9.54",
+]
+# Development-only checkers.
 dev = ["pytest-cov>=7,<8", "mypy>=1.14,<3"]
 
 [project.scripts]
@@ -126,7 +122,7 @@ Homepage = "https://github.com/TaeSooPark-PTS/LatticeAI"
 Repository = "https://github.com/TaeSooPark-PTS/LatticeAI"
 Documentation = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/README.md"
 Issues = "https://github.com/TaeSooPark-PTS/LatticeAI/issues"
-Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md"
+Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 # ``server.py`` (the ``server:app`` compatibility shim) went with
@@ -254,8 +250,8 @@ max-complexity = 30
 
 # Router factories: one closure holding N sibling route handlers. mccabe counts
 # every handler's branches as a single function's complexity, which measures the
-# wrong thing. The surfaces here are operator/admin tools behind the admin gate.
-"latticeai/api/*.py" = ["C901", "E402", "SIM", "B008", "S105", "S108", "S603", "S604", "S607"]
+# wrong thing. Security Bandit checks (S105/S108/S603/S604/S607) stay enabled.
+"latticeai/api/*.py" = ["C901", "E402", "SIM", "B008"]
 
 # Named exception above the complexity ceiling, with a standing reason:
 #   app_factory._build — the composition root, being decomposed incrementally
@@ -272,9 +268,8 @@ max-complexity = 30
 "latticeai/services/tool_dispatch.py" = ["S603", "S604", "S607", "SIM"]
 "lattice_brain/runtime/hooks.py" = ["S603", "S607", "SIM"]
 
-# SQL built with interpolated *table* names chosen from a fixed internal set
-# (legacy tables vs the v2 reconstruction views). Values are always bound.
-"lattice_brain/graph/*.py" = ["S608", "SIM", "B007", "B905", "E402"]
+# S608 (SQL injection check) stays enabled on lattice_brain/graph/*.py.
+"lattice_brain/graph/*.py" = ["SIM", "B007", "B905", "E402"]
 
 # Literal classification tables; flagged for the words they contain.
 "lattice_brain/graph/_kg_constants.py" = ["S105", "S108"]

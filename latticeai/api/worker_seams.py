@@ -63,8 +63,11 @@ def _mlx_memory() -> Tuple[int, int]:
 
 def _total_memory_bytes() -> int:
     """Installed physical memory, the denominator ``gpu_mem_pct`` is taken of."""
-    completed = subprocess.run(  # noqa: S603,S607 — fixed argv, no shell
-        ["sysctl", "-n", "hw.memsize"],
+    import shutil
+
+    sysctl_bin = shutil.which("sysctl") or "/usr/sbin/sysctl"
+    completed = subprocess.run(  # noqa: S603 — fixed argv, no shell
+        [sysctl_bin, "-n", "hw.memsize"],
         capture_output=True,
         text=True,
         timeout=2,

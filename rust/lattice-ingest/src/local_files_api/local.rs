@@ -38,26 +38,28 @@ pub(super) async fn agent_status(
     let mut errors: Vec<String> = Vec::new();
 
     let probe_dir = state.config.data_dir().to_path_buf();
-    let fs_ok = match std::fs::create_dir_all(&probe_dir) {
-        Ok(()) => {
-            let name = format!(".local_agent_probe_{}", super::token_urlsafe(8));
-            let path = probe_dir.join(name);
-            let token = super::token_urlsafe(8);
-            let ok = std::fs::write(&path, &token)
-                .and_then(|_| std::fs::read_to_string(&path))
-                .map(|read| read == token)
-                .unwrap_or_else(|error| {
-                    errors.push(format!("filesystem: {error}"));
-                    false
-                });
-            let _ = std::fs::remove_file(&path);
-            ok
-        }
-        Err(error) => {
-            errors.push(format!("filesystem: {error}"));
-            false
-        }
-    };
+    let (fs_ok, fs_err) =
+        tokio::task::spawn_blocking(move || match std::fs::create_dir_all(&probe_dir) {
+            Ok(()) => {
+                let name = format!(".local_agent_probe_{}", super::token_urlsafe(8));
+                let path = probe_dir.join(name);
+                let token = super::token_urlsafe(8);
+                let res = std::fs::write(&path, &token)
+                    .and_then(|_| std::fs::read_to_string(&path))
+                    .map(|read| read == token);
+                let _ = std::fs::remove_file(&path);
+                match res {
+                    Ok(ok) => (ok, None),
+                    Err(error) => (false, Some(format!("filesystem: {error}"))),
+                }
+            }
+            Err(error) => (false, Some(format!("filesystem: {error}"))),
+        })
+        .await
+        .unwrap_or_else(|error| (false, Some(format!("filesystem task: {error}"))));
+    if let Some(err) = fs_err {
+        errors.push(err);
+    }
 
     let graph_reachable = match &state.store {
         Some(store) => match store
@@ -213,7 +215,12 @@ pub(super) async fn list_post(
     ) {
         return refusal;
     }
-    match list_dir(path) {
+    let path_owned = path.to_string();
+    let res = tokio::task::spawn_blocking(move || list_dir(&path_owned))
+        .await
+        .map_err(|err| format!("디렉터리 조회 작업 실패: {err}"))
+        .and_then(|inner| inner);
+    match res {
         Ok(result) => tool_ok(&state.agent_root, result),
         Err(message) => tool_error(&message),
     }
@@ -245,7 +252,12 @@ pub(super) async fn read_post(
     ) {
         return refusal;
     }
-    match read_file(path) {
+    let path_owned = path.to_string();
+    let res = tokio::task::spawn_blocking(move || read_file(&path_owned))
+        .await
+        .map_err(|err| format!("파일 읽기 작업 실패: {err}"))
+        .and_then(|inner| inner);
+    match res {
         Ok(result) => tool_ok(&state.agent_root, result),
         Err(message) => tool_error(&message),
     }
@@ -272,26 +284,44 @@ pub(super) async fn serve(
     {
         return refusal;
     }
-    let target = PathBuf::from(expand_user(&path));
-    let target = std::fs::canonicalize(&target).unwrap_or(target);
-    let slash = target.to_string_lossy().replace('\\', "/");
-    for prefix in super::WRITE_BLOCKED_PREFIXES {
-        if slash == prefix.trim_end_matches('/') || slash.starts_with(prefix) {
-            return http_error(403, "common.forbidden", language(&headers));
+    let lang = language(&headers);
+    let expanded = expand_user(&path);
+    enum ServeOutcome {
+        Forbidden,
+        NotFound,
+        Ok(Vec<u8>, &'static str),
+    }
+    let outcome = tokio::task::spawn_blocking(move || {
+        let target = PathBuf::from(expanded);
+        let target = std::fs::canonicalize(&target).unwrap_or(target);
+        let slash = target.to_string_lossy().replace('\\', "/");
+        for prefix in super::WRITE_BLOCKED_PREFIXES {
+            if slash == prefix.trim_end_matches('/') || slash.starts_with(prefix) {
+                return ServeOutcome::Forbidden;
+            }
         }
-    }
-    if !target.is_file() {
-        return http_error(404, "common.file_not_found", language(&headers));
-    }
-    match std::fs::read(&target) {
-        Ok(bytes) => {
-            let mime = mime_of(&target);
+        if !target.is_file() {
+            return ServeOutcome::NotFound;
+        }
+        match std::fs::read(&target) {
+            Ok(bytes) => ServeOutcome::Ok(bytes, mime_of(&target)),
+            Err(_) => ServeOutcome::NotFound,
+        }
+    })
+    .await
+    .unwrap_or(ServeOutcome::NotFound);
+
+    match outcome {
+        ServeOutcome::Forbidden => http_error(403, "common.forbidden", lang),
+        ServeOutcome::NotFound => http_error(404, "common.file_not_found", lang),
+        ServeOutcome::Ok(bytes, mime) => {
             let mut response = Response::new(axum::body::Body::from(bytes));
             *response.status_mut() = axum::http::StatusCode::OK;
             response.headers_mut().insert(
                 axum::http::header::CONTENT_TYPE,
-                mime.parse()
-                    .unwrap_or_else(|_| "application/octet-stream".parse().expect("mime")),
+                mime.parse().unwrap_or_else(|_| {
+                    axum::http::HeaderValue::from_static("application/octet-stream")
+                }),
             );
             response.headers_mut().insert(
                 axum::http::header::HeaderName::from_static("x-content-type-options"),
@@ -305,7 +335,6 @@ pub(super) async fn serve(
             );
             response
         }
-        Err(_) => http_error(404, "common.file_not_found", language(&headers)),
     }
 }
 
@@ -339,7 +368,13 @@ pub(super) async fn write_post(
     ) {
         return refusal;
     }
-    match write_file(path, content) {
+    let path_owned = path.to_string();
+    let content_owned = content.to_string();
+    let res = tokio::task::spawn_blocking(move || write_file(&path_owned, &content_owned))
+        .await
+        .map_err(|err| format!("파일 쓰기 작업 실패: {err}"))
+        .and_then(|inner| inner);
+    match res {
         Ok(result) => tool_ok(&state.agent_root, result),
         Err(message) => tool_error(&message),
     }

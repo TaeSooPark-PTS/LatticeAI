@@ -1,4 +1,3 @@
-import * as React from "react";
 import "@/i18n/workspace";
 import { useQuery } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";

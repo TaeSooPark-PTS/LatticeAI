@@ -1,13 +1,13 @@
 """The AI-Worker application profile.
 
-``create_app`` builds the full FastAPI application surface, while
 ``lattice-host`` owns the product gateway, knowledge-graph writes, and
 governance/proposal state. Python remains the loopback **AI Worker**: it runs
 local/provider LLM inference, tool handlers, document parsing/rendering, ASR,
 concept extraction, HNSW sidecar queries, and neural/fallback text embeddings.
 
-``create_worker_app`` is that process's entrypoint. It runs ``build_context``
-and applies :func:`latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
+``create_worker_app`` is that process's entrypoint. It runs
+:func:`latticeai.app_factory.build_context` and applies
+:func:`latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
 which mounts the loopback seams (``WORKER_SEAM_ROUTES`` and
 ``WORKER_COMPUTE_ROUTES``) and filters the route table to the exact 20 routes
 declared in :func:`~latticeai.runtime.build_phases.worker_profile.worker_route_keys`

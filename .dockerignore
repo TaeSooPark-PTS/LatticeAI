@@ -69,7 +69,8 @@ tests
 node_modules
 **/node_modules
 .npm-cache
-frontend
+frontend/src/**/*.test.ts
+frontend/src/**/*.test.tsx
 browser-extension
 desktop
 vscode-extension

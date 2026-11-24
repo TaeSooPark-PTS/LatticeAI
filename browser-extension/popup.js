@@ -177,13 +177,72 @@ function approvalsView(payload, language = DEFAULT_LANGUAGE) {
   return t(language, "approvals.pending", { count: pending.length });
 }
 
-async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fetchImpl = fetch) {
+function buildTimeoutSignal(timeoutMs, callerSignal) {
   const controller = new AbortController();
+  const onCallerAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort(callerSignal.reason);
+    } else {
+      callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+    }
+  }
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetchImpl(url, { ...options, signal: controller.signal });
-  } finally {
+  const cleanup = () => {
     clearTimeout(timer);
+    if (callerSignal) {
+      callerSignal.removeEventListener("abort", onCallerAbort);
+    }
+  };
+  return { signal: controller.signal, cleanup };
+}
+
+async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fetchImpl = fetch) {
+  const { signal, cleanup } = buildTimeoutSignal(timeoutMs, options?.signal);
+  try {
+    return await fetchImpl(url, { ...(options || {}), signal });
+  } finally {
+    cleanup();
+  }
+}
+
+/**
+ * Fetch and consume the response body under a single end-to-end timeout so
+ * stalled body streaming cannot outlive the header deadline.
+ */
+async function fetchJsonWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fetchImpl = fetch) {
+  const { signal, cleanup } = buildTimeoutSignal(timeoutMs, options?.signal);
+  try {
+    const resp = await fetchImpl(url, { ...(options || {}), signal });
+    if (!resp.ok) {
+      let detail = "";
+      try {
+        detail = typeof resp.text === "function" ? await resp.text() : "";
+      } catch (readErr) {
+        console.warn("Lattice AI extension: failed to read error body", readErr);
+      }
+      const err = new Error(detail ? `HTTP ${resp.status}: ${detail.slice(0, 200)}` : `HTTP ${resp.status}`);
+      err.status = resp.status;
+      throw err;
+    }
+    return await resp.json();
+  } finally {
+    cleanup();
+  }
+}
+
+async function saveStorage(values) {
+  const storageSet = chrome.storage?.local?.set;
+  if (typeof storageSet !== "function") return;
+  try {
+    await new Promise((resolve) => {
+      const maybePromise = storageSet.call(chrome.storage.local, values, () => resolve());
+      if (maybePromise && typeof maybePromise.then === "function") {
+        maybePromise.then(resolve, resolve);
+      }
+    });
+  } catch (err) {
+    console.warn("Lattice AI extension: failed to persist storage", err);
   }
 }
 
@@ -222,9 +281,9 @@ function initializePopup() {
   sendBtn.addEventListener("click", async () => {
     sendBtn.disabled = true;
     setStatus(t(language, "capture.busy"));
-    const port = normalizePort(portInput.value);
-    portInput.value = String(port);
-    chrome.storage?.local.set({ latticePort: port });
+    const port = normalizePort(portInput?.value);
+    if (portInput) portInput.value = String(port);
+    await saveStorage({ latticePort: port });
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -238,7 +297,7 @@ function initializePopup() {
       }
 
       setStatus(t(language, "capture.sending"));
-      const resp = await fetchWithTimeout(
+      const data = await fetchJsonWithTimeout(
         `http://127.0.0.1:${port}/api/browser/ingest-current-tab`,
         {
           method: "POST",
@@ -247,12 +306,6 @@ function initializePopup() {
           body: JSON.stringify(payload),
         },
       );
-
-      if (!resp.ok) {
-        const detail = await resp.text();
-        throw new Error(`HTTP ${resp.status}: ${detail.slice(0, 200)}`);
-      }
-      const data = await resp.json();
       if (data.status === "ok") {
         setStatus(t(language, data.duplicate ? "capture.duplicate" : "capture.added"), "ok");
       } else {
@@ -289,9 +342,9 @@ function initializePopup() {
     askBtn.disabled = true;
     if (answerEl) answerEl.textContent = t(language, "recall.busy");
     setGrounding(null);
-    const port = normalizePort(portInput.value);
+    const port = normalizePort(portInput?.value);
     try {
-      const resp = await fetchWithTimeout(
+      const data = await fetchJsonWithTimeout(
         `http://127.0.0.1:${port}/chat`,
         {
           method: "POST",
@@ -305,8 +358,6 @@ function initializePopup() {
         },
         RECALL_TIMEOUT_MS,
       );
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
       if (answerEl) answerEl.textContent = String(data.response || "").trim() || t(language, "recall.empty");
       setGrounding(groundingView(data, language));
     } catch (err) {
@@ -327,32 +378,31 @@ function initializePopup() {
   // ── Pending approvals & server language sync ──────────────────────────────
   const approvalsEl = document.getElementById("approvals");
   (async () => {
-    const port = normalizePort(portInput.value);
+    const port = normalizePort(portInput?.value);
     try {
-      const featResp = await fetchWithTimeout(
+      const featData = await fetchJsonWithTimeout(
         `http://127.0.0.1:${port}/api/features`,
         { credentials: "include", headers: localHeaders() },
       );
-      if (featResp.ok) {
-        const synced = extractServerLanguage(await featResp.json());
-        if (synced && synced !== language) {
-          applyLanguage(synced);
-          chrome.storage?.local.set({ latticeLanguage: synced });
-        }
+      const synced = extractServerLanguage(featData);
+      if (synced && synced !== language) {
+        applyLanguage(synced);
+        await saveStorage({ latticeLanguage: synced });
       }
-    } catch {
+    } catch (err) {
       // Optional sync: popup keeps stored/browser language when runtime is offline.
+      console.warn("Lattice AI extension: optional language sync skipped", err);
     }
     if (!approvalsEl) return;
     try {
-      const resp = await fetchWithTimeout(
+      const approvalsData = await fetchJsonWithTimeout(
         `http://127.0.0.1:${port}/agent/approvals`,
         { credentials: "include", headers: localHeaders() },
       );
-      if (!resp.ok) return;
-      approvalsEl.textContent = approvalsView(await resp.json(), language);
-    } catch {
-      // Silent: an unreachable runtime is already reported by the capture path.
+      approvalsEl.textContent = approvalsView(approvalsData, language);
+    } catch (err) {
+      // Non-fatal: an unreachable runtime is already reported by the capture path.
+      console.warn("Lattice AI extension: approval count check failed", err);
     }
   })();
 }
@@ -372,6 +422,7 @@ if (typeof module !== "undefined" && module.exports) {
     REQUEST_TIMEOUT_MS,
     RECALL_TIMEOUT_MS,
     approvalsView,
+    fetchJsonWithTimeout,
     fetchWithTimeout,
     groundingView,
     normalizePort,

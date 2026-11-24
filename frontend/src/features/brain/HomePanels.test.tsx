@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@/i18n";
 import { makeBrief, makeConversations, makeProof } from "@/test/brainFixtures";
-import type { BrainBriefAction, BrainProof } from "./types";
 import {
   BrainBriefPanel,
   formatConversationTime,

@@ -24,10 +24,6 @@ export default defineConfig({
     clearMocks: true,
     coverage: {
       provider: "v8",
-      // `all` is the honest setting: without it the report covers only files a
-      // test already imports, so a module with no test at all simply vanishes
-      // from the denominator and the percentage flatters itself.
-      all: true,
       include: ["frontend/src/**/*.{ts,tsx}"],
       exclude: [
         "frontend/src/**/*.test.{ts,tsx}",

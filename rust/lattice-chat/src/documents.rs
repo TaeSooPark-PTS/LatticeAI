@@ -215,10 +215,7 @@ impl DocumentSessions {
         map
     }
 
-    fn persist_snapshot(&self, map: &HashMap<SessionKey, SessionValue>) {
-        let Some(path) = &self.persist_path else {
-            return;
-        };
+    fn persist_snapshot_to_path(path: &Path, map: &HashMap<SessionKey, SessionValue>) {
         let mut keys: Vec<&SessionKey> = map.keys().collect();
         keys.sort();
         if keys.len() > MAX_PERSISTED_SESSIONS {
@@ -241,11 +238,22 @@ impl DocumentSessions {
             "version": 1,
             "entries": entries,
         });
-        if let Ok(serialized) = serde_json::to_string(&body) {
-            if let Some(parent) = path.parent() {
-                let _ = std::fs::create_dir_all(parent);
+        match serde_json::to_string(&body) {
+            Ok(serialized) => {
+                if let Some(parent) = path.parent() {
+                    if let Err(err) = std::fs::create_dir_all(parent) {
+                        eprintln!(
+                            "lattice-chat: failed to create document session directory {}: {err}",
+                            parent.display()
+                        );
+                        return;
+                    }
+                }
+                lattice_auth::atomic::write_text(path, &serialized);
             }
-            lattice_auth::atomic::write_text(path, &serialized);
+            Err(err) => {
+                eprintln!("lattice-chat: failed to serialize document sessions: {err}");
+            }
         }
     }
 
@@ -273,7 +281,10 @@ impl DocumentSessions {
         graph_context: &str,
     ) -> String {
         let key = Self::key(user_email, workspace_id, conversation_id);
-        let guard = self.sessions.lock().expect("document session lock");
+        let guard = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         match guard.get(&key) {
             Some((last_context, last_document)) => {
                 let context = if graph_context.is_empty() {
@@ -288,6 +299,9 @@ impl DocumentSessions {
     }
 
     /// `session.update(context, document, conversation_id)`.
+    ///
+    /// Releases the mutex guard before performing any disk persistence so
+    /// concurrent readers/writers are never blocked behind filesystem I/O.
     pub fn update(
         &self,
         user_email: Option<&str>,
@@ -297,19 +311,41 @@ impl DocumentSessions {
         document: &str,
     ) {
         let key = Self::key(user_email, workspace_id, conversation_id);
-        let mut guard = self.sessions.lock().expect("document session lock");
-        if guard.len() >= MAX_PERSISTED_SESSIONS && !guard.contains_key(&key) {
-            if let Some(evict_key) = guard.keys().next().cloned() {
-                guard.remove(&evict_key);
+        let snapshot = {
+            let mut guard = self
+                .sessions
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if guard.len() >= MAX_PERSISTED_SESSIONS && !guard.contains_key(&key) {
+                if let Some(evict_key) = guard.keys().next().cloned() {
+                    guard.remove(&evict_key);
+                }
             }
+            guard.insert(key, (graph_context.to_string(), document.to_string()));
+            self.persist_path
+                .as_ref()
+                .map(|p| (p.clone(), guard.clone()))
+        };
+        if let Some((path, map)) = snapshot {
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                if matches!(
+                    handle.runtime_flavor(),
+                    tokio::runtime::RuntimeFlavor::MultiThread
+                ) {
+                    handle.spawn_blocking(move || Self::persist_snapshot_to_path(&path, &map));
+                    return;
+                }
+            }
+            Self::persist_snapshot_to_path(&path, &map);
         }
-        guard.insert(key, (graph_context.to_string(), document.to_string()));
-        self.persist_snapshot(&guard);
     }
 
     /// How many conversations are remembered — for a caller that wants to know.
     pub fn len(&self) -> usize {
-        self.sessions.lock().expect("document session lock").len()
+        self.sessions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .len()
     }
 
     /// Whether nothing is remembered yet.

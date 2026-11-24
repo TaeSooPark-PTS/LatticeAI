@@ -127,7 +127,7 @@ async fn a_pinned_posture_short_circuits_the_probe() {
 #[test]
 fn the_proxy_client_is_this_state_s_own() {
     let shared = http_client().expect("client");
-    let state = GatewayState::with_client(Arc::new(Stub), shared);
+    let state = GatewayState::with_client(Arc::new(Stub), shared).expect("state");
     // Distinct handles: the shared one follows redirects, this one must not.
     assert!(!std::ptr::eq(state.client(), state.proxy_client()));
 }

@@ -46,8 +46,18 @@ async function tauriBackendOrigin(): Promise<string | null> {
   if (!desktopBase) {
     desktopBase = import("@tauri-apps/api/core")
       .then(({ invoke }) => invoke<string>("backend_origin"))
-      .then((origin) => origin || null)
-      .catch(() => null);
+      .then((origin) => {
+        if (!origin) {
+          desktopBase = null;
+          return null;
+        }
+        return origin;
+      })
+      .catch((err) => {
+        console.warn("backend_origin IPC failed; clearing cache for retry", err);
+        desktopBase = null;
+        return null;
+      });
   }
   return desktopBase;
 }
@@ -60,7 +70,8 @@ export async function tauriInvoke<T>(
   if (globalInvoke) {
     try {
       return await globalInvoke<T>(command, args);
-    } catch {
+    } catch (err) {
+      console.warn(`Tauri global invoke(${command}) failed`, err);
       return null;
     }
   }
@@ -68,7 +79,8 @@ export async function tauriInvoke<T>(
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<T>(command, args);
-  } catch {
+  } catch (err) {
+    console.warn(`Tauri invoke(${command}) failed`, err);
     return null;
   }
 }

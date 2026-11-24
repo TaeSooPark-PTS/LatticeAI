@@ -97,6 +97,7 @@ pub use enterprise::{
 };
 pub use extract::{AdminUser, ClientIp, CurrentUser, RequestedWorkspace};
 pub use middleware::csrf_guard;
+pub use password::{hash_password, stored_is_hashed, verify_password, PasswordError};
 pub use policy::{capabilities_for_role, check_role, normalize_role, role_has_capability};
 pub use pyjson::OrderedMap;
 pub use ratelimit::RateLimiter;

@@ -212,16 +212,22 @@ _TODO_REL_PATH = ".lattice/todos.json"
 _TODO_ALLOWED_STATUS = {"pending", "in_progress", "completed"}
 
 
-def _todo_file() -> Path:
-    ensure_agent_root()
-    target = tools.AGENT_ROOT / _TODO_REL_PATH
-    target.parent.mkdir(parents=True, exist_ok=True)
+def _todo_file(root: Optional[Path] = None, *, create_dir: bool = True) -> Path:
+    if root is None:
+        if create_dir:
+            ensure_agent_root()
+        base = tools.AGENT_ROOT
+    else:
+        base = Path(root)
+    target = base / _TODO_REL_PATH
+    if create_dir:
+        target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
 
-def todo_read() -> Dict[str, Any]:
-    """Read the agent's persistent TODO list (per-workspace)."""
-    target = _todo_file()
+def todo_read(root: Optional[Path] = None) -> Dict[str, Any]:
+    """Read the agent's persistent TODO list (per-workspace) without side-effecting mkdir."""
+    target = _todo_file(root=root, create_dir=False)
     if not target.exists():
         return {"todos": [], "path": _TODO_REL_PATH}
     try:

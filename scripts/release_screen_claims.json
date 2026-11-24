@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.0.0": {
+    "_why": [
+      "Living Synthesis (14.0.0) delivers full-stack security, concurrency, and",
+      "packaging hardening across the Rust host, Auth/RateLimit, Python worker,",
+      "strict TypeScript 7 frontend, Tauri desktop shell, VS Code and browser",
+      "extensions, digest-pinned multi-stage Docker builds, real windows-latest",
+      "Rust CI verification, and modernized 14.0.0 architecture documentation.",
+      "",
+      "No visual screen layout was redesigned in 14.0.0; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "13.9.0": {
     "_why": [
       "Living Synthesis (13.9.0) resolves all 6 PR #69 security/integrity",

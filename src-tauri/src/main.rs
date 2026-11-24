@@ -43,10 +43,10 @@ async fn backend_status(state: State<'_, Arc<DesktopBackend>>) -> Result<Backend
     Ok(state.status().await)
 }
 
-/// `restart_backend` → stop, start, and report what happened.
+/// `restart_backend` → stop, start, and propagate failures to the caller.
 #[tauri::command]
 async fn restart_backend(state: State<'_, Arc<DesktopBackend>>) -> Result<BackendStatus, String> {
-    Ok(state.restart().await)
+    state.restart().await
 }
 
 /// `shutdown_backend` → stop the worker and suppress restarts.
@@ -55,10 +55,10 @@ async fn shutdown_backend(state: State<'_, Arc<DesktopBackend>>) -> Result<Backe
     Ok(state.stop().await)
 }
 
-/// `select_folder` → the native directory picker.
+/// `select_folder` → the native directory picker (non-blocking, distinguishes cancel vs error).
 #[tauri::command]
-fn select_folder() -> Option<String> {
-    folder::select_folder()
+async fn select_folder() -> Result<Option<String>, String> {
+    folder::select_folder().await
 }
 
 /// Bring the host up, then point the webview at `{origin}/app`.
@@ -69,55 +69,52 @@ fn select_folder() -> Option<String> {
 /// what used to show a blank window.
 fn boot(app: &tauri::App) {
     let Some(window) = app.get_webview_window("main") else {
+        eprintln!("lattice-ai-desktop: main webview window not found during boot");
         return;
     };
-    let _ = window.set_title("Lattice AI");
-    let _ = window.show();
-    let _ = window.set_focus();
+    if let Err(err) = window.set_title("Lattice AI") {
+        eprintln!("lattice-ai-desktop: failed to set window title: {err}");
+    }
+    if let Err(err) = window.show() {
+        eprintln!("lattice-ai-desktop: failed to show window: {err}");
+    }
+    if let Err(err) = window.set_focus() {
+        eprintln!("lattice-ai-desktop: failed to focus window: {err}");
+    }
 
     let shell = Arc::clone(&app.state::<Arc<DesktopBackend>>());
     tauri::async_runtime::spawn(async move {
         shell.start().await;
-        // One reason not to navigate, and it is not "the worker is slow": if
-        // this shell was supposed to serve the front door and could not bind
-        // it, `app_url` names a port nothing will ever listen on, and sending
-        // the window there replaces a readable failure with a blank "cannot
-        // connect". The bundled shell stays up and reads `gateway_error` out of
-        // `desktopBackendStatus` instead.
         if let Some(reason) = shell.gateway_error() {
             eprintln!("lattice-ai-desktop: staying on the bundled shell — {reason}");
             return;
         }
-        // Host /health at the origin the window is about to load. An attached
-        // host (LATTICEAI_DESKTOP_BACKEND_ORIGIN) never ran start_gateway, so
-        // this is also the first time we wait for it.
         shell.wait_until_serving().await;
-        // Navigate either way: a window showing the browser's own "cannot
-        // connect" is more use than a window showing nothing while a host that
-        // will never arrive is waited for.
-        if let Ok(url) = tauri::Url::parse(&shell.app_url()) {
-            let _ = window.navigate(url);
+        match tauri::Url::parse(&shell.app_url()) {
+            Ok(url) => {
+                if let Err(err) = window.navigate(url) {
+                    eprintln!("lattice-ai-desktop: failed to navigate main window: {err}");
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "lattice-ai-desktop: invalid app_url {}: {err}",
+                    shell.app_url()
+                );
+            }
         }
     });
 }
 
 /// Stop the worker and the front door from a synchronous Tauri callback
 /// (window close, app exit).
-///
-/// `block_on` is safe here because these callbacks run on the event loop
-/// thread, outside any async runtime — and the wait is what makes the shutdown
-/// graceful: SIGTERM, then SIGKILL only if the worker ignores it, so the
-/// worker gets to close its SQLite handles instead of being shot mid-write.
 fn stop_worker<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
     if let Some(shell) = manager.try_state::<Arc<DesktopBackend>>() {
         let shell = Arc::clone(&shell);
-        let stopping = Arc::clone(&shell);
         tauri::async_runtime::block_on(async move {
-            stopping.stop().await;
+            shell.stop().await;
+            shell.stop_gateway().await;
         });
-        // The gateway outlives `shutdown_backend` on purpose (so the window can
-        // still read `/host/status`), but not the process.
-        shell.stop_gateway();
     }
 }
 

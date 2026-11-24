@@ -12,11 +12,9 @@ Lattice AI 확장은 VS Code, Cursor, VSCodium을 로컬 우선 Digital Brain에
 
 ## 현재 릴리스
 
-**13.8.0 — Living Synthesis**는 디지털 브레인 플랫폼 통합 고도화(P0–P3)를 완수했습니다: 결정론적 픽스처와 실제 로컬/클라우드 모델을 분리하고 320개 질의 데이터셋(`datasets/rag_eval_v1.json`)을 추가한 진정성 있는 RAG 평가, 자동 백업·드라이런·장애 주입 검증을 갖춘 지식 그래프 무결성 검사기, 동음이의어 차단·퍼지 점수·선택적 롤백 엔티티 해석, OS 수준 `O_NOFOLLOW` FD 샌드박스 및 클라우드 이그레스 PII/비밀 마스킹, 섀도우 재색인·컷오버·롤백 임베딩 모델 레지스트리, 최소 권한 5역할 멀티에이전트 협업 엔진, 지식 학습 루프, OS 감시 파일 이동·일시중지, `국가 → 제조사 → 실행 위치` 모델 출처 UX, 워커 워치독·마스킹 `/host/diagnostics`, 토픽 클러스터/지식 공백/비디오 모달리티/감사 보존 정책/오프보딩 세션 취소 영수증을 모두 포함합니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v13.8.0.md](./releases/RELEASE_NOTES_v13.8.0.md)에서 확인할 수 있습니다.
+**14.0.0 — Living Synthesis**는 전체 Lattice AI 스택과 VS Code 확장을 고도화했습니다: 선택적 Bearer 인증(`ltcai.authToken` / `LATTICEAI_API_TOKEN`), TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 요청·스트림 타임아웃 및 명시적 오류 처리, 실시간 설정 리로드(`onDidChangeConfiguration`), 동기화 폴링 중복 가드, 크로스플랫폼 VSIX 패키징(`scripts/vsix-cli.mjs`)을 추가했으며, 호스트 버전화 `$scrypt$` 인증·순수 Rust UTC 시계·`windows-latest` Rust CI·`14.0.0` 아키텍처 문서 최신화를 함께 반영했습니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.0.0.md](./releases/RELEASE_NOTES_v14.0.0.md)에서 확인할 수 있습니다.
 
-**13.0.0 — Sovereign Synthesis**는 크로스 도메인 결합 제거(`lattice_core::redact`, `lattice_agent::seam`, `domain_boundaries.rs`)와 통합 Rust 서버 i18n(`lattice_core::messages`), 2-Hop 지식 그래프 추론 체인·매개 개념·상충 합성(`reasoning_paths.rs`, `MultiHopSynthesisView.tsx`), 단일 트랜잭션 리뷰 스토어 변경, 원클릭 폴더 재구성 되돌리기(`ReviewCard.tsx`), 재시작 후 유지되는 대화 문서 세션, `frontend/src/api/client.ts` 및 `src-tauri/src/backend.rs` 모듈 분할(Vitest 100%)을 도입했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v13.0.0.md](../releases/RELEASE_NOTES_v13.0.0.md)를 참고하세요.
-
-**확장 프로그램의 통신 표면은 버전 외 변동이 없습니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
+**핵심 프로토콜은 기존과 호환됩니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
 
 이 확장은 에디터를 데스크톱·웹 앱과 동일한 로컬 우선 Digital Brain, 명시적 동의 게이트, 교체 가능한 모델 워크플로(`MLX-VLM` / `llama.cpp` / `Ollama` / `LM Studio` / 선택적 클라우드), 제안 우선 Review Center에 연결합니다.
 

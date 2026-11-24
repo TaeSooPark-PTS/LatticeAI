@@ -84,20 +84,18 @@ is a **409**, never a merge and never a silent overwrite.
 **…state?** Through the family that already owns the file. `workspace_os.json`
 has exactly one writer — `workspaceos::workspace::store::WorkspaceOsStore` — and
 `governance::review_queue::GovernanceState` is a facade over the *same* `Arc`,
-not a second copy. Two stores over one document is last-writer-wins, the bug
-v11.7.0 closed.
+not a second copy, preventing last-writer-wins races over a single document.
 
 **…an audit line?** `adminops::admin::append_audit_event`. One appender, one
 file, one format; `lattice-chat` and `lattice-host` call into it from outside
 rather than growing writers of their own.
 
-## Public API Surface (13.7.2+)
+## Public API Surface (14.0.0)
 
 `src/lib.rs` exposes only the seven canonical domain modules (`adminops`,
 `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)
-and `VERSION`. The flat pre-12.0.0 compatibility re-export map was retired in
-`13.7.2`; every caller across `lattice-host`, `lattice-chat`, and integration
-tests imports directly from canonical domain paths (e.g.,
+and `VERSION`. Every caller across `lattice-host`, `lattice-chat`, and
+integration tests imports directly from canonical domain paths (e.g.,
 `lattice_platform::adminops::admin`,
 `lattice_platform::workspaceos::workspace`). Shared HTTP JSON reply, FastAPI 422
 validation envelope, localized message detail, and UTC timestamp helpers live in

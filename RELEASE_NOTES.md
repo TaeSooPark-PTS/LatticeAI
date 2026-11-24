@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.0.0 - Living Synthesis] (2026-11-25)
+
+Delivered full-stack security, concurrency, desktop/extension, and CI/CD hardening: versioned `$scrypt$` `Result`-based hashing, bounded rate limiting with unified HTTP `429` + `Retry-After` and English CSRF denials in `lattice-auth`; pure-Rust UTC clock eliminating all `unsafe` `libc` calls in `lattice-core`; non-blocking `spawn_blocking` filesystem/session I/O, bounded HNSW/cloud-budget caches, fail-closed proxy client, and `EnvOverlayProbe` across Rust crates; platform-guarded MLX extras, `ContextVar` LLM router DI, and re-enabled Ruff security rules in Python; strict TypeScript 7 compiler flags and modular `AppRouteView.tsx` at 100% Vitest coverage; serialized Tauri gateway lifecycle with pinned `127.0.0.1:4825` CSP/capabilities; hardened VS Code and browser extensions; real `windows-latest` Rust CI, `macos-latest` Tauri CI, and digest-pinned multi-stage Docker smoke CI; and modernized `14.0.0` architecture documentation.
+
+See [docs/releases/RELEASE_NOTES_v14.0.0.md](docs/releases/RELEASE_NOTES_v14.0.0.md).
+
 # [v13.9.0 - Living Synthesis] (2026-11-24)
 
 Resolved all six PR #69 security and integrity findings (strict workspace-scoped integrity repairs with admin-gated global mode, shared `Store` single-writer routing for all Brain mutations, workspace ownership verification for every node/edge/correction/merge target, Windows handle-pinned component-by-component TOCTOU-safe I/O, claim-level grounding & fabricated-citation penalties in real-model RAG eval, and posture-gating `/host/diagnostics`), folded all 16 Brain extension endpoints into canonical `brain_api::MOUNTED` and `memory_brain.json` with regenerated `frontend/src/api/openapi.ts`, shipped five dedicated interactive React Brain Governance UI panels with Vitest tests, and added `.github/workflows/nightly-rag-eval.yml`.
@@ -100,10 +106,11 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 13.9.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.0.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
+- [v14.0.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.0.0.md)
 - [v13.9.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.9.0.md)
 - [v13.8.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.8.0.md)
 - [v13.7.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.2.md)

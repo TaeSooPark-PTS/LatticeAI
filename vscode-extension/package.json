@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "13.9.0",
+  "version": "14.0.0",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -169,6 +169,11 @@
           "default": "http://localhost:4825",
           "description": "Lattice AI server base URL."
         },
+        "ltcai.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional Bearer token for authenticated Lattice AI servers (falls back to LATTICEAI_API_TOKEN)."
+        },
         "ltcai.autoLoadModel": {
           "type": "boolean",
           "default": false,
@@ -186,10 +191,10 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p .",
     "build": "tsc -p .",
-    "package": "vsce package --out ../dist/ltcai-$npm_package_version.vsix",
-    "package:vsix": "vsce package --out ../dist/ltcai-$npm_package_version.vsix",
-    "publish:vscode": "vsce publish --packagePath ../dist/ltcai-$npm_package_version.vsix",
-    "publish:openvsx": "ovsx publish ../dist/ltcai-$npm_package_version.vsix",
+    "package": "node ./scripts/vsix-cli.mjs package",
+    "package:vsix": "node ./scripts/vsix-cli.mjs package",
+    "publish:vscode": "node ./scripts/vsix-cli.mjs publish-vscode",
+    "publish:openvsx": "node ./scripts/vsix-cli.mjs publish-openvsx",
     "publish:all": "npm run build && npm run package:vsix && npm run publish:vscode && npm run publish:openvsx",
     "install:all": "bash ./scripts/install-all-editors.sh"
   },

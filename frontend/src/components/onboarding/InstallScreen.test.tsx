@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@/i18n";
@@ -107,7 +107,7 @@ describe("InstallScreen", () => {
   });
 
   it("walks the stages to done and enters the product after a breath", async () => {
-    const prepare = vi.fn(async (body: Record<string, unknown>, handlers: Handlers) => {
+    const prepare = vi.fn(async (_body: Record<string, unknown>, handlers: Handlers) => {
       handlers.onProgress?.({}); // a frame with no stage still counts as installing
       handlers.onProgress?.({
         stage: "download_weights",
@@ -152,7 +152,7 @@ describe("InstallScreen", () => {
 
   it("shows live stage progress and the raw line only to advanced users", async () => {
     let handlers: Handlers = {};
-    const prepare = vi.fn((body: Record<string, unknown>, incoming: Handlers) => {
+    const prepare = vi.fn((_body: Record<string, unknown>, incoming: Handlers) => {
       handlers = incoming;
       return new Promise(() => {});
     });
@@ -197,7 +197,7 @@ describe("InstallScreen", () => {
 
   it("keeps the raw line away from everyday (basic) mode", async () => {
     let handlers: Handlers = {};
-    const prepare = vi.fn((body: Record<string, unknown>, incoming: Handlers) => {
+    const prepare = vi.fn((_body: Record<string, unknown>, incoming: Handlers) => {
       handlers = incoming;
       return new Promise(() => {});
     });
@@ -212,7 +212,7 @@ describe("InstallScreen", () => {
   });
 
   it("cleans jargon out of a stream error and keeps its recovery guidance", async () => {
-    const prepare = vi.fn(async (body: Record<string, unknown>, handlers: Handlers) => {
+    const prepare = vi.fn(async (_body: Record<string, unknown>, handlers: Handlers) => {
       handlers.onError?.({
         user_message: "gemma4_unified failed because mlx-vlm runtime broke: No module named 'mlx_lm'",
         recovery_guidance: ["Install   the   runtime again", "", "Retry the download", "third hint is dropped"],
@@ -234,7 +234,7 @@ describe("InstallScreen", () => {
   });
 
   it("falls back through error fields and a default when a failure says nothing", async () => {
-    const prepare = vi.fn(async (body: Record<string, unknown>, handlers: Handlers) => {
+    const prepare = vi.fn(async (_body: Record<string, unknown>, handlers: Handlers) => {
       handlers.onError?.({ error: "boom" });
       return { ok: false, status: 500, source: "live", data: {} };
     });
@@ -250,7 +250,7 @@ describe("InstallScreen", () => {
     let receivedSignal: AbortSignal | undefined;
     const unload = vi.fn(async () => ({ ok: true, status: 200, source: "live", data: {} }));
     let resolveStream: (val: unknown) => void = () => {};
-    const prepare = vi.fn((body: Record<string, unknown>, incoming: Handlers & { signal?: AbortSignal }) => {
+    const prepare = vi.fn((_body: Record<string, unknown>, incoming: Handlers & { signal?: AbortSignal }) => {
       handlers = incoming;
       receivedSignal = incoming.signal;
       return new Promise((resolve) => {

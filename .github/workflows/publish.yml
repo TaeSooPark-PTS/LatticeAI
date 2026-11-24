@@ -75,7 +75,7 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Set up Node 20
+      - name: Set up Node 22
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -206,7 +206,7 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Set up Node 20
+      - name: Set up Node 22
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"

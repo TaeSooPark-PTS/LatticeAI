@@ -21,6 +21,7 @@ What stays, stays because something still calls it:
 
 import hashlib
 import ipaddress
+import logging
 import re
 import threading
 import time
@@ -28,7 +29,7 @@ from typing import Any, Dict, List
 
 from fastapi import HTTPException
 
-from latticeai.core.quiet import quiet
+logger = logging.getLogger(__name__)
 
 
 def sha256_hex(text: str) -> str:
@@ -82,8 +83,8 @@ def configure_trusted_proxies(values) -> int:
             continue
         try:
             networks.append(ipaddress.ip_network(item, strict=False))
-        except ValueError:
-            quiet()
+        except ValueError as exc:
+            logger.warning("Invalid trusted proxy entry %r ignored: %s", item, exc)
             continue
     _trusted_proxies = networks
     return len(networks)
@@ -178,6 +179,7 @@ _RATE_LIMITS = {
     "agent":  (10, 0.1),
     "upload": (20, 0.2),
 }
+_MAX_RATE_BUCKETS = 10_000
 _rate_buckets: Dict[str, Dict[str, float]] = {}
 _user_rate_lock = threading.Lock()
 
@@ -191,6 +193,13 @@ def enforce_rate_limit(email: str, bucket_key: str, *, enabled: bool = True) -> 
     with _user_rate_lock:
         bucket = _rate_buckets.get(key)
         if bucket is None:
+            if len(_rate_buckets) >= _MAX_RATE_BUCKETS:
+                stale = [k for k, v in _rate_buckets.items() if now - v["ts"] >= 3600.0]
+                for k in stale:
+                    _rate_buckets.pop(k, None)
+                if len(_rate_buckets) >= _MAX_RATE_BUCKETS:
+                    oldest = min(_rate_buckets.items(), key=lambda item: item[1]["ts"])[0]
+                    _rate_buckets.pop(oldest, None)
             _rate_buckets[key] = {"tokens": cap - 1, "ts": now}
             return
         elapsed = now - bucket["ts"]

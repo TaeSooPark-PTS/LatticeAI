@@ -24,8 +24,9 @@ when the location alone would not tell a reader *why* failure is acceptable.
 from __future__ import annotations
 
 import logging
-import sys
 from typing import Optional
+
+from lattice_brain.quiet import record_suppressed
 
 logger = logging.getLogger("latticeai.suppressed")
 
@@ -36,30 +37,7 @@ def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
     Safe to call outside an ``except`` block (it becomes a no-op) so a refactor
     that moves it cannot itself raise.
     """
-    exc_type, exc, tb = sys.exc_info()
-    if exc is None:
-        return
-
-    where = "<unknown>"
-    if tb is not None:
-        # The frame that raised is the useful one; walk to the deepest.
-        deepest = tb
-        while deepest.tb_next is not None:
-            deepest = deepest.tb_next
-        frame = deepest.tb_frame
-        where = f"{frame.f_code.co_filename}:{frame.f_lineno} in {frame.f_code.co_name}"
-
-    label = f" ({reason})" if reason else ""
-    if logger.isEnabledFor(level):
-        logger.log(
-            level,
-            "suppressed %s at %s%s: %s",
-            getattr(exc_type, "__name__", "Exception"),
-            where,
-            label,
-            exc,
-            exc_info=exc,
-        )
+    record_suppressed(logger, reason, level=level)
 
 
 __all__ = ["quiet"]

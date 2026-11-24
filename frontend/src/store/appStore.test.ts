@@ -153,6 +153,9 @@ describe("when localStorage is unavailable", () => {
     expect(() => store.getState().setLanguage("ko")).not.toThrow();
     expect(store.getState().language).toBe("ko");
     expect(document.documentElement.lang).toBe("ko");
+
+    expect(() => store.getState().setWorkspaceId("ws-err")).not.toThrow();
+    expect(store.getState().workspaceId).toBe("ws-err");
   });
 
   it("still clears the workspace when removeItem throws", async () => {
@@ -180,5 +183,19 @@ describe("when localStorage is unavailable", () => {
       workspaceId: null,
       language: "en",
     });
+  });
+
+  it("guards DOM mutations when document is unavailable (SSR/non-DOM)", async () => {
+    const store = await freshStore();
+    const origDocument = globalThis.document;
+    vi.stubGlobal("document", undefined);
+    try {
+      expect(() => store.getState().setTheme("dark")).not.toThrow();
+      expect(store.getState().theme).toBe("dark");
+      expect(() => store.getState().setLanguage("ko")).not.toThrow();
+      expect(store.getState().language).toBe("ko");
+    } finally {
+      vi.stubGlobal("document", origDocument);
+    }
   });
 });

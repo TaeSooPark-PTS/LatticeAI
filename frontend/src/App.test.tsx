@@ -14,7 +14,6 @@
  * decisions, not about re-testing the pages that have their own suites.
  */
 
-import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";

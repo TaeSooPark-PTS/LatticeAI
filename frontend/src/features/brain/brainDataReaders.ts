@@ -1,4 +1,4 @@
-import { clamp, isRecord as isRecordValue } from "@/lib/utils";
+import { isRecord as isRecordValue } from "@/lib/utils";
 import type { ApiRecord } from "./types";
 
 export const isRecord = isRecordValue as (value: unknown) => value is ApiRecord;

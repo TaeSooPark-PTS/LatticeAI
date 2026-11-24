@@ -28,8 +28,8 @@ use std::time::Duration;
 
 use lattice_host::gateway::{bind_loopback, mounts, serve_gateway, GatewayState};
 use lattice_host::supervisor::{
-    wait_for_health, HostProbe, Supervisor, SupervisorConfig, SupervisorError, SystemProbe,
-    WorkerStatus,
+    wait_for_health, EnvOverlayProbe, HostProbe, Supervisor, SupervisorConfig, SupervisorError,
+    SystemProbe, WorkerStatus,
 };
 
 use serde::Serialize;
@@ -96,6 +96,7 @@ pub struct BackendStatus {
 /// The gateway this shell is serving, and how to stop it.
 struct RunningGateway {
     shutdown: Option<tokio::sync::oneshot::Sender<()>>,
+    task: tauri::async_runtime::JoinHandle<()>,
 }
 
 /// The supervisor, the front door, and the origin every surface is told about.
@@ -103,6 +104,9 @@ pub struct DesktopBackend {
     plan: Plan,
     supervisor: Supervisor,
     health_deadline: Duration,
+    /// Serializes `start_gateway` / `stop_gateway` across `.await` points so
+    /// concurrent callers cannot race on `bind_loopback`.
+    gateway_lifecycle: tokio::sync::Mutex<()>,
     /// Present once the gateway is serving. `Mutex` because the Tauri commands
     /// touch it from whichever thread the runtime hands them.
     gateway: Mutex<Option<RunningGateway>>,
@@ -242,16 +246,18 @@ fn resolve_worker_python(probe: &dyn HostProbe) -> Option<String> {
         .or_else(|| candidates.first().cloned())
 }
 
-/// Pin `LTCAI_PYTHON` (and `LATTICEAI_HOST_BIN` when a packaged sidecar exists)
-/// on the process environment when resolved, once.
-fn pin_worker_launch_if_needed(probe: &dyn HostProbe) {
+/// Build immutable environment overrides (`LTCAI_PYTHON`, `LATTICEAI_HOST_BIN`)
+/// to inject via `EnvOverlayProbe` and `SupervisorConfig.extra_env` instead of
+/// mutating the process environment (`std::env::set_var`) in a multi-threaded runtime.
+fn resolve_launch_env_overrides(probe: &dyn HostProbe) -> Vec<(String, String)> {
+    let mut overrides = Vec::new();
     if probe
         .env_var("LTCAI_PYTHON")
         .filter(|v| !v.trim().is_empty())
         .is_none()
     {
         if let Some(python) = resolve_worker_python(probe) {
-            std::env::set_var("LTCAI_PYTHON", python);
+            overrides.push(("LTCAI_PYTHON".to_string(), python));
         }
     }
     if probe
@@ -266,20 +272,40 @@ fn pin_worker_launch_if_needed(probe: &dyn HostProbe) {
         if let Some(host_bin) =
             resolve_packaged_host_binary(probe, exe_dir.as_deref(), workspace_root.as_deref())
         {
-            std::env::set_var("LATTICEAI_HOST_BIN", host_bin);
+            overrides.push((
+                "LATTICEAI_HOST_BIN".to_string(),
+                host_bin.to_string_lossy().into_owned(),
+            ));
         }
     }
+    overrides
 }
 
 impl DesktopBackend {
-    /// Resolve against the real machine.
+    /// Resolve against the real machine without mutating process env vars.
     pub fn resolve() -> Result<Self, SupervisorError> {
-        pin_worker_launch_if_needed(&SystemProbe);
-        Self::with_probe(Arc::new(SystemProbe))
+        let overrides = resolve_launch_env_overrides(&SystemProbe);
+        let probe: Arc<dyn HostProbe> = if overrides.is_empty() {
+            Arc::new(SystemProbe)
+        } else {
+            Arc::new(EnvOverlayProbe::new(
+                Arc::new(SystemProbe),
+                overrides.clone(),
+            ))
+        };
+        Self::with_probe_and_env(probe, overrides)
     }
 
     /// Resolve against an injected probe.
+    #[cfg(test)]
     pub fn with_probe(probe: Arc<dyn HostProbe>) -> Result<Self, SupervisorError> {
+        Self::with_probe_and_env(probe, Vec::new())
+    }
+
+    fn with_probe_and_env(
+        probe: Arc<dyn HostProbe>,
+        extra_env: Vec<(String, String)>,
+    ) -> Result<Self, SupervisorError> {
         let plan = topology::resolve(&*probe);
         let mut config = SupervisorConfig::new(plan.worker_port).with_system_dirs(&*probe);
         config.supervise = plan.supervised();
@@ -287,6 +313,7 @@ impl DesktopBackend {
         // internal port; naming the front door here is what makes a
         // cookie-authenticated POST through the proxy work at all.
         config.gateway_port = plan.gateway_port;
+        config.extra_env.extend(extra_env);
         let health_deadline = config.health_deadline;
         let supervisor = Supervisor::with_probe(config, Arc::clone(&probe))?;
         let jobs = (plan.topology == Topology::Gateway)
@@ -295,6 +322,7 @@ impl DesktopBackend {
             plan,
             supervisor,
             health_deadline,
+            gateway_lifecycle: tokio::sync::Mutex::new(()),
             gateway: Mutex::new(None),
             jobs: Mutex::new(jobs),
             gateway_error: Mutex::new(None),
@@ -329,7 +357,7 @@ impl DesktopBackend {
     pub fn gateway_error(&self) -> Option<String> {
         self.gateway_error
             .lock()
-            .expect("gateway error lock")
+            .unwrap_or_else(|e| e.into_inner())
             .clone()
     }
 
@@ -349,17 +377,18 @@ impl DesktopBackend {
         self.status().await
     }
 
-    /// Serve the gateway on the public port, once.
-    ///
-    /// A failure here is logged rather than fatal — the window still opens, and
-    /// the browser's own "cannot connect" plus this line is a better failure
-    /// than a shell that exits. Attach to a running host with
-    /// `LATTICEAI_DESKTOP_BACKEND_ORIGIN` if this process cannot bind.
+    /// Serve the gateway on the public port, serialized across concurrent callers.
     async fn start_gateway(&self) {
         let Some(port) = self.plan.gateway_port else {
             return;
         };
-        if self.gateway.lock().expect("gateway lock").is_some() {
+        let _lifecycle = self.gateway_lifecycle.lock().await;
+        if self
+            .gateway
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_some()
+        {
             return;
         }
         let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
@@ -372,17 +401,23 @@ impl DesktopBackend {
                      LATTICEAI_DESKTOP_BACKEND_ORIGIN to an already-running lattice-host"
                 );
                 eprintln!("lattice-ai-desktop: {message}");
-                // Recorded, not only logged: `plan.origin` names the port that
-                // just failed to bind, so navigating the window there would
-                // land on a connection refused with no explanation. The window
-                // stays on the bundled shell and reads this instead.
-                *self.gateway_error.lock().expect("gateway error lock") = Some(message);
+                *self.gateway_error.lock().unwrap_or_else(|e| e.into_inner()) = Some(message);
                 return;
             }
         };
 
-        let mut state =
-            GatewayState::with_client(Arc::new(self.supervisor.clone()), self.supervisor.client());
+        let mut state = match GatewayState::with_client(
+            Arc::new(self.supervisor.clone()),
+            self.supervisor.client(),
+        ) {
+            Ok(state) => state,
+            Err(err) => {
+                let message = format!("the gateway could not initialize HTTP client: {err}");
+                eprintln!("lattice-ai-desktop: {message}");
+                *self.gateway_error.lock().unwrap_or_else(|e| e.into_inner()) = Some(message);
+                return;
+            }
+        };
         if let Some(root) = self.agent_root() {
             state = state.with_agent_root(root);
         }
@@ -391,14 +426,14 @@ impl DesktopBackend {
             Err(err) => {
                 let message = format!("the gateway could not open the product surface: {err}");
                 eprintln!("lattice-ai-desktop: {message}");
-                *self.gateway_error.lock().expect("gateway error lock") = Some(message);
+                *self.gateway_error.lock().unwrap_or_else(|e| e.into_inner()) = Some(message);
                 return;
             }
         };
         state = self.attach_product_scheduler(state);
 
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
-        tauri::async_runtime::spawn(async move {
+        let task = tauri::async_runtime::spawn(async move {
             if let Err(err) = serve_gateway(listener, Arc::new(state), async {
                 let _ = rx.await;
             })
@@ -407,18 +442,17 @@ impl DesktopBackend {
                 eprintln!("lattice-ai-desktop: the gateway stopped: {err}");
             }
         });
-        *self.gateway.lock().expect("gateway lock") = Some(RunningGateway { shutdown: Some(tx) });
+        *self.gateway_error.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        *self.gateway.lock().unwrap_or_else(|e| e.into_inner()) = Some(RunningGateway {
+            shutdown: Some(tx),
+            task,
+        });
         eprintln!("lattice-ai-desktop: gateway listening on {}", self.origin());
 
         self.start_jobs();
     }
 
     /// Start the background jobs timer, unless it is switched off.
-    ///
-    /// It keeps running across `shutdown_backend`/`restart_backend`: a tick
-    /// against a stopped worker fails, backs off, and is picked up again when
-    /// the worker returns — which is exactly what a scheduler should do, and
-    /// cheaper than a second lifecycle to keep in step.
     fn attach_product_scheduler(&self, mut state: GatewayState) -> GatewayState {
         if self.plan.topology == Topology::Gateway {
             if let Some(product) = state.product() {
@@ -428,18 +462,18 @@ impl DesktopBackend {
                     product.graph.clone(),
                 );
                 state = state.with_jobs(Arc::clone(&scheduler));
-                *self.jobs.lock().expect("jobs lock") = Some(scheduler);
+                *self.jobs.lock().unwrap_or_else(|e| e.into_inner()) = Some(scheduler);
                 return state;
             }
         }
-        if let Some(scheduler) = self.jobs.lock().expect("jobs lock").clone() {
+        if let Some(scheduler) = self.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone() {
             state = state.with_jobs(scheduler);
         }
         state
     }
 
     fn start_jobs(&self) {
-        let Some(scheduler) = self.jobs.lock().expect("jobs lock").clone() else {
+        let Some(scheduler) = self.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone() else {
             return;
         };
         if !mounts::jobs_enabled_from_env() {
@@ -491,19 +525,26 @@ impl DesktopBackend {
     }
 
     /// Stop then start again, preserving the restart counter.
-    pub async fn restart(&self) -> BackendStatus {
+    pub async fn restart(&self) -> Result<BackendStatus, String> {
         if let Err(err) = self.supervisor.restart().await {
             eprintln!("lattice-ai-desktop: restart failed: {err}");
+            return Err(format!("worker restart failed: {err}"));
         }
-        self.status().await
+        Ok(self.status().await)
     }
 
-    /// Stop the gateway too. Called on the way out of the process.
-    pub fn stop_gateway(&self) {
-        if let Some(running) = self.gateway.lock().expect("gateway lock").as_mut() {
-            if let Some(tx) = running.shutdown.take() {
+    /// Stop the gateway and clear its slot so a subsequent `start_gateway()` can restart cleanly.
+    pub async fn stop_gateway(&self) {
+        let _lifecycle = self.gateway_lifecycle.lock().await;
+        let running = {
+            let mut guard = self.gateway.lock().unwrap_or_else(|e| e.into_inner());
+            guard.take()
+        };
+        if let Some(mut gw) = running {
+            if let Some(tx) = gw.shutdown.take() {
                 let _ = tx.send(());
             }
+            let _ = tokio::time::timeout(Duration::from_secs(5), gw.task).await;
         }
     }
 
@@ -530,7 +571,7 @@ impl DesktopBackend {
             jobs_running: self
                 .jobs
                 .lock()
-                .expect("jobs lock")
+                .unwrap_or_else(|e| e.into_inner())
                 .as_ref()
                 .map(|scheduler| scheduler.is_running())
                 .unwrap_or(false),

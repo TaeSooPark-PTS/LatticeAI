@@ -13,19 +13,65 @@ export interface ModelInfo {
   internet_requirement?: string;
 }
 
-/** In-memory cache of approval tokens for runs this extension started (or was given). */
-const approvalTokenCache = new Map<string, string>();
+/** In-memory bounded, TTL-expiring cache of approval tokens (single-use on retrieval). */
+const MAX_APPROVAL_TOKENS = 256;
+const APPROVAL_TOKEN_TTL_MS = 30 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 30_000;
+const STREAM_TIMEOUT_MS = 120_000;
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+
+const approvalTokenCache = new Map<string, CachedToken>();
+
+function pruneApprovalTokenCache(now = Date.now()): void {
+  for (const [key, entry] of approvalTokenCache.entries()) {
+    if (entry.expiresAt <= now) {
+      approvalTokenCache.delete(key);
+    }
+  }
+  while (approvalTokenCache.size >= MAX_APPROVAL_TOKENS) {
+    const oldestKey = approvalTokenCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    approvalTokenCache.delete(oldestKey);
+  }
+}
 
 export class LatticeAIClient {
-  constructor(private baseUrl: string) { }
+  constructor(private baseUrl: string, private authToken?: string) { }
+
+  setBaseUrl(baseUrl: string): void {
+    this.baseUrl = baseUrl;
+  }
+
+  setAuthToken(authToken?: string): void {
+    this.authToken = authToken && authToken.trim() ? authToken.trim() : undefined;
+  }
+
+  private authHeaders(extra: Record<string, string | number> = {}): Record<string, string | number> {
+    if (this.authToken) {
+      return { ...extra, Authorization: `Bearer ${this.authToken}` };
+    }
+    return extra;
+  }
 
   /** Remember a token so List/Approve can resume runs after a pause. */
   cacheApprovalToken(runId: string, token: string): void {
-    if (runId && token) approvalTokenCache.set(runId, token);
+    if (!runId || !token) return;
+    const now = Date.now();
+    pruneApprovalTokenCache(now);
+    approvalTokenCache.set(runId, { token, expiresAt: now + APPROVAL_TOKEN_TTL_MS });
   }
 
+  /** Retrieve and immediately consume (single-use) a cached approval token. */
   takeCachedApprovalToken(runId: string): string | undefined {
-    return approvalTokenCache.get(runId);
+    const entry = approvalTokenCache.get(runId);
+    if (!entry) return undefined;
+    approvalTokenCache.delete(runId);
+    if (entry.expiresAt <= Date.now()) return undefined;
+    return entry.token;
   }
 
   clearCachedApprovalToken(runId: string): void {
@@ -329,13 +375,49 @@ export class LatticeAIClient {
     return new Promise((resolve, reject) => {
       const url = new URL(this.baseUrl + path);
       const mod = url.protocol === "https:" ? https : http;
-      mod.get(url.toString(), (res) => {
-        let data = "";
-        res.on("data", (c) => (data += c));
-        res.on("end", () => {
-          try { resolve(JSON.parse(data)); } catch { reject(new Error(data)); }
-        });
-      }).on("error", reject);
+      let settled = false;
+      const finish = (err: Error | null, value?: any) => {
+        if (settled) return;
+        settled = true;
+        if (err) reject(err);
+        else resolve(value);
+      };
+      const req = mod.request(
+        {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === "https:" ? 443 : 80),
+          path: url.pathname + url.search,
+          method: "GET",
+          timeout: REQUEST_TIMEOUT_MS,
+          headers: this.authHeaders(),
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (c) => (data += c));
+          res.on("error", (err) => finish(err));
+          res.on("aborted", () => finish(new Error("Response stream aborted")));
+          res.on("close", () => {
+            if (!res.complete) finish(new Error("Response closed prematurely"));
+          });
+          res.on("end", () => {
+            let parsed: any;
+            try { parsed = JSON.parse(data); } catch { parsed = undefined; }
+            const status = res.statusCode ?? 0;
+            if (status >= 400) {
+              const detail = parsed?.detail ?? parsed?.error ?? data;
+              const error: any = new Error(String(detail || `HTTP ${status}`));
+              error.status = status;
+              finish(error);
+              return;
+            }
+            if (parsed === undefined) finish(new Error(data || "Invalid JSON response"));
+            else finish(null, parsed);
+          });
+        }
+      );
+      req.on("timeout", () => req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`)));
+      req.on("error", (err) => finish(err));
+      req.end();
     });
   }
 
@@ -344,17 +426,33 @@ export class LatticeAIClient {
       const bodyStr = JSON.stringify(body);
       const url = new URL(this.baseUrl + path);
       const mod = url.protocol === "https:" ? https : http;
+      let settled = false;
+      const finish = (err: Error | null, value?: any) => {
+        if (settled) return;
+        settled = true;
+        if (err) reject(err);
+        else resolve(value);
+      };
       const req = mod.request(
         {
           hostname: url.hostname,
           port: url.port || (url.protocol === "https:" ? 443 : 80),
           path: url.pathname + url.search,
           method: "POST",
-          headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(bodyStr) },
+          timeout: REQUEST_TIMEOUT_MS,
+          headers: this.authHeaders({
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(bodyStr),
+          }),
         },
         (res) => {
           let data = "";
           res.on("data", (c) => (data += c));
+          res.on("error", (err) => finish(err));
+          res.on("aborted", () => finish(new Error("Response stream aborted")));
+          res.on("close", () => {
+            if (!res.complete) finish(new Error("Response closed prematurely"));
+          });
           res.on("end", () => {
             let parsed: any;
             try { parsed = JSON.parse(data); } catch { parsed = undefined; }
@@ -364,15 +462,16 @@ export class LatticeAIClient {
               const detail = parsed?.detail ?? parsed?.error ?? data;
               const error: any = new Error(String(detail || `HTTP ${status}`));
               error.status = status;
-              reject(error);
+              finish(error);
               return;
             }
-            if (parsed === undefined) reject(new Error(data));
-            else resolve(parsed);
+            if (parsed === undefined) finish(new Error(data || "Invalid JSON response"));
+            else finish(null, parsed);
           });
         }
       );
-      req.on("error", reject);
+      req.on("timeout", () => req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`)));
+      req.on("error", (err) => finish(err));
       req.write(bodyStr);
       req.end();
     });
@@ -380,10 +479,6 @@ export class LatticeAIClient {
 
   /**
    * SSE frames from a POST, preserving the `event:` name.
-   *
-   * `_streamPost` below only understands anonymous `data:` chat chunks, so a
-   * named `agent_step` frame would be misread as a chunk. This parser keeps
-   * the event name, which is what the live step timeline needs.
    */
   private async *_streamEvents(
     path: string,
@@ -397,21 +492,29 @@ export class LatticeAIClient {
     let done = false;
     let failure: Error | null = null;
 
+    const wake = () => {
+      resolve?.();
+      resolve = null;
+    };
+
     const req = mod.request(
       {
         hostname: url.hostname,
         port: url.port || (url.protocol === "https:" ? 443 : 80),
         path: url.pathname + url.search,
         method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+        timeout: STREAM_TIMEOUT_MS,
+        headers: this.authHeaders({
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        }),
       },
       (res) => {
-        if ((res.statusCode ?? 0) >= 400) {
+        if ((res.statusCode ?? 500) >= 400) {
           failure = new Error(`HTTP ${res.statusCode}`);
           (failure as any).status = res.statusCode;
           done = true;
-          resolve?.();
-          resolve = null;
+          wake();
           res.resume();
           return;
         }
@@ -436,18 +539,31 @@ export class LatticeAIClient {
               try {
                 frames.push({ event, data: JSON.parse(payload) });
               } catch {
-                // A malformed frame is dropped, never guessed at.
+                // Malformed frame is dropped rather than crashing the generator.
               }
             }
-            resolve?.();
-            resolve = null;
+            wake();
           }
         });
-        res.on("end", () => { done = true; resolve?.(); resolve = null; });
+        res.on("error", (err) => { failure = err; done = true; wake(); });
+        res.on("aborted", () => {
+          if (!done) failure = failure ?? new Error("Stream aborted");
+          done = true;
+          wake();
+        });
+        res.on("close", () => {
+          if (!done && !res.complete) {
+            failure = failure ?? new Error("Stream closed prematurely");
+          }
+          done = true;
+          wake();
+        });
+        res.on("end", () => { done = true; wake(); });
       }
     );
 
-    req.on("error", (err) => { failure = err; done = true; resolve?.(); resolve = null; });
+    req.on("timeout", () => req.destroy(new Error(`Stream timed out after ${STREAM_TIMEOUT_MS}ms`)));
+    req.on("error", (err) => { failure = err; done = true; wake(); });
     req.write(body);
     req.end();
 
@@ -469,16 +585,34 @@ export class LatticeAIClient {
     const chunks: string[] = [];
     let resolve: (() => void) | null = null;
     let done = false;
+    let failure: Error | null = null;
+
+    const wake = () => {
+      resolve?.();
+      resolve = null;
+    };
 
     const req = mod.request(
       {
         hostname: url.hostname,
         port: url.port || (url.protocol === "https:" ? 443 : 80),
-        path: url.pathname,
+        path: url.pathname + url.search,
         method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+        timeout: STREAM_TIMEOUT_MS,
+        headers: this.authHeaders({
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        }),
       },
       (res) => {
+        if ((res.statusCode ?? 500) >= 400) {
+          failure = new Error(`HTTP ${res.statusCode}`);
+          (failure as any).status = res.statusCode;
+          done = true;
+          wake();
+          res.resume();
+          return;
+        }
         let buffer = "";
         res.on("data", (raw: Buffer) => {
           buffer += raw.toString();
@@ -487,23 +621,41 @@ export class LatticeAIClient {
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               const payload = line.slice(6).trim();
-              if (payload === "[DONE]") { done = true; }
-              else {
+              if (payload === "[DONE]") {
+                done = true;
+              } else {
                 try {
                   const parsed = JSON.parse(payload);
-                  chunks.push(parsed.chunk);
-                } catch { }
+                  if (typeof parsed?.chunk === "string") {
+                    chunks.push(parsed.chunk);
+                  }
+                } catch (parseErr) {
+                  console.warn("Lattice AI stream skipped malformed JSON frame:", parseErr);
+                }
               }
-              resolve?.();
-              resolve = null;
+              wake();
             }
           }
         });
-        res.on("end", () => { done = true; resolve?.(); resolve = null; });
+        res.on("error", (err) => { failure = err; done = true; wake(); });
+        res.on("aborted", () => {
+          if (!done) failure = failure ?? new Error("Stream aborted");
+          done = true;
+          wake();
+        });
+        res.on("close", () => {
+          if (!done && !res.complete) {
+            failure = failure ?? new Error("Stream closed prematurely");
+          }
+          done = true;
+          wake();
+        });
+        res.on("end", () => { done = true; wake(); });
       }
     );
 
-    req.on("error", () => { done = true; resolve?.(); resolve = null; });
+    req.on("timeout", () => req.destroy(new Error(`Stream timed out after ${STREAM_TIMEOUT_MS}ms`)));
+    req.on("error", (err) => { failure = err; done = true; wake(); });
     req.write(body);
     req.end();
 
@@ -515,23 +667,55 @@ export class LatticeAIClient {
         yield chunks.shift()!;
       }
     }
+    if (failure) throw failure;
   }
 
   private _delete(path: string): Promise<any> {
     return new Promise((resolve, reject) => {
       const url = new URL(this.baseUrl + path);
       const mod = url.protocol === "https:" ? https : http;
+      let settled = false;
+      const finish = (err: Error | null, value?: any) => {
+        if (settled) return;
+        settled = true;
+        if (err) reject(err);
+        else resolve(value);
+      };
       const req = mod.request(
-        { hostname: url.hostname, port: url.port, path: url.pathname, method: "DELETE" },
+        {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === "https:" ? 443 : 80),
+          path: url.pathname + url.search,
+          method: "DELETE",
+          timeout: REQUEST_TIMEOUT_MS,
+          headers: this.authHeaders(),
+        },
         (res) => {
           let data = "";
           res.on("data", (c) => (data += c));
+          res.on("error", (err) => finish(err));
+          res.on("aborted", () => finish(new Error("Response stream aborted")));
+          res.on("close", () => {
+            if (!res.complete) finish(new Error("Response closed prematurely"));
+          });
           res.on("end", () => {
-            try { resolve(JSON.parse(data)); } catch { reject(new Error(data)); }
+            let parsed: any;
+            try { parsed = JSON.parse(data); } catch { parsed = undefined; }
+            const status = res.statusCode ?? 0;
+            if (status >= 400) {
+              const detail = parsed?.detail ?? parsed?.error ?? data;
+              const error: any = new Error(String(detail || `HTTP ${status}`));
+              error.status = status;
+              finish(error);
+              return;
+            }
+            if (parsed === undefined) finish(new Error(data || "Invalid JSON response"));
+            else finish(null, parsed);
           });
         }
       );
-      req.on("error", reject);
+      req.on("timeout", () => req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`)));
+      req.on("error", (err) => finish(err));
       req.end();
     });
   }

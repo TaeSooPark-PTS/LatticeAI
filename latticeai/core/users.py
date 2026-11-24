@@ -68,15 +68,16 @@ def load_users_file(path: Path) -> Dict[str, Any]:
         loaded = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(loaded, dict):
             loaded = {}
-    except Exception:
+    except (OSError, json.JSONDecodeError, ValueError):
+        quiet("failed to parse users file; treating as empty")
         loaded = {}
     migrated, _, changed = migrate_users(loaded)
     if changed:
         backup = path.with_name(f"{path.name}.pre-user-uuid.{_now().replace(':', '-')}.json")
         try:
             shutil.copy2(path, backup)
-        except Exception:
-            quiet()
+        except OSError:
+            quiet("failed to create users pre-migration backup")
         atomic_write_json(path, migrated)
     return migrated
 

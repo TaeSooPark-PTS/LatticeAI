@@ -205,7 +205,20 @@ impl Scheduler {
             let graph = graph.clone();
             let db = db.clone();
             let seam = seam.clone();
-            let outcome = index_api::engine::drain_once(graph, db, limit, seam).await?;
+            let outcome = match index_api::engine::drain_once(graph, db, limit, seam).await {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    if total.did_work() {
+                        log(&format!(
+                            "mid-wave drain error after processing {} node(s): {error}",
+                            total.claimed
+                        ));
+                        total.detail = Some(format!("partial drain halted: {error}"));
+                        return Ok(total);
+                    }
+                    return Err(error);
+                }
+            };
             let claimed = outcome.claimed;
             total.absorb(outcome);
             if claimed == 0 || claimed < plan.limit as u64 {

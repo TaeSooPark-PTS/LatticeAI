@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Network, AlertTriangle, RefreshCw } from "lucide-react";
 import { brainGovernanceApi } from "@/api/brainGovernance";
