@@ -5,7 +5,6 @@ use axum::response::Response;
 use lattice_auth::response::json_response;
 use lattice_auth::OrderedMap;
 use lattice_core::messages::{self, LANGUAGE_HEADER};
-use lattice_core::worker::WorkerSeamError;
 use serde_json::{json, Map, Value};
 
 /// One JSON body, compact separators, `application/json` with no charset.
@@ -44,27 +43,6 @@ pub fn language(headers: &HeaderMap) -> &'static str {
             .get(axum::http::header::ACCEPT_LANGUAGE)
             .and_then(|value| value.to_str().ok()),
     )
-}
-
-/// A refused worker call, status preserved when the worker gave one.
-pub fn seam_error(error: WorkerSeamError) -> Response {
-    match error {
-        WorkerSeamError::Rejected {
-            status,
-            detail: ref detail_text,
-            ..
-        } => {
-            let parsed: Option<Value> = serde_json::from_str(detail_text).ok();
-            let message = parsed
-                .as_ref()
-                .and_then(|value| value.get("detail"))
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .unwrap_or_else(|| detail_text.clone());
-            detail(status, &message)
-        }
-        other => detail(502, &other.to_string()),
-    }
 }
 
 fn problem(kind: &str, loc: Value, msg: &str, input: Value, ctx: Option<Value>) -> OrderedMap {

@@ -18,7 +18,7 @@ pub(super) use super::jobs_store::{next_job_id, now_stamp, write_job};
 use super::watch_bridge::{
     disable_watch, enable_watch, ensure_poller, read_watch_file, vault_watch_on,
 };
-use super::{forward, LocalFilesState};
+use super::LocalFilesState;
 
 const FOLDER_REQUEST: &[FieldSpec] = &[
     required("path", Kind::Str(0)),
@@ -145,21 +145,15 @@ pub(super) async fn job_resume(
         payload.insert("job", job);
         return ok(&serde_json::to_value(payload).unwrap_or(Value::Null));
     }
-    let seam = match state.require_seam(lang) {
-        Ok(seam) => seam,
-        Err(refusal) => return refusal,
+    let Some(_graph) = state.graph() else {
+        return http_error(503, "capture.ingestion_disabled", lang);
     };
-    match forward(
-        seam,
-        &headers,
-        &format!("/api/ingestion/jobs/{job_id}/resume"),
-        &json!({}),
-    )
-    .await
-    {
-        Ok(value) => ok(&value),
-        Err(refusal) => refusal,
-    }
+    let mut payload = OrderedMap::new();
+    payload.insert("status", json!("nothing_to_resume"));
+    payload.insert("job_id", json!(job_id));
+    payload.insert("remaining", json!(remaining));
+    payload.insert("job", job);
+    ok(&serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
 pub(super) async fn folder(
@@ -199,23 +193,7 @@ pub(super) async fn folder(
         return refusal;
     }
     let Some(graph) = state.graph().cloned() else {
-        // No native writer: keep the old seam path for a mis-wired host.
-        let seam = match state.require_seam(lang) {
-            Ok(seam) => seam,
-            Err(refusal) => return refusal,
-        };
-        let forwarded = json!({
-            "path": path,
-            "recursive": model.bool("recursive", true),
-            "background": model.bool("background", false),
-            "workspace_id": model.get("workspace_id").cloned().unwrap_or(Value::Null),
-            "approved": true,
-            "approval_token": model.get("approval_token").cloned().unwrap_or(Value::Null),
-        });
-        return match forward(seam, &headers, "/api/ingestion/folder", &forwarded).await {
-            Ok(value) => ok(&value),
-            Err(refusal) => refusal,
-        };
+        return http_error(503, "capture.ingestion_disabled", lang);
     };
     let recursive = model.bool("recursive", true);
     let background = model.bool("background", false);

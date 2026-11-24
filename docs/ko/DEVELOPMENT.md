@@ -2,9 +2,9 @@
 
 # Lattice AI 개발 가이드
 
-> **상태: 정본 (13.7.0)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
+> **상태: 정본 (13.7.1)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
 
-현재 릴리스: **13.7.0 — Living Synthesis**.
+현재 릴리스: **13.7.1 — Living Synthesis**.
 
 이 문서는 기여자 온보딩 경로를 정리합니다: 저장소를 어떻게 실행하는지, 변경 사항이 어디에 들어가야 하는지, 어떤 게이트가 실패하는지, 그리고 제품의 정직성을 지키는 내부 규칙을 다룹니다. 제품 포지셔닝과 5분 첫 실행 흐름은 [README.md](../../README.md)와 [ONBOARDING.md](./ONBOARDING.md)에 있습니다. 지원되는 릴리스 이력(12.0.0 이상)은 [CHANGELOG.md](../CHANGELOG.md)와 [RELEASE.md](../../RELEASE.md)에 있으며(`12.x`는 현대적인 Rust 호스트 + 도메인 그룹 아키텍처 세대이므로 [SECURITY.md](../../SECURITY.md)도 `12.x`만 지원합니다), 아직 열린 과제는 [ROADMAP.md](./ROADMAP.md)(참고 문서, 정본 아님)에 정리되어 있습니다.
 
@@ -191,7 +191,7 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 - [CHANGELOG.md](../CHANGELOG.md)
 - 보안/신뢰 변경 시 [SECURITY.md](../../SECURITY.md)
 - 에디터 확장 변경 시 [vscode-extension/README.md](../../vscode-extension/README.md)
-- 루트 호환성 파일 변경 시 [LEGACY_COMPATIBILITY.md](../LEGACY_COMPATIBILITY.md)
+- 크레이트 또는 서비스 경계 변경 시 [ARCHITECTURE.md](./ARCHITECTURE.md)
 - 기여자 경로·코드 지도 변경 시 이 문서
 - 열린 갭이 닫히거나 새 항목이 생겼을 때 [ROADMAP.md](./ROADMAP.md)
 
@@ -199,10 +199,10 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 
 13.4.0 릴리스 작업의 정확한 아티팩트 파일명은 다음과 같습니다.
 
-- `dist/ltcai-13.7.0-py3-none-any.whl`
-- `dist/ltcai-13.7.0.tar.gz`
-- `ltcai-13.7.0.tgz`
-- `dist/ltcai-13.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.0_aarch64.dmg`
+- `dist/ltcai-13.7.1-py3-none-any.whl`
+- `dist/ltcai-13.7.1.tar.gz`
+- `ltcai-13.7.1.tgz`
+- `dist/ltcai-13.7.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.1_aarch64.dmg`
 
 DMG는 ad-hoc 서명(실질적으로 미서명) 상태이며, `npm run release:validate`는 Developer ID 서명이 아니라 파일명과 존재 여부를 검사합니다.

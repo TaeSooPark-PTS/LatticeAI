@@ -12,8 +12,9 @@ use lattice_core::pytext::safe_loads;
 use lattice_core::CoreError;
 use serde_json::{json, Value};
 
+use super::http::http_error;
 use super::http::{detail, language, ok, optional, required, FieldSpec, Kind, Model, Query};
-use super::{expand_user, forward, LocalFilesState};
+use super::{expand_user, LocalFilesState};
 
 const TREE_REQUEST: &[FieldSpec] = &[
     required("path", Kind::Str(0)),
@@ -306,20 +307,28 @@ pub(super) async fn index(
     ) {
         return refusal;
     }
-    let seam = match state.require_seam(lang) {
-        Ok(seam) => seam,
-        Err(refusal) => return refusal,
+    let Some(graph) = state.graph().cloned() else {
+        return http_error(503, "capture.ingestion_disabled", lang);
     };
-    match forward(
-        seam,
-        &headers,
-        "/knowledge-graph/local/index",
-        &serde_json::from_slice(&body).unwrap_or(Value::Null),
+    let workspace_id = model
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    let owner = if user.is_empty() { None } else { Some(user) };
+    match super::folder::ingest_folder_native(
+        &state,
+        graph,
+        path,
+        true,
+        false,
+        owner.as_deref(),
+        workspace_id.as_deref(),
     )
     .await
     {
         Ok(value) => ok(&value),
-        Err(refusal) => refusal,
+        Err(message) => detail(400, &message),
     }
 }
 

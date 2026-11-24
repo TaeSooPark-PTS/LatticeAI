@@ -145,12 +145,3 @@ pub use modelops::{models_catalog, setup};
 pub use adminops::{admin, funnel_metrics, security_dashboard};
 // shell/ — the browser's first contact.
 pub use shell::{static_ui, ui_redirects};
-
-/// Placeholder from the v11.6.0 scaffold, kept because it is public API.
-///
-/// Every family module it was waiting for has landed; it is retained only so
-/// that removing it is a deliberate, coordinated change rather than a side
-/// effect of a regrouping.
-pub fn crate_ready() -> bool {
-    true
-}

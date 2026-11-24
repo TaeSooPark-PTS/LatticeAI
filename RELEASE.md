@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.7.1 — Living Synthesis (2026-11-24)
+
+Removed all remaining legacy `forward()` fallbacks and dead compatibility shims across `lattice-ingest`, `lattice-platform`, and `lattice-retrieval` (returning HTTP `503` consistently when `GraphWriter` is unwired), added native `source: "git"` and unwired-`GraphWriter` 503 integration tests in `local_files_replay.rs`, and pruned pre-`13.7.0` review/plan/legacy docs while preserving all benchmark documents.
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.7.1.md](docs/releases/RELEASE_NOTES_v13.7.1.md).
+
+Build artifacts: `dist/ltcai-13.7.1-py3-none-any.whl`, `dist/ltcai-13.7.1.tar.gz`, `ltcai-13.7.1.tgz`, `dist/ltcai-13.7.1.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.1_aarch64.dmg`.
+
 ## v13.7.0 — Living Synthesis (2026-11-24)
 
 Implemented native Rust `GraphWriter` ingestion for Obsidian vaults (`[[wikilink]]` `LINKS_TO` edges) and `notion`/`git`/`mail` interop bridges in `lattice-ingest`, migrated `vite.config.ts`/`vitest.config.ts` to native ESM `.mts` (zero Vite 8 `configLoader: 'native'` warnings), pruned pre-`v13.0.0` release notes (`v13.0.0+` floor), and modernized `ARCHITECTURE.md` and `docs/ko/ARCHITECTURE.md` to `13.7.0`.

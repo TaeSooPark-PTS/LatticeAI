@@ -20,6 +20,16 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.7.1": {
+    "_why": [
+      "Living Synthesis (13.7.1) removes dead legacy forward() fallbacks and",
+      "compatibility scaffolding across lattice-ingest/platform/retrieval,",
+      "adds native git interop and unwired-GraphWriter 503 integration tests,",
+      "and prunes pre-13.7.0 review/plan/legacy docs while preserving benchmarks.",
+      "",
+      "No visual screen layout changed in 13.7.1; empty claim set on purpose."
+    ]
+  },
   "13.7.0": {
     "_why": [
       "Living Synthesis (13.7.0) implements native Rust GraphWriter ingestion",

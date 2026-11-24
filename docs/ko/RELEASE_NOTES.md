@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v13.7.1 - Living Synthesis] (2026-11-24)
+
+`lattice-ingest`, `lattice-platform`, `lattice-retrieval`의 잔여 레거시 `forward()` 폴백과 미사용 호환 스텁을 모두 제거하고(`GraphWriter` 미연결 시 일관된 HTTP `503`), `local_files_replay.rs`에 `git init` 기반 `source: "git"` 및 503 통합 테스트를 추가했으며, 모든 벤치마크 문서를 보존한 채 `13.7.0` 이전 리뷰·계획·레거시 문서를 정리했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.7.1.md](./releases/RELEASE_NOTES_v13.7.1.md).
+
 # [v13.7.0 - Living Synthesis] (2026-11-24)
 
 `lattice-ingest`에 단일 라이터 `GraphWriter` 기반 네이티브 Rust Obsidian 볼트(`[[wikilink]]` `LINKS_TO` 엣지) 및 Notion/Git/Mail 연동 브릿지를 구현하고, Vite 8 / Vitest 5 설정을 네이티브 ESM `.mts`로 전환했으며, `v13.0.0` 미만 릴리스 노트를 정리하고 `ARCHITECTURE.md` / `docs/ko/ARCHITECTURE.md`를 `13.7.0` 기준으로 최신화했습니다.
@@ -76,13 +82,14 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 13.7.0까지**의 공개 릴리스 이력을 유지합니다(최신 `v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 13.7.1까지**의 공개 릴리스 이력을 유지합니다(최신 `v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
 - [v13.5.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.5.0.md)
 - [v13.4.2 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.2.md)
 - [v13.4.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.4.1.md)
+- [v13.7.1 - Living Synthesis](./releases/RELEASE_NOTES_v13.7.1.md)
 - [v13.7.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.7.0.md)
 - [v13.6.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.6.0.md)
 - [v13.5.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.5.0.md)

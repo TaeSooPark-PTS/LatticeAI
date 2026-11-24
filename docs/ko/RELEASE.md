@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.7.1 — Living Synthesis (2026-11-24)
+
+`lattice-ingest`, `lattice-platform`, `lattice-retrieval`의 잔여 레거시 `forward()` 폴백과 미사용 호환 스텁을 모두 제거해 `GraphWriter` 미연결 시 일관된 HTTP `503`을 반환하도록 정리하고, `local_files_replay.rs`에 `git init` 기반 `source: "git"` 및 503 통합 테스트를 추가했으며, 모든 벤치마크 문서를 보존한 채 `13.7.0` 이전 리뷰·계획·레거시 문서를 정리했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.7.1.md](./releases/RELEASE_NOTES_v13.7.1.md).
+
+빌드 산출물은 `dist/ltcai-13.7.1-py3-none-any.whl`, `dist/ltcai-13.7.1.tar.gz`, `ltcai-13.7.1.tgz`, `dist/ltcai-13.7.1.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.1_aarch64.dmg` 입니다.
+
 ## v13.7.0 — Living Synthesis (2026-11-24)
 
 `lattice-ingest`에 `GraphWriter` 기반 네이티브 Rust Obsidian 볼트(`[[wikilink]]` `LINKS_TO` 엣지) 및 `notion`/`git`/`mail` 연동 브릿지를 구현하고, `vite.config.ts`/`vitest.config.ts`를 네이티브 ESM `.mts`로 전환해 Vite 8 경고를 제거했으며, `v13.0.0` 미만 릴리스 노트를 정리하고 `ARCHITECTURE.md` 및 `docs/ko/ARCHITECTURE.md`를 `13.7.0` 기준으로 최신화했습니다.

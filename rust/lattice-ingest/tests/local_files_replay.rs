@@ -532,4 +532,172 @@ async fn native_obsidian_and_interop_ingest_write_directly_through_graph_writer(
     )
     .await;
     assert_eq!(m_res["ingested"], 2);
+
+    // 3. Git repository interop (`git init` with sample file & commits)
+    let git_dir = tempfile::tempdir().unwrap();
+    let run_git = |args: &[&str]| {
+        let status = std::process::Command::new("git")
+            .current_dir(git_dir.path())
+            .args(args)
+            .env("GIT_AUTHOR_NAME", "Lattice Test")
+            .env("GIT_AUTHOR_EMAIL", "test@lattice.local")
+            .env("GIT_COMMITTER_NAME", "Lattice Test")
+            .env("GIT_COMMITTER_EMAIL", "test@lattice.local")
+            .status()
+            .expect("git binary must be available for git interop test");
+        assert!(status.success(), "git {args:?} failed");
+    };
+    run_git(&["init"]);
+    std::fs::write(
+        git_dir.path().join("README.md"),
+        "# Demo Repo\nInitial commit.\n",
+    )
+    .unwrap();
+    run_git(&["add", "README.md"]);
+    run_git(&["commit", "-m", "feat: initialize demo repo"]);
+    std::fs::write(
+        git_dir.path().join("notes.md"),
+        "Architecture notes for v13.7.1.\n",
+    )
+    .unwrap();
+    run_git(&["add", "notes.md"]);
+    run_git(&["commit", "-m", "docs: add architecture notes"]);
+
+    let git_s = git_dir.path().to_string_lossy().to_string();
+    let g_probe = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({"source": "git", "path": git_s, "dry_run": true}),
+    )
+    .await;
+    let g_tok = g_probe["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(g_tok));
+    let g_dry = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({
+            "source": "git",
+            "path": git_s,
+            "dry_run": true,
+            "approved": true,
+            "approval_token": g_tok,
+        }),
+    )
+    .await;
+    assert_eq!(g_dry["dry_run"], true);
+    assert_eq!(g_dry["items_found"], 2);
+
+    let g_probe2 = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({"source": "git", "path": git_s, "dry_run": false}),
+    )
+    .await;
+    let g_tok2 = g_probe2["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(g_tok2));
+    let g_res = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({
+            "source": "git",
+            "path": git_s,
+            "dry_run": false,
+            "approved": true,
+            "approval_token": g_tok2,
+        }),
+    )
+    .await;
+    assert_eq!(g_res["ingested"], 2);
+}
+
+#[tokio::test]
+async fn unwired_graph_writer_returns_503_consistently() {
+    let data = tempfile::tempdir().unwrap();
+    seed_users(data.path());
+    let db = data.path().join("knowledge_graph.sqlite");
+    let store = Arc::new(Store::open(&db).unwrap());
+    let mut env = HashMap::new();
+    env.insert("LATTICEAI_REQUIRE_AUTH".into(), "1".into());
+    env.insert("LATTICEAI_HOST".into(), "127.0.0.1".into());
+    env.insert("LATTICEAI_PORT".into(), "4825".into());
+    env.insert("LATTICEAI_RATE_LIMIT".into(), "0".into());
+    env.insert(
+        "LATTICEAI_DATA_DIR".into(),
+        data.path().to_string_lossy().into_owned(),
+    );
+    let mut config = AuthConfig::from_map(&env, None);
+    config.data_dir = data.path().to_path_buf();
+    let auth = AuthState::with_clock(config, Clock::frozen(1_786_000_000.0));
+    let token = auth
+        .sessions()
+        .create("user:owner", Some("owner@lattice.test"));
+    let runtime = RuntimeConfig::resolve(
+        Some(data.path().to_str().unwrap()),
+        None,
+        None,
+        Some(data.path()),
+    );
+    let permissions = LocalApprovals::new();
+    // Intentionally omit `.with_graph(...)` so GraphWriter is unwired.
+    let state =
+        LocalFilesState::new(auth, Some(store), runtime).with_permissions(Arc::clone(&permissions));
+    let app = local_files_api::router(Arc::new(state));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr: SocketAddr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let _ = axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await;
+    });
+    let origin = format!("http://{addr}");
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let dir_s = dir.path().to_string_lossy().to_string();
+
+    for (endpoint, body) in [
+        ("/api/ingestion/folder", serde_json::json!({"path": dir_s})),
+        (
+            "/api/ingestion/obsidian",
+            serde_json::json!({"path": dir_s}),
+        ),
+        (
+            "/api/ingestion/interop",
+            serde_json::json!({"source": "notion", "path": dir_s}),
+        ),
+        (
+            "/knowledge-graph/local/index",
+            serde_json::json!({"path": dir_s}),
+        ),
+    ] {
+        let probe: serde_json::Value = serde_json::from_slice(
+            &client
+                .post(format!("{origin}{endpoint}"))
+                .header("cookie", format!("session_token={token}"))
+                .header("content-type", "application/json")
+                .body(serde_json::to_vec(&body).unwrap())
+                .send()
+                .await
+                .unwrap()
+                .bytes()
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        let tok = probe["approval_token"].as_str().unwrap();
+        assert!(permissions.approve(tok));
+        let mut approved = body.clone();
+        approved["approved"] = serde_json::json!(true);
+        approved["approval_token"] = serde_json::json!(tok);
+        let resp = client
+            .post(format!("{origin}{endpoint}"))
+            .header("cookie", format!("session_token={token}"))
+            .header("content-type", "application/json")
+            .body(serde_json::to_vec(&approved).unwrap())
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.status().as_u16(),
+            503,
+            "expected 503 when GraphWriter is unwired on {endpoint}"
+        );
+    }
 }
