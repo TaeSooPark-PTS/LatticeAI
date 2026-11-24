@@ -5,6 +5,15 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
 
+## [13.6.0] - 2026-11-24 — Living Synthesis
+
+### 변경됨
+- **TypeScript 5 완전 제거 및 네이티브 TypeScript 7 OpenAPI 타입 생성기 (`scripts/generate_openapi_types.mjs`, `scripts/check_openapi_drift.mjs`, `package.json`, `package-lock.json`):**
+  - `openapi-typescript@7.13.0`, `openapi-ts5`(`npm:typescript@^5.9.3`) 별칭, `scripts/run_openapi_typescript.mjs` 래퍼 및 `package.json` `overrides` 설정을 제거하고 결정론적 무의존성 ESM OpenAPI 3.x 타입 생성기(`scripts/generate_openapi_types.mjs`)로 대체했습니다.
+  - `typecheck:frontend`를 네이티브 `typescript@7.0.2`(`tsgo`) 기반 `npx tsc -p tsconfig.json --noEmit`으로 직접 실행하도록 복원해 `package-lock.json`에서 TypeScript 5 의존성을 완전히 제거했습니다.
+- **Python 단위 테스트 도메인 모듈 분할 (`tests/unit/_runtime_test_fakes.py`, `tests/unit/test_*.py`):**
+  - 5개의 대형 `tests/unit/test_cov_p1b_remaining*.py` 커버리지 묶음 파일(총 3,379줄)을 공용 `tests/unit/_runtime_test_fakes.py` 기반 9개의 도메인별 소형 단위 테스트 모듈(각 170~449줄)로 분할해 45개 전체 테스트와 `96%+` Python 라인 커버리지를 유지했습니다.
+
 ## [13.5.0] - 2026-11-24 — Living Synthesis
 
 ### 추가됨

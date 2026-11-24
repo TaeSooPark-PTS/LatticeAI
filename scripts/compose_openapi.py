@@ -32,7 +32,7 @@ flips:
    a worker spec whose version disagrees with theirs.
 3. Point ``npm run frontend:openapi`` at
    ``scripts/compose_openapi.py --worker-spec <scratch> --output frontend/openapi.json``
-   followed by the existing ``openapi-typescript`` step, so the committed
+   followed by ``scripts/generate_openapi_types.mjs``, so the committed
    contract is the composition rather than a Python dump.
 4. Leave ``scripts/check_openapi_drift.mjs`` exactly as it is: it re-runs the
    generator into a temp dir and byte-compares. Composition is deterministic,

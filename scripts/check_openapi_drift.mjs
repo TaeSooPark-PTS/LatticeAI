@@ -42,7 +42,7 @@ try {
     "--output",
     generatedSchema,
   ]);
-  runNode(join(repo, "scripts", "run_openapi_typescript.mjs"), [
+  runNode(join(repo, "scripts", "generate_openapi_types.mjs"), [
     generatedSchema,
     "-o",
     generatedTypes,

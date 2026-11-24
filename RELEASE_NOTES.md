@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.6.0 - Living Synthesis] (2026-11-24)
+
+Eliminated the last TypeScript 5 dependency (`openapi-typescript@7.13.0`, `openapi-ts5` alias, `scripts/run_openapi_typescript.mjs`, and `overrides`) by introducing a zero-dependency native TypeScript 7 (`tsgo`) OpenAPI declaration generator (`scripts/generate_openapi_types.mjs`), and split the five monolithic `tests/unit/test_cov_p1b_remaining*.py` coverage bundles into nine domain-focused unit test modules backed by `tests/unit/_runtime_test_fakes.py`.
+
+See [docs/releases/RELEASE_NOTES_v13.6.0.md](docs/releases/RELEASE_NOTES_v13.6.0.md).
+
 # [v13.5.0 - Living Synthesis] (2026-11-24)
 
 Delivered one-click cross-platform engine installation and **Qwen3.8 27B 4-bit** setup across macOS (`omlx` Homebrew + zero-Homebrew universal2 wheel fallback, `local_mlx`), Windows (`winget` Ollama / llama.cpp / LM Studio + `pip` fallback), and Linux (Ollama install script + `pip` / `vllm`) with real-time available-RAM pressure tuning, upgraded the workspace typechecker to **TypeScript 7.0.2 (`tsgo`)** and `scripts/check_i18n_literals.mjs` to `@babel/parser`, and refactored `engine_adapters.py` and `model_loading.py` while removing dead code and obsolete tests.
@@ -136,7 +142,7 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.5.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 13.6.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
 
 ## Releases (12.0.0+)
 
