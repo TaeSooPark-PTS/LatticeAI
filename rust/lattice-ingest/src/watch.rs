@@ -243,11 +243,12 @@ pub fn walk_folder(root: &Path, config: &WatchConfig) -> std::io::Result<Vec<Sca
     }
     let patterns = load_latticeignore(root);
     let mut out = Vec::new();
-    walk_into(root, "", config, &patterns, &mut out);
+    walk_into(root, root, "", config, &patterns, &mut out);
     Ok(out)
 }
 
 fn walk_into(
+    root: &Path,
     current: &Path,
     rel_dir: &str,
     config: &WatchConfig,
@@ -277,6 +278,16 @@ fn walk_into(
         };
         if is_dir {
             dirs.push((name, kind.is_symlink()));
+        } else if kind.is_symlink() {
+            // P0.4: never ingest symlinked files escaping the watched root.
+            let candidate = entry.path();
+            let root_canon = fs::canonicalize(root).ok();
+            let target_canon = fs::canonicalize(&candidate).ok();
+            if let (Some(rc), Some(tc)) = (root_canon, target_canon) {
+                if tc.starts_with(&rc) {
+                    files.push(name);
+                }
+            }
         } else {
             files.push(name);
         }
@@ -321,7 +332,7 @@ fn walk_into(
             continue;
         }
         if config.recursive && !is_symlink {
-            walk_into(&current.join(&name), &relative, config, patterns, out);
+            walk_into(root, &current.join(&name), &relative, config, patterns, out);
         }
     }
 }

@@ -29,6 +29,10 @@ pub struct GraphRagConfig {
     pub max_seeds: usize,
     /// Maximum expanded neighbor nodes to admit.
     pub max_neighbors: usize,
+    /// Per-node fan-out cap preventing high-degree hub explosion during traversal (P1.3).
+    pub max_fanout_per_node: usize,
+    /// Total edge budget per graph expansion query (P1.3).
+    pub max_edges_visited: usize,
     /// Decay factor for 1-hop neighbors.
     pub hop1_decay: f64,
     /// Decay factor for 2-hop neighbors (and shared concept/entity/wikilink/tag bridges).
@@ -43,6 +47,8 @@ impl Default for GraphRagConfig {
             max_hops: 2,
             max_seeds: 12,
             max_neighbors: 40,
+            max_fanout_per_node: 32,
+            max_edges_visited: 512,
             hop1_decay: 0.68,
             hop2_decay: 0.38,
             include_historical: false,

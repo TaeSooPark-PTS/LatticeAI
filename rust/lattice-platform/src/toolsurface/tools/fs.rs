@@ -121,13 +121,30 @@ pub(crate) fn run_workspace_tree(state: &ToolsState, args: &Value) -> Result<Val
             })
         });
         for child in children {
+            // P0.4: never traverse or expose symlinks escaping the workspace root.
+            if let Ok(sym_meta) = std::fs::symlink_metadata(&child) {
+                if sym_meta.file_type().is_symlink() {
+                    let ok_inside = std::fs::canonicalize(&child)
+                        .map(|canon| ws.contains(&canon))
+                        .unwrap_or(false);
+                    if !ok_inside {
+                        continue;
+                    }
+                }
+            }
+            let is_dir = std::fs::symlink_metadata(&child)
+                .map(|m| m.is_dir())
+                .unwrap_or(false);
+            let is_file = std::fs::symlink_metadata(&child)
+                .map(|m| m.is_file())
+                .unwrap_or(false);
             out.push(json!({
                 "path": ws.relative(&child),
-                "type": if child.is_dir() { "directory" } else { "file" },
-                "size": if child.is_file() { child.metadata().ok().map(|m| json!(m.len())) } else { Some(Value::Null) },
+                "type": if is_dir { "directory" } else { "file" },
+                "size": if is_file { child.metadata().ok().map(|m| json!(m.len())) } else { Some(Value::Null) },
                 "depth": depth,
             }));
-            if child.is_dir() {
+            if is_dir {
                 walk(&child, depth + 1, max_depth, ws, out);
             }
         }
@@ -457,11 +474,21 @@ pub(crate) async fn search_files(
                 return;
             }
             let path = entry.path();
-            if path.is_dir() {
+            if let Ok(sym_meta) = std::fs::symlink_metadata(&path) {
+                if sym_meta.file_type().is_symlink() {
+                    let ok_inside = std::fs::canonicalize(&path)
+                        .map(|canon| ws.contains(&canon))
+                        .unwrap_or(false);
+                    if !ok_inside {
+                        continue;
+                    }
+                }
+            }
+            if std::fs::symlink_metadata(&path).map(|m| m.is_dir()).unwrap_or(false) {
                 walk(&path, ws, query_lower, max_results, out);
                 continue;
             }
-            if !path.is_file() {
+            if !std::fs::symlink_metadata(&path).map(|m| m.is_file()).unwrap_or(false) {
                 continue;
             }
             if path.metadata().map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES {
@@ -555,7 +582,17 @@ pub(crate) fn run_grep(state: &ToolsState, args: &Value) -> Result<Value, ToolEx
                 return;
             }
             let path = entry.path();
-            if path.is_dir() {
+            if let Ok(sym_meta) = std::fs::symlink_metadata(&path) {
+                if sym_meta.file_type().is_symlink() {
+                    let ok_inside = std::fs::canonicalize(&path)
+                        .map(|canon| ws.contains(&canon))
+                        .unwrap_or(false);
+                    if !ok_inside {
+                        continue;
+                    }
+                }
+            }
+            if std::fs::symlink_metadata(&path).map(|m| m.is_dir()).unwrap_or(false) {
                 let name = path.file_name().unwrap_or_default().to_string_lossy();
                 if GREP_BINARY_DIRS.contains(&name.as_ref()) {
                     continue;
@@ -571,7 +608,7 @@ pub(crate) fn run_grep(state: &ToolsState, args: &Value) -> Result<Value, ToolEx
                 );
                 continue;
             }
-            if !path.is_file() {
+            if !std::fs::symlink_metadata(&path).map(|m| m.is_file()).unwrap_or(false) {
                 continue;
             }
             let ext = path

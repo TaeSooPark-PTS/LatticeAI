@@ -2,7 +2,7 @@
 
 # Lattice AI v13.7.2 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (Canonical Domain Module Paths & Flat Crate-Root Re-export Removal).
+> **Status: historical** — archived release note for v13.7.2 (Canonical Domain Module Paths & Flat Crate-Root Re-export Removal).
 
 Migrates every caller across the Rust workspace (`lattice-host`, `lattice-chat`, `lattice-platform`, `lattice-agent`, `lattice-retrieval`, `src-tauri`, and all integration tests) from flat crate-root re-exports to canonical domain module paths (`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`), removes the obsolete flat compatibility re-export maps from `lattice-agent` and `lattice-platform`, and removes the last unused `lattice_chat::crate_ready()` scaffold placeholder.
 

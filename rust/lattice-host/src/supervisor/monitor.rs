@@ -219,6 +219,8 @@ pub(crate) async fn run_monitor(
                 let error = SupervisorError::Health(timeout.to_string());
                 shared.record_error(error.to_string());
                 open_gate(&mut gate, Err(error));
+                // P2.4: kill wedged child on startup health timeout instead of hanging indefinitely.
+                let _ = child.kill().await;
             }
             None => {
                 open_gate(
@@ -230,7 +232,44 @@ pub(crate) async fn run_monitor(
             }
         }
 
-        let exit = child.wait().await;
+        // P2.4: Watchdog monitors both child exit and consecutive health failures,
+        // automatically killing and restarting a hung/unresponsive worker while
+        // letting manual graceful stop (`stop_rx`) deliver SIGTERM + grace period.
+        const MAX_CONSECUTIVE_HEALTH_FAILURES: u32 = 3;
+        let poll_interval = shared.config.health_poll_interval;
+        let mut consecutive_failures: u32 = 0;
+        let exit = loop {
+            if *stop_rx.borrow() {
+                break child.wait().await;
+            }
+            tokio::select! {
+                res = child.wait() => break res,
+                _ = stop_rx.changed() => {
+                    // Graceful stop in progress: let Supervisor::stop() deliver SIGTERM
+                    // and wait the configured grace period before reaping.
+                    break child.wait().await;
+                }
+                _ = tokio::time::sleep(poll_interval) => {
+                    if *stop_rx.borrow() {
+                        break child.wait().await;
+                    }
+                    let ok = check_health(&shared.client, &origin).await;
+                    shared.observe_health(ok);
+                    if ok {
+                        consecutive_failures = 0;
+                    } else {
+                        consecutive_failures += 1;
+                        if consecutive_failures >= MAX_CONSECUTIVE_HEALTH_FAILURES && !*stop_rx.borrow() {
+                            shared.record_error(format!(
+                                "watchdog restarting unresponsive worker after {consecutive_failures} failed health probes"
+                            ));
+                            let _ = child.kill().await;
+                            break child.wait().await;
+                        }
+                    }
+                }
+            }
+        };
         let stopping = *stop_rx.borrow();
         {
             let mut state = shared.state();

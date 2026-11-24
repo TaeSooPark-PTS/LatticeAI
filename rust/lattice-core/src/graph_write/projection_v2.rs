@@ -150,15 +150,60 @@ pub(crate) fn project_edge_v2(
         .get("confidence")
         .and_then(Value::as_f64)
         .unwrap_or(1.0);
+    let created_by = meta
+        .get("created_by")
+        .or_else(|| meta.get("relation_status"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("legacy");
+    let valid_from = meta
+        .get("valid_from")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let valid_to = meta
+        .get("valid_to")
+        .or_else(|| meta.get("valid_until"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let superseded_by = meta
+        .get("superseded_by")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let initial_evidence: Vec<String> = meta
+        .get("supporting_sources")
+        .or_else(|| meta.get("evidence"))
+        .and_then(Value::as_array)
+        .map(|arr| {
+            arr.iter()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    let evidence_json = serde_json::to_string(&initial_evidence).unwrap_or_else(|_| "[]".into());
     let created_at = spec.created_at.unwrap_or("");
     txn.execute(
-        "INSERT INTO edges_v2(id, source, target, type, legacy_type, weight, 
-                              confidence, evidence, metadata, created_by, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'legacy', ?) 
-         ON CONFLICT(source, target, type, legacy_type) DO UPDATE SET 
-           weight=max(edges_v2.weight, excluded.weight), 
-           confidence=excluded.confidence, 
-           metadata=excluded.metadata",
+        "INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
+                              confidence, evidence, metadata, created_by, created_at,
+                              valid_from, valid_to, superseded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(source, target, type, legacy_type) DO UPDATE SET
+           weight=max(edges_v2.weight, excluded.weight),
+           confidence=max(edges_v2.confidence, excluded.confidence),
+           evidence=CASE
+             WHEN excluded.evidence != '[]' AND edges_v2.evidence = '[]' THEN excluded.evidence
+             ELSE edges_v2.evidence
+           END,
+           metadata=excluded.metadata,
+           valid_from=COALESCE(excluded.valid_from, edges_v2.valid_from),
+           valid_to=COALESCE(excluded.valid_to, edges_v2.valid_to),
+           superseded_by=COALESCE(excluded.superseded_by, edges_v2.superseded_by)",
         rusqlite::params![
             eid,
             spec.from_node,
@@ -167,8 +212,13 @@ pub(crate) fn project_edge_v2(
             leg_type,
             spec.weight,
             confidence,
+            evidence_json,
             meta_str,
+            created_by,
             created_at,
+            valid_from,
+            valid_to,
+            superseded_by,
         ],
     )?;
     let row_id: Option<String> = txn

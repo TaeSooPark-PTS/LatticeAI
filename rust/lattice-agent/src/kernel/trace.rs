@@ -56,11 +56,26 @@ impl LoopTrace {
         event.insert("at".into(), json!(self.now()));
         for (key, value) in details {
             // Python drops `None` details rather than recording a null.
+            // P0.4: redact inline secrets and PII from recorded trace details.
             if !value.is_null() {
-                event.insert((*key).into(), value.clone());
+                let safe = lattice_core::redact_pii_and_secrets_value(value);
+                event.insert((*key).into(), safe);
             }
         }
         self.events.push(Value::Object(event));
+    }
+
+    /// Export a reproducible, PII/secret-redacted trace bundle (P3.2).
+    pub fn export_redacted_bundle(&self, run_id: &str, workspace_id: &str) -> Value {
+        json!({
+            "schema_version": "lattice.agent.trace.v1",
+            "run_id": run_id,
+            "workspace_id": workspace_id,
+            "redacted": true,
+            "truncated": self.truncated,
+            "summary": self.summary(),
+            "events": self.events.iter().map(lattice_core::redact_pii_and_secrets_value).collect::<Vec<_>>(),
+        })
     }
 
     pub fn llm_call(&mut self, phase: &str, model: Option<&str>) {

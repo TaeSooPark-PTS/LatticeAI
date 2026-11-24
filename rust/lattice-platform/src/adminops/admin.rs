@@ -26,7 +26,7 @@ pub(crate) mod redact;
 
 pub use audit::{
     append_audit_event, audit_log_path, build_admin_audit_report, build_sensitivity_report,
-    classify_sensitive_message, load_audit_log,
+    classify_sensitive_message, load_audit_log, prune_audit_events_before,
 };
 pub use config::{
     default_sso_redirect, default_vpc_config, load_chat_history, load_sso_config, load_vpc_config,

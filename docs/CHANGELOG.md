@@ -6,6 +6,22 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.8.0] - 2026-11-24 — Living Synthesis
+
+### Added
+- **P0.1 Authentic RAG Accuracy & Evaluation Framework (`rust/lattice-retrieval/src/rag_eval_grounded.rs`, `rag_eval_dataset.rs`, `datasets/rag_eval_v1.json`, `scripts/generate_rag_eval_dataset.py`, `scripts/run_real_model_rag_eval.py`):**
+  - Separated `EvalExecutionMode` (`FixtureDeterministic`, `RealModelLocal`, `RealModelCloud`, `RetrievalOnly`, `EndToEnd`) and `EvalModelStatus` (`Executed`, `FixtureOnly`, `Skipped`, `Unavailable`) with complete provenance metadata (`EvalRunMetadata`) and added a versioned 320-query benchmark dataset across all 9 required categories (`rag-eval-v1.0.0`).
+- **P0.2 Knowledge Graph Data Integrity Checker & Safe Repair (`rust/lattice-core/src/integrity.rs`, `rust/lattice-core/tests/integrity_fault_injection.rs`, `GET /api/brain/integrity`, `POST /api/brain/integrity/repair`):**
+  - Added unified corruption/drift/cycle/cross-workspace checker, dry-run blast-radius planner, pre-repair `VACUUM INTO` snapshot backup, safe auto vs. approval-gated repair execution, and full fault-injection tests.
+- **P0.3 Entity Resolution Disambiguation, Persistent Audit & Selective Rollback (`rust/lattice-core/src/entity_resolution.rs`, `entity_resolution_ext.rs`, `/api/brain/entities/{candidates,merge,rollback}`):**
+  - Fixed type-scoped exact clustering (`(node_type, key)`) to prevent cross-type homonym merges, and added fuzzy + multi-signal scoring, `AutoMerge`/`ReviewCandidate`/`RejectedHomonym` bands, persistent `entity_aliases`/`entity_merge_audit`/`entity_do_not_merge` tables, strict cross-workspace merge prohibition, edge migration, and selective `rollback_entity_merge`.
+- **P0.4 TOCTOU-Safe FD Sandbox, Cloud Egress PII/Secret Masking & Prompt-Injection Guard (`rust/lattice-agent/src/tools/safe_io.rs`, `content/untrusted.rs`, `rust/lattice-agent/tests/security_sandbox_toctou.rs`, `rust/lattice-core/src/redact.rs`, `rust/lattice-chat/src/pipeline/answers.rs`):**
+  - Implemented handle-relative `openat` + `O_NOFOLLOW` + `O_CLOEXEC` + `fstat` `(st_dev, st_ino)` workspace I/O, compiled `OnceLock` PII + secret redaction applied to cloud prompts, KG context, `LoopTrace`, and `/host/diagnostics`, workspace-scoped `DurableWorkflowStore::load_scoped`, `ingestion_jobs.workspace_id`, symlink escape guards in `fs.rs`/`watch.rs`, sensitive-path denylist in `local_files_api/local.rs`, attached short-flag path validation, and EN/KO untrusted-content framing.
+- **P1.1–P1.7 Core Intelligence, Shadow Embeddings, Multi-Agent & Learning Loop (`rust/lattice-core/src/{temporal.rs,embedding_registry.rs,learning_loop.rs}`, `rust/lattice-retrieval/src/bm25/`, `rust/lattice-agent/src/kernel/{workflow.rs,multi_agent.rs}`, `rust/lattice-retrieval/src/brain_api/extensions.rs`):**
+  - Aligned bi-temporal fields & `edges_v2` provenance + `GraphWriter::terminate_edge`; added BM25F hub fan-out caps, near-duplicate dedup, lexical phrase reranker, unified `score_explanation`, and `fallbacks`; fixed Python `embedding_index_contract` schema parity and added persistent `EmbeddingModelRegistry` + resumable shadow re-indexing, quality-gated cutover, and instant rollback; added `StepErrorKind`, `PartialSuccess`, `ImpactPreview`, redacted trace export, 5-role least-privilege `MultiAgentSession`, and local-only `knowledge_corrections` learning loop.
+- **P2 & P3 Product Usability, Desktop Watchdog & Org Governance (`rust/lattice-ingest/`, `rust/lattice-host/`, `rust/lattice-platform/`, `latticeai/models/model_providers.py`, `frontend/src/features/library/`):**
+  - Consumed `DebouncedWatchEngine::poll_batch` directly with `moved_from_uri` relocation and per-watch `paused` support; surfaced `Origin Country → Vendor → Execution` hierarchy in `ModelsPanel.tsx`; added worker health-watchdog & redacted `GET /host/diagnostics`; added `GET /api/brain/clusters`, `GET /api/brain/gaps`, `Modality::Video`, `prune_audit_events_before`, and offboarding revocation receipts in `orgs::remove_member`.
+
 ## [13.7.2] - 2026-11-24 — Living Synthesis
 
 ### Changed

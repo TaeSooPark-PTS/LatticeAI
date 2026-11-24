@@ -68,7 +68,16 @@ fn node_matches_workspace(row_ws: Option<&str>, meta: &Value, target_ws: &str) -
 pub struct TemporalInterval {
     pub valid_from: Option<String>,
     pub valid_until: Option<String>,
+    /// Canonical alias for `valid_until` aligned with `nodes_v2.valid_to`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_to: Option<String>,
     pub recorded_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_timestamp: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
     pub superseded_at: Option<String>,
     pub superseded_by: Option<String>,
 }
@@ -194,7 +203,9 @@ fn read_temporal_interval(
         });
     let valid_until = block
         .get("valid_until")
+        .or_else(|| block.get("valid_to"))
         .or_else(|| meta.get("valid_until"))
+        .or_else(|| meta.get("valid_to"))
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -206,6 +217,29 @@ fn read_temporal_interval(
         .filter(|s| !s.is_empty())
         .unwrap_or(created_at)
         .to_string();
+    let observed_at = block
+        .get("observed_at")
+        .or_else(|| meta.get("observed_at"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .or_else(|| (!recorded_at.is_empty()).then(|| recorded_at.clone()));
+    let source_timestamp = block
+        .get("source_timestamp")
+        .or_else(|| meta.get("source_timestamp"))
+        .or_else(|| meta.get("modified_at"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    let updated_at = block
+        .get("updated_at")
+        .or_else(|| meta.get("updated_at"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
     let superseded_at = block
         .get("superseded_at")
         .and_then(Value::as_str)
@@ -227,8 +261,12 @@ fn read_temporal_interval(
         });
     TemporalInterval {
         valid_from,
+        valid_to: valid_until.clone(),
         valid_until,
         recorded_at,
+        observed_at,
+        source_timestamp,
+        updated_at,
         superseded_at,
         superseded_by,
     }
@@ -260,17 +298,34 @@ pub fn stamp_temporal_fact(
             json!({
                 "valid_from": valid_from,
                 "valid_until": valid_until,
+                "valid_to": valid_until,
                 "recorded_at": recorded_at,
+                "observed_at": recorded_at,
+                "updated_at": recorded_at,
             }),
         );
     }
+    let meta_json_str = serde_json::to_string(&meta).unwrap_or_else(|_| "{}".to_string());
     txn.execute(
         "UPDATE nodes SET metadata_json = ?1 WHERE id = ?2",
-        params![
-            serde_json::to_string(&meta).unwrap_or_else(|_| "{}".to_string()),
-            node_id
-        ],
+        params![meta_json_str, node_id],
     )?;
+    // Sync valid_from / valid_to / updated_at onto nodes_v2 when present.
+    let has_v2: bool = txn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='nodes_v2')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(false);
+    if has_v2 {
+        let _ = txn.execute(
+            "UPDATE nodes_v2
+             SET valid_from = ?1, valid_to = COALESCE(?2, valid_to), attrs = ?3, updated_at = ?4
+             WHERE id = ?5",
+            params![valid_from, valid_until, meta_json_str, recorded_at, node_id],
+        );
+    }
 
     if let Some(old_id) = supersedes_node_id.map(str::trim).filter(|s| !s.is_empty()) {
         let old_raw: String = txn

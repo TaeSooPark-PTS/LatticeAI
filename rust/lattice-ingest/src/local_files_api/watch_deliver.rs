@@ -79,7 +79,54 @@ pub(super) async fn deliver(
     let mut note = NoteSubmission::from_watched_file(root, relative_path, &text, Some(watch_id));
     crate::fingerprint::attach(&mut note.metadata, size, mtime, &sha);
     if stored.is_some()
-        && try_incremental_sync_async(ingestor, seam, &note, &uri, owner, workspace_id).await
+        && try_incremental_sync_async(ingestor, seam, &note, &uri, None, owner, workspace_id).await
+    {
+        return Ok(Delivered::Ingested);
+    }
+    ingestor
+        .ingest_note(&note, owner, workspace_id)
+        .await
+        .map(|_| Delivered::Ingested)
+        .map_err(|error| error.to_string())
+}
+
+/// Deliver a relocated/moved file using bi-temporal `moved_from_uri` lineage
+/// and cached chunk-vector reuse (P2.2).
+pub(super) async fn deliver_moved_file(
+    ingestor: &NoteIngestor,
+    seam: Option<&WorkerSeamClient>,
+    root: &Path,
+    relative: &str,
+    from_relative: &str,
+    owner: Option<&str>,
+    workspace_id: Option<&str>,
+) -> Result<Delivered, String> {
+    let target = root.join(relative);
+    let content = std::fs::read_to_string(&target).map_err(|e| e.to_string())?;
+    let uri = target.display().to_string();
+    let from_uri = root.join(from_relative).display().to_string();
+    let mut note = NoteSubmission::from_watched_file(root, relative, &content, None);
+    note.metadata
+        .insert("moved_from_uri".to_string(), serde_json::json!(from_uri));
+    let meta = std::fs::metadata(&target).map_err(|e| e.to_string())?;
+    let mtime = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0);
+    let sha = lattice_core::sha256_text(&note.content);
+    crate::fingerprint::attach(&mut note.metadata, meta.len(), mtime, &sha);
+    if try_incremental_sync_async(
+        ingestor,
+        seam,
+        &note,
+        &uri,
+        Some(&from_uri),
+        owner,
+        workspace_id,
+    )
+    .await
     {
         return Ok(Delivered::Ingested);
     }
@@ -99,6 +146,7 @@ async fn try_incremental_sync_async(
     seam: Option<&WorkerSeamClient>,
     note: &NoteSubmission,
     uri: &str,
+    moved_from_uri: Option<&str>,
     owner: Option<&str>,
     workspace_id: Option<&str>,
 ) -> bool {
@@ -109,7 +157,7 @@ async fn try_incremental_sync_async(
         title: note.title.clone(),
         text: note.content.clone(),
         source_uri: uri.to_string(),
-        moved_from_uri: None,
+        moved_from_uri: moved_from_uri.map(str::to_string),
         workspace_id: workspace_id.map(str::to_string),
         owner: owner.map(str::to_string),
         modified_at: None,

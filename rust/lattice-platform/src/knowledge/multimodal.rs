@@ -19,6 +19,7 @@ use crate::knowledge::network_boundary::{BoundaryStore, PolicyStore};
 pub const MAX_VISION_BYTES: usize = 20 * 1024 * 1024;
 pub const MAX_SPEECH_BYTES: usize = 50 * 1024 * 1024;
 pub const MAX_IMAGE_RETRIEVAL_BYTES: usize = 20 * 1024 * 1024;
+pub const MAX_VIDEO_BYTES: usize = 250 * 1024 * 1024;
 pub const MAX_MULTIMODAL_EMBED_DIM: usize = 4096;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub enum Modality {
     Vision,
     Speech,
     ImageRetrieval,
+    Video,
 }
 
 impl Modality {
@@ -35,6 +37,7 @@ impl Modality {
             Self::Vision => "vision",
             Self::Speech => "speech",
             Self::ImageRetrieval => "image_retrieval",
+            Self::Video => "video",
         }
     }
 }
@@ -50,7 +53,7 @@ pub struct ProviderContract {
     pub default_embedding_dim: Option<usize>,
 }
 
-pub fn default_provider_contracts() -> [ProviderContract; 3] {
+pub fn default_provider_contracts() -> [ProviderContract; 4] {
     [
         ProviderContract {
             provider_id: "worker.vlm.vision",
@@ -85,6 +88,15 @@ pub fn default_provider_contracts() -> [ProviderContract; 3] {
             worker_endpoint: "/worker/embed",
             allowed_mime_types: &["image/png", "image/jpeg", "image/webp"],
             max_payload_bytes: MAX_IMAGE_RETRIEVAL_BYTES,
+            requires_local_worker: true,
+            default_embedding_dim: Some(512),
+        },
+        ProviderContract {
+            provider_id: "worker.video.indexer",
+            modality: Modality::Video,
+            worker_endpoint: "/worker/parse",
+            allowed_mime_types: &["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"],
+            max_payload_bytes: MAX_VIDEO_BYTES,
             requires_local_worker: true,
             default_embedding_dim: Some(512),
         },

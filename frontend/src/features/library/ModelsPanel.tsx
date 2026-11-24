@@ -11,6 +11,7 @@ import {
   asRecord,
   describeComputer,
   embeddingStateLabel,
+  formatModelProvenanceChain,
   localizeModelMessage,
   MODEL_STATUS_KEYS,
 } from "./libraryDomain";
@@ -207,7 +208,7 @@ export function ModelsPanel() {
                 const canPrepare = loadAvailable || downloadRequired || installRequired;
                 const needsConsentGate = downloadRequired || installRequired;
                 const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
-                const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
+                const provenanceChain = formatModelProvenanceChain(model, recommendation);
                 return (
                   <div key={id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-border bg-background/55 p-4">
                     <div className="min-w-0">
@@ -235,7 +236,7 @@ export function ModelsPanel() {
                           ? t(language, "library.model.downloadSize", { size: String(downloadSize || t(language, "library.model.downloadRequired")) })
                           : t(language, "library.model.noDownload")}</Badge>
                         <Badge variant="muted">{downloadRequired ? t(language, "library.model.internetDuringDownload") : t(language, "library.model.runsLocally")}</Badge>
-                        {maker ? <Badge variant="muted">{String(maker)}</Badge> : null}
+                        {provenanceChain ? <Badge variant="muted" data-testid="model-provenance-chain">{provenanceChain}</Badge> : null}
                       </div>
                       {unsupported ? (
                         <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">

@@ -6,7 +6,7 @@
 > with the current release. Historical subsystem notes live in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **13.7.2 — Living Synthesis**.
+Current release: **13.8.0 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
 Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
@@ -200,13 +200,13 @@ isolation).
 
 ## Release Artifact Map
 
-13.7.2 exact artifact names:
+13.8.0 exact artifact names:
 
-- Python wheel: `dist/ltcai-13.7.2-py3-none-any.whl`
-- Python sdist: `dist/ltcai-13.7.2.tar.gz`
-- npm tarball: `ltcai-13.7.2.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-13.7.2.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.2_aarch64.dmg`
+- Python wheel: `dist/ltcai-13.8.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-13.8.0.tar.gz`
+- npm tarball: `ltcai-13.8.0.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-13.8.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_13.8.0_aarch64.dmg`
 
 ## Known Boundaries
 

@@ -167,3 +167,27 @@ export function deriveModelsPanelView(
     embeddingLoaded,
   };
 }
+
+/**
+ * Format the model provenance hierarchy (P2.1 / P2.3):
+ * Origin Country → Vendor/Provider → Local PC vs. Internet execution.
+ */
+export function formatModelProvenanceChain(
+  model: Record<string, unknown>,
+  recommendation: Record<string, unknown>,
+): string {
+  const country = String(model.source_country || recommendation.source_country || "").trim();
+  const company = String(
+    model.source_company
+      || recommendation.source_company
+      || model.provider
+      || recommendation.provider
+      || model.organization
+      || recommendation.organization
+      || "",
+  ).trim();
+  const execution = String(
+    model.execution_method || recommendation.execution_method || "",
+  ).trim();
+  return [country, company, execution].filter(Boolean).join(" → ");
+}

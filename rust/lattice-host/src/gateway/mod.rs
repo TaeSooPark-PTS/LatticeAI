@@ -453,6 +453,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
 
     let mut app = Router::new()
         .route("/host/health", get(routes::host_health))
+        .route("/host/diagnostics", get(routes::host_diagnostics))
         .fallback(routes::gateway_fallback)
         .with_state(Arc::clone(&state))
         .merge(native);

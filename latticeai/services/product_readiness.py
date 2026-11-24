@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "13.7.2"
+PRODUCT_VERSION_TARGET = "13.8.0"
 
 
 @dataclass(frozen=True)

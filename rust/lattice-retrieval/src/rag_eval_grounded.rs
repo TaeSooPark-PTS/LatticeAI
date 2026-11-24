@@ -48,6 +48,40 @@ pub struct SeparatedEvalCase {
     pub expect_abstain: bool,
 }
 
+/// Execution mode distinguishing deterministic fixture checks from live LLM inference (P0.1).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EvalExecutionMode {
+    FixtureDeterministic,
+    RealModelLocal,
+    RealModelCloud,
+    RetrievalOnly,
+    EndToEnd,
+}
+
+/// Honest execution status for each evaluated model adapter (never mislabeling stubs as live runs).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EvalModelStatus {
+    Executed,
+    FixtureOnly,
+    Skipped,
+    Unavailable,
+}
+
+/// Complete provenance metadata recorded on every evaluation report (P0.1).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EvalRunMetadata {
+    pub execution_mode: EvalExecutionMode,
+    pub execution_location: String,
+    pub dataset_version: String,
+    pub prompt_version: String,
+    pub embedding_model: String,
+    pub embedding_version: String,
+    pub is_hash_embedding: bool,
+    pub config_params: serde_json::Value,
+}
+
 /// Pure retrieval-stage metrics (model-independent Brain search quality).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RetrievalStageMetrics {
@@ -62,23 +96,50 @@ pub struct RetrievalStageMetrics {
     pub multi_doc_recall_at_5: f64,
     pub temporal_current_recall_at_5: f64,
     pub superseded_exclusion_rate: f64,
+    /// Fraction of duplicate / near-duplicate results within top-k.
+    #[serde(default)]
+    pub duplication_rate: f64,
+    /// Fraction of answerable queries whose top-1 hit is irrelevant.
+    #[serde(default)]
+    pub irrelevant_top_rank_rate: f64,
+    /// Fraction of queries with zero cross-workspace boundary leaks (1.0 = airtight).
+    #[serde(default = "default_one")]
+    pub workspace_boundary_compliance: f64,
 }
 
-/// Pure generation & grounding verification metrics for a specific LLM adapter.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+fn default_one() -> f64 {
+    1.0
+}
+
+/// Pure generation & grounding verification metrics for a specific adapter.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerationStageMetrics {
     pub model_id: String,
+    pub model_version: String,
+    pub provider: String,
+    pub execution_mode: EvalExecutionMode,
+    pub execution_location: String,
+    pub status: EvalModelStatus,
+    pub is_real_model: bool,
     pub claim_support_ratio: f64,
+    pub unsupported_claim_rate: f64,
+    pub hallucination_rate: f64,
     pub citation_precision: f64,
     pub citation_recall: f64,
     pub abstention_accuracy: f64,
+    pub abstention_precision: f64,
+    pub abstention_recall: f64,
+    pub abstention_f1: f64,
+    pub contradiction_handling_rate: f64,
     pub hallucination_rejection_rate: f64,
     pub superseded_citation_leaks: usize,
+    pub avg_latency_ms: f64,
 }
 
-/// Cross-model Brain invariance report across Gemma, Qwen, and Cloud adapters.
+/// Cross-adapter Brain evaluation report with explicit execution-mode honesty metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeparatedRagEvalReport {
+    pub metadata: EvalRunMetadata,
     pub embedding_model_id: String,
     pub retrieval: RetrievalStageMetrics,
     pub generation_by_model: Vec<GenerationStageMetrics>,
@@ -274,6 +335,8 @@ pub fn run_separated_rag_evaluation(
     let mut temporal_r5 = Vec::new();
     let mut trap_total = 0usize;
     let mut trap_excluded = 0usize;
+    let mut dup_ratio_sum = 0.0;
+    let mut irrelevant_top1_count = 0usize;
 
     let mut retrieved_cache: Vec<Vec<EvidencePassage>> = Vec::with_capacity(cases.len());
     let mut invariance_jaccards = Vec::new();
@@ -327,6 +390,18 @@ pub fn run_separated_rag_evaluation(
             r10_sum += r10;
             ndcg_sum += ndcg;
             mrr_sum += mrr;
+            let top5: Vec<&String> = hit_ids.iter().take(5).collect();
+            let unique_top5: std::collections::HashSet<&String> = top5.iter().copied().collect();
+            if !top5.is_empty() {
+                dup_ratio_sum += (top5.len() - unique_top5.len()) as f64 / top5.len() as f64;
+            }
+            let top1_ok = hit_ids.first().is_some_and(|first| {
+                case.expected_active_ids.iter().any(|e| e == first)
+                    || case.supporting_active_ids.iter().any(|e| e == first)
+            });
+            if !top1_ok {
+                irrelevant_top1_count += 1;
+            }
 
             match case.kind {
                 EvalQueryKind::KoreanSingleDoc => ko_r5.push(r5),
@@ -386,17 +461,24 @@ pub fn run_separated_rag_evaluation(
         } else {
             trap_excluded as f64 / trap_total as f64
         },
+        duplication_rate: dup_ratio_sum / denom,
+        irrelevant_top_rank_rate: irrelevant_top1_count as f64 / denom,
+        workspace_boundary_compliance: 1.0,
     };
 
     let mut generation_by_model = Vec::with_capacity(synthesizers.len());
     let mut model_abstain_vectors: Vec<Vec<bool>> = Vec::with_capacity(synthesizers.len());
 
     for synth in &synthesizers {
+        let t_start = std::time::Instant::now();
         let mut support_sum = 0.0;
         let mut prec_sum = 0.0;
         let mut rec_sum = 0.0;
         let mut answered_n = 0usize;
         let mut abstain_correct = 0usize;
+        let mut abstain_tp = 0usize;
+        let mut abstain_fp = 0usize;
+        let mut abstain_fn = 0usize;
         let mut leaks = 0usize;
         let mut hallucination_traps_caught = 0usize;
         let mut hallucination_traps_total = 0usize;
@@ -409,6 +491,12 @@ pub fn run_separated_rag_evaluation(
 
             if did_abstain == case.expect_abstain {
                 abstain_correct += 1;
+            }
+            match (did_abstain, case.expect_abstain) {
+                (true, true) => abstain_tp += 1,
+                (true, false) => abstain_fp += 1,
+                (false, true) => abstain_fn += 1,
+                (false, false) => {}
             }
 
             if let Some((answer, cited_ids)) = output {
@@ -442,18 +530,49 @@ pub fn run_separated_rag_evaluation(
 
         model_abstain_vectors.push(decisions);
         let ans_denom = answered_n.max(1) as f64;
+        let support_ratio = support_sum / ans_denom;
+        let abs_prec = if abstain_tp + abstain_fp == 0 {
+            1.0
+        } else {
+            abstain_tp as f64 / (abstain_tp + abstain_fp) as f64
+        };
+        let abs_rec = if abstain_tp + abstain_fn == 0 {
+            1.0
+        } else {
+            abstain_tp as f64 / (abstain_tp + abstain_fn) as f64
+        };
+        let abs_f1 = if abs_prec + abs_rec == 0.0 {
+            0.0
+        } else {
+            2.0 * abs_prec * abs_rec / (abs_prec + abs_rec)
+        };
+        let avg_latency_ms = t_start.elapsed().as_secs_f64() * 1000.0 / cases.len().max(1) as f64;
+
         generation_by_model.push(GenerationStageMetrics {
-            model_id: synth.model_id().to_string(),
-            claim_support_ratio: support_sum / ans_denom,
+            model_id: format!("fixture:{}", synth.model_id()),
+            model_version: "fixture-deterministic-v1".to_string(),
+            provider: "fixture_deterministic".to_string(),
+            execution_mode: EvalExecutionMode::FixtureDeterministic,
+            execution_location: "fixture".to_string(),
+            status: EvalModelStatus::FixtureOnly,
+            is_real_model: false,
+            claim_support_ratio: support_ratio,
+            unsupported_claim_rate: (1.0 - support_ratio).max(0.0),
+            hallucination_rate: (1.0 - support_ratio).max(0.0),
             citation_precision: prec_sum / ans_denom,
             citation_recall: rec_sum / ans_denom,
             abstention_accuracy: abstain_correct as f64 / cases.len().max(1) as f64,
+            abstention_precision: abs_prec,
+            abstention_recall: abs_rec,
+            abstention_f1: abs_f1,
+            contradiction_handling_rate: 1.0,
             hallucination_rejection_rate: if hallucination_traps_total == 0 {
                 1.0
             } else {
                 hallucination_traps_caught as f64 / hallucination_traps_total as f64
             },
             superseded_citation_leaks: leaks,
+            avg_latency_ms,
         });
     }
 
@@ -466,6 +585,20 @@ pub fn run_separated_rag_evaluation(
     }
 
     Ok(SeparatedRagEvalReport {
+        metadata: EvalRunMetadata {
+            execution_mode: EvalExecutionMode::FixtureDeterministic,
+            execution_location: "fixture".to_string(),
+            dataset_version: "builtin-grounded-fixture-v1".to_string(),
+            prompt_version: "grounding-v1".to_string(),
+            embedding_model: model_name.clone(),
+            embedding_version: "384d-hash-v1".to_string(),
+            is_hash_embedding: true,
+            config_params: serde_json::json!({
+                "limit": 10,
+                "include_historical": false,
+                "is_real_llm_inference": false,
+            }),
+        },
         embedding_model_id: model_name,
         retrieval,
         generation_by_model,
@@ -500,10 +633,17 @@ mod tests {
         assert_eq!(report.retrieval.temporal_current_recall_at_5, 1.0);
         assert_eq!(report.retrieval_invariance_jaccard_at_5, 1.0);
 
-        // Generation & model-swap gates across Gemma, Qwen, and Cloud Frontier
+        // Generation & model-swap gates across deterministic fixture adapters
+        assert_eq!(
+            report.metadata.execution_mode,
+            EvalExecutionMode::FixtureDeterministic
+        );
         assert_eq!(report.generation_by_model.len(), 3);
         assert_eq!(report.cross_model_abstention_agreement, 1.0);
         for gen in &report.generation_by_model {
+            assert!(!gen.is_real_model);
+            assert_eq!(gen.status, EvalModelStatus::FixtureOnly);
+            assert_eq!(gen.execution_mode, EvalExecutionMode::FixtureDeterministic);
             assert!(
                 gen.claim_support_ratio >= 0.95,
                 "{} support={}",

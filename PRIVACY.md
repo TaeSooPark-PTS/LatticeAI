@@ -2,7 +2,7 @@
 
 # Privacy
 
-Current release: **13.7.2 — Living Synthesis**.
+Current release: **13.8.0 — Living Synthesis**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

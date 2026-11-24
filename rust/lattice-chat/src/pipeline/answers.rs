@@ -272,9 +272,12 @@ pub(crate) async fn hybrid_response(
     };
     let key = scope_key(effective_email, workspace_id);
     let budget = budget_for(&key);
+    // P0.4: Redact inline secrets and mask PII from the user prompt before any
+    // outbound cloud LLM request (local conversation history retains original).
+    let cloud_question = lattice_core::redact_pii_and_secrets(&question);
     let composed = crate::cloud::compose_prompt(
         crate::cloud::HYBRID_SYSTEM_PROMPT,
-        &question,
+        &cloud_question,
         &minimal.compact_text,
     );
     let token_estimate = crate::cloud::rough_token_estimate(&composed).max(minimal.token_estimate);
@@ -329,7 +332,7 @@ pub(crate) async fn hybrid_response(
                 reason,
                 minimal,
                 &key,
-                &question,
+                &cloud_question,
                 effective_email,
                 workspace_id,
                 meta,
@@ -375,7 +378,7 @@ pub(crate) async fn hybrid_response(
         let mut on_piece = move |piece: &str| piece_tx.send(piece.to_string()).is_ok();
         let call = provider.stream(
             crate::cloud::HYBRID_SYSTEM_PROMPT,
-            &question,
+            &cloud_question,
             &minimal.compact_text,
             &mut on_piece,
         );

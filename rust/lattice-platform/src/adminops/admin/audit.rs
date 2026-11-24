@@ -107,6 +107,30 @@ pub fn audit_log_path(data_dir: &Path) -> PathBuf {
     data_dir.join(state_files::AUDIT_LOG)
 }
 
+/// Enforce `audit_retention_days` by pruning audit entries older than `cutoff_iso` (P3.4).
+///
+/// Returns `(kept_count, pruned_count)` and rewrites `audit_log.json` atomically.
+pub fn prune_audit_events_before(path: &Path, cutoff_iso: &str) -> (usize, usize) {
+    let events = load_audit_log(path);
+    let total = events.len();
+    let kept: Vec<Value> = events
+        .into_iter()
+        .filter(|ev| {
+            ev.get("timestamp")
+                .and_then(Value::as_str)
+                .map(|ts| ts >= cutoff_iso)
+                .unwrap_or(true)
+        })
+        .collect();
+    let pruned = total.saturating_sub(kept.len());
+    if pruned > 0 {
+        if let Ok(text) = lattice_auth::pyjson::dumps_indent2(&kept) {
+            lattice_auth::atomic::write_text(path, &text);
+        }
+    }
+    (kept.len(), pruned)
+}
+
 /// `classify_sensitive_message`.
 pub fn classify_sensitive_message(item: &Value, index: usize) -> OrderedMap {
     let content = item.get("content").map(value_as_string).unwrap_or_default();

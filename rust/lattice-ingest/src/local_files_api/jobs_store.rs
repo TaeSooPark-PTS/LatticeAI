@@ -88,9 +88,29 @@ fn ensure_jobs_table(conn: &rusqlite::Connection) -> Result<(), CoreError> {
             created_at TEXT,
             updated_at TEXT,
             items_json TEXT,
-            done_indices_json TEXT
+            done_indices_json TEXT,
+            workspace_id TEXT NOT NULL DEFAULT 'personal',
+            owner_email TEXT NOT NULL DEFAULT ''
         )",
     )?;
+    // Additive migration for pre-13.8.0 databases.
+    let cols: Vec<String> = conn
+        .prepare("PRAGMA table_info(ingestion_jobs)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .collect();
+    if !cols.iter().any(|c| c == "workspace_id") {
+        let _ = conn.execute(
+            "ALTER TABLE ingestion_jobs ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'personal'",
+            [],
+        );
+    }
+    if !cols.iter().any(|c| c == "owner_email") {
+        let _ = conn.execute(
+            "ALTER TABLE ingestion_jobs ADD COLUMN owner_email TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+    }
     Ok(())
 }
 

@@ -10,7 +10,6 @@ use serde_json::{json, Value};
 
 use crate::boundary::{blocked_reason, blocked_reason_for_policy, HybridPolicy, NetworkMode};
 use crate::pyvalue::{field, text as py_text};
-use crate::redact::redact_secret_text;
 
 /// `build_minimal_context`'s soft type preference.
 const PREFERRED_TYPES: [&str; 8] = [
@@ -310,7 +309,7 @@ fn build_minimal_context_inner(
         );
     }
 
-    let compact = redact_secret_text(&lines.join("\n"));
+    let compact = lattice_core::redact_pii_and_secrets(&lines.join("\n"));
     let token_estimate = rough_token_estimate(&compact);
     MinimalContext {
         quality: quality.unwrap_or_else(|| {

@@ -9,9 +9,13 @@
 pub mod bm25_stats;
 pub mod db;
 pub mod embedding_contract;
+pub mod embedding_registry;
 pub mod embeddings;
 pub mod entity_resolution;
+pub mod entity_resolution_ext;
 pub mod graph_write;
+pub mod integrity;
+pub mod learning_loop;
 pub mod messages;
 pub mod paths;
 pub mod pytext;
@@ -35,4 +39,8 @@ pub use read::{
     column_json, filter_scoped_nodes, scoped_workspace_visible, sql_json, workspace_is_default,
     workspace_membership_sql, workspaces_of, NodeRow, VectorRow, DEFAULT_WORKSPACE_ID,
 };
-pub use redact::{is_secret_key, redact_secret_text, redact_secrets, redact_structure, REDACTION};
+pub use redact::{
+    detect_sensitive_findings, is_secret_key, redact_pii_and_secrets,
+    redact_pii_and_secrets_value, redact_pii_text, redact_secret_text, redact_secrets,
+    redact_structure, SensitiveFinding, PII_REDACTION, REDACTION,
+};

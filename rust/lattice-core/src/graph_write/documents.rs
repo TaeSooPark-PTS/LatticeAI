@@ -352,6 +352,36 @@ impl GraphWriter {
         })
     }
 
+    /// Terminate or supersede a relationship in `edges_v2` without deleting historical lineage (P1.2).
+    pub fn terminate_edge(
+        &self,
+        edge_id: &str,
+        valid_to: &str,
+        superseded_by: Option<&str>,
+        reason: Option<&str>,
+    ) -> Result<bool, CoreError> {
+        let edge_id = edge_id.trim().to_string();
+        if edge_id.is_empty() || valid_to.trim().is_empty() {
+            return Ok(false);
+        }
+        let reason_str = reason.unwrap_or("terminated").trim().to_string();
+        self.store.with_write_txn(|txn| {
+            let updated = txn.execute(
+                "UPDATE edges_v2
+                 SET valid_to = ?1,
+                     superseded_by = COALESCE(?2, superseded_by),
+                     metadata = json_set(
+                         COALESCE(NULLIF(metadata, ''), '{}'),
+                         '$.relation_status', 'terminated',
+                         '$.termination_reason', ?3
+                     )
+                 WHERE id = ?4",
+                rusqlite::params![valid_to.trim(), superseded_by, reason_str, edge_id],
+            )?;
+            Ok(updated > 0)
+        })
+    }
+
     /// `set_local_source_watch` — turn a connected folder's watcher on or off.
     pub fn set_local_source_watch(
         &self,

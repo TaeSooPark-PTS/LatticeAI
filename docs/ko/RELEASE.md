@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.8.0 — Living Synthesis (2026-11-24)
+
+디지털 브레인 플랫폼 통합 고도화 로드맵(P0–P3)을 완수했습니다: 결정론적 픽스처와 실제 로컬/클라우드 모델 평가를 분리하고 320개 질의 버전 데이터셋(`datasets/rag_eval_v1.json`)을 추가한 진정성 있는 RAG 평가 프레임워크, 장애 주입 검증 및 자동 백업·안전 복구를 갖춘 지식 그래프 무결성 검사기(`lattice-core::integrity`), 타입별 동음이의어 차단·퍼지 점수·선택적 롤백을 지원하는 엔티티 해석(`entity_resolution_ext`), OS 수준 `O_NOFOLLOW` FD 샌드박스(`safe_io.rs`) 및 클라우드 이그레스 PII/비밀 마스킹, 섀도우 재색인·컷오버·롤백을 지원하는 임베딩 모델 레지스트리, 최소 권한 5역할 멀티에이전트 협업 엔진(`multi_agent.rs`), 지식 학습 루프(`learning_loop.rs`), OS 감시 파일 이동·일시중지, `국가 → 제조사 → 실행 위치` 모델 출처 UX, 워커 워치독 및 마스킹 `/host/diagnostics`, 토픽 클러스터/지식 공백/비디오 모달리티/감사 보존 정책/오프보딩 취소 영수증을 모두 통합했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.8.0.md](./releases/RELEASE_NOTES_v13.8.0.md).
+
+빌드 산출물은 `dist/ltcai-13.8.0-py3-none-any.whl`, `dist/ltcai-13.8.0.tar.gz`, `ltcai-13.8.0.tgz`, `dist/ltcai-13.8.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.8.0_aarch64.dmg` 입니다.
+
 ## v13.7.2 — Living Synthesis (2026-11-24)
 
 Rust 워크스페이스 전체(`lattice-host`, `lattice-chat`, `lattice-platform`, `lattice-agent`, `lattice-retrieval`, `src-tauri` 및 모든 통합 테스트)의 임포트를 정본 도메인 경로(`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`)로 이전하고, `lattice-agent`·`lattice-platform`의 구형 평탄 호환성 `pub use` 맵과 마지막 미사용 `lattice_chat::crate_ready()` 스텁을 제거했습니다.

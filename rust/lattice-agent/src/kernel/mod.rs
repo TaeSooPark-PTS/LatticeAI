@@ -66,6 +66,7 @@ pub mod breaker;
 pub mod eval;
 pub mod governor;
 pub mod mode;
+pub mod multi_agent;
 pub mod permission;
 pub mod plan;
 pub mod policy;

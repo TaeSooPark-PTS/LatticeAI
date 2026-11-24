@@ -12,6 +12,8 @@ use serde_json::{json, Map, Value};
 
 /// Marker substituted for redacted secret values.
 pub const REDACTION: &str = "[REDACTED_SECRET]";
+/// Marker substituted for redacted PII values.
+pub const PII_REDACTION: &str = "[REDACTED_PII]";
 
 const SECRET_PATTERNS: &[&str] = &[
     r"(?i)\b(api[_ -]?key|secret|token|password|passwd|authorization|bearer|client[_ -]?secret|webhook|dsn)\s*[:=]\s*['\x22]?([^\s'\x22,;]{8,})['\x22]?",
@@ -25,12 +27,31 @@ const SECRET_PATTERNS: &[&str] = &[
     r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----",
 ];
 
+const PII_PATTERNS: &[(&str, &str)] = &[
+    ("rrn", r"\b\d{6}-[1-4]\d{6}\b"),
+    ("ssn", r"\b\d{3}-\d{2}-\d{4}\b"),
+    ("card", r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
+    (
+        "email",
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+    ),
+    (
+        "phone",
+        r"(?<!\d)(?:\+?\d{1,3}[-\s]?)?(?:01[016789]|02|0[3-6]\d|\(\d{3}\)|\d{3})[-\s]\d{3,4}[-\s]\d{4}(?!\d)",
+    ),
+    (
+        "home_path",
+        r"(?:/Users/[A-Za-z0-9._-]+|/home/[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+)",
+    ),
+];
+
 const TWO_GROUP_PATTERN: usize = 0;
 
 struct CompiledPatterns {
     telegram_bot: Regex,
     telegram_bare: Regex,
     secrets: Vec<Regex>,
+    pii: Vec<(&'static str, Regex)>,
 }
 
 fn patterns() -> &'static CompiledPatterns {
@@ -46,7 +67,89 @@ fn patterns() -> &'static CompiledPatterns {
             .iter()
             .map(|source| Regex::new(source).expect("secret pattern regex"))
             .collect(),
+        pii: PII_PATTERNS
+            .iter()
+            .map(|(kind, source)| (*kind, Regex::new(source).expect("pii pattern regex")))
+            .collect(),
     })
+}
+
+/// One detected sensitive finding (category + count, never storing raw secret/PII value).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SensitiveFinding {
+    pub category: String,
+    pub count: usize,
+}
+
+/// Detect secret and PII categories present in `text` without echoing raw values.
+pub fn detect_sensitive_findings(text: &str) -> Vec<SensitiveFinding> {
+    if text.is_empty() {
+        return Vec::new();
+    }
+    let set = patterns();
+    let mut findings = Vec::new();
+    let mut secret_hits = set.telegram_bot.find_iter(text).count()
+        + set.telegram_bare.find_iter(text).count();
+    for regex in &set.secrets {
+        secret_hits += regex.find_iter(text).count();
+    }
+    if secret_hits > 0 {
+        findings.push(SensitiveFinding {
+            category: "secret".to_string(),
+            count: secret_hits,
+        });
+    }
+    for (kind, regex) in &set.pii {
+        let count = regex.find_iter(text).count();
+        if count > 0 {
+            findings.push(SensitiveFinding {
+                category: (*kind).to_string(),
+                count,
+            });
+        }
+    }
+    findings
+}
+
+/// Redact PII (emails, phone numbers, RRN/SSN, card numbers, OS home directory usernames).
+pub fn redact_pii_text(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+    let set = patterns();
+    let mut out = text.to_string();
+    for (kind, regex) in &set.pii {
+        let replacement = format!("[REDACTED_{}]", kind.to_uppercase());
+        out = regex.replace_all(&out, replacement.as_str()).into_owned();
+    }
+    out
+}
+
+/// Redact both inline secrets and PII (used for cloud egress, agent traces, and diagnostics).
+pub fn redact_pii_and_secrets(text: &str) -> String {
+    redact_pii_text(&redact_secret_text(text))
+}
+
+/// Recursive JSON redactor masking secret keys, inline secrets, and PII strings.
+pub fn redact_pii_and_secrets_value(value: &Value) -> Value {
+    match value {
+        Value::String(s) => json!(redact_pii_and_secrets(s)),
+        Value::Object(map) => {
+            let mut out = Map::new();
+            for (key, item) in map {
+                if is_secret_key(key) {
+                    out.insert(key.clone(), json!(REDACTION));
+                } else {
+                    out.insert(key.clone(), redact_pii_and_secrets_value(item));
+                }
+            }
+            Value::Object(out)
+        }
+        Value::Array(items) => {
+            Value::Array(items.iter().map(redact_pii_and_secrets_value).collect())
+        }
+        other => other.clone(),
+    }
 }
 
 /// Redact inline API keys, tokens, credentials, DSNs, PEM blocks, and Telegram bot tokens.
@@ -182,5 +285,27 @@ mod tests {
             redact_structure(&json!({"token": "short", "dsn": "postgres://u:p@h/db"}));
         assert_eq!(struct_only["token"], json!("short"));
         assert_eq!(struct_only["dsn"], json!(REDACTION));
+    }
+
+    #[test]
+    fn redacts_pii_and_detects_findings_without_echoing_raw_values() {
+        let sample = "Contact alice@example.com or 010-1234-5678 at /Users/alice/notes with sk-proj-abcdefghijklmnop1234 and 900101-1234567";
+        let findings = detect_sensitive_findings(sample);
+        let cats: Vec<&str> = findings.iter().map(|f| f.category.as_str()).collect();
+        assert!(cats.contains(&"secret"));
+        assert!(cats.contains(&"email"));
+        assert!(cats.contains(&"phone"));
+        assert!(cats.contains(&"rrn"));
+        assert!(cats.contains(&"home_path"));
+
+        let masked = redact_pii_and_secrets(sample);
+        assert!(!masked.contains("alice@example.com"));
+        assert!(!masked.contains("010-1234-5678"));
+        assert!(!masked.contains("/Users/alice"));
+        assert!(!masked.contains("900101-1234567"));
+        assert!(!masked.contains("sk-proj-abcdefghijklmnop1234"));
+        assert!(masked.contains("[REDACTED_EMAIL]"));
+        assert!(masked.contains("[REDACTED_HOME_PATH]"));
+        assert!(masked.contains(REDACTION));
     }
 }
