@@ -6,6 +6,15 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.6.0] - 2026-11-24 — Living Synthesis
+
+### Changed
+- **Zero-TS5 Native TypeScript 7 OpenAPI Codegen (`scripts/generate_openapi_types.mjs`, `scripts/check_openapi_drift.mjs`, `package.json`, `package-lock.json`):**
+  - Replaced `openapi-typescript@7.13.0`, the `openapi-ts5` (`npm:typescript@^5.9.3`) alias, `scripts/run_openapi_typescript.mjs`, and the `package.json` `overrides` workaround with a deterministic zero-dependency ESM OpenAPI 3.x-to-TypeScript declaration generator (`scripts/generate_openapi_types.mjs`).
+  - Restored `typecheck:frontend` directly to `npx tsc -p tsconfig.json --noEmit` on `typescript@7.0.2` (`tsgo`) with zero TypeScript 5 dependencies remaining in `package-lock.json`.
+- **Domain-Modularized Unit Test Suite (`tests/unit/_runtime_test_fakes.py`, `tests/unit/test_*.py`):**
+  - Split the five monolithic `tests/unit/test_cov_p1b_remaining*.py` coverage bundles (3,379 lines) into nine focused domain unit test modules (`170–449` lines each) sharing `_Done`, `_Popen`, `_UrlResp`, and `_fast_deadline` via `tests/unit/_runtime_test_fakes.py`, preserving all 45 tests and `>= 96%` Python line coverage.
+
 ## [13.5.0] - 2026-11-24 — Living Synthesis
 
 ### Added

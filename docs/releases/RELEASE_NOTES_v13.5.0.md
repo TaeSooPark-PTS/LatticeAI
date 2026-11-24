@@ -2,7 +2,7 @@
 
 # Lattice AI v13.5.0 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (Cross-Platform One-Way Qwen3.8 27B Setup, TypeScript 7 Migration & Modular Refactoring).
+> **Status: historical** — archived release note for v13.5.0 (Cross-Platform One-Way Qwen3.8 27B Setup, TypeScript 7 Migration & Modular Refactoring).
 
 Delivers one-click cross-platform engine installation and model setup for **Qwen3.8 27B 4-bit** across **macOS** (`omlx` Homebrew + zero-Homebrew universal2 wheel fallback, `local_mlx`), **Windows** (`winget` Ollama / llama.cpp / LM Studio + `pip` `llama-cpp-python[server]` fallback), and **Linux** (Ollama official install script + `pip` `llama-cpp-python[server]` / `vllm`), migrates the workspace typechecker to **TypeScript 7.0.2 (`tsgo`)** and `scripts/check_i18n_literals.mjs` to `@babel/parser`, and modularizes engine/loading services while removing dead code and obsolete tests.
 

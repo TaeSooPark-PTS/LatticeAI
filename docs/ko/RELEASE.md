@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.6.0 — Living Synthesis (2026-11-24)
+
+`openapi-typescript@7.13.0` 및 `openapi-ts5` 별칭을 무의존성 네이티브 TypeScript 7 (`tsgo`) OpenAPI 타입 생성기(`scripts/generate_openapi_types.mjs`)로 완전 대체해 `package-lock.json`에서 TypeScript 5 패키지를 모두 제거하고, 5개의 대형 `tests/unit/test_cov_p1b_remaining*.py` 커버리지 묶음 파일을 공용 `tests/unit/_runtime_test_fakes.py` 기반 9개 도메인별 소형 단위 테스트 모듈로 분할했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.6.0.md](./releases/RELEASE_NOTES_v13.6.0.md).
+
+빌드 산출물은 `dist/ltcai-13.6.0-py3-none-any.whl`, `dist/ltcai-13.6.0.tar.gz`, `ltcai-13.6.0.tgz`, `dist/ltcai-13.6.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.6.0_aarch64.dmg` 입니다.
+
 ## v13.5.0 — Living Synthesis (2026-11-24)
 
 **macOS**(`omlx` Homebrew 및 무-Homebrew universal2 휠 폴백, `local_mlx`), **Windows**(`winget` Ollama / llama.cpp / LM Studio 및 `pip` `llama-cpp-python[server]` 폴백), **Linux**(공식 Ollama 설치 스크립트 및 `pip` / `vllm`) 전 환경 원클릭 **Qwen3.8 27B 4-bit** 설치·다운로드·실행, 실시간 가용 메모리 압박 자동 튜닝(`host_available_ram_gb`, `omlx_serve_args`, `llamacpp_serve_args`), **TypeScript 7.0.2 (`tsgo`)** 및 `@babel/parser` i18n AST 전환, `engine_adapters.py` / `model_loading.py` 모듈화 및 데드코드·불필요 테스트 정리를 적용했습니다.

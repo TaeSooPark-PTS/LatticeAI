@@ -16,7 +16,7 @@
 
 <br/>
 
-![v13.5.0 Living Brain walkthrough](output/release/v13.5.0/gifs/v13.5.0-living-brain-walkthrough.gif)
+![v13.6.0 Living Brain walkthrough](output/release/v13.6.0/gifs/v13.6.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_13.5.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_13.6.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -85,15 +85,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v13.5.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v13.5.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v13.6.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v13.6.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v13.5.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v13.5.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v13.6.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v13.6.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v13.5.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v13.5.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v13.6.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v13.6.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v13.5.0/screenshots/13-chronicle.png) | ![Settings](output/release/v13.5.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v13.6.0/screenshots/13-chronicle.png) | ![Settings](output/release/v13.6.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v13.5.0/SCREENSHOT_INDEX.md](output/release/v13.5.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v13.5.0/screenshots/01-login.png), [06-capture.png](output/release/v13.5.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.5.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v13.6.0/SCREENSHOT_INDEX.md](output/release/v13.6.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v13.6.0/screenshots/01-login.png), [06-capture.png](output/release/v13.6.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.6.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -117,7 +117,7 @@ Full visual index: [output/release/v13.5.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **13.5.0 — Living Synthesis**:
+The current release is **13.6.0 — Living Synthesis**:
 
 - **Universal Adaptive Agent Harness (Zero Per-Model Branches)** — Added runtime 3-turn micro-probing (`probe.rs`), observation-first tool ranking & bilingual domain classification (`ranking.rs`, `domain.rs`), deterministic UI element center resolution (`ui_resolve.rs`), JSON schema repair & ChatML prefill (`repair.rs`, `action_salvage_text.rs`), and active vs. superseded evidence separation (`rag_grounding.rs`, `summaries.rs`).
 - **25-Task Empirical Benchmark (`28.0% → 84.0%`, +56.0 pp / +200.0% rel.)** — Verified against local `Qwen2.5-0.5B-Instruct-Q4_K_M` (`benchmark_adaptive_harness.py`): **80.0% Tool Calling** (+60.0 pp), **80.0% Web Handling** (+80.0 pp), **100.0% Computer Use** (+100.0 pp), **60.0% Answer Quality** (+40.0 pp vs standard), and **100.0% RAG Grounding** (+40.0 pp vs raw / +80.0 pp vs standard), at **-63.3%** lower average latency than standard loop.
@@ -130,11 +130,11 @@ Release notes: [docs/releases/RELEASE_NOTES_v13.4.0.md](docs/releases/RELEASE_NO
 
 Expected artifacts for 13.5.0 must use exact filenames:
 
-- `dist/ltcai-13.5.0-py3-none-any.whl`
-- `dist/ltcai-13.5.0.tar.gz`
-- `ltcai-13.5.0.tgz`
-- `dist/ltcai-13.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.5.0_aarch64.dmg`
+- `dist/ltcai-13.6.0-py3-none-any.whl`
+- `dist/ltcai-13.6.0.tar.gz`
+- `ltcai-13.6.0.tgz`
+- `dist/ltcai-13.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.6.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 

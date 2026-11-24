@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.6.0": {
+    "_why": [
+      "Living Synthesis (13.6.0) replaces openapi-typescript@7.13.0 and the",
+      "openapi-ts5 alias with a zero-dependency native TypeScript 7 OpenAPI",
+      "declaration generator (scripts/generate_openapi_types.mjs) and splits",
+      "the five monolithic tests/unit/test_cov_p1b_remaining*.py coverage",
+      "bundles into nine domain-focused unit test modules.",
+      "",
+      "No visual screen layout changed in 13.6.0; empty claim set on purpose."
+    ]
+  },
   "13.5.0": {
     "_why": [
       "Living Synthesis (13.5.0) adds one-click cross-platform engine installation",

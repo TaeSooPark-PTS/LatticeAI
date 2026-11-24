@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v13.6.0 - Living Synthesis] (2026-11-24)
+
+무의존성 네이티브 TypeScript 7 (`tsgo`) OpenAPI 타입 생성기(`scripts/generate_openapi_types.mjs`)를 도입해 남아 있던 TypeScript 5 의존성(`openapi-typescript@7.13.0`, `openapi-ts5`, `scripts/run_openapi_typescript.mjs`, `overrides`)을 완전히 제거하고, 5개의 대형 `tests/unit/test_cov_p1b_remaining*.py` 커버리지 묶음 파일을 `tests/unit/_runtime_test_fakes.py`와 9개의 도메인별 소형 단위 테스트 모듈로 분할했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.6.0.md](./releases/RELEASE_NOTES_v13.6.0.md).
+
 # [v13.5.0 - Living Synthesis] (2026-11-24)
 
 macOS(`omlx` Homebrew 및 무-Homebrew universal2 휠 폴백, `local_mlx`), Windows(`winget` Ollama / llama.cpp / LM Studio 및 `pip` 폴백), Linux(Ollama 설치 스크립트 및 `pip` / `vllm`) 전 환경 원클릭 **Qwen3.8 27B 4-bit** 설치·다운로드·실행과 실시간 가용 메모리 압박 자동 튜닝을 통합하고, 워크스페이스 타입체커를 **TypeScript 7.0.2 (`tsgo`)**로, `scripts/check_i18n_literals.mjs`를 `@babel/parser`로 전환했으며, `engine_adapters.py` 및 `model_loading.py` 모듈 리팩토링과 데드코드·불필요 테스트 정리를 완료했습니다.
@@ -136,7 +142,7 @@ Hugging Face 실저장소 양자화 태그(`Q4_0`·`MXFP4`)와 GGUF 라우팅, �
 
 # 릴리스 노트 색인
 
-이 저장소는 **12.0.0부터 13.5.0까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **12.0.0부터 13.6.0까지**의 공개 릴리스 이력을 유지합니다(최신 `v12.x`–`v13.x` Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `13.x` 및 `12.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (12.0.0+)
 
