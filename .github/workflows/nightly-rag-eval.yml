@@ -1,0 +1,79 @@
+name: Nightly Real-Model RAG Evaluation
+
+on:
+  schedule:
+    # Run daily at 03:30 UTC (12:30 KST), decoupled from fast PR CI.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      sample_limit:
+        description: "Number of queries from datasets/rag_eval_v1.json to evaluate"
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  nightly-rag-eval:
+    name: Real-Model Grounded RAG Eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run real-model RAG evaluation (graceful skip when endpoints unset)
+        env:
+          LATTICE_EVAL_LOCAL_ENDPOINT: ${{ vars.LATTICE_EVAL_LOCAL_ENDPOINT || secrets.LATTICE_EVAL_LOCAL_ENDPOINT }}
+          LATTICE_EVAL_LOCAL_MODEL: ${{ vars.LATTICE_EVAL_LOCAL_MODEL || 'mlx-community/Qwen3.8-27B-4bit' }}
+          LATTICE_EVAL_CLOUD_ENDPOINT: ${{ vars.LATTICE_EVAL_CLOUD_ENDPOINT || secrets.LATTICE_EVAL_CLOUD_ENDPOINT }}
+          LATTICE_EVAL_CLOUD_MODEL: ${{ vars.LATTICE_EVAL_CLOUD_MODEL || 'gpt-4o-mini' }}
+          LATTICE_EVAL_CLOUD_API_KEY: ${{ secrets.LATTICE_EVAL_CLOUD_API_KEY }}
+          SAMPLE_LIMIT: ${{ github.event.inputs.sample_limit || '20' }}
+        run: |
+          python3 scripts/run_real_model_rag_eval.py \
+            --limit "$SAMPLE_LIMIT" \
+            > rag_eval_report.json
+          cat rag_eval_report.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("rag_eval_report.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Nightly Real-Model RAG Evaluation Summary",
+              f"- Dataset: `{report['dataset_version']}`",
+              "",
+              "| Provider | Location | Model | Status | Claim Support | Unsupported | Fabricated Citations | Abstention Acc |",
+              "|---|---|---|---|---|---|---|---|",
+          ]
+          for r in report.get("results", []):
+              status = r.get("status", "unknown")
+              csr = f"{r['claim_support_rate']*100:.1f}%" if "claim_support_rate" in r else "-"
+              unsup = str(r.get("unsupported_claims", "-"))
+              fab = str(r.get("fabricated_citations", "-"))
+              abst = f"{r['abstention_accuracy']*100:.1f}%" if "abstention_accuracy" in r else "-"
+              lines.append(
+                  f"| {r.get('provider')} | {r.get('execution_location')} | `{r.get('model_id')}` | `{status}` | {csr} | {unsup} | {fab} | {abst} |"
+              )
+          summary_path = Path(
+              __import__("os").environ.get("GITHUB_STEP_SUMMARY", "/tmp/rag_eval_summary.md")
+          )
+          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload RAG evaluation report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-rag-eval-report
+          path: rag_eval_report.json
+          retention-days: 30

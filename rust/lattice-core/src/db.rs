@@ -581,6 +581,23 @@ impl Store {
             .await
             .map_err(|err| CoreError::Runtime(format!("blocking write task failed: {err}")))?
     }
+
+    /// [`Store::with_write_conn`] on tokio's blocking pool.
+    ///
+    /// Routes multi-step `&mut Connection` operations (such as transactional
+    /// integrity repairs, audited entity merges, and knowledge corrections)
+    /// through the shared single-writer pool instead of opening a second
+    /// direct SQLite connection.
+    pub async fn write_conn<T, F>(self: &Arc<Self>, work: F) -> Result<T, CoreError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&mut Connection) -> Result<T, CoreError> + Send + 'static,
+    {
+        let store = Arc::clone(self);
+        tokio::task::spawn_blocking(move || store.with_write_conn(work))
+            .await
+            .map_err(|err| CoreError::Runtime(format!("blocking write_conn task failed: {err}")))?
+    }
 }
 
 /// Where this process's durable state lives, resolved once.

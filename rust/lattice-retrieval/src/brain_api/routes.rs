@@ -15,23 +15,41 @@ use super::{consistency, digest, health, proposals};
 
 /// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[
+    ("GET", "/api/brain/clusters"),
     ("POST", "/api/brain/consolidate"),
     ("GET", "/api/brain/contradictions"),
     ("POST", "/api/brain/contradictions/propose"),
     ("POST", "/api/brain/contradictions/resolve"),
+    ("GET", "/api/brain/corrections"),
+    ("POST", "/api/brain/corrections"),
+    ("POST", "/api/brain/corrections/:correction_id/revert"),
+    ("POST", "/api/brain/corrections/:correction_id/status"),
     ("GET", "/api/brain/duplicates"),
+    ("POST", "/api/brain/embeddings/cutover"),
+    ("GET", "/api/brain/embeddings/registry"),
+    ("POST", "/api/brain/embeddings/rollback"),
+    ("GET", "/api/brain/entities/:entity_id/timeline"),
+    ("GET", "/api/brain/entities/candidates"),
+    ("POST", "/api/brain/entities/merge"),
+    ("POST", "/api/brain/entities/rollback"),
+    ("GET", "/api/brain/gaps"),
     ("GET", "/api/brain/garden"),
     ("GET", "/api/brain/health"),
     ("GET", "/api/brain/importance"),
     ("GET", "/api/brain/insights"),
+    ("GET", "/api/brain/integrity"),
+    ("POST", "/api/brain/integrity/repair"),
     ("GET", "/api/brain/proactive-brief"),
     ("GET", "/api/brain/quality-report"),
+    ("GET", "/api/brain/relationships/evolution"),
     ("POST", "/api/brain/synthesize"),
     ("GET", "/api/brain/vector-freshness"),
 ];
 
-/// The mountable router for `latticeai/api/brain_intelligence.py`.
+/// The mountable router for `latticeai/api/brain_intelligence.py` and the
+/// v13.8.0–v13.9.0 Digital Brain extension endpoints.
 pub fn router(state: BrainState) -> Router {
+    let ext = super::extensions::router(state.clone());
     Router::new()
         .route("/api/brain/health", get(brain_health))
         .route("/api/brain/insights", get(brain_insights))
@@ -53,6 +71,7 @@ pub fn router(state: BrainState) -> Router {
         )
         .route("/api/brain/consolidate", post(brain_consolidate))
         .with_state(state)
+        .merge(ext)
 }
 
 struct Caller {

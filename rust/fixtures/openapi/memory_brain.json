@@ -1,6 +1,148 @@
 {
   "components": {
     "schemas": {
+      "BrainCorrectionCreateRequest": {
+        "properties": {
+          "after_snapshot": {
+            "title": "After Snapshot",
+            "type": "object"
+          },
+          "before_snapshot": {
+            "title": "Before Snapshot",
+            "type": "object"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "title": "Status",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_kind": {
+            "default": "fact",
+            "title": "Target Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id"
+        ],
+        "title": "BrainCorrectionCreateRequest",
+        "type": "object"
+      },
+      "BrainCorrectionStatusRequest": {
+        "properties": {
+          "status": {
+            "default": "confirmed",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "BrainCorrectionStatusRequest",
+        "type": "object"
+      },
+      "BrainEmbeddingCutoverRequest": {
+        "properties": {
+          "generation_id": {
+            "title": "Generation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generation_id"
+        ],
+        "title": "BrainEmbeddingCutoverRequest",
+        "type": "object"
+      },
+      "BrainEntityMergeRequest": {
+        "properties": {
+          "canonical_id": {
+            "title": "Canonical Id",
+            "type": "string"
+          },
+          "duplicate_id": {
+            "title": "Duplicate Id",
+            "type": "string"
+          },
+          "rationale": {
+            "default": "user approved merge",
+            "title": "Rationale",
+            "type": "string"
+          },
+          "signals": {
+            "title": "Signals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "canonical_id",
+          "duplicate_id"
+        ],
+        "title": "BrainEntityMergeRequest",
+        "type": "object"
+      },
+      "BrainEntityRollbackRequest": {
+        "properties": {
+          "add_do_not_merge": {
+            "default": true,
+            "title": "Add Do Not Merge",
+            "type": "boolean"
+          },
+          "merge_id": {
+            "title": "Merge Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "merge_id"
+        ],
+        "title": "BrainEntityRollbackRequest",
+        "type": "object"
+      },
+      "BrainIntegrityRepairRequest": {
+        "properties": {
+          "approved_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approved Actions",
+            "type": "array"
+          },
+          "backup_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Path"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "global": {
+            "default": false,
+            "title": "Global",
+            "type": "boolean"
+          }
+        },
+        "title": "BrainIntegrityRepairRequest",
+        "type": "object"
+      },
       "ClearRequest": {
         "properties": {
           "confirm": {
@@ -273,19 +415,35 @@
   "family": "memory_brain",
   "generated_by": "scripts/gen_openapi_fragments.py",
   "greedy_path_params": {},
-  "operation_count": 37,
+  "operation_count": 53,
   "operation_order": [
+    "GET /api/brain/clusters",
     "POST /api/brain/consolidate",
     "GET /api/brain/contradictions",
     "POST /api/brain/contradictions/propose",
     "POST /api/brain/contradictions/resolve",
+    "GET /api/brain/corrections",
+    "POST /api/brain/corrections",
+    "POST /api/brain/corrections/{correction_id}/revert",
+    "POST /api/brain/corrections/{correction_id}/status",
     "GET /api/brain/duplicates",
+    "POST /api/brain/embeddings/cutover",
+    "GET /api/brain/embeddings/registry",
+    "POST /api/brain/embeddings/rollback",
+    "GET /api/brain/entities/candidates",
+    "POST /api/brain/entities/merge",
+    "POST /api/brain/entities/rollback",
+    "GET /api/brain/entities/{entity_id}/timeline",
+    "GET /api/brain/gaps",
     "GET /api/brain/garden",
     "GET /api/brain/health",
     "GET /api/brain/importance",
     "GET /api/brain/insights",
+    "GET /api/brain/integrity",
+    "POST /api/brain/integrity/repair",
     "GET /api/brain/proactive-brief",
     "GET /api/brain/quality-report",
+    "GET /api/brain/relationships/evolution",
     "POST /api/brain/synthesize",
     "GET /api/brain/vector-freshness",
     "GET /api/chronicle/as-of",
@@ -313,19 +471,34 @@
     "POST /garden",
     "GET /garden/tree"
   ],
-  "path_count": 36,
+  "path_count": 51,
   "path_order": [
+    "/api/brain/clusters",
     "/api/brain/consolidate",
     "/api/brain/contradictions",
     "/api/brain/contradictions/propose",
     "/api/brain/contradictions/resolve",
+    "/api/brain/corrections",
+    "/api/brain/corrections/{correction_id}/revert",
+    "/api/brain/corrections/{correction_id}/status",
     "/api/brain/duplicates",
+    "/api/brain/embeddings/cutover",
+    "/api/brain/embeddings/registry",
+    "/api/brain/embeddings/rollback",
+    "/api/brain/entities/candidates",
+    "/api/brain/entities/merge",
+    "/api/brain/entities/rollback",
+    "/api/brain/entities/{entity_id}/timeline",
+    "/api/brain/gaps",
     "/api/brain/garden",
     "/api/brain/health",
     "/api/brain/importance",
     "/api/brain/insights",
+    "/api/brain/integrity",
+    "/api/brain/integrity/repair",
     "/api/brain/proactive-brief",
     "/api/brain/quality-report",
+    "/api/brain/relationships/evolution",
     "/api/brain/synthesize",
     "/api/brain/vector-freshness",
     "/api/chronicle/as-of",
@@ -353,6 +526,23 @@
     "/garden/tree"
   ],
   "paths": {
+    "/api/brain/clusters": {
+      "get": {
+        "description": "Detect deterministic topic clusters over the authorized workspace graph.",
+        "operationId": "brain_topic_clusters_api_brain_clusters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Topic Clusters"
+      }
+    },
     "/api/brain/consolidate": {
       "post": {
         "operationId": "brain_consolidate_api_brain_consolidate_post",
@@ -459,6 +649,132 @@
         "summary": "Brain Resolve Contradiction"
       }
     },
+    "/api/brain/corrections": {
+      "get": {
+        "description": "List user knowledge corrections scoped to the authorized workspace.",
+        "operationId": "brain_list_corrections_api_brain_corrections_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain List Corrections"
+      },
+      "post": {
+        "description": "Record a local-only user knowledge correction with before/after audit snapshots.",
+        "operationId": "brain_create_correction_api_brain_corrections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainCorrectionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Create Correction"
+      }
+    },
+    "/api/brain/corrections/{correction_id}/revert": {
+      "post": {
+        "description": "Revert a confirmed workspace knowledge correction using its before_snapshot.",
+        "operationId": "brain_revert_correction_api_brain_corrections__correction_id__revert_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "correction_id",
+            "required": true,
+            "schema": {
+              "title": "Correction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Revert Correction"
+      }
+    },
+    "/api/brain/corrections/{correction_id}/status": {
+      "post": {
+        "description": "Update epistemic status (confirmed/rejected) of a workspace knowledge correction.",
+        "operationId": "brain_update_correction_status_api_brain_corrections__correction_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "correction_id",
+            "required": true,
+            "schema": {
+              "title": "Correction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainCorrectionStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Update Correction Status"
+      }
+    },
     "/api/brain/duplicates": {
       "get": {
         "description": "Graph-layer duplicate node candidates (read-only).",
@@ -474,6 +790,199 @@
           }
         },
         "summary": "Brain Duplicates"
+      }
+    },
+    "/api/brain/embeddings/cutover": {
+      "post": {
+        "description": "Atomically cut over a ready shadow vector index generation (admin only).",
+        "operationId": "brain_embedding_cutover_api_brain_embeddings_cutover_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainEmbeddingCutoverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Embedding Cutover"
+      }
+    },
+    "/api/brain/embeddings/registry": {
+      "get": {
+        "description": "List registered embedding models and shadow re-indexing generations.",
+        "operationId": "brain_embedding_registry_api_brain_embeddings_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Embedding Registry"
+      }
+    },
+    "/api/brain/embeddings/rollback": {
+      "post": {
+        "description": "Instantly roll back to the previous vector index generation (admin only).",
+        "operationId": "brain_embedding_rollback_api_brain_embeddings_rollback_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Embedding Rollback"
+      }
+    },
+    "/api/brain/entities/candidates": {
+      "get": {
+        "description": "List workspace-scoped duplicate entity merge candidates and recent merge audit records.",
+        "operationId": "brain_entity_candidates_api_brain_entities_candidates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Entity Merge Candidates"
+      }
+    },
+    "/api/brain/entities/merge": {
+      "post": {
+        "description": "Execute an audited, reversible entity merge within the authorized workspace.",
+        "operationId": "brain_entity_merge_api_brain_entities_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainEntityMergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Entity Merge"
+      }
+    },
+    "/api/brain/entities/rollback": {
+      "post": {
+        "description": "Selectively roll back a workspace entity merge and optionally record a do-not-merge guard.",
+        "operationId": "brain_entity_rollback_api_brain_entities_rollback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainEntityRollbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Entity Merge Rollback"
+      }
+    },
+    "/api/brain/entities/{entity_id}/timeline": {
+      "get": {
+        "description": "Query the bi-temporal timeline for an entity in the authorized workspace.",
+        "operationId": "brain_entity_timeline_api_brain_entities__entity_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Entity Timeline"
+      }
+    },
+    "/api/brain/gaps": {
+      "get": {
+        "description": "Detect knowledge gaps (isolated entities and missing provenance) in the authorized workspace.",
+        "operationId": "brain_knowledge_gaps_api_brain_gaps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Knowledge Gaps"
       }
     },
     "/api/brain/garden": {
@@ -564,6 +1073,62 @@
         "summary": "Brain Insights"
       }
     },
+    "/api/brain/integrity": {
+      "get": {
+        "description": "Run workspace-scoped (or admin global) Knowledge Graph integrity check.",
+        "operationId": "brain_integrity_check_api_brain_integrity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "global",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Global",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Integrity Check"
+      }
+    },
+    "/api/brain/integrity/repair": {
+      "post": {
+        "description": "Preview (dry_run) or execute workspace-scoped Knowledge Graph integrity repairs.",
+        "operationId": "brain_integrity_repair_api_brain_integrity_repair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainIntegrityRepairRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Integrity Repair"
+      }
+    },
     "/api/brain/proactive-brief": {
       "get": {
         "description": "Brain Brief proactive section (v11.1.0): what the Brain noticed.\n\nRead-only \u2014 it reports the proposals already waiting in the Review\nCenter and never raises new ones.",
@@ -596,6 +1161,23 @@
           }
         },
         "summary": "Brain Quality Report"
+      }
+    },
+    "/api/brain/relationships/evolution": {
+      "get": {
+        "description": "List relationship evolution history scoped to the authorized workspace.",
+        "operationId": "brain_relationship_evolution_api_brain_relationships_evolution_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Relationship Evolution"
       }
     },
     "/api/brain/synthesize": {
@@ -1396,9 +1978,9 @@
       }
     }
   },
-  "schema_count": 13,
+  "schema_count": 19,
   "source": "frontend/openapi.json",
-  "spec_version": "13.8.0",
+  "spec_version": "13.9.0",
   "summary": "Memory manager, brain intelligence, garden, chronicle, command center and evidence actions.",
   "target": "lattice-retrieval / lattice-platform",
   "wp": "R5"

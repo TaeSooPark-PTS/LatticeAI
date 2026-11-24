@@ -329,4 +329,4 @@ def test_ubuntu_runner_compat_script_passes():
         check=False,
     )
     assert res.returncode == 0, res.stderr
-    assert "Verified 7 GitHub Actions workflow(s)" in res.stdout
+    assert "Verified 8 GitHub Actions workflow(s)" in res.stdout
