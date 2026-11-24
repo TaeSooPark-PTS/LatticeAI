@@ -2,7 +2,7 @@
 //!
 //! Fourteen of the module's seventeen routes. `GET /graph` and
 //! `GET /knowledge-graph` are page shells and belong to WP-I4's redirect table
-//! (`lattice_platform::ui_redirects`, which already lists them); **`POST
+//! (`lattice_platform::shell::ui_redirects`, which already lists them); **`POST
 //! /knowledge-graph/ingest` stays on the worker** — it is the Brain's single
 //! write door, and the plan keeps it there on purpose. Nothing in this module
 //! claims it.

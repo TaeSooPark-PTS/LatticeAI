@@ -8,13 +8,12 @@
 
 use std::sync::Arc;
 
-use lattice_agent::policy::{default_blocked_write_prefixes, ToolPolicy};
+use lattice_agent::kernel::policy::{default_blocked_write_prefixes, ToolPolicy};
+use lattice_agent::seam::worker::{ToolOutcome, WorkerClient};
+use lattice_agent::surface::looproutes::{loop_router_isolated, LoopConfig, ScopeAuthorizer};
 use lattice_agent::tools::command::validate;
+use lattice_agent::tools::sandbox::{IsolatedRootSpec, Workspace};
 use lattice_agent::tools::{CallScope, NativeCall, NativeTools, ToolConfig, ToolHost};
-use lattice_agent::worker::{ToolOutcome, WorkerClient};
-use lattice_agent::{
-    loop_router_isolated, IsolatedRootSpec, LoopConfig, ScopeAuthorizer, Workspace,
-};
 use serde_json::{json, Value};
 
 async fn start_dummy_worker() -> String {

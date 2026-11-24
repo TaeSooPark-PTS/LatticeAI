@@ -13,10 +13,10 @@ use axum::routing::post;
 use axum::Router;
 use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap};
 use lattice_core::worker::WorkerSeamClient;
-use lattice_platform::automation;
-use lattice_platform::change_proposals;
-use lattice_platform::hooks::{self, HooksState};
-use lattice_platform::review_queue::{self, GovernanceState};
+use lattice_platform::governance::automation;
+use lattice_platform::governance::change_proposals;
+use lattice_platform::governance::hooks::{self, HooksState};
+use lattice_platform::governance::review_queue::{self, GovernanceState};
 use serde_json::{json, Value};
 
 pub const FIXTURE: &str = "review_proposals.json";
@@ -73,7 +73,7 @@ pub struct Install {
     pub owner_token: String,
     pub member_token: String,
     /// The store the four routers read — and the one the agent loop stages
-    /// into, since it implements `lattice_agent::proposals::ProposalStore`.
+    /// into, since it implements `lattice_agent::kernel::proposals::ProposalStore`.
     pub gov: GovernanceState,
     pub symbols: HashMap<String, String>,
     hooks: HooksState,

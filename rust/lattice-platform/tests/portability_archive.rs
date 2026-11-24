@@ -18,16 +18,16 @@ use std::time::Duration;
 use lattice_auth::{AuthConfig, AuthState, Clock};
 use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::GraphWriter;
-use lattice_platform::admin::{
+use lattice_platform::adminops::admin::{
     load_audit_log, load_org_governance_policy, save_org_governance_policy, validate_tenant_scope,
     OrganizationGovernancePolicy,
 };
-use lattice_platform::multimodal::{
+use lattice_platform::governance::review_queue::{self, GovernanceState};
+use lattice_platform::knowledge::multimodal::{
     validate_multimodal_contract, Modality, MultimodalContractRequest,
 };
-use lattice_platform::portability::{self, PortabilityState};
-use lattice_platform::review_queue::{self, GovernanceState};
-use lattice_platform::voice::{self, VoiceState};
+use lattice_platform::knowledge::portability::{self, PortabilityState};
+use lattice_platform::knowledge::voice::{self, VoiceState};
 use rusqlite::params;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};

@@ -3,7 +3,8 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use lattice_agent::{command, is_circuit_breaker};
+use lattice_agent::kernel::breaker::is_circuit_breaker;
+use lattice_agent::tools::command;
 use serde_json::{json, Value};
 
 use crate::toolsurface::mcp::{detail, parse_json_object, require_admin, require_user};
@@ -174,7 +175,7 @@ pub(crate) async fn run_command(
     };
     let command = parsed.get("command").and_then(Value::as_str).unwrap_or("");
     let cwd = parsed.get("cwd").and_then(Value::as_str).unwrap_or(".");
-    let policy = lattice_agent::policy::ToolPolicy {
+    let policy = lattice_agent::kernel::policy::ToolPolicy {
         risk: "exec".into(),
         destructive: false,
         shell: true,
@@ -402,7 +403,7 @@ fn package_script(workdir: &std::path::Path, script: &str) -> Result<String, Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lattice_agent::sandbox::Workspace;
+    use lattice_agent::tools::sandbox::Workspace;
 
     #[test]
     fn a_missing_script_is_the_only_missing_error() {

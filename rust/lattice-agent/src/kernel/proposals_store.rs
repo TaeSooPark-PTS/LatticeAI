@@ -75,7 +75,7 @@ pub fn document_writer() -> Option<&'static Arc<dyn DocumentWriter>> {
 
 /// The standalone store: `<data_dir>/workspace_os.json`.
 ///
-/// Byte-compatible with `lattice_platform::review_queue` — see the module
+/// Byte-compatible with `lattice_platform::governance::review_queue` — see the module
 /// docs, and [`DocumentWriter`] for what happens when the Review Center is in
 /// this process too.
 #[derive(Debug, Clone)]
@@ -174,7 +174,7 @@ fn existing_ids(state: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// One review item, exactly as `lattice_platform::review_queue` builds it.
+/// One review item, exactly as `lattice_platform::governance::review_queue` builds it.
 fn build_review_item(item: &NewReviewItem, existing: &[String]) -> Value {
     let now = now_iso();
     let user_email = item
@@ -311,7 +311,7 @@ fn now_iso() -> String {
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}")
 }
 
-/// Howard Hinnant's `civil_from_days`, as `lattice_platform::review_queue` uses.
+/// Howard Hinnant's `civil_from_days`, as `lattice_platform::governance::review_queue` uses.
 fn civil_from_days(mut days: i64) -> (i32, u32, u32) {
     days += 719_468;
     let era = if days >= 0 { days } else { days - 146_096 } / 146_097;

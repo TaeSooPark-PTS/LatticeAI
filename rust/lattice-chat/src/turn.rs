@@ -393,7 +393,11 @@ impl Persist {
         // 2. Audit carries a masked preview and the verdict, never the body.
         if let Some(path) = self.audit_path.as_ref() {
             if let Some(payload) = self.audit_event.as_object() {
-                lattice_platform::admin::append_audit_event(path, "chat_message", payload.clone());
+                lattice_platform::adminops::admin::append_audit_event(
+                    path,
+                    "chat_message",
+                    payload.clone(),
+                );
             }
         }
 
@@ -653,9 +657,9 @@ pub async fn write_chat_turn(
     let message = redact_for_role(role, message);
     let item = build_item(role, &message, &naive_local_iso(), meta);
 
-    let sensitive = serde_json::to_value(lattice_platform::admin::classify_sensitive_message(
-        &item, 0,
-    ))
+    let sensitive = serde_json::to_value(
+        lattice_platform::adminops::admin::classify_sensitive_message(&item, 0),
+    )
     .unwrap_or(Value::Null);
     let audit_event = audit_payload(role, &message, meta, &sensitive);
 

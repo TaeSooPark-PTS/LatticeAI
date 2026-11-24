@@ -77,8 +77,3 @@ pub use worker::{ChatWorker, EmbedReply, ModelSnapshot};
 
 /// Product version, kept in lockstep by `scripts/bump_version.py`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Placeholder retained from the scaffold so the integrator's smoke keeps working.
-pub fn crate_ready() -> bool {
-    true
-}

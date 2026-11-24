@@ -16,14 +16,14 @@ mod admin_support;
 use admin_support::*;
 use axum::Router;
 use lattice_core::worker::WorkerSeamClient;
-use lattice_platform::admin::{
+use lattice_platform::adminops::admin::{
     append_audit_event, default_product_hardening_probed, family_mounted, load_audit_log,
     router as admin_router, AdminState,
 };
-use lattice_platform::features::{router as features_router, FeaturesState};
-use lattice_platform::funnel_metrics::{router as funnel_router, FunnelState};
-use lattice_platform::security_dashboard::{router as security_router, SecurityState};
-use lattice_platform::setup::{router as setup_router, SetupState};
+use lattice_platform::adminops::funnel_metrics::{router as funnel_router, FunnelState};
+use lattice_platform::adminops::security_dashboard::{router as security_router, SecurityState};
+use lattice_platform::modelops::setup::{router as setup_router, SetupState};
+use lattice_platform::workspaceos::features::{router as features_router, FeaturesState};
 use serde_json::{json, Map, Value};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -289,7 +289,7 @@ async fn replay_setup_case(case: &serde_json::Value) {
     );
     if needs_corpus {
         let store = state.demo.clone().unwrap_or_default();
-        for (id, title, _) in lattice_platform::setup::demo_documents() {
+        for (id, title, _) in lattice_platform::modelops::setup::demo_documents() {
             store.ingest(id, title, Some("personal"));
         }
         state.demo = Some(store);

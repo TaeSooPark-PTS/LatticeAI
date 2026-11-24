@@ -2,7 +2,7 @@
 
 # Lattice AI v13.7.1 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (Legacy Fallback Purge, Native Git Interop Coverage & Pre-13.7 Doc Cleanup).
+> **Status: historical** — archived release note for v13.7.1 (Legacy Fallback Purge, Native Git Interop Coverage & Pre-13.7 Doc Cleanup).
 
 Removes all remaining dead `forward()` fallbacks and legacy compatibility scaffolding from `lattice-ingest`, `lattice-platform`, and `lattice-retrieval` so every ingestion endpoint consistently returns HTTP `503 Service Unavailable` when `GraphWriter` is unwired; adds an end-to-end `source: "git"` integration test and unwired-`GraphWriter` 503 contract test in `local_files_replay.rs`; and prunes pre-`13.7.0` review, plan, and legacy-compatibility docs while preserving all benchmark documents.
 

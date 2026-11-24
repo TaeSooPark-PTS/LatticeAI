@@ -184,15 +184,11 @@ under `rust/fixtures/agent/`, and reordering them is a behaviour change.
 **…a new route?** `surface/`, with its body in `runbody.rs` and its 400 through
 `surface::bad_request`. The route translates, calls the kernel, translates back.
 
-## Compatibility
+## Public API Surface (13.7.2+)
 
-`src/lib.rs` ends with the compatibility map: every `lattice_agent::…` path that
-existed before the v12.0.0 regrouping still resolves, spelled exactly as it was
-(`lattice_agent::sandbox`, `lattice_agent::agentloop`, `lattice_agent::sanitize`
-and the rest are `pub use` re-exports of their new homes). `lattice-host`,
-`lattice-platform`, `lattice-chat` and `lattice-core` import those names, so the
-map is also the honest list of what outside code depends on — nothing may be
-dropped from it without a coordinated change in those crates.
-
-New code inside this crate uses the real path (`crate::kernel::state`, not
-`crate::state`); the aliases exist for the consumers, not for us.
+`src/lib.rs` exposes only the canonical domain groups (`content`, `kernel`,
+`parse`, `prompts`, `seam`, `surface`, `tools`) and `VERSION`. The flat
+pre-12.0.0 compatibility re-export map was retired in `13.7.2`; every internal
+and external caller imports directly from canonical paths (e.g.,
+`lattice_agent::kernel::state`, `lattice_agent::tools::sandbox`,
+`lattice_agent::surface::looproutes`).

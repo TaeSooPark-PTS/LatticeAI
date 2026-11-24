@@ -13,12 +13,12 @@ use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use common::{assert_no_failures, cases, read_golden, with_root};
-use lattice_agent::command::{validate, Validated};
-use lattice_agent::exec::{
+use lattice_agent::tools::command::{validate, Validated};
+use lattice_agent::tools::exec::{
     child_command, execute, is_natively_executable, sandbox_env, which, NATIVE_EXECUTABLES,
     SAFE_EXECUTABLE_PATH,
 };
-use lattice_agent::sandbox::{Workspace, MAX_COMMAND_OUTPUT};
+use lattice_agent::tools::sandbox::{Workspace, MAX_COMMAND_OUTPUT};
 use serde_json::json;
 
 fn workspace(dir: &tempfile::TempDir) -> Workspace {

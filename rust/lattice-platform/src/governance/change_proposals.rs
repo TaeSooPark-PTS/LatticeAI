@@ -4,7 +4,7 @@
 //! were already; **approve-and-apply** — the base-SHA conflict check and the
 //! file write — used to be one `POST /agent/change-proposal` to the Python
 //! worker, and §P1a retired that route. The write now goes through
-//! [`lattice_agent::sandbox::Workspace`], the same sandbox the agent's own
+//! [`lattice_agent::tools::sandbox::Workspace`], the same sandbox the agent's own
 //! native `write_file` resolves through (§W4), so a proposal cannot apply to a
 //! path the agent could not have written in the first place.
 //!
@@ -16,7 +16,7 @@
 //! body. Both are pinned by `rust/fixtures/http/review_proposals.json`.
 //!
 //! This module is also where the *other* end of the pipeline is wired: the
-//! agent loop stages proposals through [`lattice_agent::proposals::ProposalStore`],
+//! agent loop stages proposals through [`lattice_agent::kernel::proposals::ProposalStore`],
 //! and [`GovernanceState`] implements it, so a loop-staged proposal lands in
 //! the very store these routes read.
 
@@ -25,8 +25,8 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_agent::proposals::{NewReviewItem, ProposalStore};
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::kernel::proposals::{NewReviewItem, ProposalStore};
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{Identity, OrderedMap};
 use serde_json::{json, Value};
 
@@ -59,7 +59,7 @@ const ALREADY_HINT: &str = "이미 처리된 제안입니다. 다시 적용할 �
 const REORG_KIND: &str = "folder_reorganization";
 
 /// `_MAX_STAGED_BYTES`, from the crate that stages (one constant, two ends).
-const MAX_STAGED_BYTES: usize = lattice_agent::proposals::MAX_STAGED_BYTES;
+const MAX_STAGED_BYTES: usize = lattice_agent::kernel::proposals::MAX_STAGED_BYTES;
 
 /// Why approve-and-apply did not land.
 #[derive(Debug)]

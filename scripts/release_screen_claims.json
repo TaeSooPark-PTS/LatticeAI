@@ -20,6 +20,16 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.7.2": {
+    "_why": [
+      "Living Synthesis (13.7.2) migrates all Rust workspace callers and",
+      "integration tests to canonical domain module paths and removes the",
+      "obsolete flat crate-root compatibility re-export maps from",
+      "lattice-agent and lattice-platform plus lattice_chat::crate_ready().",
+      "",
+      "No visual screen layout changed in 13.7.2; empty claim set on purpose."
+    ]
+  },
   "13.7.1": {
     "_why": [
       "Living Synthesis (13.7.1) removes dead legacy forward() fallbacks and",

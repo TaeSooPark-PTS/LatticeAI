@@ -5,11 +5,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **13.7.1 — Living Synthesis**.
+Current release: **13.7.2 — Living Synthesis**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **13.0.0 through 13.7.1** (the
+The public Git tree keeps release history from **13.0.0 through 13.7.2** (the
 modern `v13.x` Rust-host and domain-grouped architecture era). Security support
 follows that same product era: **the 13.x line receives fixes.**
 

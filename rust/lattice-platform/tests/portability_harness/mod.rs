@@ -20,13 +20,13 @@ use lattice_auth::password::hash_password;
 use lattice_auth::users::ensure_user_identity;
 use lattice_auth::{csrf_guard, stable_user_id, AuthConfig, AuthState, Clock, Users};
 use lattice_core::db::RuntimeConfig;
-use lattice_platform::computer_use::{self, ComputerUseState};
-use lattice_platform::network::{self, NetworkState};
-use lattice_platform::network_boundary::{self, NetworkBoundaryState};
-use lattice_platform::portability::{self, PortabilityState};
-use lattice_platform::project_sessions::{self, ProjectSessionsState};
-use lattice_platform::realtime::{self, RealtimeState};
-use lattice_platform::voice;
+use lattice_platform::knowledge::network::{self, NetworkState};
+use lattice_platform::knowledge::network_boundary::{self, NetworkBoundaryState};
+use lattice_platform::knowledge::portability::{self, PortabilityState};
+use lattice_platform::knowledge::voice;
+use lattice_platform::toolsurface::computer_use::{self, ComputerUseState};
+use lattice_platform::workspaceos::project_sessions::{self, ProjectSessionsState};
+use lattice_platform::workspaceos::realtime::{self, RealtimeState};
 use serde_json::{json, Value};
 
 pub const CAPTURED_HEADERS: [&str; 4] = [

@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v13.7.2 — Living Synthesis (2026-11-24)
+
+Rust 워크스페이스 전체(`lattice-host`, `lattice-chat`, `lattice-platform`, `lattice-agent`, `lattice-retrieval`, `src-tauri` 및 모든 통합 테스트)의 임포트를 정본 도메인 경로(`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`)로 이전하고, `lattice-agent`·`lattice-platform`의 구형 평탄 호환성 `pub use` 맵과 마지막 미사용 `lattice_chat::crate_ready()` 스텁을 제거했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v13.7.2.md](./releases/RELEASE_NOTES_v13.7.2.md).
+
+빌드 산출물은 `dist/ltcai-13.7.2-py3-none-any.whl`, `dist/ltcai-13.7.2.tar.gz`, `ltcai-13.7.2.tgz`, `dist/ltcai-13.7.2.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.2_aarch64.dmg` 입니다.
+
 ## v13.7.1 — Living Synthesis (2026-11-24)
 
 `lattice-ingest`, `lattice-platform`, `lattice-retrieval`의 잔여 레거시 `forward()` 폴백과 미사용 호환 스텁을 모두 제거해 `GraphWriter` 미연결 시 일관된 HTTP `503`을 반환하도록 정리하고, `local_files_replay.rs`에 `git init` 기반 `source: "git"` 및 503 통합 테스트를 추가했으며, 모든 벤치마크 문서를 보존한 채 `13.7.0` 이전 리뷰·계획·레거시 문서를 정리했습니다.

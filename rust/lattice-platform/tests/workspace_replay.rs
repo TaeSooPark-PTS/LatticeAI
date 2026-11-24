@@ -45,9 +45,9 @@ fn mounted_routes_match_the_committed_contract() {
         .collect();
     let mut actual: Vec<String> = Vec::new();
     for table in [
-        lattice_platform::invitations::MOUNTED,
-        lattice_platform::permissions::MOUNTED,
-        lattice_platform::workspace::MOUNTED,
+        lattice_platform::workspaceos::invitations::MOUNTED,
+        lattice_platform::workspaceos::permissions::MOUNTED,
+        lattice_platform::workspaceos::workspace::MOUNTED,
     ] {
         for (method, path) in table {
             actual.push(format!("{method} {}", to_openapi(path)));
@@ -64,7 +64,7 @@ fn mounted_routes_match_the_committed_contract() {
         let path = key.split_once(' ').unwrap().1;
         let param = param.as_str().unwrap();
         assert!(
-            lattice_platform::workspace::MOUNTED
+            lattice_platform::workspaceos::workspace::MOUNTED
                 .iter()
                 .any(|(_, p)| { to_openapi(p) == path && p.contains(&format!("*{param}")) }),
             "{key} matches slashes in Python; mount it as /*{param}"

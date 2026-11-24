@@ -112,36 +112,5 @@ pub mod shell;
 pub mod toolsurface;
 pub mod workspaceos;
 
-// ---------------------------------------------------------------------------
-// Compatibility map — every `lattice_platform::…` path that existed before the
-// v12.0.0 regrouping still resolves, spelled exactly as it was.
-//
-// `lattice-host` imports **all thirty** of these by name in one `use` (see
-// `gateway/product.rs`), `lattice-chat` imports `admin`, and this crate's own
-// integration tests under `tests/` name a dozen more. The regrouping moved
-// *files*, not the public API: the re-exports below are the whole
-// compatibility story, and they are also the honest list of what outside code
-// depends on. Nothing may be dropped from it without a coordinated change in
-// the crates named above.
-//
-// Inside `src/` the domain paths are used directly — `crate::adminops::admin`,
-// not `crate::admin` — so a reader of any file sees which domain it is
-// borrowing from. These aliases exist for callers outside the crate.
-// ---------------------------------------------------------------------------
-
-// workspaceos/ — the place a person works, and who may be in it.
-pub use workspaceos::{
-    features, invitations, permission_mode, permissions, project_sessions, realtime, workspace,
-};
-// governance/ — work the product does on its own, and the gate in front of it.
-pub use governance::{automation, change_proposals, hooks, review_queue, workflow_designer};
-// toolsurface/ — every capability the product can reach.
-pub use toolsurface::{agent_registry, agents, computer_use, marketplace, mcp, plugins, tools};
-// knowledge/ — how the graph's content crosses a trust boundary.
-pub use knowledge::{multimodal, network, network_boundary, portability, voice};
-// modelops/ — which model runs here, and getting the machine ready for it.
-pub use modelops::{models_catalog, setup};
-// adminops/ — operating the install.
-pub use adminops::{admin, funnel_metrics, security_dashboard};
-// shell/ — the browser's first contact.
-pub use shell::{static_ui, ui_redirects};
+/// Product version, kept in lockstep by `scripts/bump_version.py`.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

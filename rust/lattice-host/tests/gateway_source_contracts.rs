@@ -345,7 +345,7 @@ fn no_source_file_names_a_stranded_worker_path() {
 /// The review-event vocabulary is one vocabulary, spelled in two crates.
 ///
 /// `lattice-retrieval` writes review items too (synthesis and Self-Model
-/// proposals) and cannot name `lattice_platform::review_queue` — the
+/// proposals) and cannot name `lattice_platform::governance::review_queue` — the
 /// dependency runs the other way — so it declares the three constants again.
 /// This host is the one crate that can see both spellings, which makes it the
 /// only place the claim "they are the same" can be checked rather than
@@ -355,14 +355,14 @@ fn the_review_event_vocabulary_is_one_vocabulary() {
     use lattice_retrieval::memory_api::wsos;
     assert_eq!(
         wsos::REVIEW_TIMELINE_AREA,
-        lattice_platform::review_queue::REVIEW_TIMELINE_AREA
+        lattice_platform::governance::review_queue::REVIEW_TIMELINE_AREA
     );
     assert_eq!(
         wsos::REVIEW_ITEM_CREATED_EVENT,
-        lattice_platform::review_queue::REVIEW_ITEM_CREATED_EVENT
+        lattice_platform::governance::review_queue::REVIEW_ITEM_CREATED_EVENT
     );
     assert_eq!(
         wsos::REVIEW_ITEM_UPDATED_EVENT,
-        lattice_platform::review_queue::REVIEW_ITEM_UPDATED_EVENT
+        lattice_platform::governance::review_queue::REVIEW_ITEM_UPDATED_EVENT
     );
 }

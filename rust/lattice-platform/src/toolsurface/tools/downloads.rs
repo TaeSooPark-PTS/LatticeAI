@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use axum::extract::{Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
-use lattice_agent::sandbox::{Workspace, MAX_FILE_BYTES};
+use lattice_agent::tools::sandbox::{Workspace, MAX_FILE_BYTES};
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 

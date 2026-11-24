@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use axum::http::StatusCode;
 use common::{client, FixedProvider, TestGateway};
-use lattice_agent::sandbox::{resolve_isolated_agent_root, IsolatedRootSpec};
+use lattice_agent::tools::sandbox::{resolve_isolated_agent_root, IsolatedRootSpec};
 use lattice_auth::password::hash_password;
 use lattice_auth::{AuthConfig, Users};
 use lattice_core::db::RuntimeConfig;
@@ -134,13 +134,13 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     let mut auth_cfg = AuthConfig::from_map(&auth_env, None);
     auth_cfg.data_dir = data_dir.clone();
 
-    let loop_config = lattice_agent::LoopConfig {
+    let loop_config = lattice_agent::surface::looproutes::LoopConfig {
         worker_origin: worker_origin.clone(),
         runs_dir: scratch.join("rust_agent_runs"),
         client: Some(client()),
-        proposals: Some(Arc::new(lattice_agent::proposals::JsonProposalStore::new(
-            scratch.join("proposals"),
-        ))),
+        proposals: Some(Arc::new(
+            lattice_agent::kernel::proposals::JsonProposalStore::new(scratch.join("proposals")),
+        )),
         hooks: None,
         external: None,
     };

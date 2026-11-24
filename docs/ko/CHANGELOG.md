@@ -5,6 +5,17 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [13.7.2] - 2026-11-24 — Living Synthesis
+
+### 변경됨
+- **정본 도메인 모듈 경로 전면 이전 (`rust/lattice-agent`, `rust/lattice-platform`, `rust/lattice-host`, `rust/lattice-chat`, `rust/lattice-retrieval`):**
+  - Rust 워크스페이스 전체 77개 이상의 소스·통합 테스트 파일이 정본 도메인 경로(`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`)에서 직접 임포트하도록 이전했습니다.
+
+### 제거됨
+- **구형 크레이트 루트 호환성 재내보내기 맵 및 스캐폴드 스텁 (`rust/lattice-agent/src/lib.rs`, `rust/lattice-platform/src/lib.rs`, `rust/lattice-chat/src/lib.rs`):**
+  - `lattice-agent`와 `lattice-platform`의 평탄한 크레이트 루트 `pub use` 호환성 맵을 제거해 엄격한 도메인 범위 공개 API 표면만 유지합니다.
+  - 미사용 `lattice_chat::crate_ready()` 스캐폴드 스텁을 삭제했습니다.
+
 ## [13.7.1] - 2026-11-24 — Living Synthesis
 
 ### 제거됨

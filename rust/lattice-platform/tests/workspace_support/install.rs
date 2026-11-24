@@ -9,10 +9,10 @@ use axum::http::HeaderMap;
 use axum::routing::get;
 use axum::Router;
 use lattice_auth::{AuthConfig, AuthState, Clock};
-use lattice_platform::invitations::{self, InvitationsState};
-use lattice_platform::permissions::{self, PermissionGateway, PermissionsState};
-use lattice_platform::ui_redirects;
-use lattice_platform::workspace::{
+use lattice_platform::shell::ui_redirects;
+use lattice_platform::workspaceos::invitations::{self, InvitationsState};
+use lattice_platform::workspaceos::permissions::{self, PermissionGateway, PermissionsState};
+use lattice_platform::workspaceos::workspace::{
     self, GraphSeam, WorkspaceDeps, WorkspaceProviders, WorkspaceState,
 };
 use serde_json::{json, Value};

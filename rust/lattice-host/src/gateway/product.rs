@@ -29,7 +29,7 @@
 //!   constructor.
 //! * **Page shells belong to the shell.** `GET /agents`, `GET /workspace`,
 //!   `GET /graph` and the rest are 308s into the SPA's hash router. They live in
-//!   [`ui_redirects`][lattice_platform::ui_redirects], not in the feature family
+//!   [`ui_redirects`][lattice_platform::shell::ui_redirects], not in the feature family
 //!   whose Python module happens to declare them — except `GET /plugins/sdk`,
 //!   which the committed contract files under `mcp_market` and `lattice-platform`'s
 //!   `plugins` therefore owns (see [`REDIRECTS_OWNED_ELSEWHERE`]).
@@ -37,17 +37,23 @@
 use std::sync::Arc;
 
 use axum::Router;
-use lattice_platform::permissions::{
+use lattice_platform::adminops::{admin, funnel_metrics, security_dashboard};
+use lattice_platform::governance::workflow_designer::LocalGraphSink;
+use lattice_platform::governance::{
+    automation, change_proposals, hooks, review_queue, workflow_designer,
+};
+use lattice_platform::knowledge::{network, network_boundary, portability, voice};
+use lattice_platform::modelops::{models_catalog, setup};
+use lattice_platform::shell::static_ui::{StaticUiConfig, SysinfoState, WorkerGpuSource};
+use lattice_platform::shell::{static_ui, ui_redirects};
+use lattice_platform::toolsurface::{
+    agent_registry, agents, computer_use, marketplace, mcp, plugins, tools,
+};
+use lattice_platform::workspaceos::permissions::{
     LocalTokenPending, LocalTokenSnapshot, LocalTokenStatus, LocalTokenTable,
 };
-use lattice_platform::static_ui::{StaticUiConfig, SysinfoState, WorkerGpuSource};
-use lattice_platform::workflow_designer::LocalGraphSink;
-use lattice_platform::{
-    admin, agent_registry, agents, automation, change_proposals, computer_use, features,
-    funnel_metrics, hooks, invitations, marketplace, mcp, models_catalog, network,
-    network_boundary, permission_mode, permissions, plugins, portability, project_sessions,
-    realtime, review_queue, security_dashboard, setup, static_ui, tools, ui_redirects, voice,
-    workflow_designer, workspace,
+use lattice_platform::workspaceos::{
+    features, invitations, permission_mode, permissions, project_sessions, realtime, workspace,
 };
 
 use super::onedoor::OneDoorState;
@@ -111,7 +117,7 @@ impl LocalTokenTable for LocalApprovalsAdapter {
 /// Page redirects this crate must **not** mount, because a family router does.
 ///
 /// `GET /plugins/sdk` is `plugins.py`'s in Python and `mcp_market.json` in the
-/// committed contract, so `lattice_platform::plugins` owns it — with its own
+/// committed contract, so `lattice_platform::toolsurface::plugins` owns it — with its own
 /// `require_user`, which the redirect table does not carry. Mounting both would
 /// panic; mounting the redirect instead would move an operation out of the
 /// fragment its crate's contract test pins.

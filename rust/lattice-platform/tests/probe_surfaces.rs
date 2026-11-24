@@ -8,11 +8,11 @@ use axum::extract::Json;
 use axum::routing::get;
 use axum::Router;
 use lattice_core::worker::WorkerSeamClient;
-use lattice_platform::agents::{self, AgentsState};
-use lattice_platform::computer_use::{self, ComputerUseState};
-use lattice_platform::models_catalog::{self, ModelsCatalogState};
-use lattice_platform::setup::{self, SetupState};
-use lattice_platform::workspace::{self, WorkspaceState};
+use lattice_platform::modelops::models_catalog::{self, ModelsCatalogState};
+use lattice_platform::modelops::setup::{self, SetupState};
+use lattice_platform::toolsurface::agents::{self, AgentsState};
+use lattice_platform::toolsurface::computer_use::{self, ComputerUseState};
+use lattice_platform::workspaceos::workspace::{self, WorkspaceState};
 use serde_json::{json, Value};
 
 #[allow(dead_code)]

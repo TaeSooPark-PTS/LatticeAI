@@ -32,24 +32,24 @@ mod common;
 use std::collections::BTreeMap;
 
 use common::{assert_no_failures, cases, manifest, read_golden};
-use lattice_agent::breaker::is_circuit_breaker;
-use lattice_agent::command::{
-    validate, ALLOWED_COMMANDS, ALLOWED_GIT_SUBCOMMANDS, BLOCKED_COMMANDS, BLOCKED_FIND_FLAGS,
-    BLOCKED_RG_FLAGS, SHELL_OPERATORS,
-};
-use lattice_agent::exec::{sandbox_env, SAFE_EXECUTABLE_PATH};
-use lattice_agent::governor::{
+use lattice_agent::kernel::breaker::is_circuit_breaker;
+use lattice_agent::kernel::governor::{
     classify_tool_call, MUTATING_TOOL_INVENTORY, PROPOSAL_CAPABLE_TOOLS,
 };
-use lattice_agent::mode::{
+use lattice_agent::kernel::mode::{
     effective_auto_approve, mode_contract, normalize_mode, normalize_value, plan_requires_approval,
     should_stage_proposal, COMPUTER_CONTROL_TOOLS, COMPUTER_OBSERVATION_TOOLS,
     HARD_BLOCK_SANDBOXES, KNOWLEDGE_READ_TOOLS, WORKSPACE_WRITE_TOOLS,
 };
-use lattice_agent::permission::{block_reason_for_tool, non_auto_plan_steps, PlanStep};
-use lattice_agent::policy::{PolicyTable, ToolPolicy};
-use lattice_agent::pyshlex;
-use lattice_agent::sandbox::{MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS, MAX_FILE_BYTES};
+use lattice_agent::kernel::permission::{block_reason_for_tool, non_auto_plan_steps, PlanStep};
+use lattice_agent::kernel::policy::{PolicyTable, ToolPolicy};
+use lattice_agent::parse::pyshlex;
+use lattice_agent::tools::command::{
+    validate, ALLOWED_COMMANDS, ALLOWED_GIT_SUBCOMMANDS, BLOCKED_COMMANDS, BLOCKED_FIND_FLAGS,
+    BLOCKED_RG_FLAGS, SHELL_OPERATORS,
+};
+use lattice_agent::tools::exec::{sandbox_env, SAFE_EXECUTABLE_PATH};
+use lattice_agent::tools::sandbox::{MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS, MAX_FILE_BYTES};
 use serde_json::{json, Map, Value};
 
 /// The modes whose decision grid is still committed.
@@ -367,8 +367,8 @@ fn the_committed_grids_are_a_subset_of_the_manifests_modes() {
         if GOLDEN_MODES.contains(name) {
             continue;
         }
-        // Retired grids: the mode's gating lives in `lattice_agent::permission`
-        // and `lattice_agent::mode` unit tests now, one case per verdict class.
+        // Retired grids: the mode's gating lives in `lattice_agent::kernel::permission`
+        // and `lattice_agent::kernel::mode` unit tests now, one case per verdict class.
         assert!(
             !common::golden_path(&format!("decisions__{name}.json")).exists(),
             "decisions__{name}.json is back — add {name} to GOLDEN_MODES"
@@ -400,7 +400,7 @@ fn the_mode_contract_is_byte_identical() {
     let golden = read_golden("contract.json");
     assert_eq!(
         golden["default_mode"],
-        json!(lattice_agent::mode::DEFAULT_MODE.as_str())
+        json!(lattice_agent::kernel::mode::DEFAULT_MODE.as_str())
     );
     for (name, expected) in golden["contracts"].as_object().expect("contracts") {
         assert_eq!(&mode_contract(normalize_mode(name)), expected, "{name}");

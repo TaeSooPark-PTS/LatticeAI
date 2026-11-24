@@ -10,7 +10,7 @@
 //! reply is not a file, and the difference between the two is not something a
 //! chat surface may guess at. So the generation this module adds is the one the
 //! agent path already trusts, reached from here rather than reimplemented —
-//! [`lattice_agent::sanitize`] validates, unwraps and repairs, and this module
+//! [`lattice_agent::content::sanitize`] validates, unwraps and repairs, and this module
 //! adds only the parts that are chat's own: the anchored prompts
 //! ([`prompts`]), the single corrective retry ([`author`]), the refusal to write
 //! a scaffold nobody wrote, and real Office/PDF bytes instead of prose under a

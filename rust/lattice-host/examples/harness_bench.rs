@@ -1,18 +1,18 @@
-//! Empirical CLI harness runner for benchmarking `lattice_agent::agentloop::Runtime`
+//! Empirical CLI harness runner for benchmarking `lattice_agent::kernel::agentloop::Runtime`
 //! in `standard` (uncalibrated baseline) vs `adaptive` (Universal Adaptive Harness) modes.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use lattice_agent::agentloop::{LoopDeps, RunRequest, Runtime};
+use lattice_agent::kernel::agentloop::{LoopDeps, RunRequest, Runtime};
 use lattice_agent::kernel::probe::ProbeConfig;
+use lattice_agent::kernel::profile::STANDARD;
 use lattice_agent::kernel::proposals::{JsonProposalStore, NewReviewItem, ProposalStore};
 use lattice_agent::kernel::state::{AgentRunContext, AgentState};
-use lattice_agent::profile::STANDARD;
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::seam::worker::WorkerClient;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_agent::tools::{NativeTools, ToolConfig};
-use lattice_agent::worker::WorkerClient;
 use lattice_host::gateway::agent_bind::product_policy_table;
 use serde_json::{json, Value};
 

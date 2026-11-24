@@ -10,8 +10,8 @@
 //! | `/rust/search/{hybrid,keyword,vector}` | `lattice-host` (P1) | [`super::search`] |
 //! | `/rust/search/service-hybrid`, `/rust/graph/*`, `/rust/history*`, `/rust/context/assemble` | `lattice-retrieval` | `lattice_retrieval::router` |
 //! | `/rust/ingest/{plan,chunk}` | `lattice-ingest` | `lattice_ingest::router` |
-//! | `/rust/agent/{preflight,exec,contract}` | `lattice-agent` | `lattice_agent::router` |
-//! | `/rust/agent/{run,resume,approvals}` | `lattice-agent` | `lattice_agent::router` |
+//! | `/rust/agent/{preflight,exec,contract}` | `lattice-agent` | `lattice_agent::surface::router` |
+//! | `/rust/agent/{run,resume,approvals}` | `lattice-agent` | `lattice_agent::surface::router` |
 //! | `/host/jobs`, `/host/jobs/tick` | `lattice-jobs` | `lattice_jobs::router` |
 //!
 //! The three P1 lanes stay with `lattice-host`: `lattice-retrieval`'s router
@@ -29,9 +29,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use axum::Router;
-use lattice_agent::proposals::ProposalStore;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::LoopConfig;
+use lattice_agent::kernel::proposals::ProposalStore;
+use lattice_agent::surface::looproutes::LoopConfig;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_ingest::IngestApiConfig;
 use lattice_jobs::{parse_flag, Scheduler, SchedulerConfig};
 
@@ -141,7 +141,7 @@ pub fn scheduler_with_graph(
 /// mounted has no owner to disagree with and hands the JSON store.
 ///
 /// v11.7.0 added a second, lower guard for the same hazard —
-/// `OneDoorState::open` installs `lattice_agent::proposals::DocumentWriter`,
+/// `OneDoorState::open` installs `lattice_agent::kernel::proposals::DocumentWriter`,
 /// so a `JsonProposalStore` built *anywhere* in a process that has an owner
 /// writes through it. Naming the store here is still right (it is what makes
 /// the id the loop reports the Review Center's own); the install is what makes
@@ -153,7 +153,7 @@ pub fn agent_loop_config(
 ) -> LoopConfig {
     LoopConfig {
         worker_origin: worker_origin.to_string(),
-        runs_dir: lattice_agent::runs::default_runs_dir(),
+        runs_dir: lattice_agent::kernel::runs::default_runs_dir(),
         client: Some(client),
         proposals: None,
         // The hooks registry is the product's, so `OneDoorState` binds it —
@@ -185,9 +185,9 @@ pub fn agent_router(root: &Path, config: LoopConfig) -> Option<Router> {
 pub fn agent_router_parts(root: &Path, config: LoopConfig, include_loop: bool) -> Option<Router> {
     match Workspace::new(root) {
         Ok(workspace) => Some(if include_loop {
-            lattice_agent::router(workspace, config)
+            lattice_agent::surface::router::router(workspace, config)
         } else {
-            lattice_agent::router::kernel_router(workspace)
+            lattice_agent::surface::router::kernel_router(workspace)
         }),
         Err(err) => {
             eprintln!(
@@ -304,7 +304,7 @@ mod tests {
             ..agent_loop_config(
                 "http://127.0.0.1:1",
                 crate::supervisor::http_client().expect("client"),
-                Arc::new(lattice_agent::proposals::JsonProposalStore::new(
+                Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::new(
                     dir.join("proposals"),
                 )),
             )
@@ -325,7 +325,9 @@ mod tests {
         let config = agent_loop_config(
             "http://127.0.0.1:4899",
             crate::supervisor::http_client().expect("client"),
-            Arc::new(lattice_agent::proposals::JsonProposalStore::new(dir.path())),
+            Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::new(
+                dir.path(),
+            )),
         );
         assert_eq!(config.worker_origin, "http://127.0.0.1:4899");
         assert!(config.client.is_some(), "the loopback pool is shared");
@@ -344,7 +346,7 @@ mod tests {
     #[test]
     fn the_loop_stages_into_the_store_the_caller_named() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Arc::new(lattice_agent::proposals::JsonProposalStore::new(
+        let store = Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::new(
             dir.path().join("named"),
         ));
         let config = agent_loop_config(

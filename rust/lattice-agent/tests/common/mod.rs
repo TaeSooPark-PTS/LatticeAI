@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::tools::sandbox::Workspace;
 use serde_json::Value;
 
 /// `rust/fixtures/agent`.
@@ -116,10 +116,10 @@ pub fn assert_no_failures(checked: usize, failures: Vec<String>, what: &str) {
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
-use lattice_agent::agentloop::{LoopDeps, Prompts, RunRequest, Runtime};
-use lattice_agent::policy::PolicyTable;
-use lattice_agent::proposals::{JsonProposalStore, NewReviewItem, ProposalStore};
-use lattice_agent::worker::WorkerClient;
+use lattice_agent::kernel::agentloop::{LoopDeps, Prompts, RunRequest, Runtime};
+use lattice_agent::kernel::policy::PolicyTable;
+use lattice_agent::kernel::proposals::{JsonProposalStore, NewReviewItem, ProposalStore};
+use lattice_agent::seam::worker::WorkerClient;
 use serde_json::json;
 
 /// `rust/fixtures/agent_loop/golden/<name>`.
@@ -424,7 +424,10 @@ impl ProposalStore for PinnedProposalStore {
 /// goldens, the Python constants for every tool set, the real native tools with
 /// their vault pointed at the scratch directory, a scratch proposal store, and
 /// no prompts (the worker owns those, and a scripted reasoner never reads them).
-pub fn loop_deps(server: &ReplayServer, workspace: lattice_agent::sandbox::Workspace) -> LoopDeps {
+pub fn loop_deps(
+    server: &ReplayServer,
+    workspace: lattice_agent::tools::sandbox::Workspace,
+) -> LoopDeps {
     let scratch = workspace
         .root()
         .parent()
@@ -444,7 +447,7 @@ pub fn loop_deps(server: &ReplayServer, workspace: lattice_agent::sandbox::Works
 /// developer's own Review Center would be editing the machine it runs on.
 pub fn loop_deps_with(
     server: &ReplayServer,
-    workspace: lattice_agent::sandbox::Workspace,
+    workspace: lattice_agent::tools::sandbox::Workspace,
     proposals: Arc<dyn ProposalStore>,
 ) -> LoopDeps {
     let policies: PolicyTable =
@@ -491,7 +494,7 @@ pub fn loop_request(message: &str) -> RunRequest {
 
 /// `FILE_CREATE_ACTIONS`, for callers comparing artifact views.
 pub fn file_create_actions() -> BTreeSet<String> {
-    lattice_agent::agentloop::default_file_create_actions()
+    lattice_agent::kernel::agentloop::default_file_create_actions()
 }
 
 /// Canonical JSON: sorted keys, so a `bool` becoming an `int` still differs.

@@ -359,7 +359,7 @@ impl ChatState {
     pub fn audit_log_path(&self) -> Option<PathBuf> {
         let data_dir = self.config.data_dir.as_path();
         (!data_dir.as_os_str().is_empty())
-            .then(|| lattice_platform::admin::audit_log_path(data_dir))
+            .then(|| lattice_platform::adminops::admin::audit_log_path(data_dir))
     }
 
     /// The SQLite file `conversation_messages` lives in.
@@ -391,7 +391,7 @@ impl ChatState {
         let (Some(path), Some(payload)) = (self.audit_log_path(), fields.as_object()) else {
             return;
         };
-        lattice_platform::admin::append_audit_event(&path, event, payload.clone());
+        lattice_platform::adminops::admin::append_audit_event(&path, event, payload.clone());
     }
 
     /// `funnel_metrics.increment(name)` — advisory, never fatal.

@@ -253,7 +253,7 @@ impl LoopDeps {
     /// [`LoopDeps::new`], with the `pre_tool` / `post_tool` lifecycle wired.
     ///
     /// `hooks` is the host's registry adapter
-    /// (`lattice_platform::hooks::NativeHookSink`). `None` is the standalone
+    /// (`lattice_platform::governance::hooks::NativeHookSink`). `None` is the standalone
     /// contract: no `hooks.json` in reach, so no user hook fires — which is
     /// what a harness, a test and a host with no platform routes all want.
     pub fn with_hook_sink(

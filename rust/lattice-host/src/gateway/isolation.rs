@@ -22,7 +22,7 @@ use axum::http::{header, HeaderMap, HeaderName, HeaderValue, Method, StatusCode}
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Router;
-use lattice_agent::sandbox::{
+use lattice_agent::tools::sandbox::{
     is_shared_workspace_id, resolve_isolated_agent_root, sanitize_identity_segment,
     IsolatedRootSpec, Workspace,
 };
@@ -471,7 +471,7 @@ impl IsolationState {
             guard.clear();
         }
         let ws = scope.workspace()?;
-        let router = lattice_agent::router::kernel_router(ws);
+        let router = lattice_agent::surface::router::kernel_router(ws);
         guard.insert(scope.agent_root.clone(), router.clone());
         Ok(router)
     }

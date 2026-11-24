@@ -25,17 +25,17 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::LoopConfig;
+use lattice_agent::surface::looproutes::LoopConfig;
+use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthConfig, AuthState};
 use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
-use lattice_platform::hooks::{HooksStore, NativeHookSink};
+use lattice_platform::governance::hooks::{HooksStore, NativeHookSink};
 
 use super::agent_catalog::{self, PlatformCatalog};
-use lattice_platform::review_queue::GovernanceState;
-use lattice_platform::workspace::{WorkspaceDeps, WorkspaceService, WorkspaceState};
+use lattice_platform::governance::review_queue::GovernanceState;
+use lattice_platform::workspaceos::workspace::{WorkspaceDeps, WorkspaceService, WorkspaceState};
 
 use super::GatewayError;
 
@@ -182,7 +182,7 @@ impl OneDoorState {
 
         let workspace_state = WorkspaceState::new(Arc::clone(&auth), &data_dir)
             .with_deps(WorkspaceDeps {
-                seam: lattice_platform::workspace::GraphSeam::Native(graph.clone()),
+                seam: lattice_platform::workspaceos::workspace::GraphSeam::Native(graph.clone()),
                 ..WorkspaceDeps::default()
             })
             .with_worker(seam.clone());
@@ -218,7 +218,7 @@ impl OneDoorState {
         // writes through the same lock, the same SQLite row and the same
         // mirror file instead of appending to a document the Review Center
         // would overwrite.
-        lattice_agent::proposals::install_document_writer(shared_writer);
+        lattice_agent::kernel::proposals::install_document_writer(shared_writer);
         // v11.7.0 F-BC: the same argument, one document over. A user `pre_tool`
         // hook can block a native write and every fire is logged, so the loop
         // and `/api/hooks` must be looking at one registry.
@@ -332,7 +332,7 @@ fn probe_conn_graph_stats(
 /// other way, and inverting it for one file write would be an architecture
 /// change rather than a fix). This host is the one place that can see all
 /// three types, so it is where they are joined.
-struct SharedStateWriter(Arc<lattice_platform::workspace::WorkspaceOsStore>);
+struct SharedStateWriter(Arc<lattice_platform::workspaceos::workspace::WorkspaceOsStore>);
 
 impl SharedStateWriter {
     fn apply(&self, body: &mut dyn FnMut(&mut serde_json::Value)) -> Result<(), String> {
@@ -367,7 +367,7 @@ impl lattice_retrieval::memory_api::wsos::StateWriter for SharedStateWriter {
     }
 }
 
-impl lattice_agent::proposals::DocumentWriter for SharedStateWriter {
+impl lattice_agent::kernel::proposals::DocumentWriter for SharedStateWriter {
     fn mutate(&self, body: &mut dyn FnMut(&mut serde_json::Value)) -> Result<(), String> {
         self.apply(body)
     }
@@ -401,7 +401,7 @@ pub fn resolve_static_root(explicit: Option<&Path>) -> PathBuf {
         .into_iter()
         .find(|candidate| candidate.join("static").is_dir())
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    lattice_platform::static_ui::resolve_static_dir(explicit, &base, None)
+    lattice_platform::shell::static_ui::resolve_static_dir(explicit, &base, None)
 }
 
 /// Where a `static/` tree could plausibly be, nearest first.

@@ -9,10 +9,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use lattice_agent::proposals::{NewReviewItem, ProposalStore};
+use lattice_agent::kernel::proposals::{NewReviewItem, ProposalStore};
 use lattice_auth::AuthAuditSink;
 use lattice_chat::{AuditSink, EgressAudit, ReviewSink};
-use lattice_platform::admin::{append_audit_event, audit_log_path};
+use lattice_platform::adminops::admin::{append_audit_event, audit_log_path};
 use serde_json::{json, Value};
 
 /// Stage a cloud KG expansion through the Review Center's own store.
@@ -21,7 +21,7 @@ pub struct PlatformReview {
 }
 
 impl PlatformReview {
-    /// Bind the product's [`lattice_platform::review_queue::GovernanceState`].
+    /// Bind the product's [`lattice_platform::governance::review_queue::GovernanceState`].
     pub fn new(store: Arc<dyn ProposalStore>) -> Self {
         Self { store }
     }

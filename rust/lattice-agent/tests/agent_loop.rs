@@ -2,7 +2,7 @@
 //!
 //! Every case here is the *same* run twice: once by `latticeai.core.agent` when
 //! `scripts/generate_agent_loop_fixtures.py` recorded it, and once by
-//! [`lattice_agent::agentloop::Runtime`] here, driven by the identical scripted
+//! [`lattice_agent::kernel::agentloop::Runtime`] here, driven by the identical scripted
 //! reasoner and the identical tool results through a fake worker. What is
 //! compared is the whole record — final state, state history, transcript,
 //! rollback log, trace counters, the tool calls that were actually dispatched,
@@ -17,13 +17,13 @@ use common::{
     audit_of, canonical, file_create_actions, loop_deps, loop_deps_with, loop_golden,
     loop_normalize, loop_request, start_replay_worker, PinnedProposalStore,
 };
-use lattice_agent::agentloop::Runtime;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::{AgentRunContext, AgentState};
-use lattice_agent::transcript::{
+use lattice_agent::kernel::agentloop::Runtime;
+use lattice_agent::kernel::state::{AgentRunContext, AgentState};
+use lattice_agent::kernel::transcript::{
     artifact_checklist, compact_transcript, files_written, requirement_coverage, truncate_strings,
     PhaseBudgets, TranscriptBudget,
 };
+use lattice_agent::tools::sandbox::Workspace;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -64,7 +64,7 @@ const RECOVERED_PAST_PYTHON: [&str; 3] = ["broken_unclosed", "double_object", "s
 fn parse_row(case: &Value) -> (Value, Value) {
     let key = case["key"].as_str().expect("key");
     let raw = case["raw"].as_str().expect("raw");
-    let actual = match lattice_agent::action::extract_action_details(raw) {
+    let actual = match lattice_agent::parse::action::extract_action_details(raw) {
         Ok((action, repairs)) => json!({
             "key": key, "raw": raw, "ok": true,
             "action": Value::Object(action), "repairs": repairs,
@@ -155,7 +155,7 @@ fn the_verdict_parser_answers_its_recorded_cases() {
     for case in recorded {
         let key = case["key"].as_str().expect("key");
         let raw = case["raw"].as_str().expect("raw");
-        let actual = match lattice_agent::action::extract_verdict_details(raw) {
+        let actual = match lattice_agent::parse::action::extract_verdict_details(raw) {
             Ok((action, repairs)) => json!({
                 "key": key, "raw": raw, "ok": true,
                 "action": Value::Object(action), "repairs": repairs,
@@ -187,7 +187,7 @@ fn every_recorded_plan_normalizes_the_way_python_normalized_it() {
     assert!(recorded.len() >= 20);
     let mut failures = Vec::new();
     for case in recorded {
-        let (plan, fixes) = lattice_agent::plan::normalize_plan(
+        let (plan, fixes) = lattice_agent::kernel::plan::normalize_plan(
             &case["plan"],
             case["message"].as_str().unwrap_or(""),
         );
@@ -209,8 +209,8 @@ fn the_two_inferences_answer_the_recorded_requests() {
         let message = case["message"].as_str().expect("message");
         let actual = json!({
             "message": message,
-            "file_target": lattice_agent::inference::infer_file_target(message),
-            "manifest": lattice_agent::inference::infer_project_manifest(message),
+            "file_target": lattice_agent::parse::inference::infer_file_target(message),
+            "manifest": lattice_agent::parse::inference::infer_project_manifest(message),
         });
         if canonical(&actual) != canonical(case) {
             failures.push(format!("{message:?}: {actual} != {case}"));
@@ -261,7 +261,9 @@ fn truncation_and_learning_filters_match_their_recorded_answers() {
     for case in helpers["filter_learnings"].as_array().expect("rows") {
         let input = case["input"].as_array().expect("input");
         assert_eq!(
-            canonical(&json!(lattice_agent::transcript::filter_learnings(input))),
+            canonical(&json!(lattice_agent::kernel::transcript::filter_learnings(
+                input
+            ))),
             canonical(&case["kept"]),
             "{input:?}"
         );
@@ -416,7 +418,7 @@ async fn replay(case: &Value) -> (Value, Value) {
         &server,
         workspace.clone(),
         std::sync::Arc::clone(&proposals)
-            as std::sync::Arc<dyn lattice_agent::proposals::ProposalStore>,
+            as std::sync::Arc<dyn lattice_agent::kernel::proposals::ProposalStore>,
     ));
     let request = loop_request(case["message"].as_str().expect("message"));
     let mut ctx = AgentRunContext::new();
@@ -547,7 +549,7 @@ fn the_document_targets_resolve_to_the_recorded_paths() {
         let actual = json!({
             "tool": tool,
             "filename": filename,
-            "target": lattice_agent::documents::document_output_target(tool, filename),
+            "target": lattice_agent::tools::documents::document_output_target(tool, filename),
         });
         if canonical(&actual) != canonical(case) {
             failures.push(format!("{tool}/{filename:?}: {actual} != {case}"));
@@ -560,11 +562,11 @@ fn the_document_targets_resolve_to_the_recorded_paths() {
 fn profile_row(case: &Value) -> (Value, Value) {
     let model_id = case["model_id"].as_str();
     let override_name = case["override"].as_str().expect("override");
-    let profile = lattice_agent::profile::profile_with_override(model_id, override_name);
+    let profile = lattice_agent::kernel::profile::profile_with_override(model_id, override_name);
     let actual = json!({
         "override": override_name,
         "model_id": model_id,
-        "size_b": lattice_agent::profile::model_size_b(model_id.unwrap_or("")),
+        "size_b": lattice_agent::kernel::profile::model_size_b(model_id.unwrap_or("")),
         "profile": {
             "name": profile.name,
             "transcript_window": profile.transcript_window,
@@ -629,6 +631,6 @@ fn the_manifest_pins_the_compact_profile_boundary() {
         manifest["constants"]["compact_max_params_b"]
             .as_f64()
             .expect("compact_max_params_b"),
-        lattice_agent::profile::COMPACT_MAX_PARAMS_B,
+        lattice_agent::kernel::profile::COMPACT_MAX_PARAMS_B,
     );
 }

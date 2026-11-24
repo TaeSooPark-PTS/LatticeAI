@@ -7,25 +7,25 @@ mod common;
 use std::path::PathBuf;
 
 use common::{loop_deps, loop_request, start_replay_worker};
-use lattice_agent::action::extract_action_details;
-use lattice_agent::agentloop::execution::{
+use lattice_agent::kernel::agentloop::execution::{
     request_wants_computer_use, request_wants_knowledge, request_wants_web, url_named_in_request,
 };
-use lattice_agent::agentloop::Runtime;
+use lattice_agent::kernel::agentloop::Runtime;
+use lattice_agent::kernel::policy::ToolPolicy;
 use lattice_agent::kernel::probe::{
     cached, measure, score_action, store, verdict_for, ActionScore, ProbeConfig,
 };
-use lattice_agent::policy::ToolPolicy;
-use lattice_agent::profile::{COMPACT, GUIDED, STANDARD};
-use lattice_agent::prompts::signature;
-use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::{AgentRunContext, AgentState};
-use lattice_agent::tools::catalog::{coerce_and_unwrap_args, entry_for, native_entries};
-use lattice_agent::transcript::rag_grounding::{
+use lattice_agent::kernel::profile::{COMPACT, GUIDED, STANDARD};
+use lattice_agent::kernel::state::{AgentRunContext, AgentState};
+use lattice_agent::kernel::transcript::rag_grounding::{
     build_evidence_card, extract_evidence_passages, verify_grounded_answer, GroundingDefect,
 };
-use lattice_agent::transcript::{compact_transcript, distill_step_result};
-use lattice_agent::worker::WorkerClient;
+use lattice_agent::kernel::transcript::{compact_transcript, distill_step_result};
+use lattice_agent::parse::action::extract_action_details;
+use lattice_agent::prompts::signature;
+use lattice_agent::seam::worker::WorkerClient;
+use lattice_agent::tools::catalog::{coerce_and_unwrap_args, entry_for, native_entries};
+use lattice_agent::tools::sandbox::Workspace;
 use serde_json::{json, Map, Value};
 
 fn scratch(name: &str) -> PathBuf {
@@ -283,8 +283,10 @@ fn bilingual_domain_classifiers_and_observation_first_ranking_work() {
     // Verify observation-before-actuation ranking in guided & lean lists.
     let dir = scratch("ranking_obs");
     let workspace = Workspace::new(dir.join("ws")).expect("workspace");
-    let mut deps =
-        lattice_agent::agentloop::LoopDeps::new(WorkerClient::new("http://127.0.0.1:9"), workspace);
+    let mut deps = lattice_agent::kernel::agentloop::LoopDeps::new(
+        WorkerClient::new("http://127.0.0.1:9"),
+        workspace,
+    );
     deps.tool_names = vec![
         "computer_click".into(),
         "computer_type".into(),

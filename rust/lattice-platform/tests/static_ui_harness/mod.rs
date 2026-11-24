@@ -17,7 +17,7 @@ use std::sync::OnceLock;
 
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use lattice_platform::static_ui::StaticUiConfig;
+use lattice_platform::shell::static_ui::StaticUiConfig;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -123,10 +123,11 @@ impl Install {
     pub async fn start(config: &str) -> Self {
         let static_dir = scratch(config);
         materialise(&static_dir, config);
-        let router = lattice_platform::static_ui::router(config_for(static_dir.clone(), config))
-            // Merging both routers is also the proof that they do not claim the
-            // same path: axum panics on a duplicate route.
-            .merge(lattice_platform::ui_redirects::router());
+        let router =
+            lattice_platform::shell::static_ui::router(config_for(static_dir.clone(), config))
+                // Merging both routers is also the proof that they do not claim the
+                // same path: axum panics on a duplicate route.
+                .merge(lattice_platform::shell::ui_redirects::router());
         Self::serve(router, static_dir).await
     }
 
