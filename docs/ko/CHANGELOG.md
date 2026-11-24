@@ -3,7 +3,20 @@
 # 변경 이력 (Changelog)
 
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
-이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v12.0.0` 이후 버전만 유지합니다.
+이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
+
+## [13.7.0] - 2026-11-24 — Living Synthesis
+
+### 추가됨
+- **네이티브 Rust Obsidian 및 Interop 브릿지 (`rust/lattice-ingest/src/local_files_api/interop.rs`, `rust/lattice-ingest/src/local_files_api/ingest.rs`, `rust/lattice-ingest/tests/local_files_replay.rs`):**
+  - 폐기된 Python 워커 포워딩을 제거하고 `GraphWriter` 기반 네이티브 Obsidian 볼트(`[[wikilink]]` `LINKS_TO` 엣지, `#tags`, `dry_run` 미리보기) 및 `notion`(디렉터리·`.zip`), `git`(커밋 로그), `mail`(`.eml`·`.ics`) 연동 브릿지를 구현했습니다.
+
+### 변경됨
+- **네이티브 ESM Vite 8 / Vitest 5 설정 (`vite.config.mts`, `vitest.config.mts`, `tsconfig.json`):**
+  - `vite.config.ts`와 `vitest.config.ts`를 `fileURLToPath` + `readFileSync` 기반 `.mts`로 전환해 Vite 8 `configLoader: 'native'` 경고를 제거했습니다.
+- **`v13.0.0+` 릴리스 원장 정리 및 `ARCHITECTURE.md` 최신화:**
+  - `v13.0.0` 미만(`v12.x`) 릴리스 노트를 모두 정리하고 `scripts/check_current_release_docs.mjs`와 `tests/unit/test_server_app_decomposition.py`의 하한을 `v13.0.0+`로 갱신했습니다.
+  - `ARCHITECTURE.md`와 `docs/ko/ARCHITECTURE.md`에서 과거 프리-v13 이력을 정리하고 `13.7.0` 현재 아키텍처 기준으로 최신화했습니다.
 
 ## [13.6.0] - 2026-11-24 — Living Synthesis
 
@@ -128,196 +141,3 @@
 ### 변경됨
 - `OnceLock` 컴파일 비밀 마스킹을 `rust/lattice-core/src/redact.rs`로 승격하고, `rust/lattice-agent/src/seam/worker.rs`를 추출해 `kernel/`과 `tools/`가 `surface/`를 임포트하지 않도록 분리했으며, `http_reply.rs`를 통해 `modelops` → `adminops` 결합을 해소하고 `lattice-chat`을 표준 `lattice_agent::{kernel,parse,content,tools,seam}` 경로로 이관.
 - `review_items` 변경과 `timeline` 추가를 단일 원자적 `WorkspaceOsStore` 트랜잭션(`update_state_with_review_event`, `try_update_state_with_review_event`)으로 통합하고, `lattice-auth::messages`를 `lattice_core::messages`로 일원화(`check_server_i18n.mjs`가 146개 Rust 메시지 검증), `frontend/src/api/client.ts`(`streaming.ts`, `transfers.ts`)와 `src-tauri/src/backend.rs`(`backend_tests.rs`) 분할.
-
-## [12.10.0] - 2026-11-17 — Grounded Self
-
-### 추가됨
-- 결정적 에이전트 트랜스크립트 근거 검증(`rust/lattice-agent/src/kernel/transcript/grounding.rs`, `agentloop/verification.rs`, `probe.rs`)을 추가해 모델별 분기 없이도 2B/8GB급 로컬 모델의 미읽기 파일 답변 및 환각 `path:line`·백틱 식별자 인용을 포착하고, `AnswerProof.tsx`에 대화형 인용 증거 배지 및 `browser-extension/popup.js`에 서버 언어 동기화 추가.
-- 선호·습관·결정·성향·관계 및 인라인 `self_model_fact` 제안 승인/거절을 지원하는 Brain `SelfModelPanel`(100% Vitest 커버리지), `edges`·`edges_v2` 간 `PART_OF` 연쇄 삭제 검증(`graph_write_schema.rs`), 확장된 `cloud_lane.rs` / `rag_eval.rs` 테스트 스위트 추가.
-- 협조적 `499` 모델 다운로드 취소 및 다운로드 후 시맨틱 임베딩 자동 활성화 + 적응형 일괄 재인덱싱 드레인 추가.
-
-### 변경됨
-- 크레이트 내부 `rust/lattice-platform/src/http_reply.rs`를 추출해 `knowledge/`와 `toolsurface/`가 `workspaceos::project_sessions`를 측면 참조하지 않도록 격리하고, `scripts/check_server_i18n.mjs`에서 6개 Python 워커 라우터 전체를 잠금(`0 not yet claimed`), 병렬 `cargo nextest` 러너(`scripts/run_rust_tests.mjs`) 추가, `.github/workflows/release.yml`에서 `publish.yml`(`workflow_call`) 자동 체이닝 구성.
-
-## [12.9.0] - 2026-11-17 — Semantic Guard
-
-### 추가됨
-- `/api/search/hybrid`, `/memory/recall`, `/chat` 전반에 계약 정렬 시맨틱 쿼리 임베딩(`rust/lattice-retrieval/src/query_embed.rs`)과 순수 Rust `NativeHnswIndex`(`native_hnsw.rs`, `vector_hnsw.rs`), 워크스페이스/모델 스코프 Python HNSW 사이드카, `scripts/bench_retrieval_baseline.py` 추가.
-- `local_only` / `cloud_allowed` 동의 및 민감도 규칙을 강제하는 서버 측 네트워크 경계·클라우드 슬라이스 가드(`network_boundary_guard.rs`, `boundary.rs`, `cloud/context.rs`, `agent_registry.rs`) 추가.
-- 인증된 Workspace OS 실시간 SSE 스트리밍(`realtime.rs`, `useRealtimeStream.ts`) 및 `useAppBootstrap.ts` 추출(100% Vitest 커버리지).
-
-### 변경됨
-- Tauri 데스크톱 백엔드(`src-tauri/src/backend.rs`), `bin/ltcai.js` CLI 기동, `rust/lattice-host` 슈퍼바이저/게이트웨이 가드레일, 멀티스테이지 `Dockerfile`, `.latticebrain` v2 아카이브 KDF(`crypto.rs`, `kdf.rs`), CI / Sidecar E2E / 의존성 감사 워크플로우 강화 및 `AGENTS.md` 자율 태그·릴리스·CD 절차 반영.
-
-## [12.8.0] - 2026-11-16 — Trusted Brain
-
-### 추가됨
-- 표준 `EmbeddingIndexContract`(`embedding_contract.rs`), 세분화된 `IngestStatus`, `KnowledgeLifecycleState`/`KnowledgeLifecycleMetadata`(`lifecycle.rs`), Rust 코어·Python 임베딩 워커 간 통합 `GraphWriter` 연쇄 삭제 추가.
-- SQLite 워크스페이스/생명주기 사전 `LIMIT` 필터링, `vector_search_aligned`(`vector_alignment.rs`), 상한 `SidecarCachePool`(`DEFAULT_MAX_CACHE_BYTES`) 기반 서브워드 `Bm25SidecarIndex` 캐싱, `rag_eval.rs` 검색 게이트 추가.
-- `/agent`, `/tools/*`, `/mcp/*`, `/skills/*`, `/cu/*`, `/api/automation/*`, `/api/browser/*` 전반에 서버 도출 fail-closed 격리(`IsolatedRootSpec`, `resolve_agent_scope`, `IsolationState`, `AgentBindState`) 및 엔터프라이즈 감사 커버리지 추가.
-- 경로/심볼릭 링크 탈출 차단, X25519 공유 내보내기/수락 거버넌스, 복원 전 자동 백업을 갖춘 AEAD 암호화 `.latticebrain` 아카이브 포터빌리티(`archive.rs`, `crypto.rs`)와 정직한 `planned` PostgreSQL 보고(`postgres.rs`) 추가.
-- `.github/workflows/ci.yml` 자동 PR 검색/사이드카 게이트 및 `.github/workflows/{release,publish}.yml` Apple Silicon Tauri DMG 빌드·코드서명/공증 훅·`SHA256SUMS` 발행 추가.
-
-### 변경됨
-- `Library.tsx`, `System.tsx`, `Capture.tsx`를 `frontend/src/features/` 아래 모듈 슬라이스로 리팩터링(108개 파일 100% Vitest 커버리지 유지)하고 구형 `scratchpad/` 파일 제거.
-
-## [12.7.0] - 2026-11-16 — Fast Index
-
-### 추가됨
-- `rust/lattice-core/src/bm25_stats.rs`, `db/tables.rs`, `graph_write/`에 SQLite `bm25_node_stats` 사이드카 영속화를 추가하여, `GraphWriter`가 업서트·민감도 변경 시 사전 토큰화된 필드 길이(`dl_title`, `dl_tags`, `dl_body`, `dl_meta`)와 용어 빈도(`tf_json`)를 저장하고 삭제·큐레이션·교체 가져오기 시 정리하도록 구현(읽기 전용/동결 골든 DB에서는 미존재 테이블을 안전하게 건너뜀).
-- 증분 `(node_id, updated_at, content_hash)` 동기화, O(1) 필드 길이·용어 빈도 조회, `expand_knowledge_graph_with_sidecar`, `score_and_expand_with_sidecar`를 지원하는 `Bm25SidecarIndex` 및 역색인/GraphRAG 인접 캐싱 추가.
-
-### 변경됨
-- `README.md`를 빠른 시작, 제품 투어, 문서 허브, 솔직한 경계, `v12.0.0+` 릴리스 이력 중심의 제품 우선 구성으로 개편.
-- 로컬 및 GitHub Releases에서 v12 이전 릴리스 노트(`v9.*`–`v11.*`)와 사전 리뷰/계획 스냅샷을 정리하고 `scripts/check_current_release_docs.mjs` 및 `tests/unit/test_server_app_decomposition.py`에서 `v12.0.0+` 이력 하한선을 강제.
-
-## [12.6.0] - 2026-11-15 — Hybrid Graph
-
-### 추가됨
-- 3중 **BM25F + Vector + Knowledge Graph RRF 하이브리드 인덱싱 및 GraphRAG 검색**을 구현(보정된 Okapi BM25F `k1=1.2, b=0.75`, 한국어 조사 제거, CJK 문자 바이그램, 1-hop/2-hop 지식 그래프 구조 확장, `/api/search/hybrid` 무결과 자동 구제 폴백).
-- 동결된 422 오퍼레이션 / 41 패밀리 계약을 유지하면서 그래프 인식 에이전트 스킬 및 MCP 도구(`knowledge_search`, `obsidian_search`, `knowledge_graph_search`, `knowledge_graph_context`, `GRAPH_SKILL_BRIEFS`)에 `mode`, `hops`, `include_graph`, `subgraph` 페이로드 지원 추가.
-- 비인증 공개 미러 및 양자화 GGUF/MLX/ONNX 폴백(`embeddinggemma-2-4bit/8bit`, `embeddinggemma-2-GGUF`, `embeddinggemma-300m-ONNX`)과 `HF_ENDPOINT` 커스텀 미러 해석 추가.
-- Python 다운로드 런타임, Rust `modelops`, 프론트엔드(`ProductFlow.tsx`, `InstallScreen.tsx`, `Library.tsx`, `ko`/`en` i18n) 전반에 실시간 SSE 다운로드 진행률 스트리밍 추가(100% Vitest 커버리지).
-- `.github/workflows/*.yml` 전반에 `scripts/check_ubuntu_runner_compat.mjs` 및 Debian/Ubuntu `t64` 전환 패키지 폴백 체인 추가.
-- `scripts/bump_version.py`를 모듈형 `scripts/bump_version/` CLI 패키지로 리팩터링(`all`, `openapi`, `cargo`, `markers`, `--check` 지원).
-
-### 변경됨
-- 오프라인 무다운로드 `FallbackTextEmbedder`(`768d`, `lattice-fallback-subword-v2:768`)를 다중 스케일 `3..5`-gram 서브워드, CJK n-gram, 한국어 조사 제거·자모 초성 쌍, 단어 바이그램, 2-probe 부호 있는 Blake2b 투영, L2 정규화로 업그레이드.
-- `scripts/check_screenshot_pixel_delta.py`에서 Pillow 12 이하 `diff.getdata()` 폴백을 제거하고 Pillow 13+ `diff.get_flattened_data()`로 통일.
-
-## [12.5.0] - 2026-11-11 — Deep Vector
-
-### 추가됨
-- Google EmbeddingGemma 2(`google/embeddinggemma-2`, `embeddinggemma-2-4bit/8bit`, `embeddinggemma-300m`, 768차원) 네이티브 Hugging Face 임베딩 제공자(평균 풀링, L2 정규화, 태스크 접두사, 폴백 보호) 추가.
-- LLM 선택 전 메모리를 선예약(Gemma 2: 0.5~1.5GB, 300M: 0.3GB)하는 하드웨어 맞춤 PC 임베딩 추천(`recommend_embedding_for_host`) 추가.
-- `ProductFlow.tsx`에 PC 맞춤 EmbeddingGemma 2 추천 카드(i18n 지원) 및 `Library.tsx`에 원클릭 준비/다운로드 노출.
-- 모든 라우트·컨트롤·탭·버튼의 무오류 동작을 검증하는 포괄적 시각 E2E 스위트 `tests/visual/v3.all_buttons_inspection.spec.js` 추가.
-
-### 변경됨
-- `scripts/check_screenshot_pixel_delta.py`를 Pillow 14 지원 `diff.get_flattened_data()`로 이관.
-- 모든 GitHub Actions 워크플로우(`.github/workflows/*.yml`)를 Node 24 네이티브 메이저 버전(`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"`)으로 업그레이드.
-- `scripts/bump_version.py`에서 49개 대상의 OpenAPI 스펙 및 픽스처 버전 동기화 자동화.
-
-## [12.4.0] - 2026-11-11 — Sharp Weight
-
-### 추가됨
-- `mlx-community/Qwen3.8-27B-4bit`(`16.1GB`, `qwen3_5`), `mlx-community/gemma-4-26B-A4B-it-qat-4bit`(`15.6GB`), `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`(`21.9GB`)을 로컬 모델 카탈로그, 멀티 엔진 GGUF/HF 라우트, 클라우드 카탈로그, Rust `CATALOG_HINTS`에 추가.
-
-### 변경됨
-- `pyproject.toml`과 `requirements.txt`의 `pillow` 제약을 `>=13,<14`로 상향(`pillow 12.3.0` CVE 39건 해소)하고 `reportlab>=4,<5`, `huggingface_hub>=1.0,<2` 동기화.
-- 루트 및 `vscode-extension` npm 의존성과 락파일 갱신(`npm audit` 취약점 0건).
-
-### 수정됨
-- `latticeai/services/model_engines.py`의 `_json_request` 및 `get_openai_compatible_server_models`에서 비-`http(s)://` URL 스킴 거부.
-- `rust/lattice-platform/src/adminops/admin/handlers.rs`의 `admin_log_retention`이 실제 시스템 시계 대신 `state.auth.clock().now()`를 읽도록 수정해 결정적 감사 픽스처 드리프트 제거.
-- `frontend/src/styles.css`에 `@import "tailwindcss" source("..");`를 적용해 `@tailwindcss/oxide`가 `rust/target`을 스캔하지 않도록 범위 제한.
-
-## [12.3.0] - 2026-10-19 — Live Wire
-
-### 추가됨
-- `POST /tools/inspect_html` 전체 HTML 구조 파서 추가(`title`, `links`, `scripts`, `stylesheets`, `images`, `forms`, `headings` `h1`–`h6`, `MAX_FILE_BYTES` 제한).
-- `GET /tools/download`에 RFC 5987 `filename*=UTF-8''...` 헤더 및 UTF-8 퍼센트 디코딩 추가.
-- `mlx-community/Qwen3.5-9B-MLX-4bit` 및 `mlx-community/Qwen3.6-35B-A3B-4bit`에 대한 검증된 GGUF 라우팅(`ollama`, `lmstudio`, `llamacpp`) 추가.
-- `ensure_llamacpp_server`의 동반 `mmproj-*.gguf` 다운로드 및 `--mmproj` 플래그, `is_auxiliary_gguf` 필터링(`mmproj-`, `mtp-`, `dflash-`, `eagle3-`, `imatrix`), `model.safetensors.index.json` 샤드 완전성 검증(`_shards_complete`) 추가.
-- `lattice-agent` 소형 모델 도구/MCP 호출 내성 강화: `KNOWN_ACTIONS` 확장, 문자열화된 `arguments` 복구(후행 쉼표·절단·Python dict), OpenAI `tool_calls` 배열 언래핑, `write_file`/`local_write` 펜스 HTML/코드 블록 구제, `perform_action`의 `adopt_named_args` 추가.
-
-### 변경됨
-- `_gguf_routes`가 저장소별 `ollama_tag`(`gemma-4` → `Q4_0`, `gpt-oss-20b` → `MXFP4`)를 지원하도록 개선.
-- 클라우드 및 로컬 제공자 기본값을 최신 모델(`grok-4.6`, `Qwen/Qwen3.6-27B`, `qwen/qwen3.6-35b-a3b`, `google/gemma-4-12B-it` 등)로 갱신.
-
-### 수정됨
-- `LOCAL_MLX_MODELS`에서 존재하지 않는 `mlx-community/bge-m3`를 제거(`OLLAMA_EMBEDDING_MODELS`의 `bge-m3`는 유지).
-- `/tools/download`에서 비-ASCII 퍼센트 인코딩 경로의 Latin-1 바이트 손상 수정.
-
-## [12.2.1] - 2026-08-29 — True Count
-
-### 추가됨
-- HNSW 사이드카 `COUNT`+델타 로딩: 웜 쿼리 시 `vector_embeddings` 전체를 덤프하지 않고 누락된 ID만 조회해 추가.
-- 해시 기반 스킵 시 `GraphWriter`를 통해 기존 출처 레코드의 크기/mtime 재스탬핑.
-- 감시 정리(Watch prune): 사라진 감시 파일을 그래프에서 자동 정리(`delete_document_tree`, `confirm=true`; 디스크는 절대 삭제하지 않음).
-- `complete_a_summary`: 빈약한 "요약했습니다" 답변을 트랜스크립트에 이미 존재하는 `read_file` / `mcp.read_file` 결과로 보강.
-- 컴팩트 카탈로그 CORE가 9행 상한 내에서도 `mcp.grep`, `mcp.list_dir`, `mcp.read_file`, `mcp.knowledge_search`를 유지하도록 조정.
-- `api_key` 클라우드 `GET /models` 무과금 프로브 추가(연결 불가 키는 fail-closed).
-- 첫 실행 및 라이브러리 안내에서 해시 검색을 해시로 명시하고 시맨틱 모델 전환 경로 제공.
-
-### 변경됨
-- 버전별 `RELEASE_NOTES_v*.md`를 `docs/releases/`로 정리.
-- `README.md`를 사용자 우선(설치 → 첫 5분 → 릴리스) 흐름으로 재구성.
-
-### 수정됨
-- 로드된 HNSW 그래프가 신규 항목만으로 재구축되어 기존 레이블을 덮어쓰던 문제를 증분 append로 수정.
-
-## [12.2.0] - 2026-08-29 — Small Voice
-
-### 추가됨
-- 함수 호출 봉투 파싱(`name`/`arguments`, 중첩 `function`, Qwen `<function=…><parameter=…>`, `Action: mcp.grep`) 추가.
-- 컴팩트 실행 도구 목록을 `guided` 메뉴 크기(9)로 제한하고, 요청과 `when` 조건이 일치하는 스킬은 `skill.`을 명시하지 않아도 자동 참조.
-- 따옴표로 감싼 검색어로 누락된 MCP/네이티브 `pattern`/`query` 자동 보완.
-- 홈 컴포저에 폴더 검색, 읽기-요약, 기억, 스킬 검토 칩 추가 및 MCP/스킬 타임라인 행에 평문 접두사 표시.
-
-### 변경됨
-- 컴팩트 프롬프트가 2B 모델이 출력하는 함수 호출 봉투 형식을 명시하도록 조정.
-
-### 수정됨
-- 레이블 구제 파서가 점(`.`)이 포함된 `mcp.` / `skill.` 이름을 잡담으로 거부하던 문제 수정.
-
-## [12.1.0] - 2026-08-29 — Fast Path
-
-### 추가됨
-- 폴더 수집과 볼트 감시가 최대 4개 파일을 병렬 처리(`INGEST_INFLIGHT`); 스탬프 스킵 파일은 풀에 진입하지 않음.
-- 노트당 단일 `POST /worker/embed` 호출(문서 본문 + 모든 청크) 및 추출과 임베딩의 병렬 실행.
-- 저장소에 512개 이상 벡터가 있고 워커 사이드카가 연결된 경우 기본 `brute` 검색도 `hnsw+rescore`를 우선 시도(실패 시 기존 `brute` 인덱스 블록 유지).
-
-### 변경됨
-- `rebuild_vector_index`가 쓰기 트랜잭션 밖에서 임베딩을 수행하도록 변경.
-- `write_vectors_with`가 수집 시 전달된 벡터를 그대로 기록해 해시 모델의 중복 계산 방지.
-- `ltcai[postgres]`를 빈 별칭으로 정리(라이브 Postgres 쓰기는 11.6.0에서 제거됨).
-
-### 수정됨
-- 발견 항목이 없을 때 주간 `pip-audit`이 마크다운 보고서 누락으로 실패하던 문제 수정.
-- 삭제된 `tests/integration/test_postgres_migration_live.py`로 인해 주간 Postgres 통합 작업이 실패하던 문제 수정.
-
-## [12.0.0] - 2026-08-18 — Open House
-
-### 추가됨
-- 크레이트 도메인 구조: `lattice-agent` 43개 파일을 6개 그룹(`kernel` / `parse` / `content` / `tools` / `surface` / `prompts`)으로, `lattice-platform` 31개 평면 모듈을 7개 도메인(`workspaceos` / `toolsurface` / `governance` / `adminops` / `knowledge` / `modelops` / `shell`, 100건 `git mv`)으로 재구조화. 순수 이동으로 동작 변화 0 — 골든 및 계약 테스트가 재구조 전후 동일한 결과를 반환.
-- 크레이트 로컬 아키텍처 지도 2종(`rust/lattice-agent/ARCHITECTURE.md`, `rust/lattice-platform/ARCHITECTURE.md`) 추가. 각 그룹 `mod.rs`에 소속 규칙과 불변식을 명시하고, `src/lib.rs` 호환 맵으로 기존 임포트 경로 전체 유지.
-- 우선순위(P1/P2/P3)·난이도·제안 경로를 담은 `docs/ROADMAP.md` 추가(이번 릴리스에서 해결된 항목은 닫힘으로 표기).
-- `GUIDED` 프로파일: 번호 메뉴로 액션을 고르고 인자를 한 턴씩 받아 **하네스가 액션 구조체를 조립**하여 JSON 요구를 완전히 제거. 실행 꼬리는 모든 모드와 동일한 `perform_action`을 사용해 게이트 체인·루프 가드·쓰기 전 스냅샷·`sanitize_write_content`를 유지하며, 검증 역시 닫힌 `PASS`/`FAIL` + 한 줄 사유를 동일한 근거·커버리지 게이트로 심사.
-- 측정 기반 프로파일 프로브(`kernel/probe.rs`): 모델 로드 시 고정 문항 2개를 루프 자신의 파서로 채점해 `standard` / `compact` / `guided`를 선택하고 모델 ID + 크레이트 버전으로 캐시(`LATTICEAI_AGENT_PROFILE` 최우선, `LATTICEAI_AGENT_PROBE=0`으로 비활성화 가능).
-- 미드런 단방향 자가 강등(`demote_to_guided`): 측정된 다이얼, 아직 `guided` 아님, 실행 근거 없음의 3가지 조건에서만 하향 강등.
-- 통합 도구 카탈로그(`tools/catalog.rs`): 네이티브 도구 + `mcp.<tool>` + `skill.<name>`을 하나의 번호 메뉴로 통합. 런이 거버넌스하는 이름은 더 엄격한 네이티브 경로로, 그 외는 `POST /mcp`와 동일한 거버넌스 검사를 통과.
-- `POST /worker/vector/query` 추가 — HNSW 사이드카 후보 조회로 워커 allowlist를 19 → **20**개로 확장.
-- `POST /api/ingestion/folder/prune` 추가 — 삭제된 파일 정리(`confirm` 없으면 드라이런, 있으면 `delete_document_tree`로 양방향 엣지 정리). SPA에 「삭제된 파일 정리 (N)」 버튼 제공.
-- 섹션 트리(`Document ←PART_OF— Section ←PART_OF— Section`, `Section —HAS_CHUNK→ Chunk`) 추가(제목이 없는 문서는 인위적 섹션을 생성하지 않음).
-- 별도 테이블 없이 `ingestion_provenance.metadata_json`에 파일별 수집 지문(경로 + 크기 + mtime + 내용 SHA-256) 저장.
-- 스토어 세대(generation) 에폭 추가 — 데이터베이스 복원이 재시작 없이 인프로세스로 즉시 반영.
-- 6개 `pyautogui` 포인터 도구의 공식 설치 경로인 `ltcai[pointer]` extra 선언.
-
-### 변경됨
-- `POST /mcp`를 단일 JSON-RPC 봉투 오퍼레이션으로 OpenAPI 제품 계약 **내부**에 편입(네이티브 마운트이므로 워커로 프록시되지 않음). 단일 관문은 네이티브 **422 오퍼레이션 / 41 패밀리**(11.9.0의 420 + `/mcp` + folder prune).
-- `/setup/install`이 **서버가 도출한** allowlist에 포함된 항목에 한해 명시적 동의 후 실제 설치 수행(목록 밖 항목은 거부, 기본값은 수동 유지).
-- 2단계 한국어 조사 제거 + 근거 게이트 + 포함관계 중복 제거 적용.
-- 추출기가 `PART_OF` / `CONTRADICTS`를 실제로 생성하며, 방향·타입·분류된 근거와 함께 엣지 저장.
-- 임베딩 자동 감지 — 다운로드된 실모델이 있으면 채택하고 해시는 폴백으로 명시. 벡터 정체성은 `(model, dim)`으로 필터링.
-- 임베딩 생성을 쓰기 트랜잭션 **앞**으로 이동(드레인 ~66 → ~1,300 items/s)하고 적응형 스케줄러 적용(991건 백로그 40분 → 15.3초).
-- 미변경 재인덱싱 33초 → **0.26초**(낭비율 1.00 → 0.00), 최초 인덱싱 25.8초 → 7.2초 단축; 볼트 감시도 미변경 노트 스킵.
-- `LATTICEAI_VECTOR_INDEX=hnsw`를 실제 검색 경로로 전환 — 사이드카가 `k * 8` 후보(최대 200)를 반환하고 Rust가 `brute`와 동일한 코사인으로 정확 재스코어(`hnsw+rescore`). 사이드카 증분 append 지원, **기본값은 여전히 `brute`**, 실패 시 사유를 포함한 폴백.
-- `Completion::prefix`로 완성의 첫 바이트 강제(`compact`는 `{"thoughts": "`). 토큰 단위 JSON 문법은 검토 후 채택하지 않음.
-- 프론트엔드: 모든 라우트 및 헤비 패널에 `ErrorBoundary` 적용, Act/Brain 서브라우트 지연 분할, 권한 모드 diff 미리보기 및 위험 토글 확인 추가(번들 104.2 / 150 KiB).
-
-### 수정됨
-- RAG 인용 지시가 에이전트 프롬프트로 유출되어 도구를 호출해야 할 턴에 모델이 출처를 표기하던 문제 수정.
-- 모델 로딩의 이름 로스터 게이트 때문에 Qwen AWQ 빌드가 로드되지 않던 문제 수정.
-- `write_file` 본문이 내장 예제 상수와 일치할 경우 `COPIED_EXAMPLE`로 기록하고 쓰지 않도록 차단(fail-closed), `guided` 답변에서 되풀이된 지시문 줄 제거.
-- 단일 파이프 `<|channel>` 제어 프레임이 출력 본문으로 새던 문제 수정.
-- 복원 이후 오래된 풀 커넥션이 복원 전 바이트를 반환하던 문제 수정(세대 에폭으로 해소).
-
-### 알려진 이슈
-- 소형 모델의 *내용 품질*은 여전히 fail-closed 게이트가 검사합니다. 기계적 실행(파일 쓰기, `DONE` 도달)은 `guided`로 안정화되어 0.5B 모델도 3.9초 만에 실제 파일을 작성하지만, 요약의 질이 부족하면 검증기에서 `FAILED` / `NEEDS_REVIEW`로 종료될 수 있습니다.
-- `api_key` 클라우드 경로는 모의 서버 기준 검증(무과금 정책)이며 라이브 검증은 `cli_oauth`로 수행되었습니다.
-- 서명 시크릿이 없을 때 macOS DMG는 ad-hoc 서명(=미서명)으로 생성됩니다.
-- 검색 기본값은 `brute`이며 `hnsw`는 옵트인입니다.
-- 감시 모드는 파일을 자동 삭제하지 않으며 명시적 `prune` 경로로만 정리합니다.
-- 크레이트 재구조화는 이동이며 완전한 결합 해소가 아닙니다(`lattice-platform`의 도메인 간 결합 4건은 각 `mod.rs`에 명시).
-- `GraphWriter::delete_node`는 `PART_OF` 엣지를 남기므로 폴더 정리는 `delete_document_tree`를 사용합니다.

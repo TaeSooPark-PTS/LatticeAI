@@ -96,21 +96,24 @@ requireIncludes("RELEASE.md", `## v${version} — ${releaseTheme}`);
 requireIncludes("docs/CHANGELOG.md", `## [${version}]`);
 requireIncludes("RELEASE_NOTES.md", `[v${version} - ${releaseTheme}]`);
 requireIncludes("CHANGELOG.md", "starts at v8.0.0");
-// 12.7.0 moved the public release-history floor to 12.0.0 ("v12.0.0+ Only"),
-// pruning pre-v12 release notes from docs/releases/, RELEASE.md,
+// 13.7.0 moved the public release-history floor to 13.0.0 ("v13.0.0+ Only"),
+// pruning pre-v13 release notes from docs/releases/, RELEASE.md,
 // RELEASE_NOTES.md, docs/CHANGELOG.md, README.md, and SECURITY.md.
-requireIncludes("RELEASE_NOTES.md", `12.0.0 through ${version}`);
+requireIncludes("RELEASE_NOTES.md", `13.0.0 through ${version}`);
 requireIncludes("SECURITY.md", `${version.split(".").slice(0, 2).join(".")}.x (latest)`);
 
 for (const rel of ["README.md", "RELEASE.md", "docs/CHANGELOG.md", "RELEASE_NOTES.md"]) {
   const text = read(rel);
   for (const forbidden of [
+    "RELEASE_NOTES_v12",
     "RELEASE_NOTES_v11",
     "RELEASE_NOTES_v10",
     "RELEASE_NOTES_v9",
     "RELEASE_NOTES_v8",
     "RELEASE_NOTES_v7",
     "output/release/v7",
+    "## v12.",
+    "## [12.",
     "## v11.",
     "## [11.",
     "## v7.",

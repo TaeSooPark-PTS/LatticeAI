@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.7.0 - Living Synthesis] (2026-11-24)
+
+Implemented native Rust `GraphWriter` Obsidian vault (`[[wikilink]]` `LINKS_TO` edges) and Notion/Git/Mail interop bridges in `lattice-ingest`, migrated Vite 8 and Vitest 5 configs to native ESM `.mts`, pruned pre-`v13.0.0` release notes (`v13.0.0+` floor), and modernized `ARCHITECTURE.md` and `docs/ko/ARCHITECTURE.md` to `13.7.0`.
+
+See [docs/releases/RELEASE_NOTES_v13.7.0.md](docs/releases/RELEASE_NOTES_v13.7.0.md).
+
 # [v13.6.0 - Living Synthesis] (2026-11-24)
 
 Eliminated the last TypeScript 5 dependency (`openapi-typescript@7.13.0`, `openapi-ts5` alias, `scripts/run_openapi_typescript.mjs`, and `overrides`) by introducing a zero-dependency native TypeScript 7 (`tsgo`) OpenAPI declaration generator (`scripts/generate_openapi_types.mjs`), and split the five monolithic `tests/unit/test_cov_p1b_remaining*.py` coverage bundles into nine domain-focused unit test modules backed by `tests/unit/_runtime_test_fakes.py`.
@@ -66,86 +72,19 @@ Enforced cross-domain decoupling (`lattice_core::redact`, `lattice_agent::seam::
 
 See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md).
 
-# [v12.10.0 - Grounded Self] (2026-11-17)
-
-Added deterministic agent transcript grounding verification (`grounding.rs`), interactive citation proof badges (`AnswerProof.tsx`), and browser-extension language synchronization; delivered the Brain Self-Model panel (`SelfModelPanel.tsx`, 100% Vitest) and Knowledge Graph `PART_OF` edge cascade deletion parity across `edges` and `edges_v2`; added cooperative `499` model download cancellation with automatic post-download semantic embedding transition and batch reindex draining; decoupled `http_reply.rs`, locked Python worker server i18n across 6/6 routers, enabled parallel `cargo nextest` (`scripts/run_rust_tests.mjs`), and chained `release.yml` → `publish.yml` CD automation.
-
-See [docs/releases/RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md).
-
-# [v12.9.0 - Semantic Guard] (2026-11-17)
-
-Aligned query-time semantic embeddings with the active `EmbeddingIndexContract` (`query_embed.rs`), added pure-Rust `NativeHnswIndex` and workspace/model-scoped Python HNSW sidecars, enforced fail-closed `network_boundary_guard.rs` and `lattice-chat` cloud-boundary isolation, hardened desktop (Tauri), `LTCAI` CLI, host supervisor, and multi-stage Docker runtime guardrails, shipped real-time Workspace OS SSE (`/api/realtime/stream`, `useRealtimeStream.ts`) and `useAppBootstrap.ts` extraction, and strengthened v2 `.latticebrain` archive KDF alongside CI/Sidecar/Audit gates.
-
-See [docs/releases/RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md).
-
-# [v12.8.0 - Trusted Brain] (2026-11-16)
-
-Unified `EmbeddingIndexContract`, `KnowledgeLifecycleState`, and granular `IngestStatus`; pushed workspace scoping before SQLite `LIMIT` with aligned vector search (`vector_search_aligned`) and bounded `SidecarCachePool`; enforced server-side `IsolatedRootSpec` and `resolve_agent_scope` fail-closed multi-user/tenant isolation; delivered encrypted `.latticebrain` archives and honest PostgreSQL `planned` reporting; modularized `frontend/src/features/`; and added PR retrieval gates and automated macOS DMG CI/CD builds.
-
-See [docs/releases/RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md).
-
-# [v12.7.0 - Fast Index] (2026-11-16)
-
-Added the Pre-Tokenized BM25F Sidecar (`Bm25SidecarIndex`), SQLite `bm25_node_stats` persistence, and inverted posting-list & GraphRAG adjacency caches for O(1) lookup without query-time re-tokenization, alongside a product-first `README.md` overhaul and `v12.0.0+` release-history cleanup. One Door remains 422 operations / 41 families, worker remains 20 routes, and `GraphWriter` remains the sole graph writer.
-
-See [docs/releases/RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md).
-
-# [v12.6.0 - Hybrid Graph] (2026-11-15)
-
-Delivered 3-way BM25F + Vector + Knowledge Graph RRF hybrid indexing and search, graph-aware agent skills and MCP tools, multi-scale subword `FallbackTextEmbedder` (#13.1), Pillow 13+ legacy cleanup (#13.2), Ubuntu 24.04/26.04 `t64` and Chromium CI resilience (#14.1), unauthenticated EmbeddingGemma 2 public mirrors and GGUF/MLX/ONNX fallbacks (#14.2), the modular `scripts/bump_version/` CLI (#15.1), and real-time SSE download speed and ETA visualization in `ProductFlow.tsx` and `Library.tsx` (#15.2). One Door remains 422 / 41, worker remains 20, and `GraphWriter` remains the sole writer.
-
-See [docs/releases/RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md).
-
-# [v12.5.0 - Deep Vector] (2026-11-11)
-
-Integrated Google EmbeddingGemma 2 (768-dim) natively, introduced a hardware-aware (RAM/VRAM) PC-tailored embedding recommendation system with upfront embedding memory reservation, migrated to Pillow 13+ `get_flattened_data()`, upgraded GitHub Actions workflows to native Node 24, and expanded `scripts/bump_version.py` to synchronize 49 OpenAPI specification and fragment targets automatically. One Door remains 422 / 41, worker remains 20, and `GraphWriter` remains the sole writer.
-
-See [docs/releases/RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md).
-
-# [v12.4.0 - Sharp Weight] (2026-11-11)
-
-Added Hugging Face-verified **Qwen 3.8 27B 4-bit** (`mlx-community/Qwen3.8-27B-4bit`) and **Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit** (`mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`) to recommendation/download catalogs and multi-engine routing, reached zero Python (`pillow>=13,<14`) and npm security advisories, added `model_engines` URL scheme validation, and scoped Tailwind CSS v4 source scanning. One Door remains 422 / 41, worker remains 20, and `GraphWriter` remains the sole writer.
-
-See [docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md).
-
-# [v12.3.0 - Live Wire] (2026-10-19)
-
-Verified Hugging Face repository quantization tags (`Q4_0`, `MXFP4`) and GGUF routing, added auxiliary GGUF filtering, companion `--mmproj` loading, and shard completeness verification, strengthened small-model tool/MCP argument recovery and fenced-code HTML extraction, and verified `POST /tools/inspect_html` structure analysis and RFC 5987 UTF-8 downloads end to end on a real local model (`mlx-community/gemma-4-e2b-it-4bit`). One Door remains 422 / 41, worker remains 20, and `GraphWriter` remains the sole writer.
-
-See [docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md).
-
-# [v12.2.1 - True Count] (2026-08-29)
-
-Search, skip, watch, and small-model summaries now count only what is actually present. One Door remains 422 / 41, worker remains 20, and `GraphWriter` remains the sole writer. Per-release note files were consolidated under `docs/releases/`.
-
-See [docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md).
-
-# [v12.2.0 - Small Voice] (2026-08-29)
-
-2B-class local models can select MCP tools, skills, and native actions without strict JSON formatting, and the Home composer offers those workflows in plain language. One Door remains 422 / 41, worker remains 20, and the 12.1.0 Fast Path overlapping ingest pipeline remains intact.
-
-See [docs/releases/RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md).
-
-# [v12.1.0 - Fast Path] (2026-08-29)
-
-Folder ingestion and vault-watch overlap file processing, each note calls `/worker/embed` in a single request, rebuild hashes outside the write lock, and Brains with 512+ rows attempt `hnsw+rescore` first whenever the worker seam is attached. One Door remains 422 / 41, worker remains 20. Fixed weekly `pip-audit` and Postgres CI failures on clean runs.
-
-See [docs/releases/RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md).
-
-# [v12.0.0 - Open House] (2026-08-18)
-
-Regrouped the two largest Rust crates by domain — 43 files in `lattice-agent` into six groups (`kernel`/`parse`/`content`/`tools`/`surface`/`prompts`) and 31 flat modules in `lattice-platform` into seven domains (100 `git mv` moves, zero behavior changes). Added crate-local `ARCHITECTURE.md` maps, rewrote `docs/DEVELOPMENT.md` for contributor onboarding, and created `docs/ROADMAP.md`. Closed four previously documented gaps: live in-process restore via store epochs (no restart), consent-gated `/setup/install` against a server-derived allowlist, `POST /mcp` inside the OpenAPI contract (native mount), and `ltcai[pointer]` packaging. GraphRAG gained Korean particle awareness, section trees, typed edges, 33s → 0.26s unchanged re-indexing, ~66 → ~1,300 items/s draining, 991-item backlog drain in 15.3s, and opt-in `hnsw+rescore` (with `brute` remaining the default). GUIDED mode removed the JSON requirement for small models, letting Qwen 0.5B reach DONE on real files in 3.9s. Remaining limitations are documented candidly in the release notes.
-
-See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md).
-
 ---
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 13.6.0** (the modern `v12.x`–`v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` and `12.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 13.7.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
 
-## Releases (12.0.0+)
+## Releases (13.0.0+)
 
+- [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)
+- [v13.4.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.2.md)
+- [v13.4.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.1.md)
+- [v13.7.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.0.md)
+- [v13.6.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.6.0.md)
 - [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)
 - [v13.4.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.2.md)
 - [v13.4.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.1.md)
@@ -156,18 +95,6 @@ This repository keeps public release history from **12.0.0 through 13.6.0** (the
 - [v13.2.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.2.0.md)
 - [v13.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.1.0.md)
 - [v13.0.0 - Sovereign Synthesis](docs/releases/RELEASE_NOTES_v13.0.0.md)
-- [v12.10.0 - Grounded Self](docs/releases/RELEASE_NOTES_v12.10.0.md)
-- [v12.9.0 - Semantic Guard](docs/releases/RELEASE_NOTES_v12.9.0.md)
-- [v12.8.0 - Trusted Brain](docs/releases/RELEASE_NOTES_v12.8.0.md)
-- [v12.7.0 - Fast Index](docs/releases/RELEASE_NOTES_v12.7.0.md)
-- [v12.6.0 - Hybrid Graph](docs/releases/RELEASE_NOTES_v12.6.0.md)
-- [v12.5.0 - Deep Vector](docs/releases/RELEASE_NOTES_v12.5.0.md)
-- [v12.4.0 - Sharp Weight](docs/releases/RELEASE_NOTES_v12.4.0.md)
-- [v12.3.0 - Live Wire](docs/releases/RELEASE_NOTES_v12.3.0.md)
-- [v12.2.1 - True Count](docs/releases/RELEASE_NOTES_v12.2.1.md)
-- [v12.2.0 - Small Voice](docs/releases/RELEASE_NOTES_v12.2.0.md)
-- [v12.1.0 - Fast Path](docs/releases/RELEASE_NOTES_v12.1.0.md)
-- [v12.0.0 - Open House](docs/releases/RELEASE_NOTES_v12.0.0.md)
 
 ## Canonical History
 

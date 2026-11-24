@@ -20,6 +20,16 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.7.0": {
+    "_why": [
+      "Living Synthesis (13.7.0) implements native Rust GraphWriter ingestion",
+      "for Obsidian vaults (wikilink LINKS_TO edges) and Notion/Git/Mail",
+      "interop bridges, migrates Vite/Vitest configs to native ESM .mts,",
+      "prunes pre-13.0.0 release notes, and modernizes ARCHITECTURE.md.",
+      "",
+      "No visual screen layout changed in 13.7.0; empty claim set on purpose."
+    ]
+  },
   "13.6.0": {
     "_why": [
       "Living Synthesis (13.6.0) replaces openapi-typescript@7.13.0 and the",

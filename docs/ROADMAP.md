@@ -17,13 +17,8 @@ and
 [`rust/lattice-platform/ARCHITECTURE.md`](../rust/lattice-platform/ARCHITECTURE.md);
 the contributor path is [DEVELOPMENT.md](DEVELOPMENT.md). This page is the
 honest leftover list, gathered from
-[FEATURE_STATUS.md](../FEATURE_STATUS.md) Known Limitations and the Honest
-Disclosures sections of
-[releases/RELEASE_NOTES_v12.0.0.md](releases/RELEASE_NOTES_v12.0.0.md),
-[releases/RELEASE_NOTES_v12.6.0.md](releases/RELEASE_NOTES_v12.6.0.md),
-[releases/RELEASE_NOTES_v12.7.0.md](releases/RELEASE_NOTES_v12.7.0.md),
-[releases/RELEASE_NOTES_v12.8.0.md](releases/RELEASE_NOTES_v12.8.0.md), and
-[releases/RELEASE_NOTES_v12.9.0.md](releases/RELEASE_NOTES_v12.9.0.md).
+[FEATURE_STATUS.md](../FEATURE_STATUS.md) Known Limitations and the active
+`v13.0.0+` release notes in [releases/README.md](releases/README.md).
 
 Four items those ledgers named **closed in 12.0.0**. They are kept below so
 they are not re-opened as work. Everything else is still open.

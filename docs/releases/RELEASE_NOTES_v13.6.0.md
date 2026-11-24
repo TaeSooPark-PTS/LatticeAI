@@ -2,7 +2,7 @@
 
 # Lattice AI v13.6.0 — Living Synthesis (2026-11-24)
 
-> **Status: canonical** — current release note (Zero-TS5 Native TypeScript 7 OpenAPI Codegen & Domain-Modularized Unit Test Suite).
+> **Status: historical** — archived release note for v13.6.0 (Zero-TS5 Native TypeScript 7 OpenAPI Codegen & Domain-Modularized Unit Test Suite).
 
 Eliminates the last remaining TypeScript 5 dependency from the workspace by replacing `openapi-typescript@7.13.0` and the `openapi-ts5` alias with a zero-dependency native TypeScript 7 (`tsgo`) OpenAPI declaration generator (`scripts/generate_openapi_types.mjs`), and splits the five monolithic `tests/unit/test_cov_p1b_remaining*.py` coverage bundles into nine cohesive domain unit test modules backed by shared runtime test fakes (`tests/unit/_runtime_test_fakes.py`).
 

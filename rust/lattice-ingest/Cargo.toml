@@ -25,6 +25,7 @@ reqwest = { workspace = true }
 # other route crates already use.
 rusqlite = { workspace = true }
 notify = { workspace = true }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }
