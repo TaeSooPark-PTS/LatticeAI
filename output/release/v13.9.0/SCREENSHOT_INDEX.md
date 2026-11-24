@@ -1,6 +1,6 @@
 # v13.9.0 Release Evidence
 
-Captured from the built React/Vite app served by the release visual API on 2026-11-24T10:07:39.322Z.
+Captured from the built React/Vite app served by the release visual API on 2026-11-24T10:24:31.757Z.
 
 ## Build Binding
 
@@ -10,8 +10,8 @@ Evidence is only trustworthy while this fingerprint matches
 A later `build:assets` or mock-server edit without recapture invalidates the
 screenshots even when their mtimes look fresh.
 
-- asset-manifest.sha256: `8808ff5111f4b1b80c9ab9eb4524bec6f42648205f3fa2b070d7078ca687aa4c`
-- asset-manifest.mtime: `2026-11-24T10:06:50.152Z`
+- asset-manifest.sha256: `5c9053daf4cc22485d5eb9fbfc53c177416ee368aab523428cf8a544bc16d87c`
+- asset-manifest.mtime: `2026-11-24T10:24:15.088Z`
 - asset-manifest.bytes: 4362
 - mock-server.sha256: `b1b691f95c8d7fffe3fcb592a6c4ef263da669be86c07a8afb3e10be11c954f3`
 - mock-server.mtime: `2026-11-17T11:27:21.484Z`
