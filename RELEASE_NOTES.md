@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.9.0 - Living Synthesis] (2026-11-24)
+
+Resolved all six PR #69 security and integrity findings (strict workspace-scoped integrity repairs with admin-gated global mode, shared `Store` single-writer routing for all Brain mutations, workspace ownership verification for every node/edge/correction/merge target, Windows handle-pinned component-by-component TOCTOU-safe I/O, claim-level grounding & fabricated-citation penalties in real-model RAG eval, and posture-gating `/host/diagnostics`), folded all 16 Brain extension endpoints into canonical `brain_api::MOUNTED` and `memory_brain.json` with regenerated `frontend/src/api/openapi.ts`, shipped five dedicated interactive React Brain Governance UI panels with Vitest tests, and added `.github/workflows/nightly-rag-eval.yml`.
+
+See [docs/releases/RELEASE_NOTES_v13.9.0.md](docs/releases/RELEASE_NOTES_v13.9.0.md).
+
 # [v13.8.0 - Living Synthesis] (2026-11-24)
 
 Delivered the complete Digital Brain Platform hardening roadmap (P0–P3): authentic RAG evaluation separating deterministic fixtures from live local/cloud models with a versioned 320-query dataset (`datasets/rag_eval_v1.json`), unified KG integrity checker with dry-run blast-radius previews, auto-backup, and fault-injection tests, homonym-safe fuzzy Entity Resolution with persistent audit trail and selective rollback, OS-level fd-confined `O_NOFOLLOW` TOCTOU-safe sandbox & PII/secret-redacted cloud egress, Embedding Model Registry with shadow re-indexing/cutover/rollback, least-privilege 5-role Multi-Agent orchestrator, Knowledge Learning Loop, incremental watch move/pause delivery, `Origin Country → Vendor → Execution` Model Library UX, desktop health-watchdog + redacted `/host/diagnostics`, topic clustering, knowledge gap detection, `Modality::Video`, audit retention pruning, and offboarding revocation receipts.
@@ -94,13 +100,12 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 13.8.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 13.9.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
-- [v13.5.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.5.0.md)
-- [v13.4.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.2.md)
-- [v13.4.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.4.1.md)
+- [v13.9.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.9.0.md)
+- [v13.8.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.8.0.md)
 - [v13.7.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.2.md)
 - [v13.7.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.1.md)
 - [v13.7.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.7.0.md)

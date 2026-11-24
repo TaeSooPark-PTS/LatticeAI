@@ -403,11 +403,11 @@ pub fn ensure_bind_allowed(addr: &SocketAddr, require_auth: bool) -> Result<(), 
 /// are real routes, and the proxy is only the fallback, so nothing native can
 /// be shadowed by the reverse proxy.
 ///
-/// Everything answered *natively* — every `/rust/*` lane, `/host/status` and
-/// `/host/jobs` — sits behind [`posture::require_open_posture`], because those
-/// handlers read the store with no credential at all. `/host/health` and the
-/// proxy fallback stay outside it: liveness is not a secret, and a proxied
-/// request is the worker's own decision to make.
+/// Everything answered *natively* — every `/rust/*` lane, `/host/status`,
+/// `/host/diagnostics`, and `/host/jobs` — sits behind [`posture::require_open_posture`],
+/// because those handlers read the store or runtime diagnostics with no credential
+/// of their own. `/host/health` and the proxy fallback stay outside it: liveness is
+/// not a secret, and a proxied request is the worker's own decision to make.
 pub fn build_router(state: Arc<GatewayState>) -> Router {
     let db = state.db_path();
     let agent_root = state.agent_root();
@@ -417,6 +417,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
     let agent = state.agent_loop_config();
     let mut native = Router::new()
         .route("/host/status", get(routes::host_status))
+        .route("/host/diagnostics", get(routes::host_diagnostics))
         .route(
             "/rust/search/hybrid",
             get(search::hybrid).post(search::hybrid),
@@ -453,7 +454,6 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
 
     let mut app = Router::new()
         .route("/host/health", get(routes::host_health))
-        .route("/host/diagnostics", get(routes::host_diagnostics))
         .fallback(routes::gateway_fallback)
         .with_state(Arc::clone(&state))
         .merge(native);

@@ -114,6 +114,7 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
             dry_run: true,
             approved_actions: BTreeSet::new(),
             backup_path: None,
+            workspace_id: None,
         },
     )
     .expect("dry run");
@@ -129,6 +130,7 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
             dry_run: false,
             approved_actions: BTreeSet::new(),
             backup_path: Some(backup_path.to_string_lossy().to_string()),
+            workspace_id: None,
         },
     )
     .expect("safe repair");
@@ -155,10 +157,86 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
             dry_run: false,
             approved_actions: approved,
             backup_path: None,
+            workspace_id: None,
         },
     )
     .expect("approved repair");
     let after = check_graph_integrity(&conn).expect("post check");
     assert!(after.healthy, "remaining findings: {:?}", after.findings);
     assert_eq!(full.post_check_total_issues, after.total_issues);
+}
+
+#[test]
+fn workspace_scoped_integrity_repair_isolates_other_workspaces() {
+    use lattice_core::integrity::check_graph_integrity_scoped;
+
+    let mut conn = Connection::open_in_memory().expect("in-memory sqlite");
+    {
+        let tx = conn.transaction().expect("tx");
+        bootstrap(&tx, "2026-01-01T00:00:00").expect("bootstrap");
+        tx.commit().expect("commit");
+    }
+    conn.execute_batch("PRAGMA foreign_keys = OFF;")
+        .expect("fk off");
+
+    // Two workspaces: ws-a and ws-b, each with its own dangling edge and drift.
+    conn.execute(
+        "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
+         VALUES ('a1', 'Document', 'A1', 'doc a1', '{}', '{\"source_uri\":\"file:///a1.md\",\"workspace_id\":\"ws-a\"}', '2026-01-01', '2026-01-01'),
+                ('b1', 'Document', 'B1', 'doc b1', '{}', '{\"source_uri\":\"file:///b1.md\",\"workspace_id\":\"ws-b\"}', '2026-01-01', '2026-01-01')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO nodes_v2(id, type, label, summary, attrs, workspace_id, importance_score, created_at, updated_at)
+         VALUES ('a1', 'Document', 'A1', 'doc a1', '{}', 'ws-a', 0.5, '2026-01-01', '2026-01-01'),
+                ('b1', 'Document', 'B1', 'doc b1', '{}', 'ws-b', 0.5, '2026-01-01', '2026-01-01')",
+        [],
+    )
+    .unwrap();
+    // Dangling edges: one in ws-a, one in ws-b, plus a cross-workspace leak edge.
+    conn.execute(
+        "INSERT INTO edges(id, from_node, to_node, type, weight, metadata_json, created_at)
+         VALUES ('e-dang-a', 'a1', 'missing-a', 'RELATES_TO', 1.0, '{}', '2026-01-01'),
+                ('e-dang-b', 'b1', 'missing-b', 'RELATES_TO', 1.0, '{}', '2026-01-01'),
+                ('e-leak', 'a1', 'b1', 'RELATES_TO', 1.0, '{}', '2026-01-01')",
+        [],
+    )
+    .unwrap();
+
+    // Scoped check for ws-a sees only ws-a's dangling edge and the cross-workspace leak.
+    let rep_a = check_graph_integrity_scoped(&conn, Some("ws-a")).unwrap();
+    let dang_a = rep_a
+        .findings
+        .iter()
+        .find(|f| f.kind == IntegrityIssueKind::DanglingEdge)
+        .expect("ws-a dangling edge");
+    assert_eq!(dang_a.sample_ids, vec!["e-dang-a".to_string()]);
+
+    // Scoped repair for ws-a (even if sever_cross_workspace_edges is requested!)
+    // must ONLY delete e-dang-a and backfill a1 FTS; it must NOT delete e-dang-b or e-leak.
+    let mut approved = BTreeSet::new();
+    approved.insert("sever_cross_workspace_edges".to_string());
+    let repaired = execute_integrity_repair(
+        &mut conn,
+        &RepairOptions {
+            dry_run: false,
+            approved_actions: approved,
+            backup_path: None,
+            workspace_id: Some("ws-a".to_string()),
+        },
+    )
+    .unwrap();
+    assert!(repaired
+        .skipped_approval_actions
+        .contains(&"sever_cross_workspace_edges".to_string()));
+
+    let remaining_edges: Vec<String> = {
+        let mut st = conn.prepare("SELECT id FROM edges ORDER BY id").unwrap();
+        st.query_map([], |r| r.get(0))
+            .unwrap()
+            .filter_map(Result::ok)
+            .collect()
+    };
+    assert_eq!(remaining_edges, vec!["e-dang-b", "e-leak"]);
 }

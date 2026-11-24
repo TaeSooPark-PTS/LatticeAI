@@ -679,6 +679,40 @@ pub fn load_shadow_job(
     .map_err(Into::into)
 }
 
+/// List all vector index shadow/active/retired generations ordered newest-first.
+pub fn list_shadow_jobs(conn: &Connection) -> Result<Vec<ShadowReindexJob>, CoreError> {
+    ensure_embedding_registry_schema(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT generation_id, model_id, model_version, dimensions, normalization,
+                status, cursor_item_id, processed_items, total_items,
+                shadow_recall_at_5, active_recall_at_5, created_at, updated_at
+         FROM vector_index_generations
+         ORDER BY updated_at DESC, created_at DESC
+         LIMIT 50",
+    )?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(ShadowReindexJob {
+                generation_id: r.get(0)?,
+                model_id: r.get(1)?,
+                model_version: r.get(2)?,
+                dimensions: r.get::<_, i64>(3)?.max(0) as usize,
+                normalization: r.get(4)?,
+                status: r.get(5)?,
+                cursor_item_id: r.get(6)?,
+                processed_items: r.get::<_, i64>(7)?.max(0) as usize,
+                total_items: r.get::<_, i64>(8)?.max(0) as usize,
+                shadow_recall_at_5: r.get(9)?,
+                active_recall_at_5: r.get(10)?,
+                created_at: r.get(11)?,
+                updated_at: r.get(12)?,
+            })
+        })?
+        .filter_map(Result::ok)
+        .collect();
+    Ok(rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

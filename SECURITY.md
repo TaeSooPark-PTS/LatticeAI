@@ -5,7 +5,7 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **13.8.0 — Living Synthesis**.
+Current release: **13.9.0 — Living Synthesis**.
 
 ## Supported Versions
 
@@ -24,7 +24,7 @@ active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 13.8.x (latest) | Supported |
+| 13.9.x (latest) | Supported |
 | 13.7.x | Supported |
 | 13.6.x | Supported |
 | 13.5.x | Supported |

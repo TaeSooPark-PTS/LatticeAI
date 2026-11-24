@@ -15,15 +15,16 @@ use common::{
 };
 use lattice_host::gateway::{mounts, GatewayState};
 
-/// Every native path the guard must cover, one per mounted family plus the two
-/// host routes that read the store or the scheduler.
-const GUARDED: [&str; 7] = [
+/// Every native path the guard must cover, one per mounted family plus the
+/// host routes that read runtime diagnostics, the store, or the scheduler.
+const GUARDED: [&str; 8] = [
     "/rust/search/keyword?q=x",
     "/rust/graph/search?q=x",
     "/rust/history",
     "/rust/context/assemble?q=x",
     "/rust/agent/contract",
     "/host/status",
+    "/host/diagnostics",
     "/host/jobs",
 ];
 

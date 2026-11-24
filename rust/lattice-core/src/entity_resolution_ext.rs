@@ -630,6 +630,69 @@ pub fn rollback_entity_merge(
     merge_id: &str,
     add_do_not_merge: bool,
 ) -> Result<EntityMergeAuditRecord, CoreError> {
+    rollback_entity_merge_inner(conn, None, merge_id, add_do_not_merge)
+}
+
+/// Workspace-scoped entity merge rollback: verifies that `merge_id` and both
+/// referenced nodes belong to `workspace_id` before mutating any rows.
+pub fn rollback_entity_merge_in_workspace(
+    conn: &mut Connection,
+    workspace_id: &str,
+    merge_id: &str,
+    add_do_not_merge: bool,
+) -> Result<EntityMergeAuditRecord, CoreError> {
+    let ws = workspace_id.trim();
+    if ws.is_empty() {
+        return Err(CoreError::InvalidRequest(
+            "workspace_id is required for entity merge rollback".to_string(),
+        ));
+    }
+    rollback_entity_merge_inner(conn, Some(ws), merge_id, add_do_not_merge)
+}
+
+/// List recent entity merge audit records strictly scoped to `workspace_id`.
+pub fn list_entity_merges(
+    conn: &Connection,
+    workspace_id: &str,
+) -> Result<Vec<EntityMergeAuditRecord>, CoreError> {
+    ensure_entity_resolution_tables(conn)?;
+    let ws = workspace_id.trim();
+    let mut stmt = conn.prepare(
+        "SELECT merge_id, workspace_id, canonical_id, duplicate_id, actor, rationale,
+                signals_json, migrated_edges_json, created_at, rolled_back_at
+         FROM entity_merge_audit
+         WHERE workspace_id = ?1
+         ORDER BY created_at DESC
+         LIMIT 100",
+    )?;
+    let rows = stmt
+        .query_map(params![ws], |r| {
+            let signals_raw: String = r.get(6)?;
+            let migrated_raw: String = r.get(7)?;
+            Ok(EntityMergeAuditRecord {
+                merge_id: r.get(0)?,
+                workspace_id: r.get(1)?,
+                canonical_id: r.get(2)?,
+                duplicate_id: r.get(3)?,
+                actor: r.get(4)?,
+                rationale: r.get(5)?,
+                signals: serde_json::from_str(&signals_raw).unwrap_or_else(|_| json!({})),
+                migrated_edges: serde_json::from_str(&migrated_raw).unwrap_or_default(),
+                created_at: r.get(8)?,
+                rolled_back_at: r.get(9)?,
+            })
+        })?
+        .filter_map(Result::ok)
+        .collect();
+    Ok(rows)
+}
+
+fn rollback_entity_merge_inner(
+    conn: &mut Connection,
+    expected_workspace: Option<&str>,
+    merge_id: &str,
+    add_do_not_merge: bool,
+) -> Result<EntityMergeAuditRecord, CoreError> {
     ensure_entity_resolution_tables(conn)?;
     struct AuditRow {
         workspace_id: String,
@@ -679,6 +742,20 @@ pub fn rollback_entity_merge(
             "unknown merge_id: {merge_id}"
         )));
     };
+    if let Some(expected_ws) = expected_workspace {
+        if workspace_id.trim() != expected_ws {
+            return Err(CoreError::InvalidRequest(format!(
+                "cross-workspace rollback forbidden: merge {merge_id} does not belong to workspace {expected_ws}"
+            )));
+        }
+        let ws_a = node_effective_workspace(conn, &canonical_id)?;
+        let ws_b = node_effective_workspace(conn, &duplicate_id)?;
+        if ws_a != expected_ws || ws_b != expected_ws {
+            return Err(CoreError::InvalidRequest(format!(
+                "cross-workspace rollback forbidden: target nodes do not belong to workspace {expected_ws}"
+            )));
+        }
+    }
     if existing_rb.is_some() {
         return Err(CoreError::InvalidRequest(format!(
             "merge {merge_id} was already rolled back"
@@ -816,8 +893,14 @@ mod tests {
             .unwrap();
         assert_eq!(target, "o-apple");
 
-        // Selective rollback restores `e-mention` back to `o-apple-inc` and records do-not-merge.
-        let rolled = rollback_entity_merge(&mut conn, &merged.merge_id, true).unwrap();
+        // Cross-workspace rollback must be rejected.
+        assert!(
+            rollback_entity_merge_in_workspace(&mut conn, "ws-2", &merged.merge_id, true).is_err()
+        );
+
+        // Selective rollback in owning workspace restores `e-mention` back to `o-apple-inc` and records do-not-merge.
+        let rolled =
+            rollback_entity_merge_in_workspace(&mut conn, "ws-1", &merged.merge_id, true).unwrap();
         assert!(rolled.rolled_back_at.is_some());
         let restored_target: String = conn
             .query_row(

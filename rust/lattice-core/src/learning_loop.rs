@@ -153,6 +153,108 @@ pub fn assert_external_training_upload_forbidden(
     Ok(())
 }
 
+fn node_effective_workspace(conn: &Connection, node_id: &str) -> Result<Option<String>, CoreError> {
+    let has_v2: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='nodes_v2')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(false);
+    let row: Option<(Option<String>, Option<String>)> = if has_v2 {
+        conn.query_row(
+            "SELECT v.workspace_id, json_extract(n.metadata_json, '$.workspace_id')
+             FROM nodes n LEFT JOIN nodes_v2 v ON v.id = n.id
+             WHERE n.id = ?1",
+            params![node_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+    } else {
+        conn.query_row(
+            "SELECT NULL, json_extract(n.metadata_json, '$.workspace_id')
+             FROM nodes n
+             WHERE n.id = ?1",
+            params![node_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+    };
+    Ok(row.map(|(v_ws, m_ws)| {
+        v_ws.or(m_ws)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "personal".to_string())
+    }))
+}
+
+/// Verify that a correction target (node ID or edge ID) exists and belongs to `workspace_id`.
+pub fn verify_correction_target_workspace(
+    conn: &Connection,
+    workspace_id: &str,
+    kind: CorrectionTargetKind,
+    target_id: &str,
+) -> Result<(), CoreError> {
+    let ws = workspace_id.trim();
+    let tid = target_id.trim();
+    if tid.is_empty() {
+        return Err(CoreError::InvalidRequest(
+            "target_id is required".to_string(),
+        ));
+    }
+    match kind {
+        CorrectionTargetKind::Fact
+        | CorrectionTargetKind::EntityLink
+        | CorrectionTargetKind::Citation => {
+            let Some(owner_ws) = node_effective_workspace(conn, tid)? else {
+                return Err(CoreError::InvalidRequest(format!(
+                    "target node '{tid}' not found in workspace '{ws}'"
+                )));
+            };
+            if owner_ws != ws {
+                return Err(CoreError::InvalidRequest(format!(
+                    "cross-workspace mutation forbidden: target node '{tid}' does not belong to workspace '{ws}'"
+                )));
+            }
+            Ok(())
+        }
+        CorrectionTargetKind::Relationship => {
+            let endpoints: Option<(String, String)> = conn
+                .query_row(
+                    "SELECT source, target FROM edges_v2 WHERE id = ?1",
+                    params![tid],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()
+                .ok()
+                .flatten()
+                .or_else(|| {
+                    conn.query_row(
+                        "SELECT from_node, to_node FROM edges WHERE id = ?1",
+                        params![tid],
+                        |r| Ok((r.get(0)?, r.get(1)?)),
+                    )
+                    .optional()
+                    .ok()
+                    .flatten()
+                });
+            let Some((src, dst)) = endpoints else {
+                return Err(CoreError::InvalidRequest(format!(
+                    "target edge '{tid}' not found in workspace '{ws}'"
+                )));
+            };
+            let src_ws = node_effective_workspace(conn, &src)?;
+            let dst_ws = node_effective_workspace(conn, &dst)?;
+            if src_ws.as_deref() != Some(ws) || dst_ws.as_deref() != Some(ws) {
+                return Err(CoreError::InvalidRequest(format!(
+                    "cross-workspace mutation forbidden: target edge '{tid}' does not belong to workspace '{ws}'"
+                )));
+            }
+            Ok(())
+        }
+    }
+}
+
 /// Record a user correction without overwriting raw source provenance, optionally
 /// applying confirmed updates to FTS5 / node metadata and triggering selective re-indexing.
 pub fn record_knowledge_correction(
@@ -166,6 +268,7 @@ pub fn record_knowledge_correction(
     } else {
         req.workspace_id.trim().to_string()
     };
+    verify_correction_target_workspace(conn, &ws, req.target_kind, &req.target_id)?;
     let correction_id = format!(
         "corr:{}",
         &sha256_text(&format!(
@@ -301,8 +404,42 @@ pub fn update_correction_status(
     correction_id: &str,
     new_status: CorrectionStatus,
 ) -> Result<KnowledgeCorrectionRecord, CoreError> {
+    update_correction_status_inner(conn, None, correction_id, new_status)
+}
+
+/// Workspace-scoped variant of [`update_correction_status`]: verifies that both
+/// `correction_id` and its target belong to `workspace_id`.
+pub fn update_correction_status_in_workspace(
+    conn: &mut Connection,
+    workspace_id: &str,
+    correction_id: &str,
+    new_status: CorrectionStatus,
+) -> Result<KnowledgeCorrectionRecord, CoreError> {
+    let ws = workspace_id.trim();
+    if ws.is_empty() {
+        return Err(CoreError::InvalidRequest(
+            "workspace_id is required".to_string(),
+        ));
+    }
+    update_correction_status_inner(conn, Some(ws), correction_id, new_status)
+}
+
+fn update_correction_status_inner(
+    conn: &mut Connection,
+    expected_workspace: Option<&str>,
+    correction_id: &str,
+    new_status: CorrectionStatus,
+) -> Result<KnowledgeCorrectionRecord, CoreError> {
     let existing = load_correction(conn, correction_id)?
         .ok_or_else(|| CoreError::InvalidRequest(format!("unknown correction: {correction_id}")))?;
+    if let Some(ws) = expected_workspace {
+        if existing.workspace_id.trim() != ws {
+            return Err(CoreError::InvalidRequest(format!(
+                "cross-workspace mutation forbidden: correction '{correction_id}' does not belong to workspace '{ws}'"
+            )));
+        }
+        verify_correction_target_workspace(conn, ws, existing.target_kind, &existing.target_id)?;
+    }
     let now = utc_now_iso();
     let tx = conn.transaction()?;
     let mut reindex = existing.reindex_triggered;
@@ -337,8 +474,40 @@ pub fn revert_knowledge_correction(
     conn: &mut Connection,
     correction_id: &str,
 ) -> Result<KnowledgeCorrectionRecord, CoreError> {
+    revert_knowledge_correction_inner(conn, None, correction_id)
+}
+
+/// Workspace-scoped variant of [`revert_knowledge_correction`]: verifies that both
+/// `correction_id` and its target belong to `workspace_id`.
+pub fn revert_knowledge_correction_in_workspace(
+    conn: &mut Connection,
+    workspace_id: &str,
+    correction_id: &str,
+) -> Result<KnowledgeCorrectionRecord, CoreError> {
+    let ws = workspace_id.trim();
+    if ws.is_empty() {
+        return Err(CoreError::InvalidRequest(
+            "workspace_id is required".to_string(),
+        ));
+    }
+    revert_knowledge_correction_inner(conn, Some(ws), correction_id)
+}
+
+fn revert_knowledge_correction_inner(
+    conn: &mut Connection,
+    expected_workspace: Option<&str>,
+    correction_id: &str,
+) -> Result<KnowledgeCorrectionRecord, CoreError> {
     let existing = load_correction(conn, correction_id)?
         .ok_or_else(|| CoreError::InvalidRequest(format!("unknown correction: {correction_id}")))?;
+    if let Some(ws) = expected_workspace {
+        if existing.workspace_id.trim() != ws {
+            return Err(CoreError::InvalidRequest(format!(
+                "cross-workspace mutation forbidden: correction '{correction_id}' does not belong to workspace '{ws}'"
+            )));
+        }
+        verify_correction_target_workspace(conn, ws, existing.target_kind, &existing.target_id)?;
+    }
     let now = utc_now_iso();
     let tx = conn.transaction()?;
     let _ = apply_confirmed_correction_and_selective_reindex(
@@ -517,5 +686,34 @@ mod tests {
             })
             .unwrap();
         assert_eq!(restored_summary, "Alice leads Project X");
+
+        // Cross-workspace target mutation and status/revert must be rejected.
+        let cross_create = record_knowledge_correction(
+            &mut conn,
+            &RecordCorrectionRequest {
+                workspace_id: "ws-other".to_string(),
+                target_kind: CorrectionTargetKind::Fact,
+                target_id: "fact-1".to_string(),
+                status: CorrectionStatus::Pending,
+                actor: "attacker@example.com".to_string(),
+                reason: "cross-ws".to_string(),
+                before_snapshot: json!({}),
+                after_snapshot: json!({"summary": "hacked"}),
+            },
+        );
+        assert!(cross_create.is_err());
+        assert!(update_correction_status_in_workspace(
+            &mut conn,
+            "ws-other",
+            &rec.correction_id,
+            CorrectionStatus::Confirmed,
+        )
+        .is_err());
+        assert!(revert_knowledge_correction_in_workspace(
+            &mut conn,
+            "ws-other",
+            &rec.correction_id,
+        )
+        .is_err());
     }
 }

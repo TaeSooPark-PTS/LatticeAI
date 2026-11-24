@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.9.0": {
+    "_why": [
+      "Living Synthesis (13.9.0) resolves all 6 PR #69 security/integrity",
+      "findings, unifies all 16 Digital Brain extension endpoints into",
+      "brain_api::MOUNTED and memory_brain.json, adds 5 interactive React",
+      "Brain Governance panels inside the Brain/Memory view, and wires",
+      "nightly real-model RAG evaluation CI."
+    ],
+    "claims": [
+      "05-memory-graph.png"
+    ]
+  },
   "13.8.0": {
     "_why": [
       "Living Synthesis (13.8.0) delivers the integrated P0-P3 Digital Brain",

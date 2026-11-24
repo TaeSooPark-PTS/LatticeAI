@@ -2,7 +2,7 @@
 
 # Community And Plugins
 
-Current release: **13.8.0 — Living Synthesis**.
+Current release: **13.9.0 — Living Synthesis**.
 
 LatticeAI defines the path from a strong local-first framework (8.4.0
 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation

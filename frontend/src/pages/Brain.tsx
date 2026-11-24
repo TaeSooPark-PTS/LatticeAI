@@ -27,6 +27,12 @@ const DigitalBrainExplorer = React.lazy(() =>
   import("./brain/DigitalBrainExplorer").then((module) => ({ default: module.DigitalBrainExplorer })),
 );
 
+const BrainGovernanceHub = React.lazy(() =>
+  import("@/features/brain/governance/BrainGovernanceHub").then((module) => ({
+    default: module.BrainGovernanceHub,
+  })),
+);
+
 type BrainTab = "knowledge" | "memory";
 
 /**
@@ -371,6 +377,10 @@ function UnifiedMemoryPanel() {
           </CardContent>
         )}
       </Card>
+
+      <LazyPanel language={language} resetKey="brain-governance">
+        <BrainGovernanceHub language={language} />
+      </LazyPanel>
     </div>
   );
 }

@@ -6,6 +6,30 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.9.0] - 2026-11-24 — Living Synthesis
+
+### Fixed
+- **Workspace-Scoped Integrity Checks & Repairs (`rust/lattice-core/src/integrity/{mod.rs,repair.rs}`, `rust/lattice-retrieval/src/brain_api/extensions.rs`):**
+  - Scoped `check_graph_integrity_scoped` and `execute_integrity_repair` (both `dry_run: true` and `dry_run: false`) strictly to the authorized `workspace_id`, requiring explicit admin authorization (`require_admin`) for global or cross-workspace mutations.
+- **Single-Writer Pool Enforcement (`rust/lattice-core/src/db.rs`, `rust/lattice-retrieval/src/brain_api/extensions.rs`):**
+  - Added `Store::write_conn` and routed all integrity repair, entity merge/rollback, knowledge correction, and embedding registry writes through the shared `Store` single-writer pool instead of opening secondary SQLite connections.
+- **Workspace Target Ownership Validation (`rust/lattice-core/src/{entity_resolution_ext.rs,learning_loop.rs}`, `rust/lattice-retrieval/src/brain_api/extensions.rs`):**
+  - Added `rollback_entity_merge_in_workspace`, `verify_correction_target_workspace`, `update_correction_status_in_workspace`, and `revert_knowledge_correction_in_workspace`, rejecting cross-workspace node, edge, correction, and entity-merge targets with HTTP `403`.
+- **Windows Handle-Pinned Sandbox I/O (`rust/lattice-agent/src/tools/safe_io.rs`):**
+  - Replaced the non-Unix leaf-only check with Windows component-by-component handle-pinned traversal (`CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT`, `GetFileInformationByHandle`, and `GetFinalPathNameByHandleW` root verification) across read, write, and create-new paths.
+- **Real-Model RAG Grounding Gate (`scripts/run_real_model_rag_eval.py`, `tests/unit/test_real_model_rag_eval.py`):**
+  - Added claim-level evidence grounding and citation verification (`score_grounded_answer`) that penalizes unsupported/hallucinated claims and fabricated citations in `claim_support_rate`.
+- **Diagnostics Posture Gate (`rust/lattice-host/src/gateway/mod.rs`, `rust/lattice-host/tests/gateway_posture.rs`):**
+  - Moved `GET /host/diagnostics` inside the `require_open_posture`-protected `native` router.
+
+### Added
+- **Unified OpenAPI Schema & Typed Client (`rust/lattice-retrieval/src/brain_api/routes.rs`, `rust/fixtures/openapi/memory_brain.json`, `frontend/openapi.json`, `frontend/src/api/openapi.ts`):**
+  - Folded all 16 Digital Brain extension endpoints directly into `brain_api::MOUNTED` and `brain_api::router`, removed the temporary split mount in `lattice-host`, and regenerated `frontend/openapi.json` and `frontend/src/api/openapi.ts`.
+- **Interactive React Brain Governance Panels (`frontend/src/api/brainGovernance.ts`, `frontend/src/features/brain/governance/`, `frontend/src/i18n/brain/governance.ts`):**
+  - Built and wired five lazy-loaded React views (`IntegrityRepairPanel`, `EntityMergePanel`, `KnowledgeCorrectionsPanel`, `EmbeddingRegistryPanel`, `ClustersGapsPanel`) into `Brain.tsx` with full EN/KO i18n and Vitest component tests.
+- **Nightly Real-Model RAG Evaluation Workflow (`.github/workflows/nightly-rag-eval.yml`):**
+  - Scheduled daily real-model RAG evaluation (`schedule` + `workflow_dispatch`) with graceful `skipped`/`unavailable` reporting when endpoints are unset, decoupled from fast PR CI.
+
 ## [13.8.0] - 2026-11-24 — Living Synthesis
 
 ### Added

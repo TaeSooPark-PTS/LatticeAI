@@ -1,106 +1,82 @@
 {
-  "note": [
-    "WP-I5 route \u2192 family map for the v11.6.0 One Door OpenAPI contract pipeline.",
-    "Every operation in the committed frontend/openapi.json is listed exactly once,",
-    "keyed 'METHOD /path' with the path template as the schema spells it.",
-    "'family' is derived: module_family[module], unless the operation appears in",
-    "'overrides' (worker-box routes and SPA page shells cut across their module).",
-    "tests/unit/test_openapi_composition.py enforces both the bijection with the",
-    "committed spec and that derivation rule, so an edit here cannot drift.",
-    "Family names are the v11.6.0 work-package names; 'worker_keep' is the surface",
-    "that stays in the Python AI worker and is the gateway's proxy allowlist.",
-    "'greedy_path_params' records the FastAPI '{name:path}' converters the schema",
-    "cannot show: those segments match slashes, so an axum port needs a wildcard",
-    "('/*name' in axum 0.7) rather than a plain ':name' capture.",
-    "v11.8.0 deleted eight caller-less worker routes end-to-end; their entries",
-    "left this map, the committed spec and every fragment together."
-  ],
-  "source": {
-    "spec": "frontend/openapi.json",
-    "spec_version": "11.8.0",
-    "paths": 415,
-    "operations": 457,
-    "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
-    "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py"
-  },
   "families": {
-    "auth": {
-      "wp": "R3 (folded into I2)",
-      "target": "lattice-auth",
-      "summary": "Login, register, session, account and SSO endpoints.",
-      "operations": 9
-    },
-    "static_ui": {
-      "wp": "I4",
-      "target": "lattice-host (ServeDir + SPA shells)",
-      "summary": "Static assets, SPA shells and the host status/sysinfo surface served straight from the gateway.",
-      "operations": 9
-    },
-    "ui_redirects": {
-      "wp": "I4",
-      "target": "lattice-host (SPA shell routes)",
-      "summary": "Legacy HTML page routes that only render or redirect to an SPA shell, living in feature modules today.",
-      "operations": 7
-    },
-    "workspace": {
-      "wp": "R1",
-      "target": "lattice-platform (workspace)",
-      "summary": "Workspace OS and org surface plus scope, invitations and the permission approval queue.",
-      "operations": 61
-    },
     "admin": {
-      "wp": "R2",
-      "target": "lattice-platform (admin)",
+      "operations": 41,
       "summary": "Admin console, security dashboard, feature toggles, funnel metrics and the setup wizard.",
-      "operations": 41
+      "target": "lattice-platform (admin)",
+      "wp": "R2"
+    },
+    "auth": {
+      "operations": 9,
+      "summary": "Login, register, session, account and SSO endpoints.",
+      "target": "lattice-auth",
+      "wp": "R3 (folded into I2)"
     },
     "chat": {
-      "wp": "R4",
-      "target": "lattice-chat",
+      "operations": 12,
       "summary": "Chat orchestration, chat history and the agent-loop HTTP surface.",
-      "operations": 12
-    },
-    "memory_brain": {
-      "wp": "R5",
-      "target": "lattice-retrieval / lattice-platform",
-      "summary": "Memory manager, brain intelligence, garden, chronicle, command center and evidence actions.",
-      "operations": 37
+      "target": "lattice-chat",
+      "wp": "R4"
     },
     "knowledge_search": {
-      "wp": "R6",
-      "target": "lattice-ingest / lattice-retrieval",
+      "operations": 55,
       "summary": "Knowledge graph, search, index jobs, local files, local knowledge roots and browser capture.",
-      "operations": 55
-    },
-    "review_proposals": {
-      "wp": "R7",
-      "target": "lattice-platform (review)",
-      "summary": "Review queue, change proposals, automation intelligence and the hooks registry.",
-      "operations": 33
+      "target": "lattice-ingest / lattice-retrieval",
+      "wp": "R6"
     },
     "mcp_market": {
-      "wp": "R8",
-      "target": "lattice-platform / lattice-agent",
+      "operations": 87,
       "summary": "MCP, marketplace, plugin SDK, agent registry, multi-agent runtime and the direct tool surface.",
-      "operations": 87
+      "target": "lattice-platform / lattice-agent",
+      "wp": "R8"
     },
-    "portability_network": {
-      "wp": "R9",
-      "target": "lattice-platform (portability)",
-      "summary": "Portability/backup/share, peer network, network boundary, realtime, project sessions and computer use.",
-      "operations": 60
+    "memory_brain": {
+      "operations": 53,
+      "summary": "Memory manager, brain intelligence, garden, chronicle, command center and evidence actions.",
+      "target": "lattice-retrieval / lattice-platform",
+      "wp": "R5"
     },
     "models_misc": {
-      "wp": "R10",
-      "target": "lattice-platform (misc)",
+      "operations": 27,
       "summary": "Model catalog/recommendation reads, engine install surface, permission mode, workflow designer and the residual runtime probes.",
-      "operations": 27
+      "target": "lattice-platform (misc)",
+      "wp": "R10"
+    },
+    "portability_network": {
+      "operations": 60,
+      "summary": "Portability/backup/share, peer network, network boundary, realtime, project sessions and computer use.",
+      "target": "lattice-platform (portability)",
+      "wp": "R9"
+    },
+    "review_proposals": {
+      "operations": 33,
+      "summary": "Review queue, change proposals, automation intelligence and the hooks registry.",
+      "target": "lattice-platform (review)",
+      "wp": "R7"
+    },
+    "static_ui": {
+      "operations": 9,
+      "summary": "Static assets, SPA shells and the host status/sysinfo surface served straight from the gateway.",
+      "target": "lattice-host (ServeDir + SPA shells)",
+      "wp": "I4"
+    },
+    "ui_redirects": {
+      "operations": 7,
+      "summary": "Legacy HTML page routes that only render or redirect to an SPA shell, living in feature modules today.",
+      "target": "lattice-host (SPA shell routes)",
+      "wp": "I4"
     },
     "worker_keep": {
-      "wp": "\u2014",
-      "target": "Python AI worker (proxy allowlist)",
+      "operations": 19,
       "summary": "The surface whose handler stays inside the Python worker's interpreter: scout_routes.md's KEEP_WORKER set and the graph single-writer seam, less the eight caller-less routes v11.8.0 deleted end-to-end (embeddings providers, the two document-tool reads, the multimodal and voice-status probes, model switch/unload-all and engine pull-model).",
-      "operations": 19
+      "target": "Python AI worker (proxy allowlist)",
+      "wp": "\u2014"
+    },
+    "workspace": {
+      "operations": 61,
+      "summary": "Workspace OS and org surface plus scope, invitations and the permission approval queue.",
+      "target": "lattice-platform (workspace)",
+      "wp": "R1"
     }
   },
   "greedy_path_params": {
@@ -166,6 +142,1916 @@
     "latticeai.api.workflow_designer": "models_misc",
     "latticeai.api.workspace": "workspace",
     "latticeai.services.local_knowledge": "knowledge_search"
+  },
+  "note": [
+    "WP-I5 route \u2192 family map for the v11.6.0 One Door OpenAPI contract pipeline.",
+    "Every operation in the committed frontend/openapi.json is listed exactly once,",
+    "keyed 'METHOD /path' with the path template as the schema spells it.",
+    "'family' is derived: module_family[module], unless the operation appears in",
+    "'overrides' (worker-box routes and SPA page shells cut across their module).",
+    "tests/unit/test_openapi_composition.py enforces both the bijection with the",
+    "committed spec and that derivation rule, so an edit here cannot drift.",
+    "Family names are the v11.6.0 work-package names; 'worker_keep' is the surface",
+    "that stays in the Python AI worker and is the gateway's proxy allowlist.",
+    "'greedy_path_params' records the FastAPI '{name:path}' converters the schema",
+    "cannot show: those segments match slashes, so an axum port needs a wildcard",
+    "('/*name' in axum 0.7) rather than a plain ':name' capture.",
+    "v11.8.0 deleted eight caller-less worker routes end-to-end; their entries",
+    "left this map, the committed spec and every fragment together."
+  ],
+  "operations": {
+    "DELETE /admin/users/{email}": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "DELETE /agents/api/registry/{agent_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "DELETE /api/hooks/{hook_id}": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "DELETE /api/ingestion/watch": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "DELETE /api/memory/self-model/{node_id}": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "DELETE /api/projects/{session_id}": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    },
+    "DELETE /api/setup/demo-corpus": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "DELETE /history": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "DELETE /history/conversations/{conversation_id}": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "DELETE /mcp/custom/{mcp_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "DELETE /models/unload/{model_id}": {
+      "family": "worker_keep",
+      "module": "latticeai.api.models"
+    },
+    "DELETE /network/peers/{peer_id}": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "DELETE /workspace/memories/{memory_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "DELETE /workspace/orgs/{workspace_id}/members/{user_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /account": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /account/profile": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "GET /activity": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.realtime"
+    },
+    "GET /admin": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /admin/audit": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/enterprise": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/enterprise/siem-export": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/health-summary": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/invite-link": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/log-retention": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/policies": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/product-hardening": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/roles": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/security/conversations/{conversation_id}": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/conversations/{conversation_id}/raw": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/events": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/events/{event_id}": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/files": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/files/{file_id}": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/files/{file_id}/content": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/overview": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/raw": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/security/users": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "GET /admin/sensitivity": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/sso": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/stats": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/summary": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /admin/users": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /agent/approvals": {
+      "family": "chat",
+      "module": "latticeai.api.chat_agent_http"
+    },
+    "GET /agents": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/handoffs": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/memory/snapshots": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/registry": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "GET /agents/api/registry/capabilities": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "GET /agents/api/registry/discover": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "GET /agents/api/registry/{agent_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "GET /agents/api/roles": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runs": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runs/{run_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runs/{run_id}/events": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runs/{run_id}/replay": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runtime/config": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runtime/health": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /agents/api/runtime/status": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "GET /api/activity/runs": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "GET /api/admin/funnel-metrics": {
+      "family": "admin",
+      "module": "latticeai.api.funnel_metrics"
+    },
+    "GET /api/automation/overview": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "GET /api/automation/patterns": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "GET /api/automation/suggestions": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "GET /api/brain/clusters": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/contradictions": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/corrections": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/duplicates": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/embeddings/registry": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/entities/candidates": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/entities/{entity_id}/timeline": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/gaps": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/garden": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/health": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/importance": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/insights": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/integrity": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/proactive-brief": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/quality-report": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/relationships/evolution": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/brain/storage": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/brain/vector-freshness": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "GET /api/chronicle/as-of": {
+      "family": "memory_brain",
+      "module": "latticeai.api.chronicle"
+    },
+    "GET /api/chronicle/day/{date}": {
+      "family": "memory_brain",
+      "module": "latticeai.api.chronicle"
+    },
+    "GET /api/chronicle/overview": {
+      "family": "memory_brain",
+      "module": "latticeai.api.chronicle"
+    },
+    "GET /api/cloud/status": {
+      "family": "chat",
+      "module": "latticeai.api.chat"
+    },
+    "GET /api/command/briefing": {
+      "family": "memory_brain",
+      "module": "latticeai.api.command_center"
+    },
+    "GET /api/command/search": {
+      "family": "memory_brain",
+      "module": "latticeai.api.command_center"
+    },
+    "GET /api/embeddings/status": {
+      "family": "worker_keep",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/features": {
+      "family": "admin",
+      "module": "latticeai.api.features"
+    },
+    "GET /api/graph": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/graph/node": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/graph/relationship": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/hooks": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "GET /api/hooks/runs": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "GET /api/hooks/{hook_id}": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "GET /api/index/queue": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.index_jobs"
+    },
+    "GET /api/index/status": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/ingestion/interop": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /api/ingestion/jobs": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /api/ingestion/jobs/{job_id}": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /api/ingestion/watch": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /api/knowledge-graph/backup-health": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/knowledge-graph/portability": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/knowledge-graph/provenance": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/knowledge-graph/share": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/knowledge-graph/share/recipient-key": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "GET /api/local-agent/status": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /api/memory/brain-brief": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/brain-proof": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/brain-quality": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/inspect": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/manager": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/self-model": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/memory/tiers": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "GET /api/network-boundary": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "GET /api/network-boundary/catalog": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "GET /api/network-boundary/policy": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "GET /api/network-boundary/ui-state": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "GET /api/permission-mode": {
+      "family": "models_misc",
+      "module": "latticeai.api.permission_mode"
+    },
+    "GET /api/permission-mode/catalog": {
+      "family": "models_misc",
+      "module": "latticeai.api.permission_mode"
+    },
+    "GET /api/projects": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    },
+    "GET /api/projects/{session_id}": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    },
+    "GET /api/proposals": {
+      "family": "review_proposals",
+      "module": "latticeai.api.change_proposals"
+    },
+    "GET /api/proposals/counts": {
+      "family": "review_proposals",
+      "module": "latticeai.api.change_proposals"
+    },
+    "GET /api/proposals/{item_id}": {
+      "family": "review_proposals",
+      "module": "latticeai.api.change_proposals"
+    },
+    "GET /api/search/hybrid": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/search/image-query": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/search/keyword": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/search/vector": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "GET /api/setup/demo-corpus": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "GET /app": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /auth/sso/callback": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "GET /auth/sso/config": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "GET /auth/sso/login": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "GET /automation/reviews": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "GET /automation/reviews/counts": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "GET /automation/reviews/{item_id}": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "GET /automations/runs/combined": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "GET /chat": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /cu/screenshot": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "GET /cu/status": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "GET /engines": {
+      "family": "models_misc",
+      "module": "latticeai.api.health"
+    },
+    "GET /garden/tree": {
+      "family": "memory_brain",
+      "module": "latticeai.api.garden"
+    },
+    "GET /graph": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /health": {
+      "family": "worker_keep",
+      "module": "latticeai.api.health"
+    },
+    "GET /history": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "GET /history/conversations": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "GET /history/conversations/{conversation_id}": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "GET /history/search": {
+      "family": "chat",
+      "module": "latticeai.api.chat_history"
+    },
+    "GET /invitations": {
+      "family": "workspace",
+      "module": "latticeai.api.invitations"
+    },
+    "GET /knowledge-graph": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/context": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/documents": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/graph": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/local/health": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "GET /knowledge-graph/local/roots": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "GET /knowledge-graph/local/sources": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "GET /knowledge-graph/local/watch/status": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "GET /knowledge-graph/neighbors/{node_id}": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/pipeline/status": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/promotions": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/provenance/coverage": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/schema": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/search": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /knowledge-graph/stats": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "GET /local/list": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /local/serve": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "GET /local/sysinfo": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /manifest.json": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /marketplace/interop/bridges": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "GET /marketplace/templates": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "GET /marketplace/templates/registry": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "GET /marketplace/templates/{kind}/{template_id}/export": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "GET /mcp/claude-code-servers": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /mcp/connectors/{mcp_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /mcp/custom": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /mcp/installed": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /mcp/tools": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /mode": {
+      "family": "models_misc",
+      "module": "latticeai.api.health"
+    },
+    "GET /models": {
+      "family": "worker_keep",
+      "module": "latticeai.api.models"
+    },
+    "GET /models/compat-profiles": {
+      "family": "models_misc",
+      "module": "latticeai.api.models"
+    },
+    "GET /models/recommendations": {
+      "family": "models_misc",
+      "module": "latticeai.api.models"
+    },
+    "GET /network/identity": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "GET /network/peers": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "GET /obsidian/status": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /onboarding": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /permissions/pending": {
+      "family": "workspace",
+      "module": "latticeai.api.permissions"
+    },
+    "GET /permissions/status/{token}": {
+      "family": "workspace",
+      "module": "latticeai.api.permissions"
+    },
+    "GET /plugins/directory": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /plugins/registry": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "GET /plugins/registry/{plugin_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "GET /plugins/sdk": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "GET /realtime/feed": {
+      "family": "portability_network",
+      "module": "latticeai.api.realtime"
+    },
+    "GET /realtime/presence": {
+      "family": "portability_network",
+      "module": "latticeai.api.realtime"
+    },
+    "GET /realtime/stream": {
+      "family": "portability_network",
+      "module": "latticeai.api.realtime"
+    },
+    "GET /runtime_features": {
+      "family": "models_misc",
+      "module": "latticeai.api.health"
+    },
+    "GET /setup/auto": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "GET /setup/scan": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "GET /skills/list": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /skills/marketplace": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "GET /status": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /sw.js": {
+      "family": "static_ui",
+      "module": "latticeai.api.static_routes"
+    },
+    "GET /tools/chrome_status": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "GET /tools/computer_use_status": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "GET /tools/download": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/download_zip": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/git_status": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/knowledge_tree": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/network_status": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/obsidian_tree": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/permissions": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/registry": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /tools/registry/diagnostics": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "GET /vpc/status": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "GET /workflows": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/automation/recipes": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/definitions": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/definitions/{workflow_id}": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/definitions/{workflow_id}/runs": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/export/{workflow_id}": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/runs": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/runs/{run_id}/replay": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workflows/api/triggers": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "GET /workspace": {
+      "family": "ui_redirects",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/agents": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/audit-timeline": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/computer-memory": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/editions": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/indexing": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/memories": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/memories/search": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/onboarding/hardware": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/onboarding/model-recommendations": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/onboarding/status": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/orgs/{workspace_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/orgs/{workspace_id}/summary": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/os": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/registry": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/relationships/{node_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/skills": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/snapshots": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/snapshots/{snapshot_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/snapshots/{snapshot_id}/{area}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/time-machine": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/time-machine/{snapshot_id}/{area}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/traces": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/vscode/status": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "GET /workspace/workflows": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "PATCH /account/profile": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "PATCH /admin/sso": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "PATCH /admin/users/{email}": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "PATCH /admin/vpc": {
+      "family": "admin",
+      "module": "latticeai.api.admin"
+    },
+    "PATCH /agents/api/registry/{agent_id}": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "PATCH /api/projects/{session_id}": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    },
+    "PATCH /workflows/api/definitions/{workflow_id}": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "PATCH /workspace/orgs/{workspace_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "PATCH /workspace/orgs/{workspace_id}/members/{user_id}": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /account/change-password": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "POST /admin/security/export": {
+      "family": "admin",
+      "module": "latticeai.api.security_dashboard"
+    },
+    "POST /agent": {
+      "family": "chat",
+      "module": "latticeai.api.chat_agent_http"
+    },
+    "POST /agent/change-proposal": {
+      "family": "worker_keep",
+      "module": "latticeai.api.agent_worker_seam"
+    },
+    "POST /agent/eval": {
+      "family": "chat",
+      "module": "latticeai.api.chat_agent_http"
+    },
+    "POST /agent/llm": {
+      "family": "worker_keep",
+      "module": "latticeai.api.agent_worker_seam"
+    },
+    "POST /agent/resume": {
+      "family": "chat",
+      "module": "latticeai.api.chat_agent_http"
+    },
+    "POST /agent/tool": {
+      "family": "worker_keep",
+      "module": "latticeai.api.agent_worker_seam"
+    },
+    "POST /agents/api/memory/snapshots": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "POST /agents/api/registry": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agent_registry"
+    },
+    "POST /agents/api/run": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "POST /agents/api/run/preview": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "POST /agents/api/runs/{run_id}/stop": {
+      "family": "mcp_market",
+      "module": "latticeai.api.agents"
+    },
+    "POST /api/automation/install": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "POST /api/automation/run-now": {
+      "family": "review_proposals",
+      "module": "latticeai.api.automation_intelligence"
+    },
+    "POST /api/brain/consolidate": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/contradictions/propose": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/contradictions/resolve": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/corrections": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/corrections/{correction_id}/revert": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/corrections/{correction_id}/status": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/embeddings/cutover": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/embeddings/rollback": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/entities/merge": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/entities/rollback": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/integrity/repair": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/brain/storage/migrate-postgres": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/brain/storage/postgres/docker": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/brain/synthesize": {
+      "family": "memory_brain",
+      "module": "latticeai.api.brain_intelligence"
+    },
+    "POST /api/browser/ingest-current-tab": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.browser"
+    },
+    "POST /api/browser/read-url": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.browser"
+    },
+    "POST /api/capture/voice": {
+      "family": "worker_keep",
+      "module": "latticeai.api.voice_capture"
+    },
+    "POST /api/evidence/actions": {
+      "family": "memory_brain",
+      "module": "latticeai.api.evidence_actions"
+    },
+    "POST /api/features/{feature_id}": {
+      "family": "admin",
+      "module": "latticeai.api.features"
+    },
+    "POST /api/graph/node": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/graph/relationship": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/hooks/disable": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/hooks/enable": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/hooks/fire": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/hooks/register": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/hooks/reorder": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/hooks/run": {
+      "family": "review_proposals",
+      "module": "latticeai.api.hooks"
+    },
+    "POST /api/index/drain": {
+      "family": "worker_keep",
+      "module": "latticeai.api.index_jobs"
+    },
+    "POST /api/index/rebuild": {
+      "family": "worker_keep",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/ingestion/folder": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /api/ingestion/interop": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /api/ingestion/jobs/{job_id}/resume": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /api/ingestion/obsidian": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /api/ingestion/watch": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /api/knowledge-graph/archive": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/archive/import": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/archive/inspect": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/archive/restore": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/archive/verify": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/backup": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/export": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/export-file": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/import": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/restore": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/share/archive": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/share/export": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/share/import": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/knowledge-graph/share/proposals/{item_id}/accept": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
+    "POST /api/memory/clear": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/compact": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/prune": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/rebuild": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/recall": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/self-model": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/self-model/apply": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/memory/self-model/propose": {
+      "family": "memory_brain",
+      "module": "latticeai.api.memory"
+    },
+    "POST /api/network-boundary": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "POST /api/network-boundary/node-sensitivity": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "POST /api/network-boundary/policy": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "POST /api/network-boundary/preview": {
+      "family": "portability_network",
+      "module": "latticeai.api.network_boundary"
+    },
+    "POST /api/permission-mode": {
+      "family": "models_misc",
+      "module": "latticeai.api.permission_mode"
+    },
+    "POST /api/projects": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    },
+    "POST /api/proposals/{item_id}/approve": {
+      "family": "review_proposals",
+      "module": "latticeai.api.change_proposals"
+    },
+    "POST /api/proposals/{item_id}/reject": {
+      "family": "review_proposals",
+      "module": "latticeai.api.change_proposals"
+    },
+    "POST /api/search/graph": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/search/hybrid": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/search/keyword": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/search/vector": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.search"
+    },
+    "POST /api/setup/demo-corpus": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "POST /automation/reviews": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/bulk/approve": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/bulk/dismiss": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/{item_id}/approve": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/{item_id}/dismiss": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/{item_id}/run_now": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/{item_id}/snooze": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /automation/reviews/{item_id}/unsnooze": {
+      "family": "review_proposals",
+      "module": "latticeai.api.review_queue"
+    },
+    "POST /chat": {
+      "family": "chat",
+      "module": "latticeai.api.chat"
+    },
+    "POST /cu/agent": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/click": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/drag": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/key": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/move": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/open_app": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/open_url": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/scroll": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /cu/type": {
+      "family": "portability_network",
+      "module": "latticeai.api.computer_use"
+    },
+    "POST /engines/install": {
+      "family": "models_misc",
+      "module": "latticeai.api.models"
+    },
+    "POST /engines/prepare-model": {
+      "family": "worker_keep",
+      "module": "latticeai.api.models"
+    },
+    "POST /engines/prepare-model/stream": {
+      "family": "worker_keep",
+      "module": "latticeai.api.models"
+    },
+    "POST /engines/verify-cloud": {
+      "family": "models_misc",
+      "module": "latticeai.api.models"
+    },
+    "POST /garden": {
+      "family": "memory_brain",
+      "module": "latticeai.api.garden"
+    },
+    "POST /invitations": {
+      "family": "workspace",
+      "module": "latticeai.api.invitations"
+    },
+    "POST /invitations/{token}/accept": {
+      "family": "workspace",
+      "module": "latticeai.api.invitations"
+    },
+    "POST /knowledge-graph/curate": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "POST /knowledge-graph/curate/noise": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "POST /knowledge-graph/ingest": {
+      "family": "worker_keep",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "POST /knowledge-graph/local/audit": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "POST /knowledge-graph/local/index": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "POST /knowledge-graph/local/tree": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "POST /knowledge-graph/local/watch/stop": {
+      "family": "knowledge_search",
+      "module": "latticeai.services.local_knowledge"
+    },
+    "POST /knowledge-graph/promotions/apply": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "POST /knowledge-graph/promotions/reject": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.knowledge_graph"
+    },
+    "POST /local/list": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /local/read": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /local/write": {
+      "family": "knowledge_search",
+      "module": "latticeai.api.local_files"
+    },
+    "POST /login": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "POST /logout": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "POST /marketplace/templates/import": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "POST /marketplace/templates/install": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "POST /marketplace/templates/{kind}/{template_id}/clone": {
+      "family": "mcp_market",
+      "module": "latticeai.api.marketplace"
+    },
+    "POST /mcp": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /mcp/call": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /mcp/custom": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /mcp/install": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /mcp/recommend": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /mcp/registry/refresh": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /models/load": {
+      "family": "worker_keep",
+      "module": "latticeai.api.models"
+    },
+    "POST /network/peers": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "POST /network/push/{peer_id}": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "POST /network/receive": {
+      "family": "portability_network",
+      "module": "latticeai.api.network"
+    },
+    "POST /permissions/approve/{token}": {
+      "family": "workspace",
+      "module": "latticeai.api.permissions"
+    },
+    "POST /permissions/deny/{token}": {
+      "family": "workspace",
+      "module": "latticeai.api.permissions"
+    },
+    "POST /permissions/open/{permission_id}": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "POST /plugins/directory/refresh": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /plugins/disable": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /plugins/enable": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /plugins/execute": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /plugins/install": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /plugins/uninstall": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /plugins/validate": {
+      "family": "mcp_market",
+      "module": "latticeai.api.plugins"
+    },
+    "POST /realtime/presence/join": {
+      "family": "portability_network",
+      "module": "latticeai.api.realtime"
+    },
+    "POST /realtime/presence/leave": {
+      "family": "portability_network",
+      "module": "latticeai.api.realtime"
+    },
+    "POST /register": {
+      "family": "auth",
+      "module": "latticeai.api.auth"
+    },
+    "POST /setup/install": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "POST /setup/open-auth/{mcp_id}": {
+      "family": "admin",
+      "module": "latticeai.api.setup"
+    },
+    "POST /setup/set-api-key": {
+      "family": "models_misc",
+      "module": "latticeai.api.models"
+    },
+    "POST /skills/install": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /skills/marketplace/refresh": {
+      "family": "mcp_market",
+      "module": "latticeai.api.mcp"
+    },
+    "POST /tools/build_project": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/clear_history": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/create_docx": {
+      "family": "worker_keep",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/create_pdf": {
+      "family": "worker_keep",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/create_pptx": {
+      "family": "worker_keep",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/create_xlsx": {
+      "family": "worker_keep",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/deploy_project": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/edit_file": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/git_diff": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/git_log": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/git_show": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/grep": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/inspect_html": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/knowledge_save": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/knowledge_search": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/list_dir": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/obsidian_save": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/obsidian_search": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/preview_url": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/read_file": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/run_command": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/search_files": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/todo_read": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/todo_write": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/workspace_tree": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /tools/write_file": {
+      "family": "mcp_market",
+      "module": "latticeai.api.tools"
+    },
+    "POST /upload/document": {
+      "family": "worker_keep",
+      "module": "latticeai.api.tools"
+    },
+    "POST /workflows/api/automation/recipes/{recipe_id}": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/definitions": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/definitions/{workflow_id}/run": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/import": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/runs/{run_id}/resume": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/runs/{run_id}/stop": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workflows/api/validate": {
+      "family": "models_misc",
+      "module": "latticeai.api.workflow_designer"
+    },
+    "POST /workspace/activate": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/agents/runs": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/computer-memory": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/computer-memory/activity": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/indexing/{source_id}/pause": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/indexing/{source_id}/remove": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/indexing/{source_id}/resume": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/memories": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/onboarding/complete": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/onboarding/step": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/orgs": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/orgs/{workspace_id}/archive": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/orgs/{workspace_id}/members": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/skills/disable": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/skills/enable": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/skills/install": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/skills/uninstall": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/skills/update": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/snapshots": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/snapshots/compare": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/snapshots/{snapshot_id}/export": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/snapshots/{snapshot_id}/restore": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/vscode/send": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/vscode/status": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/workflows": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "POST /workspace/workflows/{workflow_id}/events": {
+      "family": "workspace",
+      "module": "latticeai.api.workspace"
+    },
+    "PUT /api/projects/{session_id}/todos": {
+      "family": "portability_network",
+      "module": "latticeai.api.project_sessions"
+    }
   },
   "overrides": {
     "DELETE /models/unload/{model_id}": {
@@ -273,1834 +2159,12 @@
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     }
   },
-  "operations": {
-    "DELETE /admin/users/{email}": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "DELETE /agents/api/registry/{agent_id}": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "DELETE /api/hooks/{hook_id}": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "DELETE /api/ingestion/watch": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "DELETE /api/memory/self-model/{node_id}": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "DELETE /api/projects/{session_id}": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    },
-    "DELETE /api/setup/demo-corpus": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "DELETE /history": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "DELETE /history/conversations/{conversation_id}": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "DELETE /mcp/custom/{mcp_id}": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "DELETE /models/unload/{model_id}": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "DELETE /network/peers/{peer_id}": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "DELETE /workspace/memories/{memory_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "DELETE /workspace/orgs/{workspace_id}/members/{user_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /account": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /account/profile": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "GET /activity": {
-      "module": "latticeai.api.realtime",
-      "family": "ui_redirects"
-    },
-    "GET /admin": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /admin/audit": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/enterprise": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/enterprise/siem-export": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/health-summary": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/invite-link": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/log-retention": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/policies": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/product-hardening": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/roles": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/security/conversations/{conversation_id}": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/conversations/{conversation_id}/raw": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/events": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/events/{event_id}": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/files": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/files/{file_id}": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/files/{file_id}/content": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/overview": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/raw": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/security/users": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "GET /admin/sensitivity": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/sso": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/stats": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/summary": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /admin/users": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /agent/approvals": {
-      "module": "latticeai.api.chat_agent_http",
-      "family": "chat"
-    },
-    "GET /agents": {
-      "module": "latticeai.api.agents",
-      "family": "ui_redirects"
-    },
-    "GET /agents/api/handoffs": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/memory/snapshots": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/registry": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/registry/capabilities": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/registry/discover": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/registry/{agent_id}": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/roles": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runs": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runs/{run_id}": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runs/{run_id}/events": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runs/{run_id}/replay": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runtime/config": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runtime/health": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /agents/api/runtime/status": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "GET /api/activity/runs": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "GET /api/admin/funnel-metrics": {
-      "module": "latticeai.api.funnel_metrics",
-      "family": "admin"
-    },
-    "GET /api/automation/overview": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "GET /api/automation/patterns": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "GET /api/automation/suggestions": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "GET /api/brain/contradictions": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/duplicates": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/garden": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/health": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/importance": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/insights": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/proactive-brief": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/quality-report": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/brain/storage": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/brain/vector-freshness": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "GET /api/chronicle/as-of": {
-      "module": "latticeai.api.chronicle",
-      "family": "memory_brain"
-    },
-    "GET /api/chronicle/day/{date}": {
-      "module": "latticeai.api.chronicle",
-      "family": "memory_brain"
-    },
-    "GET /api/chronicle/overview": {
-      "module": "latticeai.api.chronicle",
-      "family": "memory_brain"
-    },
-    "GET /api/cloud/status": {
-      "module": "latticeai.api.chat",
-      "family": "chat"
-    },
-    "GET /api/command/briefing": {
-      "module": "latticeai.api.command_center",
-      "family": "memory_brain"
-    },
-    "GET /api/command/search": {
-      "module": "latticeai.api.command_center",
-      "family": "memory_brain"
-    },
-    "GET /api/embeddings/status": {
-      "module": "latticeai.api.search",
-      "family": "worker_keep"
-    },
-    "GET /api/features": {
-      "module": "latticeai.api.features",
-      "family": "admin"
-    },
-    "GET /api/graph": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/graph/node": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/graph/relationship": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/hooks": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "GET /api/hooks/runs": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "GET /api/hooks/{hook_id}": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "GET /api/index/queue": {
-      "module": "latticeai.api.index_jobs",
-      "family": "knowledge_search"
-    },
-    "GET /api/index/status": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/ingestion/interop": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /api/ingestion/jobs": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /api/ingestion/jobs/{job_id}": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /api/ingestion/watch": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /api/knowledge-graph/backup-health": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/knowledge-graph/portability": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/knowledge-graph/provenance": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/knowledge-graph/share": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/knowledge-graph/share/recipient-key": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "GET /api/local-agent/status": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /api/memory/brain-brief": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/brain-proof": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/brain-quality": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/inspect": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/manager": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/self-model": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/memory/tiers": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "GET /api/network-boundary": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "GET /api/network-boundary/catalog": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "GET /api/network-boundary/policy": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "GET /api/network-boundary/ui-state": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "GET /api/permission-mode": {
-      "module": "latticeai.api.permission_mode",
-      "family": "models_misc"
-    },
-    "GET /api/permission-mode/catalog": {
-      "module": "latticeai.api.permission_mode",
-      "family": "models_misc"
-    },
-    "GET /api/projects": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    },
-    "GET /api/projects/{session_id}": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    },
-    "GET /api/proposals": {
-      "module": "latticeai.api.change_proposals",
-      "family": "review_proposals"
-    },
-    "GET /api/proposals/counts": {
-      "module": "latticeai.api.change_proposals",
-      "family": "review_proposals"
-    },
-    "GET /api/proposals/{item_id}": {
-      "module": "latticeai.api.change_proposals",
-      "family": "review_proposals"
-    },
-    "GET /api/search/hybrid": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/search/image-query": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/search/keyword": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/search/vector": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "GET /api/setup/demo-corpus": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "GET /app": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /auth/sso/callback": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "GET /auth/sso/config": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "GET /auth/sso/login": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "GET /automation/reviews": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "GET /automation/reviews/counts": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "GET /automation/reviews/{item_id}": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "GET /automations/runs/combined": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "GET /chat": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /cu/screenshot": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "GET /cu/status": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "GET /engines": {
-      "module": "latticeai.api.health",
-      "family": "models_misc"
-    },
-    "GET /garden/tree": {
-      "module": "latticeai.api.garden",
-      "family": "memory_brain"
-    },
-    "GET /graph": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "ui_redirects"
-    },
-    "GET /health": {
-      "module": "latticeai.api.health",
-      "family": "worker_keep"
-    },
-    "GET /history": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "GET /history/conversations": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "GET /history/conversations/{conversation_id}": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "GET /history/search": {
-      "module": "latticeai.api.chat_history",
-      "family": "chat"
-    },
-    "GET /invitations": {
-      "module": "latticeai.api.invitations",
-      "family": "workspace"
-    },
-    "GET /knowledge-graph": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "ui_redirects"
-    },
-    "GET /knowledge-graph/context": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/documents": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/graph": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/local/health": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/local/roots": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/local/sources": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/local/watch/status": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/neighbors/{node_id}": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/pipeline/status": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/promotions": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/provenance/coverage": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/schema": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/search": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /knowledge-graph/stats": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "GET /local/list": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /local/serve": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "GET /local/sysinfo": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /manifest.json": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /marketplace/interop/bridges": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "GET /marketplace/templates": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "GET /marketplace/templates/registry": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "GET /marketplace/templates/{kind}/{template_id}/export": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "GET /mcp/claude-code-servers": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /mcp/connectors/{mcp_id}": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /mcp/custom": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /mcp/installed": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /mcp/tools": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /mode": {
-      "module": "latticeai.api.health",
-      "family": "models_misc"
-    },
-    "GET /models": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "GET /models/compat-profiles": {
-      "module": "latticeai.api.models",
-      "family": "models_misc"
-    },
-    "GET /models/recommendations": {
-      "module": "latticeai.api.models",
-      "family": "models_misc"
-    },
-    "GET /network/identity": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "GET /network/peers": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "GET /obsidian/status": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /onboarding": {
-      "module": "latticeai.api.workspace",
-      "family": "ui_redirects"
-    },
-    "GET /permissions/pending": {
-      "module": "latticeai.api.permissions",
-      "family": "workspace"
-    },
-    "GET /permissions/status/{token}": {
-      "module": "latticeai.api.permissions",
-      "family": "workspace"
-    },
-    "GET /plugins/directory": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /plugins/registry": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "GET /plugins/registry/{plugin_id}": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "GET /plugins/sdk": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "GET /realtime/feed": {
-      "module": "latticeai.api.realtime",
-      "family": "portability_network"
-    },
-    "GET /realtime/presence": {
-      "module": "latticeai.api.realtime",
-      "family": "portability_network"
-    },
-    "GET /realtime/stream": {
-      "module": "latticeai.api.realtime",
-      "family": "portability_network"
-    },
-    "GET /runtime_features": {
-      "module": "latticeai.api.health",
-      "family": "models_misc"
-    },
-    "GET /setup/auto": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "GET /setup/scan": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "GET /skills/list": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /skills/marketplace": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "GET /status": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /sw.js": {
-      "module": "latticeai.api.static_routes",
-      "family": "static_ui"
-    },
-    "GET /tools/chrome_status": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "GET /tools/computer_use_status": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "GET /tools/download": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/download_zip": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/git_status": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/knowledge_tree": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/network_status": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/obsidian_tree": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/permissions": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/registry": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /tools/registry/diagnostics": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "GET /vpc/status": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "GET /workflows": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "ui_redirects"
-    },
-    "GET /workflows/api/automation/recipes": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/definitions": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/definitions/{workflow_id}": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/definitions/{workflow_id}/runs": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/export/{workflow_id}": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/runs": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/runs/{run_id}/replay": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workflows/api/triggers": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "GET /workspace": {
-      "module": "latticeai.api.workspace",
-      "family": "ui_redirects"
-    },
-    "GET /workspace/agents": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/audit-timeline": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/computer-memory": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/editions": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/indexing": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/memories": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/memories/search": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/onboarding/hardware": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/onboarding/model-recommendations": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/onboarding/status": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/orgs/{workspace_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/orgs/{workspace_id}/summary": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/os": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/registry": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/relationships/{node_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/skills": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/snapshots": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/snapshots/{snapshot_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/snapshots/{snapshot_id}/{area}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/time-machine": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/time-machine/{snapshot_id}/{area}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/traces": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/vscode/status": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "GET /workspace/workflows": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "PATCH /account/profile": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "PATCH /admin/sso": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "PATCH /admin/users/{email}": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "PATCH /admin/vpc": {
-      "module": "latticeai.api.admin",
-      "family": "admin"
-    },
-    "PATCH /agents/api/registry/{agent_id}": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "PATCH /api/projects/{session_id}": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    },
-    "PATCH /workflows/api/definitions/{workflow_id}": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "PATCH /workspace/orgs/{workspace_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "PATCH /workspace/orgs/{workspace_id}/members/{user_id}": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /account/change-password": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "POST /admin/security/export": {
-      "module": "latticeai.api.security_dashboard",
-      "family": "admin"
-    },
-    "POST /agent": {
-      "module": "latticeai.api.chat_agent_http",
-      "family": "chat"
-    },
-    "POST /agent/change-proposal": {
-      "module": "latticeai.api.agent_worker_seam",
-      "family": "worker_keep"
-    },
-    "POST /agent/eval": {
-      "module": "latticeai.api.chat_agent_http",
-      "family": "chat"
-    },
-    "POST /agent/llm": {
-      "module": "latticeai.api.agent_worker_seam",
-      "family": "worker_keep"
-    },
-    "POST /agent/resume": {
-      "module": "latticeai.api.chat_agent_http",
-      "family": "chat"
-    },
-    "POST /agent/tool": {
-      "module": "latticeai.api.agent_worker_seam",
-      "family": "worker_keep"
-    },
-    "POST /agents/api/memory/snapshots": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "POST /agents/api/registry": {
-      "module": "latticeai.api.agent_registry",
-      "family": "mcp_market"
-    },
-    "POST /agents/api/run": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "POST /agents/api/run/preview": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "POST /agents/api/runs/{run_id}/stop": {
-      "module": "latticeai.api.agents",
-      "family": "mcp_market"
-    },
-    "POST /api/automation/install": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "POST /api/automation/run-now": {
-      "module": "latticeai.api.automation_intelligence",
-      "family": "review_proposals"
-    },
-    "POST /api/brain/consolidate": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "POST /api/brain/contradictions/propose": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "POST /api/brain/contradictions/resolve": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "POST /api/brain/storage/migrate-postgres": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/brain/storage/postgres/docker": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/brain/synthesize": {
-      "module": "latticeai.api.brain_intelligence",
-      "family": "memory_brain"
-    },
-    "POST /api/browser/ingest-current-tab": {
-      "module": "latticeai.api.browser",
-      "family": "knowledge_search"
-    },
-    "POST /api/browser/read-url": {
-      "module": "latticeai.api.browser",
-      "family": "knowledge_search"
-    },
-    "POST /api/capture/voice": {
-      "module": "latticeai.api.voice_capture",
-      "family": "worker_keep"
-    },
-    "POST /api/evidence/actions": {
-      "module": "latticeai.api.evidence_actions",
-      "family": "memory_brain"
-    },
-    "POST /api/features/{feature_id}": {
-      "module": "latticeai.api.features",
-      "family": "admin"
-    },
-    "POST /api/graph/node": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/graph/relationship": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/hooks/disable": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/hooks/enable": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/hooks/fire": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/hooks/register": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/hooks/reorder": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/hooks/run": {
-      "module": "latticeai.api.hooks",
-      "family": "review_proposals"
-    },
-    "POST /api/index/drain": {
-      "module": "latticeai.api.index_jobs",
-      "family": "worker_keep"
-    },
-    "POST /api/index/rebuild": {
-      "module": "latticeai.api.search",
-      "family": "worker_keep"
-    },
-    "POST /api/ingestion/folder": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /api/ingestion/interop": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /api/ingestion/jobs/{job_id}/resume": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /api/ingestion/obsidian": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /api/ingestion/watch": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /api/knowledge-graph/archive": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/archive/import": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/archive/inspect": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/archive/restore": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/archive/verify": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/backup": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/export": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/export-file": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/import": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/restore": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/share/archive": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/share/export": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/share/import": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/knowledge-graph/share/proposals/{item_id}/accept": {
-      "module": "latticeai.api.portability",
-      "family": "portability_network"
-    },
-    "POST /api/memory/clear": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/compact": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/prune": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/rebuild": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/recall": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/self-model": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/self-model/apply": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/memory/self-model/propose": {
-      "module": "latticeai.api.memory",
-      "family": "memory_brain"
-    },
-    "POST /api/network-boundary": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "POST /api/network-boundary/node-sensitivity": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "POST /api/network-boundary/policy": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "POST /api/network-boundary/preview": {
-      "module": "latticeai.api.network_boundary",
-      "family": "portability_network"
-    },
-    "POST /api/permission-mode": {
-      "module": "latticeai.api.permission_mode",
-      "family": "models_misc"
-    },
-    "POST /api/projects": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    },
-    "POST /api/proposals/{item_id}/approve": {
-      "module": "latticeai.api.change_proposals",
-      "family": "review_proposals"
-    },
-    "POST /api/proposals/{item_id}/reject": {
-      "module": "latticeai.api.change_proposals",
-      "family": "review_proposals"
-    },
-    "POST /api/search/graph": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/search/hybrid": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/search/keyword": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/search/vector": {
-      "module": "latticeai.api.search",
-      "family": "knowledge_search"
-    },
-    "POST /api/setup/demo-corpus": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "POST /automation/reviews": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/bulk/approve": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/bulk/dismiss": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/{item_id}/approve": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/{item_id}/dismiss": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/{item_id}/run_now": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/{item_id}/snooze": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /automation/reviews/{item_id}/unsnooze": {
-      "module": "latticeai.api.review_queue",
-      "family": "review_proposals"
-    },
-    "POST /chat": {
-      "module": "latticeai.api.chat",
-      "family": "chat"
-    },
-    "POST /cu/agent": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/click": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/drag": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/key": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/move": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/open_app": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/open_url": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/scroll": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /cu/type": {
-      "module": "latticeai.api.computer_use",
-      "family": "portability_network"
-    },
-    "POST /engines/install": {
-      "module": "latticeai.api.models",
-      "family": "models_misc"
-    },
-    "POST /engines/prepare-model": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "POST /engines/prepare-model/stream": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "POST /engines/verify-cloud": {
-      "module": "latticeai.api.models",
-      "family": "models_misc"
-    },
-    "POST /garden": {
-      "module": "latticeai.api.garden",
-      "family": "memory_brain"
-    },
-    "POST /invitations": {
-      "module": "latticeai.api.invitations",
-      "family": "workspace"
-    },
-    "POST /invitations/{token}/accept": {
-      "module": "latticeai.api.invitations",
-      "family": "workspace"
-    },
-    "POST /knowledge-graph/curate": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/curate/noise": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/ingest": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "worker_keep"
-    },
-    "POST /knowledge-graph/local/audit": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/local/index": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/local/tree": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/local/watch/stop": {
-      "module": "latticeai.services.local_knowledge",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/promotions/apply": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "POST /knowledge-graph/promotions/reject": {
-      "module": "latticeai.api.knowledge_graph",
-      "family": "knowledge_search"
-    },
-    "POST /local/list": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /local/read": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /local/write": {
-      "module": "latticeai.api.local_files",
-      "family": "knowledge_search"
-    },
-    "POST /login": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "POST /logout": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "POST /marketplace/templates/import": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "POST /marketplace/templates/install": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "POST /marketplace/templates/{kind}/{template_id}/clone": {
-      "module": "latticeai.api.marketplace",
-      "family": "mcp_market"
-    },
-    "POST /mcp": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /mcp/call": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /mcp/custom": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /mcp/install": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /mcp/recommend": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /mcp/registry/refresh": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /models/load": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "POST /network/peers": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "POST /network/push/{peer_id}": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "POST /network/receive": {
-      "module": "latticeai.api.network",
-      "family": "portability_network"
-    },
-    "POST /permissions/approve/{token}": {
-      "module": "latticeai.api.permissions",
-      "family": "workspace"
-    },
-    "POST /permissions/deny/{token}": {
-      "module": "latticeai.api.permissions",
-      "family": "workspace"
-    },
-    "POST /permissions/open/{permission_id}": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "POST /plugins/directory/refresh": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /plugins/disable": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /plugins/enable": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /plugins/execute": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /plugins/install": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /plugins/uninstall": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /plugins/validate": {
-      "module": "latticeai.api.plugins",
-      "family": "mcp_market"
-    },
-    "POST /realtime/presence/join": {
-      "module": "latticeai.api.realtime",
-      "family": "portability_network"
-    },
-    "POST /realtime/presence/leave": {
-      "module": "latticeai.api.realtime",
-      "family": "portability_network"
-    },
-    "POST /register": {
-      "module": "latticeai.api.auth",
-      "family": "auth"
-    },
-    "POST /setup/install": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "POST /setup/open-auth/{mcp_id}": {
-      "module": "latticeai.api.setup",
-      "family": "admin"
-    },
-    "POST /setup/set-api-key": {
-      "module": "latticeai.api.models",
-      "family": "models_misc"
-    },
-    "POST /skills/install": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /skills/marketplace/refresh": {
-      "module": "latticeai.api.mcp",
-      "family": "mcp_market"
-    },
-    "POST /tools/build_project": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/clear_history": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/create_docx": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
-    },
-    "POST /tools/create_pdf": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
-    },
-    "POST /tools/create_pptx": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
-    },
-    "POST /tools/create_xlsx": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
-    },
-    "POST /tools/deploy_project": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/edit_file": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/git_diff": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/git_log": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/git_show": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/grep": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/inspect_html": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/knowledge_save": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/knowledge_search": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/list_dir": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/obsidian_save": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/obsidian_search": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/preview_url": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/read_file": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/run_command": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/search_files": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/todo_read": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/todo_write": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/workspace_tree": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /tools/write_file": {
-      "module": "latticeai.api.tools",
-      "family": "mcp_market"
-    },
-    "POST /upload/document": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
-    },
-    "POST /workflows/api/automation/recipes/{recipe_id}": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/definitions": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/definitions/{workflow_id}/run": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/import": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/runs/{run_id}/resume": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/runs/{run_id}/stop": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workflows/api/validate": {
-      "module": "latticeai.api.workflow_designer",
-      "family": "models_misc"
-    },
-    "POST /workspace/activate": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/agents/runs": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/computer-memory": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/computer-memory/activity": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/indexing/{source_id}/pause": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/indexing/{source_id}/remove": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/indexing/{source_id}/resume": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/memories": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/onboarding/complete": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/onboarding/step": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/orgs": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/orgs/{workspace_id}/archive": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/orgs/{workspace_id}/members": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/skills/disable": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/skills/enable": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/skills/install": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/skills/uninstall": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/skills/update": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/snapshots": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/snapshots/compare": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/snapshots/{snapshot_id}/export": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/snapshots/{snapshot_id}/restore": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/vscode/send": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/vscode/status": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/workflows": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "POST /workspace/workflows/{workflow_id}/events": {
-      "module": "latticeai.api.workspace",
-      "family": "workspace"
-    },
-    "PUT /api/projects/{session_id}/todos": {
-      "module": "latticeai.api.project_sessions",
-      "family": "portability_network"
-    }
+  "source": {
+    "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
+    "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py",
+    "operations": 473,
+    "paths": 430,
+    "spec": "frontend/openapi.json",
+    "spec_version": "11.8.0"
   }
 }
