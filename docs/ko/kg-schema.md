@@ -2,7 +2,7 @@
 
 # Knowledge Graph 스키마
 
-현재 릴리스: **14.0.0 — Living Synthesis**.
+현재 릴리스: **14.1.0 — Living Synthesis**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22  
 구현: `lattice_brain/graph/schema.py`
@@ -27,8 +27,8 @@ Node {
   embedding   float[1024]?    // 의미 벡터 (옵셔널, 권장)
   owner_id    string?         // 소유 사용자
   visibility  Visibility      // private | internal | shared | public
-  created_at  ISO8601 UTC
-  updated_at  ISO8601 UTC
+  created_at  ISO8601 UTC (오프셋 없는 YYYY-MM-DDTHH:MM:SS, Rust ↔ Python 통일)
+  updated_at  ISO8601 UTC (오프셋 없는 YYYY-MM-DDTHH:MM:SS, Rust ↔ Python 통일)
 }
 ```
 

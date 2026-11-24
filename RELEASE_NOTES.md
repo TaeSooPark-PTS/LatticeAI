@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.1.0 - Living Synthesis] (2026-11-25)
+
+Resolved critical v14.0.0 regressions and hardened full-stack static analysis and documentation: unified Rust ↔ Python timestamps onto offset-free UTC (`YYYY-MM-DDTHH:MM:SS`) with multi-timezone regression tests; pinned production Tauri builds strictly to port `4825` via `PortPolicy::PinnedProduction` with fail-fast diagnostics; narrowed all broad Python `except Exception` catches, enabled Ruff `"BLE"`, lowered McCabe `max-complexity` to `20`, and minimized Bandit ignores; introduced `rust/lattice-auth/src/messages.rs` + `CsrfReason` and direct `BackendStatus` returns for infallible Tauri commands; enabled TypeScript 7 `"noUncheckedIndexedAccess": true` across 68 frontend files (457 errors fixed at 100% Vitest coverage across 113 files / 1,852 tests); expanded Playwright `visual` smoke CI to run on pull requests as well as `main`; and refreshed all repository Markdown docs and Korean mirrors to `v14.1.0`.
+
+See [docs/releases/RELEASE_NOTES_v14.1.0.md](docs/releases/RELEASE_NOTES_v14.1.0.md).
+
 # [v14.0.0 - Living Synthesis] (2026-11-25)
 
 Delivered full-stack security, concurrency, desktop/extension, and CI/CD hardening: versioned `$scrypt$` `Result`-based hashing, bounded rate limiting with unified HTTP `429` + `Retry-After` and English CSRF denials in `lattice-auth`; pure-Rust UTC clock eliminating all `unsafe` `libc` calls in `lattice-core`; non-blocking `spawn_blocking` filesystem/session I/O, bounded HNSW/cloud-budget caches, fail-closed proxy client, and `EnvOverlayProbe` across Rust crates; platform-guarded MLX extras, `ContextVar` LLM router DI, and re-enabled Ruff security rules in Python; strict TypeScript 7 compiler flags and modular `AppRouteView.tsx` at 100% Vitest coverage; serialized Tauri gateway lifecycle with pinned `127.0.0.1:4825` CSP/capabilities; hardened VS Code and browser extensions; real `windows-latest` Rust CI, `macos-latest` Tauri CI, and digest-pinned multi-stage Docker smoke CI; and modernized `14.0.0` architecture documentation.
@@ -106,10 +112,11 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.0.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.1.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
+- [v14.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.0.md)
 - [v14.0.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.0.0.md)
 - [v13.9.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.9.0.md)
 - [v13.8.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v13.8.0.md)

@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.1.0 — Living Synthesis (2026-11-25)
+
+v14.0.0의 치명적 회귀 2건을 수정하고 풀스택 정적 분석 및 문서 최신화를 완료했습니다: `clock.rs`, `lattice_brain/utils.py`, `_kg_fsutil.py`의 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일하여 비-UTC 환경의 9시간 편차를 제거하고 `Asia/Seoul`·`America/New_York`·`UTC` 회귀 테스트를 추가했습니다. `src-tauri`에 `PortPolicy`(`PinnedProduction` / `AllowDynamicFallback`)를 도입해 프로덕션 빌드가 포트 `4825` 충돌 시 조용히 이탈하지 않고 명확한 안내와 함께 즉시 실패(fail-fast)하도록 수정했습니다. Python 전역의 포괄적 `except Exception` / `# noqa: BLE001`을 구체적 예외로 좁히고 Ruff `"BLE"` 전역 활성화·McCabe 복잡도 상한 `30 → 20` 하향·Bandit 예외 최소화를 완료했습니다. `rust/lattice-auth`에 `messages.rs` 및 구조화된 `CsrfReason` 열거형을 도입하고 비실패 Tauri 커맨드(`backend_status`, `shutdown_backend`)를 직접 `BackendStatus` 반환으로 정리했습니다. 프론트엔드에 TypeScript 7 `"noUncheckedIndexedAccess": true`를 활성화해 68개 파일의 457건 오류를 해소(113개 테스트 파일 / 1,852개 테스트, Vitest 100% 유지)했고, CI의 Playwright `visual` 스모크 잡을 `main`뿐 아니라 PR에서도 실행하도록 확장했으며, 모든 정본·참고 영문 문서와 한국어 미러를 `v14.1.0` 기준으로 갱신했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.1.0.md](./releases/RELEASE_NOTES_v14.1.0.md).
+
+빌드 산출물은 `dist/ltcai-14.1.0-py3-none-any.whl`, `dist/ltcai-14.1.0.tar.gz`, `ltcai-14.1.0.tgz`, `dist/ltcai-14.1.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg` 입니다.
+
 ## v14.0.0 — Living Synthesis (2026-11-25)
 
 풀스택 보안·동시성·패키징·CI/CD 고도화를 완료했습니다: `lattice-auth`를 버전화 `$scrypt$` `Result` 기반 해싱, 상한 메모리 레이트 리미팅 및 통합 HTTP `429` + `Retry-After` 응답, 영문 표준 CSRF 거부 메시지로 강화하고, `lattice-core`에서 `unsafe` `libc` 시계 호출을 순수 Rust UTC 달력 연산으로 완전 제거했습니다. `lattice-ingest`/`lattice-chat`의 블로킹 파일 I/O를 `spawn_blocking`으로 오프로딩하고, `cloud/budget`·`NativeHnswIndex` 상한 캐시, `lattice-jobs` 부분 드레인 보존 및 `/host/jobs` 루프백/Bearer 가드, fail-closed `lattice-host` 프록시 클라이언트와 `EnvOverlayProbe`를 적용했습니다. Python 워커의 Apple Silicon MLX extra 플랫폼 가드와 Ruff 보안 규칙을 복원하고, TypeScript 7 엄격 플래그 및 `AppRouteView.tsx` 분리(Vitest 100%), 직렬화된 Tauri 게이트웨이 생명주기 및 `127.0.0.1:4825` 고정 CSP, VS Code·브라우저 확장 보안 강화를 마쳤으며, CI에 실제 `windows-latest` Rust 워크스페이스 테스트·`macos-latest` Tauri 테스트·다이제스트 고정 멀티스테이지 `Dockerfile` 스모크 검증을 추가하고 아키텍처 문서(`ARCHITECTURE.md`, `docs/architecture.md`, 한국어 미러 및 크레이트 맵)를 `14.0.0` 기준으로 최신화했습니다.

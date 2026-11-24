@@ -2,7 +2,7 @@
 
 # Knowledge Graph Schema
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 Spec reference: `lattice_ai_full_spec.pptx` slides 20, 21, and 22  
 Implementation: `lattice_brain/graph/schema.py`
@@ -28,8 +28,8 @@ Node {
   embedding   float[1024]?    // semantic vector (optional, recommended)
   owner_id    string?         // owning user
   visibility  Visibility      // private | internal | shared | public
-  created_at  ISO8601 UTC
-  updated_at  ISO8601 UTC
+  created_at  ISO8601 UTC (offset-free YYYY-MM-DDTHH:MM:SS, unified across Rust & Python)
+  updated_at  ISO8601 UTC (offset-free YYYY-MM-DDTHH:MM:SS, unified across Rust & Python)
 }
 ```
 

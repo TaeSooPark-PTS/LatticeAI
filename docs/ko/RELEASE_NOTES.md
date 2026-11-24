@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.1.0 - Living Synthesis] (2026-11-25)
+
+v14.0.0 치명적 회귀 2건을 수정하고 풀스택 정적 분석·문서 최신화를 완료했습니다: Rust ↔ Python 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일하고 다중 타임존 회귀 테스트를 추가했으며, Tauri 프로덕션 빌드를 `PortPolicy::PinnedProduction`으로 포트 `4825`에 고정해 충돌 시 즉시 실패(fail-fast)하도록 수정했습니다. Python 전역의 포괄적 `except Exception`을 구체적 예외로 좁히고 Ruff `"BLE"`·McCabe 복잡도 `<= 20`·최소 Bandit 예외를 적용했으며, `rust/lattice-auth`에 `messages.rs`와 `CsrfReason` 열거형을 도입하고 비실패 Tauri 커맨드가 `BackendStatus`를 직접 반환하도록 정리했습니다. 프론트엔드에 TypeScript 7 `"noUncheckedIndexedAccess": true`를 활성화해 68개 파일의 457건 오류를 해소(113개 테스트 파일 / 1,852개 테스트, Vitest 100%)했고, Playwright `visual` 스모크 잡을 PR에서도 실행되도록 확장했으며, 모든 영문·한국어 문서를 `v14.1.0` 기준으로 갱신했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.1.0.md](./releases/RELEASE_NOTES_v14.1.0.md).
+
 # [v14.0.0 - Living Synthesis] (2026-11-25)
 
 풀스택 보안·동시성·데스크톱/확장·CI/CD 고도화를 완료했습니다: `lattice-auth` 버전화 `$scrypt$` `Result` 기반 해싱, 상한 레이트 리미터 및 통합 `429` + `Retry-After` 응답과 영문 CSRF 거부; `lattice-core` 순수 Rust UTC 시계(`unsafe` `libc` 제거); `lattice-ingest`/`lattice-chat` 논블로킹 `spawn_blocking` I/O, 상한 HNSW/클라우드 예산 캐시, fail-closed 프록시 클라이언트, `EnvOverlayProbe`; Python 플랫폼 가드 MLX extra, `ContextVar` DI, Ruff 보안 규칙 복원; 엄격 TypeScript 7 플래그 및 `AppRouteView.tsx`(Vitest 100%); 직렬화 Tauri 게이트웨이 생명주기 및 `127.0.0.1:4825` 고정 CSP/권한; VS Code·브라우저 확장 강화; 실제 `windows-latest` Rust CI, `macos-latest` Tauri CI, 다이제스트 고정 멀티스테이지 Docker 스모크 CI; `14.0.0` 아키텍처 문서 최신화를 포함합니다.
@@ -106,10 +112,11 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 14.0.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.1.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
+- [v14.1.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.0.md)
 - [v14.0.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.0.0.md)
 - [v13.9.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.9.0.md)
 - [v13.8.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.8.0.md)

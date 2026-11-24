@@ -12,7 +12,7 @@ Lattice AI 확장은 VS Code, Cursor, VSCodium을 로컬 우선 Digital Brain에
 
 ## 현재 릴리스
 
-**14.0.0 — Living Synthesis**는 전체 Lattice AI 스택과 VS Code 확장을 고도화했습니다: 선택적 Bearer 인증(`ltcai.authToken` / `LATTICEAI_API_TOKEN`), TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 요청·스트림 타임아웃 및 명시적 오류 처리, 실시간 설정 리로드(`onDidChangeConfiguration`), 동기화 폴링 중복 가드, 크로스플랫폼 VSIX 패키징(`scripts/vsix-cli.mjs`)을 추가했으며, 호스트 버전화 `$scrypt$` 인증·순수 Rust UTC 시계·`windows-latest` Rust CI·`14.0.0` 아키텍처 문서 최신화를 함께 반영했습니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.0.0.md](./releases/RELEASE_NOTES_v14.0.0.md)에서 확인할 수 있습니다.
+**14.1.0 — Living Synthesis**는 Rust ↔ Python 오프셋 없는 UTC 타임스탬프 통일, Tauri 프로덕션 포트(`4825`) 즉시 실패(fail-fast) 고정, Python Ruff(`BLE` · McCabe `<= 20` · 최소 Bandit 예외), TypeScript 7 `noUncheckedIndexedAccess`(Vitest 100%), PR Playwright 시각 스모크와 함께 강화된 VS Code 확장(선택적 Bearer 인증 `ltcai.authToken` / `LATTICEAI_API_TOKEN`, TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 스트림 타임아웃, `onDidChangeConfiguration` 실시간 설정 리로드, 동기화 폴링 중복 가드, 크로스플랫폼 VSIX 패키징 `scripts/vsix-cli.mjs`)을 제공합니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.1.0.md](./releases/RELEASE_NOTES_v14.1.0.md)에서 확인할 수 있습니다.
 
 **핵심 프로토콜은 기존과 호환됩니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
 
@@ -84,6 +84,7 @@ Lattice AI는 로컬 및 클라우드 모델을 모두 지원합니다.
 | 설정 키 | 기본값 | 설명 |
 | --- | --- | --- |
 | `ltcai.serverUrl` | `http://localhost:4825` | Lattice AI 워크스페이스 URL |
+| `ltcai.authToken` | 비어 있음 | 선택적 Bearer 인증 토큰(`LATTICEAI_API_TOKEN` 환경 변수도 지원) |
 | `ltcai.autoLoadModel` | `false` | 확장 활성화 시 기본 모델 자동 로드 |
 | `ltcai.defaultModel` | 비어 있음 | 선택적 기본 모델 ID |
 

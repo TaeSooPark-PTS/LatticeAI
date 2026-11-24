@@ -2,7 +2,7 @@
 
 # Privacy
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -33,8 +33,10 @@ External paths include:
 
 - **Cloud models**: prompts/context are sent to the selected provider only when
   a cloud path is configured and the escalation policy (or an explicit
-  `/cloud` prefix) uses it. Default is local. Every cloud turn writes a
-  shape-only egress audit (provider / model / reason, never content).
+  `/cloud` prefix) uses it. Default is local. Sensitive/private nodes and secret
+  files are filtered, PII and secret-like strings are redacted before egress
+  (`lattice-core::redact`), and every cloud turn writes a shape-only egress
+  audit (provider / model / reason, never content).
   Knowledge extracted from a cloud answer is staged as a Review Center
   `kg_cloud_expansion` proposal — it is not written to the graph until a
   person approves it (`auto_commit` default off). Two credential modes:

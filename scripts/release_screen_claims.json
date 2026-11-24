@@ -20,6 +20,22 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.1.0": {
+    "_why": [
+      "Living Synthesis (14.1.0) resolves both v14.0.0 regressions (unified",
+      "Rust <-> Python UTC timestamps without 9-hour skew on UTC+9 hosts and",
+      "Tauri PortPolicy::PinnedProduction fail-fast alignment with pinned port",
+      "4825 CSP/capabilities), narrows all remaining broad Python exception",
+      "handlers, enables Ruff BLE and McCabe max-complexity 20, trims Bandit",
+      "per-file ignores, moves CSRF codes into messages.rs/CsrfReason, aligns",
+      "infallible Tauri commands, enables TypeScript noUncheckedIndexedAccess",
+      "at 100% Vitest coverage, enables PR Playwright visual smoke, and",
+      "modernizes all v14.1.0 documentation.",
+      "",
+      "No visual screen layout was redesigned in 14.1.0; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.0.0": {
     "_why": [
       "Living Synthesis (14.0.0) delivers full-stack security, concurrency, and",

@@ -1,8 +1,8 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./OPERATIONS.md)
 
-# Lattice AI — 운영 가이드 (v14.0.0)
+# Lattice AI — 운영 가이드 (v14.1.0)
 
-> **상태: 정본 (14.0.0)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
+> **상태: 정본 (14.1.0)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
 > 초기 노드별 Markdown 그래프가 아니라 SQLite 라이브 Brain 스토어와 워크스페이스
 > 스코핑을 반영합니다.
 
@@ -206,7 +206,7 @@ LATTICEAI_REQUIRE_AUTH=true lattice-host --bind 0.0.0.0 --port 4825
 Ctrl+C  또는  kill <pid>
 ```
 
-`lattice-host` 는 기본적으로 루프백(`127.0.0.1:4825`)에만 바인딩하며, 비-루프백 주소(`0.0.0.0` 등)는 `LATTICEAI_REQUIRE_AUTH=true` 가 활성화된 경우에만 허용됩니다. 종료 시에는 진행 중인 HTTP 요청과 워커 프로세스를 안전하게 정리한 뒤 종료합니다.
+`lattice-host` 는 기본적으로 루프백(`127.0.0.1:4825`)에만 바인딩하며, 비-루프백 주소(`0.0.0.0` 등)는 `LATTICEAI_REQUIRE_AUTH=true` 가 활성화된 경우에만 허용됩니다. 프로덕션 Tauri 데스크톱 빌드는 `PortPolicy::PinnedProduction`으로 포트 `4825`를 고정하여 다른 프로세스가 이미 포트를 점유한 경우 조용히 폴백하지 않고 즉시 실패(fail-fast)합니다. Rust와 Python은 모두 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`) 타임스탬프를 사용합니다. 종료 시에는 진행 중인 HTTP 요청과 워커 프로세스를 안전하게 정리한 뒤 종료합니다.
 
 ## 10. 릴리스 증거 캡처 순서 (레이아웃·UI 변경 후)
 

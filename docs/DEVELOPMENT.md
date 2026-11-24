@@ -5,16 +5,16 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
 product honest. Product positioning and the five-minute first-run stay in
 [README.md](../README.md) and [ONBOARDING.md](ONBOARDING.md). Supported
-release history is 12.0.0 and later in [CHANGELOG.md](CHANGELOG.md) and
-[RELEASE.md](../RELEASE.md) (`12.x` is the modern Rust-host + domain-grouped
-architecture era, so [SECURITY.md](../SECURITY.md) supports only `12.x`). Open
-gaps live in [ROADMAP.md](ROADMAP.md) (reference, not canonical).
+release history is 13.0.0 and later in [CHANGELOG.md](CHANGELOG.md) and
+[RELEASE.md](../RELEASE.md) (`13.x–14.x` is the modern Rust-host + domain-grouped
+architecture era, so [SECURITY.md](../SECURITY.md) supports `13.x` and `14.x`).
+Open gaps live in [ROADMAP.md](ROADMAP.md) (reference, not canonical).
 
 ## Product Contract
 
@@ -83,7 +83,7 @@ worker interpreter with `LTCAI_PYTHON` when both exist.
 `rust/target/release/lattice-host`, then `rust/target/debug/lattice-host`. If
 none exist it runs `cargo build -p lattice-host` (debug). A stale
 `rust/target/release/lattice-host` wins over a current debug binary — pin or
-rebuild (`cargo build -p lattice-host --release`) if `-V` is not 13.8.0.
+rebuild (`cargo build -p lattice-host --release`) if `-V` is not 14.1.0.
 
 Do not run `npm start` and `npm run dev` on the same port. The worker
 entrypoint defaults to `LATTICEAI_PORT` or **4825**, the same port as the
@@ -124,9 +124,9 @@ Python worker           compute only — 20 allowlisted routes
 frontend/src            SPA
 ```
 
-Compatibility re-exports at each crate's `src/lib.rs` keep the pre-v12 paths
-working for *consumers*. New code inside a crate uses the real path
-(`crate::kernel::state`, `crate::adminops::admin`).
+All internal and external callers import directly from canonical domain paths
+(`lattice_agent::kernel::state`, `lattice_platform::adminops::admin`); legacy
+flat crate-root `pub use` compatibility maps were retired in `13.7.2`.
 
 | Task | Where it belongs | What not to do |
 | --- | --- | --- |
@@ -181,9 +181,9 @@ npm run release:validate
 
 ### `npm run lint` — ten members, in this order
 
-1. `lint:python` — `ruff check .` then `mypy`. Fix ruff locally (`ruff check --fix`) before arguing with the rule; mypy errors name the module under `latticeai/` or `lattice_brain/`.
+1. `lint:python` — `ruff check .` (with `"BLE"` blind-except detection, McCabe `max-complexity <= 20`, production `S608`, and minimal Bandit per-file ignores) then `mypy`. Fix ruff locally (`ruff check --fix`) before arguing with the rule; mypy errors name the module under `latticeai/` or `lattice_brain/`.
 2. `lint:visual` — `node --check` on every `tests/visual/*.js`, `*.cjs`, and `tests/visual/mock_server/*.cjs`. A syntax error in a screenshot spec fails here, not in Playwright.
-3. `lint:frontend` — `scripts/lint_frontend.mjs`: `tsc --noEmit` plus static checks over `frontend/` and `static/app`.
+3. `lint:frontend` — `scripts/lint_frontend.mjs`: `tsc --noEmit` (TypeScript 7.0.2 with `"noUncheckedIndexedAccess": true`) plus static checks over `frontend/` and `static/app`.
 4. `frontend:openapi:check` — `frontend/openapi.json` and `frontend/src/api/openapi.ts` must match a fresh isolated export. Fix: `npm run frontend:openapi` and commit both artifacts.
 5. `scripts/check_i18n_literals.mjs` — no user-facing string literals in `frontend/src` TS/TSX. Move the words into the matching `frontend/src/i18n/` namespace (both `ko` and `en`).
 6. `check:i18n-namespaces` — a lazy chunk may only read keys whose namespace it imports. Import the namespace module from the route, do not reach into a sibling dictionary.
@@ -247,7 +247,7 @@ fixture parity tests stay deterministic, and falls back to
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **14.0.0 — …**` matching
+included) must carry `Current release: **14.1.0 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -258,7 +258,7 @@ changelog entries that mention old versions stay.
 ### Release-evidence binding
 
 `scripts/check_release_evidence_bound.mjs` (lint member 9) checks that
-`output/release/v14.0.0/SCREENSHOT_INDEX.md` still names the live
+`output/release/v14.1.0/SCREENSHOT_INDEX.md` still names the live
 `static/app/asset-manifest.json` digest and the visual mock-server
 fingerprint. It exists so a later `npm run build:assets` cannot ship
 screenshots of an older UI, and so a mock-server edit cannot leave the
@@ -327,19 +327,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 14.0.0 ahead of
+bumps. Do not move this file's `Current release` marker off 14.1.0 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 14.0.0 release work, exact artifacts are:
+For 14.1.0 release work, exact artifacts are:
 
-- `dist/ltcai-14.0.0-py3-none-any.whl`
-- `dist/ltcai-14.0.0.tar.gz`
-- `ltcai-14.0.0.tgz`
-- `dist/ltcai-14.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
+- `dist/ltcai-14.1.0-py3-none-any.whl`
+- `dist/ltcai-14.1.0.tar.gz`
+- `ltcai-14.1.0.tgz`
+- `dist/ltcai-14.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

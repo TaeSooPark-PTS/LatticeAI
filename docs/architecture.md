@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite
@@ -101,20 +101,21 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 | Layer | Canonical Path | Responsibility |
 | --- | --- | --- |
 | Product Host | `rust/lattice-host/src/gateway/`, `supervisor/` | One Door 422-op router, fail-closed worker proxy, static UI serving, worker process supervisor |
-| Core & Storage | `rust/lattice-core/src/{db.rs,graph_write/,integrity/,temporal.rs,entity_resolution.rs,embedding_registry.rs}` | Single-writer SQLite WAL store, generation-epoch live restore, integrity repair, bi-temporal facts, entity resolution, shadow embedding registry |
-| Auth & Security | `rust/lattice-auth/src/{password.rs,ratelimit.rs,session.rs,csrf.rs}` | Versioned `$scrypt$` hashing, bounded rate limiting (`429` + `Retry-After`), sessions, CSRF guard |
+| Core & Storage | `rust/lattice-core/src/{db.rs,graph_write/,integrity/,temporal.rs,entity_resolution.rs,embedding_registry.rs}` | Single-writer SQLite WAL store, generation-epoch live restore, unified offset-free UTC clock, integrity repair, bi-temporal facts, entity resolution, shadow embedding registry |
+| Auth & Security | `rust/lattice-auth/src/{password.rs,ratelimit.rs,session.rs,csrf.rs,messages.rs}` | Versioned `$scrypt$` hashing, bounded rate limiting (`429` + `Retry-After`), sessions, CSRF guard (`CsrfReason` + `messages.rs`) |
 | Retrieval & Brain API | `rust/lattice-retrieval/src/{bm25/,native_hnsw.rs,hybrid.rs,grounding.rs,brain_api/,chronicle_api/}` | Pre-tokenized BM25F, bounded pure-Rust HNSW, 3-way RRF, claim grounding/abstention, Brain Governance endpoints |
 | Ingestion | `rust/lattice-ingest/src/{incremental_sync.rs,incremental_watch.rs,document_structure.rs,local_files_api/}` | Chunk incremental sync, debounced OS watch, `spawn_blocking` local files API, native Obsidian/Notion/Git/Mail bridges |
 | Agent Harness | `rust/lattice-agent/src/{kernel/,parse/,content/,tools/,surface/,prompts/}` | Universal Adaptive Harness, fail-closed verifier, durable DAG workflows, 5-role multi-agent session, TOCTOU-safe `safe_io` |
 | Platform Surface | `rust/lattice-platform/src/{workspaceos/,toolsurface/,governance/,knowledge/,modelops/,adminops/,shell/}` | Workspace OS, native MCP & tools, Review Center & proposals, `.latticebrain` portability & Brain Network, setup/catalog, admin audit |
 | Chat & Jobs | `rust/lattice-chat/src/`, `rust/lattice-jobs/src/` | Grounded chat, non-blocking document sessions, bounded cloud budget, background embedding/index drain |
 | Python Compute Worker | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 20-route loopback inference, embeddings, parsing, document rendering, and cross-platform engine lifecycle |
-| Frontend & Extensions | `frontend/src/`, `src-tauri/src/`, `vscode-extension/`, `browser-extension/` | Strict TypeScript 7 / React / Vite 8 SPA, Tauri 2.11 desktop shell, VS Code extension, browser capture extension |
+| Frontend & Extensions | `frontend/src/`, `src-tauri/src/`, `vscode-extension/`, `browser-extension/` | Strict TypeScript 7 (`noUncheckedIndexedAccess`) / React / Vite 8 SPA, Tauri 2.11 desktop shell (`PortPolicy::PinnedProduction` on `4825`), VS Code extension, browser capture extension |
 
 ## Compatibility & Upgrades
 
-14.0.0 preserves non-destructive, read-compatible upgrades across SQLite
+14.1.0 preserves non-destructive, read-compatible upgrades across SQLite
 Knowledge Graph schemas, `.latticebrain` archives (v2 KDF), and legacy
 `salt:key` password hashes (automatically verified alongside versioned
-`$scrypt$` hashes). Existing workspace data is preserved without destructive
-migrations.
+`$scrypt$` hashes), while keeping Rust and Python timestamps unified on
+offset-free UTC (`YYYY-MM-DDTHH:MM:SS`). Existing workspace data is preserved
+without destructive migrations.

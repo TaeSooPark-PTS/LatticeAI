@@ -5,26 +5,18 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **13.0.0 through 14.0.0** (the
-modern Rust-host and domain-grouped architecture era). Security support
-follows that same product era: **the 14.x and 13.x lines receive fixes.**
-
-12.0.0 organized the Rust product server (`lattice-host` serving 422 native
-operations across 41 route families, single `GraphWriter`, and the 20-route
-loopback AI worker) into explicit domain modules where security-relevant rules
-have clear ownership (`lattice-agent::kernel/` for permission gates, `seam/` for
-outbound worker compute, `parse/` for untrusted model output, and `content/sanitize`
-for write sanitization). Pre-13
-releases belong to an earlier era and are no longer kept in the
-active release ledger.
+The public Git tree keeps release history from **13.0.0 through 14.1.0** (the
+modern Rust-host and domain-grouped architecture era). Security support follows
+that same product era: **the 14.x and 13.x lines receive fixes.**
 
 | Version | Support |
 | --- | --- |
-| 14.0.x (latest) | Supported |
+| 14.1.x (latest) | Supported |
+| 14.0.x | Supported |
 | 13.9.x | Supported |
 | 13.8.x | Supported |
 | 13.7.x | Supported |
@@ -32,7 +24,7 @@ active release ledger.
 | 13.5.x | Supported |
 | 13.4.x | Supported |
 | 13.0.x | Supported |
-| Older than 13.0.0 | Not supported — see the note above |
+| Older than 13.0.0 | Not supported |
 
 ## Reporting Vulnerabilities
 
@@ -51,281 +43,183 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI is a local-first Digital Brain. It keeps user knowledge,
-conversation context, Knowledge Graph data, and archives local by default while
-making external paths explicit.
+Lattice AI is a local-first Digital Brain. User knowledge, conversation context,
+Knowledge Graph data, and archives stay local by default while every external
+path requires explicit opt-in.
 
-Since 11.6.0 the product server is `lattice-host` (Rust) and the Python package
-is an AI worker reached only over loopback. **11.8.0 narrowed that worker from
-28 routes to 19**: nine routes with no caller anywhere in the tree were deleted
-end to end — route, implementation, allowlist entry and gateway table — and
-negative tests now assert that the gateway no longer forwards them. A route
-that nothing calls is still an attack surface, so the smallest honest worker is
-the one that answers only what the product actually asks for. 11.9.0 did not
-grow that surface; `/worker/sysinfo` gained additive `capabilities` and
-`python_version` fields on the same route. **12.0.0 adds one route and states
-why**: `POST /worker/vector/query` returns candidate ids for the native exact
-rescore when `LATTICEAI_VECTOR_INDEX=hnsw` is opted into — it reads vectors and
-returns ids, it writes nothing, and the default `brute` backend never calls it.
-The allowlist is **20**, generated from the worker's own profile and pinned
-from both sides.
+The Rust product server (`lattice-host`) owns all trust boundaries across **422
+native operations (41 route families)** and supervises the loopback-only Python
+AI compute worker (`latticeai.worker_app`), which is restricted to **20**
+allow-listed compute routes (`rust/fixtures/worker_allowlist.json`, pinned from
+both Python and Rust; all non-native unallowlisted paths answer `404`). Security
+responsibilities map to explicit domain addresses:
 
-The 12.0.0 crate regrouping does not move any trust boundary. `lattice-agent`
-is six groups and `lattice-platform` is seven domains, but the same kernel
-still answers "may this run", the same single writer still owns the graph, and
-the same gateway still refuses anything off the allowlist. The value of the
-regrouping to this document is that the security-relevant code now has a stated
-address: refusals live in `lattice-agent`'s `kernel/`, untrusted model text is
-handled only in `parse/`, and every byte a run is about to write passes
-`content/sanitize`.
+- `rust/lattice-auth/src/` — versioned `$scrypt$` password hashing, bounded rate
+  limiting, sessions, and structured CSRF origin enforcement (`CsrfReason` +
+  `messages.rs`).
+- `rust/lattice-agent/src/kernel/` — permission gates, mode-invariant circuit
+  breakers, fail-closed `NEEDS_REVIEW` verification, and durable workflow
+  approvals.
+- `rust/lattice-agent/src/parse/` & `content/sanitize/` — untrusted model text
+  parsing and pre-write byte sanitization.
+- `rust/lattice-agent/src/tools/safe_io.rs` — OS-level TOCTOU-safe workspace I/O
+  (Unix `openat` + `O_NOFOLLOW` + `fstat` root pinning; Windows component-by-component
+  handle-pinned `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` and
+  `GetFinalPathNameByHandleW`).
+- `rust/lattice-core/src/{graph_write/,integrity/,redact.rs}` — single-writer
+  SQLite pool (`Store::write_conn`), workspace-scoped integrity checks/repairs,
+  and compiled `OnceLock` PII/secret redaction.
 
 ### Default Secure Settings
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Bind address | `127.0.0.1` | Local-only unless explicitly changed |
+| Bind address | `127.0.0.1` | Local-only unless explicitly changed; non-loopback binds refuse to start unless `LATTICEAI_REQUIRE_AUTH=true` |
 | Auth | Off on loopback local mode | Forced on for public or non-loopback binding |
 | CORS | Localhost only | Network CORS requires explicit opt-in |
 | Session TTL | 24 hours sliding | Inactive sessions expire |
+| Password hashing | Versioned `$scrypt$` | `Result`-based `hash_password` (`$scrypt$n=14,r=8,p=1$...`), with legacy `{salt}:{key}` verification compatibility |
+| Rate limiting | Bounded in-memory (`10,000` keys) | Expired-first/oldest eviction, mutex poison recovery, unified HTTP `429` + `Retry-After` across `check_ip` and `enforce` |
+| CSRF protection | Strict origin guard | Structured `CsrfReason` enum (`csrf.rs`) and centralized English error strings (`messages.rs`: `CSRF_DENIED_DETAIL`, `CSRF_ERROR_CODE`) |
+| Desktop Tauri port & CSP | `PortPolicy::PinnedProduction` (`127.0.0.1:4825`) | Production desktop builds strictly require port `4825` and fail fast on conflict rather than drifting off `tauri.conf.json` CSP (no `'unsafe-inline'`) and `capabilities/default.json` remote IPC origins |
 | API key storage | OS keyring where available | No intentional plaintext secret storage |
-| Installer/process execution | Confirmation-token gated | Redacted command plans and local process audit events |
-| `/setup/install` package execution | Manual unless the request names the item | Runs brew/pip/uv only for an item on the **server-derived** allowlist; anything else is refused by name |
-| Folder prune (deleted-file cleanup) | Dry-run | `POST /api/ingestion/folder/prune` removes a document subtree only with explicit `confirm`; the disk is never touched |
-| Brain storage | SQLite | PostgreSQL is optional scale/migration tooling |
-| Docker Postgres setup | Disabled | Requires explicit consent |
-| Production CSP | Strict local app policy | External script/frame/object blocked by default |
+| Installer & `/setup/install` | Confirmation-token & allowlist gated | Redacted command plans, local process audit events, and server-derived `brew`/`pip`/`uv` allowlist only |
+| Folder prune | Dry-run | `POST /api/ingestion/folder/prune` removes a graph subtree only on explicit `confirm`; never touches disk |
+| Brain storage | SQLite WAL | Single-writer `GraphWriter`; PostgreSQL remains `Planned` |
 | Chat auto file read | Disabled | Arbitrary path reads require explicit approval |
-| Telegram inbound access | Removed in 11.6.0 | The bridge left with the platform code that became the AI worker; nothing replaces it |
-| Legacy-global graph reads | Disabled | Must be explicitly requested for compatibility |
-| Invitation authorization | Signed and expiring | Static authorization cookies and built-in invitation codes are rejected |
+| Legacy-global graph reads | Disabled | Must be explicitly requested (`include_legacy_global`) |
+| Invitation authorization | Signed & expiring | Static authorization cookies and built-in default invitation codes are rejected |
 
-### Authentication And Sessions
+### Authentication, Sessions & CSRF
 
-- Passwords use scrypt hashing.
+- Passwords use versioned `$scrypt$` hashing (`lattice-auth::password`) with
+  `Result<String, PasswordError>` error propagation (no panicking `.expect()`)
+  and automatic verification compatibility for legacy `{salt}:{key}` hashes.
 - Session cookies are `HttpOnly` and `SameSite=Lax`; non-loopback/public
   deployments also set `Secure`.
 - Session tokens are stored locally only as SHA-256 hashes; deleted or disabled
   accounts invalidate existing sessions on the next request.
-- **The worker reads the session file rather than caching it forever (11.8.0).**
-  `lattice-auth` is the only writer of `sessions.json`; the worker only reads.
-  It used to load that file once at boot, so a login that happened afterwards
-  did not exist as far as the worker was concerned — silently under
-  `trusted_local_owner`, and as a flat 401 under `LATTICEAI_REQUIRE_AUTH=true`
-  for a token sitting in the file. A lookup that misses now re-reads before
-  giving up, guarded so a token-guessing burst cannot become a disk-read burst:
-  the re-read is skipped when the file's `mtime_ns`/`size` are unchanged, and
-  otherwise throttled to one parse per second, both under the lock that guards
-  the map. This makes valid sessions visible, never invalid ones — an expired or
-  unknown token still fails after the re-read.
-- The local data directory is mode `0700` and atomic JSON/session files are mode
+- `lattice-auth` is the sole writer of `sessions.json`; the Python worker only
+  reads it, refreshing on `mtime_ns`/`size` changes (throttled to 1 parse/s) so
+  post-boot logins are recognized without enabling disk-read floods.
+- Local data directories use mode `0700` and atomic JSON/session files use mode
   `0600` on POSIX filesystems.
-- Enterprise SSO paths are explicit configuration paths.
-- Invitation authorization is HMAC-signed, time-limited, and server-bound. A
-  literal `authorized=true` cookie does not grant access, and public mode will
-  not start an invitation gate with a built-in default code.
+- CSRF verification in `rust/lattice-auth/src/csrf.rs` uses the typed
+  `CsrfReason` enum and centralized constants in `rust/lattice-auth/src/messages.rs`
+  (`CSRF_DENIED_DETAIL`, `CSRF_ERROR_CODE`) for byte-consistent HTTP `403`
+  responses.
+- Invitation authorization is HMAC-signed, time-limited, and server-bound.
 
-### File, Workspace, And Archive Safety
+### File, Workspace & Archive Safety
 
-- Uploaded files are signature-checked where supported.
-- Uploaded blobs are stored under the local data directory.
-- **Per-user `AGENT_ROOT` isolation**: Agent workspace paths are derived
-  server-side via `IsolatedRootSpec` and `resolve_isolated_agent_root`
-  (`lattice-agent::tools::sandbox` and `LoopRoutesState::isolated`), separating
-  agent files by `(user_id, tenant_id, workspace_id)` rather than sharing a
-  single directory across users. Shared workspace paths fail closed
-  (`workspace_access_denied`) unless verified by the workspace membership
-  authorizer.
-- **`.latticebrain` archives are encrypted and integrity-verified** in Rust
-  (`lattice-platform::knowledge::portability::{archive, crypto}`): passphrase
-  archives derive keys with RFC 7914 `scrypt` (`SHA-256` PBKDF2 + Salsa20/8),
-  recipient-sealed subgraph bundles use X25519 + HKDF-SHA256, and payloads use
-  encrypt-then-MAC (`SHA256-CTR` + `HMAC-SHA256`) with constant-time MAC
-  verification (`ct_eq`).
-- Wrong passphrases, tampering, unsupported archive versions, and archive ZIP
-  path traversal (`validate_zip_entries`) fail closed. Export, inspect,
-  verify, dry-run restore, confirmed restore (`confirm: true`), and import paths
-  are gated and audit-logged.
-- **A restore takes effect immediately, in-process (12.0.0).** The store
-  carries a generation epoch; a restore bumps it, every pooled connection
-  opened under the previous generation is stale at its next checkout and is
-  closed, and the following read sees the restored bytes. Through 11.9.0 the
-  documented mitigation was "restart after restore", which meant a window in
-  which a reader could be served pre-restore content — that window is gone.
-- **Deleting knowledge is a separate, confirmed action.** Incremental ingest
-  counts vanished files and leaves their nodes alone. `POST
-  /api/ingestion/folder/prune` reports the plan without `confirm` and, with
-  it, removes the document subtree through `delete_document_tree` — which, now
-  unified with `GraphWriter::delete_node` (`delete_node_subgraph`), clears
-  edges in both directions (including `PART_OF`), chunks, vectors, orphan
-  `Source` nodes, BM25 stats, and provenance rather than leaving dangling
-  references. No prune path deletes anything on disk.
-- **Repository and artifact hygiene**: `/scratchpad/`, `*.db-wal`, and
-  `*.db-shm` are excluded in `.gitignore`, and tracked verification artifacts
-  under `scratchpad/` were purged from git tracking and the working tree.
-  GitHub Actions workflows pin third-party `uses:` references to immutable
-  commit SHAs, and macOS release builds support Developer ID signing and
-  notarization when signing secrets are configured (falling back to ad-hoc
-  signing plus SHA-256 checksum verification otherwise).
+- **Per-user `AGENT_ROOT` isolation:** Agent workspace paths are derived
+  server-side via `IsolatedRootSpec` and `resolve_isolated_agent_root`,
+  separating files by `(user_id, tenant_id, workspace_id)` and failing closed
+  (`workspace_access_denied`) when shared-workspace membership is unverified.
+- **TOCTOU-safe workspace I/O:** `rust/lattice-agent/src/tools/safe_io.rs`
+  confines reads, writes, and file creation to the authorized workspace root
+  using handle-relative `openat` + `O_NOFOLLOW` + `fstat` on Unix and
+  component-by-component handle-pinned `CreateFileW` + `GetFinalPathNameByHandleW`
+  on Windows.
+- **Workspace ownership enforcement:** Integrity repairs, entity merges/rollbacks,
+  and knowledge corrections validate target workspace ownership and reject
+  cross-workspace targets with HTTP `403`; global repairs require explicit
+  `require_admin` authorization.
+- **`.latticebrain` archive cryptography:** Implemented in Rust
+  (`lattice-platform::knowledge::portability::{archive, crypto}`) using RFC 7914
+  `scrypt` passphrases or X25519 + HKDF-SHA256 recipient sealing, Encrypt-then-MAC
+  (`SHA256-CTR` + `HMAC-SHA256`) with constant-time MAC checks (`ct_eq`), and
+  ZIP path-traversal rejection (`validate_zip_entries`). Restores bump the store
+  generation epoch so pooled connections recycle immediately in-process.
+- **Desktop & extension hardening:** Tauri production builds enforce
+  `PortPolicy::PinnedProduction` on `127.0.0.1:4825` (failing fast with clear
+  `gateway_error` diagnostics if port `4825` is occupied instead of silently
+  scanning `4826+`), serialize gateway lifecycle transitions, and enforce strict
+  CSP without `'unsafe-inline'`. `vscode-extension` enforces optional Bearer auth
+  and single-use TTL approval tokens; `browser-extension` restricts host
+  permissions to port `4825` and keeps approval decisions off-surface.
+- **Static security & supply-chain gates:** Python CI enforces Ruff `"BLE"`
+  (no broad blind `except Exception`), McCabe `max-complexity <= 20`, production
+  `S608` SQL-injection checks, and minimal Bandit per-file ignores (`S603`,
+  `S105`, `S108`). All GitHub Actions `uses:` references are pinned to immutable
+  commit SHAs, and the multi-stage `Dockerfile` pins every base image by SHA256
+  digest.
 
-### Agent And Tool Safety
+### Agent & Tool Safety
 
-- AgentRuntime preview/readiness does not execute tools and non-auto-approved
-  plans require explicit human approval.
-- Mutating tools are enumerated in a governed inventory
-  (`MUTATING_TOOL_INVENTORY`); each is either proposal-governed or explicitly
-  exempt, and that coverage is release-checked so a new mutating tool cannot
-  silently bypass governance. Edits and deletions of existing files run through
-  change proposals that record a base content hash and re-verify it before
-  applying atomically, so a conflicting concurrent edit fails closed instead of
-  being overwritten.
-- The agent-eval verifier fails closed: unverifiable or failing outcomes resolve
-  to a review state rather than being reported as success.
-- **The `guided` profile removes the JSON, not a gate (12.0.0).** A run that
-  cannot hold a tool-call contract is walked through numbered choices and
-  one argument per turn, but the harness assembles the action and hands it to
-  the same `perform_action` tail every profile uses — same gate chain, same
-  loop guard, same pre-write snapshot, same `sanitize_write_content`.
-  Verification is a closed PASS/FAIL judged by the same evidence and coverage
-  gates, and an unverifiable outcome is still `NEEDS_REVIEW`.
-- **The loop refuses to execute its own prompt.** A `write_file` whose content
-  is the crate's own worked-example constant verbatim is recorded as
-  `COPIED_EXAMPLE` and written nowhere; echoed instruction lines are stripped
-  from guided answers. Weak models continue the nearest complete shape, and in
-  an agent turn that shape is our prompt — so this is a fail-closed refusal
-  against a constant the crate owns, which cannot reject a genuine answer.
-- ToolRegistry owns dispatch, permissions, diagnostics, direct HTTP/MCP policy
-  gates, and MCP install state.
-- Shared agent/plugin registries and graph curation are administrator-managed;
-  registry reads redact secret-shaped configuration values.
-- MCP graph calls and realtime presence are bound to the authenticated identity
-  and active/allowed workspace; MCP environment values are never returned.
-- Knowledge Graph scope lookup fails closed on projection/query errors. Unknown
-  scoped nodes are private, and legacy-global reads require an explicit
-  `include_legacy_global` compatibility choice.
-- MCP and plugin execution cannot invoke local filesystem/document tools; those
-  tools require the dedicated, scope-bound approval-token endpoints. Plugins
-  may invoke only tools explicitly declared in their installed manifest.
-- Realtime SSE connections revalidate session and workspace membership before
-  delivery, including events queued before a membership revocation.
-- Command/file tools enforce sandbox and uniqueness checks where applicable.
-- The command tool uses a fixed executable allowlist and sanitized environment;
-  interpreter commands, executable paths, traversal, symlink escapes, ripgrep
-  preprocessors, and mutating/exec `find` flags are refused.
-- Secret-like values are centrally redacted before logs, audit payloads,
-  security exports, frontend previews, and hook packets.
-- Computer screenshot/status, knowledge/Obsidian, and chat network-status tools
-  require their declared policy, capability, consent, and scope checks.
-- Permission requests are written atomically with private permissions. External
-  notifications contain only a token hint and an optional configured review UI
-  link, never the full approval token. **11.9.0 unifies those local approval
-  tokens** (`LocalApprovals`): a folder ingest that the trusted owner approved
-  is redeemable at `/permissions/approve` rather than carrying a second,
-  endpoint-private token.
-
-### What 11.8.0 Deleted, And Why It Is Not A Weakening
-
-11.8.0 removed several Python helpers whose names read as security controls:
-`hash_password` / `verify_password`, `check_ip_rate_limit`,
-`configure_trusted_proxies`, `client_ip`, and `bytes_match_extension`. None of
-them was enforcing anything. Password verification, rate limiting, trusted-proxy
-resolution and client-IP derivation all became `lattice-auth`'s and the
-gateway's in 11.6.0, when the front door moved to Rust; these copies had no
-caller left in the worker. Deleting a second, unreachable implementation removes
-the chance that a future reader hardens the wrong one.
-
-The guards that *are* load-bearing were kept and are unchanged: the CSRF origin
-guard on the proxied worker writes, auth before any decode or compute, the
-signature check on uploads, the mode-invariant circuit breakers in the Rust
-kernel, `sanitize_write_content` on every native write path, and the committed
-worker allowlist — 19 entries then, 20 since 12.0.0 added the vector-query
-seam, with tests asserting the nine deleted routes are answered `404` rather
-than forwarded.
+- `AgentRuntime` preview/readiness never executes tools; non-auto-approved plans
+  require explicit human approval.
+- Every mutating tool is tracked in `MUTATING_TOOL_INVENTORY`. Existing-file
+  edits and deletions stage as `change_proposal` items recording a base content
+  SHA and fail closed with `409` on concurrent edits.
+- The loop verifier fails closed to `NEEDS_REVIEW` on unverifiable or failing
+  outcomes across all profiles (`standard`, `compact`, `guided`).
+- `guided` mode removes JSON formatting demands without bypassing any permission
+  gate, loop guard, pre-write snapshot, or `sanitize_write_content` pass, and
+  the loop refuses verbatim prompt-example copies (`COPIED_EXAMPLE`).
+- Command execution uses a fixed executable allowlist and sanitized environment;
+  interpreters, traversal, symlink escapes, ripgrep preprocessors, and mutating
+  `find` flags are denied.
+- MCP (`POST /mcp`) is inside the OpenAPI product contract and shares
+  `check_governance` with the agent catalog; MCP and plugins cannot invoke local
+  filesystem/document tools without dedicated approval-token endpoints.
+- Secret-like values and PII are centrally redacted (`lattice-core::redact`)
+  before logs, audit payloads, `LoopTrace`, cloud egress, and posture-gated
+  `GET /host/diagnostics`.
 
 ### External Communication
 
-There is no default telemetry. Prompts, files, graph content, and archives do
-not leave the machine solely because a token exists.
+There is no default telemetry. External communication requires explicit
+configuration and user/admin action (cloud model calls, model downloads, Brain
+Network peer exchange, update checks, marketplace refreshes, or consented
+`/setup/install` package runs).
 
-External communication requires explicit configuration and user/admin action:
-
-- cloud model calls;
-- model downloads;
-- Brain Network peer exchange;
-- Docker/Postgres scale setup;
-- update checks;
-- marketplace or remote registry refresh.
-
-**Cloud turns are audited and proposed, not silently written (11.9.0).** Every
-cloud turn writes a `cloud_egress` record *before* the provider is called,
-naming provider, model, and the escalation reason — shape, never content.
-Knowledge extracted from a cloud answer is staged as a Review Center
-`kg_cloud_expansion` proposal; the graph changes only when a person approves
-it (or when `auto_commit` is explicitly enabled, default off).
-
-**Two credential modes, one of them live-verified without billing.**
-`api_key` is an OpenAI-compatible adapter. This release contract-tested it
-against a mock server and never live-called it — there was no billing budget
-for that path. `cli_oauth` uses a locally OAuth-authenticated CLI
-(Antigravity `agy` → gemini-3.7-flash, `grok` → grok-4.6), spawned in a
-neutral temp cwd with a 120s timeout; that path was live-verified with zero
-API billing. Resolution is `cloud_provider.json` → env key → `agy` → `grok`
-→ none. A per-request `network_mode: "local_only"` always wins over the
-escalation policy (`auto` default / `manual` / `always`).
-
-The MCP surface at `POST /mcp` is a real streamable-HTTP JSON-RPC server on
-the host, and **since 12.0.0 it is inside the OpenAPI product contract** as a
-single JSON-RPC envelope operation rather than beside it. Governance refusals
-are JSON-RPC errors. It is not a second, ungoverned door, and the agent loop
-does not get a quieter one either: when a run's own catalog dispatches an
-`mcp.<tool>` name it did not govern, that call goes through the same
-governance check `POST /mcp` runs. A name the run *does* govern takes the
-kernel's stricter native path instead.
-
-Web-page capture additionally resolves and pins public IPs, rejects private and
-reserved address classes, rechecks every redirect, ignores proxy environment
-variables, and streams at most 4 MiB of textual content.
+- **Audited, proposal-first cloud turns:** Every cloud turn strips
+  `sensitive`/`private`/`do_not_share` nodes and secret files in both modes,
+  redacts PII/secrets, enforces bounded token budgets, writes a shape-only
+  `cloud_egress` audit record before calling the provider, and stages extracted
+  knowledge as a `kg_cloud_expansion` Review Center proposal (`auto_commit`
+  default `false`). Per-request `network_mode: "local_only"` always wins.
+- **Dual cloud credentials:** `api_key` (OpenAI-compatible, zero-billing
+  `GET /models` live probe) and `cli_oauth` (locally authenticated `agy`/`grok`
+  in a neutral temp dir with 120s timeout).
+- **Web-page capture:** Resolves and pins public IPs, rejects private/reserved
+  ranges, rechecks every redirect, ignores proxy env vars, and caps streamed
+  text at 4 MiB.
 
 ### Security-Sensitive Environment Variables
 
 | Variable | Requirement | Purpose |
 | --- | --- | --- |
-| `LATTICEAI_PERMISSION_UI_URL` | Optional | Base URL for human permission-review links; approval tokens are never appended or sent |
-| `LATTICEAI_REQUIRE_AUTH` | Optional, default off on loopback | Forces authentication even in local mode; forced on for public or non-loopback binding |
-| `LATTICEAI_INVITE_GATE_ENABLED` | Optional, default off | Enables invitation onboarding without reopening unrestricted registration |
-| `LATTICEAI_INVITE_CODE` | Recommended when the invitation gate is enabled | Operator-generated random invitation code; when omitted, a private per-install value is generated and persisted—there is no shared default |
+| `LATTICEAI_PERMISSION_UI_URL` | Optional | Base URL for human permission-review links; approval tokens are never appended |
+| `LATTICEAI_REQUIRE_AUTH` | Optional, default off on loopback | Forces authentication in local mode; required for public or non-loopback binds |
+| `LATTICEAI_INVITE_GATE_ENABLED` | Optional, default off | Enables signed invitation onboarding without reopening unrestricted registration |
+| `LATTICEAI_INVITE_CODE` | Recommended with invite gate | Operator-generated random invite code (otherwise a private per-install value is generated; no shared default) |
 
 ## Public Deployment Guidance
 
 If exposing Lattice AI beyond localhost:
 
-1. Set `LATTICEAI_MODE=public`.
-2. Keep registration closed. If invitation onboarding is required, enable the
-   invitation gate and set a random private `LATTICEAI_INVITE_CODE`, or retain
-   the generated per-install secret on persistent storage; no shared default
-   exists. A valid signed invite authorizes only that registration request;
-   unsigned direct `/register` calls remain closed. SSO just-in-time account
-   creation requires the same invite claim, bound server-side to the one-time
-   OIDC state, nonce, and PKCE transaction; existing active SSO accounts may
-   still sign in without a new invitation.
-3. Put the app behind HTTPS.
-4. Mount persistent storage.
-5. Review CORS, auth, rate limits, and graph exposure settings before use.
+1. Set `LATTICEAI_MODE=public` and `LATTICEAI_REQUIRE_AUTH=true`.
+2. Keep open registration closed; use the signed invitation gate if onboarding
+   additional users.
+3. Terminate HTTPS at a reverse proxy (nginx / Caddy) and configure
+   `CSRF_TRUSTED_ORIGINS`.
+4. Mount persistent storage and restrict port `4825` at the firewall.
+5. Review `ALLOWED_COMMANDS`, CORS, rate limits, and graph exposure settings
+   before launch.
 
 ## Known Limitations
 
 - Local file security depends on the user's OS account, disk encryption, and
   backup policy.
-- Cloud model prompts follow the selected provider's policy after the user
-  chooses that provider.
+- Cloud model prompts follow the selected provider's policy once explicitly
+  enabled by the user.
 - A trusted local admin can inspect local files and process memory outside
   Lattice AI.
-- MLX/Hugging Face model downloads: `scripts/verify_hf_model_registry.py`
-  statically verifies Hub metadata without fetching weights and
-  `EmbeddingIndexContract` records `model_revision`, while
-  `latticeai/services/model_runtime/download.py` (`_call_hf_hub_download`) and
-  `latticeai/core/embedding_providers/text.py` (`from_pretrained`) do not yet
-  pin immutable Hub commit `revision=` defaults across all download paths
-  (tracked as Bandit `B615` in [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)).
-- Repository hygiene rules exclude `/scratchpad/` and transient `*.db-wal` /
-  `*.db-shm` files from future commits; if historical verification tokens were
-  ever valid credentials in an external environment, rotate them independently.
+- Hugging Face model downloads: `scripts/verify_hf_model_registry.py` statically
+  verifies Hub metadata without fetching weights and `EmbeddingIndexContract`
+  records `model_revision`, while `latticeai/services/model_runtime/download.py`
+  and `latticeai/core/embedding_providers/text.py` do not yet enforce immutable
+  default commit `revision=` pinning across all download paths (tracked as
+  Bandit `B615` in [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md)).

@@ -6,6 +6,7 @@ Lattice AI(`v13.0.0` 이후)의 버전별 상세 릴리스 노트입니다. 통�
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](RELEASE_NOTES_v14.1.0.md) |
 | 14.0.0 | Living Synthesis | [RELEASE_NOTES_v14.0.0.md](RELEASE_NOTES_v14.0.0.md) |
 | 13.9.0 | Living Synthesis | [RELEASE_NOTES_v13.9.0.md](RELEASE_NOTES_v13.9.0.md) |
 | 13.8.0 | Living Synthesis | [RELEASE_NOTES_v13.8.0.md](RELEASE_NOTES_v13.8.0.md) |
@@ -24,4 +25,4 @@ Lattice AI(`v13.0.0` 이후)의 버전별 상세 릴리스 노트입니다. 통�
 | 13.1.0 | Living Synthesis | [RELEASE_NOTES_v13.1.0.md](RELEASE_NOTES_v13.1.0.md) |
 | 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](RELEASE_NOTES_v13.0.0.md) |
 
-이 저장소의 공개 릴리스 히스토리 및 지원 범위는 `v13.x` 계열(`13.0.0+`)을 기준으로 합니다. 자세한 내용은 [`SECURITY.md`](../SECURITY.md)를 참고하세요.
+이 저장소의 공개 릴리스 히스토리 및 지원 범위는 `v13.x–v14.x` 계열(`13.0.0+`)을 기준으로 합니다. 자세한 내용은 [`SECURITY.md`](../SECURITY.md)를 참고하세요.

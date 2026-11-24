@@ -14,7 +14,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**14.0.0 — Living Synthesis** hardens the full Lattice AI stack and the VS Code extension: adds optional Bearer authentication (`ltcai.authToken` / `LATTICEAI_API_TOKEN`), bounded TTL single-use approval token caching, HTTP/SSE request & stream timeouts with explicit error handling, live configuration reload (`onDidChangeConfiguration`), sync poll overlap protection, and cross-platform VSIX packaging (`scripts/vsix-cli.mjs`) alongside versioned `$scrypt$` host auth, pure-Rust UTC clock, `windows-latest` Rust CI, and modernized `14.0.0` architecture documentation. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.0.0.md`.
+**14.1.0 — Living Synthesis** aligns the full Lattice AI stack with unified Rust ↔ Python offset-free UTC timestamps, fail-fast Tauri production port pinning (`4825`), strict Python Ruff (`BLE`, McCabe `<= 20`, minimal Bandit ignores), TypeScript 7 `noUncheckedIndexedAccess` at 100% Vitest coverage, PR Playwright visual smoke, and the hardened VS Code extension (optional Bearer authentication via `ltcai.authToken` / `LATTICEAI_API_TOKEN`, TTL single-use approval token cache, HTTP/SSE stream timeouts, live configuration reload via `onDidChangeConfiguration`, sync poll overlap protection, and cross-platform VSIX packaging via `scripts/vsix-cli.mjs`). Full disclosure is in `docs/releases/RELEASE_NOTES_v14.1.0.md`.
 
 **The core protocol remains backward-compatible.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before; cloud escalation and MCP live on the host, not in the editor.
 
@@ -88,6 +88,7 @@ Lattice AI supports local and cloud model choices:
 | Setting | Default | Description |
 | --- | --- | --- |
 | `ltcai.serverUrl` | `http://localhost:4825` | Lattice AI workspace URL |
+| `ltcai.authToken` | empty | Optional Bearer token (also reads `LATTICEAI_API_TOKEN`) |
 | `ltcai.autoLoadModel` | `false` | Load the default model on extension activation |
 | `ltcai.defaultModel` | empty | Optional default model id |
 
