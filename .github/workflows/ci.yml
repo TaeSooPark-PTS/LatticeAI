@@ -53,7 +53,7 @@ jobs:
         run: npm run test:browser-extension && npm run test:vscode-extension
 
       - name: Run frontend tests (100% coverage)
-        # vitest.config.ts pins 100% thresholds on all four metrics.
+        # vitest.config.mts pins 100% thresholds on all four metrics.
         run: npm run test:frontend:coverage
 
   test:

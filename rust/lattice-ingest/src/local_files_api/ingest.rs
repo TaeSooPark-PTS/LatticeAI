@@ -304,20 +304,28 @@ pub(super) async fn obsidian(
     ) {
         return refusal;
     }
-    let seam = match state.require_seam(lang) {
-        Ok(seam) => seam,
-        Err(refusal) => return refusal,
+    let dry_run = model.bool("dry_run", false);
+    let workspace_id = model
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    let owner = if user.is_empty() { None } else { Some(user) };
+    let Some(graph) = state.graph().cloned() else {
+        return http_error(503, "capture.ingestion_disabled", lang);
     };
-    let forwarded = json!({
-        "path": path,
-        "workspace_id": model.get("workspace_id").cloned().unwrap_or(Value::Null),
-        "dry_run": model.bool("dry_run", false),
-        "approved": true,
-        "approval_token": model.get("approval_token").cloned().unwrap_or(Value::Null),
-    });
-    match forward(seam, &headers, "/api/ingestion/obsidian", &forwarded).await {
+    match super::interop::ingest_obsidian_native(
+        &state,
+        graph,
+        &path,
+        dry_run,
+        owner.as_deref(),
+        workspace_id.as_deref(),
+    )
+    .await
+    {
         Ok(value) => ok(&value),
-        Err(refusal) => refusal,
+        Err(message) => detail(400, &message),
     }
 }
 
@@ -373,20 +381,29 @@ pub(super) async fn interop_ingest(
     ) {
         return refusal;
     }
-    let seam = match state.require_seam(lang) {
-        Ok(seam) => seam,
-        Err(refusal) => return refusal,
+    let dry_run = model.bool("dry_run", false);
+    let workspace_id = model
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    let owner = if user.is_empty() { None } else { Some(user) };
+    let Some(graph) = state.graph().cloned() else {
+        return http_error(503, "capture.ingestion_disabled", lang);
     };
-    match forward(
-        seam,
-        &headers,
-        "/api/ingestion/interop",
-        &serde_json::from_slice(&body).unwrap_or(Value::Null),
+    match super::interop::ingest_interop_native(
+        &state,
+        graph,
+        source,
+        &path,
+        dry_run,
+        owner.as_deref(),
+        workspace_id.as_deref(),
     )
     .await
     {
         Ok(value) => ok(&value),
-        Err(refusal) => refusal,
+        Err(message) => detail(400, &message),
     }
 }
 

@@ -5,40 +5,30 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **13.6.0 — Living Synthesis**.
+Current release: **13.7.0 — Living Synthesis**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **12.0.0 through 13.6.0** (the
-modern `v12.x`–`v13.x` Rust-host and domain-grouped architecture era). Security support
-follows that same product era: **the 13.x and 12.x lines receive fixes.**
+The public Git tree keeps release history from **13.0.0 through 13.7.0** (the
+modern `v13.x` Rust-host and domain-grouped architecture era). Security support
+follows that same product era: **the 13.x line receives fixes.**
 
 12.0.0 organized the Rust product server (`lattice-host` serving 422 native
 operations across 41 route families, single `GraphWriter`, and the 20-route
 loopback AI worker) into explicit domain modules where security-relevant rules
 have clear ownership (`lattice-agent::kernel/` for permission gates, `seam/` for
 outbound worker compute, `parse/` for untrusted model output, and `content/sanitize`
-for write sanitization). Pre-12
-releases belong to an earlier era and are no longer supported or kept in the
+for write sanitization). Pre-13
+releases belong to an earlier era and are no longer kept in the
 active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 13.6.x (latest) | Supported |
+| 13.7.x (latest) | Supported |
+| 13.6.x | Supported |
 | 13.5.x | Supported |
 | 13.4.x | Supported |
 | 13.0.x | Supported |
-| 12.10.x | Supported |
-| 12.9.x | Supported |
-| 12.8.x | Supported |
-| 12.7.x | Supported |
-| 12.6.x | Supported |
-| 12.5.x | Supported |
-| 12.4.x | Supported |
-| 12.3.x | Supported |
-| 12.2.x | Supported |
-| 12.1.x | Supported |
-| 12.0.x | Supported |
 | Older than 12.0.0 | Not supported — see the note above |
 
 ## Reporting Vulnerabilities

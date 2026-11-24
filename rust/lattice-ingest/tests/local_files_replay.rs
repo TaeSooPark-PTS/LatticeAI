@@ -58,14 +58,13 @@ async fn boot(data: &Path) -> (String, String, Arc<LocalApprovals>, PathBuf) {
     seed_users(data);
     let corpus = seed_corpus(data);
     let db = data.join("knowledge_graph.sqlite");
+    let store = Arc::new(Store::open(&db).unwrap());
+    let graph =
+        lattice_core::graph_write::GraphWriter::open(Arc::clone(&store), data.join("blobs"))
+            .unwrap();
     let conn = rusqlite::Connection::open(&db).unwrap();
     conn.execute_batch(
-        "CREATE TABLE knowledge_sources(id TEXT PRIMARY KEY, root_path TEXT, os_type TEXT,
-            drive_id TEXT, label TEXT, status TEXT, include_ocr INT, watch_enabled INT,
-            consent_json TEXT, created_at TEXT, updated_at TEXT, last_scanned_at TEXT);
-         CREATE TABLE local_file_index(id TEXT PRIMARY KEY, source_id TEXT, status TEXT,
-            relative_path TEXT, error_message TEXT, last_scanned_at TEXT);
-         CREATE TABLE ingestion_jobs(job_id TEXT PRIMARY KEY, status TEXT, total INT,
+        "CREATE TABLE IF NOT EXISTS ingestion_jobs(job_id TEXT PRIMARY KEY, status TEXT, total INT,
             processed INT, failed INT, errors_json TEXT, created_at TEXT, updated_at TEXT,
             items_json TEXT, done_indices_json TEXT);
          INSERT INTO ingestion_jobs VALUES
@@ -91,10 +90,10 @@ async fn boot(data: &Path) -> (String, String, Arc<LocalApprovals>, PathBuf) {
         .create("user:owner", Some("owner@lattice.test"));
 
     let runtime = RuntimeConfig::resolve(Some(data.to_str().unwrap()), None, None, Some(data));
-    let store = Arc::new(Store::open(&db).unwrap());
     let permissions = LocalApprovals::new();
-    let state =
-        LocalFilesState::new(auth, Some(store), runtime).with_permissions(Arc::clone(&permissions));
+    let state = LocalFilesState::new(auth, Some(store), runtime)
+        .with_permissions(Arc::clone(&permissions))
+        .with_graph(graph);
     let app = local_files_api::router(Arc::new(state));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -399,4 +398,138 @@ fn greedy_path_params_do_not_apply_to_this_slice() {
             "{key} is not this crate's to wildcard"
         );
     }
+}
+
+#[tokio::test]
+async fn native_obsidian_and_interop_ingest_write_directly_through_graph_writer() {
+    let data = tempfile::tempdir().unwrap();
+    let (origin, token, permissions, _) = boot(data.path()).await;
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let post_json = |path: &str, payload: serde_json::Value| {
+        let client = client.clone();
+        let url = format!("{origin}{path}");
+        let cookie = format!("session_token={token}");
+        async move {
+            let resp = client
+                .post(url)
+                .header("cookie", cookie)
+                .header("content-type", "application/json")
+                .body(serde_json::to_vec(&payload).unwrap())
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(resp.status().as_u16(), 200);
+            let bytes = resp.bytes().await.unwrap();
+            serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()
+        }
+    };
+
+    let vault = tempfile::tempdir().unwrap();
+    std::fs::write(
+        vault.path().join("Alpha.md"),
+        "# Alpha\nLinks to [[Beta|Beta Note]] and #sprint.\n",
+    )
+    .unwrap();
+    std::fs::write(vault.path().join("Beta.md"), "# Beta\nBack to [[Alpha]].\n").unwrap();
+    let vault_s = vault.path().to_string_lossy().to_string();
+
+    let probe = post_json(
+        "/api/ingestion/obsidian",
+        serde_json::json!({"path": vault_s, "dry_run": true}),
+    )
+    .await;
+    let tok = probe["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(tok));
+    let dry = post_json(
+        "/api/ingestion/obsidian",
+        serde_json::json!({
+            "path": vault_s,
+            "dry_run": true,
+            "approved": true,
+            "approval_token": tok,
+        }),
+    )
+    .await;
+    assert_eq!(dry["dry_run"], true);
+    assert_eq!(dry["notes_found"], 2);
+    assert_eq!(dry["wikilinks_detected"], 2);
+
+    let probe2 = post_json(
+        "/api/ingestion/obsidian",
+        serde_json::json!({"path": vault_s, "dry_run": false}),
+    )
+    .await;
+    let tok2 = probe2["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(tok2));
+    let live = post_json(
+        "/api/ingestion/obsidian",
+        serde_json::json!({
+            "path": vault_s,
+            "dry_run": false,
+            "approved": true,
+            "approval_token": tok2,
+        }),
+    )
+    .await;
+    assert_eq!(live["ingested"], 2);
+    assert_eq!(live["edges_created"], 2);
+
+    let notion_dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        notion_dir
+            .path()
+            .join("Product Spec a1b2c3d4e5f60718293a4b5c6d7e8f90.md"),
+        "# Product Spec\nLocal-first Digital Brain.",
+    )
+    .unwrap();
+    let notion_s = notion_dir.path().to_string_lossy().to_string();
+    let n_probe = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({"source": "notion", "path": notion_s}),
+    )
+    .await;
+    let n_tok = n_probe["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(n_tok));
+    let n_res = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({
+            "source": "notion",
+            "path": notion_s,
+            "approved": true,
+            "approval_token": n_tok,
+        }),
+    )
+    .await;
+    assert_eq!(n_res["ingested"], 1);
+
+    let mail_dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        mail_dir.path().join("note.eml"),
+        "Subject: Weekly Sync\nFrom: team@local\nDate: Tue, 24 Nov 2026 10:00:00 +0900\n\nShip v13.7.0.",
+    )
+    .unwrap();
+    std::fs::write(
+        mail_dir.path().join("cal.ics"),
+        "BEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:Release Review\nDTSTART:20261124T100000Z\nEND:VEVENT\nEND:VCALENDAR\n",
+    )
+    .unwrap();
+    let mail_s = mail_dir.path().to_string_lossy().to_string();
+    let m_probe = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({"source": "mail", "path": mail_s}),
+    )
+    .await;
+    let m_tok = m_probe["approval_token"].as_str().unwrap();
+    assert!(permissions.approve(m_tok));
+    let m_res = post_json(
+        "/api/ingestion/interop",
+        serde_json::json!({
+            "source": "mail",
+            "path": mail_s,
+            "approved": true,
+            "approval_token": m_tok,
+        }),
+    )
+    .await;
+    assert_eq!(m_res["ingested"], 2);
 }

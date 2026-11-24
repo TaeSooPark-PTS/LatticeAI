@@ -29,6 +29,7 @@ pub(crate) mod enrich;
 mod folder;
 pub mod http;
 pub(crate) mod ingest;
+mod interop;
 mod jobs_store;
 mod knowledge;
 mod local;

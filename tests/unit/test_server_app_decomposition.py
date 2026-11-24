@@ -37,13 +37,15 @@ def test_version_metadata_matches_release():
 
 
 def test_markdown_current_release_references_match_release():
-    # Public release history starts at 12.0.0 (modern v12.x Rust-host +
-    # domain-grouped era). Pre-v12 release notes were pruned from the active
-    # ledger and SECURITY.md supports the 12.x line.
+    # Public release history starts at 13.0.0 (modern v13.x Living Synthesis
+    # era). Pre-v13 release notes were pruned from the active ledger and
+    # SECURITY.md supports the 13.x line.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release History", 1)[1]
-    assert "12.0.0" in history
+    assert "13.0.0" in history
     for retired in (
+        "12.10.0",
+        "12.0.0",
         "11.9.0",
         "11.0.0",
         "10.10.0",
@@ -53,7 +55,7 @@ def test_markdown_current_release_references_match_release():
         "8.9.0",
         "8.0.0",
     ):
-        assert retired not in history, f"{retired} is below the supported v12.0.0+ floor"
+        assert retired not in history, f"{retired} is below the supported v13.0.0+ floor"
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
     release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]

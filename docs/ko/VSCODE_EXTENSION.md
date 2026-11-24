@@ -16,26 +16,6 @@ Lattice AI 확장은 VS Code, Cursor, VSCodium을 로컬 우선 Digital Brain에
 
 **13.0.0 — Sovereign Synthesis**는 크로스 도메인 결합 제거(`lattice_core::redact`, `lattice_agent::seam`, `domain_boundaries.rs`)와 통합 Rust 서버 i18n(`lattice_core::messages`), 2-Hop 지식 그래프 추론 체인·매개 개념·상충 합성(`reasoning_paths.rs`, `MultiHopSynthesisView.tsx`), 단일 트랜잭션 리뷰 스토어 변경, 원클릭 폴더 재구성 되돌리기(`ReviewCard.tsx`), 재시작 후 유지되는 대화 문서 세션, `frontend/src/api/client.ts` 및 `src-tauri/src/backend.rs` 모듈 분할(Vitest 100%)을 도입했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v13.0.0.md](../releases/RELEASE_NOTES_v13.0.0.md)를 참고하세요.
 
-**12.10.0 — Grounded Self**는 결정론적 에이전트 트랜스크립트 근거 검증 및 인터랙티브 인용 증빙 배지, 인라인 제안 승인/거절이 가능한 Brain 자기 모델 패널, `edges`·`edges_v2` 간 `PART_OF` 엣지 연쇄 삭제 정합성, 협력적 `499` 모델 다운로드 취소 및 다운로드 직후 시맨틱 임베딩 자동 전환·리인덱싱 드레인, `http_reply.rs` 전송 계층 분리, Python 워커 서버 i18n 100% 잠금(`6/6` 라우터), 병렬 `cargo nextest`, `release.yml` → `publish.yml` 자동 CD 체이닝을 추가했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.10.0.md](../releases/RELEASE_NOTES_v12.10.0.md)를 참고하세요.
-
-**12.9.0 — Semantic Guard**는 검색/회상/채팅 전반의 쿼리 시점 시맨틱 임베딩을 활성 `EmbeddingIndexContract`에 정렬하고, 순수 Rust `NativeHnswIndex` 및 워크스페이스/모델 스코프 Python HNSW 사이드카, fail-closed `local_only`/`cloud_allowed` 네트워크 경계 및 클라우드 컨텍스트 가드, Tauri 데스크톱/`LTCAI` CLI/호스트 슈퍼바이저/멀티스테이지 Docker 수명주기 하드닝, 실시간 Workspace OS SSE(`/api/realtime/stream`), v2 `.latticebrain` 아카이브 KDF 및 CI 게이트 강화를 도입했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.9.0.md](../releases/RELEASE_NOTES_v12.9.0.md)를 참고하세요.
-
-**12.8.0 — Trusted Brain**은 `EmbeddingIndexContract`와 지식 라이프사이클 추적을 통합하고, SQL `LIMIT` 이전 워크스페이스/라이프사이클 필터링·정렬된 벡터 검색·바운드 사이드카 캐시, 게이트웨이 라우트 전반의 fail-closed 멀티유저/워크스페이스/테넌트 격리, AEAD 암호화 `.latticebrain` 아카이브 및 정직한 PostgreSQL `planned` 상태 보고, `Library`/`System`/`Capture` UI 모듈화, Apple Silicon DMG CI/CD 자동화를 제공합니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.8.0.md](../releases/RELEASE_NOTES_v12.8.0.md)를 참고하세요.
-
-**12.7.0 — Fast Index**는 사전 토큰화 BM25F 사이드카(`Bm25SidecarIndex`), SQLite `bm25_node_stats` 영속화, 쿼리 시 재토큰화 없이 O(1) 조회를 수행하는 역색인 포스팅 리스트·GraphRAG 인접 캐시, 제품 중심 `README.md` 및 `v12.0.0+` 릴리스 이력 정리를 추가했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.7.0.md](../releases/RELEASE_NOTES_v12.7.0.md)를 참고하세요.
-
-**12.6.0 — Hybrid Graph**는 3-way BM25F + Vector + Knowledge Graph RRF 하이브리드 인덱싱·검색과 그래프 인식 에이전트 스킬, 멀티스케일 서브워드 `FallbackTextEmbedder`, 비인증 EmbeddingGemma 2 공개 미러 및 GGUF/MLX/ONNX 폴백, 온보딩·모델 라이브러리의 실시간 SSE 다운로드 속도(`MB/s`)·ETA 스트리밍, Pillow 13+ 정리, Ubuntu 24.04/26.04 `t64` CI 복원력, 모듈화 `scripts/bump_version/` CLI를 추가했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.6.0.md](../releases/RELEASE_NOTES_v12.6.0.md)를 참고하세요.
-
-**12.5.0 — Deep Vector**는 네이티브 Google EmbeddingGemma 2 지원, 하드웨어 맞춤 PC 임베딩 추천, Pillow 13+ flattened data 호환, Node 24 네이티브 CI/CD, OpenAPI 명세 및 픽스처 자동 동기화를 추가했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.5.0.md](../releases/RELEASE_NOTES_v12.5.0.md)를 참고하세요.
-
-**12.4.0 — Sharp Weight**는 One Door 토폴로지(422 오퍼레이션 / 41 패밀리, 20개 라우트 워커)를 유지하면서 검증된 `mlx-community/Qwen3.8-27B-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` 로컬/클라우드 라우팅을 추가하고 Python(`pillow>=13,<14`) 및 npm 보안 권고를 모두 해소했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.4.0.md](../releases/RELEASE_NOTES_v12.4.0.md)를 참고하세요.
-
-**12.3.0 — Live Wire**는 One Door 토폴로지를 유지하며 Hugging Face GGUF 양자화 태그(`Q4_0`, `MXFP4`), `Qwen3.5-9B`/`Qwen3.6-35B-A3B` GGUF 라우팅, 보조 GGUF 필터링 및 동반 `--mmproj` 다운로드, 소형 모델 툴/MCP 인자 복구, 네이티브 HTML 구조 점검(`/tools/inspect_html`) 및 RFC 5987 UTF-8 다운로드(`/tools/download`)를 검증했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.3.0.md](../releases/RELEASE_NOTES_v12.3.0.md)를 참고하세요.
-
-**12.2.1 — True Count**는 One Door 토폴로지를 유지하면서 검색·스킵·워치·소형 모델 요약이 실제로 존재하는 항목만 정확히 집계하도록 개선했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.2.1.md](../releases/RELEASE_NOTES_v12.2.1.md)를 참고하세요.
-
-**12.0.0 — Open House**는 두 대형 크레이트를 목적별로 재구성(`lattice-agent` 6개 그룹, `lattice-platform` 7개 도메인, 전량 `git mv`)하고 재시작 없는 즉시 복원, 항목별 동의 기반 `/setup/install`, OpenAPI 계약 내 `POST /mcp`, `pip install "ltcai[pointer]"` 포인터 도구를 완성했습니다. 상세 내역은 [docs/releases/RELEASE_NOTES_v12.0.0.md](../releases/RELEASE_NOTES_v12.0.0.md)를 참고하세요.
-
 **확장 프로그램의 통신 표면은 버전 외 변동이 없습니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
 
 이 확장은 에디터를 데스크톱·웹 앱과 동일한 로컬 우선 Digital Brain, 명시적 동의 게이트, 교체 가능한 모델 워크플로(`MLX-VLM` / `llama.cpp` / `Ollama` / `LM Studio` / 선택적 클라우드), 제안 우선 Review Center에 연결합니다.

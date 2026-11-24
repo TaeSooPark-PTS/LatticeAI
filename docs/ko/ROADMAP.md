@@ -6,7 +6,7 @@
 
 기준 시점: **2026-11-17**, **12.9.0 — Semantic Guard** 트리 기준. 아래 항목은 `v12.0.0` 기준선에서 수집되었으며, 이후 `v12.x` 릴리스에서 해결된 항목은 삭제하지 않고 해결 표시를 남겨 무엇이 남아 있었는지 장부로 보존합니다.
 
-소유자의 v12.0.0 최우선 과제는 복잡도 관리였습니다. 그 작업과 함께 도입된 크레이트 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md)이며, 기여자 경로는 [DEVELOPMENT.md](./DEVELOPMENT.md)입니다. 이 문서는 [FEATURE_STATUS.md](../../FEATURE_STATUS.md)의 알려진 한계와 [releases/RELEASE_NOTES_v12.0.0.md](../releases/RELEASE_NOTES_v12.0.0.md), [releases/RELEASE_NOTES_v12.6.0.md](../releases/RELEASE_NOTES_v12.6.0.md), [releases/RELEASE_NOTES_v12.7.0.md](../releases/RELEASE_NOTES_v12.7.0.md), [releases/RELEASE_NOTES_v12.8.0.md](../releases/RELEASE_NOTES_v12.8.0.md), [releases/RELEASE_NOTES_v12.9.0.md](../releases/RELEASE_NOTES_v12.9.0.md)의 §정직한 고지 항목을 모은 정직한 잔여 과제 목록입니다.
+소유자의 v12.0.0 최우선 과제는 복잡도 관리였습니다. 그 작업과 함께 도입된 크레이트 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md)이며, 기여자 경로는 [DEVELOPMENT.md](./DEVELOPMENT.md)입니다. 이 문서는 [FEATURE_STATUS.md](../../FEATURE_STATUS.md)의 알려진 한계와 [releases/README.md](./releases/README.md)의 `v13.0.0+` 릴리스 노트에 기록된 정직한 잔여 과제 목록입니다.
 
 아래 네 항목은 **12.0.0에서 해결**되었으며, 다시 미해결 작업으로 열리지 않도록 기록을 유지합니다.
 

@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> Status: canonical (updated 2026-11-24) — Current release: **13.6.0**
+> Status: canonical (updated 2026-11-24) — Current release: **13.7.0**
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection
@@ -35,7 +35,7 @@ Runs once on `ubuntu-latest` (instead of duplicating across every Python matrix 
 - `npm run docs:check-current`, `npm run docs:check-links`, `npm run docs:check-languages`
 - `node scripts/check_ubuntu_runner_compat.mjs --diagnostic`
 - `npm run test:browser-extension && npm run test:vscode-extension`
-- `npm run test:frontend:coverage` (`vitest.config.ts` pins 100% coverage on all four metrics)
+- `npm run test:frontend:coverage` (`vitest.config.mts` pins 100% coverage on all four metrics)
 
 ### 2. Python Matrix (`test`)
 Four legs (`Test (Python <ver> on <os>)`):
