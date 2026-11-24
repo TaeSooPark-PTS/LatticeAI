@@ -3,7 +3,7 @@
 # Lattice AI 현재 아키텍처
 
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
-> 과거 서브시스템 상세 이력은 [`docs/ko/architecture.md`](./architecture.md)를 참고하세요.
+> 과거 서브시스템 상세 이력은 [`docs/architecture.md`](../architecture.md)를 참고하세요.
 
 현재 릴리스: **13.7.0 — Living Synthesis**.
 
