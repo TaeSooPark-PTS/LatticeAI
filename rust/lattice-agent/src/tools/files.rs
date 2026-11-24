@@ -53,13 +53,10 @@ pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
     if content.len() as u64 > MAX_FILE_BYTES {
         return Err(ToolError::tool("Content is too large to write."));
     }
-    if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(io_error)?;
-    }
-    std::fs::write(&target, &content).map_err(io_error)?;
+    let bytes = crate::tools::safe_io::safe_write_bytes(workspace, &target, content.as_bytes())?;
     Ok(json!({
         "path": workspace.relative(&target),
-        "bytes": file_size(&target),
+        "bytes": bytes,
     }))
 }
 
@@ -87,7 +84,9 @@ pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Val
     if file_size(&target) > MAX_FILE_BYTES {
         return Err(ToolError::tool("File is too large to edit."));
     }
-    let original = std::fs::read_to_string(&target).map_err(io_error)?;
+    let raw = crate::tools::safe_io::safe_read_bytes(workspace, &target, MAX_FILE_BYTES)?;
+    let original = String::from_utf8(raw)
+        .map_err(|err| ToolError::tool(format!("File is not valid UTF-8: {err}")))?;
 
     let occurrences = original.matches(&old).count();
     if occurrences == 0 {
@@ -110,7 +109,7 @@ pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Val
             "Resulting file would exceed the workspace size limit.",
         ));
     }
-    std::fs::write(&target, &updated).map_err(io_error)?;
+    let bytes = crate::tools::safe_io::safe_write_bytes(workspace, &target, updated.as_bytes())?;
 
     // `original[: original.find(old_string)].count("\n") + 1` — the newlines
     // before the first occurrence. Byte or character index makes no difference
@@ -120,7 +119,7 @@ pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Val
     Ok(json!({
         "path": workspace.relative(&target),
         "replacements": if replace_all { occurrences } else { 1 },
-        "bytes": file_size(&target),
+        "bytes": bytes,
         "first_edit_line": edited_line,
     }))
 }
@@ -184,15 +183,12 @@ pub fn todo_write(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
         });
     }
 
-    let target = workspace.root().join(TODO_REL_PATH);
-    if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(io_error)?;
-    }
+    let target = workspace.resolve(TODO_REL_PATH)?;
     // `json.dumps(cleaned, ensure_ascii=False, indent=2)`: two-space indent, no
     // escaped non-ASCII, no trailing newline. `to_string_pretty` is all three.
     let body = serde_json::to_string_pretty(&cleaned)
         .map_err(|error| ToolError::tool(error.to_string()))?;
-    std::fs::write(&target, body).map_err(io_error)?;
+    crate::tools::safe_io::safe_write_bytes(workspace, &target, body.as_bytes())?;
 
     Ok(json!({
         "todos": cleaned,

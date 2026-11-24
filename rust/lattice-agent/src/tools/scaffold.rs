@@ -11,7 +11,7 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use crate::parse::pystr::is_truthy;
-use crate::tools::files::{file_size, io_error};
+use crate::tools::files::io_error;
 use crate::tools::sandbox::{resolve_soft, ToolError, Workspace};
 
 /// `package.json`, in Python's key order.
@@ -213,12 +213,13 @@ pub fn create_web_project(
     let mut total: u64 = 0;
     for (relative, content) in files {
         let target = resolve_soft(&root.join(relative));
-        if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(io_error)?;
+        if !workspace.contains(&target) {
+            return Err(ToolError::tool("Path escapes the agent workspace."));
         }
-        std::fs::write(&target, content).map_err(io_error)?;
+        let written =
+            crate::tools::safe_io::safe_write_bytes(workspace, &target, content.as_bytes())?;
         created.push(workspace.relative(&target));
-        total += file_size(&target);
+        total += written;
     }
 
     Ok(json!({

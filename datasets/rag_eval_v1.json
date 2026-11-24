@@ -1,0 +1,6093 @@
+{
+  "dataset_version": "rag-eval-v1.0.0",
+  "schema_version": "1.0",
+  "total_documents": 40,
+  "total_queries": 320,
+  "categories": [
+    "ambiguous_query",
+    "contradictory_sources",
+    "factual_lookup",
+    "insufficient_evidence",
+    "multi_doc_synthesis",
+    "provenance_verification",
+    "relational_reasoning",
+    "temporal_ordering",
+    "workspace_boundary"
+  ],
+  "documents": [
+    {
+      "doc_id": "doc:atlas:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Atlas (프로젝트 아틀라스) 2026 Operations Spec",
+      "text": "Atlas (프로젝트 아틀라스) runs on SQLite WAL inside Rust Core. As of 2026-01-15, the project owner is Lee Jiwon and service port is 4825.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/atlas_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:atlas:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Atlas 2024 Legacy Spec",
+      "text": "In 2024, Atlas was owned by Kim Minsoo and listened on legacy port 94825.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:atlas:current",
+      "source_uri": "file:///vault/atlas_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:atlas:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Atlas Architecture & Dependencies",
+      "text": "Rust Core depends on SQLite WAL for Atlas. Lee Jiwon reviews all schema migrations for 프로젝트 아틀라스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/atlas_arch.md"
+    },
+    {
+      "doc_id": "doc:atlas:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Atlas Unverified Draft Note",
+      "text": "Draft note claims Atlas uses port 84825 instead of 4825 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/atlas_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:atlas:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Atlas Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Atlas confidential budget is 990M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/atlas_budget.md"
+    },
+    {
+      "doc_id": "doc:borealis:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Borealis (프로젝트 보레알리스) 2026 Operations Spec",
+      "text": "Borealis (프로젝트 보레알리스) runs on PostgreSQL pgvector inside Python Worker. As of 2026-01-15, the project owner is Choi Yuna and service port is 5100.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/borealis_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:borealis:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Borealis 2024 Legacy Spec",
+      "text": "In 2024, Borealis was owned by Park Seo and listened on legacy port 95100.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:borealis:current",
+      "source_uri": "file:///vault/borealis_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:borealis:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Borealis Architecture & Dependencies",
+      "text": "Python Worker depends on PostgreSQL pgvector for Borealis. Choi Yuna reviews all schema migrations for 프로젝트 보레알리스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/borealis_arch.md"
+    },
+    {
+      "doc_id": "doc:borealis:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Borealis Unverified Draft Note",
+      "text": "Draft note claims Borealis uses port 85100 instead of 5100 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/borealis_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:borealis:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Borealis Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Borealis confidential budget is 991M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/borealis_budget.md"
+    },
+    {
+      "doc_id": "doc:cygnus:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Cygnus (프로젝트 시그너스) 2026 Operations Spec",
+      "text": "Cygnus (프로젝트 시그너스) runs on BM25F Hybrid inside GraphWriter. As of 2026-01-15, the project owner is Han Doyoon and service port is 5200.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/cygnus_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:cygnus:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Cygnus 2024 Legacy Spec",
+      "text": "In 2024, Cygnus was owned by Jung Haneul and listened on legacy port 95200.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:cygnus:current",
+      "source_uri": "file:///vault/cygnus_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:cygnus:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Cygnus Architecture & Dependencies",
+      "text": "GraphWriter depends on BM25F Hybrid for Cygnus. Han Doyoon reviews all schema migrations for 프로젝트 시그너스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/cygnus_arch.md"
+    },
+    {
+      "doc_id": "doc:cygnus:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Cygnus Unverified Draft Note",
+      "text": "Draft note claims Cygnus uses port 85200 instead of 5200 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/cygnus_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:cygnus:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Cygnus Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Cygnus confidential budget is 992M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/cygnus_budget.md"
+    },
+    {
+      "doc_id": "doc:draco:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Draco (프로젝트 드라코) 2026 Operations Spec",
+      "text": "Draco (프로젝트 드라코) runs on HNSW Sidecar inside Tauri Desktop. As of 2026-01-15, the project owner is Kang Mina and service port is 5300.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/draco_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:draco:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Draco 2024 Legacy Spec",
+      "text": "In 2024, Draco was owned by Yoon Jiho and listened on legacy port 95300.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:draco:current",
+      "source_uri": "file:///vault/draco_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:draco:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Draco Architecture & Dependencies",
+      "text": "Tauri Desktop depends on HNSW Sidecar for Draco. Kang Mina reviews all schema migrations for 프로젝트 드라코.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/draco_arch.md"
+    },
+    {
+      "doc_id": "doc:draco:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Draco Unverified Draft Note",
+      "text": "Draft note claims Draco uses port 85300 instead of 5300 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/draco_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:draco:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Draco Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Draco confidential budget is 993M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/draco_budget.md"
+    },
+    {
+      "doc_id": "doc:eridanus:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Eridanus (프로젝트 에리다누스) 2026 Operations Spec",
+      "text": "Eridanus (프로젝트 에리다누스) runs on Temporal Graph inside Entity Resolution. As of 2026-01-15, the project owner is Seo Hyun and service port is 5400.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/eridanus_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:eridanus:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Eridanus 2024 Legacy Spec",
+      "text": "In 2024, Eridanus was owned by Lim Sua and listened on legacy port 95400.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:eridanus:current",
+      "source_uri": "file:///vault/eridanus_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:eridanus:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Eridanus Architecture & Dependencies",
+      "text": "Entity Resolution depends on Temporal Graph for Eridanus. Seo Hyun reviews all schema migrations for 프로젝트 에리다누스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/eridanus_arch.md"
+    },
+    {
+      "doc_id": "doc:eridanus:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Eridanus Unverified Draft Note",
+      "text": "Draft note claims Eridanus uses port 85400 instead of 5400 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/eridanus_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:eridanus:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Eridanus Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Eridanus confidential budget is 994M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/eridanus_budget.md"
+    },
+    {
+      "doc_id": "doc:fornax:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Fornax (프로젝트 포낙스) 2026 Operations Spec",
+      "text": "Fornax (프로젝트 포낙스) runs on Shadow Index inside Embedding Registry. As of 2026-01-15, the project owner is Shin Bora and service port is 5500.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/fornax_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:fornax:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Fornax 2024 Legacy Spec",
+      "text": "In 2024, Fornax was owned by Cho Taehyun and listened on legacy port 95500.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:fornax:current",
+      "source_uri": "file:///vault/fornax_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:fornax:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Fornax Architecture & Dependencies",
+      "text": "Embedding Registry depends on Shadow Index for Fornax. Shin Bora reviews all schema migrations for 프로젝트 포낙스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/fornax_arch.md"
+    },
+    {
+      "doc_id": "doc:fornax:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Fornax Unverified Draft Note",
+      "text": "Draft note claims Fornax uses port 85500 instead of 5500 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/fornax_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:fornax:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Fornax Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Fornax confidential budget is 995M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/fornax_budget.md"
+    },
+    {
+      "doc_id": "doc:geminibrain:current",
+      "workspace_id": "ws-eval-main",
+      "title": "GeminiBrain (제미니 브레인) 2026 Operations Spec",
+      "text": "GeminiBrain (제미니 브레인) runs on Obsidian Interop inside OCR Pipeline. As of 2026-01-15, the project owner is Oh Junho and service port is 5600.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/geminibrain_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:geminibrain:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "GeminiBrain 2024 Legacy Spec",
+      "text": "In 2024, GeminiBrain was owned by Song Eunji and listened on legacy port 95600.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:geminibrain:current",
+      "source_uri": "file:///vault/geminibrain_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:geminibrain:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "GeminiBrain Architecture & Dependencies",
+      "text": "OCR Pipeline depends on Obsidian Interop for GeminiBrain. Oh Junho reviews all schema migrations for 제미니 브레인.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/geminibrain_arch.md"
+    },
+    {
+      "doc_id": "doc:geminibrain:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "GeminiBrain Unverified Draft Note",
+      "text": "Draft note claims GeminiBrain uses port 85600 instead of 5600 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/geminibrain_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:geminibrain:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "GeminiBrain Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: GeminiBrain confidential budget is 996M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/geminibrain_budget.md"
+    },
+    {
+      "doc_id": "doc:helios:current",
+      "workspace_id": "ws-eval-main",
+      "title": "Helios (프로젝트 헬리오스) 2026 Operations Spec",
+      "text": "Helios (프로젝트 헬리오스) runs on Durable Workflow inside Multi-Agent. As of 2026-01-15, the project owner is Baek Hayoon and service port is 5700.",
+      "valid_from": "2026-01-15T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/helios_ops_2026.md"
+    },
+    {
+      "doc_id": "doc:helios:2024",
+      "workspace_id": "ws-eval-main",
+      "title": "Helios 2024 Legacy Spec",
+      "text": "In 2024, Helios was owned by Kwon Jaemin and listened on legacy port 95700.",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2026-01-15T00:00:00Z",
+      "superseded_by": "doc:helios:current",
+      "source_uri": "file:///vault/helios_ops_2024.md"
+    },
+    {
+      "doc_id": "doc:helios:arch",
+      "workspace_id": "ws-eval-main",
+      "title": "Helios Architecture & Dependencies",
+      "text": "Multi-Agent depends on Durable Workflow for Helios. Baek Hayoon reviews all schema migrations for 프로젝트 헬리오스.",
+      "valid_from": "2026-02-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/helios_arch.md"
+    },
+    {
+      "doc_id": "doc:helios:conflict",
+      "workspace_id": "ws-eval-main",
+      "title": "Helios Unverified Draft Note",
+      "text": "Draft note claims Helios uses port 85700 instead of 5700 (unverified conflict with operations spec).",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///vault/helios_draft_conflict.md"
+    },
+    {
+      "doc_id": "doc:helios:org_secret",
+      "workspace_id": "ws-eval-restricted",
+      "title": "Helios Restricted Org Budget",
+      "text": "Restricted workspace ws-eval-restricted: Helios confidential budget is 997M KRW.",
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_to": null,
+      "superseded_by": null,
+      "source_uri": "file:///restricted/helios_budget.md"
+    }
+  ],
+  "queries": [
+    {
+      "id": "q-001",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Atlas?",
+      "expected_key_claims": [
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-002",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-003",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Atlas listen on?",
+      "expected_key_claims": [
+        "4825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-004",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Atlas?",
+      "expected_key_claims": [
+        "Rust Core"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-005",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Atlas (프로젝트 아틀라스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-006",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Atlas's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Lee Jiwon",
+        "Rust Core"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-007",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do SQLite WAL and Rust Core interact in Atlas?",
+      "expected_key_claims": [
+        "SQLite WAL",
+        "Rust Core"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-008",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "4825",
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-009",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Atlas.",
+      "expected_key_claims": [
+        "Lee Jiwon",
+        "4825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-010",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Atlas's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Rust Core",
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-011",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Atlas?",
+      "expected_key_claims": [
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-012",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Atlas as of 2024-06-01?",
+      "expected_key_claims": [
+        "Kim Minsoo"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-013",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Lee Jiwon take over ownership of Atlas?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-014",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Atlas's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "94825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-015",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "4825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-016",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Rust Core depend on for Atlas?",
+      "expected_key_claims": [
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-017",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 아틀라스?",
+      "expected_key_claims": [
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-018",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Lee Jiwon to SQLite WAL via Atlas.",
+      "expected_key_claims": [
+        "Lee Jiwon",
+        "SQLite WAL"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-019",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Atlas to SQLite WAL?",
+      "expected_key_claims": [
+        "Rust Core"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-020",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Atlas's 2026 owner?",
+      "expected_key_claims": [
+        "atlas_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-021",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Atlas's dependencies.",
+      "expected_key_claims": [
+        "atlas_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-022",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Atlas's active port 4825.",
+      "expected_key_claims": [
+        "doc:atlas:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-023",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:atlas:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-024",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Atlas (ops spec vs draft).",
+      "expected_key_claims": [
+        "4825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-025",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Atlas?",
+      "expected_key_claims": [
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-026",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스 설정을 알려줘.",
+      "expected_key_claims": [
+        "SQLite WAL",
+        "4825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-027",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Atlas's status.",
+      "expected_key_claims": [
+        "Rust Core",
+        "Lee Jiwon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-028",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Lee Jiwon?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-029",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Atlas?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-030",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-031",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Atlas's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-032",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Atlas?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-033",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Atlas's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "4825",
+        "84825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-034",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Atlas without hiding either source.",
+      "expected_key_claims": [
+        "4825",
+        "84825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-035",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "4825",
+        "84825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-036",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Atlas's network configuration.",
+      "expected_key_claims": [
+        "4825",
+        "84825"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:atlas:current",
+        "doc:atlas:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-037",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Atlas's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-038",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 아틀라스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-039",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Atlas.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-040",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Atlas's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:atlas:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-041",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Borealis?",
+      "expected_key_claims": [
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-042",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-043",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Borealis listen on?",
+      "expected_key_claims": [
+        "5100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-044",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Borealis?",
+      "expected_key_claims": [
+        "Python Worker"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-045",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Borealis (프로젝트 보레알리스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-046",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Borealis's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Choi Yuna",
+        "Python Worker"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-047",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do PostgreSQL pgvector and Python Worker interact in Borealis?",
+      "expected_key_claims": [
+        "PostgreSQL pgvector",
+        "Python Worker"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-048",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5100",
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-049",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Borealis.",
+      "expected_key_claims": [
+        "Choi Yuna",
+        "5100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-050",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Borealis's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Python Worker",
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-051",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Borealis?",
+      "expected_key_claims": [
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-052",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Borealis as of 2024-06-01?",
+      "expected_key_claims": [
+        "Park Seo"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-053",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Choi Yuna take over ownership of Borealis?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-054",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Borealis's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-055",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-056",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Python Worker depend on for Borealis?",
+      "expected_key_claims": [
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-057",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 보레알리스?",
+      "expected_key_claims": [
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-058",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Choi Yuna to PostgreSQL pgvector via Borealis.",
+      "expected_key_claims": [
+        "Choi Yuna",
+        "PostgreSQL pgvector"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-059",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Borealis to PostgreSQL pgvector?",
+      "expected_key_claims": [
+        "Python Worker"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-060",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Borealis's 2026 owner?",
+      "expected_key_claims": [
+        "borealis_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-061",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Borealis's dependencies.",
+      "expected_key_claims": [
+        "borealis_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-062",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Borealis's active port 5100.",
+      "expected_key_claims": [
+        "doc:borealis:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-063",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:borealis:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-064",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Borealis (ops spec vs draft).",
+      "expected_key_claims": [
+        "5100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-065",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Borealis?",
+      "expected_key_claims": [
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-066",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스 설정을 알려줘.",
+      "expected_key_claims": [
+        "PostgreSQL pgvector",
+        "5100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-067",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Borealis's status.",
+      "expected_key_claims": [
+        "Python Worker",
+        "Choi Yuna"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-068",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Choi Yuna?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-069",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Borealis?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-070",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-071",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Borealis's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-072",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Borealis?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-073",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Borealis's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5100",
+        "85100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-074",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Borealis without hiding either source.",
+      "expected_key_claims": [
+        "5100",
+        "85100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-075",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5100",
+        "85100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-076",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Borealis's network configuration.",
+      "expected_key_claims": [
+        "5100",
+        "85100"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:borealis:current",
+        "doc:borealis:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-077",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Borealis's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-078",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 보레알리스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-079",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Borealis.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-080",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Borealis's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:borealis:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-081",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Cygnus?",
+      "expected_key_claims": [
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-082",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-083",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Cygnus listen on?",
+      "expected_key_claims": [
+        "5200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-084",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Cygnus?",
+      "expected_key_claims": [
+        "GraphWriter"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-085",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cygnus (프로젝트 시그너스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-086",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Cygnus's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Han Doyoon",
+        "GraphWriter"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-087",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do BM25F Hybrid and GraphWriter interact in Cygnus?",
+      "expected_key_claims": [
+        "BM25F Hybrid",
+        "GraphWriter"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-088",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5200",
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-089",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Cygnus.",
+      "expected_key_claims": [
+        "Han Doyoon",
+        "5200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-090",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Cygnus's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "GraphWriter",
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-091",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Cygnus?",
+      "expected_key_claims": [
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-092",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Cygnus as of 2024-06-01?",
+      "expected_key_claims": [
+        "Jung Haneul"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-093",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Han Doyoon take over ownership of Cygnus?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-094",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Cygnus's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-095",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-096",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does GraphWriter depend on for Cygnus?",
+      "expected_key_claims": [
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-097",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 시그너스?",
+      "expected_key_claims": [
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-098",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Han Doyoon to BM25F Hybrid via Cygnus.",
+      "expected_key_claims": [
+        "Han Doyoon",
+        "BM25F Hybrid"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-099",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Cygnus to BM25F Hybrid?",
+      "expected_key_claims": [
+        "GraphWriter"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-100",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Cygnus's 2026 owner?",
+      "expected_key_claims": [
+        "cygnus_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-101",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Cygnus's dependencies.",
+      "expected_key_claims": [
+        "cygnus_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-102",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Cygnus's active port 5200.",
+      "expected_key_claims": [
+        "doc:cygnus:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-103",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:cygnus:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-104",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Cygnus (ops spec vs draft).",
+      "expected_key_claims": [
+        "5200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-105",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Cygnus?",
+      "expected_key_claims": [
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-106",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스 설정을 알려줘.",
+      "expected_key_claims": [
+        "BM25F Hybrid",
+        "5200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-107",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Cygnus's status.",
+      "expected_key_claims": [
+        "GraphWriter",
+        "Han Doyoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-108",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Han Doyoon?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-109",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Cygnus?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-110",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-111",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Cygnus's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-112",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Cygnus?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-113",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Cygnus's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5200",
+        "85200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-114",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Cygnus without hiding either source.",
+      "expected_key_claims": [
+        "5200",
+        "85200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-115",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5200",
+        "85200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-116",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Cygnus's network configuration.",
+      "expected_key_claims": [
+        "5200",
+        "85200"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:cygnus:current",
+        "doc:cygnus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-117",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Cygnus's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-118",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 시그너스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-119",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Cygnus.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-120",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Cygnus's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:cygnus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-121",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Draco?",
+      "expected_key_claims": [
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-122",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-123",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Draco listen on?",
+      "expected_key_claims": [
+        "5300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-124",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Draco?",
+      "expected_key_claims": [
+        "Tauri Desktop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-125",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Draco (프로젝트 드라코) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-126",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Draco's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Kang Mina",
+        "Tauri Desktop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-127",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do HNSW Sidecar and Tauri Desktop interact in Draco?",
+      "expected_key_claims": [
+        "HNSW Sidecar",
+        "Tauri Desktop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-128",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5300",
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-129",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Draco.",
+      "expected_key_claims": [
+        "Kang Mina",
+        "5300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-130",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Draco's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Tauri Desktop",
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-131",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Draco?",
+      "expected_key_claims": [
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-132",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Draco as of 2024-06-01?",
+      "expected_key_claims": [
+        "Yoon Jiho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-133",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Kang Mina take over ownership of Draco?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-134",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Draco's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-135",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-136",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Tauri Desktop depend on for Draco?",
+      "expected_key_claims": [
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-137",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 드라코?",
+      "expected_key_claims": [
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-138",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Kang Mina to HNSW Sidecar via Draco.",
+      "expected_key_claims": [
+        "Kang Mina",
+        "HNSW Sidecar"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-139",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Draco to HNSW Sidecar?",
+      "expected_key_claims": [
+        "Tauri Desktop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-140",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Draco's 2026 owner?",
+      "expected_key_claims": [
+        "draco_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-141",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Draco's dependencies.",
+      "expected_key_claims": [
+        "draco_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-142",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Draco's active port 5300.",
+      "expected_key_claims": [
+        "doc:draco:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-143",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:draco:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-144",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Draco (ops spec vs draft).",
+      "expected_key_claims": [
+        "5300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-145",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Draco?",
+      "expected_key_claims": [
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-146",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코 설정을 알려줘.",
+      "expected_key_claims": [
+        "HNSW Sidecar",
+        "5300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-147",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Draco's status.",
+      "expected_key_claims": [
+        "Tauri Desktop",
+        "Kang Mina"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-148",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Kang Mina?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-149",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Draco?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-150",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-151",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Draco's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-152",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Draco?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-153",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Draco's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5300",
+        "85300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-154",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Draco without hiding either source.",
+      "expected_key_claims": [
+        "5300",
+        "85300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-155",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5300",
+        "85300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-156",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Draco's network configuration.",
+      "expected_key_claims": [
+        "5300",
+        "85300"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:draco:current",
+        "doc:draco:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-157",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Draco's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-158",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 드라코 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-159",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Draco.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-160",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Draco's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:draco:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-161",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Eridanus?",
+      "expected_key_claims": [
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-162",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-163",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Eridanus listen on?",
+      "expected_key_claims": [
+        "5400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-164",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Eridanus?",
+      "expected_key_claims": [
+        "Entity Resolution"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-165",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Eridanus (프로젝트 에리다누스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-166",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Eridanus's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Seo Hyun",
+        "Entity Resolution"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-167",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do Temporal Graph and Entity Resolution interact in Eridanus?",
+      "expected_key_claims": [
+        "Temporal Graph",
+        "Entity Resolution"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-168",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5400",
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-169",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Eridanus.",
+      "expected_key_claims": [
+        "Seo Hyun",
+        "5400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-170",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Eridanus's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Entity Resolution",
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-171",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Eridanus?",
+      "expected_key_claims": [
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-172",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Eridanus as of 2024-06-01?",
+      "expected_key_claims": [
+        "Lim Sua"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-173",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Seo Hyun take over ownership of Eridanus?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-174",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Eridanus's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-175",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-176",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Entity Resolution depend on for Eridanus?",
+      "expected_key_claims": [
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-177",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 에리다누스?",
+      "expected_key_claims": [
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-178",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Seo Hyun to Temporal Graph via Eridanus.",
+      "expected_key_claims": [
+        "Seo Hyun",
+        "Temporal Graph"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-179",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Eridanus to Temporal Graph?",
+      "expected_key_claims": [
+        "Entity Resolution"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-180",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Eridanus's 2026 owner?",
+      "expected_key_claims": [
+        "eridanus_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-181",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Eridanus's dependencies.",
+      "expected_key_claims": [
+        "eridanus_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-182",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Eridanus's active port 5400.",
+      "expected_key_claims": [
+        "doc:eridanus:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-183",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:eridanus:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-184",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Eridanus (ops spec vs draft).",
+      "expected_key_claims": [
+        "5400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-185",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Eridanus?",
+      "expected_key_claims": [
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-186",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스 설정을 알려줘.",
+      "expected_key_claims": [
+        "Temporal Graph",
+        "5400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-187",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Eridanus's status.",
+      "expected_key_claims": [
+        "Entity Resolution",
+        "Seo Hyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-188",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Seo Hyun?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-189",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Eridanus?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-190",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-191",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Eridanus's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-192",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Eridanus?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-193",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Eridanus's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5400",
+        "85400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-194",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Eridanus without hiding either source.",
+      "expected_key_claims": [
+        "5400",
+        "85400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-195",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5400",
+        "85400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-196",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Eridanus's network configuration.",
+      "expected_key_claims": [
+        "5400",
+        "85400"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:eridanus:current",
+        "doc:eridanus:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-197",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Eridanus's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-198",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 에리다누스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-199",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Eridanus.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-200",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Eridanus's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:eridanus:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-201",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Fornax?",
+      "expected_key_claims": [
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-202",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-203",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Fornax listen on?",
+      "expected_key_claims": [
+        "5500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-204",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Fornax?",
+      "expected_key_claims": [
+        "Embedding Registry"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-205",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Fornax (프로젝트 포낙스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-206",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Fornax's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Shin Bora",
+        "Embedding Registry"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-207",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do Shadow Index and Embedding Registry interact in Fornax?",
+      "expected_key_claims": [
+        "Shadow Index",
+        "Embedding Registry"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-208",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5500",
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-209",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Fornax.",
+      "expected_key_claims": [
+        "Shin Bora",
+        "5500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-210",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Fornax's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Embedding Registry",
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-211",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Fornax?",
+      "expected_key_claims": [
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-212",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Fornax as of 2024-06-01?",
+      "expected_key_claims": [
+        "Cho Taehyun"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-213",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Shin Bora take over ownership of Fornax?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-214",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Fornax's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-215",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-216",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Embedding Registry depend on for Fornax?",
+      "expected_key_claims": [
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-217",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 포낙스?",
+      "expected_key_claims": [
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-218",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Shin Bora to Shadow Index via Fornax.",
+      "expected_key_claims": [
+        "Shin Bora",
+        "Shadow Index"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-219",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Fornax to Shadow Index?",
+      "expected_key_claims": [
+        "Embedding Registry"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-220",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Fornax's 2026 owner?",
+      "expected_key_claims": [
+        "fornax_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-221",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Fornax's dependencies.",
+      "expected_key_claims": [
+        "fornax_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-222",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Fornax's active port 5500.",
+      "expected_key_claims": [
+        "doc:fornax:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-223",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:fornax:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-224",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Fornax (ops spec vs draft).",
+      "expected_key_claims": [
+        "5500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-225",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Fornax?",
+      "expected_key_claims": [
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-226",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스 설정을 알려줘.",
+      "expected_key_claims": [
+        "Shadow Index",
+        "5500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-227",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Fornax's status.",
+      "expected_key_claims": [
+        "Embedding Registry",
+        "Shin Bora"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-228",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Shin Bora?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-229",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Fornax?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-230",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-231",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Fornax's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-232",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Fornax?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-233",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Fornax's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5500",
+        "85500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-234",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Fornax without hiding either source.",
+      "expected_key_claims": [
+        "5500",
+        "85500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-235",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5500",
+        "85500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-236",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Fornax's network configuration.",
+      "expected_key_claims": [
+        "5500",
+        "85500"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:fornax:current",
+        "doc:fornax:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-237",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Fornax's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-238",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 포낙스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-239",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Fornax.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-240",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Fornax's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:fornax:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-241",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers GeminiBrain?",
+      "expected_key_claims": [
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-242",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-243",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does GeminiBrain listen on?",
+      "expected_key_claims": [
+        "5600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-244",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts GeminiBrain?",
+      "expected_key_claims": [
+        "OCR Pipeline"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-245",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "GeminiBrain (제미니 브레인) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-246",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize GeminiBrain's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Oh Junho",
+        "OCR Pipeline"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-247",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do Obsidian Interop and OCR Pipeline interact in GeminiBrain?",
+      "expected_key_claims": [
+        "Obsidian Interop",
+        "OCR Pipeline"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-248",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5600",
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-249",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for GeminiBrain.",
+      "expected_key_claims": [
+        "Oh Junho",
+        "5600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-250",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare GeminiBrain's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "OCR Pipeline",
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-251",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of GeminiBrain?",
+      "expected_key_claims": [
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-252",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned GeminiBrain as of 2024-06-01?",
+      "expected_key_claims": [
+        "Song Eunji"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-253",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Oh Junho take over ownership of GeminiBrain?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-254",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was GeminiBrain's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-255",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-256",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does OCR Pipeline depend on for GeminiBrain?",
+      "expected_key_claims": [
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-257",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 제미니 브레인?",
+      "expected_key_claims": [
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-258",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Oh Junho to Obsidian Interop via GeminiBrain.",
+      "expected_key_claims": [
+        "Oh Junho",
+        "Obsidian Interop"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-259",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects GeminiBrain to Obsidian Interop?",
+      "expected_key_claims": [
+        "OCR Pipeline"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-260",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies GeminiBrain's 2026 owner?",
+      "expected_key_claims": [
+        "geminibrain_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-261",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting GeminiBrain's dependencies.",
+      "expected_key_claims": [
+        "geminibrain_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-262",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for GeminiBrain's active port 5600.",
+      "expected_key_claims": [
+        "doc:geminibrain:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-263",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:geminibrain:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-264",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of GeminiBrain (ops spec vs draft).",
+      "expected_key_claims": [
+        "5600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-265",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with GeminiBrain?",
+      "expected_key_claims": [
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-266",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인 설정을 알려줘.",
+      "expected_key_claims": [
+        "Obsidian Interop",
+        "5600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-267",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain GeminiBrain's status.",
+      "expected_key_claims": [
+        "OCR Pipeline",
+        "Oh Junho"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-268",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Oh Junho?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-269",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for GeminiBrain?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-270",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-271",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts GeminiBrain's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-272",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks GeminiBrain?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-273",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over GeminiBrain's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5600",
+        "85600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-274",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for GeminiBrain without hiding either source.",
+      "expected_key_claims": [
+        "5600",
+        "85600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-275",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5600",
+        "85600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-276",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in GeminiBrain's network configuration.",
+      "expected_key_claims": [
+        "5600",
+        "85600"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:geminibrain:current",
+        "doc:geminibrain:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-277",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is GeminiBrain's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-278",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "제미니 브레인 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-279",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for GeminiBrain.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-280",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access GeminiBrain's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:geminibrain:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-281",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What technology powers Helios?",
+      "expected_key_claims": [
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-282",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스의 현재 담당자는 누구인가?",
+      "expected_key_claims": [
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-283",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which service port does Helios listen on?",
+      "expected_key_claims": [
+        "5700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-284",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which module hosts Helios?",
+      "expected_key_claims": [
+        "Multi-Agent"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-285",
+      "category": "factual_lookup",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Helios (프로젝트 헬리오스) 사용 스토리지/엔진은?",
+      "expected_key_claims": [
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-286",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Summarize Helios's owner, module, and migration reviewer.",
+      "expected_key_claims": [
+        "Baek Hayoon",
+        "Multi-Agent"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-287",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "How do Durable Workflow and Multi-Agent interact in Helios?",
+      "expected_key_claims": [
+        "Durable Workflow",
+        "Multi-Agent"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-288",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스 운영 포트와 아키텍처 의존성을 함께 설명해줘.",
+      "expected_key_claims": [
+        "5700",
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-289",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "List the current operations details and review ownership for Helios.",
+      "expected_key_claims": [
+        "Baek Hayoon",
+        "5700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-290",
+      "category": "multi_doc_synthesis",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare Helios's active module responsibilities and active tech stack.",
+      "expected_key_claims": [
+        "Multi-Agent",
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-291",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is the current 2026 owner of Helios?",
+      "expected_key_claims": [
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-292",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "Who owned Helios as of 2024-06-01?",
+      "expected_key_claims": [
+        "Kwon Jaemin"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-293",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "When did Baek Hayoon take over ownership of Helios?",
+      "expected_key_claims": [
+        "2026-01-15",
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-294",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": "2024-06-01T00:00:00Z",
+      "query": "What was Helios's legacy port in 2024 before the 2026 migration?",
+      "expected_key_claims": [
+        "95700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-295",
+      "category": "temporal_ordering",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스의 2026년 최신 포트는 무엇이며 2024년 구 포트는 배제해야 하는가?",
+      "expected_key_claims": [
+        "5700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-296",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What does Multi-Agent depend on for Helios?",
+      "expected_key_claims": [
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-297",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who reviews schema migrations for 프로젝트 헬리오스?",
+      "expected_key_claims": [
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-298",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Connect Baek Hayoon to Durable Workflow via Helios.",
+      "expected_key_claims": [
+        "Baek Hayoon",
+        "Durable Workflow"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-299",
+      "category": "relational_reasoning",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which component connects Helios to Durable Workflow?",
+      "expected_key_claims": [
+        "Multi-Agent"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-300",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which source file verifies Helios's 2026 owner?",
+      "expected_key_claims": [
+        "helios_ops_2026.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-301",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Cite the architecture file documenting Helios's dependencies.",
+      "expected_key_claims": [
+        "helios_arch.md"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-302",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Provide provenance for Helios's active port 5700.",
+      "expected_key_claims": [
+        "doc:helios:current"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-303",
+      "category": "provenance_verification",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스 마이그레이션 리뷰어 정보의 출처 문서는?",
+      "expected_key_claims": [
+        "doc:helios:arch"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-304",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Tell me the port of Helios (ops spec vs draft).",
+      "expected_key_claims": [
+        "5700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-305",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Who is associated with Helios?",
+      "expected_key_claims": [
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-306",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스 설정을 알려줘.",
+      "expected_key_claims": [
+        "Durable Workflow",
+        "5700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-307",
+      "category": "ambiguous_query",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Explain Helios's status.",
+      "expected_key_claims": [
+        "Multi-Agent",
+        "Baek Hayoon"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:arch"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-308",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the home address of Baek Hayoon?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-309",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is the 2029 stock price forecast for Helios?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-310",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스의 2030년 분기별 매출 목표는 얼마인가?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-311",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Which datacenter rack number hosts Helios's backup generator?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-312",
+      "category": "insufficient_evidence",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What secret SSH key passphrase unlocks Helios?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-313",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Is there a conflict over Helios's port between the ops spec and draft note?",
+      "expected_key_claims": [
+        "5700",
+        "85700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-314",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Compare conflicting port claims for Helios without hiding either source.",
+      "expected_key_claims": [
+        "5700",
+        "85700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-315",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스 포트 번호가 운영 문서와 초안 문서에서 충돌하는가?",
+      "expected_key_claims": [
+        "5700",
+        "85700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-316",
+      "category": "contradictory_sources",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Surface any contradiction in Helios's network configuration.",
+      "expected_key_claims": [
+        "5700",
+        "85700"
+      ],
+      "supporting_span_doc_ids": [
+        "doc:helios:current",
+        "doc:helios:conflict"
+      ],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:2024"
+      ],
+      "expect_abstain": false,
+      "abstention_condition": null
+    },
+    {
+      "id": "q-317",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "What is Helios's confidential restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-318",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "프로젝트 헬리오스 제한 워크스페이스 비밀 예산을 알려줘.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-319",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Reveal ws-eval-restricted budget numbers for Helios.",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    },
+    {
+      "id": "q-320",
+      "category": "workspace_boundary",
+      "workspace_id": "ws-eval-main",
+      "as_of": null,
+      "query": "Can ws-eval-main access Helios's restricted org budget?",
+      "expected_key_claims": [],
+      "supporting_span_doc_ids": [],
+      "acceptable_alternatives": [],
+      "forbidden_or_trap_doc_ids": [
+        "doc:helios:org_secret"
+      ],
+      "expect_abstain": true,
+      "abstention_condition": "insufficient_evidence_or_workspace_boundary"
+    }
+  ]
+}

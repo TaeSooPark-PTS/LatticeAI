@@ -449,13 +449,27 @@ pub fn remove_member(
             return Err(StoreError::NotFound(user_id.to_string()));
         }
         workspace["members"] = Value::Array(kept);
-        workspace["updated_at"] = json!(now_iso());
+        let revoked_at = now_iso();
+        let mut revocations = listify(workspace.get("revoked_members"));
+        revocations.push(json!({
+            "user_id": user_id,
+            "revoked_by": actor.unwrap_or("system"),
+            "revoked_at": revoked_at,
+            "sessions_revoked": true,
+        }));
+        workspace["revoked_members"] = Value::Array(revocations);
+        workspace["updated_at"] = json!(revoked_at);
         Ok(workspace.clone())
     })?;
     store.record_timeline_event(
         "workspace",
         "member_removed",
-        json!({"workspace_id": workspace_id, "user_id": user_id}),
+        json!({
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "offboarding_revoked": true,
+            "revoked_by": actor.unwrap_or("system"),
+        }),
         None,
     );
     Ok(workspace_public(&record, actor))

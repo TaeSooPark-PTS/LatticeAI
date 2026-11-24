@@ -62,6 +62,60 @@ pub async fn host_status(State(state): State<Arc<GatewayState>>) -> Response {
     .into_response()
 }
 
+/// `GET /host/diagnostics` — PII & secret redacted runtime diagnostics bundle (P2.4).
+pub async fn host_diagnostics(State(state): State<Arc<GatewayState>>) -> Response {
+    let worker_healthy = state.probe_worker_health().await;
+    let status = state.status();
+    let redacted_error = status
+        .last_error
+        .as_deref()
+        .map(lattice_core::redact_pii_and_secrets);
+    let db_path = state.db_path().to_path_buf();
+    let db_size_bytes = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
+    let integrity_summary = tokio::task::spawn_blocking(move || {
+        if !db_path.exists() {
+            return serde_json::json!({"present": false});
+        }
+        match rusqlite::Connection::open_with_flags(
+            &db_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        ) {
+            Ok(conn) => match lattice_core::integrity::check_graph_integrity(&conn) {
+                Ok(rep) => serde_json::json!({
+                    "present": true,
+                    "healthy": rep.healthy,
+                    "sqlite_integrity_ok": rep.sqlite_integrity_ok,
+                    "total_issues": rep.total_issues,
+                    "critical_issues": rep.critical_issues,
+                }),
+                Err(err) => serde_json::json!({
+                    "present": true,
+                    "error": lattice_core::redact_pii_and_secrets(&err.to_string()),
+                }),
+            },
+            Err(err) => serde_json::json!({
+                "present": true,
+                "error": lattice_core::redact_pii_and_secrets(&err.to_string()),
+            }),
+        }
+    })
+    .await
+    .unwrap_or_else(|_| serde_json::json!({"present": false}));
+
+    Json(serde_json::json!({
+        "schema_version": "lattice.host.diagnostics.v1",
+        "redacted": true,
+        "version": VERSION,
+        "worker_healthy": worker_healthy,
+        "worker_running": status.running,
+        "worker_restarts": status.restarts,
+        "worker_last_error": redacted_error,
+        "db_size_bytes": db_size_bytes,
+        "graph_integrity": integrity_summary,
+    }))
+    .into_response()
+}
+
 /// Anything else under `/host/` — 404, and explicitly not proxied.
 pub async fn host_not_found(OriginalUri(uri): OriginalUri) -> Response {
     (

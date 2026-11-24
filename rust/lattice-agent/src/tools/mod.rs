@@ -74,6 +74,7 @@ pub mod files;
 pub mod host;
 pub mod local;
 pub mod render;
+pub mod safe_io;
 pub mod sandbox;
 pub mod scaffold;
 pub mod shell;

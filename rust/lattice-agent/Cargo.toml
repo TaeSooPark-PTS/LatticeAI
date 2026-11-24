@@ -11,6 +11,8 @@ license.workspace = true
 # `lattice-auth` depends on `lattice-core` and on nothing else in the workspace,
 # so nothing here can close a cycle.
 lattice-auth = { workspace = true }
+lattice-core = { workspace = true }
+libc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 axum = { workspace = true }

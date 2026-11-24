@@ -17,6 +17,25 @@ use serde_json::{json, Value};
 use crate::db::CoreError;
 use crate::read::{scoped_workspace_visible, workspace_is_default, DEFAULT_WORKSPACE_ID};
 
+fn canonical_type_bucket(node_type: &str) -> String {
+    match node_type.trim() {
+        // Generic `Entity` / `Concept` / `Topic` may coalesce with each other,
+        // while strongly typed classes (`Person`, `Organization`, `Project`,
+        // `System`, `Tool`) never auto-merge across incompatible types.
+        "Entity" | "Concept" | "Topic" => "Concept".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn is_pair_blocked(blocked: &BTreeSet<(String, String)>, a: &str, b: &str) -> bool {
+    let pair = if a <= b {
+        (a.to_string(), b.to_string())
+    } else {
+        (b.to_string(), a.to_string())
+    };
+    blocked.contains(&pair)
+}
+
 fn node_matches_workspace(row_ws: Option<&str>, meta: &Value, target_ws: &str) -> bool {
     let eff_ws = row_ws.map(str::trim).filter(|s| !s.is_empty()).or_else(|| {
         meta.get("workspace_id")
@@ -367,7 +386,13 @@ pub fn resolve_entities_in_conn(
         .map(|(idx, c)| (c.id.clone(), idx))
         .collect();
     let mut dsu = DisjointSet::new(candidates.len());
-    let mut key_owner: HashMap<String, usize> = HashMap::new();
+    // Type-scoped exact ownership map: prevents homonym collisions across
+    // incompatible entity types (e.g., Person "Apple" vs Organization "Apple").
+    let mut key_owner: HashMap<(String, String), usize> = HashMap::new();
+
+    // Load explicit do-not-merge pairs (DIFFERENT_FROM) so unmerged homonyms never re-merge.
+    let blocked_pairs: BTreeSet<(String, String)> =
+        crate::entity_resolution_ext::load_do_not_merge_pairs(conn).unwrap_or_default();
 
     for (idx, cand) in candidates.iter().enumerate() {
         let mut surfaces = Vec::with_capacity(1 + cand.aliases.len());
@@ -375,15 +400,19 @@ pub fn resolve_entities_in_conn(
         for a in &cand.aliases {
             surfaces.push(a.as_str());
         }
+        let type_bucket = canonical_type_bucket(&cand.node_type);
         for surface in surfaces {
             let key = alias_book.resolve_key(surface);
             if key.is_empty() {
                 continue;
             }
-            if let Some(&prev_idx) = key_owner.get(&key) {
-                dsu.union(prev_idx, idx);
+            let composite = (type_bucket.clone(), key);
+            if let Some(&prev_idx) = key_owner.get(&composite) {
+                if !is_pair_blocked(&blocked_pairs, &candidates[prev_idx].id, &cand.id) {
+                    dsu.union(prev_idx, idx);
+                }
             } else {
-                key_owner.insert(key, idx);
+                key_owner.insert(composite, idx);
             }
         }
     }

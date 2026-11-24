@@ -34,9 +34,70 @@ pub enum WorkflowStatus {
     Running,
     WaitingApproval,
     Completed,
+    PartialSuccess,
     Failed,
     Cancelled,
     RolledBack,
+}
+
+/// Typed classification separating retryable transient errors from permanent/policy failures (P1.5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StepErrorKind {
+    TransientNetwork,
+    RateLimited,
+    Timeout,
+    InvalidArgs,
+    PermissionDenied,
+    PolicyBlocked,
+    PermanentToolFailure,
+}
+
+impl StepErrorKind {
+    pub fn classify(error_msg: &str) -> Self {
+        let lower = error_msg.to_ascii_lowercase();
+        if lower.contains("timeout") || lower.contains("timed out") {
+            Self::Timeout
+        } else if lower.contains("429") || lower.contains("rate limit") {
+            Self::RateLimited
+        } else if lower.contains("503")
+            || lower.contains("connection refused")
+            || lower.contains("connection reset")
+            || lower.contains("temporarily unavailable")
+        {
+            Self::TransientNetwork
+        } else if lower.contains("permission")
+            || lower.contains("unauthorized")
+            || lower.contains("mismatch")
+        {
+            Self::PermissionDenied
+        } else if lower.contains("blocked") || lower.contains("policy") || lower.contains("sandbox")
+        {
+            Self::PolicyBlocked
+        } else if lower.contains("invalid") || lower.contains("missing required") {
+            Self::InvalidArgs
+        } else {
+            Self::PermanentToolFailure
+        }
+    }
+
+    pub fn is_retryable(self) -> bool {
+        matches!(
+            self,
+            Self::TransientNetwork | Self::RateLimited | Self::Timeout
+        )
+    }
+}
+
+/// Pre-execution blast-radius & reversibility preview attached to destructive/approval gates (P1.5).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ImpactPreview {
+    pub affected_paths: Vec<String>,
+    pub op_types: Vec<String>,
+    pub reversible: bool,
+    pub rollback_mode: String,
+    pub external_targets: Vec<String>,
+    pub risk_tier: String,
 }
 
 /// Lifecycle status of an individual DAG step.
@@ -478,6 +539,52 @@ impl DurableWorkflowStore {
             self.save(&record)?;
         }
         Ok(Some(record))
+    }
+
+    /// Workspace-scoped load enforcing strict P0.4 cross-workspace isolation.
+    pub fn load_scoped(
+        &self,
+        workflow_id: &str,
+        workspace_id: &str,
+        now_secs: f64,
+    ) -> Result<Option<WorkflowRunRecord>, String> {
+        let Some(record) = self.load(workflow_id, now_secs)? else {
+            return Ok(None);
+        };
+        let record_ws = record
+            .spec
+            .workspace_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("personal");
+        let caller_ws = workspace_id.trim();
+        if !caller_ws.is_empty() && record_ws != caller_ws {
+            return Err(format!(
+                "workspace isolation violation: workflow '{workflow_id}' belongs to '{record_ws}', not '{caller_ws}'"
+            ));
+        }
+        Ok(Some(record))
+    }
+
+    /// Export a reproducible, PII/secret-redacted workflow trace bundle (P3.2).
+    pub fn export_redacted_trace(
+        &self,
+        workflow_id: &str,
+        workspace_id: &str,
+        now_secs: f64,
+    ) -> Result<Value, String> {
+        let record = self
+            .load_scoped(workflow_id, workspace_id, now_secs)?
+            .ok_or_else(|| format!("workflow '{workflow_id}' not found"))?;
+        let raw = serde_json::to_value(&record).map_err(|e| e.to_string())?;
+        Ok(json!({
+            "schema_version": "lattice.workflow.trace.v1",
+            "workflow_id": workflow_id,
+            "workspace_id": workspace_id,
+            "redacted": true,
+            "record": lattice_core::redact_pii_and_secrets_value(&raw),
+        }))
     }
 
     /// Register a new workflow run and persist its initial checkpoint.

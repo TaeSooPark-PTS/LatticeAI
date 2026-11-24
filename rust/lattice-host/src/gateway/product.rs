@@ -433,6 +433,9 @@ pub fn knowledge_router(state: &OneDoorState) -> Router {
     Router::new()
         .merge(lattice_retrieval::memory_api::router(brain.clone()))
         .merge(lattice_retrieval::brain_api::router(brain.clone()))
+        .merge(lattice_retrieval::brain_api::extensions::router(
+            brain.clone(),
+        ))
         .merge(lattice_retrieval::garden_api::router(brain.clone()))
         .merge(lattice_retrieval::chronicle_api::router(brain.clone()))
         .merge(lattice_retrieval::command_center_api::router(brain.clone()))

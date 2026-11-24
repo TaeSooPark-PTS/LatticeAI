@@ -118,14 +118,22 @@ async fn run_script(
     if !workdir.is_dir() {
         return Err(ToolError::tool("Working directory does not exist."));
     }
-    let body = package_script(&workdir, script)?;
+    let body = package_script(workspace, &workdir, script)?;
 
     let mut command = tokio::process::Command::new("npm");
     command
         .arg("run")
         .arg(script)
         .current_dir(&workdir)
+        .env_clear()
         .kill_on_drop(true);
+    for key in [
+        "PATH", "HOME", "USER", "TMPDIR", "TEMP", "TMP", "NODE_ENV", "LANG", "LC_ALL",
+    ] {
+        if let Ok(val) = std::env::var(key) {
+            command.env(key, val);
+        }
+    }
     let output = match tokio::time::timeout(Duration::from_secs(timeout), command.output()).await {
         Ok(Ok(output)) => output,
         Ok(Err(error)) => {
@@ -149,10 +157,20 @@ async fn run_script(
 }
 
 /// `_load_package_scripts` plus the "is it defined?" check.
-fn package_script(workdir: &std::path::Path, script: &str) -> Result<String, ToolError> {
+fn package_script(
+    workspace: &Workspace,
+    workdir: &std::path::Path,
+    script: &str,
+) -> Result<String, ToolError> {
     let manifest = workdir.join("package.json");
     let scripts = if manifest.exists() {
-        let raw = std::fs::read_to_string(&manifest)
+        let resolved = workspace.resolve(&workspace.relative(&manifest))?;
+        let raw_bytes = crate::tools::safe_io::safe_read_bytes(
+            workspace,
+            &resolved,
+            crate::tools::sandbox::MAX_FILE_BYTES,
+        )?;
+        let raw = String::from_utf8(raw_bytes)
             .map_err(|error| ToolError::tool(format!("Could not parse package.json: {error}")))?;
         let parsed: Value = serde_json::from_str(&raw)
             .map_err(|error| ToolError::tool(format!("Could not parse package.json: {error}")))?;
@@ -316,7 +334,7 @@ mod tests {
             "package.json does not define a 'build' script."
         );
         assert_eq!(
-            package_script(workspace.root(), "test").expect("body"),
+            package_script(&workspace, workspace.root(), "test").expect("body"),
             "vitest run"
         );
     }
@@ -325,7 +343,7 @@ mod tests {
     fn a_broken_manifest_is_a_named_parse_failure() {
         let (_dir, workspace) = workspace();
         std::fs::write(workspace.root().join("package.json"), "{not json").expect("manifest");
-        let error = package_script(workspace.root(), "build").expect_err("broken");
+        let error = package_script(&workspace, workspace.root(), "build").expect_err("broken");
         assert!(
             error.message.starts_with("Could not parse package.json: "),
             "{}",

@@ -22,7 +22,6 @@ use serde_json::{json, Map, Value};
 
 use crate::seam::worker::WorkerClient;
 use crate::tools::args;
-use crate::tools::files::{file_size, io_error};
 use crate::tools::sandbox::{ToolError, Workspace};
 
 /// tool → (render kind, default filename).
@@ -136,17 +135,17 @@ pub async fn create_document(
     // workspace must not cost a document render first.
     let relative = crate::tools::documents::document_output_target(tool, &filename)
         .ok_or_else(|| ToolError::tool(format!("'{tool}' has no document output target.")))?;
-    let target = workspace.resolve(&relative)?;
+    let _precheck = workspace.resolve(&relative)?;
 
     let rendered = worker
         .render(kind, Value::Object(request))
         .await
         .map_err(ToolError::tool)?;
 
-    if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(io_error)?;
-    }
-    std::fs::write(&target, &rendered.content).map_err(io_error)?;
+    // Re-validate containment immediately at write time via handle-relative
+    // descriptor open (closes the async render TOCTOU window).
+    let target = workspace.resolve(&relative)?;
+    let written = crate::tools::safe_io::safe_write_bytes(workspace, &target, &rendered.content)?;
 
     let mut result = Map::new();
     result.insert("path".into(), json!(workspace.relative(&target)));
@@ -161,7 +160,7 @@ pub async fn create_document(
             .unwrap_or(derived as u64);
         result.insert(key.into(), json!(reported));
     }
-    result.insert("bytes".into(), json!(file_size(&target)));
+    result.insert("bytes".into(), json!(written));
     Ok(Value::Object(result))
 }
 

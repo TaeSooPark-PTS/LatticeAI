@@ -16,7 +16,7 @@
 
 <br/>
 
-![v13.5.0 Living Brain 둘러보기](output/release/v13.7.2/gifs/v13.7.2-living-brain-walkthrough.gif)
+![v13.8.0 Living Brain 둘러보기](output/release/v13.8.0/gifs/v13.8.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_13.7.2_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_13.8.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -85,15 +85,15 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v13.7.2/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v13.7.2/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v13.8.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v13.8.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v13.7.2/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v13.7.2/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v13.8.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v13.8.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v13.7.2/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v13.7.2/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v13.8.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v13.8.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v13.7.2/screenshots/13-chronicle.png) | ![설정 화면](output/release/v13.7.2/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v13.8.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v13.8.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v13.7.2/SCREENSHOT_INDEX.md](output/release/v13.7.2/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v13.7.2/screenshots/01-login.png), [06-capture.png](output/release/v13.7.2/screenshots/06-capture.png), [07-model-library.png](output/release/v13.7.2/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v13.8.0/SCREENSHOT_INDEX.md](output/release/v13.8.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v13.8.0/screenshots/01-login.png), [06-capture.png](output/release/v13.8.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.8.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -130,11 +130,11 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 13.5.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-13.7.2-py3-none-any.whl`
-- `dist/ltcai-13.7.2.tar.gz`
-- `ltcai-13.7.2.tgz`
-- `dist/ltcai-13.7.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.2_aarch64.dmg`
+- `dist/ltcai-13.8.0-py3-none-any.whl`
+- `dist/ltcai-13.8.0.tar.gz`
+- `ltcai-13.8.0.tgz`
+- `dist/ltcai-13.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.8.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 

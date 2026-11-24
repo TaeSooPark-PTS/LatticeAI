@@ -10,6 +10,7 @@
 pub mod consistency;
 pub mod desk;
 pub mod digest;
+pub mod extensions;
 pub mod health;
 pub mod proactive;
 pub mod proposals;

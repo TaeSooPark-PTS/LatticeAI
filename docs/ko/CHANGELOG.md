@@ -5,6 +5,22 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [13.8.0] - 2026-11-24 — Living Synthesis
+
+### 추가됨
+- **P0.1 진정성 있는 RAG 평가 프레임워크 (`rust/lattice-retrieval/src/rag_eval_grounded.rs`, `rag_eval_dataset.rs`, `datasets/rag_eval_v1.json`, `scripts/generate_rag_eval_dataset.py`, `scripts/run_real_model_rag_eval.py`):**
+  - 결정론적 픽스처(`FixtureDeterministic`)와 실제 로컬/클라우드 모델(`RealModelLocal`, `RealModelCloud`, `RetrievalOnly`, `EndToEnd`) 및 `Executed`/`FixtureOnly`/`Skipped`/`Unavailable` 상태 표기를 엄격히 분리하고, 9개 필수 카테고리를 포괄하는 320개 질의 버전 데이터셋(`rag-eval-v1.0.0`)을 추가했습니다.
+- **P0.2 지식 그래프 데이터 무결성 검사 및 안전 복구 (`rust/lattice-core/src/integrity.rs`, `rust/lattice-core/tests/integrity_fault_injection.rs`, `GET /api/brain/integrity`, `POST /api/brain/integrity/repair`):**
+  - SQLite 무결성/FK, 댕글링 엣지, 고아 청크·벡터·출처, 교차 워크스페이스 누출, 중복 자연키, 삭제된 파일 경로, 인덱스 드리프트, DAG 순환 참조를 통합 검사하고 드라이런 영향 범위 미리보기·자동 `VACUUM INTO` 백업·안전/승인 복구 분리 및 장애 주입 테스트를 구현했습니다.
+- **P0.3 엔티티 해석 고도화 및 선택적 롤백 (`rust/lattice-core/src/entity_resolution.rs`, `entity_resolution_ext.rs`, `/api/brain/entities/{candidates,merge,rollback}`):**
+  - 타입 범위 정확 일치로 교차 타입 동음이의어 오병합을 차단하고, 퍼지·다중 신호 점수, 영속 별칭/감사/병합금지 테이블, 교차 워크스페이스 병합 차단, 엣지 마이그레이션 및 `rollback_entity_merge`를 구현했습니다.
+- **P0.4 TOCTOU 방지 FD 샌드박스, 클라우드 이그레스 PII/비밀 마스킹 및 프롬프트 인젝션 방어 (`rust/lattice-agent/src/tools/safe_io.rs`, `content/untrusted.rs`, `rust/lattice-agent/tests/security_sandbox_toctou.rs`, `rust/lattice-core/src/redact.rs`, `rust/lattice-chat/src/pipeline/answers.rs`):**
+  - OS 수준 `openat` + `O_NOFOLLOW` + `fstat` 루트 검증 기반 파일 I/O, 컴파일된 `OnceLock` PII+비밀 마스킹(클라우드 발신 질문·컨텍스트·`LoopTrace`·`/host/diagnostics`), 워크스페이스 범위 `DurableWorkflowStore::load_scoped`, `ingestion_jobs.workspace_id`, 심볼릭 링크 탈출 차단, 민감 경로 읽기 차단 및 한/영 비신뢰 콘텐츠 프레이밍을 구현했습니다.
+- **P1.1–P1.7 시간 축 지식·관계 지능·하이브리드 검색·섀도우 임베딩·멀티에이전트·지식 학습 루프:**
+  - `nodes_v2`/`edges_v2` 시간 축·근거 동기화 및 `terminate_edge`, BM25F 허브 팬아웃 제한·근접 중복 제거·재순위화·점수 설명·폴백 추적, Python↔Rust `embedding_index_contract` 수정 및 섀도우 재색인·컷오버·즉시 롤백 레지스트리, `StepErrorKind`/`PartialSuccess`/`ImpactPreview`/마스킹 트레이스 내보내기, 최소 권한 5역할 `MultiAgentSession` 및 외부 학습 업로드 차단 `knowledge_corrections` 학습 루프를 구현했습니다.
+- **P2 & P3 자동 인제스트·모델 출처 UX·데스크톱 워치독·고급 KG·조직 거버넌스:**
+  - `WatchBatch` 직접 소비(`moved_from_uri` 이동 연동·일시중지), 12개 패밀리 모델 출처 계층 UI(`국가 → 제조사 → 실행 위치`), 워커 워치독 자동 재시작 및 마스킹 `/host/diagnostics`, 토픽 클러스터(`/api/brain/clusters`)·지식 공백(`/api/brain/gaps`), `Modality::Video`, 감사 보존 정책(`prune_audit_events_before`) 및 오프보딩 세션 취소 영수증을 추가했습니다.
+
 ## [13.7.2] - 2026-11-24 — Living Synthesis
 
 ### 변경됨

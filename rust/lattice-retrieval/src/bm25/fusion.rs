@@ -418,6 +418,23 @@ pub fn hybrid_bm25_vector_graph_search(
         };
         let hybrid_score = round6((0.55 * rrf_score + 0.45 * linear_norm) * agreement_bonus);
 
+        let query_lower = effective_query.trim().to_lowercase();
+        let title_lower = c.node.title.as_deref().unwrap_or("").to_lowercase();
+        let summary_lower = c.node.summary.as_deref().unwrap_or("").to_lowercase();
+        // P1.3: Lightweight deterministic phrase/coverage reranker with transparent score explanation.
+        let rerank_boost = if !query_lower.is_empty() && query_lower.len() >= 3 {
+            if title_lower.contains(&query_lower) {
+                0.08
+            } else if summary_lower.contains(&query_lower) {
+                0.04
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+        let final_score = round6(hybrid_score + rerank_boost);
+
         let is_graph_only = c.bm25_rank.is_none() && c.vec_rank.is_none() && c.graph_rank.is_some();
         let meta = safe_loads(c.node.metadata_json.as_deref());
         let workspace_id = meta
@@ -434,13 +451,25 @@ pub fn hybrid_bm25_vector_graph_search(
         item.insert("metadata", Value::Object(meta.clone()));
         item.insert("updated_at", json_opt(&c.node.updated_at));
         item.insert("workspace_id", json!(workspace_id));
-        item.insert("score", json!(hybrid_score));
+        item.insert("score", json!(final_score));
         item.insert("hybrid_score", json!(hybrid_score));
+        item.insert("rerank_score", json!(final_score));
         item.insert("rrf_score", json!(round6(rrf_score)));
         item.insert("bm25_score", json!(round6(c.bm25_raw)));
         item.insert("bm25_norm", json!(round6(c.bm25_norm)));
         item.insert("vector_score", json!(round6(c.vec_raw)));
         item.insert("graph_score", json!(round6(c.graph_raw)));
+        item.insert(
+            "score_explanation",
+            json!({
+                "bm25_rank": c.bm25_rank,
+                "vector_rank": c.vec_rank,
+                "graph_rank": c.graph_rank,
+                "rrf_score": round6(rrf_score),
+                "rerank_boost": round6(rerank_boost),
+                "rerank_mode": if rerank_boost > 0.0 { "lexical_phrase_boost" } else { "identity" },
+            }),
+        );
         item.insert("matched_terms", json!(c.matched_terms));
         item.insert("matched_fields", json!(c.matched_fields));
         item.insert("graph_relations", json!(c.graph_relations));
@@ -451,7 +480,7 @@ pub fn hybrid_bm25_vector_graph_search(
         item.insert("sources", json!(sources));
 
         ranked_items.push((
-            hybrid_score,
+            final_score,
             rrf_score,
             id,
             serde_json::to_value(item).unwrap_or(Value::Null),
@@ -468,13 +497,56 @@ pub fn hybrid_bm25_vector_graph_search(
     let take = options.limit.max(1) as usize;
     let mut results = Vec::new();
     let mut expanded_results = Vec::new();
+    let mut seen_content_fps: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut deduped_count = 0usize;
     for (_, _, _, val, is_graph_only) in ranked_items {
+        let title_fp = val
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_lowercase();
+        let summary_fp: String = val
+            .get("summary")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_lowercase()
+            .chars()
+            .take(160)
+            .collect();
+        let content_fp = if !title_fp.is_empty() && !summary_fp.is_empty() {
+            Some(format!("{title_fp}||{summary_fp}"))
+        } else {
+            None
+        };
+        if let Some(fp) = content_fp {
+            if !seen_content_fps.insert(fp) {
+                deduped_count += 1;
+                continue;
+            }
+        }
         if is_graph_only {
             expanded_results.push(val.clone());
         }
         if results.len() < take {
             results.push(val);
         }
+    }
+
+    let mut fallback_events: Vec<Value> = Vec::new();
+    if vector_reindex_required {
+        fallback_events.push(json!({
+            "channel": "vector",
+            "reason": "vector_reindex_required",
+            "status": vector_provider_status,
+        }));
+    } else if vector_provider_status.as_deref() == Some("hash_fallback") {
+        fallback_events.push(json!({
+            "channel": "vector",
+            "reason": "hash_fallback_embedder",
+            "status": "hash_fallback",
+        }));
     }
 
     let mut out = OrderedMap::new();
@@ -501,8 +573,11 @@ pub fn hybrid_bm25_vector_graph_search(
             "include_historical": include_historical,
             "vector_provider_status": vector_provider_status,
             "vector_reindex_required": vector_reindex_required,
+            "rerank_mode": "lexical_phrase_boost",
+            "deduped_near_duplicates": deduped_count,
         }),
     );
+    out.insert("fallbacks", Value::Array(fallback_events));
     if let Some(status) = vector_provider_status {
         out.insert("vector_provider_status", json!(status));
     }

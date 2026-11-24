@@ -2,7 +2,7 @@
 
 # Knowledge Graph Schema
 
-Current release: **13.7.2 — Living Synthesis**.
+Current release: **13.8.0 — Living Synthesis**.
 
 Spec reference: `lattice_ai_full_spec.pptx` slides 20, 21, and 22  
 Implementation: `lattice_brain/graph/schema.py`

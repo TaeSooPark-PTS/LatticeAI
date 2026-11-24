@@ -126,12 +126,24 @@ fn validate_command_paths(
     workdir: &Path,
 ) -> Result<(), ToolError> {
     for argument in args {
-        let value = argument_value(argument);
+        let (attached_flag_path, value) = if argument.starts_with('-')
+            && !argument.starts_with("--")
+            && !argument.contains('=')
+            && argument.len() > 2
+            && (argument[2..].contains('/')
+                || argument[2..].contains('\\')
+                || argument[2..].starts_with('~'))
+        {
+            // Catch attached short-flag path arguments such as `rg -f/etc/passwd`.
+            (true, &argument[2..])
+        } else {
+            (false, argument_value(argument))
+        };
         // Flags without a value, the empty string, and the one device every
         // read-only command is allowed to name are not paths.
         if value.is_empty()
             || value == "/dev/null"
-            || (argument.starts_with('-') && !argument.contains('='))
+            || (!attached_flag_path && argument.starts_with('-') && !argument.contains('='))
         {
             continue;
         }

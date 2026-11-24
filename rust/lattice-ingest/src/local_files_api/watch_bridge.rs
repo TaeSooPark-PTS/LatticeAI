@@ -140,7 +140,7 @@ pub(super) fn read_watch_file(data_dir: &Path) -> Value {
             // This said `false` for as long as there was nothing behind it.
             "bridge_wired": true
         },
-        "note": "Watch mode is opt-in and off by default. Deleted files are counted but never auto-removed from the Brain."
+        "note": "Watch mode is opt-in and off by default. Incremental OS events sync edits/moves and reconcile deleted files cleanly."
     })
 }
 
@@ -359,26 +359,61 @@ pub(super) fn ensure_poller(state: &Arc<LocalFilesState>) -> bool {
                 () = tokio::time::sleep(event_tick) => {
                     let data_dir = state.config.data_dir().to_path_buf();
                     let engines_ref = Arc::clone(&engines);
-                    let os_triggered = tokio::task::spawn_blocking(move || {
-                        let now_ms = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map(|d| d.as_millis() as u64)
-                            .unwrap_or(0);
-                        let Ok(mut guard) = engines_ref.lock() else {
-                            return false;
-                        };
-                        sync_os_watch_engines(&data_dir, &mut guard);
-                        let mut triggered = false;
-                        for engine in guard.values_mut() {
-                            if !engine.poll_batch(now_ms, false).is_empty() {
-                                triggered = true;
+                    let batches: Vec<(String, crate::incremental_watch::WatchBatch)> =
+                        tokio::task::spawn_blocking(move || {
+                            let now_ms = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_millis() as u64)
+                                .unwrap_or(0);
+                            let Ok(mut guard) = engines_ref.lock() else {
+                                return Vec::new();
+                            };
+                            sync_os_watch_engines(&data_dir, &mut guard);
+                            let mut out = Vec::new();
+                            for (watch_id, engine) in guard.iter_mut() {
+                                let batch = engine.poll_batch(now_ms, false);
+                                if !batch.is_empty() {
+                                    out.push((watch_id.clone(), batch));
+                                }
+                            }
+                            out
+                        })
+                        .await
+                        .unwrap_or_default();
+                    if !batches.is_empty() {
+                        // P2.2: deliver incremental moves with `moved_from_uri` directly before reconciling.
+                        if let Some(graph) = state.graph().cloned() {
+                            let mut ingestor = NoteIngestor::new(graph);
+                            if let Some(seam) = state.seam() {
+                                ingestor = ingestor.with_seam(seam.clone());
+                            }
+                            let watches = stored_watches(state.config.data_dir());
+                            for (wid, batch) in &batches {
+                                if let Some(entry) = watches.iter().find(|w| w.get("id").and_then(Value::as_str) == Some(wid.as_str())) {
+                                    if entry.get("paused").and_then(Value::as_bool).unwrap_or(false) {
+                                        continue;
+                                    }
+                                    let root = entry.get("path").and_then(Value::as_str).unwrap_or("");
+                                    let owner = entry.get("owner").and_then(Value::as_str);
+                                    let ws = entry.get("workspace_id").and_then(Value::as_str);
+                                    for mv in &batch.moves {
+                                        let _ = watch_deliver::deliver_moved_file(
+                                            &ingestor,
+                                            state.seam(),
+                                            Path::new(root),
+                                            &mv.to,
+                                            &mv.from,
+                                            owner,
+                                            ws,
+                                        )
+                                        .await;
+                                    }
+                                }
                             }
                         }
-                        triggered
-                    })
-                    .await
-                    .unwrap_or(false);
-                    if os_triggered || last_reconcile.elapsed() >= interval {
+                        scan_watches(&state).await;
+                        last_reconcile = std::time::Instant::now();
+                    } else if last_reconcile.elapsed() >= interval {
                         scan_watches(&state).await;
                         last_reconcile = std::time::Instant::now();
                     }
@@ -404,6 +439,10 @@ fn sync_os_watch_engines(
             .get("enabled")
             .and_then(Value::as_bool)
             .unwrap_or(false)
+            || entry
+                .get("paused")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
         {
             continue;
         }
@@ -469,6 +508,10 @@ pub async fn scan_watches(state: &Arc<LocalFilesState>) -> Value {
             .get("enabled")
             .and_then(Value::as_bool)
             .unwrap_or(false)
+            || entry
+                .get("paused")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
         {
             continue;
         }

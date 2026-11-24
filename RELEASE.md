@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v13.8.0 — Living Synthesis (2026-11-24)
+
+Completed the full Digital Brain Platform hardening roadmap (P0–P3): authentic RAG evaluation separating deterministic fixtures from live local/cloud model runs with a versioned 320-query benchmark dataset (`datasets/rag_eval_v1.json`), unified Knowledge Graph integrity checker & fault-injection repair engine (`lattice-core::integrity`), type-scoped/fuzzy Entity Resolution with persistent audit trail & selective rollback (`entity_resolution_ext`), OS-level fd-confined `O_NOFOLLOW` TOCTOU-safe sandbox (`safe_io.rs`) & PII/secret-redacted cloud egress, Embedding Model Registry with shadow re-indexing/cutover/rollback, least-privilege 5-role Multi-Agent orchestrator (`multi_agent.rs`), Knowledge Learning Loop (`learning_loop.rs`), incremental OS watch move/pause delivery, `Origin Country → Vendor → Execution` Model Library UX, worker health-watchdog + redacted `/host/diagnostics`, topic clusters/gaps, `Modality::Video`, audit retention pruning, and offboarding revocation receipts.
+
+Release notes: [docs/releases/RELEASE_NOTES_v13.8.0.md](docs/releases/RELEASE_NOTES_v13.8.0.md).
+
+Build artifacts: `dist/ltcai-13.8.0-py3-none-any.whl`, `dist/ltcai-13.8.0.tar.gz`, `ltcai-13.8.0.tgz`, `dist/ltcai-13.8.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_13.8.0_aarch64.dmg`.
+
 ## v13.7.2 — Living Synthesis (2026-11-24)
 
 Migrated all callers across the Rust workspace (`lattice-host`, `lattice-chat`, `lattice-platform`, `lattice-agent`, `lattice-retrieval`, `src-tauri`, and all integration tests) to canonical domain module paths (`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`), removed the obsolete flat crate-root `pub use` compatibility maps from `lattice-agent` and `lattice-platform`, and removed the last unused `lattice_chat::crate_ready()` scaffold stub.

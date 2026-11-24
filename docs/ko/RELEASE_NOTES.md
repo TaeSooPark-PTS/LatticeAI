@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v13.8.0 - Living Synthesis] (2026-11-24)
+
+디지털 브레인 플랫폼 통합 고도화 로드맵(P0–P3)을 완수했습니다: 결정론적 픽스처와 실제 로컬/클라우드 모델 평가를 분리하고 320개 질의 버전 데이터셋(`datasets/rag_eval_v1.json`)을 추가한 진정성 있는 RAG 평가, 자동 백업·드라이런·장애 주입 테스트를 갖춘 지식 그래프 무결성 검사/복구, 동음이의어 차단·퍼지 점수·선택적 롤백 엔티티 해석, OS 수준 `O_NOFOLLOW` FD 샌드박스 및 클라우드 이그레스 PII/비밀 마스킹, 섀도우 재색인·컷오버·롤백 임베딩 모델 레지스트리, 최소 권한 5역할 멀티에이전트 협업, 지식 학습 루프, OS 감시 파일 이동·일시중지, 모델 출처 계층 UX, 데스크톱 워치독 및 마스킹 `/host/diagnostics`, 토픽 클러스터/지식 공백/비디오 모달리티/감사 보존 정책/오프보딩 취소 영수증을 모두 반영했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v13.8.0.md](./releases/RELEASE_NOTES_v13.8.0.md).
+
 # [v13.7.2 - Living Synthesis] (2026-11-24)
 
 Rust 워크스페이스 전체의 임포트를 정본 도메인 모듈 경로(`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`)로 전면 이전하고, `lattice-agent`·`lattice-platform`의 구형 평탄 호환성 `pub use` 맵과 마지막 미사용 `lattice_chat::crate_ready()` 스텁을 제거했습니다.

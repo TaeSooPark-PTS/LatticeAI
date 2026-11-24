@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
 > 과거 서브시스템 상세 이력은 [`docs/architecture.md`](../architecture.md)를 참고하세요.
 
-현재 릴리스: **13.7.2 — Living Synthesis**.
+현재 릴리스: **13.8.0 — Living Synthesis**.
 
 Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 20개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), React / Vite 8 / TypeScript 7 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 
@@ -151,13 +151,13 @@ flowchart LR
 
 ## 릴리스 산출물 맵
 
-13.7.2 정확 버전 산출물 이름:
+13.8.0 정확 버전 산출물 이름:
 
-- Python 휠: `dist/ltcai-13.7.2-py3-none-any.whl`
-- Python sdist: `dist/ltcai-13.7.2.tar.gz`
-- npm tarball: `ltcai-13.7.2.tgz`
-- VS Code / Cursor / Antigravity 확장: `dist/ltcai-13.7.2.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_13.7.2_aarch64.dmg`
+- Python 휠: `dist/ltcai-13.8.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-13.8.0.tar.gz`
+- npm tarball: `ltcai-13.8.0.tgz`
+- VS Code / Cursor / Antigravity 확장: `dist/ltcai-13.8.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_13.8.0_aarch64.dmg`
 
 ## 알려진 경계
 

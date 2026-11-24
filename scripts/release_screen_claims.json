@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.8.0": {
+    "_why": [
+      "Living Synthesis (13.8.0) delivers the integrated P0-P3 Digital Brain",
+      "Platform hardening roadmap (authentic 320-query RAG eval, KG integrity",
+      "checker, fuzzy homonym-safe entity resolution, fd-confined O_NOFOLLOW",
+      "sandbox, PII/secret-redacted cloud egress, shadow embedding registry,",
+      "5-role least-privilege multi-agent session, learning loop, watch move",
+      "delivery, worker watchdog, and model provenance badge)."
+    ],
+    "claims": []
+  },
   "13.7.2": {
     "_why": [
       "Living Synthesis (13.7.2) migrates all Rust workspace callers and",

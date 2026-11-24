@@ -393,10 +393,62 @@ fn list_dir(path: &str) -> Result<Value, String> {
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
+const READ_SENSITIVE_SEGMENTS: &[&str] = &[
+    "/.ssh/",
+    "/.aws/",
+    "/.gnupg/",
+    "/etc/shadow",
+    "/etc/sudoers",
+];
+
+fn is_sensitive_read_path(path: &std::path::Path) -> bool {
+    let slash = path.to_string_lossy().replace('\\', "/");
+    let lower = slash.to_ascii_lowercase();
+    if READ_SENSITIVE_SEGMENTS
+        .iter()
+        .any(|seg| lower.contains(seg) || lower.ends_with(seg.trim_end_matches('/')))
+    {
+        return true;
+    }
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        let nl = name.to_ascii_lowercase();
+        if nl == ".env" || nl.starts_with(".env.") || nl == "id_rsa" || nl == "id_ed25519" {
+            return true;
+        }
+    }
+    false
+}
+
+/// Resolve existing ancestor via `canonicalize` so non-existent targets cannot
+/// bypass blocked prefix checks using `..` or symlinked parent directories.
+fn canonicalize_soft(path: &std::path::Path) -> PathBuf {
+    if let Ok(c) = std::fs::canonicalize(path) {
+        return c;
+    }
+    let mut missing = Vec::new();
+    let mut cur = path.to_path_buf();
+    while !cur.exists() {
+        let Some(name) = cur.file_name() else {
+            break;
+        };
+        missing.push(name.to_os_string());
+        if !cur.pop() {
+            break;
+        }
+    }
+    let mut base = std::fs::canonicalize(&cur).unwrap_or(cur);
+    for seg in missing.into_iter().rev() {
+        base.push(seg);
+    }
+    base
+}
+
 fn read_file(path: &str) -> Result<Value, String> {
     const MAX: u64 = 512_000;
-    let target = PathBuf::from(expand_user(path));
-    let target = std::fs::canonicalize(&target).unwrap_or(target);
+    let target = canonicalize_soft(&PathBuf::from(expand_user(path)));
+    if is_sensitive_read_path(&target) {
+        return Err("보안상 민감한 자격 증명 경로는 읽을 수 없습니다.".into());
+    }
     if !target.exists() {
         return Err(format!("파일이 존재하지 않습니다: {path}"));
     }
@@ -420,8 +472,10 @@ fn read_file(path: &str) -> Result<Value, String> {
 
 fn write_file(path: &str, content: &str) -> Result<Value, String> {
     const MAX: usize = 512_000;
-    let target = PathBuf::from(expand_user(path));
-    let target = std::fs::canonicalize(&target).unwrap_or(target);
+    let target = canonicalize_soft(&PathBuf::from(expand_user(path)));
+    if is_sensitive_read_path(&target) {
+        return Err("차단된 민감한 자격 증명 경로에는 쓸 수 없습니다.".into());
+    }
     let slash = target.to_string_lossy().replace('\\', "/");
     for prefix in super::WRITE_BLOCKED_PREFIXES {
         if slash == prefix.trim_end_matches('/') || slash.starts_with(prefix) {

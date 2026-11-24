@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v13.8.0 - Living Synthesis] (2026-11-24)
+
+Delivered the complete Digital Brain Platform hardening roadmap (P0–P3): authentic RAG evaluation separating deterministic fixtures from live local/cloud models with a versioned 320-query dataset (`datasets/rag_eval_v1.json`), unified KG integrity checker with dry-run blast-radius previews, auto-backup, and fault-injection tests, homonym-safe fuzzy Entity Resolution with persistent audit trail and selective rollback, OS-level fd-confined `O_NOFOLLOW` TOCTOU-safe sandbox & PII/secret-redacted cloud egress, Embedding Model Registry with shadow re-indexing/cutover/rollback, least-privilege 5-role Multi-Agent orchestrator, Knowledge Learning Loop, incremental watch move/pause delivery, `Origin Country → Vendor → Execution` Model Library UX, desktop health-watchdog + redacted `/host/diagnostics`, topic clustering, knowledge gap detection, `Modality::Video`, audit retention pruning, and offboarding revocation receipts.
+
+See [docs/releases/RELEASE_NOTES_v13.8.0.md](docs/releases/RELEASE_NOTES_v13.8.0.md).
+
 # [v13.7.2 - Living Synthesis] (2026-11-24)
 
 Migrated all Rust workspace callers (`lattice-host`, `lattice-chat`, `lattice-platform`, `lattice-agent`, `lattice-retrieval`, `src-tauri`, and all integration tests) to canonical domain module paths (`lattice_platform::<domain>::*`, `lattice_agent::<group>::*`), removed the obsolete flat crate-root `pub use` compatibility maps from `lattice-agent` and `lattice-platform`, and removed the last unused `lattice_chat::crate_ready()` scaffold stub.
@@ -88,7 +94,7 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 13.7.2** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 13.8.0** (the modern `v13.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `13.x` era, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 

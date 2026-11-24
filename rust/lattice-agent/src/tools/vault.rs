@@ -163,30 +163,35 @@ fn save_note(brain_dir: &Path, args: &Map<String, Value>) -> Result<(Value, Path
     }
 
     let root = scope_root(brain_dir, &workspace_id, &user_email);
-    let target_dir = root.join(&folder);
-    std::fs::create_dir_all(&target_dir).map_err(io_error)?;
+    let scoped_ws = crate::tools::sandbox::Workspace::new(&root).map_err(io_error)?;
 
     let title = args
         .get("title")
         .filter(|value| is_truthy(value))
         .map(py_str);
     let stem = safe_title(title.as_deref(), &content)?;
-    let mut target = target_dir.join(format!("{stem}.md"));
-    let mut counter = 2;
-    while target.exists() {
-        target = target_dir.join(format!("{stem}_{counter}.md"));
+    let mut counter = 1usize;
+    let filename = loop {
+        let filename = if counter == 1 {
+            format!("{stem}.md")
+        } else {
+            format!("{stem}_{counter}.md")
+        };
+        let rel = format!("{folder}/{filename}");
+        let candidate = scoped_ws.resolve(&rel)?;
+        if crate::tools::safe_io::safe_create_new_bytes(&scoped_ws, &candidate, content.as_bytes())?
+        {
+            break filename;
+        }
         counter += 1;
-    }
-    std::fs::write(&target, &content).map_err(io_error)?;
+    };
+    let display_target = root.join(&folder).join(&filename);
 
     Ok((
         json!({
             "folder": folder,
-            "filename": target
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_default(),
-            "path": target.display().to_string(),
+            "filename": filename,
+            "path": display_target.display().to_string(),
         }),
         root,
     ))

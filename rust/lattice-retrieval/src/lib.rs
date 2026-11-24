@@ -69,6 +69,7 @@ pub mod neighborhood_synthesis;
 pub mod policy;
 pub mod query_embed;
 pub mod rag_eval;
+pub mod rag_eval_dataset;
 pub mod rag_eval_grounded;
 pub mod routes;
 pub mod search_api;
