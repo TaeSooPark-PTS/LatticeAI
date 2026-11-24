@@ -59,6 +59,63 @@ def _body_to_str(body) -> str:
     return str(body or "")
 
 
+def _read_pdf(target: Path, meta: Dict[str, Any]) -> str:
+    try:
+        import pdfplumber
+
+        with pdfplumber.open(str(target)) as pdf:
+            meta["pages"] = len(pdf.pages)
+            return "\n\n".join((p.extract_text() or "") for p in pdf.pages).strip()
+    except Exception as exc:
+        raise ToolError(f"PDF 읽기 실패: {exc}") from exc
+
+
+def _read_docx(target: Path, meta: Dict[str, Any]) -> str:
+    try:
+        from docx import Document
+
+        doc = Document(str(target))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        meta["paragraphs"] = len(paragraphs)
+        return "\n\n".join(paragraphs)
+    except Exception as exc:
+        raise ToolError(f"DOCX 읽기 실패: {exc}") from exc
+
+
+def _read_xlsx(target: Path, meta: Dict[str, Any]) -> str:
+    try:
+        from openpyxl import load_workbook
+
+        wb = load_workbook(str(target), data_only=True)
+        rows_all = []
+        for ws in wb.worksheets:
+            rows_all.append(f"[Sheet: {ws.title}]")
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                rows_all.append("\t".join(cells))
+        meta["sheets"] = len(wb.worksheets)
+        return "\n".join(rows_all)
+    except Exception as exc:
+        raise ToolError(f"XLSX 읽기 실패: {exc}") from exc
+
+
+def _read_pptx(target: Path, meta: Dict[str, Any]) -> str:
+    try:
+        from pptx import Presentation
+
+        prs = Presentation(str(target))
+        slides_text = []
+        for i, slide in enumerate(prs.slides, 1):
+            parts = [
+                shape.text_frame.text for shape in slide.shapes if shape.has_text_frame
+            ]
+            slides_text.append(f"[Slide {i}]\n" + "\n".join(parts))
+        meta["slides"] = len(prs.slides)
+        return "\n\n".join(slides_text)
+    except Exception as exc:
+        raise ToolError(f"PPTX 읽기 실패: {exc}") from exc
+
+
 def read_document(path: str) -> Dict[str, Any]:
     """Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files."""
     target = Path(path).expanduser().resolve()
@@ -77,57 +134,13 @@ def read_document(path: str) -> Dict[str, Any]:
     meta: Dict[str, Any] = {"path": str(target), "ext": ext}
 
     if ext == ".pdf":
-        try:
-            import pdfplumber
-            with pdfplumber.open(str(target)) as pdf:
-                meta["pages"] = len(pdf.pages)
-                text = "\n\n".join(
-                    (p.extract_text() or "") for p in pdf.pages
-                ).strip()
-        except Exception as exc:
-            raise ToolError(f"PDF 읽기 실패: {exc}") from exc
-
+        text = _read_pdf(target, meta)
     elif ext == ".docx":
-        try:
-            from docx import Document
-            doc = Document(str(target))
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            text = "\n\n".join(paragraphs)
-            meta["paragraphs"] = len(paragraphs)
-        except Exception as exc:
-            raise ToolError(f"DOCX 읽기 실패: {exc}") from exc
-
+        text = _read_docx(target, meta)
     elif ext == ".xlsx":
-        try:
-            from openpyxl import load_workbook
-            wb = load_workbook(str(target), data_only=True)
-            rows_all = []
-            for ws in wb.worksheets:
-                rows_all.append(f"[Sheet: {ws.title}]")
-                for row in ws.iter_rows(values_only=True):
-                    cells = [str(c) if c is not None else "" for c in row]
-                    rows_all.append("\t".join(cells))
-            text = "\n".join(rows_all)
-            meta["sheets"] = len(wb.worksheets)
-        except Exception as exc:
-            raise ToolError(f"XLSX 읽기 실패: {exc}") from exc
-
+        text = _read_xlsx(target, meta)
     elif ext == ".pptx":
-        try:
-            from pptx import Presentation
-            prs = Presentation(str(target))
-            slides_text = []
-            for i, slide in enumerate(prs.slides, 1):
-                parts = []
-                for shape in slide.shapes:
-                    if shape.has_text_frame:
-                        parts.append(shape.text_frame.text)
-                slides_text.append(f"[Slide {i}]\n" + "\n".join(parts))
-            text = "\n\n".join(slides_text)
-            meta["slides"] = len(prs.slides)
-        except Exception as exc:
-            raise ToolError(f"PPTX 읽기 실패: {exc}") from exc
-
+        text = _read_pptx(target, meta)
     elif ext in {".html", ".htm"}:
         # A web page read verbatim is markup, not text: the graph filled up
         # with `<div class=…>` and the contents of every `<script>`. The
@@ -139,7 +152,6 @@ def read_document(path: str) -> Dict[str, Any]:
             text = html_to_text(target.read_text(encoding="utf-8", errors="replace"))
         except (OSError, ValueError) as exc:
             raise ToolError(f"HTML 읽기 실패: {exc}") from exc
-
     elif ext in {".txt", ".md", ".csv"}:
         try:
             text = target.read_text(encoding="utf-8", errors="replace")

@@ -173,7 +173,7 @@ describe("ProposalDiff", () => {
     // A blank diff line still occupies a row rather than collapsing away.
     const rows = document.querySelectorAll(".pending-proposal-diff span");
     expect(rows.length).toBe(24);
-    expect(rows[2].textContent).toBe(" ");
+    expect(rows[2]!.textContent).toBe(" ");
   });
 });
 

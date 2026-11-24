@@ -586,9 +586,9 @@ describe("capture helpers", () => {
       { nodes: 3, edges: 1 },
     );
     expect(journey.steps[0]).toMatchObject({ key: "read", state: "done", count: 5 });
-    expect(journey.steps[1].state).toBe("working");
+    expect(journey.steps[1]!.state).toBe("working");
     // The connect stage carries an unknown token, so the fallback applies.
-    expect(journey.steps[2].state).toBe("done");
+    expect(journey.steps[2]!.state).toBe("done");
     expect(journey.remembered).toBe(9);
     expect(journey.connections).toBe(1);
   });
@@ -601,12 +601,12 @@ describe("capture helpers", () => {
 
   it("readJourney falls back to graph totals when no pipeline reported", () => {
     const working = readJourney(null, { pending: 2 }, { nodes: 0, edges: 0 });
-    expect(working.steps[0].state).toBe("working");
+    expect(working.steps[0]!.state).toBe("working");
     const done = readJourney(undefined, {}, { nodes: 4, edges: 2 });
     expect(done.steps.map((step) => step.state)).toEqual(["done", "done", "done"]);
     const empty = readJourney({}, {}, {});
     expect(empty.steps.map((step) => step.state)).toEqual(["waiting", "waiting", "waiting"]);
-    expect(empty.steps[0].count).toBe(0);
+    expect(empty.steps[0]!.count).toBe(0);
   });
 
   it("readJourney reads per-stage counts as progress when no stage map is sent", () => {
@@ -620,7 +620,7 @@ describe("capture helpers", () => {
 
   it("readJourney keeps counts non-negative, rounded, and finite", () => {
     const journey = readJourney({ received: 3.6 }, { pending: "2" }, { nodes: Number.NaN });
-    expect(journey.steps[0].count).toBe(4);
+    expect(journey.steps[0]!.count).toBe(4);
     expect(journey.waiting).toBe(2);
     expect(journey.remembered).toBe(0);
   });

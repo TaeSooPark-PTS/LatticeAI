@@ -257,9 +257,9 @@ describe("BrainStatsBadge", () => {
     renderBadge();
     fireEvent.click(badge());
     const fills = popover()!.querySelectorAll<HTMLElement>(".brain-hero-stats-fill");
-    expect(fills[0].style.width).toBe("44%");
-    expect(fills[1].style.width).toBe("67%");
-    expect(fills[2].style.width).toBe("100%");
+    expect(fills[0]!.style.width).toBe("44%");
+    expect(fills[1]!.style.width).toBe("67%");
+    expect(fills[2]!.style.width).toBe("100%");
   });
 
   it("floors empty rows at the visible minimum instead of dividing by zero", () => {

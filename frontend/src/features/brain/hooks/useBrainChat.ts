@@ -185,7 +185,7 @@ export function useBrainChat({
             if (!parsed) return;
             setMessages((items) => {
               const next = [...items];
-              const last = next[next.length - 1];
+              const last = next[next.length - 1]!;
               next[next.length - 1] = {
                 ...last,
                 role: "assistant",
@@ -202,7 +202,7 @@ export function useBrainChat({
             if (approval) {
               setMessages((items) => {
                 const next = [...items];
-                next[next.length - 1] = { ...next[next.length - 1], approval };
+                next[next.length - 1] = { ...next[next.length - 1]!, approval };
                 return next;
               });
               return;
@@ -228,7 +228,7 @@ export function useBrainChat({
             ) return;
             setMessages((items) => {
               const next = [...items];
-              const current = next[next.length - 1];
+              const current = next[next.length - 1]!;
               // Streamed agent_step frames win over the post-hoc transcript —
               // they carry the same run with richer per-event detail.
               const agentSteps = current.agentSteps?.length
@@ -272,8 +272,8 @@ export function useBrainChat({
           setMessages((items) => {
             const next = [...items];
             for (let index = next.length - 1; index >= 0; index -= 1) {
-              if (next[index].role === "assistant") {
-                const current = next[index];
+              const current = next[index]!;
+              if (current.role === "assistant") {
                 next[index] = {
                   ...current,
                   ...(contextQuality ? { contextQuality } : {}),

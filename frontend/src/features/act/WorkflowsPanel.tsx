@@ -76,7 +76,7 @@ export function WorkflowsPanel() {
     position: { x: (index % 4) * 190, y: Math.floor(index / 4) * 120 },
     data: { label: String(workflow.name || workflow.id || t(language, "act.workflow.fallbackName", { index: index + 1 })) },
   }));
-  const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
+  const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index]!.id, target: node.id }));
   return (
     <div className="flex flex-col gap-4">
       <AutomationSuggestions language={language} />

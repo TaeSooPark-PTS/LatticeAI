@@ -471,6 +471,92 @@ def _resolve_ws_path(ws: Path, rel: str) -> Path:
     return target
 
 
+def _execute_workspace_fixture_tool(
+    tool: str, args: Dict[str, Any], ws: Path
+) -> Tuple[Optional[Any], Optional[str]]:
+    if tool == "list_dir":
+        rel = str(args.get("path", ".")).strip() or "."
+        target = _resolve_ws_path(ws, rel)
+        if not target.is_dir():
+            return None, f"Directory does not exist: {rel}"
+        items = sorted(p.name for p in target.iterdir())
+        return {"path": rel, "items": items, "count": len(items)}, None
+
+    if tool == "read_file":
+        rel = str(args.get("path", "")).strip()
+        if not rel:
+            return None, "'path' is required"
+        target = _resolve_ws_path(ws, rel)
+        if not target.is_file():
+            return None, f"File does not exist: {rel}"
+        text = target.read_text(encoding="utf-8")
+        return {"path": rel, "content": text, "bytes": len(text.encode("utf-8"))}, None
+
+    if tool == "write_file":
+        rel = str(args.get("path", "")).strip()
+        content = str(args.get("content", ""))
+        if not rel:
+            return None, "'path' is required"
+        target = _resolve_ws_path(ws, rel)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        return {"path": rel, "bytes": len(content.encode("utf-8")), "written": True}, None
+
+    pattern = str(args.get("pattern", "")).strip()
+    rel = str(args.get("path", ".")).strip() or "."
+    if not pattern:
+        return None, "'pattern' is required"
+    target = _resolve_ws_path(ws, rel)
+    files = [target] if target.is_file() else sorted(target.rglob("*"))
+    matches = []
+    for p in files:
+        if not p.is_file():
+            continue
+        for idx, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
+            if pattern.lower() in line.lower():
+                matches.append({"file": str(p.relative_to(ws)), "line": idx, "text": line})
+    return {"pattern": pattern, "matches": matches, "count": len(matches)}, None
+
+
+def _execute_cu_fixture_tool(
+    tool: str, args: Dict[str, Any], cu_events: List[str]
+) -> Tuple[Optional[Any], Optional[str]]:
+    if tool == "computer_status":
+        return {"available": True, "mode": "bridge", "screen_size": {"width": 1280, "height": 800}}, None
+
+    if tool == "computer_ui_inspect":
+        return {
+            "available": True,
+            "mode": "bridge",
+            "frontmost_app": "LatticeBench",
+            "window_title": "Lattice Bench Console",
+            "screen_size": {"width": 1280, "height": 800},
+            "elements": UI_ELEMENTS,
+        }, None
+
+    if tool == "computer_click":
+        x = int(float(args.get("x", -1)))
+        y = int(float(args.get("y", -1)))
+        hit = _match_ui_hit(x, y)
+        cu_events.append(f"clicked:{hit}" if hit else f"clicked_miss:{x},{y}")
+        return {"clicked": True, "x": x, "y": y, "hit_element": hit}, None
+
+    if tool == "computer_type":
+        text = str(args.get("text", ""))
+        if not text:
+            return None, "'text' is required"
+        cu_events.append(f"typed:{text}")
+        return {"typed": text, "chars": len(text)}, None
+
+    key = str(args.get("key", "")).strip().lower()
+    if not key:
+        return None, "'key' is required"
+    cu_events.append(f"key:{key}")
+    if key == "return":
+        cu_events.append("key:enter")
+    return {"pressed": key}, None
+
+
 def execute_fixture_tool(
     tool: str,
     args: Dict[str, Any],
@@ -480,49 +566,8 @@ def execute_fixture_tool(
 ) -> Tuple[Optional[Any], Optional[str]]:
     """Execute deterministic workspace, Brain, and simulated UI pointer tools."""
     try:
-        if tool == "list_dir":
-            rel = str(args.get("path", ".")).strip() or "."
-            target = _resolve_ws_path(ws, rel)
-            if not target.is_dir():
-                return None, f"Directory does not exist: {rel}"
-            items = sorted(p.name for p in target.iterdir())
-            return {"path": rel, "items": items, "count": len(items)}, None
-
-        if tool == "read_file":
-            rel = str(args.get("path", "")).strip()
-            if not rel:
-                return None, "'path' is required"
-            target = _resolve_ws_path(ws, rel)
-            if not target.is_file():
-                return None, f"File does not exist: {rel}"
-            text = target.read_text(encoding="utf-8")
-            return {"path": rel, "content": text, "bytes": len(text.encode("utf-8"))}, None
-
-        if tool == "write_file":
-            rel = str(args.get("path", "")).strip()
-            content = str(args.get("content", ""))
-            if not rel:
-                return None, "'path' is required"
-            target = _resolve_ws_path(ws, rel)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
-            return {"path": rel, "bytes": len(content.encode("utf-8")), "written": True}, None
-
-        if tool == "grep":
-            pattern = str(args.get("pattern", "")).strip()
-            rel = str(args.get("path", ".")).strip() or "."
-            if not pattern:
-                return None, "'pattern' is required"
-            target = _resolve_ws_path(ws, rel)
-            files = [target] if target.is_file() else sorted(target.rglob("*"))
-            matches = []
-            for p in files:
-                if not p.is_file():
-                    continue
-                for idx, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
-                    if pattern.lower() in line.lower():
-                        matches.append({"file": str(p.relative_to(ws)), "line": idx, "text": line})
-            return {"pattern": pattern, "matches": matches, "count": len(matches)}, None
+        if tool in {"list_dir", "read_file", "write_file", "grep"}:
+            return _execute_workspace_fixture_tool(tool, args, ws)
 
         if tool == "knowledge_search":
             query = str(args.get("query", "")).strip().lower()
@@ -536,47 +581,17 @@ def execute_fixture_tool(
                     hits.append(dict(rec))
             return {"query": query, "results": hits, "count": len(hits)}, None
 
-        if tool == "computer_status":
-            return {"available": True, "mode": "bridge", "screen_size": {"width": 1280, "height": 800}}, None
-
-        if tool == "computer_ui_inspect":
-            return {
-                "available": True,
-                "mode": "bridge",
-                "frontmost_app": "LatticeBench",
-                "window_title": "Lattice Bench Console",
-                "screen_size": {"width": 1280, "height": 800},
-                "elements": UI_ELEMENTS,
-            }, None
-
-        if tool == "computer_click":
-            x = int(float(args.get("x", -1)))
-            y = int(float(args.get("y", -1)))
-            hit = _match_ui_hit(x, y)
-            if hit:
-                cu_events.append(f"clicked:{hit}")
-            else:
-                cu_events.append(f"clicked_miss:{x},{y}")
-            return {"clicked": True, "x": x, "y": y, "hit_element": hit}, None
-
-        if tool == "computer_type":
-            text = str(args.get("text", ""))
-            if not text:
-                return None, "'text' is required"
-            cu_events.append(f"typed:{text}")
-            return {"typed": text, "chars": len(text)}, None
-
-        if tool == "computer_key":
-            key = str(args.get("key", "")).strip().lower()
-            if not key:
-                return None, "'key' is required"
-            cu_events.append(f"key:{key}")
-            if key == "return":
-                cu_events.append("key:enter")
-            return {"pressed": key}, None
+        if tool in {
+            "computer_status",
+            "computer_ui_inspect",
+            "computer_click",
+            "computer_type",
+            "computer_key",
+        }:
+            return _execute_cu_fixture_tool(tool, args, cu_events)
 
         return None, f"Unknown action: {tool}"
-    except Exception as exc:
+    except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
         return None, str(exc)
 
 

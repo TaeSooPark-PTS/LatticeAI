@@ -146,7 +146,7 @@ describe("ReviewInbox actions", () => {
     await findCard();
     await userEvent.click(screen.getByRole("button", { name: "하루 일시 중지" }));
     await waitFor(() => expect(latticeApi.snoozeReviewItem).toHaveBeenCalled());
-    expect(String(vi.mocked(latticeApi.snoozeReviewItem).mock.calls[0][1])).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(String(vi.mocked(latticeApi.snoozeReviewItem).mock.calls[0]![1])).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("unsnoozes an item that is already resting", async () => {

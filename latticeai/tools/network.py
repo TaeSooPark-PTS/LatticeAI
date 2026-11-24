@@ -16,7 +16,7 @@ def _run_network_command(parts: List[str], timeout: int = 5) -> str:
         if completed.returncode != 0:
             return ""
         return completed.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
         return ""
 
 
@@ -44,7 +44,7 @@ def network_status() -> Dict[str, Any]:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect(("8.8.8.8", 80))
             guessed_ip = sock.getsockname()[0]
-    except Exception:
+    except (OSError, ValueError, TypeError, RuntimeError):
         quiet()
     if guessed_ip and guessed_ip not in local_ips.values():
         local_ips["default_route"] = guessed_ip

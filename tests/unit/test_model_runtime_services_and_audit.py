@@ -202,7 +202,7 @@ def test_resolution_compat_governor_registry_local_models_origin(
     # don't care about return; just exercise empty model_type
     try:
         _local_model_type("org/m")
-    except Exception:
+    except (OSError, ValueError, TypeError, RuntimeError):
         pass
 
     classify_tool_call("mystery", {}, policy={"risk": "write"})
@@ -236,12 +236,14 @@ def test_resolution_compat_governor_registry_local_models_origin(
     packed = p.encode([1.0, 2.0])
     assert p.decode(packed, dim=99)
 
+    from fastapi import HTTPException
+
     configure_trusted_proxies(["not-a-cidr", "10.0.0.0/8"])
     # exhaust a rate-limit bucket
     for _ in range(3):
         try:
             enforce_rate_limit("rl@x.com", "chat-extra", enabled=True)
-        except Exception:
+        except HTTPException:
             break
 
 

@@ -52,8 +52,9 @@ export function useBrainProof({
     setMessages((items) => {
       const next = [...items];
       for (let index = next.length - 1; index >= 0; index -= 1) {
-        if (next[index].role === "assistant") {
-          next[index] = { ...next[index], proof: messageProof };
+        const current = next[index]!;
+        if (current.role === "assistant") {
+          next[index] = { ...current, proof: messageProof };
           break;
         }
       }

@@ -73,10 +73,10 @@ describe("MemoryRings", () => {
     const { container } = renderRings({ ...populated, concepts: [] });
     const orbit = container.querySelectorAll(".brain-orbit-field .brain-concentric-ring");
     expect(orbit).toHaveLength(4);
-    expect(orbit[0].className).toContain("is-populated"); // now: 2 conversations
-    expect(orbit[1].className).toContain("is-populated"); // memories: 3 durable
-    expect(orbit[2].className).toContain("is-dormant"); // topics: none
-    expect(orbit[3].className).toContain("is-populated"); // graph: 4 relationships
+    expect(orbit[0]!.className).toContain("is-populated"); // now: 2 conversations
+    expect(orbit[1]!.className).toContain("is-populated"); // memories: 3 durable
+    expect(orbit[2]!.className).toContain("is-dormant"); // topics: none
+    expect(orbit[3]!.className).toContain("is-populated"); // graph: 4 relationships
 
     const memoriesLabel = screen.getByRole("button", { name: "기억 미리 보기 · 3개" });
     expect(memoriesLabel.className).toContain("is-populated");
@@ -98,7 +98,7 @@ describe("MemoryRings", () => {
 
     // Durable fragments sort agent-generated work to the front.
     const items = peek.querySelectorAll("li");
-    expect(items[0].textContent).toBe("Agent 정리 노트");
+    expect(items[0]!.textContent).toBe("Agent 정리 노트");
     expect(items).toHaveLength(3);
 
     await userEvent.click(screen.getByRole("button", { name: "이 층 자세히 보기" }));

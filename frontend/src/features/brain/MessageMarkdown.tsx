@@ -50,31 +50,31 @@ function parseMarkdownBlocks(text: string): MarkdownBlock[] {
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
     if (heading) {
       flush();
-      blocks.push({ kind: "heading", depth: heading[1].length, text: heading[2] });
+      blocks.push({ kind: "heading", depth: heading[1]!.length, text: heading[2]! });
       continue;
     }
     const bullet = /^[-*•]\s+(.+)$/.exec(line);
     if (bullet) {
       flush();
       const last = blocks[blocks.length - 1];
-      if (last?.kind === "list" && !last.ordered) last.items.push(bullet[1]);
-      else blocks.push({ kind: "list", ordered: false, items: [bullet[1]] });
+      if (last?.kind === "list" && !last.ordered) last.items.push(bullet[1]!);
+      else blocks.push({ kind: "list", ordered: false, items: [bullet[1]!] });
       continue;
     }
     const numbered = /^\d+[.)]\s+(.+)$/.exec(line);
     if (numbered) {
       flush();
       const last = blocks[blocks.length - 1];
-      if (last?.kind === "list" && last.ordered) last.items.push(numbered[1]);
-      else blocks.push({ kind: "list", ordered: true, items: [numbered[1]] });
+      if (last?.kind === "list" && last.ordered) last.items.push(numbered[1]!);
+      else blocks.push({ kind: "list", ordered: true, items: [numbered[1]!] });
       continue;
     }
     const quote = /^>\s?(.*)$/.exec(line);
     if (quote) {
       flush();
       const last = blocks[blocks.length - 1];
-      if (last?.kind === "quote") last.lines.push(quote[1]);
-      else blocks.push({ kind: "quote", lines: [quote[1]] });
+      if (last?.kind === "quote") last.lines.push(quote[1]!);
+      else blocks.push({ kind: "quote", lines: [quote[1]!] });
       continue;
     }
     if (/^([-_*])\1{2,}$/.test(line)) {
@@ -170,7 +170,7 @@ function splitCodeSegments(content: string): MessageSegment[] {
     if (match.index > cursor) {
       segments.push({ kind: "text", value: content.slice(cursor, match.index) });
     }
-    segments.push({ kind: "code", value: match[2].replace(/\n$/, ""), lang: match[1] || undefined });
+    segments.push({ kind: "code", value: match[2]!.replace(/\n$/, ""), lang: match[1] || undefined });
     cursor = match.index + match[0].length;
   }
   if (cursor < content.length) {

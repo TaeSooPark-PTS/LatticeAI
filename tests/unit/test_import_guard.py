@@ -15,7 +15,7 @@ FORBIDDEN_IMPORTS = {"latticeai", "ltcai"}
 def _has_forbidden_import(file_path: Path) -> bool:
     try:
         tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
-    except Exception:
+    except (OSError, SyntaxError, UnicodeDecodeError):
         return False
 
     for node in ast.walk(tree):

@@ -126,7 +126,7 @@ def _windows_memory_status_gb() -> Optional[tuple[float, float]]:
         if windll is not None and windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
             gib = float(1024 ** 3)
             return stat.ullTotalPhys / gib, stat.ullAvailPhys / gib
-    except Exception:
+    except (OSError, AttributeError, TypeError, ValueError, RuntimeError):
         quiet()
     return None
 
@@ -141,7 +141,7 @@ def host_ram_gb() -> float:
         page_size = os.sysconf("SC_PAGE_SIZE")
         if pages > 0 and page_size > 0:
             return (pages * page_size) / (1024 ** 3)
-    except Exception:
+    except (OSError, ValueError, TypeError, AttributeError, RuntimeError):
         quiet()
     return 16.0
 
@@ -158,7 +158,7 @@ def host_available_ram_gb(total_ram_gb: Optional[float] = None) -> float:
                 if line.startswith("MemAvailable:"):
                     kb = int(line.split()[1])
                     return (kb * 1024) / (1024 ** 3)
-        except Exception:
+        except (OSError, ValueError, IndexError, TypeError, RuntimeError):
             quiet()
     if _sys.platform == "darwin":
         try:
@@ -179,7 +179,7 @@ def host_available_ram_gb(total_ram_gb: Optional[float] = None) -> float:
                         reclaimable_pages += int(m.group(1))
                 if reclaimable_pages > 0:
                     return (reclaimable_pages * page_size) / (1024 ** 3)
-        except Exception:
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
             quiet()
     fallback_total = float(total_ram_gb) if total_ram_gb is not None else host_ram_gb()
     return max(4.0, fallback_total * 0.75)
@@ -342,6 +342,75 @@ def _omlx_wheel_fallback_script(python_exe: str) -> str:
     )
 
 
+def _resolve_ollama_installer(
+    sys_platform: str, which_fn: Callable[[str], Optional[str]]
+) -> List[str]:
+    if sys_platform.startswith("win"):
+        if not which_fn("winget"):
+            raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 Ollama를 자동 설치할 수 없습니다.")
+        return [
+            "winget",
+            "install",
+            "--id",
+            "Ollama.Ollama",
+            "-e",
+            "--silent",
+            "--accept-source-agreements",
+            "--accept-package-agreements",
+        ]
+    if sys_platform.startswith("linux"):
+        if which_fn("curl"):
+            return ["/bin/sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"]
+        if which_fn("brew"):
+            return ["brew", "install", "ollama"]
+        raise ModelRuntimeError(status_code=400, detail="curl 또는 brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+    if not which_fn("brew"):
+        raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+    return ["brew", "install", "ollama"]
+
+
+def _resolve_llamacpp_installer(
+    sys_platform: str, python_exe: str, which_fn: Callable[[str], Optional[str]]
+) -> List[str]:
+    if sys_platform.startswith("win"):
+        if which_fn("winget"):
+            return [
+                "winget",
+                "install",
+                "--id",
+                "ggml.llamacpp",
+                "-e",
+                "--silent",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ]
+        return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
+    if which_fn("brew"):
+        return ["brew", "install", "llama.cpp"]
+    return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
+
+
+def _resolve_lmstudio_installer(
+    sys_platform: str, which_fn: Callable[[str], Optional[str]]
+) -> List[str]:
+    if sys_platform.startswith("win"):
+        if not which_fn("winget"):
+            raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 LM Studio를 자동 설치할 수 없습니다.")
+        return [
+            "winget",
+            "install",
+            "--id",
+            "ElementLabs.LMStudio",
+            "-e",
+            "--silent",
+            "--accept-source-agreements",
+            "--accept-package-agreements",
+        ]
+    if not which_fn("brew"):
+        raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+    return ["brew", "install", "--cask", "lm-studio"]
+
+
 def resolve_engine_installer(
     engine: str,
     installers: Mapping[str, Dict[str, Any]],
@@ -371,64 +440,13 @@ def resolve_engine_installer(
         return ["/bin/bash", "-lc", _omlx_wheel_fallback_script(python_exe)]
 
     if engine == "ollama":
-        if sys_platform.startswith("win"):
-            if not which_fn("winget"):
-                raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 Ollama를 자동 설치할 수 없습니다.")
-            return [
-                "winget",
-                "install",
-                "--id",
-                "Ollama.Ollama",
-                "-e",
-                "--silent",
-                "--accept-source-agreements",
-                "--accept-package-agreements",
-            ]
-        if sys_platform.startswith("linux"):
-            if which_fn("curl"):
-                return ["/bin/sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"]
-            if which_fn("brew"):
-                return ["brew", "install", "ollama"]
-            raise ModelRuntimeError(status_code=400, detail="curl 또는 brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-        if not which_fn("brew"):
-            raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-        return ["brew", "install", "ollama"]
+        return _resolve_ollama_installer(sys_platform, which_fn)
 
     if engine == "llamacpp":
-        if sys_platform.startswith("win"):
-            if which_fn("winget"):
-                return [
-                    "winget",
-                    "install",
-                    "--id",
-                    "ggml.llamacpp",
-                    "-e",
-                    "--silent",
-                    "--accept-source-agreements",
-                    "--accept-package-agreements",
-                ]
-            return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
-        if which_fn("brew"):
-            return ["brew", "install", "llama.cpp"]
-        return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
+        return _resolve_llamacpp_installer(sys_platform, python_exe, which_fn)
 
     if engine == "lmstudio":
-        if sys_platform.startswith("win"):
-            if not which_fn("winget"):
-                raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 LM Studio를 자동 설치할 수 없습니다.")
-            return [
-                "winget",
-                "install",
-                "--id",
-                "ElementLabs.LMStudio",
-                "-e",
-                "--silent",
-                "--accept-source-agreements",
-                "--accept-package-agreements",
-            ]
-        if not which_fn("brew"):
-            raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-        return ["brew", "install", "--cask", "lm-studio"]
+        return _resolve_lmstudio_installer(sys_platform, which_fn)
 
     if engine == "vllm" and apple_arm:
         return [
@@ -478,7 +496,7 @@ async def smoke_test_loaded_model(
             _LOCAL_SMOKE_ENGINES,
             _SMOKE_PROMPT,
         )
-    except Exception as exc:
+    except (ImportError, OSError, RuntimeError, AttributeError) as exc:
         return {"ok": False, "reason": f"smoke import failed: {exc}", "skipped": True}
 
     if model_router is None:
@@ -503,7 +521,7 @@ async def smoke_test_loaded_model(
             ),
             timeout=30,
         )
-    except Exception as exc:
+    except (TimeoutError, RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, ImportError) as exc:
         reason = str(exc)[:200] or "generation_failed"
         profile = _record_smoke_result(
             getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), False, reason, status="failed"

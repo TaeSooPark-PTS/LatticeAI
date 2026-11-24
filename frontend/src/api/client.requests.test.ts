@@ -36,10 +36,10 @@ describe("what the client sends", () => {
     await latticeApi.graphPreview(12);
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe("GET");
-    expect(calls[0].url.pathname).toBe("/knowledge-graph/graph");
-    expect(calls[0].url.searchParams.get("limit")).toBe("12");
-    expect(calls[0].body).toBeUndefined();
+    expect(calls[0]!.method).toBe("GET");
+    expect(calls[0]!.url.pathname).toBe("/knowledge-graph/graph");
+    expect(calls[0]!.url.searchParams.get("limit")).toBe("12");
+    expect(calls[0]!.body).toBeUndefined();
   });
 
   it("percent-encodes an id that would otherwise change the path", async () => {
@@ -49,7 +49,7 @@ describe("what the client sends", () => {
 
     await latticeApi.approveProposal("item/42 with space");
 
-    expect(calls[0].url.pathname).toBe("/api/proposals/item%2F42%20with%20space/approve");
+    expect(calls[0]!.url.pathname).toBe("/api/proposals/item%2F42%20with%20space/approve");
   });
 
   it("sends the language header on an ordinary API call", async () => {
@@ -57,7 +57,7 @@ describe("what the client sends", () => {
 
     await latticeApi.health();
 
-    expect(calls[0].headers.get("X-Lattice-Language")).toBeTruthy();
+    expect(calls[0]!.headers.get("X-Lattice-Language")).toBeTruthy();
   });
 });
 
@@ -131,8 +131,8 @@ describe("hybridSearch", () => {
     await latticeApi.hybridSearch("a");
     await latticeApi.hybridSearch("b", { vector: 0.7 });
 
-    expect(calls[0].body).toEqual({ query: "a" });
-    expect(calls[1].body).toEqual({ query: "b", weights: { vector: 0.7 } });
+    expect(calls[0]!.body).toEqual({ query: "a" });
+    expect(calls[1]!.body).toEqual({ query: "b", weights: { vector: 0.7 } });
   });
 
   it("still returns an empty match list when the search fails", async () => {
@@ -443,7 +443,7 @@ describe("every endpoint wrapper", () => {
       const calls = recordFetch(() => jsonResponse({}));
       await entry.invoke();
       expect(calls.length, `${entry.name} request count`).toBe(1);
-      const call = calls[0];
+      const call = calls[0]!;
       expect(call.method, `${entry.name} method`).toBe(entry.method);
       expect(call.url.pathname, `${entry.name} path`).toBe(entry.path);
       for (const [key, value] of Object.entries(entry.query || {})) {
@@ -592,7 +592,7 @@ describe("the chronicle reads", () => {
 
     const defRes = await latticeApi.hybridSearchGraphRag("wal checkpointer");
     expect(defRes.ok).toBe(true);
-    expect(calls[0].body).toEqual({
+    expect(calls[0]!.body).toEqual({
       query: "wal checkpointer",
       mode: "graphrag",
       limit: 12,
@@ -600,7 +600,7 @@ describe("the chronicle reads", () => {
 
     const customRes = await latticeApi.hybridSearchGraphRag("wal checkpointer", 6);
     expect(customRes.ok).toBe(true);
-    expect(calls[1].body).toEqual({
+    expect(calls[1]!.body).toEqual({
       query: "wal checkpointer",
       mode: "graphrag",
       limit: 6,

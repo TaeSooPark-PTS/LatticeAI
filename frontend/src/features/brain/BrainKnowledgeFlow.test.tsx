@@ -346,11 +346,11 @@ describe("BrainMemoryAutomation", () => {
     // Three activity rows at most, each with its own status word.
     const rows = document.querySelectorAll(".brain-automation-activity li");
     expect(rows.length).toBe(3);
-    expect(rows[0].getAttribute("data-status")).toBe("running");
+    expect(rows[0]!.getAttribute("data-status")).toBe("running");
     expect(screen.getByText("진행 중")).toBeTruthy();
     expect(screen.getByText("실패")).toBeTruthy();
 
-    fireEvent.click(document.querySelectorAll(".brain-automation-actions button")[0]);
+    fireEvent.click(document.querySelectorAll(".brain-automation-actions button")[0]!);
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ id: "a1" }));
   });
 
@@ -402,7 +402,7 @@ describe("BrainMemoryAutomation", () => {
     expect(document.querySelector(".brain-automation-more-popover .brain-automation-activity")).toBeTruthy();
 
     fireEvent.click(
-      document.querySelectorAll(".brain-automation-more-popover .brain-automation-actions button")[1],
+      document.querySelectorAll(".brain-automation-more-popover .brain-automation-actions button")[1]!,
     );
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ id: "p2" }));
 

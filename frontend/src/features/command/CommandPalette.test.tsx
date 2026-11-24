@@ -172,12 +172,12 @@ describe("CommandPalette", () => {
     await screen.findByText("지금 바로");
 
     const input = screen.getByRole("textbox");
-    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("option")[0]!.getAttribute("aria-selected")).toBe("true");
 
     await userEvent.type(input, "{ArrowDown}");
-    expect(screen.getAllByRole("option")[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("option")[1]!.getAttribute("aria-selected")).toBe("true");
     await userEvent.type(input, "{ArrowUp}");
-    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("option")[0]!.getAttribute("aria-selected")).toBe("true");
 
     await userEvent.type(input, "{Enter}");
     // The briefing entry navigates *and* asks the panel to expand itself.
@@ -363,7 +363,7 @@ describe("DailyBriefingPanel", () => {
     // The nameless one still occupies a row rather than printing "undefined".
     const rows = container.querySelectorAll(".daily-briefing-recent li");
     expect(rows).toHaveLength(2);
-    expect(rows[1].textContent).toBe("");
+    expect(rows[1]!.textContent).toBe("");
   });
 
   it("drops a quick action whose kind this build has no words for", async () => {

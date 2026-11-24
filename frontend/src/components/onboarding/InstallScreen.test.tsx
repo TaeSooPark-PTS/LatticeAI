@@ -139,7 +139,7 @@ describe("InstallScreen", () => {
     expect(document.querySelector(".ritual-bar-fill")?.className).toContain("progress-100");
     for (const item of stageItems()) expect(item.className).toContain("is-done");
     // An empty engine falls back to the local default.
-    expect(prepare.mock.calls[0][0]).toMatchObject({ engine: "local_mlx", allow_download: true });
+    expect(prepare.mock.calls[0]![0]).toMatchObject({ engine: "local_mlx", allow_download: true });
 
     await act(async () => {
       vi.advanceTimersByTime(700);
@@ -176,9 +176,9 @@ describe("InstallScreen", () => {
         user_message: "custom raw words",
       });
     });
-    const download = stageItems()[1];
+    const download = stageItems()[1]!;
     expect(download.className).toContain("is-active");
-    expect(stageItems()[0].className).toContain("is-done");
+    expect(stageItems()[0]!.className).toContain("is-done");
     expect(screen.getByTestId("install-speed").textContent).toContain("12.4 MB/s");
     expect(screen.getByTestId("install-eta").textContent).toContain("ETA 18s");
     expect(screen.getByTestId("install-fallback-notice").textContent).toContain("mlx-community/embeddinggemma-2-4bit");

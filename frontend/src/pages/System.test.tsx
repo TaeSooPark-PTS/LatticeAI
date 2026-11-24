@@ -133,11 +133,11 @@ describe("SystemPage", () => {
   it("keyboard users can move between tabs with the arrow keys", async () => {
     render();
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
-    const first = screen.getAllByRole("tab")[0];
+    const first = screen.getAllByRole("tab")[0]!;
     first.focus();
     await userEvent.keyboard("{ArrowRight}");
     await waitFor(() =>
-      expect(screen.getAllByRole("tab")[1].getAttribute("aria-selected")).toBe("true"));
+      expect(screen.getAllByRole("tab")[1]!.getAttribute("aria-selected")).toBe("true"));
   });
 
   it("shows the appearance and detail-level controls separately", async () => {
@@ -297,13 +297,13 @@ describe("SystemPage — workspaces", () => {
     // A row without a name falls back to its id.
     expect(screen.getByText("w2")).toBeTruthy();
 
-    await userEvent.click(screen.getAllByRole("button", { name: "사용" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "사용" })[0]!);
     expect(useAppStore.getState().workspaceId).toBe("w1");
 
-    await userEvent.click(screen.getAllByRole("button", { name: "활성화" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "활성화" })[0]!);
     await waitFor(() => expect(latticeApi.activateWorkspace).toHaveBeenCalledWith("w1"));
 
-    await userEvent.click(screen.getAllByRole("button", { name: "보관" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "보관" })[0]!);
     await waitFor(() => expect(latticeApi.archiveWorkspace).toHaveBeenCalledWith("w1"));
   });
 
@@ -346,9 +346,9 @@ describe("SystemPage — snapshots and activity", () => {
     await waitFor(() => expect(screen.getByText("First")).toBeTruthy());
     expect(screen.getByText("s2")).toBeTruthy();
 
-    await userEvent.click(screen.getAllByRole("button", { name: "내보내기" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "내보내기" })[0]!);
     await waitFor(() => expect(latticeApi.exportSnapshot).toHaveBeenCalledWith("s1"));
-    await userEvent.click(screen.getAllByRole("button", { name: "병합 복원" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "병합 복원" })[0]!);
     await waitFor(() => expect(latticeApi.restoreSnapshot).toHaveBeenCalledWith("s1"));
 
     // An unnamed snapshot gets the localized default name, not "".
@@ -416,9 +416,9 @@ describe("SystemPage — devices (network tab)", () => {
       name: "MacBook", base_url: "http://peer", public_key: "KEY",
     }));
 
-    await userEvent.click(screen.getAllByRole("button", { name: "작업공간 보내기" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "작업공간 보내기" })[0]!);
     await waitFor(() => expect(latticeApi.pushPeer).toHaveBeenCalledWith("p1", "w-push"));
-    await userEvent.click(screen.getAllByRole("button", { name: "연결 해제" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "연결 해제" })[0]!);
     await waitFor(() => expect(latticeApi.unpairPeer).toHaveBeenCalledWith("p1"));
   });
 
@@ -589,7 +589,7 @@ describe("SystemPage — settings panels", () => {
     fireEvent.change(screen.getByPlaceholderText("데이터베이스 스키마"), { target: { value: "" } });
     await userEvent.click(screen.getByRole("button", { name: "마이그레이션 계획" }));
     await waitFor(() => expect(latticeApi.migratePostgres).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(latticeApi.migratePostgres).mock.calls[1][0]).toEqual({
+    expect(vi.mocked(latticeApi.migratePostgres).mock.calls[1]![0]).toEqual({
       dsn: "postgres://x", schema_name: "lattice_brain", dry_run: true,
     });
   });

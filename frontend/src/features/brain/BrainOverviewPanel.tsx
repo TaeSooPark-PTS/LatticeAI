@@ -102,8 +102,8 @@ export function BrainOverviewPanel({
       {hasRecallProof ? (
         <button type="button" className="brain-recall-proof" onClick={() => onOpenDepth(2)}>
           <span>{t(language, "brain.proof.recall")}</span>
-          <strong>{proof.recall.items[0].title}</strong>
-          <small>{proof.recall.items[0].snippet || proof.recall.query}</small>
+          <strong>{proof.recall.items[0]!.title}</strong>
+          <small>{proof.recall.items[0]!.snippet || proof.recall.query}</small>
         </button>
       ) : (
         <div className="brain-recall-proof is-empty" role="status">

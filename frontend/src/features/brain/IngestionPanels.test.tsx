@@ -94,20 +94,20 @@ describe("BrainIngestionPanel", () => {
       document.querySelectorAll<HTMLInputElement>('.brain-ingest-tile input:not([type="file"])'),
     );
 
-    fireEvent.change(folderInput, { target: { value: "~/Documents" } });
-    fireEvent.submit(folderInput.closest("form")!);
+    fireEvent.change(folderInput!, { target: { value: "~/Documents" } });
+    fireEvent.submit(folderInput!.closest("form")!);
     expect(onConnectFolder).toHaveBeenCalledWith("~/Documents");
-    expect(folderInput.value).toBe("");
+    expect(folderInput!.value).toBe("");
 
-    fireEvent.change(noteInput, { target: { value: "오늘 배운 것" } });
-    fireEvent.submit(noteInput.closest("form")!);
+    fireEvent.change(noteInput!, { target: { value: "오늘 배운 것" } });
+    fireEvent.submit(noteInput!.closest("form")!);
     expect(onIngestNote).toHaveBeenCalledWith("오늘 배운 것");
-    expect(noteInput.value).toBe("");
+    expect(noteInput!.value).toBe("");
 
-    fireEvent.change(webInput, { target: { value: "https://lattice.dev" } });
-    fireEvent.submit(webInput.closest("form")!);
+    fireEvent.change(webInput!, { target: { value: "https://lattice.dev" } });
+    fireEvent.submit(webInput!.closest("form")!);
     expect(onIngestWeb).toHaveBeenCalledWith("https://lattice.dev");
-    expect(webInput.value).toBe("");
+    expect(webInput!.value).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: /폴더 선택/ }));
     expect(onPickFolder).toHaveBeenCalled();
@@ -406,12 +406,12 @@ describe("IngestionTimelineSection", () => {
     );
     const items = document.querySelectorAll(".brain-emergence-item");
     expect(items.length).toBe(2);
-    expect(items[0].textContent).toContain("파일");
-    expect(items[0].textContent).toContain("보고서.pdf");
-    expect(items[0].textContent).toContain("새 기억 2개");
-    expect(items[0].textContent).toContain("새 엔티티 1개");
-    expect(items[0].textContent).toContain("방금");
-    expect(items[1].textContent).toContain("노트");
-    expect(items[1].textContent).toContain("7분 전");
+    expect(items[0]!.textContent).toContain("파일");
+    expect(items[0]!.textContent).toContain("보고서.pdf");
+    expect(items[0]!.textContent).toContain("새 기억 2개");
+    expect(items[0]!.textContent).toContain("새 엔티티 1개");
+    expect(items[0]!.textContent).toContain("방금");
+    expect(items[1]!.textContent).toContain("노트");
+    expect(items[1]!.textContent).toContain("7분 전");
   });
 });

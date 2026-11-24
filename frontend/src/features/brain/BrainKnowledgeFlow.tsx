@@ -272,7 +272,7 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
             })}
           </svg>
           {nodes.length ? nodes.map((node, index) => {
-            const point = GRAPH_POSITIONS[index];
+            const point = GRAPH_POSITIONS[index]!;
             const emerging = emergingNodeIds.has(node.id);
             return (
               <button

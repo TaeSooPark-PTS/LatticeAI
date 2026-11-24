@@ -133,7 +133,7 @@ function groupForType(type: string) {
 }
 
 function groupDefinition(id: string) {
-  return groupDefinitions.find((group) => group.id === id) || groupDefinitions[groupDefinitions.length - 1];
+  return groupDefinitions.find((group) => group.id === id) || groupDefinitions[groupDefinitions.length - 1]!;
 }
 
 export function parseGraph(data: unknown, language: Language = "en"): ParsedGraph & { conflictNodeIds: Set<string> } {

@@ -73,8 +73,8 @@ export function buildTimeline(series: ChronicleSeriesPoint[]): ChronicleTimeline
   const days = [...byDate.keys()].sort();
   if (!days.length) return [];
 
-  const start = dayToMs(days[0]) as number;
-  const end = dayToMs(days[days.length - 1]) as number;
+  const start = dayToMs(days[0]!) as number;
+  const end = dayToMs(days[days.length - 1]!) as number;
   const timeline: ChronicleTimelinePoint[] = [];
   let sources = 0;
   let entities = 0;
@@ -137,10 +137,12 @@ export function heatLevel(daily: number, busiest: number): number {
 export function buildHeatmap(timeline: ChronicleTimelinePoint[]): HeatmapWeek[] {
   if (!timeline.length) return [];
   const busiest = timeline.reduce((peak, point) => Math.max(peak, point.daily), 0);
-  const first = dayToMs(timeline[0].date) as number;
-  const last = dayToMs(timeline[timeline.length - 1].date) as number;
-  const gridStart = first - weekdayOf(timeline[0].date) * DAY_MS;
-  const gridEnd = last + (6 - weekdayOf(timeline[timeline.length - 1].date)) * DAY_MS;
+  const firstPoint = timeline[0]!;
+  const lastPoint = timeline[timeline.length - 1]!;
+  const first = dayToMs(firstPoint.date) as number;
+  const last = dayToMs(lastPoint.date) as number;
+  const gridStart = first - weekdayOf(firstPoint.date) * DAY_MS;
+  const gridEnd = last + (6 - weekdayOf(lastPoint.date)) * DAY_MS;
   const daily = new Map(timeline.map((point) => [point.date, point.daily]));
 
   const weeks: HeatmapWeek[] = [];
@@ -170,7 +172,7 @@ export function growthPaths(
   height: number,
 ): { area: string; line: string } {
   if (!timeline.length) return { area: "", line: "" };
-  const peak = timeline[timeline.length - 1].total;
+  const peak = timeline[timeline.length - 1]!.total;
   const span = Math.max(timeline.length - 1, 1);
   const points = timeline.map((point, index) => {
     const x = (index / span) * width;
@@ -178,13 +180,17 @@ export function growthPaths(
     return { x, y };
   });
 
-  const steps: string[] = [`M ${round(points[0].x)} ${round(points[0].y)}`];
+  const firstPoint = points[0]!;
+  const lastPoint = points[points.length - 1]!;
+  const steps: string[] = [`M ${round(firstPoint.x)} ${round(firstPoint.y)}`];
   for (let index = 1; index < points.length; index += 1) {
-    steps.push(`L ${round(points[index].x)} ${round(points[index - 1].y)}`);
-    steps.push(`L ${round(points[index].x)} ${round(points[index].y)}`);
+    const current = points[index]!;
+    const previous = points[index - 1]!;
+    steps.push(`L ${round(current.x)} ${round(previous.y)}`);
+    steps.push(`L ${round(current.x)} ${round(current.y)}`);
   }
   const line = steps.join(" ");
-  const closing = `L ${round(points[points.length - 1].x)} ${height} L ${round(points[0].x)} ${height} Z`;
+  const closing = `L ${round(lastPoint.x)} ${height} L ${round(firstPoint.x)} ${height} Z`;
   return { area: `${line} ${closing}`, line };
 }
 

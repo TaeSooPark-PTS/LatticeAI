@@ -94,7 +94,7 @@ describe("useRealtimeStream", () => {
       wrapper: makeWrapper(qc),
     });
 
-    const es = MockEventSource.instances[0];
+    const es = MockEventSource.instances[0]!;
     expect(es.url).toContain("/realtime/stream?live=1");
     expect(es.url).not.toContain("workspace_id=");
     expect(es.withCredentials).toBe(true);
@@ -132,8 +132,8 @@ describe("useRealtimeStream", () => {
       "realtimeFeed",
     ]);
     expect(cached?.data.events).toHaveLength(2);
-    expect(cached?.data.events[0].event_type).toBe("capture");
-    expect(cached?.data.events[1].seq).toBe(10);
+    expect(cached?.data.events[0]!.event_type).toBe("capture");
+    expect(cached?.data.events[1]!.seq).toBe(10);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["presence"] });
 
     // Error triggers polling fallback and scheduled reconnect
@@ -151,7 +151,7 @@ describe("useRealtimeStream", () => {
 
     // Trigger error again so cleanup clears pending reconnect timer cleanly
     act(() => {
-      MockEventSource.instances[1].onerror?.();
+      MockEventSource.instances[1]!.onerror?.();
     });
     unmount();
 

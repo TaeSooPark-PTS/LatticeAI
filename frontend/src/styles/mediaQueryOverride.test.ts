@@ -127,7 +127,7 @@ const declares = (body: string, property: string) =>
 
 const valueOf = (body: string, property: string) => {
   const match = body.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;}]+)`, "m"));
-  return match ? match[1].trim() : null;
+  return match ? match[1]!.trim() : null;
 };
 
 describe("a media query that re-declares display also states the axis", () => {

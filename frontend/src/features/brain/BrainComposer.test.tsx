@@ -309,7 +309,7 @@ describe("BrainComposer file inputs", () => {
     const file = new File(["fake-bytes"], "photo.png", { type: "image/png" });
     fireEvent.change(imageInput(container), { target: { files: [file] } });
     await waitFor(() => expect(props.onImageDataChange).toHaveBeenCalledTimes(1));
-    expect(String(vi.mocked(props.onImageDataChange).mock.calls[0][0])).toMatch(/^data:/);
+    expect(String(vi.mocked(props.onImageDataChange).mock.calls[0]![0])).toMatch(/^data:/);
   });
 
   it("ignores an image change with no file selected", () => {

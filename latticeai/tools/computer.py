@@ -130,7 +130,7 @@ def computer_ui_inspect(app: Optional[str] = None) -> Dict[str, Any]:
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 frontmost = proc.stdout.strip()
-        except Exception:
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
             quiet()
         return {
             "available": False,
@@ -167,7 +167,7 @@ def _init_computer_use():
         _pag.PAUSE = 0.25
         _pyautogui = _pag
         _CU_AVAILABLE = True
-    except Exception:
+    except (ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
         quiet()
 
 _init_computer_use()

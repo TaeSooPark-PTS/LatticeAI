@@ -124,14 +124,14 @@ class ToolDispatchService:
             if not candidate.is_absolute():
                 candidate = Path(AGENT_ROOT) / candidate
             return candidate.exists()
-        except Exception:
+        except (OSError, ValueError, TypeError, RuntimeError):
             return False
 
     def user_role(self, current_user: str) -> str:
         users = self.load_users()
         try:
             return str(self.get_user_role(current_user, users) or "user")
-        except Exception:
+        except (OSError, ValueError, TypeError, RuntimeError, KeyError, AttributeError):
             return "user"
 
 

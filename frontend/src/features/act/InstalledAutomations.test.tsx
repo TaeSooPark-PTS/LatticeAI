@@ -51,9 +51,9 @@ describe("InstalledAutomations", () => {
     const cards = await screen.findAllByTestId("installed-automation-card");
     expect(cards).toHaveLength(2);
     const lines = screen.getAllByTestId("automation-last-execution");
-    expect(lines[0].textContent).toContain("마지막 실행");
-    expect(lines[0].textContent).toContain("ok — 3 step(s) recorded");
-    expect(lines[1].textContent).toContain("아직 실행 기록이 없습니다");
+    expect(lines[0]!.textContent).toContain("마지막 실행");
+    expect(lines[0]!.textContent).toContain("ok — 3 step(s) recorded");
+    expect(lines[1]!.textContent).toContain("아직 실행 기록이 없습니다");
   });
 
   it("dry-runs first and only then unlocks the real run", async () => {
@@ -130,7 +130,7 @@ describe("InstalledAutomations", () => {
     renderWithClient(<InstalledAutomations language="ko" />);
     const runButtons = await screen.findAllByRole("button", { name: /지금 한 번 실행/ });
     expect(runButtons).toHaveLength(2);
-    await userEvent.click(runButtons[0]);
+    await userEvent.click(runButtons[0]!);
 
     // The clicked card reports the dry run; its sibling keeps its label but is locked.
     await screen.findByRole("button", { name: /모의 실행 중/ });

@@ -59,8 +59,8 @@ describe("ActPage", () => {
       const view = render({}, {}, { initialTab });
       await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
       const [top, sub] = screen.getAllByRole("tablist");
-      expect(within(top).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
-      expect(within(sub).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true");
+      expect(within(top!).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
+      expect(within(sub!).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true");
       view.unmount();
     }
   });
@@ -76,22 +76,22 @@ describe("ActPage", () => {
     render({}, {}, { initialTab: "runs" });
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
     const [top, sub] = screen.getAllByRole("tablist");
-    expect(within(top).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
-    expect(within(sub).getByRole("tab", { name: "최근 실행 내역" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(top!).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(sub!).getByRole("tab", { name: "최근 실행 내역" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("ignores an initial tab it does not recognise and stays on the default", async () => {
     render({}, {}, { initialTab: "not-a-real-tab" });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     const [top] = screen.getAllByRole("tablist");
-    expect(within(top).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(top!).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("hides the advanced-only tabs in basic mode", async () => {
     render({}, { mode: "basic" });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     const [top] = screen.getAllByRole("tablist");
-    expect(within(top).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["실행", "목표", "레시피"]);
+    expect(within(top!).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["실행", "목표", "레시피"]);
   });
 
   it("captions every tab with its own panel, including the last one", async () => {
@@ -115,7 +115,7 @@ describe("ActPage", () => {
 
     for (const [tabName, heading] of captions) {
       const [top] = screen.getAllByRole("tablist");
-      await userEvent.click(within(top).getByRole("tab", { name: tabName }));
+      await userEvent.click(within(top!).getByRole("tab", { name: tabName }));
       await waitFor(() => expect(document.querySelector("h1.page-title")?.textContent).toBe(heading));
     }
   });
@@ -183,7 +183,7 @@ describe("ActPage", () => {
 
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
     const [, sub] = screen.getAllByRole("tablist");
-    await userEvent.click(within(sub).getByRole("tab", { name: /실행/ }));
+    await userEvent.click(within(sub!).getByRole("tab", { name: /실행/ }));
 
     await waitFor(() => expect(screen.getByText("설치된 자동화")).toBeTruthy());
     // getAllByRole returns document order, which is the reading order here.
@@ -209,7 +209,7 @@ describe("ActPage", () => {
     });
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
     const [, sub] = screen.getAllByRole("tablist");
-    await userEvent.click(within(sub).getByRole("tab", { name: /실행/ }));
+    await userEvent.click(within(sub!).getByRole("tab", { name: /실행/ }));
     await waitFor(() => expect(screen.getByTestId("installed-automations")).toBeTruthy());
     expect(screen.getByText("매일 기억 요약")).toBeTruthy();
   });
@@ -404,14 +404,14 @@ describe("ActPage", () => {
       const resumeApproved = screen.getAllByRole("button", { name: "승인 후 재개" });
       expect(resumeApproved).toHaveLength(1);
 
-      await userEvent.click(resumeApproved[0]);
+      await userEvent.click(resumeApproved[0]!);
       await waitFor(() => expect(latticeApi.resumeWorkflowRun).toHaveBeenCalledWith("w-1", true));
       await userEvent.click(screen.getByRole("button", { name: "거부 후 재개" }));
       await waitFor(() => expect(latticeApi.resumeWorkflowRun).toHaveBeenLastCalledWith("w-1", false));
 
       // The workflow run's stop button calls stopWorkflowRun, not stopAgentRun.
       const stopButtons = screen.getAllByRole("button", { name: "중지" });
-      await userEvent.click(stopButtons[1]);
+      await userEvent.click(stopButtons[1]!);
       await waitFor(() => expect(latticeApi.stopWorkflowRun).toHaveBeenCalledWith("w-1"));
     });
 
@@ -432,9 +432,9 @@ describe("ActPage", () => {
       render({}, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
       const [, sub] = screen.getAllByRole("tablist");
-      expect(within(sub).getByRole("tab", { name: "최근 실행 내역" }).getAttribute("aria-selected")).toBe("true");
-      await userEvent.click(within(sub).getByRole("tab", { name: "검토함" }));
-      await waitFor(() => expect(within(sub).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true"));
+      expect(within(sub!).getByRole("tab", { name: "최근 실행 내역" }).getAttribute("aria-selected")).toBe("true");
+      await userEvent.click(within(sub!).getByRole("tab", { name: "검토함" }));
+      await waitFor(() => expect(within(sub!).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true"));
     });
 
     it("titles a run from a plain string input and stops it", async () => {
@@ -582,9 +582,9 @@ describe("ActPage", () => {
       // appears twice: once as a graph node label, once in the definitions list.
       expect(screen.getAllByText("Plain Flow").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Legacy Flow").length).toBeGreaterThan(0);
-      await userEvent.click(screen.getAllByRole("button", { name: "실행" })[0]);
+      await userEvent.click(screen.getAllByRole("button", { name: "실행" })[0]!);
       await waitFor(() => expect(latticeApi.runWorkflow).toHaveBeenCalled());
-      await userEvent.click(screen.getAllByRole("button", { name: "내보내기" })[0]);
+      await userEvent.click(screen.getAllByRole("button", { name: "내보내기" })[0]!);
       await waitFor(() => expect(latticeApi.exportWorkflow).toHaveBeenCalled());
 
       // Manual create + import.

@@ -78,6 +78,6 @@ export function humanizeModelId(id: string): string {
   if (!words) return id;
   return words
     .split(" ")
-    .map((word) => (/^[a-z]/.test(word) ? word[0].toUpperCase() + word.slice(1) : word))
+    .map((word) => (/^[a-z]/.test(word) ? word[0]!.toUpperCase() + word.slice(1) : word))
     .join(" ");
 }

@@ -246,17 +246,19 @@ _STRIP_BLOCK_PATTERNS = [
 ]
 
 
-def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
-    """Strip noise elements and distill HTML into structured text, title, and links."""
-    cleaned = str(html_text or "")
-    for pat in _STRIP_BLOCK_PATTERNS:
-        cleaned = pat.sub(" ", cleaned)
+_HEADING_PREFIXES = {
+    "h1": "\n\n# ",
+    "h2": "\n\n## ",
+    "h3": "\n\n### ",
+    "h4": "\n\n#### ",
+    "h5": "\n\n#### ",
+    "h6": "\n\n#### ",
+}
+_BLOCK_BREAK_TAGS = frozenset({"p", "article", "section", "main", "blockquote", "pre"})
+_LINE_BREAK_TAGS = frozenset({"div", "header", "ul", "ol", "table", "br", "hr"})
 
-    title = ""
-    title_match = re.search(r"(?is)<title\b[^>]*>(.*?)</title>", cleaned)
-    if title_match:
-        title = _collapse_ws(html.unescape(_strip_all_tags(title_match.group(1))))
 
+def _extract_html_links(cleaned: str, base_url: str) -> List[str]:
     links: List[str] = []
     for match in re.finditer(r"(?is)<a\b([^>]*)>(.*?)</a>", cleaned):
         if len(links) >= 15:
@@ -276,67 +278,39 @@ def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
         formatted = f"[{label}]({resolved})"
         if formatted not in links:
             links.append(formatted)
+    return links
 
-    body_html = re.sub(r"(?is)<head\b[^>]*>.*?</head>", "\n", cleaned)
 
-    out_parts: List[str] = []
-    in_tr = False
-    cell_in_row = 0
-    idx = 0
-    length = len(body_html)
+def _apply_distilled_tag(
+    tag_content: str, out_parts: List[str], in_tr: bool, cell_in_row: int
+) -> Tuple[bool, int]:
+    is_closing = tag_content.startswith("/")
+    tag_body = tag_content[1:].strip() if is_closing else tag_content.rstrip("/").strip()
+    tag_name = re.split(r"[\s/]+", tag_body, maxsplit=1)[0].lower() if tag_body else ""
 
-    while idx < length:
-        if body_html[idx] == "<":
-            close_idx = body_html.find(">", idx)
-            if close_idx != -1:
-                tag_content = body_html[idx + 1 : close_idx].strip()
-                is_closing = tag_content.startswith("/")
-                tag_body = tag_content[1:].strip() if is_closing else tag_content.rstrip("/").strip()
-                tag_name = re.split(r"[\s/]+", tag_body, maxsplit=1)[0].lower() if tag_body else ""
+    if tag_name in _HEADING_PREFIXES:
+        out_parts.append("\n\n" if is_closing else _HEADING_PREFIXES[tag_name])
+    elif tag_name == "li":
+        out_parts.append("\n" if is_closing else "\n- ")
+    elif tag_name == "tr":
+        if is_closing:
+            if in_tr:
+                out_parts.append(" |\n")
+            return False, 0
+        out_parts.append("\n| ")
+        return True, 0
+    elif not is_closing and tag_name in ("td", "th"):
+        if in_tr and cell_in_row > 0:
+            out_parts.append(" | ")
+        return in_tr, cell_in_row + 1
+    elif tag_name in _BLOCK_BREAK_TAGS:
+        out_parts.append("\n\n")
+    elif tag_name in _LINE_BREAK_TAGS:
+        out_parts.append("\n")
+    return in_tr, cell_in_row
 
-                if not is_closing and tag_name == "h1":
-                    out_parts.append("\n\n# ")
-                elif not is_closing and tag_name == "h2":
-                    out_parts.append("\n\n## ")
-                elif not is_closing and tag_name == "h3":
-                    out_parts.append("\n\n### ")
-                elif not is_closing and tag_name in ("h4", "h5", "h6"):
-                    out_parts.append("\n\n#### ")
-                elif is_closing and tag_name in ("h1", "h2", "h3", "h4", "h5", "h6"):
-                    out_parts.append("\n\n")
-                elif not is_closing and tag_name == "li":
-                    out_parts.append("\n- ")
-                elif is_closing and tag_name == "li":
-                    out_parts.append("\n")
-                elif not is_closing and tag_name == "tr":
-                    in_tr = True
-                    cell_in_row = 0
-                    out_parts.append("\n| ")
-                elif not is_closing and tag_name in ("td", "th"):
-                    if in_tr and cell_in_row > 0:
-                        out_parts.append(" | ")
-                    cell_in_row += 1
-                elif is_closing and tag_name == "tr":
-                    if in_tr:
-                        out_parts.append(" |\n")
-                    in_tr = False
-                    cell_in_row = 0
-                elif tag_name in ("p", "article", "section", "main", "blockquote", "pre"):
-                    out_parts.append("\n\n")
-                elif tag_name in ("div", "header", "ul", "ol", "table", "br", "hr"):
-                    out_parts.append("\n")
 
-                idx = close_idx + 1
-                continue
-
-        next_tag = body_html.find("<", idx)
-        if next_tag == -1:
-            next_tag = length
-        chunk = html.unescape(body_html[idx:next_tag])
-        out_parts.append(re.sub(r"[\r\n\t]+", " ", chunk))
-        idx = next_tag
-
-    raw_text = "".join(out_parts)
+def _normalize_distilled_lines(raw_text: str) -> str:
     lines: List[str] = []
     blank_streak = 0
     for raw_line in raw_text.splitlines():
@@ -350,8 +324,52 @@ def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
             lines.append(collapsed)
     while lines and not lines[-1]:
         lines.pop()
+    return "\n".join(lines)
 
-    return DistilledPage(title=title, text="\n".join(lines), links=links)
+
+def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
+    """Strip noise elements and distill HTML into structured text, title, and links."""
+    cleaned = str(html_text or "")
+    for pat in _STRIP_BLOCK_PATTERNS:
+        cleaned = pat.sub(" ", cleaned)
+
+    title = ""
+    title_match = re.search(r"(?is)<title\b[^>]*>(.*?)</title>", cleaned)
+    if title_match:
+        title = _collapse_ws(html.unescape(_strip_all_tags(title_match.group(1))))
+
+    links = _extract_html_links(cleaned, base_url)
+    body_html = re.sub(r"(?is)<head\b[^>]*>.*?</head>", "\n", cleaned)
+
+    out_parts: List[str] = []
+    in_tr = False
+    cell_in_row = 0
+    idx = 0
+    length = len(body_html)
+
+    while idx < length:
+        if body_html[idx] == "<":
+            close_idx = body_html.find(">", idx)
+            if close_idx != -1:
+                tag_content = body_html[idx + 1 : close_idx].strip()
+                in_tr, cell_in_row = _apply_distilled_tag(
+                    tag_content, out_parts, in_tr, cell_in_row
+                )
+                idx = close_idx + 1
+                continue
+
+        next_tag = body_html.find("<", idx)
+        if next_tag == -1:
+            next_tag = length
+        chunk = html.unescape(body_html[idx:next_tag])
+        out_parts.append(re.sub(r"[\r\n\t]+", " ", chunk))
+        idx = next_tag
+
+    return DistilledPage(
+        title=title,
+        text=_normalize_distilled_lines("".join(out_parts)),
+        links=links,
+    )
 
 
 def sanitize_untrusted_web_text(text: str) -> Tuple[str, int]:

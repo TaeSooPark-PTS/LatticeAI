@@ -144,7 +144,7 @@ function makeModel(nodes: GraphNode[]): ExplorerModel {
 const THREE = makeModel([makeNode("a", "노드 A"), makeNode("b", "노드 B"), makeNode("c", "노드 C")]);
 
 function lastCy() {
-  return h.state.instances[h.state.instances.length - 1];
+  return h.state.instances[h.state.instances.length - 1]!;
 }
 
 describe("CytoscapeGraph", () => {

@@ -66,7 +66,7 @@ try:
         ModelCapability,
         get_all_capabilities,
     )
-except Exception as e:  # pragma: no cover - import guard for standalone runs
+except (ImportError, OSError, RuntimeError, SyntaxError) as e:  # pragma: no cover - import guard for standalone runs
     print("ERROR: Could not import model_capability_registry:", e)
     sys.exit(2)
 
@@ -134,7 +134,7 @@ def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[
         # 404 = gone. 401 = the Hub's answer for "gone or private" to an
         # anonymous client; either way our users cannot download it.
         return None, int(e.code)
-    except Exception as e:
+    except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError) as e:
         print(f"  net error {url}: {type(e).__name__}")
         return None, None
 

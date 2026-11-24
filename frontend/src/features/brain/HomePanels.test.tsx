@@ -202,7 +202,7 @@ describe("BrainBriefPanel", () => {
 
     const actions = screen.getAllByRole("button");
     expect(actions).toHaveLength(3);
-    fireEvent.click(actions[0]);
+    fireEvent.click(actions[0]!);
     expect(onAction).toHaveBeenCalledWith(brief.nextActions[0]);
   });
 

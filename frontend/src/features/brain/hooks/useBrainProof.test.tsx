@@ -130,7 +130,7 @@ describe("useBrainProof", () => {
     });
 
     expect(attached).toBe(true);
-    expect(useConversationSession.getState().messages[0].proof).toBeUndefined();
+    expect(useConversationSession.getState().messages[0]!.proof).toBeUndefined();
   });
 
   it("attachAnswerProof reports an unavailable proof with the server reason or a fallback", async () => {

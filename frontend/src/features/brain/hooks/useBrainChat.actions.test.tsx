@@ -52,9 +52,9 @@ describe("handleApprovalResolved", () => {
       } });
     });
 
-    const reply = result.current.messages[1];
+    const reply = result.current.messages[1]!;
     expect(reply.content).toBe("정리 끝");
-    expect(reply.files?.[0].filename).toBe("정리.md");
+    expect(reply.files?.[0]!.filename).toBe("정리.md");
     expect(reply.agentState).toBe("NEEDS_REVIEW");
     expect(reply.loopSummary?.total).toBe(2);
     expect(reply.runExplanation?.headline).toBe("확인 필요");
@@ -70,7 +70,7 @@ describe("handleApprovalResolved", () => {
       result.current.handleApprovalResolved(1, { kind: "finished", payload: {} });
     });
 
-    const reply = result.current.messages[1];
+    const reply = result.current.messages[1]!;
     expect(reply.content).toBe("이미 흐른 답");
     expect(reply.agentSteps).toEqual([{ phase: "plan", event: "planned" }]);
     expect(reply.files).toBeUndefined();
@@ -86,7 +86,7 @@ describe("handleApprovalResolved", () => {
       result.current.handleApprovalResolved(1, { kind: "finished", payload: { response: "그냥 끝" } });
     });
 
-    const reply = result.current.messages[1];
+    const reply = result.current.messages[1]!;
     expect(reply.content).toBe("그냥 끝");
     expect(reply.agentSteps).toBeUndefined();
     expect(reply.approval?.status).toBe("approved");
@@ -99,28 +99,28 @@ describe("handleApprovalResolved", () => {
     act(() => {
       result.current.handleApprovalResolved(1, { kind: "error", reason: "토큰 불일치" });
     });
-    expect(result.current.messages[1].approval).toMatchObject({ status: "error", errorReason: "토큰 불일치" });
+    expect(result.current.messages[1]!.approval).toMatchObject({ status: "error", errorReason: "토큰 불일치" });
 
     seedApproval();
     act(() => {
       result.current.handleApprovalResolved(1, { kind: "cancelled" });
     });
-    expect(result.current.messages[1].approval?.status).toBe("cancelled");
-    expect(result.current.messages[1].approval?.replanMessage).toBeUndefined();
+    expect(result.current.messages[1]!.approval?.status).toBe("cancelled");
+    expect(result.current.messages[1]!.approval?.replanMessage).toBeUndefined();
 
     seedApproval();
     act(() => {
       result.current.handleApprovalResolved(1, { kind: "expired" });
     });
-    expect(result.current.messages[1].approval?.status).toBe("expired");
-    expect(result.current.messages[1].approval?.replanMessage).toBeUndefined();
+    expect(result.current.messages[1]!.approval?.status).toBe("expired");
+    expect(result.current.messages[1]!.approval?.replanMessage).toBeUndefined();
 
     seedApproval();
     act(() => {
       result.current.handleApprovalResolved(1, { kind: "expired", replanMessage: "원래 요청" });
     });
-    expect(result.current.messages[1].approval).toMatchObject({ status: "expired", replanMessage: "원래 요청" });
-    expect(result.current.messages[1].content).toBe("승인 대기 중");
+    expect(result.current.messages[1]!.approval).toMatchObject({ status: "expired", replanMessage: "원래 요청" });
+    expect(result.current.messages[1]!.content).toBe("승인 대기 중");
   });
 
   it("resolving a message that has no approval is a no-op", () => {
@@ -156,7 +156,7 @@ describe("createActionItem", () => {
     });
 
     expect(saved).toBe(true);
-    expect(reviewSpy.mock.calls[0][0]).toMatchObject({
+    expect(reviewSpy.mock.calls[0]![0]).toMatchObject({
       title: "다음 주 준비물 알려줘",
       summary: "할 일 정리",
       source: "chat_followup",
@@ -190,7 +190,7 @@ describe("createActionItem", () => {
     });
 
     expect(saved).toBe(false);
-    expect(reviewSpy.mock.calls[0][0]).toMatchObject({
+    expect(reviewSpy.mock.calls[0]![0]).toMatchObject({
       title: t("ko", "brain.action.defaultTitle"),
       payload: { conversation_id: "" },
     });
@@ -284,7 +284,7 @@ describe("handleProactiveAction", () => {
       await result.current.handleProactiveAction({ ...baseAction, id: "del-q", intent: "delegate", prompt: "정리" });
     });
 
-    expect(result.current.proactiveActivities[0].detail).toContain(t("ko", "ui.status.unavailable"));
+    expect(result.current.proactiveActivities[0]!.detail).toContain(t("ko", "ui.status.unavailable"));
   });
 
   it("review actions save through the follow-up path, honest on failure", async () => {

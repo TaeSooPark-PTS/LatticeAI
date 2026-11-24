@@ -106,9 +106,9 @@ describe("evidence payload parsing", () => {
       },
     });
 
-    expect(proof.recall.items[0].kind).toBe("Image");
-    expect(proof.recall.items[0].caption).toBe("A whiteboard");
-    expect(proof.recall.items[0].thumbnail).toBe(PIXEL);
+    expect(proof.recall.items[0]!.kind).toBe("Image");
+    expect(proof.recall.items[0]!.caption).toBe("A whiteboard");
+    expect(proof.recall.items[0]!.thumbnail).toBe(PIXEL);
   });
 
   it("drops a thumbnail that is not an inline image", () => {
@@ -124,8 +124,8 @@ describe("evidence payload parsing", () => {
     });
 
     // A remote src would make an evidence card phone home; a non-string is junk.
-    expect(proof.recall.items[0].thumbnail).toBe("");
-    expect(proof.recall.items[1].thumbnail).toBe("");
+    expect(proof.recall.items[0]!.thumbnail).toBe("");
+    expect(proof.recall.items[1]!.thumbnail).toBe("");
   });
 });
 

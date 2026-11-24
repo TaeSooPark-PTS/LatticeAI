@@ -339,7 +339,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 "status": "ok",
                 "detail": f"Hugging Face model {self._model_name} loaded ({backend})",
             }
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -427,7 +427,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
         try:
             self._load()
             return {"status": "ok", "detail": f"MLX model {self._cfg.model} loaded"}
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -493,12 +493,15 @@ class OllamaEmbeddingProvider(_NetworkEmbeddingProvider):
     def health(self) -> Dict[str, Any]:
         try:
             import httpx
-
+        except ImportError as exc:
+            return {"status": "unavailable", "detail": f"Ollama unreachable: {exc}"}
+        _http_error: type[Exception] = getattr(httpx, "HTTPError", OSError)
+        try:
             with httpx.Client(timeout=min(self._cfg.timeout, 5.0)) as client:
                 r = client.get(f"{self._base}/api/tags")
                 r.raise_for_status()
             return {"status": "ok", "detail": f"Ollama reachable at {self._base}"}
-        except Exception as exc:
+        except (_http_error, OSError, ValueError, TypeError, RuntimeError) as exc:
             return {"status": "unavailable", "detail": f"Ollama unreachable: {exc}"}
 
 
@@ -540,7 +543,7 @@ class OpenAICompatibleEmbeddingProvider(_NetworkEmbeddingProvider):
         try:
             self._embed_raw(["ping"])
             return {"status": "ok", "detail": f"{self._base} reachable"}
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -588,7 +591,7 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
         try:
             self._load()
             return {"status": "ok", "detail": f"custom target {self._target_ref} loaded"}
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -729,7 +732,7 @@ def resolve_embedder(
         prov = build_embedding_provider(
             requested, model=model, base_url=base_url, api_key=api_key, dim=dim, timeout=timeout, extra=extra
         )
-    except Exception as exc:
+    except (ValueError, TypeError, RuntimeError, OSError, KeyError, AttributeError) as exc:
         fallback = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
         return ResolvedEmbedder(
             fallback, requested, "hash", True,
@@ -740,7 +743,7 @@ def resolve_embedder(
     if probe:
         try:
             health = prov.health()
-        except Exception as exc:  # provider health must never crash startup
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:  # provider health must never crash startup
             health = {"status": "unavailable", "detail": str(exc)}
     else:
         health = {"status": "unknown", "detail": "not probed"}

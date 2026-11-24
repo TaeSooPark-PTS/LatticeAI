@@ -58,7 +58,7 @@ def _sessions_file(data_dir: Optional[Path] = None) -> Path:
         try:
             from latticeai.core.config import Config
             data_dir = Config.from_env().data_dir
-        except Exception:
+        except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError):
             import os
             data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
     d = data_dir
@@ -84,7 +84,7 @@ def load_sessions(data_dir: Optional[Path] = None) -> Dict[str, tuple]:
             if migrated:
                 persist_sessions(sessions, data_dir)
             return sessions
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
         logging.warning("load_sessions failed (starting empty): %s", e)
     return {}
 
@@ -95,7 +95,7 @@ def persist_sessions(sessions: Dict[str, tuple], data_dir: Optional[Path] = None
             _sessions_file(data_dir),
             {key: list(value) for key, value in sessions.items()},
         )
-    except Exception as e:
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
         logging.warning("persist_sessions failed: %s", e)
 
 

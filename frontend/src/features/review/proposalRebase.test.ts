@@ -93,7 +93,7 @@ describe("rebaseProposal", () => {
     const outcome = await rebaseProposal("prop-1");
     expect(outcome).toBe("rebased");
     expect(create).toHaveBeenCalledTimes(1);
-    const body = create.mock.calls[0][0];
+    const body = create.mock.calls[0]![0];
     expect(body.source).toBe("change_proposal");
     expect(body.kind).toBe("file_update");
     const payload = body.payload as Record<string, unknown>;
@@ -160,7 +160,7 @@ describe("rebaseProposal", () => {
     const { create, reject } = mockRebaseWrites({ current: MISSING_FILE });
 
     expect(await rebaseProposal("prop-1")).toBe("rebased");
-    const payload = create.mock.calls[0][0].payload as Record<string, unknown>;
+    const payload = create.mock.calls[0]![0].payload as Record<string, unknown>;
     // No base to hash, so the snapshot records "the file did not exist".
     expect(payload.base_exists).toBe(false);
     expect(payload.base_sha256).toBe("");
@@ -182,7 +182,7 @@ describe("rebaseProposal", () => {
     const { create } = mockRebaseWrites();
 
     expect(await rebaseProposal("prop-1")).toBe("rebased");
-    const body = create.mock.calls[0][0];
+    const body = create.mock.calls[0]![0];
     expect(body.kind).toBe("file_delete");
     const payload = body.payload as Record<string, unknown>;
     // A delete carries no replacement content, and never counts as a small edit.
@@ -197,7 +197,7 @@ describe("rebaseProposal", () => {
     const { create } = mockRebaseWrites();
 
     await rebaseProposal("prop-1");
-    expect((create.mock.calls[0][0].payload as Record<string, unknown>).tier).toBe("large");
+    expect((create.mock.calls[0]![0].payload as Record<string, unknown>).tier).toBe("large");
   });
 
   it("omits the base snapshot entirely when WebCrypto is unavailable", async () => {
@@ -208,7 +208,7 @@ describe("rebaseProposal", () => {
     const { create } = mockRebaseWrites();
 
     await rebaseProposal("prop-1");
-    const payload = create.mock.calls[0][0].payload as Record<string, unknown>;
+    const payload = create.mock.calls[0]![0].payload as Record<string, unknown>;
     expect("base_sha256" in payload).toBe(false);
     expect("base_exists" in payload).toBe(false);
   });
@@ -218,8 +218,8 @@ describe("rebaseProposal", () => {
     const { create } = mockRebaseWrites();
 
     await rebaseProposal("prop-1");
-    expect(create.mock.calls[0][0].title).toBe("docs/a.md");
-    expect(create.mock.calls[0][0].summary).toBe("");
+    expect(create.mock.calls[0]![0].title).toBe("docs/a.md");
+    expect(create.mock.calls[0]![0].summary).toBe("");
   });
 
   it("throws when the fresh proposal cannot be staged", async () => {

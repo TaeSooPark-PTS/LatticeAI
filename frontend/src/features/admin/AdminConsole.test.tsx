@@ -81,7 +81,7 @@ describe("the console renders as its own surface", () => {
     const main = await screen.findByRole("main");
     expect(main).toBeTruthy();
 
-    fireEvent.click(within(main).getAllByRole("button")[0]);
+    fireEvent.click(within(main).getAllByRole("button")[0]!);
     expect(onBack).toHaveBeenCalled();
   });
 });
@@ -166,7 +166,7 @@ describe("log filters", () => {
     renderConsole();
     await screen.findByRole("main");
 
-    const search = screen.getAllByRole("textbox")[0];
+    const search = screen.getAllByRole("textbox")[0]!;
     fireEvent.change(search, { target: { value: "delete" } });
 
     await waitFor(() => {

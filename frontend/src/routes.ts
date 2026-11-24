@@ -109,7 +109,7 @@ export const commandRoutes = [
 export function parseHash() {
   const raw = window.location.hash.replace(/^#\/?/, "").replace(/^\/+/, "");
   const path = raw || "brain";
-  const normalized = path.split("?")[0];
+  const normalized = path.split("?")[0]!;
   const direct = directProductRoutes[normalized];
   if (direct) return { ...direct, path };
   const primary = productShellRoutes.find((route) => route.id === normalized);

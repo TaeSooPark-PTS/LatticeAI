@@ -249,12 +249,15 @@ def detect_ollama(
     base = (base_url or values.get(OLLAMA_BASE_ENV, "") or DEFAULT_OLLAMA_BASE).rstrip("/")
     try:
         import httpx
-
+    except ImportError as exc:
+        return Detection(source="none", detail=f"no Ollama server at {base}: {exc}")
+    _http_error: type[Exception] = getattr(httpx, "HTTPError", OSError)
+    try:
         with httpx.Client(timeout=timeout) as client:
             response = client.get(f"{base}/api/tags")
             response.raise_for_status()
             payload = response.json()
-    except Exception as exc:
+    except (_http_error, OSError, ValueError, TypeError, RuntimeError, AttributeError) as exc:
         return Detection(source="none", detail=f"no Ollama server at {base}: {exc}")
     names = [
         str(model.get("name") or "")

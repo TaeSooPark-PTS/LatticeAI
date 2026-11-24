@@ -175,7 +175,7 @@ def _shards_complete(model_dir: Path) -> bool:
         if isinstance(weight_map, dict) and weight_map:
             shards = {str(shard) for shard in weight_map.values() if shard}
             return all((model_dir / shard).exists() for shard in shards)
-    except Exception:
+    except (OSError, ValueError, TypeError, AttributeError):
         quiet()
     return True
 
@@ -563,7 +563,7 @@ def _download_single_hf_repo(
                         return result
 
                 tqdm_class = ProgressTqdm
-            except Exception:
+            except (ImportError, OSError, RuntimeError, TypeError, AttributeError):
                 tqdm_class = None
         else:
             try:
@@ -575,7 +575,7 @@ def _download_single_hf_repo(
                         return super().update(n)
 
                 tqdm_class = CancelOnlyTqdm
-            except Exception:
+            except (ImportError, OSError, RuntimeError, TypeError, AttributeError):
                 tqdm_class = None
 
         local_path = _call_hf_hub_download(
@@ -724,7 +724,15 @@ def download_hf_model(
                 raise
             last_error = exc
             break
-        except Exception as exc:
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            TimeoutError,
+            LookupError,
+            AttributeError,
+        ) as exc:
             last_error = exc
             has_more_candidates = idx + 1 < len(candidates)
             if has_more_candidates and (is_gated_or_auth_error(exc) or bool(mirrors)):

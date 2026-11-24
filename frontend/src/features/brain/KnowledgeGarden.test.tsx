@@ -49,7 +49,7 @@ describe("parseGarden", () => {
 
   it("shows degree as the detail for the frequent bed", () => {
     const frequent = parseGarden(PAYLOAD).beds.find((bed) => bed.id === "frequent")!;
-    expect(frequent.items[0].detail).toBe("12");
+    expect(frequent.items[0]!.detail).toBe("12");
   });
 
   it("reports unavailable gardens instead of inventing beds", () => {
