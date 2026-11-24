@@ -8,10 +8,10 @@
 //!
 //! The three that would silently diverge if written from instinct:
 //!
-//! * [`now_iso`] is `datetime.now().isoformat(timespec="seconds")` — **naive
-//!   local** time, no offset. Stamping UTC on a machine at UTC+9 would make
-//!   every record nine hours old to the sort in `timeline()`, which compares
-//!   these strings lexicographically against stamps Python wrote.
+//! * [`now_iso`] emits **offset-free UTC** (`YYYY-MM-DDTHH:MM:SS`), matching
+//!   both `lattice_core::graph_write::clock::SystemClock::now_iso` and Python's
+//!   `lattice_brain.utils.now_iso()`. Unifying both runtimes on offset-free UTC
+//!   keeps string-sorted timelines consistent across all host timezones.
 //! * [`py_dumps`] reproduces `json.dumps`'s *default* separators (`", "` and
 //!   `": "`), not the compact ones a REST body uses. `_json_hash` feeds its
 //!   output to sha256, so a missing space changes every generated id.

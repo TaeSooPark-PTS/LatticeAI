@@ -29,6 +29,38 @@ pub const NO_BACKEND_ENV: &str = "LATTICEAI_DESKTOP_NO_BACKEND";
 pub const DIRECT_ENV: &str = "LATTICEAI_DESKTOP_DIRECT";
 /// An explicit port, honoured verbatim.
 pub const PORT_ENV: &str = "LATTICEAI_PORT";
+/// The single loopback port pinned by production `tauri.conf.json` CSP and
+/// `capabilities/default.json` remote IPC URLs.
+pub const PINNED_PRODUCTION_PORT: u16 = DEFAULT_PORT;
+
+/// How port resolution reconciles runtime binding with Tauri security policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum PortPolicy {
+    /// Production build policy: pin the gateway origin to
+    /// [`PINNED_PRODUCTION_PORT`] (`4825`) so the webview origin never diverges
+    /// from `tauri.conf.json` `app.security.csp` and `capabilities/default.json`.
+    /// Never silently scans upward to an unreachable fallback port (`4826+`).
+    PinnedProduction,
+    /// Development build policy (`debug_assertions`, where `devCsp` allows
+    /// `http://127.0.0.1:*`): allows explicit `LATTICEAI_PORT` overrides and
+    /// upward fallback port scanning when `4825` is occupied.
+    AllowDynamicFallback,
+}
+
+impl PortPolicy {
+    /// The policy enforced for the current build profile.
+    pub const fn for_build() -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            Self::PinnedProduction
+        }
+        #[cfg(debug_assertions)]
+        {
+            Self::AllowDynamicFallback
+        }
+    }
+}
 
 /// How this shell is arranged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,30 +209,67 @@ fn next_safe_port(gateway_port: u16) -> u16 {
     }
 }
 
-/// The public port: an explicit `LATTICEAI_PORT` verbatim, else 4825 scanning
-/// upward.
+/// Resolve the public gateway port under the given [`PortPolicy`].
 ///
-/// An explicit port is an instruction, not a preference — if it is busy the
-/// shell must fail loudly on it rather than quietly answer somewhere else,
-/// because the whole point of setting it is that something else knows the
-/// number.
-pub fn resolve_port(probe: &dyn HostProbe) -> u16 {
-    let pinned = probe
+/// Under [`PortPolicy::PinnedProduction`], the gateway is pinned to
+/// [`PINNED_PRODUCTION_PORT`] (`4825`) so the runtime origin never diverges
+/// from `tauri.conf.json` CSP or `capabilities/default.json`:
+/// - Unset `LATTICEAI_PORT` returns `Ok(4825)` (never scans upward to `4826+`);
+///   if `4825` is occupied, `bind_loopback` fails fast with a user-facing error.
+/// - Any explicit `LATTICEAI_PORT` other than `4825` is rejected with a clear
+///   policy conflict error.
+///
+/// Under [`PortPolicy::AllowDynamicFallback`] (dev builds), an explicit
+/// `LATTICEAI_PORT` is honoured verbatim, else `4825` scans upward for a free
+/// port.
+pub fn resolve_port_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<u16, String> {
+    let raw_port = probe
         .env_var(PORT_ENV)
-        .and_then(|raw| raw.trim().parse::<u16>().ok())
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty());
+    let pinned = raw_port
+        .as_deref()
+        .and_then(|raw| raw.parse::<u16>().ok())
         .filter(|port| *port != 0);
-    match pinned {
-        Some(port) => port,
-        None => match find_free_port(DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS, &[]) {
-            Ok(port) => port,
-            Err(err) => {
-                eprintln!(
-                    "lattice-ai-desktop: port scan from {DEFAULT_PORT} failed ({err}); falling back to {DEFAULT_PORT}"
-                );
-                DEFAULT_PORT
+
+    match policy {
+        PortPolicy::PinnedProduction => match pinned {
+            Some(port) if port == PINNED_PRODUCTION_PORT => Ok(PINNED_PRODUCTION_PORT),
+            Some(port) => Err(format!(
+                "{PORT_ENV}={port} conflicts with production desktop security policy: \
+                 tauri.conf.json CSP and capabilities/default.json pin http://127.0.0.1:{PINNED_PRODUCTION_PORT}. \
+                 Unset {PORT_ENV} or set it to {PINNED_PRODUCTION_PORT}."
+            )),
+            None => {
+                if let Some(invalid) = raw_port {
+                    return Err(format!(
+                        "{PORT_ENV}={invalid:?} is invalid; production desktop security policy \
+                         pins http://127.0.0.1:{PINNED_PRODUCTION_PORT}."
+                    ));
+                }
+                Ok(PINNED_PRODUCTION_PORT)
             }
         },
+        PortPolicy::AllowDynamicFallback => match pinned {
+            Some(port) => Ok(port),
+            None => match find_free_port(DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS, &[]) {
+                Ok(port) => Ok(port),
+                Err(err) => {
+                    eprintln!(
+                        "lattice-ai-desktop: port scan from {DEFAULT_PORT} failed ({err}); falling back to {DEFAULT_PORT}"
+                    );
+                    Ok(DEFAULT_PORT)
+                }
+            },
+        },
     }
+}
+
+/// The public port in development mode: an explicit `LATTICEAI_PORT` verbatim,
+/// else 4825 scanning upward.
+#[cfg(test)]
+pub fn resolve_port(probe: &dyn HostProbe) -> u16 {
+    resolve_port_with_policy(probe, PortPolicy::AllowDynamicFallback).unwrap_or(DEFAULT_PORT)
 }
 
 /// `http://127.0.0.1:{port}`.
@@ -208,22 +277,35 @@ fn loopback(port: u16) -> String {
     format!("http://127.0.0.1:{port}")
 }
 
-/// Resolve the arrangement from the environment the probe reports.
-pub fn resolve(probe: &dyn HostProbe) -> Plan {
+/// Resolve the arrangement under an explicit [`PortPolicy`].
+pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<Plan, String> {
     let raw_external = probe
         .env_var(ORIGIN_ENV)
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
     if let Some(raw) = raw_external {
         if let Some(origin) = validate_external_origin(&raw) {
-            let host_port = origin_port(&origin).unwrap_or_else(|| resolve_port(probe));
-            return Plan {
+            let parsed_port = origin_port(&origin);
+            if policy == PortPolicy::PinnedProduction && parsed_port != Some(PINNED_PRODUCTION_PORT)
+            {
+                return Err(format!(
+                    "{ORIGIN_ENV}={origin:?} conflicts with production desktop security policy: \
+                     tauri.conf.json CSP and capabilities/default.json pin port {PINNED_PRODUCTION_PORT}. \
+                     Point {ORIGIN_ENV} at http://127.0.0.1:{PINNED_PRODUCTION_PORT} or \
+                     http://localhost:{PINNED_PRODUCTION_PORT}."
+                ));
+            }
+            let host_port = match parsed_port {
+                Some(port) => port,
+                None => resolve_port_with_policy(probe, policy)?,
+            };
+            return Ok(Plan {
                 topology: Topology::External,
                 worker_origin: origin.clone(),
                 origin,
                 worker_port: host_port,
                 gateway_port: None,
-            };
+            });
         }
         eprintln!(
             "lattice-ai-desktop: ignoring invalid {ORIGIN_ENV}={raw:?} \
@@ -249,7 +331,7 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
     // The default: the gateway takes the public port and the worker moves
     // behind it, on the first free port above — never the gateway's own and
     // never wrapping 65535 to 0.
-    let gateway_port = resolve_port(probe);
+    let gateway_port = resolve_port_with_policy(probe, policy)?;
     let start_port = next_safe_port(gateway_port);
     let worker_port = match find_free_port(start_port, DEFAULT_SCAN_ATTEMPTS, &[gateway_port]) {
         Ok(port) => port,
@@ -260,13 +342,20 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
             start_port
         }
     };
-    Plan {
+    Ok(Plan {
         topology: Topology::Gateway,
         origin: loopback(gateway_port),
         worker_origin: loopback(worker_port),
         worker_port,
         gateway_port: Some(gateway_port),
-    }
+    })
+}
+
+/// Resolve the arrangement from the environment the probe reports (dev dynamic policy).
+#[cfg(test)]
+pub fn resolve(probe: &dyn HostProbe) -> Plan {
+    resolve_with_policy(probe, PortPolicy::AllowDynamicFallback)
+        .expect("dynamic fallback policy never fails port resolution")
 }
 
 #[cfg(test)]
@@ -445,5 +534,100 @@ mod tests {
         assert_eq!(next_safe_port(65535), DEFAULT_PORT);
         assert_ne!(next_safe_port(65535), 0);
         assert_eq!(next_safe_port(4825), 4826);
+    }
+
+    #[test]
+    fn production_policy_pins_default_port_even_when_occupied() {
+        // Hold port 4825 if currently free so we exercise the real conflict path.
+        let _occupied = std::net::TcpListener::bind(("127.0.0.1", PINNED_PRODUCTION_PORT)).ok();
+
+        let port = resolve_port_with_policy(&StaticProbe::new(), PortPolicy::PinnedProduction)
+            .expect("unset LATTICEAI_PORT resolves to pinned 4825");
+        assert_eq!(
+            port, PINNED_PRODUCTION_PORT,
+            "production policy must never silently scan upward to 4826+"
+        );
+
+        let plan = resolve_with_policy(&StaticProbe::new(), PortPolicy::PinnedProduction)
+            .expect("gateway plan pins 4825");
+        assert_eq!(plan.gateway_port, Some(PINNED_PRODUCTION_PORT));
+        assert_eq!(
+            plan.origin,
+            format!("http://127.0.0.1:{PINNED_PRODUCTION_PORT}")
+        );
+        assert_ne!(
+            plan.worker_port, PINNED_PRODUCTION_PORT,
+            "internal worker still moves behind the pinned gateway port"
+        );
+
+        // Contrast: dev dynamic fallback scans upward when 4825 is occupied.
+        if _occupied.is_some() {
+            let dev_port =
+                resolve_port_with_policy(&StaticProbe::new(), PortPolicy::AllowDynamicFallback)
+                    .expect("dev fallback port");
+            assert!(
+                dev_port > PINNED_PRODUCTION_PORT,
+                "dev fallback scans upward when 4825 is held, got {dev_port}"
+            );
+        }
+    }
+
+    #[test]
+    fn production_policy_rejects_mismatched_ports_and_accepts_pinned_4825() {
+        let bad_port = StaticProbe::new().with_env(PORT_ENV, "4826");
+        let err = resolve_port_with_policy(&bad_port, PortPolicy::PinnedProduction)
+            .expect_err("non-4825 LATTICEAI_PORT must fail fast in production");
+        assert!(err.contains("4825"), "{err}");
+        assert!(err.contains("CSP"), "{err}");
+
+        let invalid_port = StaticProbe::new().with_env(PORT_ENV, "not-a-port");
+        let err = resolve_port_with_policy(&invalid_port, PortPolicy::PinnedProduction)
+            .expect_err("invalid LATTICEAI_PORT must fail fast in production");
+        assert!(err.contains("4825"), "{err}");
+
+        let ok_port = StaticProbe::new().with_env(PORT_ENV, "4825");
+        assert_eq!(
+            resolve_port_with_policy(&ok_port, PortPolicy::PinnedProduction),
+            Ok(4825)
+        );
+
+        let bad_external = StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100");
+        let err = resolve_with_policy(&bad_external, PortPolicy::PinnedProduction)
+            .expect_err("external origin on non-4825 port must fail fast in production");
+        assert!(err.contains("4825"), "{err}");
+
+        let ok_external = StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:4825");
+        let plan = resolve_with_policy(&ok_external, PortPolicy::PinnedProduction)
+            .expect("external origin on 4825 matches production CSP/capabilities");
+        assert_eq!(plan.topology, Topology::External);
+        assert_eq!(plan.worker_port, 4825);
+    }
+
+    #[test]
+    fn tauri_conf_csp_and_capabilities_match_pinned_production_port() {
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
+            .expect("valid tauri.conf.json");
+        let csp = conf["app"]["security"]["csp"]
+            .as_str()
+            .expect("app.security.csp string");
+        let pinned_origin = format!("http://127.0.0.1:{PINNED_PRODUCTION_PORT}");
+        assert!(
+            csp.contains(&pinned_origin),
+            "tauri.conf.json CSP must allow {pinned_origin}, got: {csp}"
+        );
+
+        let caps: serde_json::Value =
+            serde_json::from_str(include_str!("../capabilities/default.json"))
+                .expect("valid capabilities/default.json");
+        let urls: Vec<&str> = caps["remote"]["urls"]
+            .as_array()
+            .expect("remote.urls array")
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert!(
+            urls.contains(&pinned_origin.as_str()),
+            "capabilities/default.json must allow {pinned_origin}, got: {urls:?}"
+        );
     }
 }

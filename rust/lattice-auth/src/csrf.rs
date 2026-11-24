@@ -17,6 +17,7 @@ use axum::response::Response;
 use serde_json::json;
 
 use crate::cookies::has_session_cookie;
+pub use crate::messages::{CSRF_DENIED_DETAIL as DENIED_DETAIL, CSRF_ERROR_CODE};
 use crate::origin::{effective_host, normalize_origin, same_site, IpNetwork, Origin};
 use crate::pyjson::dumps_spaced;
 use crate::response::json_response_utf8;
@@ -24,17 +25,48 @@ use crate::response::json_response_utf8;
 /// Methods that must not change state; everything else is guarded.
 pub const SAFE_METHODS: [&str; 4] = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
-/// Standard English refusal detail for rejected cross-site origins.
-pub const DENIED_DETAIL: &str =
-    "Request origin could not be verified and was rejected. It may have been sent from another site.";
+/// Structured reason code naming which CSRF policy branch made the decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CsrfReason {
+    SafeMethod,
+    BearerAuth,
+    NoSessionCookie,
+    OpaqueOrigin,
+    NoOriginLoopbackBind,
+    NoOriginReachableBind,
+    SameSiteOrTrustedOrigin,
+    CrossSiteOrigin,
+}
+
+impl CsrfReason {
+    /// Stable wire-contract reason string serialized in 403 refusal responses.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SafeMethod => "safe-method",
+            Self::BearerAuth => "bearer-auth",
+            Self::NoSessionCookie => "no-session-cookie",
+            Self::OpaqueOrigin => "opaque-origin",
+            Self::NoOriginLoopbackBind => "no-origin-loopback-bind",
+            Self::NoOriginReachableBind => "no-origin-reachable-bind",
+            Self::SameSiteOrTrustedOrigin => "same-site-or-trusted-origin",
+            Self::CrossSiteOrigin => "cross-site-origin",
+        }
+    }
+}
+
+impl std::fmt::Display for CsrfReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// Why a request was allowed or refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CsrfDecision {
     /// Whether the request may proceed.
     pub allowed: bool,
-    /// The label that names the branch taken.
-    pub reason: &'static str,
+    /// Structured reason code naming the branch taken.
+    pub reason: CsrfReason,
 }
 
 /// Everything one CSRF decision needs, so the policy stays pure.
@@ -132,7 +164,7 @@ impl CsrfOriginPolicy {
     pub fn evaluate(&self, request: &CsrfRequest<'_>) -> CsrfDecision {
         let method = request.method.to_ascii_uppercase();
         if SAFE_METHODS.contains(&method.as_str()) {
-            return allow("safe-method");
+            return allow(CsrfReason::SafeMethod);
         }
         if request
             .authorization
@@ -142,16 +174,16 @@ impl CsrfOriginPolicy {
             .starts_with("bearer ")
         {
             // Not ambient: a cross-site page cannot attach this header.
-            return allow("bearer-auth");
+            return allow(CsrfReason::BearerAuth);
         }
         if !has_session_cookie(request.cookie_header) {
-            return allow("no-session-cookie");
+            return allow(CsrfReason::NoSessionCookie);
         }
 
         let mut stated = normalize_origin(request.origin);
         if stated.is_none() && request.origin.is_some_and(|value| !value.is_empty()) {
             // An opaque origin ("null") explicitly claims untrusted provenance.
-            return deny("opaque-origin");
+            return deny(CsrfReason::OpaqueOrigin);
         }
         if stated.is_none() {
             stated = normalize_origin(request.referer);
@@ -159,18 +191,18 @@ impl CsrfOriginPolicy {
                 return if self.bind_is_loopback {
                     // Non-browser client on the same machine (CLI, desktop
                     // shell, curl). Nothing on the network can reach this bind.
-                    allow("no-origin-loopback-bind")
+                    allow(CsrfReason::NoOriginLoopbackBind)
                 } else {
-                    deny("no-origin-reachable-bind")
+                    deny(CsrfReason::NoOriginReachableBind)
                 };
             }
         }
 
         let stated = stated.expect("checked above");
         if self.origin_is_trusted(&stated, request.host, request.forwarded_host, request.peer) {
-            allow("same-site-or-trusted-origin")
+            allow(CsrfReason::SameSiteOrTrustedOrigin)
         } else {
-            deny("cross-site-origin")
+            deny(CsrfReason::CrossSiteOrigin)
         }
     }
 
@@ -210,14 +242,14 @@ fn default_origins(server_host: &str, server_port: u16) -> Vec<String> {
     origins
 }
 
-fn allow(reason: &'static str) -> CsrfDecision {
+fn allow(reason: CsrfReason) -> CsrfDecision {
     CsrfDecision {
         allowed: true,
         reason,
     }
 }
 
-fn deny(reason: &'static str) -> CsrfDecision {
+fn deny(reason: CsrfReason) -> CsrfDecision {
     CsrfDecision {
         allowed: false,
         reason,
@@ -226,11 +258,11 @@ fn deny(reason: &'static str) -> CsrfDecision {
 
 /// The 403 body, written the way `core/csrf.py` writes it: `json.dumps` with
 /// Python's default separators, so the spaces after `:` and `,` are real.
-pub fn csrf_denied_response(reason: &str) -> Response {
+pub fn csrf_denied_response(reason: CsrfReason) -> Response {
     let body = dumps_spaced(&[
         ("detail", json!(DENIED_DETAIL)),
-        ("error", json!("csrf_origin_rejected")),
-        ("reason", json!(reason)),
+        ("error", json!(CSRF_ERROR_CODE)),
+        ("reason", json!(reason.as_str())),
     ]);
     json_response_utf8(StatusCode::FORBIDDEN, &body)
 }
@@ -255,7 +287,8 @@ mod tests {
     fn safe_methods_are_never_guarded() {
         for method in ["GET", "head", "OPTIONS", "trace"] {
             let decision = policy().evaluate(&request(method));
-            assert_eq!(decision, allow("safe-method"), "{method}");
+            assert_eq!(decision, allow(CsrfReason::SafeMethod), "{method}");
+            assert_eq!(decision.reason.as_str(), "safe-method");
         }
     }
 
@@ -265,16 +298,22 @@ mod tests {
         probe.authorization = Some("  Bearer abc  ");
         probe.cookie_header = Some("session_token=x");
         probe.origin = Some("https://evil.example");
-        assert_eq!(policy().evaluate(&probe), allow("bearer-auth"));
+        assert_eq!(policy().evaluate(&probe), allow(CsrfReason::BearerAuth));
     }
 
     #[test]
     fn no_session_cookie_is_nothing_to_forge() {
         let mut probe = request("POST");
         probe.origin = Some("https://evil.example");
-        assert_eq!(policy().evaluate(&probe), allow("no-session-cookie"));
+        assert_eq!(
+            policy().evaluate(&probe),
+            allow(CsrfReason::NoSessionCookie)
+        );
         probe.cookie_header = Some("other=1");
-        assert_eq!(policy().evaluate(&probe), allow("no-session-cookie"));
+        assert_eq!(
+            policy().evaluate(&probe),
+            allow(CsrfReason::NoSessionCookie)
+        );
     }
 
     #[test]
@@ -282,17 +321,23 @@ mod tests {
         let mut probe = request("POST");
         probe.cookie_header = Some("session_token=x");
         probe.origin = Some("null");
-        assert_eq!(policy().evaluate(&probe), deny("opaque-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::OpaqueOrigin));
     }
 
     #[test]
     fn no_origin_depends_on_the_bind() {
         let mut probe = request("POST");
         probe.cookie_header = Some("session_token=x");
-        assert_eq!(policy().evaluate(&probe), allow("no-origin-loopback-bind"));
+        assert_eq!(
+            policy().evaluate(&probe),
+            allow(CsrfReason::NoOriginLoopbackBind)
+        );
 
         let reachable = CsrfOriginPolicy::new(&[], "0.0.0.0", 4825, false, Vec::new());
-        assert_eq!(reachable.evaluate(&probe), deny("no-origin-reachable-bind"));
+        assert_eq!(
+            reachable.evaluate(&probe),
+            deny(CsrfReason::NoOriginReachableBind)
+        );
     }
 
     #[test]
@@ -302,10 +347,10 @@ mod tests {
         probe.referer = Some("http://127.0.0.1:4825/app");
         assert_eq!(
             policy().evaluate(&probe),
-            allow("same-site-or-trusted-origin")
+            allow(CsrfReason::SameSiteOrTrustedOrigin)
         );
         probe.referer = Some("https://evil.example/x");
-        assert_eq!(policy().evaluate(&probe), deny("cross-site-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));
     }
 
     #[test]
@@ -313,7 +358,7 @@ mod tests {
         let mut probe = request("POST");
         probe.cookie_header = Some("session_token=x");
         probe.origin = Some("https://evil.example");
-        assert_eq!(policy().evaluate(&probe), deny("cross-site-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));
 
         let trusted = CsrfOriginPolicy::new(
             &["https://evil.example".to_string()],
@@ -324,7 +369,7 @@ mod tests {
         );
         assert_eq!(
             trusted.evaluate(&probe),
-            allow("same-site-or-trusted-origin")
+            allow(CsrfReason::SameSiteOrTrustedOrigin)
         );
     }
 
@@ -339,20 +384,20 @@ mod tests {
         };
         assert_eq!(
             policy().evaluate(&probe),
-            allow("same-site-or-trusted-origin")
+            allow(CsrfReason::SameSiteOrTrustedOrigin)
         );
         // A proxy that rewrote Host is why the forwarded authority is resolved
         // first — but only from a peer that may forward.
         probe.host = Some("127.0.0.1:4826");
         probe.origin = Some("https://front.door");
-        assert_eq!(policy().evaluate(&probe), deny("cross-site-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));
         probe.forwarded_host = Some("front.door");
         probe.peer = Some("8.8.8.8");
-        assert_eq!(policy().evaluate(&probe), deny("cross-site-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));
         probe.peer = Some("127.0.0.1");
         assert_eq!(
             policy().evaluate(&probe),
-            allow("same-site-or-trusted-origin")
+            allow(CsrfReason::SameSiteOrTrustedOrigin)
         );
     }
 
@@ -364,7 +409,7 @@ mod tests {
             origin: Some("https://brain.example.org"),
             ..CsrfRequest::default()
         };
-        assert_eq!(policy().evaluate(&probe), deny("cross-site-origin"));
+        assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));
     }
 
     #[test]
@@ -391,7 +436,7 @@ mod tests {
 
     #[test]
     fn the_refusal_body_carries_python_spacing() {
-        let response = csrf_denied_response("cross-site-origin");
+        let response = csrf_denied_response(CsrfReason::CrossSiteOrigin);
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
         assert_eq!(
             response.headers().get("content-type").unwrap(),
@@ -406,6 +451,6 @@ mod tests {
         headers.insert("origin", "https://evil.example".parse().unwrap());
         headers.insert("host", "127.0.0.1:4825".parse().unwrap());
         let decision = policy().evaluate_headers(&Method::POST, &headers, Some("127.0.0.1"));
-        assert_eq!(decision, deny("cross-site-origin"));
+        assert_eq!(decision, deny(CsrfReason::CrossSiteOrigin));
     }
 }

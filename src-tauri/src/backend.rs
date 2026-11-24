@@ -28,13 +28,13 @@ use std::time::Duration;
 
 use lattice_host::gateway::{bind_loopback, mounts, serve_gateway, GatewayState};
 use lattice_host::supervisor::{
-    wait_for_health, EnvOverlayProbe, HostProbe, Supervisor, SupervisorConfig, SupervisorError,
-    SystemProbe, WorkerStatus,
+    wait_for_health, EnvOverlayProbe, HostProbe, Supervisor, SupervisorConfig, SystemProbe,
+    WorkerStatus,
 };
 
 use serde::Serialize;
 
-use crate::topology::{self, Plan, Topology};
+use crate::topology::{self, Plan, PortPolicy, Topology};
 
 /// The module the host supervises. I6's launch string is
 /// `uvicorn latticeai.worker_app:create_worker_app --factory`; the module form
@@ -102,6 +102,7 @@ struct RunningGateway {
 /// The supervisor, the front door, and the origin every surface is told about.
 pub struct DesktopBackend {
     plan: Plan,
+    port_policy: PortPolicy,
     supervisor: Supervisor,
     health_deadline: Duration,
     /// Serializes `start_gateway` / `stop_gateway` across `.await` points so
@@ -283,7 +284,7 @@ fn resolve_launch_env_overrides(probe: &dyn HostProbe) -> Vec<(String, String)> 
 
 impl DesktopBackend {
     /// Resolve against the real machine without mutating process env vars.
-    pub fn resolve() -> Result<Self, SupervisorError> {
+    pub fn resolve() -> Result<Self, String> {
         let overrides = resolve_launch_env_overrides(&SystemProbe);
         let probe: Arc<dyn HostProbe> = if overrides.is_empty() {
             Arc::new(SystemProbe)
@@ -293,20 +294,30 @@ impl DesktopBackend {
                 overrides.clone(),
             ))
         };
-        Self::with_probe_and_env(probe, overrides)
+        Self::with_probe_policy_and_env(probe, PortPolicy::for_build(), overrides)
     }
 
-    /// Resolve against an injected probe.
+    /// Resolve against an injected probe (dev dynamic fallback policy).
     #[cfg(test)]
-    pub fn with_probe(probe: Arc<dyn HostProbe>) -> Result<Self, SupervisorError> {
-        Self::with_probe_and_env(probe, Vec::new())
+    pub fn with_probe(probe: Arc<dyn HostProbe>) -> Result<Self, String> {
+        Self::with_probe_policy_and_env(probe, PortPolicy::AllowDynamicFallback, Vec::new())
     }
 
-    fn with_probe_and_env(
+    /// Resolve against an injected probe and explicit [`PortPolicy`].
+    #[cfg(test)]
+    pub fn with_probe_and_policy(
         probe: Arc<dyn HostProbe>,
+        port_policy: PortPolicy,
+    ) -> Result<Self, String> {
+        Self::with_probe_policy_and_env(probe, port_policy, Vec::new())
+    }
+
+    fn with_probe_policy_and_env(
+        probe: Arc<dyn HostProbe>,
+        port_policy: PortPolicy,
         extra_env: Vec<(String, String)>,
-    ) -> Result<Self, SupervisorError> {
-        let plan = topology::resolve(&*probe);
+    ) -> Result<Self, String> {
+        let plan = topology::resolve_with_policy(&*probe, port_policy)?;
         let mut config = SupervisorConfig::new(plan.worker_port).with_system_dirs(&*probe);
         config.supervise = plan.supervised();
         // Behind a gateway the worker's own CSRF default knows only its
@@ -315,11 +326,13 @@ impl DesktopBackend {
         config.gateway_port = plan.gateway_port;
         config.extra_env.extend(extra_env);
         let health_deadline = config.health_deadline;
-        let supervisor = Supervisor::with_probe(config, Arc::clone(&probe))?;
+        let supervisor =
+            Supervisor::with_probe(config, Arc::clone(&probe)).map_err(|err| err.to_string())?;
         let jobs = (plan.topology == Topology::Gateway)
             .then(|| mounts::scheduler(&plan.worker_origin, supervisor.client()));
         Ok(Self {
             plan,
+            port_policy,
             supervisor,
             health_deadline,
             gateway_lifecycle: tokio::sync::Mutex::new(()),
@@ -395,11 +408,20 @@ impl DesktopBackend {
         let listener = match bind_loopback(addr).await {
             Ok(listener) => listener,
             Err(err) => {
-                let message = format!(
-                    "the gateway could not bind {addr}: {err} — \
-                     set LATTICEAI_PORT to a free port, or \
-                     LATTICEAI_DESKTOP_BACKEND_ORIGIN to an already-running lattice-host"
-                );
+                let message = match self.port_policy {
+                    PortPolicy::PinnedProduction => format!(
+                        "the gateway could not bind {addr}: {err} — production Lattice AI \
+                         pins http://127.0.0.1:{port} to match desktop CSP and IPC capabilities \
+                         and will not silently fall back to an unreachable port. Free port \
+                         {port} or set LATTICEAI_DESKTOP_BACKEND_ORIGIN=http://127.0.0.1:{port} \
+                         to attach to an already-running lattice-host"
+                    ),
+                    PortPolicy::AllowDynamicFallback => format!(
+                        "the gateway could not bind {addr}: {err} — \
+                         set LATTICEAI_PORT to a free port, or \
+                         LATTICEAI_DESKTOP_BACKEND_ORIGIN to an already-running lattice-host"
+                    ),
+                };
                 eprintln!("lattice-ai-desktop: {message}");
                 *self.gateway_error.lock().unwrap_or_else(|e| e.into_inner()) = Some(message);
                 return;

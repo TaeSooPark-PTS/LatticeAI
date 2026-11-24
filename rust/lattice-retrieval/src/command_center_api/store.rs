@@ -155,13 +155,12 @@ pub(crate) fn older_than_days(stamp: &str, days: i64, now: f64) -> bool {
     }
 }
 
-/// `_parse_ts` — ISO text as **UTC** epoch seconds, naive stamps included.
+/// `_parse_ts` — ISO text as **UTC** epoch seconds, offset-free UTC stamps included.
 ///
 /// `datetime.fromisoformat(text.replace("Z", "+00:00"))` followed by
-/// `replace(tzinfo=utc)` for a naive result: a naive local stamp is read as if
-/// it were UTC, and then compared against a real `datetime.now(timezone.utc)`.
-/// On a UTC+9 machine that makes freshly written nodes look nine hours into the
-/// future. That is what the health report measures today and the port keeps it.
+/// `replace(tzinfo=utc)` for an offset-free result: because both Rust and Python
+/// now emit offset-free UTC timestamps, naive stamps align directly with
+/// `datetime.now(timezone.utc)` without host-timezone skew.
 pub(crate) fn parse_ts(value: &Value) -> Option<f64> {
     let text = if truthy(value) {
         py_str(value)

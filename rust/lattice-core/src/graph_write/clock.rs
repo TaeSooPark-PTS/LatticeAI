@@ -7,17 +7,18 @@
 //! rewriting the engine's globals — and so a frozen clock is a *test* fixture
 //! and never a production code path.
 //!
-//! [`SystemClock::now_iso`] is `datetime.now().isoformat(timespec="seconds")` —
-//! **naive local** time with no offset. Stamping UTC on a machine at UTC+9
-//! would make every row nine hours old to the string comparisons every timeline
-//! read in the product does against stamps Python wrote.
+//! [`SystemClock::now_iso`] and Python's `lattice_brain.utils.now_iso()` both
+//! emit **offset-free UTC** timestamps (`YYYY-MM-DDTHH:MM:SS`, `gmtoff: 0`).
+//! Keeping the offset-free second-precision shape preserves string-comparison
+//! compatibility with existing persisted rows while unifying Rust and Python on
+//! UTC so non-UTC hosts (e.g. UTC+9) never observe timezone skew.
 
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Everything the write engine asks the outside world about time.
 pub trait Clock: Send + Sync + std::fmt::Debug {
-    /// `lattice_brain.utils.now_iso()` — naive local, second resolution.
+    /// `lattice_brain.utils.now_iso()` — offset-free UTC, second resolution.
     fn now_iso(&self) -> String;
     /// `time.time()` — seeds `vector_index_operations.id`.
     fn unix_time(&self) -> f64;
@@ -112,7 +113,7 @@ impl Clock for FrozenClock {
     }
 }
 
-/// `datetime.now().isoformat(timespec="seconds")` for a naive-local epoch second.
+/// `lattice_brain.utils.now_iso()` (`YYYY-MM-DDTHH:MM:SS`) for a UTC epoch second.
 pub fn iso_seconds_for(secs: i64) -> String {
     let (year, month, day) = civil_from_days(secs.div_euclid(86_400));
     let time_of_day = secs.rem_euclid(86_400);
@@ -235,5 +236,32 @@ mod tests {
         assert!(clock.unix_time() > 1_600_000_000.0);
         assert!(clock.pid() > 0);
         assert!(clock.perf_counter() > 0.0);
+    }
+
+    #[test]
+    fn system_clock_and_wall_parts_are_utc_canonical() {
+        let utc_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_secs() as i64;
+        let parts = local_wall_parts(utc_secs).expect("utc parts");
+        assert_eq!(parts.gmtoff, 0);
+        assert_eq!(local_offset_for_naive_wall(utc_secs as f64), 0.0);
+        assert_eq!(naive_local_secs(utc_secs), Some(utc_secs));
+
+        let iso = local_iso_for(utc_secs).expect("utc iso");
+        assert_eq!(iso, iso_seconds_for(utc_secs));
+        assert_eq!(rfc3339_utc_for(utc_secs), format!("{iso}Z"));
+
+        // SystemClock::now_iso() must match current UTC (within 2s tolerance),
+        // never shifted by a host local offset such as UTC+9.
+        let now_stamp = SystemClock.now_iso();
+        let candidates: Vec<String> = (-2..=2)
+            .map(|delta| iso_seconds_for(utc_secs + delta))
+            .collect();
+        assert!(
+            candidates.contains(&now_stamp),
+            "expected SystemClock::now_iso() ({now_stamp}) within ±2s of UTC ({iso})"
+        );
     }
 }

@@ -1,9 +1,9 @@
 """Deliberately-ignored exceptions, recorded instead of erased (Brain Core).
 
-Mirror of :mod:`latticeai.core.quiet`. Brain Core cannot import from the app
-package (``tests/unit/test_import_guard.py``), and the alternative — leaving
-Brain Core's suppressions silent while the app layer's are visible — would make
-the quieter half the harder one to debug.
+Single source of truth for suppressed-exception logging across the repository:
+Brain Core owns :func:`record_suppressed` (keeping ``lattice_brain`` independent
+of the app package, enforced by ``tests/unit/test_import_guard.py``), and
+:mod:`latticeai.core.quiet` delegates directly to it with the app logger.
 """
 
 from __future__ import annotations
