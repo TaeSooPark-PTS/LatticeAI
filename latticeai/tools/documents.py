@@ -20,7 +20,9 @@ def _safe_filename(name: str, suffix: str) -> str:
     base = Path(name or f"artifact{suffix}").name
     if not base.lower().endswith(suffix):
         base += suffix
-    safe = "".join(ch if ch.isalnum() or ch in ("-", "_", ".", " ") else "_" for ch in base).strip()
+    safe = "".join(
+        ch if ch.isalnum() or ch in ("-", "_", ".", " ") else "_" for ch in base
+    ).strip()
     return safe or f"artifact{suffix}"
 
 
@@ -128,7 +130,9 @@ def read_document(path: str) -> Dict[str, Any]:
 
     ext = target.suffix.lower()
     if ext not in _SUPPORTED_READ_EXTENSIONS:
-        raise ToolError(f"지원하지 않는 형식입니다: {ext}. 지원: {', '.join(_SUPPORTED_READ_EXTENSIONS)}")
+        raise ToolError(
+            f"지원하지 않는 형식입니다: {ext}. 지원: {', '.join(_SUPPORTED_READ_EXTENSIONS)}"
+        )
 
     text = ""
     meta: Dict[str, Any] = {"path": str(target), "ext": ext}
@@ -160,5 +164,5 @@ def read_document(path: str) -> Dict[str, Any]:
 
     meta["chars"] = len(text)
     meta["preview"] = text[:500]
-    meta["content"] = text[:50_000]   # 50K char cap for context
+    meta["content"] = text[:50_000]  # 50K char cap for context
     return meta

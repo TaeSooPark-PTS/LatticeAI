@@ -18,7 +18,13 @@ class _Provider:
     def metadata(self):
         if self.metadata_error:
             raise self.metadata_error
-        return {"provider": "local", "model": "m", "model_id": "m", "dim": 8, "grade": "production"}
+        return {
+            "provider": "local",
+            "model": "m",
+            "model_id": "m",
+            "dim": 8,
+            "grade": "production",
+        }
 
     def health(self):
         return self.health_value
@@ -35,7 +41,9 @@ class _LegacyProvider:
 
 
 def test_embedding_metadata_failure_degrades_to_an_empty_descriptor():
-    service = SearchService(embedder=_Resolved(_Provider(metadata_error=RuntimeError("provider gone"))))
+    service = SearchService(
+        embedder=_Resolved(_Provider(metadata_error=RuntimeError("provider gone")))
+    )
 
     status = service.embeddings_status(resolved={"fell_back": True})
 
@@ -60,7 +68,9 @@ def test_refresh_asks_the_embedder_for_live_health():
     provider = _Provider(health_value={"status": "ok", "detail": "reachable"})
     service = SearchService(embedder=_Resolved(provider))
 
-    status = service.embeddings_status(resolved={"health": {"status": "unknown"}}, refresh=True)
+    status = service.embeddings_status(
+        resolved={"health": {"status": "unknown"}}, refresh=True
+    )
 
     assert status["health"] == {"status": "ok", "detail": "reachable"}
     assert status["state"] == "production"

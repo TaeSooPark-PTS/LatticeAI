@@ -23,7 +23,9 @@ SCRIPT = REPO / "scripts" / "check_screenshot_pixel_delta.py"
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("check_screenshot_pixel_delta", SCRIPT)
+    spec = importlib.util.spec_from_file_location(
+        "check_screenshot_pixel_delta", SCRIPT
+    )
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -94,9 +96,7 @@ def test_resolve_baseline_same_name_prefers_git_over_local_dir(
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE_VERSION", raising=False)
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
     monkeypatch.setattr(delta, "_package_version", lambda root: "10.6.3")
-    monkeypatch.setattr(
-        delta, "_git_version_tags", lambda root: ["10.6.2", "10.6.3"]
-    )
+    monkeypatch.setattr(delta, "_git_version_tags", lambda root: ["10.6.2", "10.6.3"])
 
     # Plant a fake local dir that would be the wrong (WIP) baseline.
     local = tmp_path / "output" / "release" / "v10.6.3" / "screenshots"
@@ -121,7 +121,9 @@ def test_resolve_baseline_same_name_prefers_git_over_local_dir(
     assert "same-name tag" in out or "materialized" in out
 
 
-def test_resolve_baseline_does_not_silently_downgrade(delta, tmp_path, monkeypatch, capsys):
+def test_resolve_baseline_does_not_silently_downgrade(
+    delta, tmp_path, monkeypatch, capsys
+):
     """Only v10.6.1 on disk + expect 10.6.2 → None (fail), not v10.6.1."""
     monkeypatch.setenv("LTCAI_SCREENSHOT_BASELINE_VERSION", "10.6.2")
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
@@ -135,7 +137,9 @@ def test_resolve_baseline_does_not_silently_downgrade(delta, tmp_path, monkeypat
     (current / "01-login.png").write_bytes(b"fake-cur")
 
     monkeypatch.setattr(delta, "_extract_baseline_from_git", lambda root, version: None)
-    monkeypatch.setattr(delta, "_git_version_tags", lambda root: ["10.6.1", "10.6.2", "10.6.3"])
+    monkeypatch.setattr(
+        delta, "_git_version_tags", lambda root: ["10.6.1", "10.6.2", "10.6.3"]
+    )
     monkeypatch.setattr(delta, "_package_version", lambda root: "10.6.3")
 
     path, expected = delta.resolve_baseline(tmp_path, current)
@@ -147,7 +151,9 @@ def test_resolve_baseline_does_not_silently_downgrade(delta, tmp_path, monkeypat
     assert "v10.6.2" in captured.out
 
 
-def test_resolve_baseline_accepts_exact_expected_dir(delta, tmp_path, monkeypatch, capsys):
+def test_resolve_baseline_accepts_exact_expected_dir(
+    delta, tmp_path, monkeypatch, capsys
+):
     monkeypatch.setenv("LTCAI_SCREENSHOT_BASELINE_VERSION", "10.6.2")
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
     monkeypatch.setattr(delta, "_extract_baseline_from_git", lambda root, version: None)
@@ -216,7 +222,9 @@ def test_package_json_wires_screenshot_delta_gate():
 
 def test_capture_script_blocks_tagged_release_overwrite():
     """capture_release_evidence.mjs must refuse default dir when v{version} is tagged."""
-    script = (REPO / "scripts" / "capture_release_evidence.mjs").read_text(encoding="utf-8")
+    script = (REPO / "scripts" / "capture_release_evidence.mjs").read_text(
+        encoding="utf-8"
+    )
     assert "assertNotOverwritingTaggedRelease" in script
     assert "refs/tags/v${version}" in script or "refs/tags/v" in script
     assert "already exists" in script
@@ -226,7 +234,9 @@ def test_capture_script_blocks_tagged_release_overwrite():
     assert guard_at < wipe_at, "tag guard must run before wiping the evidence dir"
 
 
-def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(delta, tmp_path):
+def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(
+    delta, tmp_path
+):
     """Pillow deprecated Image.getdata() in favor of get_flattened_data()."""
     import warnings
 
@@ -251,4 +261,3 @@ def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(del
     assert changed == 4
     assert pct == pytest.approx(25.0)
     assert h_a == 4 and h_b == 4
-

@@ -39,8 +39,13 @@ from latticeai.core.tool_registry import (
 
 def _policy(**overrides) -> dict:
     base = {
-        "risk": "write", "sandbox": "workspace", "auto_approve": False,
-        "destructive": False, "shell": False, "network": False, "rollback": "none",
+        "risk": "write",
+        "sandbox": "workspace",
+        "auto_approve": False,
+        "destructive": False,
+        "shell": False,
+        "network": False,
+        "rollback": "none",
     }
     base.update(overrides)
     return base
@@ -73,15 +78,21 @@ def test_bypass_still_gates_a_system_sandbox_write():
     outside the workspace stays gated even there — the one thing that keeps
     "skip permissions" from meaning "touch the operating system"."""
     for risk in ("write", "exec"):
-        assert effective_auto_approve(
-            "bypass", "some_system_tool", _policy(risk=risk, sandbox="system")
-        ) is False
+        assert (
+            effective_auto_approve(
+                "bypass", "some_system_tool", _policy(risk=risk, sandbox="system")
+            )
+            is False
+        )
 
 
 def test_bypass_still_refuses_a_destructive_policy():
-    assert effective_auto_approve(
-        "bypass", "delete_file", _policy(risk="destructive", destructive=True)
-    ) is False
+    assert (
+        effective_auto_approve(
+            "bypass", "delete_file", _policy(risk="destructive", destructive=True)
+        )
+        is False
+    )
 
 
 # ── change classification ────────────────────────────────────────────────────
@@ -99,11 +110,16 @@ def test_an_append_only_knowledge_write_classifies_as_additive(tool: str):
 
 def test_a_write_over_an_existing_path_is_a_mutation_and_a_new_one_is_not():
     existing = classify_tool_call(
-        "write_file", {"path": "notes.md"}, policy=_policy(),
+        "write_file",
+        {"path": "notes.md"},
+        policy=_policy(),
         path_exists=lambda path: path == "notes.md",
     )
     fresh = classify_tool_call(
-        "write_file", {"path": "new.md"}, policy=_policy(), path_exists=lambda _p: False,
+        "write_file",
+        {"path": "new.md"},
+        policy=_policy(),
+        path_exists=lambda _p: False,
     )
 
     assert existing["reason"] == "overwrites an existing file"
@@ -139,7 +155,10 @@ def test_the_prefix_match_is_a_path_boundary_not_a_string_prefix():
     )
     # A Windows-style separator is normalised before the comparison, so the
     # same rule holds however the caller spelled the path.
-    assert registry.policy_for("write_file", {"path": "\\etc\\hosts"})["destructive"] is True
+    assert (
+        registry.policy_for("write_file", {"path": "\\etc\\hosts"})["destructive"]
+        is True
+    )
 
 
 def test_an_untargeted_write_keeps_its_table_policy():

@@ -34,7 +34,9 @@ def test_download_blocked_without_model_download_consent():
         detail = exc.detail
         assert isinstance(detail, dict)
         assert detail.get("capability") == "model_download"
-        assert "does not start outbound model downloads by default" in detail.get("reason", "")
+        assert "does not start outbound model downloads by default" in detail.get(
+            "reason", ""
+        )
     else:
         assert False, "_download_block must raise when consent is absent"
 
@@ -87,9 +89,13 @@ def test_local_mlx_reuses_existing_huggingface_cache(monkeypatch, tmp_path):
     )
     _write_minimal_model_dir(snapshot)
 
-    assert model_runtime.hf_model_ready("mlx-community/cached-model", "local_mlx") is True
+    assert (
+        model_runtime.hf_model_ready("mlx-community/cached-model", "local_mlx") is True
+    )
     assert model_router.hf_cache_model_dir("mlx-community/cached-model") == snapshot
-    assert model_router._resolve_local_hf_model("mlx-community/cached-model") == str(snapshot)
+    assert model_router._resolve_local_hf_model("mlx-community/cached-model") == str(
+        snapshot
+    )
 
 
 def test_model_runtime_state_is_immutable_and_not_module_ambient():

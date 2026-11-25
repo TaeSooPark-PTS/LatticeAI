@@ -64,9 +64,7 @@ THUMBNAIL_EDGE = 96
 MAX_THUMBNAIL_CHARS = 24_000
 
 
-def detect_modality(
-    path: Optional[str] = None, mime_type: Optional[str] = None
-) -> str:
+def detect_modality(path: Optional[str] = None, mime_type: Optional[str] = None) -> str:
     """``text`` | ``image`` | ``audio`` | ``video`` for one candidate file.
 
     The declared MIME type wins when it carries a usable top-level type: the

@@ -37,7 +37,9 @@ def test_the_real_loopback_addresses_still_pass():
 # ── forwarded-header trust ────────────────────────────────────────────────
 def test_a_peer_that_is_not_an_address_can_never_be_a_trusted_proxy(monkeypatch):
     """A non-IP peer (a UNIX socket, a bad ASGI server) must not unlock spoofing."""
-    monkeypatch.setattr(security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")])
+    monkeypatch.setattr(
+        security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")]
+    )
 
     assert security._peer_is_trusted_proxy("10.1.2.3") is True
     assert security._peer_is_trusted_proxy("unix-socket-peer") is False

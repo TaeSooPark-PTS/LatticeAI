@@ -52,8 +52,13 @@ def migrate_users(users: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, str]
             existing = migrated[email]
             merged = {**existing, **user}
             merged["id"] = existing.get("id") or user.get("id") or stable_user_id(email)
-            if isinstance(existing.get("api_keys"), dict) or isinstance(user.get("api_keys"), dict):
-                merged["api_keys"] = {**(existing.get("api_keys") or {}), **(user.get("api_keys") or {})}
+            if isinstance(existing.get("api_keys"), dict) or isinstance(
+                user.get("api_keys"), dict
+            ):
+                merged["api_keys"] = {
+                    **(existing.get("api_keys") or {}),
+                    **(user.get("api_keys") or {}),
+                }
             user = merged
             changed = True
         migrated[email] = user
@@ -73,7 +78,9 @@ def load_users_file(path: Path) -> Dict[str, Any]:
         loaded = {}
     migrated, _, changed = migrate_users(loaded)
     if changed:
-        backup = path.with_name(f"{path.name}.pre-user-uuid.{_now().replace(':', '-')}.json")
+        backup = path.with_name(
+            f"{path.name}.pre-user-uuid.{_now().replace(':', '-')}.json"
+        )
         try:
             shutil.copy2(path, backup)
         except OSError:

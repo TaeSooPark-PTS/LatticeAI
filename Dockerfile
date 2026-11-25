@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && mkdir -p /data/agent_workspace \
     && chown -R lattice:lattice /data /app
 
-COPY --from=host-builder /build/rust/target/release/lattice-host /usr/local/bin/lattice-host
+COPY --from=host-builder --chown=lattice:lattice --chmod=0755 /build/rust/target/release/lattice-host /usr/local/bin/lattice-host
 COPY --chown=lattice:lattice pyproject.toml MANIFEST.in README.md LICENSE ./
 COPY --chown=lattice:lattice latticeai/ ./latticeai/
 COPY --chown=lattice:lattice lattice_brain/ ./lattice_brain/

@@ -21,12 +21,36 @@ _WEB_SOURCE_TYPES = frozenset({"web_url", "browser_tab"})
 # Standalone short lines that smell like leftover site chrome (nav/menu/footer).
 _BOILERPLATE_LINE_MARKERS = frozenset(
     {
-        "home", "menu", "nav", "navigation", "login", "log in", "sign in",
-        "sign up", "register", "subscribe", "search", "about", "about us",
-        "contact", "contact us", "privacy policy", "terms of service",
-        "cookie policy", "accept cookies", "accept all cookies", "share",
-        "skip to content", "copyright", "all rights reserved", "sitemap",
-        "back to top", "footer", "read more", "next", "previous",
+        "home",
+        "menu",
+        "nav",
+        "navigation",
+        "login",
+        "log in",
+        "sign in",
+        "sign up",
+        "register",
+        "subscribe",
+        "search",
+        "about",
+        "about us",
+        "contact",
+        "contact us",
+        "privacy policy",
+        "terms of service",
+        "cookie policy",
+        "accept cookies",
+        "accept all cookies",
+        "share",
+        "skip to content",
+        "copyright",
+        "all rights reserved",
+        "sitemap",
+        "back to top",
+        "footer",
+        "read more",
+        "next",
+        "previous",
     }
 )
 
@@ -80,7 +104,9 @@ def _score_cleanliness(
             cleanliness_factor *= 0.6
             reasons.append("fragmented_lines")
     boilerplate_hits = sum(
-        1 for ln in lines if ln.lower().strip(" .:>|•·-–—*") in _BOILERPLATE_LINE_MARKERS
+        1
+        for ln in lines
+        if ln.lower().strip(" .:>|•·-–—*") in _BOILERPLATE_LINE_MARKERS
     )
     if lines and boilerplate_hits >= 3 and (boilerplate_hits / len(lines)) > 0.2:
         cleanliness_factor *= 0.35
@@ -141,7 +167,9 @@ def assess_extraction_quality(
         length_factor = 1.0
 
     # 2) Sentence structure — prose has sentence-ending punctuation.
-    sentence_marks = sum(sample.count(mark) for mark in (".", "!", "?", "…", "。", "！", "？"))
+    sentence_marks = sum(
+        sample.count(mark) for mark in (".", "!", "?", "…", "。", "！", "？")
+    )
     if sentence_marks > 0:
         structure_factor = 1.0
     elif length < 200:
@@ -160,7 +188,11 @@ def assess_extraction_quality(
     score = max(0.0, min(1.0, score))
     if not reasons:
         reasons.append("clean_extraction")
-    return {"score": round(score, 4), "level": _quality_level(score), "reasons": reasons}
+    return {
+        "score": round(score, 4),
+        "level": _quality_level(score),
+        "reasons": reasons,
+    }
 
 
 # ── capture quality CTA (backlog #9, review §7.2 C) ──────────────────────────

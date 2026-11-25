@@ -27,7 +27,9 @@ class _RegistryMixin(_Core):
         self._cache: Dict[str, Any] = {}
         self._current: Optional[str] = None
         self._last_used: Dict[str, float] = {}
-        self._max_local_models = max(1, int(os.getenv("LATTICEAI_MAX_LOCAL_MODELS", "1")))
+        self._max_local_models = max(
+            1, int(os.getenv("LATTICEAI_MAX_LOCAL_MODELS", "1"))
+        )
         # Guards the mutable model registry (_cache/_current/_last_used).
         # Reentrant because the eviction path nests: _enforce_local_model_limit
         # → unload_model → _release_memory. Never held across the heavy
@@ -98,19 +100,32 @@ class _RegistryMixin(_Core):
 
     def _enforce_local_model_limit(self, incoming_key: str) -> None:
         with self._lock:
-            local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
+            local_ids = [
+                model_id for model_id in self._cache if self._is_local_model(model_id)
+            ]
             while len(local_ids) >= self._max_local_models:
-                victim = min(local_ids, key=lambda model_id: self._last_used.get(model_id, 0))
+                victim = min(
+                    local_ids, key=lambda model_id: self._last_used.get(model_id, 0)
+                )
                 if victim == incoming_key:
                     break
-                print(f"🧹 Unloading local model to stay within memory policy: {victim}")
+                print(
+                    f"🧹 Unloading local model to stay within memory policy: {victim}"
+                )
                 self.unload_model(victim)
-                local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
+                local_ids = [
+                    model_id
+                    for model_id in self._cache
+                    if self._is_local_model(model_id)
+                ]
 
     def _local_server_error_hint(self, cloud: CloudModel, error: Exception) -> str:
         raw = str(error)
         if cloud.provider == "lmstudio":
-            base_url = os.getenv("LMSTUDIO_BASE_URL") or OPENAI_COMPATIBLE_PROVIDERS["lmstudio"]["base_url"]
+            base_url = (
+                os.getenv("LMSTUDIO_BASE_URL")
+                or OPENAI_COMPATIBLE_PROVIDERS["lmstudio"]["base_url"]
+            )
             return (
                 f"LM Studio 연결 실패: {raw}\n\n"
                 f"- LM Studio의 Developer/Local Server를 켜고 모델을 로드했는지 확인하세요.\n"
@@ -124,7 +139,9 @@ class _RegistryMixin(_Core):
         loader_kind = str(cached[3]) if len(cached) > 3 else "mlx_vlm"
         return model, tokenizer, draft_model, loader_kind
 
-    def _model_snapshot(self, model_id: Optional[str] = None) -> tuple[Optional[str], object | None]:
+    def _model_snapshot(
+        self, model_id: Optional[str] = None
+    ) -> tuple[Optional[str], object | None]:
         """Return an immutable request-scoped view of a loaded model.
 
         Generation must never change ``_current``: that value is a UI/default
@@ -138,6 +155,8 @@ class _RegistryMixin(_Core):
                 return None, None
             cached = self._cache.get(selected)
             if cached is None:
-                raise ValueError(f"Model '{selected}' is not loaded. Load it first via /models/load.")
+                raise ValueError(
+                    f"Model '{selected}' is not loaded. Load it first via /models/load."
+                )
             self._touch(selected)
             return selected, cached

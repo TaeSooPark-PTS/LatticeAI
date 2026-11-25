@@ -139,7 +139,10 @@ def test_source_metadata_falls_back_to_the_provider_for_an_unknown_family():
     [
         ("cloud:openai:gpt-4o", ("openai", "gpt-4o")),
         # Only the first two colons are separators — the model keeps its own.
-        ("cloud:openrouter:anthropic/claude:beta", ("openrouter", "anthropic/claude:beta")),
+        (
+            "cloud:openrouter:anthropic/claude:beta",
+            ("openrouter", "anthropic/claude:beta"),
+        ),
         ("openai:gpt-4o", ("openai", "gpt-4o")),
         ("lmstudio:local-model", ("lmstudio", "local-model")),
         ("local_mlx:mlx-community/gemma", ("local_mlx", "mlx-community/gemma")),
@@ -173,16 +176,23 @@ def test_is_gemma4_model_id_recognises_every_spelling(model_id, expected):
 def test_hf_model_dir_flattens_the_repo_id(monkeypatch, tmp_path):
     monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path)
 
-    assert router_mod.hf_model_dir("mlx-community/gemma") == tmp_path / "mlx-community__gemma"
+    assert (
+        router_mod.hf_model_dir("mlx-community/gemma")
+        == tmp_path / "mlx-community__gemma"
+    )
 
 
-def test_hf_cache_model_dir_is_none_when_nothing_was_ever_downloaded(monkeypatch, tmp_path):
+def test_hf_cache_model_dir_is_none_when_nothing_was_ever_downloaded(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("HOME", str(tmp_path))
 
     assert router_mod.hf_cache_model_dir("mlx-community/gemma") is None
 
 
-def test_hf_cache_model_dir_rejects_snapshots_that_are_not_complete_models(monkeypatch, tmp_path):
+def test_hf_cache_model_dir_rejects_snapshots_that_are_not_complete_models(
+    monkeypatch, tmp_path
+):
     """A half-finished download must not be reported as a usable model.
 
     Every candidate is inspected and every one is rejected, so the walk falls
@@ -190,7 +200,12 @@ def test_hf_cache_model_dir_rejects_snapshots_that_are_not_complete_models(monke
     """
     monkeypatch.setenv("HOME", str(tmp_path))
     snapshots = (
-        tmp_path / ".cache" / "huggingface" / "hub" / "models--mlx-community--gemma" / "snapshots"
+        tmp_path
+        / ".cache"
+        / "huggingface"
+        / "hub"
+        / "models--mlx-community--gemma"
+        / "snapshots"
     )
     no_weights = snapshots / "aaa"
     no_weights.mkdir(parents=True)
@@ -210,11 +225,16 @@ def test_resolve_local_hf_model_prefers_an_existing_explicit_path(tmp_path):
     assert router_mod._resolve_local_hf_model(str(tmp_path)) == str(tmp_path)
 
 
-def test_resolve_local_hf_model_returns_the_repo_id_when_nothing_is_local(monkeypatch, tmp_path):
+def test_resolve_local_hf_model_returns_the_repo_id_when_nothing_is_local(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
 
-    assert router_mod._resolve_local_hf_model("mlx-community/gemma") == "mlx-community/gemma"
+    assert (
+        router_mod._resolve_local_hf_model("mlx-community/gemma")
+        == "mlx-community/gemma"
+    )
 
 
 # ── _local_model_type: reads model_type out of a checkpoint's config.json ─
@@ -234,7 +254,9 @@ def test_local_model_type_reads_an_explicit_checkpoint_directory(monkeypatch, tm
     assert router_mod._local_model_type(str(checkpoint)) == "gemma4_unified"
 
 
-def test_local_model_type_falls_back_to_the_managed_download_directory(monkeypatch, tmp_path):
+def test_local_model_type_falls_back_to_the_managed_download_directory(
+    monkeypatch, tmp_path
+):
     root = tmp_path / "hf-models"
     monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", root)
     _write_config(root / "mlx-community__gemma", '{"model_type": "gemma4"}')
@@ -269,7 +291,9 @@ def test_local_model_type_survives_a_corrupt_config(monkeypatch, tmp_path):
 
 
 def test_build_prompt_falls_back_to_chatml_when_the_template_raises():
-    prompt = router_mod.LLMRouter()._build_prompt("질문", "커넥트 AI 문서", _RaisingTokenizer())
+    prompt = router_mod.LLMRouter()._build_prompt(
+        "질문", "커넥트 AI 문서", _RaisingTokenizer()
+    )
 
     assert prompt.startswith("<|im_start|>system\n")
     assert prompt.endswith("<|im_start|>assistant\n")
@@ -293,7 +317,9 @@ def test_build_prompt_uses_chatml_for_a_tokenizer_without_a_chat_template():
 def test_build_vlm_prompt_delegates_to_the_mlx_vlm_chat_template(monkeypatch):
     seen = {}
 
-    def apply_chat_template(processor, config, messages, add_generation_prompt=True, num_images=0):
+    def apply_chat_template(
+        processor, config, messages, add_generation_prompt=True, num_images=0
+    ):
         seen.update(
             processor=processor,
             config=config,
@@ -322,7 +348,9 @@ def test_build_vlm_prompt_delegates_to_the_mlx_vlm_chat_template(monkeypatch):
     assert seen["messages"][1] == {"role": "user", "content": "이 사진은?"}
 
 
-def test_build_vlm_prompt_falls_back_to_the_text_frame_when_the_template_fails(monkeypatch):
+def test_build_vlm_prompt_falls_back_to_the_text_frame_when_the_template_fails(
+    monkeypatch,
+):
     fake_vlm = types.ModuleType("mlx_vlm")
 
     def boom(*_args, **_kwargs):

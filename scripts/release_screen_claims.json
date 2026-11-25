@@ -20,6 +20,20 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.1.1": {
+    "_why": [
+      "Living Synthesis (14.1.1) eliminates all remaining engineering technical",
+      "debt: repository-wide Ruff Python formatting with .git-blame-ignore-revs",
+      "and CI ruff format --check enforcement, removal of all C901 complexity",
+      "exemptions by decomposing models.py and worker_compute.py routers under",
+      "max-complexity = 20, strict 0-unclaimed server i18n gate with explicit",
+      "NON_ROUTER_HELPERS allowlist, and consistent Dockerfile binary ownership",
+      "and executable permissions.",
+      "",
+      "No visual screen layout was redesigned in 14.1.1; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.1.0": {
     "_why": [
       "Living Synthesis (14.1.0) resolves both v14.0.0 regressions (unified",

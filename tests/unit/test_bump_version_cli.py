@@ -41,7 +41,9 @@ def test_wrapper_reexports_all_canonical_symbols():
         "bump",
         "main",
     ):
-        assert hasattr(wrapper, attr), f"scripts/bump_version.py missing re-export {attr}"
+        assert hasattr(wrapper, attr), (
+            f"scripts/bump_version.py missing re-export {attr}"
+        )
         assert hasattr(bump_pkg, attr), f"scripts.bump_version missing export {attr}"
     assert wrapper.RUST_CRATES == bump_pkg.RUST_CRATES
     assert wrapper.RUST_LOCKFILES == bump_pkg.RUST_LOCKFILES
@@ -74,7 +76,11 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
 
     (tmp_path / "frontend" / "openapi.json").write_text(
         json.dumps(
-            {"info": {"title": "Lattice AI", "version": "1.0.0"}, "openapi": "3.1.0", "paths": {}},
+            {
+                "info": {"title": "Lattice AI", "version": "1.0.0"},
+                "openapi": "3.1.0",
+                "paths": {},
+            },
             sort_keys=True,
             indent=2,
         )
@@ -85,7 +91,10 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
         json.dumps(
             {
                 "family": "_envelope",
-                "spec": {"info": {"title": "Lattice AI", "version": "1.0.0"}, "openapi": "3.1.0"},
+                "spec": {
+                    "info": {"title": "Lattice AI", "version": "1.0.0"},
+                    "openapi": "3.1.0",
+                },
                 "spec_version": "1.0.0",
             },
             sort_keys=True,
@@ -95,7 +104,11 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
         encoding="utf-8",
     )
     (openapi_dir / "admin.json").write_text(
-        json.dumps({"family": "admin", "paths": {}, "spec_version": "1.0.0"}, sort_keys=True, indent=2)
+        json.dumps(
+            {"family": "admin", "paths": {}, "spec_version": "1.0.0"},
+            sort_keys=True,
+            indent=2,
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -103,7 +116,9 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
         json.dumps(
             {
                 "envelope": {"file": "_envelope.json", "sha256": "stale-env"},
-                "fragments": [{"family": "admin", "file": "admin.json", "sha256": "stale-frag"}],
+                "fragments": [
+                    {"family": "admin", "file": "admin.json", "sha256": "stale-frag"}
+                ],
                 "spec_version": "1.0.0",
             },
             sort_keys=True,
@@ -124,8 +139,12 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
     assert cli.main(["openapi", "2.1.0", "--check"]) == 0
 
     idx = json.loads((openapi_dir / "_index.json").read_text(encoding="utf-8"))
-    expected_env_sha = hashlib.sha256((openapi_dir / "_envelope.json").read_bytes()).hexdigest()
-    expected_frag_sha = hashlib.sha256((openapi_dir / "admin.json").read_bytes()).hexdigest()
+    expected_env_sha = hashlib.sha256(
+        (openapi_dir / "_envelope.json").read_bytes()
+    ).hexdigest()
+    expected_frag_sha = hashlib.sha256(
+        (openapi_dir / "admin.json").read_bytes()
+    ).hexdigest()
     assert idx["spec_version"] == "2.1.0"
     assert idx["envelope"]["sha256"] == expected_env_sha
     assert idx["fragments"][0]["sha256"] == expected_frag_sha
@@ -149,7 +168,8 @@ def test_cargo_subcommand_updates_manifests_and_lockfiles(tmp_path, monkeypatch)
     )
 
     lock_entries = "\n".join(
-        f'[[package]]\nname = "{crate}"\nversion = "1.0.0"\n' for crate in cargo.RUST_CRATES
+        f'[[package]]\nname = "{crate}"\nversion = "1.0.0"\n'
+        for crate in cargo.RUST_CRATES
     )
     (tmp_path / "rust" / "Cargo.lock").write_text(lock_entries, encoding="utf-8")
     (tmp_path / "src-tauri" / "Cargo.lock").write_text(
@@ -157,7 +177,9 @@ def test_cargo_subcommand_updates_manifests_and_lockfiles(tmp_path, monkeypatch)
         encoding="utf-8",
     )
 
-    assert cargo.parse_workspace_members((tmp_path / "rust" / "Cargo.toml").read_text(encoding="utf-8")) == (
+    assert cargo.parse_workspace_members(
+        (tmp_path / "rust" / "Cargo.toml").read_text(encoding="utf-8")
+    ) == (
         "lattice-agent",
         "lattice-core",
     )
@@ -168,14 +190,27 @@ def test_cargo_subcommand_updates_manifests_and_lockfiles(tmp_path, monkeypatch)
     assert cli.main(["cargo", "3.0.0"]) == 0
     assert cli.main(["cargo", "3.0.0", "--check"]) == 0
 
-    assert 'version = "3.0.0"' in (tmp_path / "rust" / "Cargo.toml").read_text(encoding="utf-8")
-    assert 'version = "3.0.0"' in (tmp_path / "src-tauri" / "Cargo.toml").read_text(encoding="utf-8")
-    assert json.loads((tmp_path / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))["version"] == "3.0.0"
+    assert 'version = "3.0.0"' in (tmp_path / "rust" / "Cargo.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'version = "3.0.0"' in (tmp_path / "src-tauri" / "Cargo.toml").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        json.loads(
+            (tmp_path / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+        )["version"]
+        == "3.0.0"
+    )
     for crate in cargo.RUST_CRATES:
-        assert f'name = "{crate}"\nversion = "3.0.0"' in (tmp_path / "rust" / "Cargo.lock").read_text(encoding="utf-8")
+        assert f'name = "{crate}"\nversion = "3.0.0"' in (
+            tmp_path / "rust" / "Cargo.lock"
+        ).read_text(encoding="utf-8")
 
 
-def test_markers_subcommand_updates_current_release_and_preserves_history(tmp_path, monkeypatch):
+def test_markers_subcommand_updates_current_release_and_preserves_history(
+    tmp_path, monkeypatch
+):
     (tmp_path / "docs").mkdir(parents=True)
     (tmp_path / "vscode-extension").mkdir(parents=True)
 
@@ -246,10 +281,14 @@ def test_markers_subcommand_updates_current_release_and_preserves_history(tmp_pa
     assert cli.main(["markers", "2.4.0"]) == 0
     assert cli.main(["markers", "2.4.0", "--check"]) == 0
 
-    assert "Current release: **2.4.0 — Deep Vector**." in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Current release: **2.4.0 — Deep Vector**." in (
+        tmp_path / "AGENTS.md"
+    ).read_text(encoding="utf-8")
     readme_text = (tmp_path / "README.md").read_text(encoding="utf-8")
     assert "The current release is **2.4.0 — Deep Vector**" in readme_text
-    assert "output/release/v2.4.0/gifs/v2.4.0-living-brain-walkthrough.gif" in readme_text
+    assert (
+        "output/release/v2.4.0/gifs/v2.4.0-living-brain-walkthrough.gif" in readme_text
+    )
     assert "dist/ltcai-2.4.0-py3-none-any.whl" in readme_text
 
     release_text = (tmp_path / "RELEASE.md").read_text(encoding="utf-8")
@@ -270,10 +309,21 @@ def test_markers_subcommand_updates_current_release_and_preserves_history(tmp_pa
 
 def test_default_bump_handles_core_targets_and_missing_fields(tmp_path, monkeypatch):
     (tmp_path / "latticeai").mkdir(parents=True)
-    (tmp_path / "latticeai" / "__init__.py").write_text('__version__ = "1.0.0"\n', encoding="utf-8")
-    (tmp_path / "package.json").write_text(json.dumps({"name": "ltcai", "version": "1.0.0"}) + "\n", encoding="utf-8")
+    (tmp_path / "latticeai" / "__init__.py").write_text(
+        '__version__ = "1.0.0"\n', encoding="utf-8"
+    )
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "ltcai", "version": "1.0.0"}) + "\n", encoding="utf-8"
+    )
     (tmp_path / "package-lock.json").write_text(
-        json.dumps({"name": "ltcai", "version": "1.0.0", "packages": {"": {"version": "1.0.0"}}}) + "\n",
+        json.dumps(
+            {
+                "name": "ltcai",
+                "version": "1.0.0",
+                "packages": {"": {"version": "1.0.0"}},
+            }
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -289,7 +339,9 @@ def test_default_bump_handles_core_targets_and_missing_fields(tmp_path, monkeypa
     assert lock_data["packages"][""]["version"] == "1.5.0"
 
     # Corrupt package.json so "version" key is missing -> bump returns 1
-    (tmp_path / "package.json").write_text(json.dumps({"name": "ltcai"}) + "\n", encoding="utf-8")
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "ltcai"}) + "\n", encoding="utf-8"
+    )
     assert wrapper.bump("1.5.0", check=False) == 1
 
 
@@ -315,14 +367,20 @@ def test_module_and_script_cli_invocations():
 
 
 def test_screenshot_pixel_delta_has_no_legacy_pillow_getdata_fallback():
-    script_text = (ROOT / "scripts" / "check_screenshot_pixel_delta.py").read_text(encoding="utf-8")
+    script_text = (ROOT / "scripts" / "check_screenshot_pixel_delta.py").read_text(
+        encoding="utf-8"
+    )
     assert "diff.get_flattened_data()" in script_text
     assert "diff.getdata()" not in script_text
 
 
 def test_ubuntu_runner_compat_script_passes():
     res = subprocess.run(
-        ["node", str(ROOT / "scripts" / "check_ubuntu_runner_compat.mjs"), "--diagnostic"],
+        [
+            "node",
+            str(ROOT / "scripts" / "check_ubuntu_runner_compat.mjs"),
+            "--diagnostic",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

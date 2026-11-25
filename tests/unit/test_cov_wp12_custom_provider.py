@@ -62,25 +62,33 @@ def test_the_target_may_come_from_the_config_or_from_the_environment(monkeypatch
     assert from_env.model_id == "custom:other.module.embed:8"
 
 
-def test_an_unconfigured_provider_names_itself_a_callable_and_refuses_to_load(monkeypatch):
+def test_an_unconfigured_provider_names_itself_a_callable_and_refuses_to_load(
+    monkeypatch,
+):
     prov = _provider(monkeypatch, None, model="")
 
     assert prov.model_id == "custom:callable:384"
-    with pytest.raises(EmbeddingUnavailable, match="custom embedding target not configured"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="custom embedding target not configured"
+    ):
         prov.embed_batch(["alpha"])
 
 
 def test_a_target_without_a_module_part_is_rejected(monkeypatch):
     prov = _provider(monkeypatch, "embed_texts")
 
-    with pytest.raises(EmbeddingUnavailable, match="invalid custom embedding target: embed_texts"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="invalid custom embedding target: embed_texts"
+    ):
         prov.embed_batch(["alpha"])
 
 
 def test_a_target_in_a_module_that_does_not_exist_is_unavailable(monkeypatch):
     prov = _provider(monkeypatch, "wp12_missing_module_xyz:embed_texts")
 
-    with pytest.raises(EmbeddingUnavailable, match="custom embedding target unavailable"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="custom embedding target unavailable"
+    ):
         prov.embed_batch(["alpha"])
 
 
@@ -88,7 +96,9 @@ def test_a_module_without_the_named_callable_is_unavailable(monkeypatch):
     _install_target(monkeypatch, _rows([1.0]), attr="something_else")
     prov = _provider(monkeypatch, "wp12_fake_embedder:embed_texts")
 
-    with pytest.raises(EmbeddingUnavailable, match="custom embedding target unavailable"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="custom embedding target unavailable"
+    ):
         prov.embed_batch(["alpha"])
 
 
@@ -111,7 +121,9 @@ def test_a_callable_that_raises_is_reported_as_unavailable(monkeypatch):
     _install_target(monkeypatch, _broken)
     prov = _provider(monkeypatch, "wp12_fake_embedder:embed_texts")
 
-    with pytest.raises(EmbeddingUnavailable, match="custom embedding failed: division by zero"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="custom embedding failed: division by zero"
+    ):
         prov.embed_batch(["alpha"])
 
 

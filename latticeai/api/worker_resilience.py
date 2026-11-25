@@ -69,8 +69,12 @@ class WorkerIdempotencyStore:
     ) -> None:
         self._max_entries = max(16, int(max_entries))
         self._ttl_s = max(1.0, float(ttl_s))
-        self._entries: "OrderedDict[Tuple[str, str, str], CachedComputeResponse]" = OrderedDict()
-        self._inflight: Dict[Tuple[str, str, str], Tuple[str, asyncio.Future[CachedComputeResponse]]] = {}
+        self._entries: "OrderedDict[Tuple[str, str, str], CachedComputeResponse]" = (
+            OrderedDict()
+        )
+        self._inflight: Dict[
+            Tuple[str, str, str], Tuple[str, asyncio.Future[CachedComputeResponse]]
+        ] = {}
 
     def _evict_expired(self, now: float) -> None:
         stale = [
@@ -190,7 +194,11 @@ def install_worker_compute_resilience(
             try:
                 return await asyncio.wait_for(call_next(request), timeout=timeout_s)
             except asyncio.TimeoutError:
-                logger.warning("worker compute timeout after %.2fs on %s", timeout_s, request.url.path)
+                logger.warning(
+                    "worker compute timeout after %.2fs on %s",
+                    timeout_s,
+                    request.url.path,
+                )
                 return JSONResponse(
                     status_code=504,
                     content={
@@ -200,7 +208,9 @@ def install_worker_compute_resilience(
                     },
                 )
             except Exception:
-                logger.exception("unhandled worker compute failure on %s", request.url.path)
+                logger.exception(
+                    "unhandled worker compute failure on %s", request.url.path
+                )
                 return JSONResponse(
                     status_code=503,
                     content={
@@ -237,7 +247,9 @@ def install_worker_compute_resilience(
             )
         if inflight_fut is not None:
             try:
-                joined = await asyncio.wait_for(asyncio.shield(inflight_fut), timeout=timeout_s)
+                joined = await asyncio.wait_for(
+                    asyncio.shield(inflight_fut), timeout=timeout_s
+                )
             except asyncio.TimeoutError:
                 logger.warning(
                     "coalesced worker compute timeout after %.2fs on %s",
@@ -277,7 +289,9 @@ def install_worker_compute_resilience(
             response, payload_bytes = await asyncio.wait_for(
                 _execute_and_buffer(), timeout=timeout_s
             )
-            media_type = response.media_type or response.headers.get("content-type", "application/json")
+            media_type = response.media_type or response.headers.get(
+                "content-type", "application/json"
+            )
             entry = CachedComputeResponse(
                 body_sha256=body_sha,
                 status_code=response.status_code,
@@ -301,7 +315,9 @@ def install_worker_compute_resilience(
             )
         except asyncio.TimeoutError as exc:
             idem_store.finish_inflight_error(scope_key, exc)
-            logger.warning("worker compute timeout after %.2fs on %s", timeout_s, request.url.path)
+            logger.warning(
+                "worker compute timeout after %.2fs on %s", timeout_s, request.url.path
+            )
             return JSONResponse(
                 status_code=504,
                 content={

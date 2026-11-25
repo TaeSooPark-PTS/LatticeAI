@@ -6,7 +6,7 @@
 > with the current release. Subsystem design principles and operational views
 > live in [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **14.1.0 — Living Synthesis**.
+Current release: **14.1.1 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
 Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
@@ -200,10 +200,11 @@ security primitives (`latticeai.core.security`).
     (`tsc 7.0.2` with `noUncheckedIndexedAccess`), `npm run check:bundle`
     (`<= 150 KiB` initial JS gzip), i18n literal & namespace checks, extension
     test suites.
-  - **Python:** `npm run test:coverage` (`>= 90%` floor), `ruff` (with `"BLE"`
-    blind-except detection, McCabe `max-complexity <= 20`, production `S608`,
-    and minimal Bandit per-file ignores), `mypy`, modular unit tests under
-    `tests/unit/` (including cross-timezone UTC timestamp consistency tests).
+  - **Python:** `npm run test:coverage` (`>= 90%` floor), `ruff` (`ruff format --check .`, `"BLE"`
+    blind-except detection, global McCabe `max-complexity <= 20` with zero `C901`
+    exemptions, production `S608`, and minimal Bandit per-file ignores), `mypy`,
+    modular unit tests under `tests/unit/` (including cross-timezone UTC timestamp
+    consistency tests).
   - **Rust, Windows, Desktop & Container:** `cargo fmt --check`,
     `cargo clippy --workspace --all-targets -- -D warnings`, parallel
     `cargo-nextest` on both **Ubuntu (`ubuntu-latest`)** and **Windows
@@ -231,13 +232,13 @@ security primitives (`latticeai.core.security`).
 
 ## Release Artifact Map
 
-14.1.0 exact artifact names:
+14.1.1 exact artifact names:
 
-- Python wheel: `dist/ltcai-14.1.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.1.0.tar.gz`
-- npm tarball: `ltcai-14.1.0.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.1.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
+- Python wheel: `dist/ltcai-14.1.1-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.1.1.tar.gz`
+- npm tarball: `ltcai-14.1.1.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.1.1.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.1_aarch64.dmg`
 
 ## Known Boundaries
 

@@ -200,9 +200,7 @@ def test_core_leftovers_users_sessions_config_quiet_permission(
     # quiet with exception but no traceback
     from latticeai.core import quiet as quiet_mod
 
-    monkeypatch.setattr(
-        sys, "exc_info", lambda: (ValueError, ValueError("x"), None)
-    )
+    monkeypatch.setattr(sys, "exc_info", lambda: (ValueError, ValueError("x"), None))
     quiet_mod.logger.setLevel(logging.DEBUG)
     quiet("no-tb")
 

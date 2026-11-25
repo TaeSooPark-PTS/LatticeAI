@@ -118,7 +118,9 @@ SECRET_KEY_HINTS = (
 )
 
 SECRET_TEXT_PATTERNS = [
-    re.compile(r"(?i)\b(api[_ -]?key|secret|token|password|passwd|authorization|bearer|client[_ -]?secret|webhook|dsn)\s*[:=]\s*['\"]?([^\s'\",;]{8,})['\"]?"),
+    re.compile(
+        r"(?i)\b(api[_ -]?key|secret|token|password|passwd|authorization|bearer|client[_ -]?secret|webhook|dsn)\s*[:=]\s*['\"]?([^\s'\",;]{8,})['\"]?"
+    ),
     re.compile(r"\b(sk-[A-Za-z0-9_\-]{16,})\b"),
     re.compile(r"\b(xai-[A-Za-z0-9_\-]{16,})\b"),
     re.compile(r"\b(gsk_[A-Za-z0-9_\-]{16,})\b"),
@@ -126,11 +128,15 @@ SECRET_TEXT_PATTERNS = [
     re.compile(r"\b(xox[baprs]-[A-Za-z0-9-]{10,})\b"),
     re.compile(r"\b(AKIA[0-9A-Z]{16})\b"),
     re.compile(r"(?i)\b(postgres(?:ql)?://[^@\s]+:[^@\s]+@[^\s]+)"),
-    re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"),
+    re.compile(
+        r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"
+    ),
 ]
 
 TELEGRAM_TOKEN_WITH_BOT_RE = re.compile(r"\bbot(\d{5,20}):[A-Za-z0-9_-]{8,}\b")
-TELEGRAM_TOKEN_BARE_RE = re.compile(r"(?<![A-Za-z0-9_:-])(\d{5,20}):[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])")
+TELEGRAM_TOKEN_BARE_RE = re.compile(
+    r"(?<![A-Za-z0-9_:-])(\d{5,20}):[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])"
+)
 
 
 def _is_secret_key(key: Any) -> bool:
@@ -147,6 +153,7 @@ def redact_secret_text(text: str) -> str:
     redacted = TELEGRAM_TOKEN_WITH_BOT_RE.sub(r"bot\1:REDACTED", redacted)
     redacted = TELEGRAM_TOKEN_BARE_RE.sub(r"bot\1:REDACTED", redacted)
     for pattern in SECRET_TEXT_PATTERNS:
+
         def repl(match: re.Match) -> str:
             if len(match.groups()) >= 2:
                 return f"{match.group(1)}=[REDACTED_SECRET]"
@@ -164,7 +171,9 @@ def redact_secrets(value: Any) -> Any:
     if isinstance(value, dict):
         out: Dict[Any, Any] = {}
         for key, item in value.items():
-            out[key] = "[REDACTED_SECRET]" if _is_secret_key(key) else redact_secrets(item)
+            out[key] = (
+                "[REDACTED_SECRET]" if _is_secret_key(key) else redact_secrets(item)
+            )
         return out
     if isinstance(value, list):
         return [redact_secrets(item) for item in value]
@@ -175,8 +184,8 @@ def redact_secrets(value: Any) -> Any:
 
 # ── Per-user token-bucket rate limiting ──────────────────────────────────────
 _RATE_LIMITS = {
-    "chat":   (30, 0.5),
-    "agent":  (10, 0.1),
+    "chat": (30, 0.5),
+    "agent": (10, 0.1),
     "upload": (20, 0.2),
 }
 _MAX_RATE_BUCKETS = 10_000
@@ -198,7 +207,9 @@ def enforce_rate_limit(email: str, bucket_key: str, *, enabled: bool = True) -> 
                 for k in stale:
                     _rate_buckets.pop(k, None)
                 if len(_rate_buckets) >= _MAX_RATE_BUCKETS:
-                    oldest = min(_rate_buckets.items(), key=lambda item: item[1]["ts"])[0]
+                    oldest = min(_rate_buckets.items(), key=lambda item: item[1]["ts"])[
+                        0
+                    ]
                     _rate_buckets.pop(oldest, None)
             _rate_buckets[key] = {"tokens": cap - 1, "ts": now}
             return

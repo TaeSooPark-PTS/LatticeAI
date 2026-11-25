@@ -37,7 +37,9 @@ def test_lattice_brain_never_imports_latticeai():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for module, lineno in _imported_modules(tree):
             if module.split(".")[0].startswith(FORBIDDEN_PREFIXES):
-                violations.append(f"{path.relative_to(BRAIN_ROOT.parent)}:{lineno} imports {module}")
+                violations.append(
+                    f"{path.relative_to(BRAIN_ROOT.parent)}:{lineno} imports {module}"
+                )
     assert not violations, (
         "lattice_brain must stay importable without the product layer "
         "(Brain Core extraction rule):\n" + "\n".join(violations)

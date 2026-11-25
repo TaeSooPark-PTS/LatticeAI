@@ -54,7 +54,9 @@ def test_headings_survive_as_markdown_so_sections_still_work() -> None:
 
 
 def test_a_page_with_no_h1_still_gets_its_title_as_the_top_section() -> None:
-    text = html_to_text("<html><head><title>제목</title></head><body><p>본문</p></body></html>")
+    text = html_to_text(
+        "<html><head><title>제목</title></head><body><p>본문</p></body></html>"
+    )
     assert text.startswith("# 제목")
     assert "본문" in text
 
@@ -65,7 +67,9 @@ def test_list_items_stay_one_line_each() -> None:
 
 
 def test_table_cells_are_tab_separated_rows() -> None:
-    text = html_to_text("<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>")
+    text = html_to_text(
+        "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+    )
     rows = [line.strip() for line in text.splitlines() if line.strip()]
     assert rows == ["a\tb", "c\td"]
 

@@ -24,7 +24,11 @@ CHAT_SOURCE_TYPES = frozenset({"chat_message", "mcp_message"})
 # Typed memory records (read via ingest_event → Decision/Experience/Event
 # nodes). The Memory System writes through the same door as everything else.
 MEMORY_SOURCE_TYPES = frozenset({"decision", "experience", "workspace_event"})
-_MEMORY_NODE_TYPES = {"decision": "Decision", "experience": "Experience", "workspace_event": "Event"}
+_MEMORY_NODE_TYPES = {
+    "decision": "Decision",
+    "experience": "Experience",
+    "workspace_event": "Event",
+}
 
 DEFAULT_MAX_TEXT_BYTES = 5 * 1024 * 1024  # 5 MB of extracted text per item
 
@@ -55,13 +59,41 @@ FOLDER_DEFAULT_SKIP_DIRS = frozenset(
 # are read inline (extracted content → chunks); .pdf routes as source_type
 # "pdf" through ingest_document (content extraction is upstream's concern).
 FOLDER_TEXT_EXTENSIONS = frozenset(
-    {".txt", ".md", ".markdown", ".rst", ".csv", ".json", ".yaml", ".yml", ".toml", ".ini"}
+    {
+        ".txt",
+        ".md",
+        ".markdown",
+        ".rst",
+        ".csv",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+    }
 )
 FOLDER_CODE_EXTENSIONS = frozenset(
     {
-        ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".go", ".rs",
-        ".java", ".c", ".h", ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt",
-        ".sh", ".sql",
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".html",
+        ".css",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+        ".sh",
+        ".sql",
     }
 )
 FOLDER_DOCUMENT_EXTENSIONS = frozenset({".pdf"})

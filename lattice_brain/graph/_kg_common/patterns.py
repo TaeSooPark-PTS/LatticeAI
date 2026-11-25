@@ -70,7 +70,9 @@ _EN_PART_REVERSE = re.compile(
     re.IGNORECASE,
 )
 #: `A는 B의 일부` / `A는 B에 속한다` — part first, whole second.
-_KO_PART_FORWARD = re.compile(r"(?:의 일부|의 구성요소|의 하위|에 속한|에 포함된|의 부분)")
+_KO_PART_FORWARD = re.compile(
+    r"(?:의 일부|의 구성요소|의 하위|에 속한|에 포함된|의 부분)"
+)
 #: `A는 B로 구성된다` — whole first, part second.
 _KO_PART_REVERSE = re.compile(r"(?:로 구성|으로 구성|의 하위 항목)")
 
@@ -81,7 +83,9 @@ _EN_CONTRAST = re.compile(
     re.IGNORECASE,
 )
 #: `A가 아니라 B` / `A 대신 B` / `A와 달리 B`.
-_KO_CONTRAST = re.compile(r"(?:아니라|아닌|대신|와 달리|과 달리|반면|이 아니고|가 아니고)")
+_KO_CONTRAST = re.compile(
+    r"(?:아니라|아닌|대신|와 달리|과 달리|반면|이 아니고|가 아니고)"
+)
 
 #: Subject markers: the syllable that says "this noun is the actor".
 _KO_SUBJECT_MARKS: Tuple[str, ...] = ("은", "는", "이", "가", "께서")
@@ -126,9 +130,7 @@ def _triple(
     }
 
 
-def concept_positions(
-    sentence: str, concepts: Sequence[str]
-) -> List[Tuple[int, str]]:
+def concept_positions(sentence: str, concepts: Sequence[str]) -> List[Tuple[int, str]]:
     """``(offset, concept)`` for every concept present, in text order.
 
     Case-insensitive, first occurrence only — a concept repeated in one
@@ -191,9 +193,7 @@ def _definition(
     )
     if not english and not korean:
         return None
-    return _triple(
-        subject, obj, "설명함", "definition", STRONG_EDGE_WEIGHT, sentence
-    )
+    return _triple(subject, obj, "설명함", "definition", STRONG_EDGE_WEIGHT, sentence)
 
 
 def _part_of(

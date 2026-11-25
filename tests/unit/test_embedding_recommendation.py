@@ -21,9 +21,14 @@ def test_has_hf_auth_token_and_resolve_hf_endpoint():
     assert has_hf_auth_token({"HUGGINGFACE_TOKEN": "hf_legacy"}) is True
 
     assert resolve_hf_endpoint({}) == DEFAULT_HF_ENDPOINT
-    assert resolve_hf_endpoint({"HF_ENDPOINT": "https://hf-mirror.com/"}) == "https://hf-mirror.com"
     assert (
-        resolve_hf_endpoint({"HUGGINGFACE_HUB_ENDPOINT": "https://custom.mirror.local/"})
+        resolve_hf_endpoint({"HF_ENDPOINT": "https://hf-mirror.com/"})
+        == "https://hf-mirror.com"
+    )
+    assert (
+        resolve_hf_endpoint(
+            {"HUGGINGFACE_HUB_ENDPOINT": "https://custom.mirror.local/"}
+        )
         == "https://custom.mirror.local"
     )
 
@@ -57,7 +62,9 @@ def test_public_mirrors_and_fallback_selection_for_embeddinggemma():
     assert get_public_mirror_repos("org/unrelated-model", "local_mlx") == []
     assert select_public_fallback_repo("org/unrelated-model", "local_mlx") is None
     assert (
-        select_public_fallback_repo("google/embeddinggemma-2", "local_mlx", prefer_8bit=True)
+        select_public_fallback_repo(
+            "google/embeddinggemma-2", "local_mlx", prefer_8bit=True
+        )
         == "mlx-community/embeddinggemma-2-8bit"
     )
 
@@ -112,4 +119,7 @@ def test_recommend_embedding_for_hardware_includes_mirrors_and_fallback(monkeypa
     assert rec_low["gguf_repo_id"] == "ggml-org/embeddinggemma-300m-GGUF"
     assert rec_low["onnx_repo_id"] == "onnx-community/embeddinggemma-300m-ONNX"
     assert rec_low["gated_fallback"]["active"] is True
-    assert rec_low["gated_fallback"]["fallback_repo"] == "mlx-community/embeddinggemma-300m-4bit"
+    assert (
+        rec_low["gated_fallback"]["fallback_repo"]
+        == "mlx-community/embeddinggemma-300m-4bit"
+    )

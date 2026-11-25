@@ -86,7 +86,10 @@ CORPUS: List[Dict[str, str]] = [
     {"case": "keyed_dsn", "text": "dsn=postgres-dsn-value-1234"},
     {"case": "keyed_too_short", "text": "token: short"},
     {"case": "keyed_korean_sentence", "text": "제 api_key: abcdefgh12345678 입니다"},
-    {"case": "keyed_two_on_one_line", "text": "token: abcdefgh12345678 secret: zyxwvu9876543210"},
+    {
+        "case": "keyed_two_on_one_line",
+        "text": "token: abcdefgh12345678 secret: zyxwvu9876543210",
+    },
     # ── shaped patterns (whole match dropped) ───────────────────────────────
     {"case": "shape_openai", "text": "value sk-abcdefghijklmnop01 end"},
     {"case": "shape_xai", "text": "value xai-abcdefghijklmnop01 end"},
@@ -113,7 +116,10 @@ CORPUS: List[Dict[str, str]] = [
     # ── telegram tokens (rewritten, not blanked) ────────────────────────────
     {"case": "telegram_with_bot", "text": "bot123456:abcdefghij"},
     {"case": "telegram_bare", "text": "123456:abcdefghij"},
-    {"case": "telegram_bare_in_sentence", "text": "토큰은 1234567:AAEEabcdefghij 입니다"},
+    {
+        "case": "telegram_bare_in_sentence",
+        "text": "토큰은 1234567:AAEEabcdefghij 입니다",
+    },
     {"case": "telegram_lookbehind_blocked", "text": "x123456:abcdefghij"},
     # The trailing lookahead never fires: `[A-Za-z0-9_-]{8,}` is greedy, so it
     # swallows the tail and the lookahead is satisfied at end of string.
@@ -141,7 +147,10 @@ CORPUS: List[Dict[str, str]] = [
     {"case": "brand_and_secret", "text": "Connect AI says api_key: abcdefgh12345678"},
     {"case": "brand_and_telegram", "text": "connect-ai token 123456:abcdefghij"},
     # ── shape/ordering interactions ─────────────────────────────────────────
-    {"case": "multiline_mixed", "text": "line1 sk-abcdefghijklmnop01\nline2 커넥트 AI\nline3 ok"},
+    {
+        "case": "multiline_mixed",
+        "text": "line1 sk-abcdefghijklmnop01\nline2 커넥트 AI\nline3 ok",
+    },
     {"case": "keyed_wins_over_shape", "text": "token: sk-abcdefghijklmnop01"},
     {"case": "trailing_punctuation", "text": "(api_key: abcdefgh12345678), done."},
     {"case": "unicode_emoji", "text": "🔐 secret: abcdefgh12345678 🔐"},

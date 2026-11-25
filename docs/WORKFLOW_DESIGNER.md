@@ -272,7 +272,7 @@ back to `config.left_value`). Numeric comparisons coerce both sides with
 class WorkflowRun:
     workflow_id: Optional[str]
     name: str
-    status: str = "ok"          # ok | failed | partial
+    status: str = "ok"  # ok | failed | partial
     timeline: List[Dict[str, Any]] = field(default_factory=list)
     outputs: Dict[str, Any] = field(default_factory=dict)
     started_at: str = ...

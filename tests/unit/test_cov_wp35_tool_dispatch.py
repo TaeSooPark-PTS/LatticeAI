@@ -98,4 +98,6 @@ def test_governed_path_existence_never_raises(monkeypatch):
 
     monkeypatch.setattr(td, "document_output_target", boom)
 
-    assert td.ToolDispatchService()._governed_path_exists("create_docx", "a.docx") is False
+    assert (
+        td.ToolDispatchService()._governed_path_exists("create_docx", "a.docx") is False
+    )

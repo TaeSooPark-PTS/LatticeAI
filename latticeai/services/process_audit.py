@@ -64,7 +64,9 @@ def redact_command(command: Sequence[Any]) -> list[str]:
 
 
 def _digest_payload(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -72,7 +74,9 @@ def command_hash(command: Sequence[Any], *, cwd: Optional[str] = None) -> str:
     return _digest_payload({"command": _normalize_command(command), "cwd": cwd or ""})
 
 
-def confirmation_token(command: Sequence[Any], *, cwd: Optional[str] = None, purpose: str = "execute") -> str:
+def confirmation_token(
+    command: Sequence[Any], *, cwd: Optional[str] = None, purpose: str = "execute"
+) -> str:
     digest = _digest_payload(
         {
             "purpose": purpose,
@@ -113,7 +117,9 @@ def verify_command_confirmation(
 ) -> bool:
     if not provided_token:
         return False
-    return str(provided_token).strip() == confirmation_token(command, cwd=cwd, purpose=purpose)
+    return str(provided_token).strip() == confirmation_token(
+        command, cwd=cwd, purpose=purpose
+    )
 
 
 def require_command_confirmation(
@@ -123,15 +129,23 @@ def require_command_confirmation(
     cwd: Optional[str] = None,
     purpose: str = "installer",
 ) -> None:
-    if not verify_command_confirmation(command, provided_token, cwd=cwd, purpose=purpose):
-        raise CommandConfirmationError("installer command requires a matching confirmation token")
+    if not verify_command_confirmation(
+        command, provided_token, cwd=cwd, purpose=purpose
+    ):
+        raise CommandConfirmationError(
+            "installer command requires a matching confirmation token"
+        )
 
 
 def _preview_text(text: Optional[str], *, limit: int = 500) -> Optional[str]:
     if text is None:
         return None
     value = str(text)[-limit:]
-    value = re.sub(r"(?i)(api[_-]?key|access[_-]?token|auth[_-]?token|password|secret|token)=\S+", r"\1=[REDACTED]", value)
+    value = re.sub(
+        r"(?i)(api[_-]?key|access[_-]?token|auth[_-]?token|password|secret|token)=\S+",
+        r"\1=[REDACTED]",
+        value,
+    )
     return value
 
 

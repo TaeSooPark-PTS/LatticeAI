@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "14.1.0"
+PRODUCT_VERSION_TARGET = "14.1.1"
 
 
 @dataclass(frozen=True)
@@ -148,7 +148,7 @@ PRODUCT_GATES: List[ProductGate] = [
         id="ingestion-graph-coverage",
         title="Graph and ingestion integration coverage guards the Brain",
         evidence=[
-            "tests/unit/test_worker_compute.py::test_extract_returns_the_structures_ingestion_consumes",
+            "tests/unit/test_worker_compute_extract.py::test_extract_returns_the_structures_ingestion_consumes",
             # 11.8.0: `POST /worker/multimodal/describe` was deleted with the
             # rest of the caller-less surface, so its seam test went too. The
             # guarantee this gate needs — that an image becomes the exact facts

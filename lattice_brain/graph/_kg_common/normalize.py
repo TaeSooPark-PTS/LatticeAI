@@ -207,7 +207,9 @@ def normalize_entity(term: str, text: str = "") -> str:
     # `("Lattice AI").` unwraps fully rather than one layer at a time.
     for _ in range(3):
         before = cleaned
-        if len(cleaned) > 2 and cleaned.endswith(_DELIMITER_PAIRS.get(cleaned[0], "\0")):
+        if len(cleaned) > 2 and cleaned.endswith(
+            _DELIMITER_PAIRS.get(cleaned[0], "\0")
+        ):
             cleaned = cleaned[1:-1].strip()
         cleaned = cleaned.rstrip(_TRAILING_PUNCT).strip()
         if cleaned == before:

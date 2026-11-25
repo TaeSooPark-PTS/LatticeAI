@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> **Status: canonical** — updated 2026-11-25. Current release: **14.1.0 — Living Synthesis**.
+> **Status: canonical** — updated 2026-11-25. Current release: **14.1.1 — Living Synthesis**.
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection
@@ -43,7 +43,7 @@ Four legs (`Test (Python <ver> on <os>)`):
 
 | Leg | OpenAPI sync | Python lint (`ruff` + `mypy`) | Retrieval baseline (`hnswlib`) | Unit tests | Coverage floor (>=90%) | Product readiness |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3.11 + ubuntu-latest | yes | yes (`BLE`, McCabe <= 20, Bandit `S608` + minimal ignores) | yes (`.[ann]`) | `pytest tests/unit/` | no | yes |
+| 3.11 + ubuntu-latest | yes | yes (`ruff format --check .`, `BLE`, global McCabe <= 20 with zero `C901` ignores, Bandit `S608` + minimal ignores) | yes (`.[ann]`) | `pytest tests/unit/` | no | yes |
 | 3.12 + ubuntu-latest | no | no | no | `pytest tests/unit/` | no | no |
 | 3.14 + ubuntu-latest | no | no | no | via `--cov` invocation | yes (`fail_under = 90`) | no |
 | 3.11 + macos-latest | no | no | no | `pytest tests/unit/` | no | no |

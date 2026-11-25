@@ -51,9 +51,7 @@ class _FakeRouter:
 def _install_router(monkeypatch, router, *, loop_running: bool) -> None:
     monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", True)
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: router)
-    monkeypatch.setattr(
-        asyncio, "get_event_loop", lambda: _FakeLoop(loop_running)
-    )
+    monkeypatch.setattr(asyncio, "get_event_loop", lambda: _FakeLoop(loop_running))
 
 
 # ── legacy windowing ─────────────────────────────────────────────────────────
@@ -67,9 +65,7 @@ def test_chunks_of_blank_text_is_empty() -> None:
 # ── LLM-backed concept extraction ────────────────────────────────────────────
 
 _CONCEPT_REPLY = (
-    "```json\n"
-    '[{"concept": "Lattice AI", "importance": 0.9}, "Graph RAG", 42]\n'
-    "```"
+    '```json\n[{"concept": "Lattice AI", "importance": 0.9}, "Graph RAG", 42]\n```'
 )
 
 

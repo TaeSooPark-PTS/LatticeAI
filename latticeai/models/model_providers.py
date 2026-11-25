@@ -87,25 +87,69 @@ PROVIDER_MODEL_CATALOG = {
     ],
     "openrouter": [
         {"id": "openai/gpt-5.5", "name": "GPT-5.5 via OpenRouter", "family": "GPT"},
-        {"id": "openai/gpt-4o-mini", "name": "GPT-4o Mini via OpenRouter", "family": "GPT"},
-        {"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7 via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
-        {"id": "qwen/qwen3.8-27b", "name": "Qwen3.8 27B via OpenRouter", "family": "Qwen"},
-        {"id": "qwen/qwen3.6-35b-a3b", "name": "Qwen3.6 35B A3B via OpenRouter", "family": "Qwen"},
-        {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
+        {
+            "id": "openai/gpt-4o-mini",
+            "name": "GPT-4o Mini via OpenRouter",
+            "family": "GPT",
+        },
+        {
+            "id": "anthropic/claude-opus-4.7",
+            "name": "Claude Opus 4.7 via OpenRouter",
+            "family": "Claude",
+        },
+        {
+            "id": "anthropic/claude-sonnet-4.6",
+            "name": "Claude Sonnet 4.6 via OpenRouter",
+            "family": "Claude",
+        },
+        {
+            "id": "anthropic/claude-haiku-4.5",
+            "name": "Claude Haiku 4.5 via OpenRouter",
+            "family": "Claude",
+        },
+        {
+            "id": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B via OpenRouter",
+            "family": "Qwen",
+        },
+        {
+            "id": "qwen/qwen3.6-35b-a3b",
+            "name": "Qwen3.6 35B A3B via OpenRouter",
+            "family": "Qwen",
+        },
+        {
+            "id": "google/gemma-4-12b-it",
+            "name": "Gemma 4 12B via OpenRouter",
+            "family": "Gemma",
+        },
         {"id": "x-ai/grok-4.6", "name": "Grok 4.6 via OpenRouter", "family": "Grok"},
-        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout via OpenRouter", "family": "Llama"},
-        {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
+        {
+            "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "name": "Llama 4 Scout via OpenRouter",
+            "family": "Llama",
+        },
+        {
+            "id": "google/gemini-2.5-flash",
+            "name": "Gemini 2.5 Flash via OpenRouter",
+            "family": "Gemini",
+        },
     ],
     "groq": [
-        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "family": "Llama"},
+        {
+            "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "name": "Llama 4 Scout",
+            "family": "Llama",
+        },
     ],
     "together": [
         {"id": "Qwen/Qwen3.8-27B", "name": "Qwen3.8 27B", "family": "Qwen"},
         {"id": "Qwen/Qwen3.6-27B", "name": "Qwen3.6 27B", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B", "family": "Gemma"},
-        {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},
+        {
+            "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+            "name": "Llama 4 Scout",
+            "family": "Llama",
+        },
     ],
     "xai": [
         # One current generation only, per MODEL_POLICY's "do not keep old
@@ -133,16 +177,76 @@ MODEL_SOURCE_BY_FAMILY = {
 }
 
 MODEL_PROVENANCE_BY_FAMILY = {
-    "GPT": {"country_code": "US", "vendor": "OpenAI", "execution_location": "cloud_internet", "billing_mode": "api_key_payg"},
-    "Claude": {"country_code": "US", "vendor": "Anthropic", "execution_location": "cloud_internet", "billing_mode": "api_key_payg"},
-    "Qwen": {"country_code": "CN", "vendor": "Alibaba", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "Llama": {"country_code": "US", "vendor": "Meta", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "Gemini": {"country_code": "US", "vendor": "Google", "execution_location": "cloud_internet", "billing_mode": "api_key_payg"},
-    "Gemma": {"country_code": "US", "vendor": "Google", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "Grok": {"country_code": "US", "vendor": "xAI", "execution_location": "cloud_internet", "billing_mode": "api_key_payg"},
-    "Mistral": {"country_code": "FR", "vendor": "Mistral AI", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "DeepSeek": {"country_code": "CN", "vendor": "DeepSeek", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "EXAONE": {"country_code": "KR", "vendor": "LG AI Research", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "Solar": {"country_code": "KR", "vendor": "Upstage", "execution_location": "local_pc", "billing_mode": "free_local"},
-    "Phi": {"country_code": "US", "vendor": "Microsoft", "execution_location": "local_pc", "billing_mode": "free_local"},
+    "GPT": {
+        "country_code": "US",
+        "vendor": "OpenAI",
+        "execution_location": "cloud_internet",
+        "billing_mode": "api_key_payg",
+    },
+    "Claude": {
+        "country_code": "US",
+        "vendor": "Anthropic",
+        "execution_location": "cloud_internet",
+        "billing_mode": "api_key_payg",
+    },
+    "Qwen": {
+        "country_code": "CN",
+        "vendor": "Alibaba",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "Llama": {
+        "country_code": "US",
+        "vendor": "Meta",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "Gemini": {
+        "country_code": "US",
+        "vendor": "Google",
+        "execution_location": "cloud_internet",
+        "billing_mode": "api_key_payg",
+    },
+    "Gemma": {
+        "country_code": "US",
+        "vendor": "Google",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "Grok": {
+        "country_code": "US",
+        "vendor": "xAI",
+        "execution_location": "cloud_internet",
+        "billing_mode": "api_key_payg",
+    },
+    "Mistral": {
+        "country_code": "FR",
+        "vendor": "Mistral AI",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "DeepSeek": {
+        "country_code": "CN",
+        "vendor": "DeepSeek",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "EXAONE": {
+        "country_code": "KR",
+        "vendor": "LG AI Research",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "Solar": {
+        "country_code": "KR",
+        "vendor": "Upstage",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
+    "Phi": {
+        "country_code": "US",
+        "vendor": "Microsoft",
+        "execution_location": "local_pc",
+        "billing_mode": "free_local",
+    },
 }

@@ -23,11 +23,17 @@ from latticeai.core import sessions as sessions_mod
 from latticeai.core.sessions import SessionStore, _hash_token
 
 
-def _write_session(data_dir: Path, token: str, email: str, *, created: float | None = None) -> None:
+def _write_session(
+    data_dir: Path, token: str, email: str, *, created: float | None = None
+) -> None:
     """Write ``sessions.json`` the way the Rust writer does: hashed key, tuple."""
     path = data_dir / "sessions.json"
     existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    existing[_hash_token(token)] = [email, created if created is not None else time.time(), email]
+    existing[_hash_token(token)] = [
+        email,
+        created if created is not None else time.time(),
+        email,
+    ]
     data_dir.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(existing), encoding="utf-8")
 
@@ -43,7 +49,9 @@ def test_a_token_written_after_construction_is_found(tmp_path: Path) -> None:
     assert store.get_subject("later-token") == "alice@example.com"
 
 
-def test_a_session_file_that_appears_after_construction_is_picked_up(tmp_path: Path) -> None:
+def test_a_session_file_that_appears_after_construction_is_picked_up(
+    tmp_path: Path,
+) -> None:
     """Boot before the first login ever happened: there is no file at all."""
     data_dir = tmp_path / "fresh"
     store = SessionStore(data_dir)
@@ -53,7 +61,9 @@ def test_a_session_file_that_appears_after_construction_is_picked_up(tmp_path: P
     assert store.get_email("first-ever") == "bob@example.com"
 
 
-def test_an_unchanged_file_is_stat_ed_but_never_re_parsed(tmp_path: Path, monkeypatch) -> None:
+def test_an_unchanged_file_is_stat_ed_but_never_re_parsed(
+    tmp_path: Path, monkeypatch
+) -> None:
     """The mtime/size stamp is what keeps a miss from costing a JSON parse."""
     _write_session(tmp_path, "known", "carol@example.com")
     store = SessionStore(tmp_path)
@@ -105,7 +115,9 @@ def test_a_constantly_changing_file_is_parsed_at_most_once_per_interval(
     assert store.get_email("churn-24") == "u24@example.com"
 
 
-def test_the_interval_does_not_delay_the_first_lookup_after_boot(tmp_path: Path) -> None:
+def test_the_interval_does_not_delay_the_first_lookup_after_boot(
+    tmp_path: Path,
+) -> None:
     """A login in the same second as boot must not wait out the throttle."""
     store = SessionStore(tmp_path)
     _write_session(tmp_path, "same-second", "dave@example.com")
@@ -114,7 +126,9 @@ def test_the_interval_does_not_delay_the_first_lookup_after_boot(tmp_path: Path)
     assert store.get_email("same-second") == "dave@example.com"
 
 
-def test_an_expired_entry_is_still_expired_after_a_reload(tmp_path: Path, monkeypatch) -> None:
+def test_an_expired_entry_is_still_expired_after_a_reload(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Freshness must not resurrect a session the TTL already refused."""
     monkeypatch.setattr(sessions_mod, "SESSION_RELOAD_MIN_INTERVAL", 0.0)
     store = SessionStore(tmp_path, ttl_seconds=60, refresh_threshold_seconds=10**9)
@@ -126,7 +140,9 @@ def test_an_expired_entry_is_still_expired_after_a_reload(tmp_path: Path, monkey
     assert _hash_token("stale") not in store._sessions
 
 
-def test_this_store_writes_onto_the_file_rather_than_over_it(tmp_path: Path, monkeypatch) -> None:
+def test_this_store_writes_onto_the_file_rather_than_over_it(
+    tmp_path: Path, monkeypatch
+) -> None:
     """``create``/``invalidate`` merge first — this process is not the only writer.
 
     No interval monkeypatch here on purpose: a write path forces the re-read,
@@ -149,7 +165,9 @@ def test_this_store_writes_onto_the_file_rather_than_over_it(tmp_path: Path, mon
     assert _hash_token(mine) not in on_disk
 
 
-def test_our_own_write_is_not_mistaken_for_someone_elses(tmp_path: Path, monkeypatch) -> None:
+def test_our_own_write_is_not_mistaken_for_someone_elses(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Persisting re-stamps, so the next miss does not re-read what we wrote."""
     monkeypatch.setattr(sessions_mod, "SESSION_RELOAD_MIN_INTERVAL", 0.0)
     store = SessionStore(tmp_path)
@@ -168,7 +186,9 @@ def test_our_own_write_is_not_mistaken_for_someone_elses(tmp_path: Path, monkeyp
     assert reads["n"] == 0
 
 
-def test_an_unusable_data_dir_reports_no_stamp_instead_of_raising(tmp_path: Path) -> None:
+def test_an_unusable_data_dir_reports_no_stamp_instead_of_raising(
+    tmp_path: Path,
+) -> None:
     """A data dir that cannot exist must not take a lookup down with it."""
     blocked = tmp_path / "not-a-directory"
     blocked.write_text("i am a file", encoding="utf-8")

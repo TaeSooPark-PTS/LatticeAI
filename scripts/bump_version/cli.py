@@ -66,10 +66,22 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     for cmd_name, help_text in (
-        ("all", "Synchronize or verify all 49 package, Cargo, and OpenAPI version targets"),
-        ("openapi", "Synchronize or verify frontend/openapi.json, _envelope.json, 13 fragments, and _index.json"),
-        ("cargo", "Synchronize or verify Cargo.toml, Cargo.lock, and Tauri configuration versions"),
-        ("markers", "Inspect or synchronize multilingual release version markers across documentation"),
+        (
+            "all",
+            "Synchronize or verify all 49 package, Cargo, and OpenAPI version targets",
+        ),
+        (
+            "openapi",
+            "Synchronize or verify frontend/openapi.json, _envelope.json, 13 fragments, and _index.json",
+        ),
+        (
+            "cargo",
+            "Synchronize or verify Cargo.toml, Cargo.lock, and Tauri configuration versions",
+        ),
+        (
+            "markers",
+            "Inspect or synchronize multilingual release version markers across documentation",
+        ),
     ):
         sub = subparsers.add_parser(cmd_name, help=help_text)
         sub.add_argument("version", help="Semantic version (e.g. 12.5.0)")

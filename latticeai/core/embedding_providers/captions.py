@@ -55,7 +55,9 @@ class MLXVisionCaptioner(VisionCaptioner):
 
     provider = "mlx-vlm"
 
-    def __init__(self, model: str, *, prompt: str = DEFAULT_CAPTION_PROMPT, max_tokens: int = 64):
+    def __init__(
+        self, model: str, *, prompt: str = DEFAULT_CAPTION_PROMPT, max_tokens: int = 64
+    ):
         self.model_id = str(model or "")
         self._prompt = prompt or DEFAULT_CAPTION_PROMPT
         self._max_tokens = max(1, int(max_tokens))
@@ -70,7 +72,9 @@ class MLXVisionCaptioner(VisionCaptioner):
             model, processor = vlm_load(self.model_id)
             self._loaded = (model, processor)
         except Exception as exc:
-            raise EmbeddingUnavailable(f"vision-language model unavailable: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"vision-language model unavailable: {exc}"
+            ) from exc
         return self._loaded
 
     def available(self) -> bool:
@@ -92,7 +96,15 @@ class MLXVisionCaptioner(VisionCaptioner):
                 prompt or self._prompt,
                 max_tokens=self._max_tokens,
             )
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError):
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
             # A caption the model did not produce is not a caption. Absence is
             # the honest answer, and every caller already handles it.
             return None
@@ -119,7 +131,9 @@ class CustomVisionCaptioner(VisionCaptioner):
 
     def _load(self) -> Callable[..., Any]:
         if self._fn is None:
-            self._fn = _load_dotted(self._target_ref, VISION_CAPTION_TARGET_ENV, "vision caption")
+            self._fn = _load_dotted(
+                self._target_ref, VISION_CAPTION_TARGET_ENV, "vision caption"
+            )
         return self._fn
 
     def available(self) -> bool:
@@ -132,7 +146,15 @@ class CustomVisionCaptioner(VisionCaptioner):
     def caption(self, path: str, *, prompt: str = "") -> Optional[str]:
         try:
             text = self._load()(str(path), prompt or DEFAULT_CAPTION_PROMPT)
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError):
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
             return None
         cleaned = str(text or "").strip()
         return cleaned or None
@@ -140,7 +162,10 @@ class CustomVisionCaptioner(VisionCaptioner):
     def health(self) -> Dict[str, Any]:
         try:
             self._load()
-            return {"status": "ok", "detail": f"custom captioner {self._target_ref} loaded"}
+            return {
+                "status": "ok",
+                "detail": f"custom captioner {self._target_ref} loaded",
+            }
         except EmbeddingUnavailable as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
@@ -157,6 +182,8 @@ def resolve_vision_captioner(
     return VisionCaptioner()
 
 
-def vision_caption_port(captioner: VisionCaptioner) -> Optional[Callable[[str], Optional[str]]]:
+def vision_caption_port(
+    captioner: VisionCaptioner,
+) -> Optional[Callable[[str], Optional[str]]]:
     """The caption seam Brain Core injects — ``None`` when no VLM is loaded."""
     return captioner.caption if captioner.available() else None

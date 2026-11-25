@@ -57,10 +57,10 @@ def _tokenize(text: str) -> List[str]:
         features.append(f"tok:{token}")
         if len(token) >= 5 and _ALPHA_RE.search(token):
             for i in range(0, len(token) - 2):
-                features.append(f"tri:{token[i:i+3]}")
+                features.append(f"tri:{token[i : i + 3]}")
         if len(token) >= 3 and _HANGUL_RE.search(token):
             for i in range(0, len(token) - 1):
-                features.append(f"ko:{token[i:i+2]}")
+                features.append(f"ko:{token[i : i + 2]}")
     return features
 
 
@@ -147,4 +147,9 @@ class LocalEmbeddingModel:
 # a vision-language model produced it, an image vector only when a vision model
 # produced it, and their absence is recorded as an absence.
 
-__all__ = ["DEFAULT_EMBEDDING_DIM", "EMBEDDING_MODEL_ID", "LocalEmbeddingModel", "embedding_model_id"]
+__all__ = [
+    "DEFAULT_EMBEDDING_DIM",
+    "EMBEDDING_MODEL_ID",
+    "LocalEmbeddingModel",
+    "embedding_model_id",
+]

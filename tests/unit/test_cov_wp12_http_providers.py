@@ -178,7 +178,9 @@ def test_an_ollama_transport_failure_is_reported_as_unavailable(monkeypatch):
 
     _install_httpx(monkeypatch, _handler)
 
-    with pytest.raises(EmbeddingUnavailable, match="Ollama embedding failed: connection refused"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="Ollama embedding failed: connection refused"
+    ):
         _ollama().embed_batch(["alpha"])
 
 
@@ -221,7 +223,9 @@ def test_the_openai_provider_defaults_to_the_public_endpoint_and_a_known_dimensi
     assert prov.dim == 1536
     assert prov.model_id == "openai:text-embedding-3-small:1536"
 
-    pinned = _openai(model="mystery-model", base_url="http://lm-studio.local:1234/v1/", dim=64)
+    pinned = _openai(
+        model="mystery-model", base_url="http://lm-studio.local:1234/v1/", dim=64
+    )
     assert pinned._base == "http://lm-studio.local:1234/v1"
     assert pinned.dim == 64
     assert pinned.model_id == "openai:mystery-model:64"
@@ -238,7 +242,10 @@ def test_the_authorization_header_appears_only_when_a_key_is_configured():
 def test_openai_rows_are_reordered_by_index_before_they_are_returned(monkeypatch):
     def _handler(method, url, payload):
         assert url == "https://api.openai.com/v1/embeddings"
-        assert payload == {"model": "text-embedding-3-small", "input": ["alpha", "beta"]}
+        assert payload == {
+            "model": "text-embedding-3-small",
+            "input": ["alpha", "beta"],
+        }
         return _FakeResponse(
             payload={
                 "data": [
@@ -274,7 +281,9 @@ def test_an_openai_transport_failure_is_reported_as_unavailable(monkeypatch):
 
     _install_httpx(monkeypatch, _handler)
 
-    with pytest.raises(EmbeddingUnavailable, match="OpenAI-compatible embedding failed"):
+    with pytest.raises(
+        EmbeddingUnavailable, match="OpenAI-compatible embedding failed"
+    ):
         _openai().embed_batch(["alpha"])
 
 

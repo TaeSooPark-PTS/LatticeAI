@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.1.1 - Living Synthesis] (2026-11-25)
+
+Python 포매팅, McCabe 복잡도 전역 강제, 서버 i18n 래칫, 컨테이너 위생에 대한 제로 기술 부채 패스를 완료했습니다: 전체 Python 파일 219개를 전용 커밋(`55ba57c381a433066fd94434c3a6250c4a1beb59`)으로 `ruff format .` 포매팅하고 `.git-blame-ignore-revs`에 기록하며 `npm run lint:python` 및 CI에 `ruff format --check .`를 강제했습니다. `create_models_router`와 `create_worker_compute_router`를 분해해 `pyproject.toml`의 `"C901"` 예외를 전량 제거(`max-complexity = 20` 예외 0건)하고 `/worker/extract` 테스트를 `tests/unit/test_worker_compute_extract.py`로 분리했으며, `worker_compute_render.py`와 `worker_resilience.py`를 `NON_ROUTER_HELPERS`에 명시 등록해 `scripts/check_server_i18n.mjs`를 `0 unclaimed` fail-closed 래칫으로 잠갔고, `Dockerfile`의 `lattice-host` 바이너리 복사에 `--chown=lattice:lattice --chmod=0755`를 명시했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.1.1.md](./releases/RELEASE_NOTES_v14.1.1.md).
+
 # [v14.1.0 - Living Synthesis] (2026-11-25)
 
 v14.0.0 치명적 회귀 2건을 수정하고 풀스택 정적 분석·문서 최신화를 완료했습니다: Rust ↔ Python 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일하고 다중 타임존 회귀 테스트를 추가했으며, Tauri 프로덕션 빌드를 `PortPolicy::PinnedProduction`으로 포트 `4825`에 고정해 충돌 시 즉시 실패(fail-fast)하도록 수정했습니다. Python 전역의 포괄적 `except Exception`을 구체적 예외로 좁히고 Ruff `"BLE"`·McCabe 복잡도 `<= 20`·최소 Bandit 예외를 적용했으며, `rust/lattice-auth`에 `messages.rs`와 `CsrfReason` 열거형을 도입하고 비실패 Tauri 커맨드가 `BackendStatus`를 직접 반환하도록 정리했습니다. 프론트엔드에 TypeScript 7 `"noUncheckedIndexedAccess": true`를 활성화해 68개 파일의 457건 오류를 해소(113개 테스트 파일 / 1,852개 테스트, Vitest 100%)했고, Playwright `visual` 스모크 잡을 PR에서도 실행되도록 확장했으며, 모든 영문·한국어 문서를 `v14.1.0` 기준으로 갱신했습니다.
@@ -112,10 +118,11 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 14.1.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.1.1까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
+- [v14.1.1 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.1.md)
 - [v14.1.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.0.md)
 - [v14.0.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.0.0.md)
 - [v13.9.0 - Living Synthesis](./releases/RELEASE_NOTES_v13.9.0.md)

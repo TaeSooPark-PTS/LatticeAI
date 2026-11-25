@@ -68,7 +68,9 @@ def loop_running(request):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-def _write_png(path: Path, *, size=(8, 8), colour=(200, 40, 40), mode: str = "RGB") -> Path:
+def _write_png(
+    path: Path, *, size=(8, 8), colour=(200, 40, 40), mode: str = "RGB"
+) -> Path:
     image = Image.new(mode, size, colour if mode != "P" else 1)
     image.save(path, format="PNG")
     return path
@@ -115,6 +117,7 @@ def test_runtime_package_lazy_exports():
     with pytest.raises(AttributeError):
         runtime_pkg.__getattr__("still_missing")
 
+
 def test_quiet_without_active_exception_and_disabled_logger(monkeypatch):
     quiet()
     quiet("no-exc")
@@ -138,6 +141,7 @@ def test_quiet_without_active_exception_and_disabled_logger(monkeypatch):
     monkeypatch.setattr(sys, "exc_info", lambda: (None, err, None))
     quiet()
 
+
 def test_quiet_logs_when_enabled(monkeypatch):
     recorded = []
 
@@ -160,6 +164,7 @@ def test_quiet_logs_when_enabled(monkeypatch):
     assert any("suppressed" in entry[1] for entry in recorded)
     assert any("because" in str(entry[2]) for entry in recorded)
 
+
 def test_llm_extract_concepts_guard_paths(monkeypatch):
     monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", False)
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: _FakeRouter())
@@ -169,8 +174,11 @@ def test_llm_extract_concepts_guard_paths(monkeypatch):
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: None)
     assert _llm_extract_concepts("text") is None
 
-    monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: _FakeRouter(model_id=""))
+    monkeypatch.setattr(
+        kg_extraction, "get_llm_router", lambda: _FakeRouter(model_id="")
+    )
     assert _llm_extract_concepts("text") is None
+
 
 def test_llm_extract_concepts_parses_and_rejects(monkeypatch, loop_running):
     _install_router(
@@ -188,21 +196,29 @@ def test_llm_extract_concepts_parses_and_rejects(monkeypatch, loop_running):
 
     _install_router(monkeypatch, _FakeRouter("not-json", fail=None), loop_running=False)
     # valid string but not JSON
-    monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: _FakeRouter("not-json"))
+    monkeypatch.setattr(
+        kg_extraction, "get_llm_router", lambda: _FakeRouter("not-json")
+    )
     monkeypatch.setattr(asyncio, "get_event_loop", lambda: _FakeLoop(False))
     assert _llm_extract_concepts("x") is None
 
-    _install_router(monkeypatch, _FakeRouter(fail=RuntimeError("down")), loop_running=True)
+    _install_router(
+        monkeypatch, _FakeRouter(fail=RuntimeError("down")), loop_running=True
+    )
     assert _llm_extract_concepts("x") is None
 
+
 def test_extract_concepts_prefers_llm_then_falls_back(monkeypatch):
-    _install_router(monkeypatch, _FakeRouter('[{"concept": "OnlyLLM"}]'), loop_running=False)
+    _install_router(
+        monkeypatch, _FakeRouter('[{"concept": "OnlyLLM"}]'), loop_running=False
+    )
     assert _extract_concepts("Lattice AI uses Graph RAG.") == ["OnlyLLM"]
 
     monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", False)
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: None)
     rules = _extract_concepts("Lattice AI uses Graph RAG.")
     assert any("lattice" in c.lower() for c in rules)
+
 
 def test_llm_extract_triples_guard_and_weighting(monkeypatch):
     monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", False)
@@ -213,7 +229,9 @@ def test_llm_extract_triples_guard_and_weighting(monkeypatch):
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: None)
     assert _llm_extract_triples("t", ["A", "B"]) is None
 
-    monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: _FakeRouter(model_id=""))
+    monkeypatch.setattr(
+        kg_extraction, "get_llm_router", lambda: _FakeRouter(model_id="")
+    )
     assert _llm_extract_triples("t", ["A", "B"]) is None
 
     reply = (
@@ -250,10 +268,13 @@ def test_llm_extract_triples_guard_and_weighting(monkeypatch):
     )
     assert _llm_extract_triples("t", ["A", "B"]) is None
 
+
 def test_extract_triples_prefers_llm_then_rules(monkeypatch):
     _install_router(
         monkeypatch,
-        _FakeRouter('[{"subject": "A", "object": "B", "relation": "사용함", "evidence": "A uses B."}]'),
+        _FakeRouter(
+            '[{"subject": "A", "object": "B", "relation": "사용함", "evidence": "A uses B."}]'
+        ),
         loop_running=False,
     )
     llm = _extract_triples("A uses B.", ["A", "B"])
@@ -263,6 +284,7 @@ def test_extract_triples_prefers_llm_then_rules(monkeypatch):
     rules = _extract_triples("Lattice AI uses Graph RAG.", ["Lattice AI", "Graph RAG"])
     assert rules
     assert rules[0]["evidence"] == "verb"
+
 
 def test_extract_concepts_rules_covers_reject_keep_and_dedup():
     assert _extract_concepts_rules("") == []
@@ -315,6 +337,7 @@ def test_extract_concepts_rules_covers_reject_keep_and_dedup():
     )
     assert len(limited) <= 2
 
+
 def test_extract_triples_rules_guards_dedup_limit_and_enumeration():
     assert _extract_triples_rules("anything", ["only"]) == []
     assert _extract_triples_rules("anything", []) == []
@@ -361,6 +384,7 @@ def test_extract_triples_rules_guards_dedup_limit_and_enumeration():
         names + ["Foxtrot"],
     )
     assert used
+
 
 def test_semantic_items_and_topic_candidates():
     assert _semantic_items("") == []

@@ -297,8 +297,13 @@ def _cfg():
 
 
 # ── captions: a model said it, or nobody did ─────────────────────────────────
-def _install_mlx_vlm(monkeypatch, *, caption="A whiteboard covered in sticky notes",
-                     load_error: str = "", generate_error: str = "") -> None:
+def _install_mlx_vlm(
+    monkeypatch,
+    *,
+    caption="A whiteboard covered in sticky notes",
+    load_error: str = "",
+    generate_error: str = "",
+) -> None:
     module = types.ModuleType("mlx_vlm")
 
     def _load(model):

@@ -2,11 +2,11 @@
 
 # Lattice AI Gap Roadmap
 
-> **Status: reference** — point-in-time gap inventory, refreshed at **v14.1.0**
+> **Status: reference** — point-in-time gap inventory, refreshed at **v14.1.1**
 > (2026-11-25). Not a canonical current-release document; version gates do not
 > bind it.
 
-As of **2026-11-25**, against the **14.1.0 — Living Synthesis** tree. This page
+As of **2026-11-25**, against the **14.1.1 — Living Synthesis** tree. This page
 tracks genuine remaining engineering gaps sourced from
 [`FEATURE_STATUS.md`](../FEATURE_STATUS.md),
 [`docs/SECURITY_AUDIT.md`](SECURITY_AUDIT.md), and the active `v13.0.0+` release
@@ -20,7 +20,7 @@ multi-part program (credentials, model harness, index format, or platform port).
 
 ---
 
-## Recently Closed (`v13.0.0` – `v14.1.0`) — Do Not Reopen
+## Recently Closed (`v13.0.0` – `v14.1.1`) — Do Not Reopen
 
 | Item | Shipped In | Resolution |
 | --- | --- | --- |
@@ -36,6 +36,7 @@ multi-part program (credentials, model harness, index format, or platform port).
 | Real Windows Rust CI, macOS Tauri CI, Docker smoke & PR visual smoke | `14.0.0` / `14.1.0` | Added `rust-windows` (`windows-latest`), `tauri-check` (`macos-latest`), digest-pinned `docker-smoke`, and PR + `main` Playwright `visual` smoke in `.github/workflows/ci.yml`. |
 | Rust ↔ Python UTC skew & Tauri production port drift | `14.1.0` | Unified timestamps onto offset-free UTC (`YYYY-MM-DDTHH:MM:SS`) across timezones and pinned production Tauri builds to port `4825` via `PortPolicy::PinnedProduction`. |
 | Full-stack strictness (`BLE`, McCabe <= 20, TS `noUncheckedIndexedAccess`) | `14.1.0` | Narrowed all Python blind `except Exception` catches, lowered McCabe complexity cap to `20`, and resolved all 457 `noUncheckedIndexedAccess` TypeScript errors at 100% Vitest coverage. |
+| Zero-technical-debt pass (`ruff format`, zero `C901` ignores, fail-closed i18n ratchet, `Dockerfile` hygiene) | `14.1.1` | Formatted all 219 Python files (`ruff format .` + `.git-blame-ignore-revs` + CI `ruff format --check .`), decomposed `models.py`/`worker_compute.py` and removed all `"C901"` ignores in `pyproject.toml`, closed `check_server_i18n.mjs` to `0 unclaimed` via explicit `NON_ROUTER_HELPERS`, and added `--chown`/`--chmod` on `lattice-host` in `Dockerfile`. |
 
 ---
 

@@ -25,13 +25,15 @@ def test_redact_and_rate_limits():
     assert "REDACTED" in redact_secret_text("sk-abcdefghijklmnopqrstuvwxyz1234")
     assert _is_secret_key("api_key") is True
     assert _is_secret_key("title") is False
-    redacted = redact_secrets({
-        "api_key": "secret",
-        "ok": "visible",
-        "nested": ["sk-abcdefghijklmnopqrstuvwxyz1234"],
-        "pair": ("token-value",),
-        "num": 1,
-    })
+    redacted = redact_secrets(
+        {
+            "api_key": "secret",
+            "ok": "visible",
+            "nested": ["sk-abcdefghijklmnopqrstuvwxyz1234"],
+            "pair": ("token-value",),
+            "num": 1,
+        }
+    )
     assert redacted["api_key"] == "[REDACTED_SECRET]"
     assert redacted["ok"] == "visible"
     assert redacted["num"] == 1
@@ -113,7 +115,9 @@ def test_filesystem_grep_tree_todo_html(tmp_path: Path, monkeypatch):
     (root / "sub").mkdir(parents=True)
     (root / "sub" / "note.md").write_text("alpha beta alpha\n", encoding="utf-8")
     (root / "todo.json").write_text("[]", encoding="utf-8")
-    (root / "page.html").write_text("<html><body><h1>Hi</h1></body></html>", encoding="utf-8")
+    (root / "page.html").write_text(
+        "<html><body><h1>Hi</h1></body></html>", encoding="utf-8"
+    )
     monkeypatch.setattr(tools, "AGENT_ROOT", root)
 
     with pytest.raises(ToolError):

@@ -51,7 +51,11 @@ def _canonical_embedding_repo(repo_id: str) -> Optional[str]:
         return norm
     if "embeddinggemma-300m" in norm or "embeddinggemma_300m" in norm:
         return "google/embeddinggemma-300m"
-    if "embeddinggemma-2" in norm or "embeddinggemma_2" in norm or norm == "embeddinggemma":
+    if (
+        "embeddinggemma-2" in norm
+        or "embeddinggemma_2" in norm
+        or norm == "embeddinggemma"
+    ):
         return "google/embeddinggemma-2"
     return None
 
@@ -137,10 +141,15 @@ def build_gated_fallback_metadata(
     mirrors = get_public_mirror_repos(canonical, provider=provider)
     authenticated = has_hf_auth_token(env)
     endpoint = resolve_hf_endpoint(env)
-    fallback_repo = select_public_fallback_repo(
-        canonical,
-        provider="local_mlx" if apple_silicon and provider in {"", "huggingface"} else provider,
-    ) or dists["mlx_4bit"]
+    fallback_repo = (
+        select_public_fallback_repo(
+            canonical,
+            provider="local_mlx"
+            if apple_silicon and provider in {"", "huggingface"}
+            else provider,
+        )
+        or dists["mlx_4bit"]
+    )
     return {
         "enabled": True,
         "active": not authenticated,
@@ -188,14 +197,25 @@ def build_embedding_capabilities(
             download_strategy="hf_hub",
             load_strategy="sentence_transformers",
             hardware=hardware_profile_cls(
-                min_ram_gb=4.0, recommended_ram_gb=8.0, apple_silicon_pref=True, cuda_pref=True,
+                min_ram_gb=4.0,
+                recommended_ram_gb=8.0,
+                apple_silicon_pref=True,
+                cuda_pref=True,
                 notes="Google DeepMind 740M multilingual & code semantic embedding model (768d). Uses ~1.5GB in FP16 HF or ~0.5GB in 4-bit MLX.",
             ),
-            source_country="미국", source_company="Google",
+            source_country="미국",
+            source_company="Google",
             verification=verification_status_cls(
-                hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
-                has_weights_hint=True, pipeline_tag="feature-extraction", likes=120, license="apache-2.0",
-                notes="Hugging Face google/embeddinggemma-2, 768d semantic embeddings.", verified_by="hf-api-light",
+                hf_exists=True,
+                hf_last_checked="2026-11-11",
+                has_config=True,
+                has_tokenizer=True,
+                has_weights_hint=True,
+                pipeline_tag="feature-extraction",
+                likes=120,
+                license="apache-2.0",
+                notes="Hugging Face google/embeddinggemma-2, 768d semantic embeddings.",
+                verified_by="hf-api-light",
             ),
             recommended_default=True,
             display_priority=70,
@@ -218,14 +238,24 @@ def build_embedding_capabilities(
             download_strategy="hf_hub",
             load_strategy="mlx_embeddings",
             hardware=hardware_profile_cls(
-                min_ram_gb=4.0, recommended_ram_gb=8.0, apple_silicon_pref=True,
+                min_ram_gb=4.0,
+                recommended_ram_gb=8.0,
+                apple_silicon_pref=True,
                 notes="Apple Silicon MLX 4-bit quantized EmbeddingGemma 2 (768d, 0.42GB on disk, ~0.5GB RAM).",
             ),
-            source_country="미국", source_company="Google",
+            source_country="미국",
+            source_company="Google",
             verification=verification_status_cls(
-                hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
-                has_weights_hint=True, pipeline_tag="feature-extraction", likes=45, license="apache-2.0",
-                notes="library_name=mlx, ungated, 4-bit quantized EmbeddingGemma 2.", verified_by="hf-api-light",
+                hf_exists=True,
+                hf_last_checked="2026-11-11",
+                has_config=True,
+                has_tokenizer=True,
+                has_weights_hint=True,
+                pipeline_tag="feature-extraction",
+                likes=45,
+                license="apache-2.0",
+                notes="library_name=mlx, ungated, 4-bit quantized EmbeddingGemma 2.",
+                verified_by="hf-api-light",
             ),
             recommended_default=True,
             display_priority=71,
@@ -248,14 +278,25 @@ def build_embedding_capabilities(
             download_strategy="hf_hub",
             load_strategy="sentence_transformers",
             hardware=hardware_profile_cls(
-                min_ram_gb=2.0, recommended_ram_gb=4.0, apple_silicon_pref=True, cuda_pref=True,
+                min_ram_gb=2.0,
+                recommended_ram_gb=4.0,
+                apple_silicon_pref=True,
+                cuda_pref=True,
                 notes="Compact 300M multilingual semantic embedding model (768d) for constrained-RAM PCs (<8GB).",
             ),
-            source_country="미국", source_company="Google",
+            source_country="미국",
+            source_company="Google",
             verification=verification_status_cls(
-                hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
-                has_weights_hint=True, pipeline_tag="feature-extraction", likes=85, license="apache-2.0",
-                notes="Hugging Face google/embeddinggemma-300m, 768d semantic embeddings.", verified_by="hf-api-light",
+                hf_exists=True,
+                hf_last_checked="2026-11-11",
+                has_config=True,
+                has_tokenizer=True,
+                has_weights_hint=True,
+                pipeline_tag="feature-extraction",
+                likes=85,
+                license="apache-2.0",
+                notes="Hugging Face google/embeddinggemma-300m, 768d semantic embeddings.",
+                verified_by="hf-api-light",
             ),
             recommended_default=False,
             display_priority=72,
@@ -278,14 +319,24 @@ def build_embedding_capabilities(
             download_strategy="hf_hub",
             load_strategy="mlx_embeddings",
             hardware=hardware_profile_cls(
-                min_ram_gb=2.0, recommended_ram_gb=4.0, apple_silicon_pref=True,
+                min_ram_gb=2.0,
+                recommended_ram_gb=4.0,
+                apple_silicon_pref=True,
                 notes="Ultralight 4-bit MLX EmbeddingGemma 300M (~0.3GB RAM) for low-memory Macs.",
             ),
-            source_country="미국", source_company="Google",
+            source_country="미국",
+            source_company="Google",
             verification=verification_status_cls(
-                hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
-                has_weights_hint=True, pipeline_tag="feature-extraction", likes=30, license="apache-2.0",
-                notes="library_name=mlx, ungated, 4-bit quantized EmbeddingGemma 300M.", verified_by="hf-api-light",
+                hf_exists=True,
+                hf_last_checked="2026-11-11",
+                has_config=True,
+                has_tokenizer=True,
+                has_weights_hint=True,
+                pipeline_tag="feature-extraction",
+                likes=30,
+                license="apache-2.0",
+                notes="library_name=mlx, ungated, 4-bit quantized EmbeddingGemma 300M.",
+                verified_by="hf-api-light",
             ),
             recommended_default=False,
             display_priority=73,
@@ -307,7 +358,11 @@ def recommend_embedding_for_hardware(
     """Return a PC-tailored embedding model recommendation accounting for RAM & accelerator."""
     effective_ram = 16.0 if ram_gb is None or ram_gb <= 0 else float(ram_gb)
     cap = get_capability_fn("google/embeddinggemma-2") if get_capability_fn else None
-    mlx_cap = get_capability_fn("mlx-community/embeddinggemma-2-4bit") if get_capability_fn else None
+    mlx_cap = (
+        get_capability_fn("mlx-community/embeddinggemma-2-4bit")
+        if get_capability_fn
+        else None
+    )
 
     if effective_ram >= 8.0:
         use_mlx = bool(apple_silicon and mlx_cap is not None)
@@ -334,10 +389,14 @@ def recommend_embedding_for_hardware(
             "public_mirror_repos": fallback_meta["public_mirror_repos"],
             "quantized_distributions": fallback_meta["quantized_distributions"],
             "gated_fallback": fallback_meta,
-            "recommended_load_id": "mlx-community/embeddinggemma-2-4bit" if use_mlx else "google/embeddinggemma-2",
+            "recommended_load_id": "mlx-community/embeddinggemma-2-4bit"
+            if use_mlx
+            else "google/embeddinggemma-2",
             "recommended_engine": rec_engine,
             "provider": "mlx" if use_mlx else "huggingface",
-            "profile_id": "mlx:embeddinggemma-2" if use_mlx else "local:embeddinggemma-2",
+            "profile_id": "mlx:embeddinggemma-2"
+            if use_mlx
+            else "local:embeddinggemma-2",
             "name": "Google EmbeddingGemma 2",
             "display_name": "Google EmbeddingGemma 2",
             "family": "EmbeddingGemma",
@@ -367,7 +426,9 @@ def recommend_embedding_for_hardware(
             ),
         }
 
-    cap_300m = get_capability_fn("google/embeddinggemma-300m") if get_capability_fn else None
+    cap_300m = (
+        get_capability_fn("google/embeddinggemma-300m") if get_capability_fn else None
+    )
     use_mlx = bool(apple_silicon)
     footprint_gb = 0.3
     base = cap_300m.to_legacy_dict() if cap_300m else {}
@@ -390,7 +451,9 @@ def recommend_embedding_for_hardware(
         "public_mirror_repos": fallback_meta["public_mirror_repos"],
         "quantized_distributions": fallback_meta["quantized_distributions"],
         "gated_fallback": fallback_meta,
-        "recommended_load_id": "mlx-community/embeddinggemma-300m-4bit" if use_mlx else "google/embeddinggemma-300m",
+        "recommended_load_id": "mlx-community/embeddinggemma-300m-4bit"
+        if use_mlx
+        else "google/embeddinggemma-300m",
         "recommended_engine": rec_engine,
         "provider": "mlx" if use_mlx else "huggingface",
         "profile_id": "local:embeddinggemma-300m",
@@ -453,9 +516,16 @@ def activate_downloaded_embedding_model(
     from datetime import datetime, timezone
     from pathlib import Path
 
-    norm_provider = "mlx" if provider in {"local_mlx", "mlx"} else (provider or "huggingface")
+    norm_provider = (
+        "mlx" if provider in {"local_mlx", "mlx"} else (provider or "huggingface")
+    )
     clean_model = (model_id or "").strip()
-    if ":" in clean_model and clean_model.split(":", 1)[0] in {"local_mlx", "mlx", "huggingface", "ollama"}:
+    if ":" in clean_model and clean_model.split(":", 1)[0] in {
+        "local_mlx",
+        "mlx",
+        "huggingface",
+        "ollama",
+    }:
         clean_model = clean_model.split(":", 1)[1]
     canonical_model_id = f"{norm_provider}:{clean_model}:{dim}"
     resolved_dir = Path(
@@ -523,4 +593,3 @@ def activate_downloaded_embedding_model(
         "contract": contract,
         "enqueued_upgrade_jobs": enqueued,
     }
-

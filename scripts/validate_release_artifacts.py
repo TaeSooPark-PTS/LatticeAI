@@ -63,7 +63,14 @@ def _vsix_version(path: Path) -> Optional[str]:
                 if name.endswith("extension/package.json"):
                     data = json.loads(zf.read(name).decode("utf-8"))
                     return str(data.get("version") or "")
-    except (zipfile.BadZipFile, OSError, KeyError, ValueError, TypeError, UnicodeDecodeError):
+    except (
+        zipfile.BadZipFile,
+        OSError,
+        KeyError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+    ):
         return None
     return None
 
@@ -86,7 +93,10 @@ def _forbidden_archive_entries(path: Path) -> List[str]:
     return sorted(
         name
         for name in names
-        if any(pattern.search(name.replace("\\", "/")) for pattern in FORBIDDEN_PERSONAL_PATHS)
+        if any(
+            pattern.search(name.replace("\\", "/"))
+            for pattern in FORBIDDEN_PERSONAL_PATHS
+        )
     )
 
 
@@ -115,7 +125,13 @@ def validate(
 
     if not dist_dir.is_dir():
         errors.append(f"dist directory not found: {dist_dir}")
-        return {"version": version, "ok": False, "errors": errors, "warnings": warnings, "found": found}
+        return {
+            "version": version,
+            "ok": False,
+            "errors": errors,
+            "warnings": warnings,
+            "found": found,
+        }
 
     expected = _expected_names(version)
 
@@ -134,10 +150,14 @@ def validate(
         found["vsix"] = str(vsix)
         _reject_personal_files(vsix, "vsix", errors)
         if not _vsix_has_entrypoint(vsix):
-            errors.append(f"{vsix.name} is missing extension/out/extension.js (compile step skipped?)")
+            errors.append(
+                f"{vsix.name} is missing extension/out/extension.js (compile step skipped?)"
+            )
         vsix_ver = _vsix_version(vsix)
         if vsix_ver and vsix_ver != version:
-            errors.append(f"{vsix.name} internal version '{vsix_ver}' != expected '{version}'")
+            errors.append(
+                f"{vsix.name} internal version '{vsix_ver}' != expected '{version}'"
+            )
     elif require_vsix:
         errors.append(f"missing vsix: {vsix.name}")
 
@@ -149,7 +169,15 @@ def validate(
     elif require_tgz:
         errors.append(f"missing npm tarball: {tgz.name} (run `npm pack`)")
 
-    dmg = dist_dir.parent / "src-tauri" / "target" / "release" / "bundle" / "dmg" / f"Lattice AI_{version}_aarch64.dmg"
+    dmg = (
+        dist_dir.parent
+        / "src-tauri"
+        / "target"
+        / "release"
+        / "bundle"
+        / "dmg"
+        / f"Lattice AI_{version}_aarch64.dmg"
+    )
     if dmg.is_file():
         found["dmg"] = str(dmg)
     elif require_dmg:
@@ -182,13 +210,25 @@ def validate(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("version", help="exact version to validate, e.g. 1.1.0")
     parser.add_argument("--dist", default="dist", help="dist directory (default: dist)")
-    parser.add_argument("--require-vsix", action="store_true", help="fail if the VSIX is absent")
-    parser.add_argument("--require-tgz", action="store_true", help="fail if the npm pack tarball is absent")
-    parser.add_argument("--require-dmg", action="store_true", help="fail if the Tauri DMG is absent")
-    parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument(
+        "--require-vsix", action="store_true", help="fail if the VSIX is absent"
+    )
+    parser.add_argument(
+        "--require-tgz",
+        action="store_true",
+        help="fail if the npm pack tarball is absent",
+    )
+    parser.add_argument(
+        "--require-dmg", action="store_true", help="fail if the Tauri DMG is absent"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="emit machine-readable JSON"
+    )
     args = parser.parse_args(argv)
 
     result = validate(

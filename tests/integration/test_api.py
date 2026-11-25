@@ -3,6 +3,7 @@
 Run against a live server:  pytest tests/integration/ --base-url http://localhost:8899
 Default base URL falls back to http://localhost:8899 if flag not provided.
 """
+
 import os
 
 import httpx
@@ -33,6 +34,7 @@ def client():
 # Health / Info
 # ---------------------------------------------------------------------------
 
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -56,6 +58,7 @@ def test_runtime_features(client):
 # Local filesystem endpoints
 # ---------------------------------------------------------------------------
 
+
 def test_local_list_home(client):
     r = client.get("/local/list", params={"path": "~"})
     # 200 if authenticated, 401/403 if no session
@@ -69,13 +72,16 @@ def test_local_list_requires_auth(client):
 
 
 def test_local_serve_missing_file(client):
-    r = client.get("/local/serve", params={"path": "/nonexistent_lattice_ai_test_xyz.txt"})
+    r = client.get(
+        "/local/serve", params={"path": "/nonexistent_lattice_ai_test_xyz.txt"}
+    )
     assert r.status_code in (400, 401, 403, 404)
 
 
 # ---------------------------------------------------------------------------
 # /chat — smoke test (no model required)
 # ---------------------------------------------------------------------------
+
 
 def test_chat_requires_message(client):
     r = client.post("/chat", json={})
@@ -86,6 +92,7 @@ def test_chat_requires_message(client):
 # ---------------------------------------------------------------------------
 # /agent — smoke test
 # ---------------------------------------------------------------------------
+
 
 def test_agent_requires_task(client):
     r = client.post("/agent", json={})

@@ -73,8 +73,7 @@ PLUGIN_PROVIDES = ("skills", "tools", "workflows", "actions")
 ```python
 def validate_manifest(
     data: Dict[str, Any], *, path: str = ""
-) -> Tuple[Optional[PluginManifest], List[str]]:
-    ...
+) -> Tuple[Optional[PluginManifest], List[str]]: ...
 ```
 
 ### 파싱된 매니페스트
@@ -230,8 +229,7 @@ def install(
     plugin_id: str,
     *,
     register_skill: Optional[Callable[[str, str], Any]] = None,
-) -> Dict[str, Any]:
-    ...
+) -> Dict[str, Any]: ...
 ```
 
 `register_skill(skill_name, plugin_id)`는 호스트가 주입하므로 플러그인은 별도의 병렬 레지스트리를 소유하는 대신 기존 스킬 레지스트리를 확장합니다. `provides.skills` 아래의 각 이름에 대해 `register_skill`을 호출하며, 반환되는 딕셔너리에는 공개 매니페스트, 영속화된 `registry` 엔트리, `registered_skills` 목록이 포함됩니다.
@@ -311,8 +309,7 @@ def execute_action(
     args: Optional[Dict[str, Any]] = None,
     *,
     runners: Optional[Dict[str, Callable[..., Any]]] = None,
-) -> PluginExecutionResult:
-    ...
+) -> PluginExecutionResult: ...
 ```
 
 `runners`는 기능(`"tools"`, `"skills"`, `"workflows"`, `"agents"`)을 호스트가 주입한 콜러블에 매핑합니다. 내장 액션과 요구 권한의 매핑은 다음과 같습니다.

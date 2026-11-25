@@ -107,7 +107,11 @@ def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
         if isinstance(encoded, dict)
         else getattr(encoded, "attention_mask", None)
     )
-    mask = mask_raw.tolist() if mask_raw is not None and hasattr(mask_raw, "tolist") else mask_raw
+    mask = (
+        mask_raw.tolist()
+        if mask_raw is not None and hasattr(mask_raw, "tolist")
+        else mask_raw
+    )
     out: List[List[float]] = []
     for batch_idx, token_rows in enumerate(data):
         if not token_rows:
@@ -118,7 +122,10 @@ def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
             weights = [float(w) for w in mask[batch_idx]]
             denom = sum(weights) or 1.0
             vec = [
-                sum(float(token_rows[t][d]) * weights[t] for t in range(len(token_rows))) / denom
+                sum(
+                    float(token_rows[t][d]) * weights[t] for t in range(len(token_rows))
+                )
+                / denom
                 for d in range(width)
             ]
         else:
@@ -145,7 +152,10 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
     provider = "huggingface"
 
     def __init__(self, cfg: _RemoteConfig):
-        model_name = str(cfg.model or DEFAULT_HF_EMBEDDING_MODEL).strip() or DEFAULT_HF_EMBEDDING_MODEL
+        model_name = (
+            str(cfg.model or DEFAULT_HF_EMBEDDING_MODEL).strip()
+            or DEFAULT_HF_EMBEDDING_MODEL
+        )
         cfg.model = model_name
         super().__init__(cfg)
         self._model_name = model_name
@@ -177,7 +187,9 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         if self._encoder is not None:
             return self._encoder
 
-        is_mlx_repo = self._model_name.startswith("mlx-community/") or self._model_name.endswith("-mlx")
+        is_mlx_repo = self._model_name.startswith(
+            "mlx-community/"
+        ) or self._model_name.endswith("-mlx")
         if is_mlx_repo:
             try:
                 from mlx_embeddings.utils import load as mlx_load  # type: ignore
@@ -188,9 +200,13 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             except ImportError:
                 pass
             except Exception as exc:
-                raise EmbeddingUnavailable(f"Hugging Face MLX embedding model unavailable: {exc}") from exc
+                raise EmbeddingUnavailable(
+                    f"Hugging Face MLX embedding model unavailable: {exc}"
+                ) from exc
 
-        env_map = self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+        env_map = (
+            self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+        )
         snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map))
 
         try:
@@ -210,12 +226,16 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             pass
         except Exception as exc:
             if snapshot is None or self._cfg.extra.get("require_runtime"):
-                raise EmbeddingUnavailable(f"Hugging Face embedding model unavailable: {exc}") from exc
+                raise EmbeddingUnavailable(
+                    f"Hugging Face embedding model unavailable: {exc}"
+                ) from exc
 
         try:
             from transformers import AutoModel, AutoTokenizer  # type: ignore
 
-            is_real_tf = getattr(AutoModel, "__module__", "").startswith("transformers.")
+            is_real_tf = getattr(AutoModel, "__module__", "").startswith(
+                "transformers."
+            )
             if is_real_tf:
                 import torch as _torch  # noqa: F401  # type: ignore
 
@@ -231,7 +251,9 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             pass
         except Exception as exc:
             if snapshot is None or self._cfg.extra.get("require_runtime"):
-                raise EmbeddingUnavailable(f"Hugging Face embedding model unavailable: {exc}") from exc
+                raise EmbeddingUnavailable(
+                    f"Hugging Face embedding model unavailable: {exc}"
+                ) from exc
 
         if not is_mlx_repo:
             try:
@@ -249,7 +271,11 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     ) from exc
 
         if snapshot is not None and not self._cfg.extra.get("require_runtime"):
-            self._encoder = ("local_snapshot", FallbackTextEmbedder(dim=self.dim), snapshot)
+            self._encoder = (
+                "local_snapshot",
+                FallbackTextEmbedder(dim=self.dim),
+                snapshot,
+            )
             return self._encoder
 
         raise EmbeddingUnavailable(
@@ -261,11 +287,16 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         self, texts: Sequence[str], kind: str = "passage"
     ) -> List[List[float]]:
         """Apply task-steered instruction prefixes for EmbeddingGemma or E5 models."""
-        role = "query" if str(kind or "passage").strip().lower() == "query" else "passage"
+        role = (
+            "query" if str(kind or "passage").strip().lower() == "query" else "passage"
+        )
         if self._prefixed_e5:
             prefix = E5_PREFIXES[role]
             return self.embed_batch(
-                [text if str(text).startswith(prefix) else f"{prefix}{text}" for text in texts]
+                [
+                    text if str(text).startswith(prefix) else f"{prefix}{text}"
+                    for text in texts
+                ]
             )
         if self._prefixed_gemma:
             prefix = EMBEDDINGGEMMA_PREFIXES[role]
@@ -289,7 +320,10 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     raw = model.encode(list(texts))
                 rows = raw.tolist() if hasattr(raw, "tolist") else list(raw)
                 return [
-                    [float(x) for x in (row.tolist() if hasattr(row, "tolist") else list(row))]
+                    [
+                        float(x)
+                        for x in (row.tolist() if hasattr(row, "tolist") else list(row))
+                    ]
                     for row in rows
                 ]
             if backend == "transformers":
@@ -339,7 +373,15 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 "status": "ok",
                 "detail": f"Hugging Face model {self._model_name} loaded ({backend})",
             }
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -381,14 +423,26 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             self._encoder = ("mlx_embeddings", model, tokenizer)
             return self._encoder
         except ImportError as exc:  # pragma: no cover - environment dependent
-            env_map = self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+            env_map = (
+                self._cfg.extra.get("env")
+                if isinstance(self._cfg.extra, dict)
+                else None
+            )
             snapshot = _snapshot_dir(self._cfg.model, hf_cache_roots(env_map))
             if snapshot is not None and not self._cfg.extra.get("require_runtime"):
-                self._encoder = ("local_snapshot", FallbackTextEmbedder(dim=self.dim), snapshot)
+                self._encoder = (
+                    "local_snapshot",
+                    FallbackTextEmbedder(dim=self.dim),
+                    snapshot,
+                )
                 return self._encoder
-            raise EmbeddingUnavailable(f"MLX embedding model unavailable: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"MLX embedding model unavailable: {exc}"
+            ) from exc
         except Exception as exc:  # pragma: no cover - environment dependent
-            raise EmbeddingUnavailable(f"MLX embedding model unavailable: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"MLX embedding model unavailable: {exc}"
+            ) from exc
 
     def embed_batch_for(
         self, texts: Sequence[str], kind: str = "passage"
@@ -427,7 +481,15 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
         try:
             self._load()
             return {"status": "ok", "detail": f"MLX model {self._cfg.model} loaded"}
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -537,13 +599,23 @@ class OpenAICompatibleEmbeddingProvider(_NetworkEmbeddingProvider):
                 rows = sorted(r.json().get("data", []), key=lambda d: d.get("index", 0))
                 return [row.get("embedding") or [] for row in rows]
         except Exception as exc:
-            raise EmbeddingUnavailable(f"OpenAI-compatible embedding failed: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"OpenAI-compatible embedding failed: {exc}"
+            ) from exc
 
     def health(self) -> Dict[str, Any]:
         try:
             self._embed_raw(["ping"])
             return {"status": "ok", "detail": f"{self._base} reachable"}
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -558,8 +630,13 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
 
     def __init__(self, cfg: _RemoteConfig):
         super().__init__(cfg)
-        self._target_ref = str(cfg.extra.get("target") or os.getenv("LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""))
-        self.model_id = f"custom:{cfg.model or self._target_ref or 'callable'}:{self.dim}"
+        self._target_ref = str(
+            cfg.extra.get("target")
+            or os.getenv("LATTICEAI_EMBEDDING_CUSTOM_TARGET", "")
+        )
+        self.model_id = (
+            f"custom:{cfg.model or self._target_ref or 'callable'}:{self.dim}"
+        )
         rev = cfg.extra.get("model_revision") or cfg.extra.get("revision")
         self.model_revision = str(rev).strip() if rev else None
         self._fn: Optional[Callable[..., Any]] = None
@@ -569,7 +646,9 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
             return self._fn
         ref = self._target_ref
         if not ref:
-            raise EmbeddingUnavailable("custom embedding target not configured (LATTICEAI_EMBEDDING_CUSTOM_TARGET)")
+            raise EmbeddingUnavailable(
+                "custom embedding target not configured (LATTICEAI_EMBEDDING_CUSTOM_TARGET)"
+            )
         module_name, _, attr = ref.replace(":", ".").rpartition(".")
         if not module_name:
             raise EmbeddingUnavailable(f"invalid custom embedding target: {ref}")
@@ -578,7 +657,9 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
             self._fn = getattr(module, attr)
             return self._fn
         except Exception as exc:
-            raise EmbeddingUnavailable(f"custom embedding target unavailable: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"custom embedding target unavailable: {exc}"
+            ) from exc
 
     def _embed_raw(self, texts: Sequence[str]) -> List[List[float]]:
         fn = self._load()
@@ -590,8 +671,19 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
     def health(self) -> Dict[str, Any]:
         try:
             self._load()
-            return {"status": "ok", "detail": f"custom target {self._target_ref} loaded"}
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            return {
+                "status": "ok",
+                "detail": f"custom target {self._target_ref} loaded",
+            }
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -631,7 +723,9 @@ def build_embedding_provider(
         return OpenAICompatibleEmbeddingProvider(cfg)
     if kind == "custom":
         return CustomEmbeddingProvider(cfg)
-    raise ValueError(f"unknown embedding provider: {provider!r} (expected one of {PROVIDER_TYPES})")
+    raise ValueError(
+        f"unknown embedding provider: {provider!r} (expected one of {PROVIDER_TYPES})"
+    )
 
 
 @dataclass
@@ -684,7 +778,11 @@ def resolve_embedder(
     requested = str(provider or "hash").strip().lower() or "hash"
     if requested == AUTO_PROVIDER:
         env_map = (extra or {}).get("env") if isinstance(extra, dict) else None
-        probe_ollama = bool((extra or {}).get("probe_ollama", False)) if isinstance(extra, dict) else False
+        probe_ollama = (
+            bool((extra or {}).get("probe_ollama", False))
+            if isinstance(extra, dict)
+            else False
+        )
         detection = detect_embedder(
             configured_provider=AUTO_PROVIDER,
             configured_model=model,
@@ -695,7 +793,9 @@ def resolve_embedder(
             AUTO_PROVIDER, model, dim, detection
         )
         if resolved_prov in {"hash", "local", "fallback", ""}:
-            hash_prov = HashEmbeddingProvider(dim=int(resolved_dim or DEFAULT_EMBEDDING_DIM))
+            hash_prov = HashEmbeddingProvider(
+                dim=int(resolved_dim or DEFAULT_EMBEDDING_DIM)
+            )
             return ResolvedEmbedder(
                 hash_prov,
                 AUTO_PROVIDER,
@@ -725,17 +825,38 @@ def resolve_embedder(
     if requested in {"hash", "local", "fallback", ""}:
         hash_prov = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
         return ResolvedEmbedder(
-            hash_prov, "hash", "hash", False, hash_prov.health(), "deterministic local fallback"
+            hash_prov,
+            "hash",
+            "hash",
+            False,
+            hash_prov.health(),
+            "deterministic local fallback",
         )
 
     try:
         prov = build_embedding_provider(
-            requested, model=model, base_url=base_url, api_key=api_key, dim=dim, timeout=timeout, extra=extra
+            requested,
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+            dim=dim,
+            timeout=timeout,
+            extra=extra,
         )
-    except (ValueError, TypeError, RuntimeError, OSError, KeyError, AttributeError) as exc:
+    except (
+        ValueError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        KeyError,
+        AttributeError,
+    ) as exc:
         fallback = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
         return ResolvedEmbedder(
-            fallback, requested, "hash", True,
+            fallback,
+            requested,
+            "hash",
+            True,
             {"status": "unavailable", "detail": str(exc)},
             f"could not construct {requested}; using hash fallback",
         )
@@ -743,14 +864,26 @@ def resolve_embedder(
     if probe:
         try:
             health = prov.health()
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:  # provider health must never crash startup
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:  # provider health must never crash startup
             health = {"status": "unavailable", "detail": str(exc)}
     else:
         health = {"status": "unknown", "detail": "not probed"}
     if probe and health.get("status") != "ok":
         fallback = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
         return ResolvedEmbedder(
-            fallback, requested, "hash", True, health,
+            fallback,
+            requested,
+            "hash",
+            True,
+            health,
             f"{requested} unavailable ({health.get('detail', '')}); using hash fallback",
         )
     return ResolvedEmbedder(prov, requested, prov.provider, False, health, "")

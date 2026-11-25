@@ -9,6 +9,7 @@ half-formed: the four package files exist, `action` names a **registered** tool
 (an eval against a non-existent tool would fail at run time), the risk profile
 is internally consistent, and every eval declares a pass criterion.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,8 @@ NEW_SKILLS = ("meeting_notes", "weekly_review")
 
 def _skill_dirs():
     return [
-        path for path in sorted(SKILLS_DIR.iterdir())
+        path
+        for path in sorted(SKILLS_DIR.iterdir())
         if path.is_dir() and (path / "SKILL.md").exists()
     ]
 
@@ -101,4 +103,10 @@ def test_the_new_skills_are_actually_new():
     names = {skill.name for skill in _skill_dirs()}
     assert set(NEW_SKILLS) <= names
     # The pre-existing catalogue is untouched.
-    assert {"code_review", "data_analysis", "file_edit", "summarize_document", "web_search"} <= names
+    assert {
+        "code_review",
+        "data_analysis",
+        "file_edit",
+        "summarize_document",
+        "web_search",
+    } <= names

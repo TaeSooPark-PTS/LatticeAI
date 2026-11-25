@@ -25,7 +25,9 @@ def _blob(values: list[float]) -> bytes:
     return struct.pack(f"<{len(values)}f", *values)
 
 
-def _seed_db(path: Path, rows: list[tuple[str, list[float]]], model: str = "hash", dim: int = 4) -> None:
+def _seed_db(
+    path: Path, rows: list[tuple[str, list[float]]], model: str = "hash", dim: int = 4
+) -> None:
     conn = sqlite3.connect(path)
     conn.execute(
         "CREATE TABLE vector_embeddings("
@@ -146,7 +148,16 @@ def test_append_after_ingest_keeps_the_new_id(tmp_path):
     conn = sqlite3.connect(db)
     conn.execute(
         "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
-        ("c", "chunk", "c", _blob([0.0, 0.0, 1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:01:00"),
+        (
+            "c",
+            "chunk",
+            "c",
+            _blob([0.0, 0.0, 1.0, 0.0]),
+            4,
+            "hash",
+            "{}",
+            "2026-01-01T00:01:00",
+        ),
     )
     conn.commit()
     conn.close()
@@ -165,7 +176,9 @@ def test_append_after_ingest_keeps_the_new_id(tmp_path):
     assert second["refreshed"] == "append"
 
 
-@pytest.mark.skipif(not hnswlib_available(), reason="warm COUNT path needs a live HNSW graph")
+@pytest.mark.skipif(
+    not hnswlib_available(), reason="warm COUNT path needs a live HNSW graph"
+)
 def test_warm_query_does_not_reload_embedding_blobs(tmp_path, monkeypatch):
     reset_sidecar_cache()
     db = tmp_path / "kg.sqlite"
@@ -184,7 +197,9 @@ def test_warm_query_does_not_reload_embedding_blobs(tmp_path, monkeypatch):
         raise AssertionError("warm query must not dump vector_embeddings")
 
     monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items", boom)
-    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items_for", boom)
+    monkeypatch.setattr(
+        "latticeai.core.vector_index.sidecar.load_store_items_for", boom
+    )
     second = query_sidecar(
         workspace=None,
         embedding_model="hash",
@@ -199,7 +214,9 @@ def test_warm_query_does_not_reload_embedding_blobs(tmp_path, monkeypatch):
     assert second["ids"][0] == "a"
 
 
-@pytest.mark.skipif(not hnswlib_available(), reason="delta load needs a live HNSW graph")
+@pytest.mark.skipif(
+    not hnswlib_available(), reason="delta load needs a live HNSW graph"
+)
 def test_delta_query_loads_only_missing_ids(tmp_path, monkeypatch):
     reset_sidecar_cache()
     db = tmp_path / "kg.sqlite"
@@ -216,7 +233,16 @@ def test_delta_query_loads_only_missing_ids(tmp_path, monkeypatch):
     conn = sqlite3.connect(db)
     conn.execute(
         "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
-        ("c", "chunk", "c", _blob([0.0, 0.0, 1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:01:00"),
+        (
+            "c",
+            "chunk",
+            "c",
+            _blob([0.0, 0.0, 1.0, 0.0]),
+            4,
+            "hash",
+            "{}",
+            "2026-01-01T00:01:00",
+        ),
     )
     conn.commit()
     conn.close()
@@ -232,7 +258,9 @@ def test_delta_query_loads_only_missing_ids(tmp_path, monkeypatch):
         raise AssertionError("delta query must not dump the whole vector table")
 
     monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items", boom)
-    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items_for", wrapped)
+    monkeypatch.setattr(
+        "latticeai.core.vector_index.sidecar.load_store_items_for", wrapped
+    )
     second = query_sidecar(
         workspace=None,
         embedding_model="hash",
@@ -249,12 +277,18 @@ def test_delta_query_loads_only_missing_ids(tmp_path, monkeypatch):
 
 def test_empty_model_id_and_zero_dim_are_none():
     reset_sidecar_cache()
-    assert query_sidecar(
-        workspace=None, embedding_model="", embedding_dim=4, vector=[0.0] * 4, k=1
-    )["index"] == "none"
-    assert query_sidecar(
-        workspace=None, embedding_model="hash", embedding_dim=0, vector=[], k=1
-    )["index"] == "none"
+    assert (
+        query_sidecar(
+            workspace=None, embedding_model="", embedding_dim=4, vector=[0.0] * 4, k=1
+        )["index"]
+        == "none"
+    )
+    assert (
+        query_sidecar(
+            workspace=None, embedding_model="hash", embedding_dim=0, vector=[], k=1
+        )["index"]
+        == "none"
+    )
 
 
 def test_wrong_width_store_row_is_skipped(tmp_path):
@@ -269,7 +303,16 @@ def test_wrong_width_store_row_is_skipped(tmp_path):
     )
     conn.execute(
         "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
-        ("bad", "chunk", "bad", _blob([1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:00:00"),
+        (
+            "bad",
+            "chunk",
+            "bad",
+            _blob([1.0, 0.0]),
+            4,
+            "hash",
+            "{}",
+            "2026-01-01T00:00:00",
+        ),
     )
     conn.commit()
     conn.close()
@@ -342,7 +385,16 @@ def test_inplace_vector_update_with_equal_count_rebuilds_sidecar(tmp_path):
     conn = sqlite3.connect(db)
     conn.execute(
         "INSERT OR REPLACE INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
-        ("a", "chunk", "a", _blob([0.0, 0.0, 0.0, 1.0]), 4, "hash", "{}", "2026-01-01T00:02:00"),
+        (
+            "a",
+            "chunk",
+            "a",
+            _blob([0.0, 0.0, 0.0, 1.0]),
+            4,
+            "hash",
+            "{}",
+            "2026-01-01T00:02:00",
+        ),
     )
     conn.commit()
     conn.close()
@@ -384,7 +436,16 @@ def test_equal_count_delete_and_insert_swap_rebuilds_sidecar(tmp_path):
     conn.execute("DELETE FROM vector_embeddings WHERE item_id = 'b'")
     conn.execute(
         "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
-        ("c", "chunk", "c", _blob([0.0, 0.0, 1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:03:00"),
+        (
+            "c",
+            "chunk",
+            "c",
+            _blob([0.0, 0.0, 1.0, 0.0]),
+            4,
+            "hash",
+            "{}",
+            "2026-01-01T00:03:00",
+        ),
     )
     conn.commit()
     conn.close()

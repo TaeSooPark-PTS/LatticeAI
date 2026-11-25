@@ -59,16 +59,18 @@ class FakeRouter:
         prefix: Optional[str] = None,
         cite_sources: bool = True,
     ) -> str:
-        self.calls.append({
-            "model_id": model_id,
-            "message": message,
-            "context": context,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stop": stop,
-            "prefix": prefix,
-            "cite_sources": cite_sources,
-        })
+        self.calls.append(
+            {
+                "model_id": model_id,
+                "message": message,
+                "context": context,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stop": stop,
+                "prefix": prefix,
+                "cite_sources": cite_sources,
+            }
+        )
         return self.text
 
 
@@ -173,9 +175,9 @@ def _client(
         create_agent_worker_seam_router(
             model_router=model_router if model_router is not None else FakeRouter(),
             dispatch_service=dispatch if dispatch is not None else FakeDispatch(),
-            execute_tool=execute_tool if execute_tool is not None else (
-                lambda name, args: {"ok": True, "tool": name, "args": args}
-            ),
+            execute_tool=execute_tool
+            if execute_tool is not None
+            else (lambda name, args: {"ok": True, "tool": name, "args": args}),
             hooks=hooks,
             require_user=require_user,
             enforce_rate_limit=limiter if limiter is not None else RecordingLimiter(),
@@ -216,19 +218,21 @@ def test_llm_generates_once_and_returns_only_the_text(seam_off):
     )
     assert response.status_code == 200
     assert response.json() == {"text": "hello from the model"}
-    assert router.calls == [{
-        "model_id": "mlx:qwen",
-        "message": "plan this",
-        "context": "prior steps",
-        "max_tokens": 256,
-        "temperature": 0.7,
-        "stop": None,
-        "prefix": None,
-        # The seam's ``context`` is the caller's whole prompt, never a corpus,
-        # so the citation mandate is never appended to it (v12.0.0). Small
-        # models obey it and answer tool calls with ``[1] …``.
-        "cite_sources": False,
-    }]
+    assert router.calls == [
+        {
+            "model_id": "mlx:qwen",
+            "message": "plan this",
+            "context": "prior steps",
+            "max_tokens": 256,
+            "temperature": 0.7,
+            "stop": None,
+            "prefix": None,
+            # The seam's ``context`` is the caller's whole prompt, never a corpus,
+            # so the citation mandate is never appended to it (v12.0.0). Small
+            # models obey it and answer tool calls with ``[1] …``.
+            "cite_sources": False,
+        }
+    ]
 
 
 def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
@@ -248,7 +252,10 @@ def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
     assert client.post("/agent/llm", json={"message": "m"}).status_code == 200
     assert router.calls[-1]["prefix"] is None
     # An empty string is not a prefix, the same rule ``stop`` follows.
-    assert client.post("/agent/llm", json={"message": "m", "prefix": ""}).status_code == 200
+    assert (
+        client.post("/agent/llm", json={"message": "m", "prefix": ""}).status_code
+        == 200
+    )
     assert router.calls[-1]["prefix"] is None
 
 
@@ -272,27 +279,28 @@ def test_llm_forwards_stop_strings_and_an_omitted_list_is_no_stop(seam_off):
     """
     router = FakeRouter()
     client = _client(model_router=router)
-    assert client.post(
-        "/agent/llm", json={"message": "verdict", "stop": ["\n```", "\nUser:"]}
-    ).status_code == 200
+    assert (
+        client.post(
+            "/agent/llm", json={"message": "verdict", "stop": ["\n```", "\nUser:"]}
+        ).status_code
+        == 200
+    )
     assert router.calls[0]["stop"] == ["\n```", "\nUser:"]
 
-    assert client.post("/agent/llm", json={"message": "go", "stop": []}).status_code == 200
+    assert (
+        client.post("/agent/llm", json={"message": "go", "stop": []}).status_code == 200
+    )
     assert router.calls[1]["stop"] is None
 
     # Bounded: a caller cannot make the sampler check a thousand needles.
-    over = client.post(
-        "/agent/llm", json={"message": "go", "stop": ["x"] * 99}
-    )
+    over = client.post("/agent/llm", json={"message": "go", "stop": ["x"] * 99})
     assert over.status_code == 422
 
 
 def test_llm_defaults_match_generate_as_own_defaults():
     """An omitted model means the router's current one; the rest is 4096/0.2."""
     router = FakeRouter()
-    response = _client(model_router=router).post(
-        "/agent/llm", json={"message": "go"}
-    )
+    response = _client(model_router=router).post("/agent/llm", json={"message": "go"})
     assert response.status_code == 200
     assert router.calls[0]["model_id"] is None
     assert router.calls[0]["context"] is None
@@ -347,9 +355,9 @@ def test_temperature_outside_the_bounds_is_a_422(temperature):
         headers={LANGUAGE_HEADER: "en"},
     )
     assert response.status_code == 422
-    assert response.json()["detail"] == MESSAGES[
-        "agent_seam.temperature_out_of_range"
-    ]["en"].replace("{min}", "0.0").replace("{max}", "2.0")
+    assert response.json()["detail"] == MESSAGES["agent_seam.temperature_out_of_range"][
+        "en"
+    ].replace("{min}", "0.0").replace("{max}", "2.0")
 
 
 def test_the_bounds_themselves_are_accepted():
@@ -441,7 +449,10 @@ def test_a_destructive_shell_command_is_refused_in_every_mode(seam_on):
         execute_tool=lambda name, args: executed.append((name, args)),
     ).post(
         "/agent/tool",
-        json={"tool": "run_command", "args": {"command": "rm -rf / --no-preserve-root"}},
+        json={
+            "tool": "run_command",
+            "args": {"command": "rm -rf / --no-preserve-root"},
+        },
         headers={LANGUAGE_HEADER: "en"},
     )
     assert response.status_code == 403
@@ -480,11 +491,9 @@ def test_a_deletion_cannot_be_staged_so_it_is_fail_closed(seam_on):
         headers={LANGUAGE_HEADER: "en"},
     )
     assert response.status_code == 409
-    assert response.json()["detail"] == MESSAGES[
-        "agent_seam.tool_fail_closed"
-    ]["en"].replace("{tool}", "delete_file").replace(
-        "{reason}", "removes existing content"
-    )
+    assert response.json()["detail"] == MESSAGES["agent_seam.tool_fail_closed"][
+        "en"
+    ].replace("{tool}", "delete_file").replace("{reason}", "removes existing content")
 
 
 def test_overwriting_a_binary_document_is_fail_closed(seam_on):
@@ -510,7 +519,7 @@ def test_creating_a_new_document_is_additive_and_runs(seam_on):
 
 
 def test_a_dispatch_port_without_the_probe_classifies_as_additive(seam_on):
-    """"We could not look" means "it is not there" to this classifier."""
+    """ "We could not look" means "it is not there" to this classifier."""
     response = _client(dispatch=ProbelessDispatch()).post(
         "/agent/tool",
         json={"tool": "create_docx", "args": {"filename": "report.docx"}},
@@ -660,7 +669,8 @@ def test_the_router_registers_exactly_the_two_seam_paths():
     paths = set(app.openapi()["paths"])
     assert {"/agent/llm", "/agent/tool"} <= paths
     assert not {path for path in paths if path.startswith("/agent/")} - {
-        "/agent/llm", "/agent/tool"
+        "/agent/llm",
+        "/agent/tool",
     }
 
 

@@ -25,7 +25,9 @@ def source_metadata_for_model(
     country, company = MODEL_SOURCE_BY_FAMILY.get(family, ("미상", provider.title()))
     if local_server:
         execution_method = "내 컴퓨터에서만 실행"
-        internet_requirement = "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
+        internet_requirement = (
+            "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
+        )
     else:
         execution_method = "인터넷 연결 후 사용"
         internet_requirement = "내 파일이 인터넷으로 전송될 수 있음"

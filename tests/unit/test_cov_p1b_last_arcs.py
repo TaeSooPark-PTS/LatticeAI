@@ -86,6 +86,3 @@ def test_model_resolution_update_without_colon():
     res.update_after_load(actual_current=None)
     res.update_after_load(actual_current="plain-name")
     assert res.expected_current == "plain-name"
-
-
-

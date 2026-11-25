@@ -84,8 +84,7 @@ SESSION_COOKIE_NAME = "session_token"
 _DEFAULT_PORTS = {"http": 80, "https": 443, "ws": 80, "wss": 443}
 
 _DENIED_DETAIL = (
-    "요청 출처를 확인할 수 없어 거부했습니다. "
-    "다른 사이트에서 보낸 요청일 수 있습니다."
+    "요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다."
 )
 
 
@@ -121,7 +120,9 @@ def normalize_origin(value: Optional[str]) -> Optional[Tuple[str, str, Optional[
     return (scheme, host, port)
 
 
-def _same_site(left: Tuple[str, str, Optional[int]], right: Tuple[str, str, Optional[int]]) -> bool:
+def _same_site(
+    left: Tuple[str, str, Optional[int]], right: Tuple[str, str, Optional[int]]
+) -> bool:
     """Host+port equality, ignoring scheme when one side does not carry one.
 
     The ``Host`` header has no scheme, and a TLS-terminating reverse proxy

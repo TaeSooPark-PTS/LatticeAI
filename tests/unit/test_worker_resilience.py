@@ -20,7 +20,9 @@ from latticeai.api.worker_resilience import (
 def _build_test_app() -> tuple[FastAPI, dict[str, int]]:
     app = FastAPI()
     counts = {"embed": 0, "boom": 0}
-    install_worker_compute_resilience(app, store=WorkerIdempotencyStore(max_entries=16, ttl_s=30.0))
+    install_worker_compute_resilience(
+        app, store=WorkerIdempotencyStore(max_entries=16, ttl_s=30.0)
+    )
 
     @app.post("/worker/embed")
     async def _embed(request: Request) -> dict[str, object]:
@@ -29,7 +31,11 @@ def _build_test_app() -> tuple[FastAPI, dict[str, int]]:
         delay = float(payload.get("delay", 0.0))
         if delay > 0:
             await asyncio.sleep(delay)
-        return {"vectors": [[1.0, 0.0]], "calls": counts["embed"], "echo": payload.get("text")}
+        return {
+            "vectors": [[1.0, 0.0]],
+            "calls": counts["embed"],
+            "echo": payload.get("text"),
+        }
 
     @app.post("/worker/boom")
     async def _boom() -> dict[str, object]:
@@ -47,7 +53,9 @@ def test_idempotency_replays_cached_response_and_rejects_payload_mismatch() -> N
     async def _run() -> None:
         app, counts = _build_test_app()
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             r1 = await client.post(
                 "/worker/embed",
                 headers={IDEMPOTENCY_HEADER: "idem-001"},
@@ -82,7 +90,9 @@ def test_idempotency_coalesces_concurrent_identical_requests() -> None:
     async def _run() -> None:
         app, counts = _build_test_app()
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             r1, r2 = await asyncio.gather(
                 client.post(
                     "/worker/embed",
@@ -98,23 +108,34 @@ def test_idempotency_coalesces_concurrent_identical_requests() -> None:
             assert r1.status_code == 200
             assert r2.status_code == 200
             assert counts["embed"] == 1
-            assert {r1.headers[REPLAY_HEADER], r2.headers[REPLAY_HEADER]} == {"false", "true"}
+            assert {r1.headers[REPLAY_HEADER], r2.headers[REPLAY_HEADER]} == {
+                "false",
+                "true",
+            }
 
     asyncio.run(_run())
 
 
-def test_timeout_and_fault_isolation_keep_worker_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_timeout_and_fault_isolation_keep_worker_healthy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def _run() -> None:
         monkeypatch.setenv("LATTICEAI_WORKER_COMPUTE_TIMEOUT_S", "0.05")
         assert resolve_compute_timeout_s() == pytest.approx(0.05)
 
         app, _ = _build_test_app()
         # Second install call is a safe no-op returning existing store.
-        assert install_worker_compute_resilience(app) is app.state.worker_idempotency_store
+        assert (
+            install_worker_compute_resilience(app) is app.state.worker_idempotency_store
+        )
 
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            timed_out = await client.post("/worker/embed", json={"text": "slow", "delay": 0.25})
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            timed_out = await client.post(
+                "/worker/embed", json={"text": "slow", "delay": 0.25}
+            )
             assert timed_out.status_code == 504
             assert timed_out.json()["code"] == "worker_compute_timeout"
 
@@ -154,7 +175,9 @@ def test_coalesced_waiter_receives_structured_error_when_leader_fails_or_times_o
         monkeypatch.setenv("LATTICEAI_WORKER_COMPUTE_TIMEOUT_S", "0.06")
         app, counts = _build_test_app()
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             r1, r2 = await asyncio.gather(
                 client.post(
                     "/worker/embed",
@@ -227,7 +250,9 @@ def test_leader_cancellation_releases_inflight_and_slow_body_stream_times_out(
             return StreamingResponse(_gen(), media_type="application/json")
 
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             task = asyncio.create_task(
                 client.post(
                     "/worker/cancel-target",

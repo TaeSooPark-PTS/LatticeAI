@@ -108,13 +108,25 @@ def test_family_is_derived_from_the_module_unless_overridden(mapping):
     """Every assignment is explainable: module default, or a named override."""
     for key, entry in mapping["operations"].items():
         override = mapping["overrides"].get(key)
-        expected = override["family"] if override else mapping["module_family"][entry["module"]]
-        assert entry["family"] == expected, f"{key} is filed under an unexplained family"
-    assert set(mapping["overrides"]) <= set(mapping["operations"]), "override for a dead route"
+        expected = (
+            override["family"]
+            if override
+            else mapping["module_family"][entry["module"]]
+        )
+        assert entry["family"] == expected, (
+            f"{key} is filed under an unexplained family"
+        )
+    assert set(mapping["overrides"]) <= set(mapping["operations"]), (
+        "override for a dead route"
+    )
     for key, override in mapping["overrides"].items():
-        assert override["reason"].strip(), f"{key} overrides its module with no reason given"
+        assert override["reason"].strip(), (
+            f"{key} overrides its module with no reason given"
+        )
     modules = {entry["module"] for entry in mapping["operations"].values()}
-    assert modules == set(mapping["module_family"]), "module_family lists a module with no routes"
+    assert modules == set(mapping["module_family"]), (
+        "module_family lists a module with no routes"
+    )
 
 
 #: The eight operations v11.8.0 deleted end-to-end. Each had no caller — no
@@ -136,7 +148,11 @@ DELETED_IN_11_8_0 = (
 def test_the_worker_surface_is_the_keep_worker_set(mapping):
     """worker_keep: scout's KEEP_WORKER set and the graph single writer, less
     the eight caller-less routes v11.8.0 deleted."""
-    worker = {key for key, entry in mapping["operations"].items() if entry["family"] == "worker_keep"}
+    worker = {
+        key
+        for key, entry in mapping["operations"].items()
+        if entry["family"] == "worker_keep"
+    }
     assert len(worker) == 19
     for key in (
         "GET /health",
@@ -208,7 +224,9 @@ def test_generator_cli_writes_the_committed_tree(tmp_path, capsys):
     assert generator.main(["--out", str(tmp_path)]) == 0
     assert "430 paths / 473 operations" in capsys.readouterr().out
     for path in generator.FRAGMENT_DIR.glob("*.json"):
-        assert (tmp_path / path.name).read_text(encoding="utf-8") == path.read_text(encoding="utf-8")
+        assert (tmp_path / path.name).read_text(encoding="utf-8") == path.read_text(
+            encoding="utf-8"
+        )
 
 
 # --------------------------------------------------------------------------
@@ -224,11 +242,18 @@ def test_each_fragment_carries_its_own_schema_closure(spec):
         fragment = json.loads(path.read_text(encoding="utf-8"))
         carried = set(fragment["components"]["schemas"])
         referenced = generator.schema_refs(fragment["paths"])
-        assert referenced <= carried, f"{path.name} references schemas it does not carry"
+        assert referenced <= carried, (
+            f"{path.name} references schemas it does not carry"
+        )
         closure = generator.schema_closure(carried, spec["components"]["schemas"])
-        assert closure == carried, f"{path.name} carries a schema whose own $refs are missing"
+        assert closure == carried, (
+            f"{path.name} carries a schema whose own $refs are missing"
+        )
         for name in carried:
-            assert fragment["components"]["schemas"][name] == spec["components"]["schemas"][name]
+            assert (
+                fragment["components"]["schemas"][name]
+                == spec["components"]["schemas"][name]
+            )
 
 
 def test_fragments_record_committed_source_order(spec):
@@ -261,7 +286,9 @@ def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
             continue
         fragment = json.loads(path.read_text(encoding="utf-8"))
         for key, param in fragment["greedy_path_params"].items():
-            assert key in fragment["operation_order"], f"{path.name}: greedy key it does not serve"
+            assert key in fragment["operation_order"], (
+                f"{path.name}: greedy key it does not serve"
+            )
             assert f"{{{param}}}" in key
             carried[key] = param
     assert carried == greedy, "a converter was recorded but never reached a fragment"
@@ -270,7 +297,12 @@ def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
 def test_index_totals_and_hashes_describe_the_files_on_disk():
     index = generator.load_json(generator.FRAGMENT_DIR / generator.INDEX_NAME)
     assert index["serialization"] == generator.SERIALIZATION
-    assert index["totals"] == {"families": 13, "operations": 473, "paths": 430, "schemas": 180}
+    assert index["totals"] == {
+        "families": 13,
+        "operations": 473,
+        "paths": 430,
+        "schemas": 180,
+    }
     for entry in index["fragments"]:
         text = (generator.FRAGMENT_DIR / entry["file"]).read_text(encoding="utf-8")
         assert generator.sha256_text(text) == entry["sha256"]
@@ -352,11 +384,15 @@ def test_two_families_cannot_claim_the_same_operation(fragment_copy):
 def test_a_shared_schema_must_be_the_same_schema_everywhere(fragment_copy):
     """Shared schemas are duplicated into every fragment; the copies must agree."""
     fragment = generator.load_json(fragment_copy / "auth.json")
-    elsewhere = generator.load_json(fragment_copy / "admin.json")["components"]["schemas"]
+    elsewhere = generator.load_json(fragment_copy / "admin.json")["components"][
+        "schemas"
+    ]
     name = next(n for n in fragment["components"]["schemas"] if n in elsewhere)
     fragment["components"]["schemas"][name] = {"title": "not the same schema"}
     _write(fragment_copy / "auth.json", fragment)
-    with pytest.raises(composer.CompositionError, match="must be byte-identical copies"):
+    with pytest.raises(
+        composer.CompositionError, match="must be byte-identical copies"
+    ):
         composer.compose(fragment_copy)
 
 
@@ -372,7 +408,9 @@ def test_missing_artefacts_are_named(fragment_copy, tmp_path, capsys):
     assert "_index.json is missing" in capsys.readouterr().out
 
 
-def test_check_mode_names_missing_stale_and_unexpected_files(rendered, tmp_path, capsys):
+def test_check_mode_names_missing_stale_and_unexpected_files(
+    rendered, tmp_path, capsys
+):
     generator.write_fragments(tmp_path, rendered)
     (tmp_path / "auth.json").unlink()
     (tmp_path / "chat.json").write_text("{}\n", encoding="utf-8")
@@ -405,7 +443,9 @@ def test_an_unmapped_route_fails_loudly(spec, mapping):
 
 def _worker_spec_from_fragment(subset: int | None = None) -> dict:
     fragment = generator.load_json(generator.FRAGMENT_DIR / "worker_keep.json")
-    paths = dict(list(fragment["paths"].items())[:subset] if subset else fragment["paths"])
+    paths = dict(
+        list(fragment["paths"].items())[:subset] if subset else fragment["paths"]
+    )
     return {
         "openapi": "3.1.0",
         "info": generator.load_spec()["info"],
@@ -459,7 +499,9 @@ def test_the_exemption_list_is_exactly_the_worker_profile_seams():
     """
     from latticeai.runtime.build_phases.worker_profile import worker_route_keys
 
-    served = {path for _method, path in worker_route_keys() if path.startswith("/worker/")}
+    served = {
+        path for _method, path in worker_route_keys() if path.startswith("/worker/")
+    }
     assert served == set(composer.INTERNAL_WORKER_PATHS)
 
 
@@ -504,5 +546,7 @@ def test_a_worker_spec_from_a_different_version_fails(tmp_path, capsys):
 def test_output_writes_the_composed_contract(tmp_path, capsys):
     target = tmp_path / "nested" / "composed.json"
     assert composer.main(["--output", str(target)]) == 0
-    assert target.read_text(encoding="utf-8") == generator.SPEC_PATH.read_text(encoding="utf-8")
+    assert target.read_text(encoding="utf-8") == generator.SPEC_PATH.read_text(
+        encoding="utf-8"
+    )
     assert f"wrote {target}" in capsys.readouterr().out

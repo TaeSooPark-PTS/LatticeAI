@@ -54,7 +54,9 @@ def bump(
     targets: Optional[Iterable[Tuple[str, str, Optional[str]]]] = None,
 ) -> int:
     """Delegate version synchronization to ``scripts.bump_version.cli.bump``."""
-    effective_repo = repo if repo is not None else (REPO if REPO != DEFAULT_REPO else None)
+    effective_repo = (
+        repo if repo is not None else (REPO if REPO != DEFAULT_REPO else None)
+    )
     return _cli_bump(version, check=check, repo=effective_repo, targets=targets)
 
 

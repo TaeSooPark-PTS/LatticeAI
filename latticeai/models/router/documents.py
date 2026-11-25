@@ -37,7 +37,9 @@ class _DocumentMixin(_Core):
             return "No model loaded."
 
         if isinstance(cached, CloudModel):
-            return await self._cloud_generate_document(cached, message, system_prompt, max_tokens, temperature)
+            return await self._cloud_generate_document(
+                cached, message, system_prompt, max_tokens, temperature
+            )
 
         model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         if hasattr(tokenizer, "apply_chat_template"):
@@ -46,28 +48,57 @@ class _DocumentMixin(_Core):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message},
                 ]
-                prompt = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+                prompt = tokenizer.apply_chat_template(
+                    msgs, tokenize=False, add_generation_prompt=True
+                )
             except CHAT_TEMPLATE_ERRORS:
                 prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
         else:
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
         loop = asyncio.get_event_loop()
+
         def _gen():
             import mlx.core as mx  # type: ignore[no-redef]
 
             mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
             if loader_kind == "mlx_vlm":
                 from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+
+                return vlm_gen(
+                    model,
+                    tokenizer,
+                    prompt=prompt,
+                    image=None,
+                    max_tokens=max_tokens,
+                    sampler=_mlx_sampler(temperature),
+                    draft_model=draft_model,
+                    draft_kind="mtp",
+                )
             from mlx_lm import generate as lm_gen
-            return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+
+            return lm_gen(
+                model,
+                tokenizer,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                sampler=_mlx_sampler(temperature),
+                draft_model=draft_model,
+            )
+
         result = await loop.run_in_executor(executor, _gen)
         if hasattr(result, "text"):
             return normalize_branding(result.text)
         return normalize_branding(str(result))
 
-    async def _cloud_generate_document(self, cloud: CloudModel, message: str, system_prompt: str, max_tokens: int, temperature: float) -> str:
+    async def _cloud_generate_document(
+        self,
+        cloud: CloudModel,
+        message: str,
+        system_prompt: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
         try:
             response = await cloud.client.chat.completions.create(
                 model=cloud.model,
@@ -98,7 +129,9 @@ class _DocumentMixin(_Core):
             return
 
         if isinstance(cached, CloudModel):
-            async for chunk in self._cloud_stream_document(cached, message, system_prompt, max_tokens, temperature):
+            async for chunk in self._cloud_stream_document(
+                cached, message, system_prompt, max_tokens, temperature
+            ):
                 yield chunk
             return
 
@@ -109,7 +142,9 @@ class _DocumentMixin(_Core):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message},
                 ]
-                prompt = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+                prompt = tokenizer.apply_chat_template(
+                    msgs, tokenize=False, add_generation_prompt=True
+                )
             except CHAT_TEMPLATE_ERRORS:
                 prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
         else:
@@ -125,12 +160,34 @@ class _DocumentMixin(_Core):
             try:
                 if loader_kind == "mlx_vlm":
                     from mlx_vlm import stream_generate as vlm_stream
-                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+
+                    gen = vlm_stream(
+                        model,
+                        tokenizer,
+                        prompt=prompt,
+                        image=None,
+                        max_tokens=max_tokens,
+                        sampler=_mlx_sampler(temperature),
+                        draft_model=draft_model,
+                        draft_kind="mtp",
+                    )
                 else:
                     from mlx_lm import stream_generate as lm_stream
-                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+
+                    gen = lm_stream(
+                        model,
+                        tokenizer,
+                        prompt=prompt,
+                        max_tokens=max_tokens,
+                        sampler=_mlx_sampler(temperature),
+                        draft_model=draft_model,
+                    )
                 for chunk in gen:
-                    text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
+                    text = (
+                        chunk.text
+                        if hasattr(chunk, "text")
+                        else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
+                    )
                     loop.call_soon_threadsafe(queue.put_nowait, text)
             except Exception as exc:
                 logging.exception("MLX document stream failed")
@@ -144,7 +201,14 @@ class _DocumentMixin(_Core):
         async for chunk in self._drain_stream_queue(queue):
             yield chunk
 
-    async def _cloud_stream_document(self, cloud: CloudModel, message: str, system_prompt: str, max_tokens: int, temperature: float) -> AsyncIterator[str]:
+    async def _cloud_stream_document(
+        self,
+        cloud: CloudModel,
+        message: str,
+        system_prompt: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> AsyncIterator[str]:
         try:
             stream = await cloud.client.chat.completions.create(
                 model=cloud.model,

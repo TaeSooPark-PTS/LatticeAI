@@ -122,7 +122,9 @@ def effective_origin(
     return f"{resolved}://{authority}"
 
 
-def request_external_origin(request: Any, *, fallback: Optional[str] = None) -> Optional[str]:
+def request_external_origin(
+    request: Any, *, fallback: Optional[str] = None
+) -> Optional[str]:
     """:func:`effective_origin` for a live request — the *link-building* seam.
 
     CSRF asks "is this same-origin?"; this asks the other question: "what URL

@@ -110,7 +110,9 @@ def _stable_process(monkeypatch, tmp_path) -> List[Dict[str, Any]]:
     return served
 
 
-def test_main_writes_host_and_port_back_into_the_environment(monkeypatch, tmp_path, capsys):
+def test_main_writes_host_and_port_back_into_the_environment(
+    monkeypatch, tmp_path, capsys
+):
     served = _stable_process(monkeypatch, tmp_path)
     monkeypatch.setattr(sys, "argv", ["LTCAI", "--host", "0.0.0.0", "--port", "4901"])
 

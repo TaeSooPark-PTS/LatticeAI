@@ -190,9 +190,12 @@ class Config:
     static_dir: Path
 
     @classmethod
-    def from_env(cls, env: Optional[Mapping[str, str]] = None, *, base_dir: Optional[Path] = None) -> "Config":
+    def from_env(
+        cls, env: Optional[Mapping[str, str]] = None, *, base_dir: Optional[Path] = None
+    ) -> "Config":
         if env is None:
             import os
+
             env = os.environ
         if base_dir is None:
             base_dir = Path(__file__).resolve().parent.parent.parent
@@ -207,19 +210,41 @@ class Config:
         network_exposed = not host_is_loopback(host)
         externally_reachable = is_public or network_exposed
 
-        cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
+        cors_extra = [
+            item.strip()
+            for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",")
+            if item.strip()
+        ]
         # Browser origins allowed to send *cookie-authenticated* writes. The
         # server's own origin and loopback are added by the CSRF guard itself;
         # this is the escape hatch for a reverse-proxied public hostname.
-        csrf_trusted_origins = [item.strip() for item in _value(env, "LATTICEAI_CSRF_TRUSTED_ORIGINS", "").split(",") if item.strip()]
-        admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
-        trusted_proxies = [item.strip() for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",") if item.strip()]
+        csrf_trusted_origins = [
+            item.strip()
+            for item in _value(env, "LATTICEAI_CSRF_TRUSTED_ORIGINS", "").split(",")
+            if item.strip()
+        ]
+        admin_emails = [
+            item.strip().lower()
+            for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",")
+            if item.strip()
+        ]
+        trusted_proxies = [
+            item.strip()
+            for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",")
+            if item.strip()
+        ]
 
-        public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
+        public_model = _value(
+            env,
+            "LATTICEAI_PUBLIC_MODEL",
+            _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"),
+        )
         # Canonical HF casing (the Hub answers `gemma-4-12b-it-4bit` with
         # `gemma-4-12B-it-4bit`); keeping it identical everywhere means the
         # download path, the on-disk cache dir and the catalog key all agree.
-        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12B-it-4bit")
+        local_model = _value(
+            env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12B-it-4bit"
+        )
 
         data_dir = default_data_dir(env)
         static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))
@@ -240,8 +265,12 @@ class Config:
             enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=False),
             enable_graph=_bool(env, "LATTICEAI_ENABLE_GRAPH", default=True),
             autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),
-            model_idle_unload_seconds=_int(env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0),
-            allow_local_models=_bool(env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public),
+            model_idle_unload_seconds=_int(
+                env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0
+            ),
+            allow_local_models=_bool(
+                env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public
+            ),
             # Authentication is optional only for the local-first loopback
             # profile.  An explicit ``false`` must never turn a public/LAN
             # binding into an unauthenticated service.
@@ -250,8 +279,12 @@ class Config:
                 if externally_reachable
                 else _bool(env, "LATTICEAI_REQUIRE_AUTH", default=False)
             ),
-            allow_plaintext_api_keys=_bool(env, "LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False),
-            cors_allow_network=_bool(env, "LATTICEAI_CORS_ALLOW_NETWORK", default=False),
+            allow_plaintext_api_keys=_bool(
+                env, "LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False
+            ),
+            cors_allow_network=_bool(
+                env, "LATTICEAI_CORS_ALLOW_NETWORK", default=False
+            ),
             cors_extra_origins=cors_extra,
             csrf_trusted_origins=csrf_trusted_origins,
             rate_limit_enabled=_str(env, "LATTICEAI_RATE_LIMIT", "1") != "0",
@@ -268,25 +301,40 @@ class Config:
             # one explicitly.
             invite_code=_value(env, "LATTICEAI_INVITE_CODE", ""),
             invite_cookie_secret=_value(env, "LATTICEAI_INVITE_COOKIE_SECRET", ""),
-            invite_gate_enabled=_bool(env, "LATTICEAI_INVITE_GATE_ENABLED", default=False),
+            invite_gate_enabled=_bool(
+                env, "LATTICEAI_INVITE_GATE_ENABLED", default=False
+            ),
             admin_emails=admin_emails,
             trusted_proxies=trusted_proxies,
             public_model=public_model,
             local_model=local_model,
             local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),
-            auto_read_chat_paths=_bool(env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False),
+            auto_read_chat_paths=_bool(
+                env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False
+            ),
             max_local_models=_int(env, "LATTICEAI_MAX_LOCAL_MODELS", 1),
-            allow_model_downloads=_bool(env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False),
+            allow_model_downloads=_bool(
+                env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False
+            ),
             model_download_timeout=_int(env, "LATTICEAI_MODEL_DOWNLOAD_TIMEOUT", 300),
-            embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash").strip().lower(),
-            embedding_profile=_value(env, "LATTICEAI_EMBEDDING_PROFILE", "").strip().lower(),
+            embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash")
+            .strip()
+            .lower(),
+            embedding_profile=_value(env, "LATTICEAI_EMBEDDING_PROFILE", "")
+            .strip()
+            .lower(),
             embedding_model=_value(env, "LATTICEAI_EMBEDDING_MODEL", ""),
             embedding_base_url=_value(env, "LATTICEAI_EMBEDDING_BASE_URL", ""),
             embedding_api_key=_value(env, "LATTICEAI_EMBEDDING_API_KEY", ""),
             embedding_dim=_int(env, "LATTICEAI_VECTOR_DIM", 0),
             embedding_timeout=_int(env, "LATTICEAI_EMBEDDING_TIMEOUT", 30),
-            embedding_custom_target=_value(env, "LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""),
-            storage_engine=_value(env, "LATTICEAI_STORAGE_ENGINE", "sqlite").strip().lower() or "sqlite",
+            embedding_custom_target=_value(
+                env, "LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""
+            ),
+            storage_engine=_value(env, "LATTICEAI_STORAGE_ENGINE", "sqlite")
+            .strip()
+            .lower()
+            or "sqlite",
             postgres_dsn=_value(env, "LATTICEAI_POSTGRES_DSN", ""),
             postgres_schema=_value(env, "LATTICEAI_POSTGRES_SCHEMA", "lattice_brain"),
             sso_discovery_url=_value(env, "OIDC_DISCOVERY_URL", ""),
@@ -294,9 +342,13 @@ class Config:
             sso_client_secret=_value(env, "OIDC_CLIENT_SECRET", ""),
             sso_redirect_uri=_value(env, "OIDC_REDIRECT_URI", default_sso_redirect),
             sso_provider_name=_value(env, "OIDC_PROVIDER_NAME", "SSO"),
-            discord_permission_webhook=_value(env, "LATTICEAI_DISCORD_PERMISSION_WEBHOOK", ""),
+            discord_permission_webhook=_value(
+                env, "LATTICEAI_DISCORD_PERMISSION_WEBHOOK", ""
+            ),
             discord_bot_token=_value(env, "LATTICEAI_DISCORD_BOT_TOKEN", ""),
-            discord_permission_channel=_value(env, "LATTICEAI_DISCORD_PERMISSION_CHANNEL", ""),
+            discord_permission_channel=_value(
+                env, "LATTICEAI_DISCORD_PERMISSION_CHANNEL", ""
+            ),
             permission_monitor_secret=_value(env, "LATTICEAI_PERMISSION_SECRET", ""),
             data_dir=data_dir,
             static_dir=static_dir,

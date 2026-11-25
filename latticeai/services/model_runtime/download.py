@@ -37,7 +37,15 @@ _CANCELLED_DOWNLOADS: Set[str] = set()
 
 def _normalize_cancel_key(model_id: Optional[str]) -> str:
     raw = str(model_id or "").strip().lower()
-    if ":" in raw and raw.split(":", 1)[0] in {"local_mlx", "mlx", "omlx", "huggingface", "ollama", "vllm", "llamacpp"}:
+    if ":" in raw and raw.split(":", 1)[0] in {
+        "local_mlx",
+        "mlx",
+        "omlx",
+        "huggingface",
+        "ollama",
+        "vllm",
+        "llamacpp",
+    }:
         return raw.split(":", 1)[1].strip()
     return raw
 
@@ -79,7 +87,9 @@ def is_download_cancelled(*candidates: Optional[str]) -> bool:
 
 def check_download_cancelled(*candidates: Optional[str]) -> None:
     if is_download_cancelled(*candidates):
-        raise ModelRuntimeError(status_code=499, detail="모델 다운로드가 취소되었습니다.")
+        raise ModelRuntimeError(
+            status_code=499, detail="모델 다운로드가 취소되었습니다."
+        )
 
 
 def is_gated_or_auth_error_text(text: str) -> bool:
@@ -144,7 +154,15 @@ def record_download_progress_snapshot(
     model_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     snapshot = dict(payload)
-    key = str(model_id or snapshot.get("fallback_repo") or snapshot.get("detail") or "_latest").strip() or "_latest"
+    key = (
+        str(
+            model_id
+            or snapshot.get("fallback_repo")
+            or snapshot.get("detail")
+            or "_latest"
+        ).strip()
+        or "_latest"
+    )
     _LATEST_DOWNLOAD_PROGRESS[key] = snapshot
     _LATEST_DOWNLOAD_PROGRESS["_latest"] = snapshot
     return snapshot
@@ -185,8 +203,16 @@ def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     if provider == "omlx" and "/" not in repo_id and "--" in repo_id:
         repo_id = repo_id.replace("--", "/", 1)
     model_dir = hf_model_dir(repo_id)
-    if provider in {"local_mlx", "omlx", "vllm"} and (not model_dir.exists() or not model_dir.is_dir()):
-        hf_cache_repo = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
+    if provider in {"local_mlx", "omlx", "vllm"} and (
+        not model_dir.exists() or not model_dir.is_dir()
+    ):
+        hf_cache_repo = (
+            Path.home()
+            / ".cache"
+            / "huggingface"
+            / "hub"
+            / f"models--{repo_id.replace('/', '--')}"
+        )
         if hf_cache_repo.exists() and any(hf_cache_repo.glob("snapshots/*")):
             if provider == "vllm":
                 return True
@@ -288,7 +314,9 @@ def estimate_eta_seconds(
         and downloaded_bytes is not None
         and 0 < downloaded_bytes < total_bytes
     ):
-        return max(0.0, (float(total_bytes) - float(downloaded_bytes)) / float(speed_bps))
+        return max(
+            0.0, (float(total_bytes) - float(downloaded_bytes)) / float(speed_bps)
+        )
     if percent is None or percent <= 0 or percent >= 100:
         return None
     elapsed = max(0.0, time.time() - started_at)
@@ -299,7 +327,9 @@ def _build_hf_api() -> Any:
     from huggingface_hub import HfApi
 
     env_endpoint = (
-        os.environ.get("HF_ENDPOINT") or os.environ.get("HUGGINGFACE_HUB_ENDPOINT") or ""
+        os.environ.get("HF_ENDPOINT")
+        or os.environ.get("HUGGINGFACE_HUB_ENDPOINT")
+        or ""
     ).strip()
     env_token = (
         os.environ.get("HF_TOKEN")
@@ -330,7 +360,9 @@ def _call_hf_hub_download(
 ) -> str:
     os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
     env_endpoint = (
-        os.environ.get("HF_ENDPOINT") or os.environ.get("HUGGINGFACE_HUB_ENDPOINT") or ""
+        os.environ.get("HF_ENDPOINT")
+        or os.environ.get("HUGGINGFACE_HUB_ENDPOINT")
+        or ""
     ).strip()
     env_token = (
         os.environ.get("HF_TOKEN")
@@ -381,7 +413,11 @@ def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
             raise
         logging.warning("huggingface model_info failed for %s: %s", repo_id, e)
 
-    return [{"name": str(name), "size": 0} for name in api.list_repo_files(repo_id) if str(name).strip()]
+    return [
+        {"name": str(name), "size": 0}
+        for name in api.list_repo_files(repo_id)
+        if str(name).strip()
+    ]
 
 
 def _select_repo_files_for_provider(
@@ -444,15 +480,17 @@ def _download_single_hf_repo(
         {"gated_fallback": True, "fallback_repo": active_repo} if used_fallback else {}
     )
     if used_fallback and progress_emit:
-        progress_emit(model_download_progress_payload(
-            "download",
-            f"인증 토큰 없이 사용 가능한 공개 미러({active_repo})로 전환합니다.",
-            percent=0,
-            detail=active_repo,
-            downloaded_bytes=0,
-            indeterminate=True,
-            **fallback_kwargs,
-        ))
+        progress_emit(
+            model_download_progress_payload(
+                "download",
+                f"인증 토큰 없이 사용 가능한 공개 미러({active_repo})로 전환합니다.",
+                percent=0,
+                detail=active_repo,
+                downloaded_bytes=0,
+                indeterminate=True,
+                **fallback_kwargs,
+            )
+        )
 
     all_files = hf_repo_files_with_sizes(active_repo)
     selected_files = _select_repo_files_for_provider(all_files, provider)
@@ -460,15 +498,17 @@ def _download_single_hf_repo(
     downloaded_bytes = 0
     total_files = max(1, len(selected_files))
     if progress_emit:
-        progress_emit(model_download_progress_payload(
-            "download",
-            "모델 파일 정보를 확인했습니다.",
-            percent=0,
-            downloaded_bytes=0,
-            total_bytes=total_bytes,
-            indeterminate=total_bytes is None,
-            **fallback_kwargs,
-        ))
+        progress_emit(
+            model_download_progress_payload(
+                "download",
+                "모델 파일 정보를 확인했습니다.",
+                percent=0,
+                downloaded_bytes=0,
+                total_bytes=total_bytes,
+                indeterminate=total_bytes is None,
+                **fallback_kwargs,
+            )
+        )
 
     for index, item in enumerate(selected_files, start=1):
         check_download_cancelled(requested_repo, active_repo)
@@ -482,26 +522,28 @@ def _download_single_hf_repo(
                 else ((index - 1) / total_files) * 100
             )
             current_speed = estimate_speed_bps(started_at, downloaded_bytes)
-            progress_emit(model_download_progress_payload(
-                "download",
-                "모델 다운로드 중입니다.",
-                percent=current_percent,
-                detail=filename,
-                downloaded_bytes=downloaded_bytes,
-                total_bytes=total_bytes,
-                speed_bps=current_speed,
-                eta_seconds=estimate_eta_seconds(
-                    started_at,
-                    current_percent,
+            progress_emit(
+                model_download_progress_payload(
+                    "download",
+                    "모델 다운로드 중입니다.",
+                    percent=current_percent,
+                    detail=filename,
                     downloaded_bytes=downloaded_bytes,
                     total_bytes=total_bytes,
                     speed_bps=current_speed,
-                ),
-                file=filename,
-                current_file=filename,
-                indeterminate=total_bytes is None and total_files <= 1,
-                **fallback_kwargs,
-            ))
+                    eta_seconds=estimate_eta_seconds(
+                        started_at,
+                        current_percent,
+                        downloaded_bytes=downloaded_bytes,
+                        total_bytes=total_bytes,
+                        speed_bps=current_speed,
+                    ),
+                    file=filename,
+                    current_file=filename,
+                    indeterminate=total_bytes is None and total_files <= 1,
+                    **fallback_kwargs,
+                )
+            )
             try:
                 from tqdm.auto import tqdm as base_tqdm
 
@@ -535,26 +577,28 @@ def _download_single_hf_repo(
                     last_emit["at"] = now
                     last_emit["percent"] = percent
                     speed_now = estimate_speed_bps(started_at, aggregate, now=now)
-                    progress_emit(model_download_progress_payload(
-                        "download",
-                        "모델 다운로드 중입니다.",
-                        percent=percent,
-                        detail=filename,
-                        downloaded_bytes=aggregate,
-                        total_bytes=total_bytes,
-                        speed_bps=speed_now,
-                        eta_seconds=estimate_eta_seconds(
-                            started_at,
-                            percent,
+                    progress_emit(
+                        model_download_progress_payload(
+                            "download",
+                            "모델 다운로드 중입니다.",
+                            percent=percent,
+                            detail=filename,
                             downloaded_bytes=aggregate,
                             total_bytes=total_bytes,
                             speed_bps=speed_now,
-                        ),
-                        file=filename,
-                        current_file=filename,
-                        indeterminate=total_bytes is None and total_files <= 1,
-                        **fallback_kwargs,
-                    ))
+                            eta_seconds=estimate_eta_seconds(
+                                started_at,
+                                percent,
+                                downloaded_bytes=aggregate,
+                                total_bytes=total_bytes,
+                                speed_bps=speed_now,
+                            ),
+                            file=filename,
+                            current_file=filename,
+                            indeterminate=total_bytes is None and total_files <= 1,
+                            **fallback_kwargs,
+                        )
+                    )
 
                 class ProgressTqdm(base_tqdm):
                     def update(self, n=1):
@@ -599,50 +643,56 @@ def _download_single_hf_repo(
                 else (index / total_files) * 100
             )
             current_speed = estimate_speed_bps(started_at, downloaded_bytes)
-            progress_emit(model_download_progress_payload(
-                "download",
-                "모델 다운로드 중입니다.",
-                percent=current_percent,
-                detail=filename,
-                downloaded_bytes=downloaded_bytes,
-                total_bytes=total_bytes,
-                speed_bps=current_speed,
-                eta_seconds=estimate_eta_seconds(
-                    started_at,
-                    current_percent,
+            progress_emit(
+                model_download_progress_payload(
+                    "download",
+                    "모델 다운로드 중입니다.",
+                    percent=current_percent,
+                    detail=filename,
                     downloaded_bytes=downloaded_bytes,
                     total_bytes=total_bytes,
                     speed_bps=current_speed,
-                ),
-                file=filename,
-                current_file=filename,
-                indeterminate=False,
-                **fallback_kwargs,
-            ))
+                    eta_seconds=estimate_eta_seconds(
+                        started_at,
+                        current_percent,
+                        downloaded_bytes=downloaded_bytes,
+                        total_bytes=total_bytes,
+                        speed_bps=current_speed,
+                    ),
+                    file=filename,
+                    current_file=filename,
+                    indeterminate=False,
+                    **fallback_kwargs,
+                )
+            )
 
     final_speed = estimate_speed_bps(started_at, downloaded_bytes)
     if progress_emit:
-        progress_emit(model_download_progress_payload(
-            "download",
-            "모델 다운로드가 완료되었습니다.",
-            percent=100,
-            downloaded_bytes=downloaded_bytes,
-            total_bytes=total_bytes or downloaded_bytes,
-            speed_bps=final_speed,
-            eta_seconds=0,
-            **fallback_kwargs,
-        ))
+        progress_emit(
+            model_download_progress_payload(
+                "download",
+                "모델 다운로드가 완료되었습니다.",
+                percent=100,
+                downloaded_bytes=downloaded_bytes,
+                total_bytes=total_bytes or downloaded_bytes,
+                speed_bps=final_speed,
+                eta_seconds=0,
+                **fallback_kwargs,
+            )
+        )
     result: Dict[str, Any] = {
         "model": active_repo,
         "path": str(target_dir),
         "cached": False,
     }
     if used_fallback:
-        result.update({
-            "requested_model": requested_repo,
-            "gated_fallback": True,
-            "fallback_repo": active_repo,
-        })
+        result.update(
+            {
+                "requested_model": requested_repo,
+                "gated_fallback": True,
+                "fallback_repo": active_repo,
+            }
+        )
     return result
 
 
@@ -662,14 +712,16 @@ def download_hf_model(
         cached_dir = hf_cache_model_dir(repo_id) if provider == "local_mlx" else None
         resolved_dir = cached_dir or target_dir
         if progress_emit:
-            progress_emit(model_download_progress_payload(
-                "download",
-                "이미 다운로드된 모델을 확인했습니다.",
-                percent=100,
-                downloaded_bytes=0,
-                total_bytes=0,
-                eta_seconds=0,
-            ))
+            progress_emit(
+                model_download_progress_payload(
+                    "download",
+                    "이미 다운로드된 모델을 확인했습니다.",
+                    percent=100,
+                    downloaded_bytes=0,
+                    total_bytes=0,
+                    eta_seconds=0,
+                )
+            )
         return {"model": repo_id, "path": str(resolved_dir), "cached": True}
 
     resolution = resolve_download_candidates(repo_id, provider)
@@ -679,19 +731,23 @@ def download_hf_model(
     if resolution["proactive_fallback"]:
         for mirror_repo in mirrors:
             if hf_model_ready(mirror_repo, provider):
-                mirror_dir = hf_cache_model_dir(mirror_repo) if provider == "local_mlx" else None
+                mirror_dir = (
+                    hf_cache_model_dir(mirror_repo) if provider == "local_mlx" else None
+                )
                 resolved_mirror = mirror_dir or hf_model_dir(mirror_repo)
                 if progress_emit:
-                    progress_emit(model_download_progress_payload(
-                        "download",
-                        "이미 다운로드된 공개 미러 모델을 확인했습니다.",
-                        percent=100,
-                        downloaded_bytes=0,
-                        total_bytes=0,
-                        eta_seconds=0,
-                        gated_fallback=True,
-                        fallback_repo=mirror_repo,
-                    ))
+                    progress_emit(
+                        model_download_progress_payload(
+                            "download",
+                            "이미 다운로드된 공개 미러 모델을 확인했습니다.",
+                            percent=100,
+                            downloaded_bytes=0,
+                            total_bytes=0,
+                            eta_seconds=0,
+                            gated_fallback=True,
+                            fallback_repo=mirror_repo,
+                        )
+                    )
                 return {
                     "model": mirror_repo,
                     "requested_model": repo_id,
@@ -739,7 +795,9 @@ def download_hf_model(
 
     if last_error is not None or download_result is None:
         err_msg = str(last_error)[-2000:] if last_error is not None else "unknown error"
-        raise ModelRuntimeError(status_code=500, detail=f"{repo_id} 다운로드 실패: {err_msg}")
+        raise ModelRuntimeError(
+            status_code=500, detail=f"{repo_id} 다운로드 실패: {err_msg}"
+        )
 
     if not hf_model_ready(active_repo, provider):
         raise ModelRuntimeError(

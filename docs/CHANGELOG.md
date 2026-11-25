@@ -6,6 +6,20 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.1.1] - 2026-11-25 — Living Synthesis
+
+### Changed
+- **Repository-Wide Python Formatting & Blame Hygiene (`.git-blame-ignore-revs`, `package.json`, `.github/workflows/ci.yml`):**
+  - Formatted all 219 Python files with `ruff format .` in a dedicated format-only commit (`55ba57c381a433066fd94434c3a6250c4a1beb59`) and recorded it in `.git-blame-ignore-revs` so `git blame` remains clean.
+  - Updated `npm run lint:python` (run by `.github/workflows/ci.yml`) to enforce `ruff format --check .` alongside `ruff check .` and `npm run typecheck:python`.
+- **Global `C901` Enforcement (`pyproject.toml`, `latticeai/api/models.py`, `latticeai/api/worker_compute.py`, `tests/unit/test_worker_compute_extract.py`):**
+  - Decomposed `create_models_router` and `create_worker_compute_router` into focused module-level sub-registrars and helper functions at or below McCabe `max-complexity = 20` with zero API/OpenAPI drift.
+  - Removed `"C901"` from `[tool.ruff.lint.per-file-ignores]` for `"latticeai/api/*.py"` and `"latticeai/app_factory.py"` (zero `C901` exemptions remaining repository-wide) and split `/worker/extract` tests into `tests/unit/test_worker_compute_extract.py` to stay under the 1,000-line file ceiling.
+- **Server i18n Ratchet Closed (`scripts/check_server_i18n.mjs`):**
+  - Audited `worker_compute_render.py` and `worker_resilience.py`, registered both explicitly in `NON_ROUTER_HELPERS`, and updated `scripts/check_server_i18n.mjs` to fail closed (`exit 1`) on any future unclaimed `latticeai/api/*.py` module (`0 unclaimed`).
+- **Container Ownership & Permissions Hygiene (`Dockerfile`):**
+  - Added explicit `--chown=lattice:lattice --chmod=0755` to the `lattice-host` runtime copy on line 43 so binary ownership and executable permissions are explicit and consistent across all runtime stage copies.
+
 ## [14.1.0] - 2026-11-25 — Living Synthesis
 
 ### Fixed

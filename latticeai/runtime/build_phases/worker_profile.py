@@ -114,7 +114,6 @@ def worker_route_keys() -> Set[Tuple[str, str]]:
     )
 
 
-
 def _route_keys(route: Any) -> Set[Tuple[str, str]]:
     """``{(method, path)}`` for one API route — every method it answers.
 

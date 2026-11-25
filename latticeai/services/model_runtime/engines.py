@@ -94,15 +94,28 @@ _LMSTUDIO_MODELS_CACHE_TTL: float = 10.0
 
 def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, Any]]:
     global _LMSTUDIO_MODELS_CACHE, _LMSTUDIO_MODELS_CACHE_TS
-    if not force and time.monotonic() - _LMSTUDIO_MODELS_CACHE_TS < _LMSTUDIO_MODELS_CACHE_TTL:
+    if (
+        not force
+        and time.monotonic() - _LMSTUDIO_MODELS_CACHE_TS < _LMSTUDIO_MODELS_CACHE_TTL
+    ):
         return _LMSTUDIO_MODELS_CACHE
     try:
         payload = _json_request(
             f"{lmstudio_native_api_base()}/api/v1/models",
-            headers={"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"},
+            headers={
+                "Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"
+            },
             timeout=2.5,
         )
-    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        OSError,
+        TimeoutError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ):
         return _LMSTUDIO_MODELS_CACHE
     models = payload.get("models")
     _LMSTUDIO_MODELS_CACHE = models if isinstance(models, list) else []
@@ -123,7 +136,9 @@ def _lmstudio_candidate_keys(model_name: str) -> List[str]:
     return list(dict.fromkeys(candidates))
 
 
-def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, Any]]) -> Optional[str]:
+def _find_lmstudio_model_key(
+    model_name: str, models: List[Dict[str, Any]]
+) -> Optional[str]:
     if not models:
         return None
     candidate_keys = _lmstudio_candidate_keys(model_name)
@@ -143,7 +158,9 @@ def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, Any]]) -> O
 
 def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
     ensure_lmstudio_server()
-    auth_header = {"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"}
+    auth_header = {
+        "Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"
+    }
     models = get_lmstudio_models()
     found_key = _find_lmstudio_model_key(model_name, models)
     model_key = found_key or model_name
@@ -159,9 +176,22 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
             )
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="replace")[-2000:]
-            raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}")
-        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError) as e:
-            raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}")
+            raise ModelRuntimeError(
+                status_code=500,
+                detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}",
+            )
+        except (
+            urllib.error.URLError,
+            http.client.HTTPException,
+            OSError,
+            TimeoutError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ) as e:
+            raise ModelRuntimeError(
+                status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}"
+            )
 
         status = str(job.get("status") or "")
         job_id = str(job.get("job_id") or "")
@@ -177,18 +207,39 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
                 if polled_status == "completed":
                     break
                 if polled_status == "failed":
-                    raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {polled}")
+                    raise ModelRuntimeError(
+                        status_code=500,
+                        detail=f"LM Studio 모델 다운로드 실패: {polled}",
+                    )
                 time.sleep(2)
             else:
-                raise ModelRuntimeError(status_code=408, detail="LM Studio 모델 다운로드 시간이 초과되었습니다.")
+                raise ModelRuntimeError(
+                    status_code=408,
+                    detail="LM Studio 모델 다운로드 시간이 초과되었습니다.",
+                )
 
         models = get_lmstudio_models(force=True)
         model_key = _find_lmstudio_model_key(model_name, models) or model_name
 
-    target = next((item for item in models if isinstance(item, dict) and item.get("key") == model_key), None)
-    loaded_instances = target.get("loaded_instances") if isinstance(target, dict) else None
+    target = next(
+        (
+            item
+            for item in models
+            if isinstance(item, dict) and item.get("key") == model_key
+        ),
+        None,
+    )
+    loaded_instances = (
+        target.get("loaded_instances") if isinstance(target, dict) else None
+    )
     if loaded_instances:
-        return {"provider": "lmstudio", "model": model_name, "resolved_model": model_key, "server_ready": True, "cached": True}
+        return {
+            "provider": "lmstudio",
+            "model": model_name,
+            "resolved_model": model_key,
+            "server_ready": True,
+            "cached": True,
+        }
 
     try:
         loaded = _json_request(
@@ -200,12 +251,26 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
         )
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")[-2000:]
-        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}")
-    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError) as e:
-        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {e}")
+        raise ModelRuntimeError(
+            status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}"
+        )
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        OSError,
+        TimeoutError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ) as e:
+        raise ModelRuntimeError(
+            status_code=500, detail=f"LM Studio 모델 로드 실패: {e}"
+        )
 
     if str(loaded.get("status") or "") != "loaded":
-        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {loaded}")
+        raise ModelRuntimeError(
+            status_code=500, detail=f"LM Studio 모델 로드 실패: {loaded}"
+        )
 
     return {
         "provider": "lmstudio",
@@ -216,6 +281,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
         "cached": False,
     }
 
+
 def _safe_engine_install_plan(
     engine: str,
     *,
@@ -223,7 +289,15 @@ def _safe_engine_install_plan(
 ) -> Optional[Dict[str, Any]]:
     try:
         return _engine_install_plan(engine, base_dir=base_dir)
-    except (ModelRuntimeError, OSError, ValueError, TypeError, RuntimeError, KeyError, AttributeError):
+    except (
+        ModelRuntimeError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        KeyError,
+        AttributeError,
+    ):
         return None
 
 
@@ -231,7 +305,10 @@ def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
         return bool(
             importlib.util.find_spec("mlx")
-            and (importlib.util.find_spec("mlx_vlm") or importlib.util.find_spec("mlx_lm"))
+            and (
+                importlib.util.find_spec("mlx_vlm")
+                or importlib.util.find_spec("mlx_lm")
+            )
         )
     if engine == "omlx":
         from latticeai.services.model_engines import omlx_executable
@@ -240,13 +317,24 @@ def engine_installed(engine: str) -> bool:
     if engine == "ollama":
         return local_binary("ollama") is not None
     if engine == "vllm":
-        return vllm_metal_python() is not None or vllm_executable() is not None or importlib.util.find_spec("vllm") is not None
+        return (
+            vllm_metal_python() is not None
+            or vllm_executable() is not None
+            or importlib.util.find_spec("vllm") is not None
+        )
     if engine == "lmstudio":
-        return find_lmstudio_cli() is not None or Path("/Applications/LM Studio.app").exists()
+        return (
+            find_lmstudio_cli() is not None
+            or Path("/Applications/LM Studio.app").exists()
+        )
     if engine == "llamacpp":
         from latticeai.services.engine_adapters import llamacpp_python_available
 
-        return shutil.which("llama-server") is not None or local_binary("llama-server") is not None or llamacpp_python_available()
+        return (
+            shutil.which("llama-server") is not None
+            or local_binary("llama-server") is not None
+            or llamacpp_python_available()
+        )
     if engine in {"openai", "openrouter", "groq", "together", "xai"}:
         return AsyncOpenAI is not None
     return False

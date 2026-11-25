@@ -34,7 +34,9 @@ class _FakeModelRouter:
         return [{"id": "openai:gpt-4o-mini"}]
 
     def unload_model(self, model_id):
-        self.loaded_model_ids = [item for item in self.loaded_model_ids if item != model_id]
+        self.loaded_model_ids = [
+            item for item in self.loaded_model_ids if item != model_id
+        ]
 
 
 def _build(**overrides):
@@ -56,7 +58,9 @@ def _build(**overrides):
         prepare_and_load_model=prepare_and_load_model,
         prepare_and_load_model_stream=prepare_and_load_model_stream,
         sse_event=lambda event, data: f"event: {event}\ndata: {data}\n\n",
-        engine_status=lambda: [{"id": "local_mlx", "name": "MLX", "installed": True, "models": []}],
+        engine_status=lambda: [
+            {"id": "local_mlx", "name": "MLX", "installed": True, "models": []}
+        ],
         filter_lower_family_versions=lambda items: items,
         list_compat_profiles=lambda: [{"id": "mlx"}],
         engine_model_catalog={"local_mlx": []},
@@ -114,7 +118,9 @@ def test_vision_degrades_when_the_profile_or_engine_listing_fails(monkeypatch):
 
 def test_prepare_model_translates_a_model_runtime_error():
     async def failing(_model, _request, **_kwargs):
-        raise ModelRuntimeError(status_code=409, detail={"status": "confirmation_required"})
+        raise ModelRuntimeError(
+            status_code=409, detail={"status": "confirmation_required"}
+        )
 
     client, _calls = _build(prepare_and_load_model=failing)
 
@@ -142,22 +148,31 @@ def test_prepare_model_turns_an_unexpected_failure_into_friendly_guidance(monkey
 
     monkeypatch.setattr(
         "latticeai.core.model_compat.friendly_model_runtime_error",
-        lambda exc, model_id=None, engine=None: {"status": "repair_model", "model_id": model_id},
+        lambda exc, model_id=None, engine=None: {
+            "status": "repair_model",
+            "model_id": model_id,
+        },
     )
     client, _calls = _build(prepare_and_load_model=failing)
 
     response = client.post(
-        "/engines/prepare-model", json={"model": "some/model", "engine": "local_mlx"},
+        "/engines/prepare-model",
+        json={"model": "some/model", "engine": "local_mlx"},
     )
 
     assert response.status_code == 500
-    assert response.json()["detail"] == {"status": "repair_model", "model_id": "some/model"}
+    assert response.json()["detail"] == {
+        "status": "repair_model",
+        "model_id": "some/model",
+    }
 
 
 def test_the_prepare_stream_yields_the_service_chunks():
     client, calls = _build()
 
-    response = client.post("/engines/prepare-model/stream", json={"model": "some/model"})
+    response = client.post(
+        "/engines/prepare-model/stream", json={"model": "some/model"}
+    )
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-cache"
@@ -172,14 +187,18 @@ def test_the_prepare_stream_reports_a_known_failure_as_an_sse_error_event():
 
     client, _calls = _build(prepare_and_load_model_stream=failing)
 
-    response = client.post("/engines/prepare-model/stream", json={"model": "some/model"})
+    response = client.post(
+        "/engines/prepare-model/stream", json={"model": "some/model"}
+    )
 
     assert response.status_code == 200
     assert "event: error" in response.text
     assert "409" in response.text
 
 
-def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(monkeypatch):
+def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(
+    monkeypatch,
+):
     async def failing(_model, _request, **_kwargs):
         raise RuntimeError("mlx segfault")
         yield  # keeps this an async generator
@@ -190,7 +209,9 @@ def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(
     )
     client, _calls = _build(prepare_and_load_model_stream=failing)
 
-    response = client.post("/engines/prepare-model/stream", json={"model": "some/model"})
+    response = client.post(
+        "/engines/prepare-model/stream", json={"model": "some/model"}
+    )
 
     assert response.status_code == 200
     assert "event: error" in response.text
@@ -209,7 +230,11 @@ def test_the_model_listing_survives_a_broken_verified_registry(monkeypatch):
 
     payload = client.get("/models").json()
 
-    assert payload["registry"] == {"version": "5.2.0", "verified_count": 0, "verified": []}
+    assert payload["registry"] == {
+        "version": "5.2.0",
+        "verified_count": 0,
+        "verified": [],
+    }
     assert payload["current"] == "mlx-community/loaded-4bit"
     assert payload["cloud"] == [{"id": "openai:gpt-4o-mini"}]
     assert payload["compat_profiles"] == [{"id": "mlx"}]
@@ -219,40 +244,68 @@ def test_the_model_listing_reports_engine_options_per_recommendation(monkeypatch
     monkeypatch.setattr(
         "latticeai.core.model_compat.model_runtime_compatibility",
         lambda model_id, engine=None: {
-            "supported": True, "status": "supported", "preferred_runtime": "MLX",
+            "supported": True,
+            "status": "supported",
+            "preferred_runtime": "MLX",
         },
     )
-    monkeypatch.setattr("latticeai.services.model_catalog.get_verified_models", lambda: [])
+    monkeypatch.setattr(
+        "latticeai.services.model_catalog.get_verified_models", lambda: []
+    )
     catalog = {
         "local_mlx": [
-            {"id": "mlx-community/loaded-4bit", "name": "Loaded", "tag": "local", "size": "4GB"},
-            {"id": "mlx-community/absent-4bit", "name": "Absent", "tag": "local", "size": "4GB"},
+            {
+                "id": "mlx-community/loaded-4bit",
+                "name": "Loaded",
+                "tag": "local",
+                "size": "4GB",
+            },
+            {
+                "id": "mlx-community/absent-4bit",
+                "name": "Absent",
+                "tag": "local",
+                "size": "4GB",
+            },
         ]
     }
     engines = [{"id": "local_mlx", "name": "MLX", "installed": False, "models": []}]
     client, _calls = _build(engine_model_catalog=catalog, engine_status=lambda: engines)
 
-    recommended = {item["id"]: item for item in client.get("/models").json()["recommended"]}
+    recommended = {
+        item["id"]: item for item in client.get("/models").json()["recommended"]
+    }
 
     # The currently loaded model is loadable regardless of engine state.
     assert recommended["mlx-community/loaded-4bit"]["load_status"] == "loaded"
     assert recommended["mlx-community/loaded-4bit"]["unavailable_reason"] is None
     # An absent model on an uninstalled engine explains itself.
     assert recommended["mlx-community/absent-4bit"]["load_status"] == "unavailable"
-    assert "not installed" in recommended["mlx-community/absent-4bit"]["unavailable_reason"]
+    assert (
+        "not installed"
+        in recommended["mlx-community/absent-4bit"]["unavailable_reason"]
+    )
 
 
 def test_a_ready_engine_reports_a_missing_model_as_download_required(monkeypatch):
     monkeypatch.setattr(
         "latticeai.core.model_compat.model_runtime_compatibility",
         lambda model_id, engine=None: {
-            "supported": True, "status": "supported", "preferred_runtime": "MLX",
+            "supported": True,
+            "status": "supported",
+            "preferred_runtime": "MLX",
         },
     )
-    monkeypatch.setattr("latticeai.services.model_catalog.get_verified_models", lambda: [])
+    monkeypatch.setattr(
+        "latticeai.services.model_catalog.get_verified_models", lambda: []
+    )
     catalog = {
         "local_mlx": [
-            {"id": "mlx-community/absent-4bit", "name": "Absent", "tag": "local", "size": "4GB"},
+            {
+                "id": "mlx-community/absent-4bit",
+                "name": "Absent",
+                "tag": "local",
+                "size": "4GB",
+            },
         ]
     }
     engines = [{"id": "local_mlx", "name": "MLX", "installed": True, "models": []}]
@@ -270,12 +323,16 @@ def test_load_model_refuses_an_incompatible_runtime(monkeypatch):
     monkeypatch.setattr(
         "latticeai.core.model_compat.model_runtime_compatibility",
         lambda model_id, engine=None: {
-            "supported": False, "status": "runtime_update_needed", "model_id": model_id,
+            "supported": False,
+            "status": "runtime_update_needed",
+            "model_id": model_id,
         },
     )
     client, calls = _build()
 
-    response = client.post("/models/load", json={"model_id": "mlx-community/gemma-4-12b"})
+    response = client.post(
+        "/models/load", json={"model_id": "mlx-community/gemma-4-12b"}
+    )
 
     assert response.status_code == 400
     assert response.json()["detail"]["status"] == "runtime_update_needed"
@@ -329,7 +386,9 @@ def test_load_model_translates_a_model_runtime_error(monkeypatch):
 
     client, _calls = _build(prepare_and_load_model=failing)
 
-    response = client.post("/models/load", json={"model_id": "mlx-community/loaded-4bit"})
+    response = client.post(
+        "/models/load", json={"model_id": "mlx-community/loaded-4bit"}
+    )
 
     assert response.status_code == 413
 
@@ -341,7 +400,10 @@ def test_load_model_turns_an_unexpected_failure_into_friendly_guidance(monkeypat
     )
     monkeypatch.setattr(
         "latticeai.core.model_compat.friendly_model_runtime_error",
-        lambda exc, model_id=None, engine=None: {"status": "repair_model", "model_id": model_id},
+        lambda exc, model_id=None, engine=None: {
+            "status": "repair_model",
+            "model_id": model_id,
+        },
     )
 
     async def failing(_model, _request, **_kwargs):
@@ -349,7 +411,9 @@ def test_load_model_turns_an_unexpected_failure_into_friendly_guidance(monkeypat
 
     client, _calls = _build(prepare_and_load_model=failing)
 
-    response = client.post("/models/load", json={"model_id": "mlx-community/loaded-4bit"})
+    response = client.post(
+        "/models/load", json={"model_id": "mlx-community/loaded-4bit"}
+    )
 
     assert response.status_code == 500
     assert response.json()["detail"]["status"] == "repair_model"

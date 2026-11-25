@@ -51,7 +51,10 @@ def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
             "category": "tool_calling",
             "language": "English",
             "prompt": "Search inside src/settings.py for TOKEN_EXPIRY_SECS and state its exact integer value.",
-            "checks": {"require_any_tool": ["grep", "read_file"], "answer_contains": ["1800"]},
+            "checks": {
+                "require_any_tool": ["grep", "read_file"],
+                "answer_contains": ["1800"],
+            },
         },
         {
             "id": "tc_03_write_note",
@@ -428,21 +431,29 @@ def seed_workspace(ws: Path) -> None:
     (ws / "docs").mkdir(parents=True, exist_ok=True)
 
     (ws / "config" / "service.json").write_text(
-        json.dumps({"service": "lattice-gateway", "worker_port": 7410, "tls": False}, indent=2),
+        json.dumps(
+            {"service": "lattice-gateway", "worker_port": 7410, "tls": False}, indent=2
+        ),
         encoding="utf-8",
     )
     (ws / "config" / "endpoints.yaml").write_text(
         "loopback_host: 127.0.0.1\ngateway_port: 8443\n",
         encoding="utf-8",
     )
-    (ws / "config" / "v1.txt").write_text("ENABLE_CACHE=false\nLOG_LEVEL=info\n", encoding="utf-8")
-    (ws / "config" / "v2.txt").write_text("ENABLE_CACHE=true\nLOG_LEVEL=info\n", encoding="utf-8")
+    (ws / "config" / "v1.txt").write_text(
+        "ENABLE_CACHE=false\nLOG_LEVEL=info\n", encoding="utf-8"
+    )
+    (ws / "config" / "v2.txt").write_text(
+        "ENABLE_CACHE=true\nLOG_LEVEL=info\n", encoding="utf-8"
+    )
     (ws / "src" / "settings.py").write_text(
         "MAX_RETRIES = 3\nTOKEN_EXPIRY_SECS = 1800\n",
         encoding="utf-8",
     )
     (ws / "data" / "metrics.json").write_text(
-        json.dumps({"uptime_pct": 99.98, "p99_ms": 42, "error_budget_pct": 0.05}, indent=2),
+        json.dumps(
+            {"uptime_pct": 99.98, "p99_ms": 42, "error_budget_pct": 0.05}, indent=2
+        ),
         encoding="utf-8",
     )
     (ws / "README_BENCH.md").write_text(
@@ -500,7 +511,11 @@ def _execute_workspace_fixture_tool(
         target = _resolve_ws_path(ws, rel)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
-        return {"path": rel, "bytes": len(content.encode("utf-8")), "written": True}, None
+        return {
+            "path": rel,
+            "bytes": len(content.encode("utf-8")),
+            "written": True,
+        }, None
 
     pattern = str(args.get("pattern", "")).strip()
     rel = str(args.get("path", ".")).strip() or "."
@@ -512,9 +527,13 @@ def _execute_workspace_fixture_tool(
     for p in files:
         if not p.is_file():
             continue
-        for idx, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
+        for idx, line in enumerate(
+            p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1
+        ):
             if pattern.lower() in line.lower():
-                matches.append({"file": str(p.relative_to(ws)), "line": idx, "text": line})
+                matches.append(
+                    {"file": str(p.relative_to(ws)), "line": idx, "text": line}
+                )
     return {"pattern": pattern, "matches": matches, "count": len(matches)}, None
 
 
@@ -522,7 +541,11 @@ def _execute_cu_fixture_tool(
     tool: str, args: Dict[str, Any], cu_events: List[str]
 ) -> Tuple[Optional[Any], Optional[str]]:
     if tool == "computer_status":
-        return {"available": True, "mode": "bridge", "screen_size": {"width": 1280, "height": 800}}, None
+        return {
+            "available": True,
+            "mode": "bridge",
+            "screen_size": {"width": 1280, "height": 800},
+        }, None
 
     if tool == "computer_ui_inspect":
         return {
@@ -593,5 +616,3 @@ def execute_fixture_tool(
         return None, f"Unknown action: {tool}"
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
         return None, str(exc)
-
-

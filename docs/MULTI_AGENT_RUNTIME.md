@@ -73,10 +73,10 @@ AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 
 ROLE_AGENT_IDS = {
     "researcher": "agent:researcher",
-    "planner":    "agent:planner",
-    "executor":   "agent:executor",
-    "reviewer":   "agent:reviewer",
-    "release":    "agent:release",
+    "planner": "agent:planner",
+    "executor": "agent:executor",
+    "reviewer": "agent:reviewer",
+    "release": "agent:release",
 }
 ```
 
@@ -118,8 +118,7 @@ def run(
     inputs: Optional[Dict[str, Any]] = None,
     roles: Optional[List[str]] = None,
     max_retries: int = 2,
-) -> AgentRunResult:
-    ...
+) -> AgentRunResult: ...
 ```
 
 `run` walks the resolved pipeline, threading a single `OrchestrationContext` through
@@ -210,7 +209,9 @@ port**. It runs with no LLM and no server:
 class MultiAgentOrchestrator:
     def __init__(
         self,
-        role_runner: Optional[Callable[[str, OrchestrationContext], Dict[str, Any]]] = None,
+        role_runner: Optional[
+            Callable[[str, OrchestrationContext], Dict[str, Any]]
+        ] = None,
     ):
         self.role_runner = role_runner or default_role_runner()
 ```
@@ -239,8 +240,7 @@ def default_role_runner(
     workflow_runner: Optional[Callable[..., Any]] = None,
     plugin_runner: Optional[Callable[..., Any]] = None,
     context_provider: Optional[Callable[[str], List[str]]] = None,
-) -> Callable[[str, OrchestrationContext], Dict[str, Any]]:
-    ...
+) -> Callable[[str, OrchestrationContext], Dict[str, Any]]: ...
 ```
 
 Behavior by role:
@@ -306,8 +306,7 @@ def record_agent_run(
     relationships: Optional[List[str]] = None,
     graph: Any = None,
     workspace_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    ...
+) -> Dict[str, Any]: ...
 ```
 
 What it does:

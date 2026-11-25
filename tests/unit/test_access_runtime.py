@@ -11,7 +11,12 @@ from latticeai.tools import DEFAULT_TOOL_REGISTRY
 
 
 class RequestStub:
-    def __init__(self, *, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+    ) -> None:
         self.headers = headers or {}
         self.cookies = cookies or {}
 
@@ -63,12 +68,30 @@ def test_extract_current_user_supports_bearer_and_cookie_tokens():
     }
     runtime = _runtime(
         users=users,
-        sessions={"bearer-token": "bearer@example.com", "cookie-token": "cookie@example.com"},
+        sessions={
+            "bearer-token": "bearer@example.com",
+            "cookie-token": "cookie@example.com",
+        },
     )
 
-    assert runtime["_extract_bearer_token"](RequestStub(headers={"Authorization": "Bearer bearer-token"})) == "bearer-token"
-    assert runtime["get_current_user"](RequestStub(headers={"Authorization": "Bearer bearer-token"})) == "bearer@example.com"
-    assert runtime["get_current_user"](RequestStub(cookies={"session_token": "cookie-token"})) == "cookie@example.com"
+    assert (
+        runtime["_extract_bearer_token"](
+            RequestStub(headers={"Authorization": "Bearer bearer-token"})
+        )
+        == "bearer-token"
+    )
+    assert (
+        runtime["get_current_user"](
+            RequestStub(headers={"Authorization": "Bearer bearer-token"})
+        )
+        == "bearer@example.com"
+    )
+    assert (
+        runtime["get_current_user"](
+            RequestStub(cookies={"session_token": "cookie-token"})
+        )
+        == "cookie@example.com"
+    )
 
 
 def test_require_user_and_admin_enforce_auth_contract():
@@ -76,17 +99,32 @@ def test_require_user_and_admin_enforce_auth_contract():
         "admin@example.com": {"id": "admin-id", "role": "admin"},
         "member@example.com": {"id": "member-id", "role": "user"},
     }
-    runtime = _runtime(users=users, sessions={"admin-token": "admin@example.com", "member-token": "member@example.com"})
+    runtime = _runtime(
+        users=users,
+        sessions={
+            "admin-token": "admin@example.com",
+            "member-token": "member@example.com",
+        },
+    )
 
-    assert runtime["require_user"](RequestStub(headers={"Authorization": "Bearer member-token"})) == "member@example.com"
-    assert runtime["require_admin"](RequestStub(headers={"Authorization": "Bearer admin-token"})) == ("admin@example.com", users)
+    assert (
+        runtime["require_user"](
+            RequestStub(headers={"Authorization": "Bearer member-token"})
+        )
+        == "member@example.com"
+    )
+    assert runtime["require_admin"](
+        RequestStub(headers={"Authorization": "Bearer admin-token"})
+    ) == ("admin@example.com", users)
 
     with pytest.raises(HTTPException) as unauthenticated:
         runtime["require_user"](RequestStub())
     assert unauthenticated.value.status_code == 401
 
     with pytest.raises(HTTPException) as forbidden:
-        runtime["require_admin"](RequestStub(headers={"Authorization": "Bearer member-token"}))
+        runtime["require_admin"](
+            RequestStub(headers={"Authorization": "Bearer member-token"})
+        )
     assert forbidden.value.status_code == 403
 
 

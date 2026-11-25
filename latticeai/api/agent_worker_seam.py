@@ -146,9 +146,7 @@ def _seam_open() -> bool:
     return os.environ.get(SEAM_ENV_VAR) == "1"
 
 
-def _path_probe(
-    dispatch_service: Any, tool: str
-) -> Optional[Callable[[str], bool]]:
+def _path_probe(dispatch_service: Any, tool: str) -> Optional[Callable[[str], bool]]:
     """The *same* existence probe the direct surface classifies with.
 
     ``classify_tool_call`` asks "does the target already exist?" to tell an

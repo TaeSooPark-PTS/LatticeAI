@@ -130,7 +130,14 @@ def _run_ocr(image: Any) -> Dict[str, str]:
         return {"status": "unavailable", "text": "", "detail": str(exc)}
     try:
         text = str(pytesseract.image_to_string(image) or "").strip()
-    except (OSError, subprocess.SubprocessError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+    except (
+        OSError,
+        subprocess.SubprocessError,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        AttributeError,
+    ) as exc:
         return {"status": "failed", "text": "", "detail": str(exc)}
     if not text:
         return {"status": "empty", "text": "", "detail": "no text found in the image"}
@@ -206,7 +213,14 @@ def _apply_vision_embedding(
 ) -> None:
     try:
         vector = [float(value) for value in embedder(facts.path)]
-    except (OSError, ValueError, TypeError, RuntimeError, AttributeError, KeyError) as exc:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+        KeyError,
+    ) as exc:
         facts.embedding_status = "failed"
         facts.embedding_detail = str(exc)
         return
@@ -250,5 +264,3 @@ def image_quality_score(facts: ImageFacts) -> Dict[str, Any]:
         score += 0.1
         reasons.append("vision_embedding")
     return {"score": round(max(0.0, min(1.0, score)), 4), "reasons": reasons}
-
-

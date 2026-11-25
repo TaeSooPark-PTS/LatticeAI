@@ -24,12 +24,9 @@ from latticeai.api.agent_worker_seam import SEAM_ENV_VAR, SEAM_RATE_BUCKET
 from latticeai.api.worker_compute import (
     EMBED_KINDS,
     EMBED_MAX_BATCH,
-    EXTRACT_KINDS,
-    EXTRACT_LIMITS,
     PASSAGE_MAX_CHARS,
     WORKER_COMPUTE_MESSAGES,
     build_docx_bytes,
-    build_extract_reply,
     build_pdf_bytes,
     build_pptx_bytes,
     build_xlsx_bytes,
@@ -141,8 +138,6 @@ def test_the_messages_are_bilingual_and_land_in_the_one_catalog():
         assert not any("가" <= ch <= "힣" for ch in entry["en"])
 
 
-
-
 def test_the_vectors_are_the_ones_the_write_path_would_have_stored():
     """Parity with the literal call ``write_master._upsert_vector_item`` makes."""
     from lattice_brain.embeddings import LocalEmbeddingModel
@@ -151,7 +146,9 @@ def test_the_vectors_are_the_ones_the_write_path_would_have_stored():
     client = _client(embedder=embedder)
     text = "Lattice AI 로컬 브레인 vector parity check"
 
-    body = client.post("/worker/embed", json={"texts": [text], "kind": "passage"}).json()
+    body = client.post(
+        "/worker/embed", json={"texts": [text], "kind": "passage"}
+    ).json()
 
     inline = embedder.provider.embed(text[:PASSAGE_MAX_CHARS])
     assert body["vectors"] == [inline]
@@ -170,10 +167,16 @@ def test_a_passage_is_clamped_where_the_write_path_clamps_it():
     long_text = ("lattice " * 9_000) + "zetatoken"
     assert len(long_text) > PASSAGE_MAX_CHARS
 
-    passage = client.post("/worker/embed", json={"texts": [long_text], "kind": "passage"}).json()
-    query = client.post("/worker/embed", json={"texts": [long_text], "kind": "query"}).json()
+    passage = client.post(
+        "/worker/embed", json={"texts": [long_text], "kind": "passage"}
+    ).json()
+    query = client.post(
+        "/worker/embed", json={"texts": [long_text], "kind": "query"}
+    ).json()
 
-    assert passage["vectors"] == [embedder.provider.embed(long_text[:PASSAGE_MAX_CHARS])]
+    assert passage["vectors"] == [
+        embedder.provider.embed(long_text[:PASSAGE_MAX_CHARS])
+    ]
     assert query["vectors"] == [embedder.provider.embed(long_text)]
     assert passage["vectors"] != query["vectors"]
 
@@ -181,7 +184,9 @@ def test_a_passage_is_clamped_where_the_write_path_clamps_it():
 def test_many_texts_come_back_in_the_order_they_were_sent():
     client = _client()
 
-    body = client.post("/worker/embed", json={"texts": ["alpha", "beta", "gamma"]}).json()
+    body = client.post(
+        "/worker/embed", json={"texts": ["alpha", "beta", "gamma"]}
+    ).json()
 
     provider = resolve_embedder("").provider
     assert body["vectors"] == [provider.embed(t) for t in ("alpha", "beta", "gamma")]
@@ -245,7 +250,10 @@ def test_a_worker_without_an_embedder_says_so_instead_of_crashing():
     response = client.post("/worker/embed", json={"texts": ["x"]})
 
     assert response.status_code == 503
-    assert response.json()["detail"] == MESSAGES["worker_compute.embedder_unavailable"]["ko"]
+    assert (
+        response.json()["detail"]
+        == MESSAGES["worker_compute.embedder_unavailable"]["ko"]
+    )
 
 
 def test_the_reported_identity_is_read_after_the_call_not_before():
@@ -261,7 +269,9 @@ def test_the_reported_identity_is_read_after_the_call_not_before():
             self.model_id = "ollama:bge-m3:1024"
             return [[0.5] * 1024 for _ in texts]
 
-    resolved = type("Resolved", (), {"provider": WidensOnFirstCall(), "active": "ollama"})()
+    resolved = type(
+        "Resolved", (), {"provider": WidensOnFirstCall(), "active": "ollama"}
+    )()
     client = _client(embedder=resolved)
 
     body = client.post("/worker/embed", json={"texts": ["x"]}).json()
@@ -336,7 +346,9 @@ def test_a_rendered_xlsx_and_pptx_report_their_sheet_and_slide_counts():
 
 def test_a_rendered_pdf_parses_back_with_its_page_count():
     client = _client()
-    pdf = client.post("/worker/render/pdf", json={"title": "T", "body": "hello pdf"}).json()
+    pdf = client.post(
+        "/worker/render/pdf", json={"title": "T", "body": "hello pdf"}
+    ).json()
 
     body = client.post(
         "/worker/parse", json={"filename": "d.pdf", "content_b64": pdf["content_b64"]}
@@ -370,8 +382,6 @@ def test_a_body_that_is_not_base64_is_a_422_not_a_500():
     assert "not valid base64" in response.json()["detail"]
 
 
-
-
 def test_the_docx_bytes_open_as_a_document_with_the_blocks_that_were_sent():
     from docx import Document
 
@@ -379,7 +389,11 @@ def test_the_docx_bytes_open_as_a_document_with_the_blocks_that_were_sent():
 
     body = client.post(
         "/worker/render/docx",
-        json={"title": "Title", "body": "one\n\n \n\ntwo", "filename": "my report.docx"},
+        json={
+            "title": "Title",
+            "body": "one\n\n \n\ntwo",
+            "filename": "my report.docx",
+        },
     ).json()
 
     document = Document(io.BytesIO(base64.b64decode(body["content_b64"])))
@@ -472,12 +486,16 @@ def test_a_pdf_without_a_title_is_still_a_pdf():
 
 
 def test_the_cjk_font_is_registered_when_one_of_the_candidates_exists(monkeypatch):
-    monkeypatch.setattr(worker_compute, "CJK_FONT_CANDIDATES", ["/nope/missing.ttf", VERA_TTF])
+    monkeypatch.setattr(
+        worker_compute, "CJK_FONT_CANDIDATES", ["/nope/missing.ttf", VERA_TTF]
+    )
 
     assert build_pdf_bytes("제목", "본문").startswith(b"%PDF")
 
 
-def test_a_candidate_that_is_not_a_font_falls_back_instead_of_failing(tmp_path, monkeypatch):
+def test_a_candidate_that_is_not_a_font_falls_back_instead_of_failing(
+    tmp_path, monkeypatch
+):
     impostor = tmp_path / "not-a-font.ttf"
     impostor.write_bytes(b"this is not a font")
     monkeypatch.setattr(worker_compute, "CJK_FONT_CANDIDATES", [str(impostor)])
@@ -487,7 +505,9 @@ def test_a_candidate_that_is_not_a_font_falls_back_instead_of_failing(tmp_path, 
 
 def test_no_cjk_font_anywhere_still_renders(monkeypatch):
     """Every candidate absent — the loop runs out and Helvetica is used."""
-    monkeypatch.setattr(worker_compute, "CJK_FONT_CANDIDATES", ["/definitely/not/here.ttf"])
+    monkeypatch.setattr(
+        worker_compute, "CJK_FONT_CANDIDATES", ["/definitely/not/here.ttf"]
+    )
 
     assert build_pdf_bytes("title", "body").startswith(b"%PDF")
 
@@ -508,7 +528,9 @@ def test_rows_that_are_not_a_list_of_lists_are_refused_by_the_builder():
         ("pdf", "reportlab.lib.pagesizes", {}),
     ],
 )
-def test_a_missing_document_library_is_a_503_naming_the_kind(monkeypatch, kind, module, payload):
+def test_a_missing_document_library_is_a_503_naming_the_kind(
+    monkeypatch, kind, module, payload
+):
     monkeypatch.setitem(sys.modules, module, None)
     client = _client()
 
@@ -528,7 +550,9 @@ def test_a_builder_that_breaks_is_a_500_naming_the_kind_and_the_reason(monkeypat
     monkeypatch.setattr(worker_compute, "build_pdf_bytes", _boom)
     client = _client()
 
-    response = client.post("/worker/render/pdf", json={}, headers={LANGUAGE_HEADER: "en"})
+    response = client.post(
+        "/worker/render/pdf", json={}, headers={LANGUAGE_HEADER: "en"}
+    )
 
     assert response.status_code == 500
     assert "the renderer exploded" in response.json()["detail"]
@@ -544,11 +568,11 @@ def test_the_render_reply_carries_no_target_of_its_own():
     """
     client = _client()
 
-    body = client.post("/worker/render/docx", json={"filename": "../../etc/passwd"}).json()
+    body = client.post(
+        "/worker/render/docx", json={"filename": "../../etc/passwd"}
+    ).json()
 
     assert set(body) == {"content_b64", "bytes"}
-
-
 
 
 def test_a_transcriber_that_hears_words_returns_them_with_its_identity():
@@ -586,7 +610,9 @@ def test_a_worker_with_no_transcriber_reports_the_absence_rather_than_inventing(
 def test_an_empty_transcript_is_not_reported_as_text():
     client = _client(transcriber=lambda path: "   ")
 
-    body = client.post("/worker/asr", json={"audio_b64": _b64(b"a"), "mime": "audio/wav"}).json()
+    body = client.post(
+        "/worker/asr", json={"audio_b64": _b64(b"a"), "mime": "audio/wav"}
+    ).json()
 
     assert body["status"] == "unavailable"
     assert body["detail"] == "the transcriber returned no text"
@@ -599,7 +625,9 @@ def test_a_broken_transcriber_is_a_reported_state_not_a_500():
 
     client = _client(transcriber=_boom)
 
-    response = client.post("/worker/asr", json={"audio_b64": _b64(b"a"), "filename": "m.mp3"})
+    response = client.post(
+        "/worker/asr", json={"audio_b64": _b64(b"a"), "filename": "m.mp3"}
+    )
 
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
@@ -656,8 +684,6 @@ def test_the_temp_suffix_prefers_the_filename_then_the_mime_then_the_default(
     assert worker_compute._suffix_for(filename, mime, ".m4a") == expected
 
 
-
-
 def test_the_temp_file_is_gone_once_the_call_returns():
     seen: List[str] = []
     with worker_compute._temp_payload(b"payload", ".txt") as path:
@@ -690,7 +716,9 @@ def test_the_callable_identity_falls_back_to_the_type_for_an_object_port():
 
     client = _client(transcriber=Port())
 
-    body = client.post("/worker/asr", json={"audio_b64": _b64(b"a"), "mime": "audio/wav"}).json()
+    body = client.post(
+        "/worker/asr", json={"audio_b64": _b64(b"a"), "mime": "audio/wav"}
+    ).json()
 
     assert body["provider"].endswith(".Port")
     assert body["text"] == "heard"
@@ -702,8 +730,6 @@ def test_a_port_with_no_module_is_named_by_its_qualname_alone():
 
     port.__module__ = ""
     assert worker_compute._callable_identity(port) == port.__qualname__
-
-
 
 
 def test_vector_query_without_a_sidecar_is_index_none(tmp_path):
@@ -753,7 +779,12 @@ def test_the_router_mounts_exactly_the_compute_paths():
 def test_nothing_in_this_module_reaches_a_store_or_the_filesystem_it_keeps():
     """The compute seam's whole claim, checked against its own source."""
     source = Path(worker_compute.__file__).read_text(encoding="utf-8")
-    for forbidden in ("sqlite3", "KnowledgeGraph", "ingestion_pipeline", "CONVERSATIONS"):
+    for forbidden in (
+        "sqlite3",
+        "KnowledgeGraph",
+        "ingestion_pipeline",
+        "CONVERSATIONS",
+    ):
         assert forbidden not in source, f"{forbidden} has no business in a compute seam"
 
 
@@ -773,16 +804,24 @@ def test_the_request_bodies_are_the_ones_the_create_handlers_accepted():
     """
     expected = {
         worker_compute.RenderDocxRequest: {
-            "title": "", "body": "", "filename": "document.docx",
+            "title": "",
+            "body": "",
+            "filename": "document.docx",
         },
         worker_compute.RenderXlsxRequest: {
-            "rows": [], "filename": "spreadsheet.xlsx", "sheet_name": "Sheet1",
+            "rows": [],
+            "filename": "spreadsheet.xlsx",
+            "sheet_name": "Sheet1",
         },
         worker_compute.RenderPptxRequest: {
-            "title": "", "slides": [], "filename": "presentation.pptx",
+            "title": "",
+            "slides": [],
+            "filename": "presentation.pptx",
         },
         worker_compute.RenderPdfRequest: {
-            "title": "", "body": "", "filename": "document.pdf",
+            "title": "",
+            "body": "",
+            "filename": "document.pdf",
         },
     }
     for model, defaults in expected.items():
@@ -811,153 +850,3 @@ def test_the_seams_answer_json_and_never_a_file_path():
         # Not even a name: naming a target is the writer's job, and this seam
         # is not the writer.
         assert "filename" not in body
-
-
-
-
-@pytest.fixture
-def _rules_only(monkeypatch):
-    """Pin extraction to the rule fallback so two calls in one test agree."""
-    monkeypatch.setattr(
-        "lattice_brain.graph._kg_common.extraction.ENABLE_LLM_EXTRACTION",
-        False,
-    )
-
-
-def _python_extract(text: str, kind: str) -> Dict[str, Any]:
-    """The literal composition ingest_* makes after calling the extractors."""
-    from lattice_brain.graph._kg_common import (
-        _classify_node_type,
-        _extract_concepts,
-        _extract_triples,
-        _semantic_items,
-    )
-
-    limit = EXTRACT_LIMITS[kind]
-    raw = _extract_concepts(text, limit=limit)
-    return {
-        "concepts": [
-            {"text": concept, "node_type": _classify_node_type(concept, text)}
-            for concept in raw
-        ],
-        "triples": [
-            {
-                "subject": triple["subject"],
-                "object": triple["object"],
-                "relation": triple["relation"],
-                "weight": float(triple.get("weight") or 1.0),
-                "context": str(triple.get("context") or ""),
-                "evidence": str(triple.get("evidence") or ""),
-                "confidence": triple.get("confidence"),
-            }
-            for triple in _extract_triples(text, raw)
-        ],
-        "semantic": [
-            {
-                "item_type": item["type"],
-                "title": item["title"],
-                "summary": item["summary"],
-                "raw": dict(item),
-            }
-            for item in _semantic_items(text)
-        ],
-    }
-
-
-def test_extract_returns_the_structures_ingestion_consumes(_rules_only):
-    """Parity with the call sites ingest_message / ingest_document use."""
-    client = _client()
-    text = (
-        "Lattice AI uses Graph RAG.\n"
-        "We decided to keep the write path native.\n"
-        "TODO: implement the extract seam."
-    )
-    body = client.post("/worker/extract", json={"text": text, "kind": "message"}).json()
-    expected = _python_extract(text, "message")
-    assert body == expected
-    assert set(body) == {"concepts", "triples", "semantic"}
-    assert any(item["raw"]["type"] == item["item_type"] for item in body["semantic"])
-
-
-def test_extract_document_kind_uses_the_ingest_document_limit(monkeypatch):
-    seen: List[int] = []
-
-    def _fake_concepts(text: str, limit: int = 12) -> List[str]:
-        seen.append(limit)
-        return ["Lattice AI"]
-
-    import lattice_brain.graph._kg_common as kg
-
-    monkeypatch.setattr(kg, "_extract_concepts", _fake_concepts)
-    client = _client()
-    body = client.post(
-        "/worker/extract", json={"text": "Lattice AI", "kind": "document"}
-    ).json()
-    assert seen == [EXTRACT_LIMITS["document"]]
-    assert body["concepts"] == [{"text": "Lattice AI", "node_type": "Concept"}]
-
-
-def test_extract_default_kind_is_the_chat_turn_door(_rules_only):
-    client = _client()
-    text = "FastAPI and Pydantic share a request body."
-    omitted = client.post("/worker/extract", json={"text": text}).json()
-    named = client.post("/worker/extract", json={"text": text, "kind": "message"}).json()
-    assert omitted == named == _python_extract(text, "message")
-
-
-def test_extract_empty_text_is_empty_structures_not_an_error():
-    client = _client()
-    body = client.post("/worker/extract", json={"text": ""}).json()
-    assert body == {"concepts": [], "triples": [], "semantic": []}
-    assert build_extract_reply("", "message") == body
-
-
-def test_extract_rejects_an_unknown_kind():
-    client = _client()
-    response = client.post("/worker/extract", json={"text": "x", "kind": "query"})
-    assert response.status_code == 422
-    assert response.json()["detail"] == MESSAGES["worker_compute.extract_kind_invalid"][
-        "ko"
-    ].format(kind="query", allowed=", ".join(EXTRACT_KINDS))
-
-
-def test_extract_kind_is_case_and_space_insensitive(_rules_only):
-    client = _client()
-    text = "Claude Sonnet writes the note."
-    body = client.post(
-        "/worker/extract", json={"text": text, "kind": " MESSAGE "}
-    ).json()
-    assert body == _python_extract(text, "message")
-
-
-def test_extract_maps_a_thin_triple_the_way_the_write_path_does(monkeypatch):
-    """``weight or 1.0`` and empty context/evidence are the ingest mapping."""
-    import lattice_brain.graph._kg_common as kg
-
-    monkeypatch.setattr(kg, "_extract_concepts", lambda text, limit=12: ["A", "B"])
-    monkeypatch.setattr(
-        kg,
-        "_extract_triples",
-        lambda text, concepts, limit=20: [
-            {"subject": "A", "object": "B", "relation": "관련됨"}
-        ],
-    )
-    monkeypatch.setattr(kg, "_semantic_items", lambda text: [])
-    monkeypatch.setattr(kg, "_classify_node_type", lambda concept, text: "Concept")
-    reply = build_extract_reply("A and B", "message")
-    assert reply["triples"] == [
-        {
-            "subject": "A",
-            "object": "B",
-            "relation": "관련됨",
-            "weight": 1.0,
-            "context": "",
-            "evidence": "",
-            "confidence": None,
-        }
-    ]
-
-
-def test_extract_kinds_are_the_two_ingest_doors():
-    assert EXTRACT_KINDS == ("message", "document")
-    assert EXTRACT_LIMITS == {"message": 12, "document": 15}

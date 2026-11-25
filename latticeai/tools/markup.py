@@ -35,10 +35,37 @@ from typing import List, Set
 SKIPPED_ELEMENTS: Set[str] = {"script", "style", "noscript", "template", "svg"}
 #: Elements that end the current line.
 BLOCK_ELEMENTS: Set[str] = {
-    "p", "div", "section", "article", "header", "footer", "nav", "aside",
-    "main", "ul", "ol", "li", "table", "tr", "blockquote", "pre", "form",
-    "figure", "figcaption", "dl", "dt", "dd", "hr", "br", "h1", "h2", "h3",
-    "h4", "h5", "h6", "title",
+    "p",
+    "div",
+    "section",
+    "article",
+    "header",
+    "footer",
+    "nav",
+    "aside",
+    "main",
+    "ul",
+    "ol",
+    "li",
+    "table",
+    "tr",
+    "blockquote",
+    "pre",
+    "form",
+    "figure",
+    "figcaption",
+    "dl",
+    "dt",
+    "dd",
+    "hr",
+    "br",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "title",
 }
 #: Elements that separate cells with a tab rather than a newline.
 CELL_ELEMENTS: Set[str] = {"td", "th"}
@@ -141,7 +168,13 @@ def html_to_text(markup: str) -> str:
     try:
         extractor.feed(str(markup or ""))
         extractor.close()
-    except (ValueError, TypeError, RuntimeError, AttributeError, LookupError) as exc:  # pragma: no cover - html.parser is very tolerant
+    except (
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+        LookupError,
+    ) as exc:  # pragma: no cover - html.parser is very tolerant
         logging.debug("HTML parse stopped early; keeping what was read: %s", exc)
     text = "".join(extractor.parts)
     text = _TRAILING_SPACE.sub("\n", text)

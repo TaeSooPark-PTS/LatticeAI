@@ -180,7 +180,7 @@ try:
     sub.queue.put_nowait(enriched)
 except asyncio.QueueFull:
     try:
-        sub.queue.get_nowait()      # drop oldest
+        sub.queue.get_nowait()  # drop oldest
         sub.queue.put_nowait(enriched)
     except Exception:
         pass
@@ -239,7 +239,9 @@ caller can never read across workspaces it is not entitled to.
 ## `stream()` — replay tail, live frames, heartbeats
 
 ```python
-async def stream(self, sub: _Subscriber, *, heartbeat: float = 15.0) -> AsyncIterator[str]: ...
+async def stream(
+    self, sub: _Subscriber, *, heartbeat: float = 15.0
+) -> AsyncIterator[str]: ...
 ```
 
 When a client connects, `stream` first **replays a short tail** (up to the 10

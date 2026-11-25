@@ -60,14 +60,19 @@ def test_backfill_populates_v2_and_preserves_legacy(tmp_path):
 def test_init_schema_heals_stale_empty_v2_table(tmp_path):
     """A v2 table left behind by an older schema (missing columns) is recreated."""
     from lattice_brain.graph.schema import KGStoreV2
+
     db = tmp_path / "kg.sqlite"
     # simulate an old, empty nodes_v2 without the style/tone columns
     with sqlite3.connect(str(db)) as conn:
-        conn.execute("CREATE TABLE nodes_v2 (id TEXT PRIMARY KEY, type TEXT, label TEXT)")
+        conn.execute(
+            "CREATE TABLE nodes_v2 (id TEXT PRIMARY KEY, type TEXT, label TEXT)"
+        )
     KGStoreV2(str(db)).init_schema()
     with sqlite3.connect(str(db)) as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(nodes_v2)").fetchall()}
-    assert "style" in cols and "importance_score" in cols, "stale table was recreated with current columns"
+    assert "style" in cols and "importance_score" in cols, (
+        "stale table was recreated with current columns"
+    )
 
 
 def test_init_schema_never_drops_rows(tmp_path):
@@ -77,9 +82,12 @@ def test_init_schema_never_drops_rows(tmp_path):
     heal must refuse to destroy data even if that leaves the upgrade incomplete.)
     """
     from lattice_brain.graph.schema import KGStoreV2
+
     db = tmp_path / "kg.sqlite"
     with sqlite3.connect(str(db)) as conn:
-        conn.execute("CREATE TABLE nodes_v2 (id TEXT PRIMARY KEY, type TEXT, label TEXT)")
+        conn.execute(
+            "CREATE TABLE nodes_v2 (id TEXT PRIMARY KEY, type TEXT, label TEXT)"
+        )
         conn.execute("INSERT INTO nodes_v2 VALUES ('x','t','l')")
     try:
         KGStoreV2(str(db)).init_schema()
@@ -95,7 +103,7 @@ def test_backfill_is_idempotent(tmp_path):
     blobs = tmp_path / "blobs"
     kg.KnowledgeGraphStore(db, blobs)
     _seed_legacy(db)
-    kg.KnowledgeGraphStore(db, blobs)   # backfill #1
-    kg.KnowledgeGraphStore(db, blobs)   # backfill #2 should no-op
+    kg.KnowledgeGraphStore(db, blobs)  # backfill #1
+    kg.KnowledgeGraphStore(db, blobs)  # backfill #2 should no-op
     n, e, _ = _counts(db)
     assert (n, e) == (2, 1), "re-running does not duplicate rows"

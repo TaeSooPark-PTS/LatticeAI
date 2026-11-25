@@ -38,8 +38,29 @@ const LOCALIZED = [
   "worker_seams",
 ];
 
+// Non-router helper and internal loopback middleware modules under latticeai/api/
+// that never define user-facing HTTP routes. Every `.py` file under latticeai/api/
+// (except `__init__.py`) must appear in either LOCALIZED or NON_ROUTER_HELPERS.
+const NON_ROUTER_HELPERS = [
+  // Pure Office/PDF binary builders and Pydantic request schemas; no HTTP routes.
+  "worker_compute_render",
+  // Internal loopback `/worker/*` timeout/idempotency middleware returning
+  // machine-readable status codes (`worker_compute_timeout`, etc.) to lattice-host.
+  "worker_resilience",
+];
+
 const failures = [];
 const known = new Set(readdirSync(API_DIR).filter((name) => name.endsWith(".py")));
+
+for (const name of NON_ROUTER_HELPERS) {
+  const file = `${name}.py`;
+  if (!known.has(file)) {
+    failures.push(`${file}: listed in NON_ROUTER_HELPERS but no such module exists`);
+  }
+  if (LOCALIZED.includes(name)) {
+    failures.push(`${file}: listed in both LOCALIZED and NON_ROUTER_HELPERS`);
+  }
+}
 
 for (const name of LOCALIZED) {
   const file = `${name}.py`;
@@ -78,9 +99,18 @@ if (failures.length) {
   process.exit(1);
 }
 
-const remaining = [...known].filter(
-  (entry) => entry !== "__init__.py" && !LOCALIZED.includes(entry.replace(/\.py$/, "")),
-).length;
+const unclaimed = [...known]
+  .filter((entry) => entry !== "__init__.py")
+  .map((entry) => entry.replace(/\.py$/, ""))
+  .filter((name) => !LOCALIZED.includes(name) && !NON_ROUTER_HELPERS.includes(name))
+  .sort();
+
+for (const name of unclaimed) {
+  failures.push(
+    `${name}.py: unclaimed module in ${API_DIR}/ — localize its user-facing errors and add to LOCALIZED, `
+    + "or register it in NON_ROUTER_HELPERS if it defines no user-facing HTTP routes",
+  );
+}
 
 // Rust canonical catalog check (v13.0.0): `rust/lattice-core/src/messages.rs`
 // must keep sorted, non-empty `(id, ko, en)` entries and `lattice-auth` must
@@ -121,5 +151,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Server i18n gate: ${LOCALIZED.length} Python router(s) + ${rustEntries.length} Rust catalog message(s) verified (${remaining} Python keep-set router(s) unclaimed).`,
+  `Server i18n gate: ${LOCALIZED.length} Python router(s) + ${NON_ROUTER_HELPERS.length} non-router helper(s) + ${rustEntries.length} Rust catalog message(s) verified (${unclaimed.length} unclaimed).`,
 );

@@ -109,10 +109,10 @@ LOCAL_MAX_FILE_BYTES = 2_000_000  # 2 MB cap for local reads
 
 # CJK-capable fonts (Korean + Chinese + Japanese)
 _CJK_FONT_CANDIDATES = [
-    "/System/Library/Fonts/AppleSDGothicNeo.ttc",   # Korean (macOS)
-    "/System/Library/Fonts/STHeiti Light.ttc",       # Chinese (macOS)
-    "/System/Library/Fonts/PingFang.ttc",            # Chinese (macOS)
-    "/Library/Fonts/NanumGothic.ttf",               # Korean
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",  # Korean (macOS)
+    "/System/Library/Fonts/STHeiti Light.ttc",  # Chinese (macOS)
+    "/System/Library/Fonts/PingFang.ttc",  # Chinese (macOS)
+    "/Library/Fonts/NanumGothic.ttf",  # Korean
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
 ]
 
@@ -120,7 +120,15 @@ _CJK_FONT_CANDIDATES = [
 # verbatim, so the graph stored markup instead of what the page says. See
 # `latticeai.tools.markup.html_to_text`.
 _SUPPORTED_READ_EXTENSIONS = {
-    ".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv", ".html", ".htm",
+    ".pdf",
+    ".docx",
+    ".xlsx",
+    ".pptx",
+    ".txt",
+    ".md",
+    ".csv",
+    ".html",
+    ".htm",
 }
 DOCUMENT_MAX_READ_BYTES = 10_000_000  # 10 MB
 
@@ -155,46 +163,75 @@ def _knowledge_scope(args: Dict[str, Any]) -> Dict[str, str]:
 # checked against ``registered_tools()`` so the three never silently drift.
 TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     # filesystem
-    "list_dir":          lambda a: list_dir(a.get("path", ".")),
-    "workspace_tree":    lambda a: workspace_tree(a.get("path", "."), a.get("max_depth", 3)),
-    "read_file":         lambda a: read_file(a["path"], offset=a.get("offset", 0), limit=a.get("limit", 0), line_numbers=a.get("line_numbers", True)),
-    "grep":              lambda a: grep(a["pattern"], path=a.get("path", "."), glob=a.get("glob"), max_results=a.get("max_results", 50), case_insensitive=bool(a.get("case_insensitive", False)), context_lines=a.get("context_lines", 0)),
-    "search_files":      lambda a: search_files(a["query"], a.get("path", "."), a.get("max_results", 20)),
-    "inspect_html":      lambda a: inspect_html(a["path"]),
-    "preview_url":       lambda a: preview_url(a.get("path", "index.html")),
+    "list_dir": lambda a: list_dir(a.get("path", ".")),
+    "workspace_tree": lambda a: workspace_tree(
+        a.get("path", "."), a.get("max_depth", 3)
+    ),
+    "read_file": lambda a: read_file(
+        a["path"],
+        offset=a.get("offset", 0),
+        limit=a.get("limit", 0),
+        line_numbers=a.get("line_numbers", True),
+    ),
+    "grep": lambda a: grep(
+        a["pattern"],
+        path=a.get("path", "."),
+        glob=a.get("glob"),
+        max_results=a.get("max_results", 50),
+        case_insensitive=bool(a.get("case_insensitive", False)),
+        context_lines=a.get("context_lines", 0),
+    ),
+    "search_files": lambda a: search_files(
+        a["query"], a.get("path", "."), a.get("max_results", 20)
+    ),
+    "inspect_html": lambda a: inspect_html(a["path"]),
+    "preview_url": lambda a: preview_url(a.get("path", "index.html")),
     # planning
-    "todo_read":         lambda a: todo_read(),
+    "todo_read": lambda a: todo_read(),
     # local filesystem
-    "local_list":        lambda a: local_list(a["path"]),
-    "local_read":        lambda a: local_read(a["path"]),
-    "read_document":     lambda a: read_document(a["path"]),
-    "network_status":    lambda a: network_status(),
+    "local_list": lambda a: local_list(a["path"]),
+    "local_read": lambda a: local_read(a["path"]),
+    "read_document": lambda a: read_document(a["path"]),
+    "network_status": lambda a: network_status(),
     # web research
-    "web_fetch":         lambda a: web_fetch(a["url"], a.get("max_chars", 4000)),
-    "web_search":        lambda a: web_search(a["query"], a.get("max_results", 5)),
+    "web_fetch": lambda a: web_fetch(a["url"], a.get("max_chars", 4000)),
+    "web_search": lambda a: web_search(a["query"], a.get("max_results", 5)),
     # computer use
     "computer_screenshot": lambda a: computer_screenshot(),
     "computer_ui_inspect": lambda a: computer_ui_inspect(a.get("app")),
-    "computer_click":    lambda a: computer_click(a.get("x", 0), a.get("y", 0), a.get("button", "left"), a.get("double", False)),
-    "computer_type":     lambda a: computer_type(a["text"], a.get("interval", 0.04)),
-    "computer_key":      lambda a: computer_key(a["key"]),
-    "computer_scroll":   lambda a: computer_scroll(a.get("x", 0), a.get("y", 0), a.get("direction", "down"), a.get("clicks", 3)),
-    "computer_move":     lambda a: computer_move(a.get("x", 0), a.get("y", 0)),
-    "computer_drag":     lambda a: computer_drag(a.get("x1", 0), a.get("y1", 0), a.get("x2", 0), a.get("y2", 0)),
-    "computer_status":   lambda a: computer_status(),
-    "chrome_status":     lambda a: desktop_bridge_status(),
+    "computer_click": lambda a: computer_click(
+        a.get("x", 0), a.get("y", 0), a.get("button", "left"), a.get("double", False)
+    ),
+    "computer_type": lambda a: computer_type(a["text"], a.get("interval", 0.04)),
+    "computer_key": lambda a: computer_key(a["key"]),
+    "computer_scroll": lambda a: computer_scroll(
+        a.get("x", 0), a.get("y", 0), a.get("direction", "down"), a.get("clicks", 3)
+    ),
+    "computer_move": lambda a: computer_move(a.get("x", 0), a.get("y", 0)),
+    "computer_drag": lambda a: computer_drag(
+        a.get("x1", 0), a.get("y1", 0), a.get("x2", 0), a.get("y2", 0)
+    ),
+    "computer_status": lambda a: computer_status(),
+    "chrome_status": lambda a: desktop_bridge_status(),
     "computer_use_status": lambda a: desktop_bridge_status(),
-    "vision_analyze":    lambda a: vision_analyze(a.get("image_b64", ""), a.get("prompt", "Describe this image in detail. Be concise.")),
+    "vision_analyze": lambda a: vision_analyze(
+        a.get("image_b64", ""),
+        a.get("prompt", "Describe this image in detail. Be concise."),
+    ),
     # knowledge / obsidian
-    "knowledge_search":  lambda a: knowledge_search(a["query"], a.get("max_results", 5), **_knowledge_scope(a)),
-    "knowledge_tree":    lambda a: knowledge_tree(**_knowledge_scope(a)),
-    "obsidian_search":   lambda a: obsidian_search(a["query"], a.get("max_results", 5), **_knowledge_scope(a)),
-    "obsidian_tree":     lambda a: obsidian_tree(**_knowledge_scope(a)),
+    "knowledge_search": lambda a: knowledge_search(
+        a["query"], a.get("max_results", 5), **_knowledge_scope(a)
+    ),
+    "knowledge_tree": lambda a: knowledge_tree(**_knowledge_scope(a)),
+    "obsidian_search": lambda a: obsidian_search(
+        a["query"], a.get("max_results", 5), **_knowledge_scope(a)
+    ),
+    "obsidian_tree": lambda a: obsidian_tree(**_knowledge_scope(a)),
     # git (read-only)
-    "git_status":        lambda a: git_status(a.get("cwd")),
-    "git_diff":          lambda a: git_diff(a.get("path"), a.get("cwd")),
-    "git_log":           lambda a: git_log(a.get("max_count", 5), a.get("cwd")),
-    "git_show":          lambda a: git_show(a.get("revision", "HEAD"), a.get("cwd")),
+    "git_status": lambda a: git_status(a.get("cwd")),
+    "git_diff": lambda a: git_diff(a.get("path"), a.get("cwd")),
+    "git_log": lambda a: git_log(a.get("max_count", 5), a.get("cwd")),
+    "git_show": lambda a: git_show(a.get("revision", "HEAD"), a.get("cwd")),
 }
 
 
@@ -211,18 +248,52 @@ def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 __all__ = [
-    "AGENT_ROOT", "ToolError", "ensure_agent_root", "resolve_workspace_path",
-    "list_dir", "workspace_tree", "read_file", "grep",
-    "search_files", "inspect_html", "preview_url", "todo_read", "read_document",
+    "AGENT_ROOT",
+    "ToolError",
+    "ensure_agent_root",
+    "resolve_workspace_path",
+    "list_dir",
+    "workspace_tree",
+    "read_file",
+    "grep",
+    "search_files",
+    "inspect_html",
+    "preview_url",
+    "todo_read",
+    "read_document",
     "document_output_target",
-    "local_list", "local_read", "desktop_bridge_status",
-    "knowledge_search", "knowledge_tree", "knowledge_scope_root",
-    "obsidian_search", "obsidian_tree",
+    "local_list",
+    "local_read",
+    "desktop_bridge_status",
+    "knowledge_search",
+    "knowledge_tree",
+    "knowledge_scope_root",
+    "obsidian_search",
+    "obsidian_tree",
     "network_status",
-    "web_fetch", "web_search", "validate_web_url", "distill_html_to_text", "sanitize_untrusted_web_text",
-    "computer_screenshot", "computer_ui_inspect", "computer_click", "computer_type", "computer_key", "computer_scroll",
-    "computer_move", "computer_drag", "computer_status", "vision_analyze",
-    "git_status", "git_diff", "git_log", "git_show",
-    "TOOL_HANDLERS", "DEFAULT_TOOL_REGISTRY", "registered_tools", "execute_tool",
-    "BRAIN_DIR", "STRUCTURE",
+    "web_fetch",
+    "web_search",
+    "validate_web_url",
+    "distill_html_to_text",
+    "sanitize_untrusted_web_text",
+    "computer_screenshot",
+    "computer_ui_inspect",
+    "computer_click",
+    "computer_type",
+    "computer_key",
+    "computer_scroll",
+    "computer_move",
+    "computer_drag",
+    "computer_status",
+    "vision_analyze",
+    "git_status",
+    "git_diff",
+    "git_log",
+    "git_show",
+    "TOOL_HANDLERS",
+    "DEFAULT_TOOL_REGISTRY",
+    "registered_tools",
+    "execute_tool",
+    "BRAIN_DIR",
+    "STRUCTURE",
 ]

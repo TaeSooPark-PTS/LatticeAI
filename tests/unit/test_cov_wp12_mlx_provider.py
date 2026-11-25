@@ -57,7 +57,9 @@ def _fake_core():
         pooled = []
         for rows in tensor.tolist():
             width = len(rows[0])
-            pooled.append([sum(row[i] for row in rows) / len(rows) for i in range(width)])
+            pooled.append(
+                [sum(row[i] for row in rows) / len(rows) for i in range(width)]
+            )
         return _FakeTensor(pooled)
 
     core.array = _array

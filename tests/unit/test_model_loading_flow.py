@@ -9,6 +9,7 @@ The module takes all of its collaborators through `runtime_state`, so these
 tests drive it with a recording fake and never touch a real engine, network,
 or subprocess.
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,7 +33,9 @@ class _Resolution:
         self.actual_current = None
 
     @classmethod
-    def from_request(cls, model_id, *, engine=None, user_email=None, engine_aliases=None):
+    def from_request(
+        cls, model_id, *, engine=None, user_email=None, engine_aliases=None
+    ):
         return cls(model_id, engine=engine, user_email=user_email)
 
     def update_after_load(self, *, actual_current):
@@ -48,7 +51,9 @@ class _Router:
         self.loaded = []
 
     async def load_model(self, model_id, adapter_path, **kwargs):
-        self.loaded.append({"model_id": model_id, "adapter_path": adapter_path, **kwargs})
+        self.loaded.append(
+            {"model_id": model_id, "adapter_path": adapter_path, **kwargs}
+        )
         self.current_model_id = model_id
         return f"loaded {model_id}"
 
@@ -60,11 +65,15 @@ def _deps(**over):
 
     def _download_block(provider, model):
         calls["blocked"].append(("download", provider, model))
-        raise ModelRuntimeError(status_code=403, detail=f"download not allowed: {provider}/{model}")
+        raise ModelRuntimeError(
+            status_code=403, detail=f"download not allowed: {provider}/{model}"
+        )
 
     def _engine_install_block(provider):
         calls["blocked"].append(("install", provider, None))
-        raise ModelRuntimeError(status_code=403, detail=f"install not allowed: {provider}")
+        raise ModelRuntimeError(
+            status_code=403, detail=f"install not allowed: {provider}"
+        )
 
     async def _smoke(resolution, api_key_override=None):
         return {"ok": True, "status": "ok"}
@@ -72,7 +81,9 @@ def _deps(**over):
     base = {
         "normalize_local_model_request": lambda mid, engine: mid,
         "_ModelResolution": _Resolution,
-        "parse_model_ref": lambda mid: tuple(mid.split(":", 1)) if ":" in mid else ("local_mlx", mid),
+        "parse_model_ref": lambda mid: (
+            tuple(mid.split(":", 1)) if ":" in mid else ("local_mlx", mid)
+        ),
         "_model_runtime_compatibility": lambda model, engine=None: {"supported": True},
         "engine_installed": lambda provider: True,
         "_download_allowed": lambda allow: bool(allow),
@@ -107,10 +118,14 @@ def _deps(**over):
 @pytest.fixture()
 def patched(monkeypatch):
     """Install a dependency surface and hand the test its recorder."""
+
     def install(**over):
         deps = _deps(**over)
-        monkeypatch.setattr(model_loading, "_get_model_runtime_deps", lambda state: deps)
+        monkeypatch.setattr(
+            model_loading, "_get_model_runtime_deps", lambda state: deps
+        )
         return deps
+
     return install
 
 
@@ -159,7 +174,9 @@ def test_engine_install_proceeds_once_allowed(patched):
     installs = []
     patched(
         engine_installed=lambda provider: False,
-        ensure_engine_ready=lambda provider: installs.append(provider) or {"installed_now": True},
+        ensure_engine_ready=lambda provider: (
+            installs.append(provider) or {"installed_now": True}
+        ),
     )
     result = asyncio.run(_load(patched, allow_download=True))
     assert installs == ["local_mlx"]
@@ -181,7 +198,9 @@ def test_a_missing_local_model_downloads_once_allowed(patched):
     downloads = []
     patched(
         hf_model_ready=lambda model, engine: False,
-        download_hf_model=lambda model, engine: downloads.append((model, engine)) or {"model": model},
+        download_hf_model=lambda model, engine: (
+            downloads.append((model, engine)) or {"model": model}
+        ),
     )
     result = asyncio.run(_load(patched, allow_download=True))
     assert downloads == [("some-model", "local_mlx")]
@@ -215,8 +234,12 @@ def test_lmstudio_resolves_to_the_instance_the_server_actually_gave(patched):
     import asyncio
 
     router = _Router()
-    patched(router=router, ensure_lmstudio_model=lambda m: {"instance_id": "qwen-3-8b:2"})
-    result = asyncio.run(_load(patched, model_id="lmstudio:qwen-3-8b", allow_download=True))
+    patched(
+        router=router, ensure_lmstudio_model=lambda m: {"instance_id": "qwen-3-8b:2"}
+    )
+    result = asyncio.run(
+        _load(patched, model_id="lmstudio:qwen-3-8b", allow_download=True)
+    )
     assert result["model"] == "lmstudio:qwen-3-8b:2"
     assert router.loaded[0]["model_id"] == "lmstudio:qwen-3-8b:2"
 
@@ -253,7 +276,9 @@ def test_a_cloud_provider_gets_the_users_api_key_and_local_mlx_does_not(patched)
 
     seen: list = []
     patched(
-        get_user_api_key=lambda email, provider: seen.append((email, provider)) or "sk-test",
+        get_user_api_key=lambda email, provider: (
+            seen.append((email, provider)) or "sk-test"
+        ),
         _model_runtime_compatibility=lambda model, engine=None: {"supported": True},
     )
     asyncio.run(_load(patched, model_id="openai:gpt-4o-mini"))

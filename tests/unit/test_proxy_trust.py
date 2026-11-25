@@ -37,11 +37,14 @@ def test_loopback_may_forward_without_any_configuration():
 
 def test_an_off_loopback_peer_may_not_forward_by_default():
     assert peer_may_forward("203.0.113.9") is False
-    assert effective_host(
-        host="worker.local",
-        forwarded_host="evil.example",
-        peer="203.0.113.9",
-    ) == "worker.local"
+    assert (
+        effective_host(
+            host="worker.local",
+            forwarded_host="evil.example",
+            peer="203.0.113.9",
+        )
+        == "worker.local"
+    )
 
 
 def test_an_absent_or_unparseable_peer_may_never_forward():
@@ -55,11 +58,14 @@ def test_an_absent_or_unparseable_peer_may_never_forward():
 def test_a_listed_proxy_may_forward_by_exact_ip():
     configure_trusted_proxies("203.0.113.9")
     assert peer_may_forward("203.0.113.9") is True
-    assert effective_host(
-        host="worker.local",
-        forwarded_host="app.example",
-        peer="203.0.113.9",
-    ) == "app.example"
+    assert (
+        effective_host(
+            host="worker.local",
+            forwarded_host="app.example",
+            peer="203.0.113.9",
+        )
+        == "app.example"
+    )
 
 
 def test_a_listed_proxy_may_forward_by_cidr():
@@ -75,7 +81,9 @@ def test_a_peer_outside_the_list_still_may_not_forward():
 
 def test_a_non_address_peer_cannot_match_a_configured_network(monkeypatch):
     """A UNIX socket or a bad ASGI server must not unlock spoofing."""
-    monkeypatch.setattr(security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")])
+    monkeypatch.setattr(
+        security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")]
+    )
     assert security._peer_is_trusted_proxy("10.1.2.3") is True
     assert security._peer_is_trusted_proxy("unix-socket-peer") is False
     assert security._peer_is_trusted_proxy("") is False

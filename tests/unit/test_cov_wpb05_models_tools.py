@@ -95,7 +95,8 @@ def test_a_draft_model_is_skipped_when_the_text_loader_vanishes_mid_load(
 
     result = asyncio.run(
         router.load_model(
-            "mlx-community/gemma-4-12b-it", draft_model_id="mlx-community/gemma-4-draft",
+            "mlx-community/gemma-4-12b-it",
+            draft_model_id="mlx-community/gemma-4-draft",
         )
     )
 
@@ -136,7 +137,9 @@ def test_a_percentage_line_is_parsed_even_with_nobody_listening(monkeypatch):
         model_engines,
         "subprocess",
         types.SimpleNamespace(
-            run=lambda *a, **k: types.SimpleNamespace(returncode=0, stdout="", stderr=""),
+            run=lambda *a, **k: types.SimpleNamespace(
+                returncode=0, stdout="", stderr=""
+            ),
             Popen=_popen,
             PIPE=-1,
             STDOUT=-2,
@@ -173,7 +176,9 @@ def _stream_deps(**overrides: Any) -> Dict[str, Any]:
         "parse_model_ref": lambda model_id: ("openai", model_id),
         "_model_runtime_compatibility": lambda _model, engine=None: {"supported": True},
         "model_download_progress_payload": lambda stage, message, **kwargs: {
-            "stage": stage, "message": message, **kwargs,
+            "stage": stage,
+            "message": message,
+            **kwargs,
         },
         "get_current_user": lambda _request: "wpb05@example.com",
         "get_user_api_key": lambda _email, _provider: None,
@@ -184,14 +189,19 @@ def _stream_deps(**overrides: Any) -> Dict[str, Any]:
         "_ModelResolution": ModelResolution,
         "MODEL_ENGINE_ALIASES": {},
         "_smoke_test_loaded_model": None,
-        "_friendly_model_runtime_error": lambda exc, model_id=None, engine=None: str(exc),
+        "_friendly_model_runtime_error": lambda exc, model_id=None, engine=None: str(
+            exc
+        ),
     }
     base.update(overrides)
     return base
 
 
-def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(monkeypatch):
+def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(
+    monkeypatch,
+):
     """The SSE loop keeps draining until it sees the frame it is waiting for."""
+
     async def _load_model(model_id, adapter_path, **kwargs):
         return f"loaded {model_id}"
 
@@ -209,7 +219,9 @@ def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(mo
     async def _drain() -> List[str]:
         frames: List[str] = []
         stream = model_loading.prepare_and_load_model_stream(
-            "openai:gpt-4o-mini", object(), runtime_state=SimpleNamespace(),
+            "openai:gpt-4o-mini",
+            object(),
+            runtime_state=SimpleNamespace(),
         )
         async for frame in stream:
             frames.append(frame)

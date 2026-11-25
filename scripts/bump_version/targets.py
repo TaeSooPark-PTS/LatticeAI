@@ -29,8 +29,16 @@ TARGETS: List[Tuple[str, str, Optional[str]]] = [
     ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     # WP-P1 deleted workspace_os / marketplace / multi_agent / the legacy
     # shim registry. The package version is the runtime canonical now.
-    ("latticeai/services/architecture_readiness.py", "regex", r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")'),
-    ("latticeai/services/product_readiness.py", "regex", r'(PRODUCT_VERSION_TARGET = ")([^"]+)(")'),
+    (
+        "latticeai/services/architecture_readiness.py",
+        "regex",
+        r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")',
+    ),
+    (
+        "latticeai/services/product_readiness.py",
+        "regex",
+        r'(PRODUCT_VERSION_TARGET = ")([^"]+)(")',
+    ),
     ("pyproject.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("package.json", "json", "version"),
     ("package-lock.json", "package-lock", None),
@@ -69,7 +77,9 @@ def resolve_repo(explicit_repo: Optional[Path] = None) -> Path:
     return REPO
 
 
-def apply_regex_target(text: str, pattern: str, version: str) -> Tuple[bool, str, str, bool]:
+def apply_regex_target(
+    text: str, pattern: str, version: str
+) -> Tuple[bool, str, str, bool]:
     """Update a regex target with 3 capture groups ``(prefix)(version)(suffix)``."""
     m = re.search(pattern, text, flags=re.MULTILINE)
     if m is None:
@@ -90,7 +100,9 @@ def apply_regex_target(text: str, pattern: str, version: str) -> Tuple[bool, str
     return True, current, new, changed
 
 
-def apply_json_target(text: str, field: str, version: str) -> Tuple[bool, str, str, bool]:
+def apply_json_target(
+    text: str, field: str, version: str
+) -> Tuple[bool, str, str, bool]:
     """Update a top-level field in a JSON file."""
     data = json.loads(text)
     if field not in data:

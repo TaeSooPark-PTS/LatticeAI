@@ -7,6 +7,7 @@ These tests exercise a *live* FastAPI server (started by
 regressions in CI and local runs. Probe the target once per session and skip
 the live-server tests when the server is unreachable instead of failing.
 """
+
 import os
 
 import httpx

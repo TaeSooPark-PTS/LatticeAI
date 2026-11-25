@@ -22,8 +22,16 @@ def _insert_node(conn, nid, ntype, title, summary, meta):
     conn.execute(
         "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
         " VALUES (?,?,?,?,?,?,?,?)",
-        (nid, ntype, title, summary, json.dumps(meta, ensure_ascii=False), "{}",
-         "2026-01-01T00:00:00", "2026-01-01T00:00:00"),
+        (
+            nid,
+            ntype,
+            title,
+            summary,
+            json.dumps(meta, ensure_ascii=False),
+            "{}",
+            "2026-01-01T00:00:00",
+            "2026-01-01T00:00:00",
+        ),
     )
 
 
@@ -31,7 +39,15 @@ def _insert_edge(conn, eid, a, b, etype, w, meta):
     conn.execute(
         "INSERT INTO edges(id,from_node,to_node,type,weight,metadata_json,created_at)"
         " VALUES (?,?,?,?,?,?,?)",
-        (eid, a, b, etype, w, json.dumps(meta, ensure_ascii=False), "2026-02-01T00:00:00"),
+        (
+            eid,
+            a,
+            b,
+            etype,
+            w,
+            json.dumps(meta, ensure_ascii=False),
+            "2026-02-01T00:00:00",
+        ),
     )
 
 
@@ -63,7 +79,14 @@ def store(tmp_path):
 def test_no_attrs_kg_passthrough(store):
     """The projection stores summary/metadata as columns, never in attrs._kg."""
     with store._connect() as conn:
-        _insert_node(conn, "computer:1", "Computer", "My Mac", "the workstation", {"os": "darwin"})
+        _insert_node(
+            conn,
+            "computer:1",
+            "Computer",
+            "My Mac",
+            "the workstation",
+            {"os": "darwin"},
+        )
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
@@ -73,19 +96,25 @@ def test_no_attrs_kg_passthrough(store):
     attrs = json.loads(row["attrs"])
     assert "_kg" not in attrs, "attrs._kg passthrough must be gone"
     assert attrs == {"os": "darwin"}, "attrs now holds the real metadata directly"
-    assert row["summary"] == "the workstation", "summary promoted to a first-class column"
+    assert row["summary"] == "the workstation", (
+        "summary promoted to a first-class column"
+    )
 
 
 def test_type_normalized_legacy_preserved(store):
     """Known legacy types normalize into the superset; the raw string is kept."""
     with store._connect() as conn:
         _insert_node(conn, "computer:1", "Computer", "Mac", "", {})
-        _insert_node(conn, "evt:1", "checkout_event", "Bought", "", {})   # dynamic/unknown
+        _insert_node(
+            conn, "evt:1", "checkout_event", "Bought", "", {}
+        )  # dynamic/unknown
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
-        rows = {r["id"]: r for r in conn.execute(
-            "SELECT id, type, legacy_type FROM nodes_v2")}
+        rows = {
+            r["id"]: r
+            for r in conn.execute("SELECT id, type, legacy_type FROM nodes_v2")
+        }
     # known legacy type → first-class superset member, raw preserved
     assert rows["computer:1"]["type"] == "COMPUTER"
     assert rows["computer:1"]["legacy_type"] == "Computer"
@@ -104,7 +133,15 @@ def test_edge_metadata_in_metadata_column(store):
     with store._connect() as conn:
         _insert_node(conn, "a", "Concept", "A", "", {})
         _insert_node(conn, "b", "Concept", "B", "", {})
-        _insert_edge(conn, "e1", "a", "b", "related_to", 1.0, {"source": "scan", "confidence": 0.7})
+        _insert_edge(
+            conn,
+            "e1",
+            "a",
+            "b",
+            "related_to",
+            1.0,
+            {"source": "scan", "confidence": 0.7},
+        )
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
@@ -123,22 +160,29 @@ def test_edge_identity_survives_normalization_collision(store):
     with store._connect() as conn:
         _insert_node(conn, "a", "Concept", "A", "", {})
         _insert_node(conn, "b", "Concept", "B", "", {})
-        _insert_edge(conn, "e1", "a", "b", "mentions", 1.0, {})   # → MENTIONS
-        _insert_edge(conn, "e2", "a", "b", "관련됨", 1.0, {})       # → MENTIONS too
+        _insert_edge(conn, "e1", "a", "b", "mentions", 1.0, {})  # → MENTIONS
+        _insert_edge(conn, "e2", "a", "b", "관련됨", 1.0, {})  # → MENTIONS too
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
-        n = conn.execute("SELECT COUNT(*) FROM edges_v2 WHERE source='a' AND target='b'").fetchone()[0]
+        n = conn.execute(
+            "SELECT COUNT(*) FROM edges_v2 WHERE source='a' AND target='b'"
+        ).fetchone()[0]
         legacy_types = sorted(
-            r[0] for r in conn.execute(
-                "SELECT legacy_type FROM edges_v2 WHERE source='a' AND target='b'")
+            r[0]
+            for r in conn.execute(
+                "SELECT legacy_type FROM edges_v2 WHERE source='a' AND target='b'"
+            )
         )
     assert n == 2, "distinct legacy edges must not collapse under normalization"
     assert legacy_types == sorted(["mentions", "관련됨"])
 
     # legacy and v2 reads agree on the edge set
     def edge_pairs():
-        return sorted((e["from"], e["to"], e["type"]) for e in store.graph(limit=50)["edges"])
+        return sorted(
+            (e["from"], e["to"], e["type"]) for e in store.graph(limit=50)["edges"]
+        )
+
     store._read_from_v2 = False
     legacy = edge_pairs()
     store._read_from_v2 = True
@@ -261,7 +305,9 @@ def test_edge_reupsert_tracks_confidence_and_updates_in_place(store):
             "SELECT confidence, metadata FROM edges_v2 WHERE source='a' AND target='b'"
         ).fetchall()
     assert len(rows) == 1, "same legacy edge must update in place, not duplicate"
-    assert rows[0]["confidence"] == pytest.approx(0.3), "confidence column refreshed on re-upsert"
+    assert rows[0]["confidence"] == pytest.approx(0.3), (
+        "confidence column refreshed on re-upsert"
+    )
     assert json.loads(rows[0]["metadata"])["confidence"] == pytest.approx(0.3)
 
 
@@ -274,9 +320,9 @@ def test_edge_synonym_labels_dedupe_at_write_door(store):
     with store._connect() as conn:
         store._upsert_node(conn, "a", "Concept", "A", "", {})
         store._upsert_node(conn, "b", "Concept", "B", "", {})
-        store._upsert_edge(conn, "a", "b", "mentions", 1.0, {})   # → MENTIONS
-        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})       # → MENTIONS (same edge)
-        store._upsert_edge(conn, "a", "b", "포함함", 1.0, {})       # → CONTAINS (new edge)
+        store._upsert_edge(conn, "a", "b", "mentions", 1.0, {})  # → MENTIONS
+        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})  # → MENTIONS (same edge)
+        store._upsert_edge(conn, "a", "b", "포함함", 1.0, {})  # → CONTAINS (new edge)
     with store._connect() as conn:
         rows = conn.execute(
             "SELECT type, metadata FROM edges_v2 WHERE source='a' AND target='b' ORDER BY type"
@@ -295,7 +341,16 @@ def test_view_is_byte_faithful_to_legacy(store):
         conn.execute(
             "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
             " VALUES (?,?,?,?,?,?,?,?)",
-            ("n1", "Concept", "T" * 300, None, '{"z":1,"a":2,"m":3}', "{}", "2026-01-01", "2026-01-01"),
+            (
+                "n1",
+                "Concept",
+                "T" * 300,
+                None,
+                '{"z":1,"a":2,"m":3}',
+                "{}",
+                "2026-01-01",
+                "2026-01-01",
+            ),
         )
         conn.execute(
             "INSERT INTO edges(id,from_node,to_node,type,weight,metadata_json,created_at)"
@@ -305,15 +360,31 @@ def test_view_is_byte_faithful_to_legacy(store):
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
-        ln = conn.execute("SELECT title,summary,metadata_json FROM nodes WHERE id='n1'").fetchone()
-        vn = conn.execute("SELECT title,summary,metadata_json FROM kgv2_nodes WHERE id='n1'").fetchone()
-        le = conn.execute("SELECT type,metadata_json FROM edges WHERE id='n1'").fetchone()
-        ve = conn.execute("SELECT type,metadata_json FROM kgv2_edges WHERE id='n1'").fetchone()
-    assert vn["title"] == ln["title"], "title verbatim (no projection-side truncation divergence)"
-    assert vn["summary"] is None and ln["summary"] is None, "NULL summary preserved, not coerced to ''"
-    assert vn["metadata_json"] == ln["metadata_json"] == '{"z":1,"a":2,"m":3}', "metadata key order preserved"
+        ln = conn.execute(
+            "SELECT title,summary,metadata_json FROM nodes WHERE id='n1'"
+        ).fetchone()
+        vn = conn.execute(
+            "SELECT title,summary,metadata_json FROM kgv2_nodes WHERE id='n1'"
+        ).fetchone()
+        le = conn.execute(
+            "SELECT type,metadata_json FROM edges WHERE id='n1'"
+        ).fetchone()
+        ve = conn.execute(
+            "SELECT type,metadata_json FROM kgv2_edges WHERE id='n1'"
+        ).fetchone()
+    assert vn["title"] == ln["title"], (
+        "title verbatim (no projection-side truncation divergence)"
+    )
+    assert vn["summary"] is None and ln["summary"] is None, (
+        "NULL summary preserved, not coerced to ''"
+    )
+    assert vn["metadata_json"] == ln["metadata_json"] == '{"z":1,"a":2,"m":3}', (
+        "metadata key order preserved"
+    )
     assert ve["type"] == le["type"] == "self", "edge legacy type round-trips"
-    assert ve["metadata_json"] == le["metadata_json"] == '{"k2":"b","k1":"a"}', "edge metadata verbatim"
+    assert ve["metadata_json"] == le["metadata_json"] == '{"k2":"b","k1":"a"}', (
+        "edge metadata verbatim"
+    )
 
 
 def test_dual_write_invariant_holds_through_writes_and_deletes(store):
@@ -352,20 +423,24 @@ def test_migration_is_atomic_on_failure(tmp_path, monkeypatch):
         conn.execute("UPDATE kg_meta SET value='0' WHERE key='projection_version'")
 
     def boom(self, conn, *, force=False):
-        conn.execute("DELETE FROM nodes_v2")          # partial work inside the txn
+        conn.execute("DELETE FROM nodes_v2")  # partial work inside the txn
         raise RuntimeError("simulated mid-migration crash")
 
     monkeypatch.setattr(kg.KnowledgeGraphStore, "_backfill_v2_on", boom)
-    kg.KnowledgeGraphStore(db, blobs)                 # _init_v2_schema must roll back
+    kg.KnowledgeGraphStore(db, blobs)  # _init_v2_schema must roll back
     monkeypatch.undo()
 
     with sqlite3.connect(str(db)) as conn:
         legacy_n = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-        version = conn.execute("SELECT value FROM kg_meta WHERE key='projection_version'").fetchone()[0]
+        version = conn.execute(
+            "SELECT value FROM kg_meta WHERE key='projection_version'"
+        ).fetchone()[0]
     assert legacy_n == 1, "legacy data intact after rolled-back migration"
-    assert version == "0", "projection_version stayed stale (rolled back) so next startup retries"
+    assert version == "0", (
+        "projection_version stayed stale (rolled back) so next startup retries"
+    )
 
-    healed = kg.KnowledgeGraphStore(db, blobs)         # clean restart heals
+    healed = kg.KnowledgeGraphStore(db, blobs)  # clean restart heals
     assert _v2_counts(healed)["in_sync"]
 
 
@@ -394,20 +469,31 @@ def test_projection_version_migration_rebuilds_old_shape(tmp_path):
         )
         conn.execute(
             "INSERT INTO nodes_v2 VALUES ('c1','Concept','Alpha',?,?,?)",
-            (json.dumps({"_kg": {"summary": "alpha body", "metadata_json": "{}"}}),
-             "2026-01-01", "2026-01-01"),
+            (
+                json.dumps({"_kg": {"summary": "alpha body", "metadata_json": "{}"}}),
+                "2026-01-01",
+                "2026-01-01",
+            ),
         )
-        conn.execute("INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','1')")
+        conn.execute(
+            "INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','1')"
+        )
 
     # 3) reconstruct → version gate fires, old projection dropped + rebuilt
     store = kg.KnowledgeGraphStore(db, blobs)
     with store._connect() as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(nodes_v2)")}
-        row = conn.execute("SELECT type, legacy_type, summary, attrs FROM nodes_v2 WHERE id='c1'").fetchone()
+        row = conn.execute(
+            "SELECT type, legacy_type, summary, attrs FROM nodes_v2 WHERE id='c1'"
+        ).fetchone()
         legacy_n = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-        version = conn.execute("SELECT value FROM kg_meta WHERE key='projection_version'").fetchone()[0]
+        version = conn.execute(
+            "SELECT value FROM kg_meta WHERE key='projection_version'"
+        ).fetchone()[0]
 
-    assert {"legacy_type", "summary", "metadata"} <= cols or "summary" in cols, "rebuilt with new columns"
+    assert {"legacy_type", "summary", "metadata"} <= cols or "summary" in cols, (
+        "rebuilt with new columns"
+    )
     assert row["type"] == "CONCEPT" and row["legacy_type"] == "Concept"
     assert row["summary"] == "alpha body"
     assert "_kg" not in json.loads(row["attrs"])
@@ -420,12 +506,16 @@ def test_migration_keeps_reads_equivalent_after_rebuild(tmp_path):
     db = tmp_path / "kg.sqlite"
     store = kg.KnowledgeGraphStore(db, tmp_path / "blobs")
     with store._connect() as conn:
-        _insert_node(conn, "concept:rag", "Concept", "RAG", "retrieval augmented", {"s": "doc"})
+        _insert_node(
+            conn, "concept:rag", "Concept", "RAG", "retrieval augmented", {"s": "doc"}
+        )
         _insert_node(conn, "topic:db", "Topic", "Storage", "sqlite storage", {})
         _insert_edge(conn, "e1", "concept:rag", "topic:db", "discusses", 1.0, {})
     # force a stale projection then reconstruct
     with sqlite3.connect(str(db)) as conn:
-        conn.execute("INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','0')")
+        conn.execute(
+            "INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','0')"
+        )
     store = kg.KnowledgeGraphStore(db, tmp_path / "blobs")
 
     for q in ["rag", "storage", "retrieval"]:

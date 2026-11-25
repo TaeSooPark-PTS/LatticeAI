@@ -151,7 +151,9 @@ def test_generate_runs_the_mlx_lm_text_path_and_rebrands_the_answer(monkeypatch)
     model, tokenizer, draft = object(), _TemplateTokenizer(), object()
     router = _router_with((model, tokenizer, draft, "mlx_lm"))
 
-    result = asyncio.run(router.generate("질문", "커넥트 AI 문서", max_tokens=64, temperature=0.7))
+    result = asyncio.run(
+        router.generate("질문", "커넥트 AI 문서", max_tokens=64, temperature=0.7)
+    )
 
     assert result == "Lattice AI 답변"
     assert seen["model"] is model
@@ -180,7 +182,9 @@ def test_generate_as_reads_the_text_attribute_of_a_generation_result(monkeypatch
         return types.SimpleNamespace(text="커넥트 AI 결과", token_count=7)
 
     _install_fake_mlx(monkeypatch, lm={"generate": lm_generate})
-    router = _router_with((object(), _TemplateTokenizer(), None, "mlx_lm"), key="text-model")
+    router = _router_with(
+        (object(), _TemplateTokenizer(), None, "mlx_lm"), key="text-model"
+    )
 
     assert asyncio.run(router.generate_as("text-model", "질문")) == "Lattice AI 결과"
     # A request-scoped model never changes the process-wide default.
@@ -266,7 +270,9 @@ def test_the_stop_path_carries_the_sampler_and_the_vlm_arguments(monkeypatch):
         yield types.SimpleNamespace(text="답변 STOP tail")
 
     _install_fake_mlx(monkeypatch, vlm={"stream_generate": vlm_stream})
-    router = _router_with((_vlm_model(), _TemplateTokenizer(), None, "mlx_vlm"), key="vision")
+    router = _router_with(
+        (_vlm_model(), _TemplateTokenizer(), None, "mlx_vlm"), key="vision"
+    )
 
     answer = asyncio.run(
         router.generate_as("vision", "질문", None, 32, 0.0, None, ["STOP"])
@@ -313,10 +319,14 @@ def test_stream_generate_as_streams_the_vlm_path_in_every_chunk_shape(monkeypatc
         yield 42
 
     _install_fake_mlx(monkeypatch, vlm={"stream_generate": vlm_stream})
-    router = _router_with((_vlm_model(), _TemplateTokenizer(), None, "mlx_vlm"), key="vision")
+    router = _router_with(
+        (_vlm_model(), _TemplateTokenizer(), None, "mlx_vlm"), key="vision"
+    )
 
     chunks = _collect(
-        lambda: router.stream_generate_as("vision", "이 사진은?", None, 16, 0.5, _png_base64())
+        lambda: router.stream_generate_as(
+            "vision", "이 사진은?", None, 16, 0.5, _png_base64()
+        )
     )
 
     assert chunks == ["Lattice AI ", "응답", "42"]
@@ -330,17 +340,17 @@ def test_stream_generate_as_streams_the_vlm_path_in_every_chunk_shape(monkeypatc
 
 
 def test_generate_document_reports_when_no_model_is_loaded():
-    assert asyncio.run(router_mod.LLMRouter().generate_document_as(None, "보고서", "DOC")) == (
-        "No model loaded."
-    )
+    assert asyncio.run(
+        router_mod.LLMRouter().generate_document_as(None, "보고서", "DOC")
+    ) == ("No model loaded.")
 
 
 def test_stream_generate_document_reports_when_no_model_is_loaded():
     router = router_mod.LLMRouter()
 
-    assert _collect(lambda: router.stream_generate_document_as(None, "보고서", "DOC")) == [
-        "No model loaded."
-    ]
+    assert _collect(
+        lambda: router.stream_generate_document_as(None, "보고서", "DOC")
+    ) == ["No model loaded."]
 
 
 def test_generate_document_routes_a_cloud_model_to_the_cloud_backend():
@@ -373,7 +383,9 @@ def test_stream_generate_document_routes_a_cloud_model_to_the_cloud_backend():
     )
     router = _router_with(cloud, key="cloud")
 
-    chunks = _collect(lambda: router.stream_generate_document_as(None, "보고서", "DOC SYSTEM"))
+    chunks = _collect(
+        lambda: router.stream_generate_document_as(None, "보고서", "DOC SYSTEM")
+    )
 
     assert chunks == ["# Lattice AI", " 보고서"]
 
@@ -390,7 +402,9 @@ def test_generate_document_as_uses_the_vlm_path_with_the_document_prompt(monkeyp
     router = _router_with((object(), tokenizer, None, "mlx_vlm"), key="vision")
 
     result = asyncio.run(
-        router.generate_document_as("vision", "보고서 써줘", "DOC SYSTEM", max_tokens=2048)
+        router.generate_document_as(
+            "vision", "보고서 써줘", "DOC SYSTEM", max_tokens=2048
+        )
     )
 
     assert result == "# Lattice AI 보고서"
@@ -406,7 +420,9 @@ def test_generate_document_as_uses_the_vlm_path_with_the_document_prompt(monkeyp
     ]
 
 
-def test_generate_document_as_falls_back_to_chatml_when_the_template_raises(monkeypatch):
+def test_generate_document_as_falls_back_to_chatml_when_the_template_raises(
+    monkeypatch,
+):
     seen = {}
 
     def lm_generate(_model, _tokenizer, **kwargs):
@@ -416,7 +432,9 @@ def test_generate_document_as_falls_back_to_chatml_when_the_template_raises(monk
     _install_fake_mlx(monkeypatch, lm={"generate": lm_generate})
     router = _router_with((object(), _RaisingTokenizer(), None, "mlx_lm"))
 
-    result = asyncio.run(router.generate_document_as("local", "보고서 써줘", "DOC SYSTEM"))
+    result = asyncio.run(
+        router.generate_document_as("local", "보고서 써줘", "DOC SYSTEM")
+    )
 
     assert result == "보고서 본문"
     assert seen["prompt"] == (
@@ -426,7 +444,9 @@ def test_generate_document_as_falls_back_to_chatml_when_the_template_raises(monk
     assert "draft_kind" not in seen
 
 
-def test_generate_document_as_uses_chatml_for_a_tokenizer_without_a_template(monkeypatch):
+def test_generate_document_as_uses_chatml_for_a_tokenizer_without_a_template(
+    monkeypatch,
+):
     seen = {}
 
     def lm_generate(_model, _tokenizer, **kwargs):
@@ -436,7 +456,10 @@ def test_generate_document_as_uses_chatml_for_a_tokenizer_without_a_template(mon
     _install_fake_mlx(monkeypatch, lm={"generate": lm_generate})
     router = _router_with((object(), object(), None, "mlx_lm"))
 
-    assert asyncio.run(router.generate_document_as("local", "질문", "DOC SYSTEM")) == "보고서 본문"
+    assert (
+        asyncio.run(router.generate_document_as("local", "질문", "DOC SYSTEM"))
+        == "보고서 본문"
+    )
     assert seen["prompt"].startswith("<|im_start|>system\nDOC SYSTEM<|im_end|>")
 
 
@@ -454,7 +477,9 @@ def test_stream_generate_document_as_streams_the_vlm_path_after_a_template_failu
         yield types.SimpleNamespace(text=" 보고서")
 
     _install_fake_mlx(monkeypatch, vlm={"stream_generate": vlm_stream})
-    router = _router_with((object(), _RaisingTokenizer(), None, "mlx_vlm"), key="vision")
+    router = _router_with(
+        (object(), _RaisingTokenizer(), None, "mlx_vlm"), key="vision"
+    )
 
     chunks = _collect(
         lambda: router.stream_generate_document_as(
@@ -479,7 +504,9 @@ def test_stream_generate_document_as_uses_chatml_without_a_chat_template(monkeyp
     _install_fake_mlx(monkeypatch, lm={"stream_generate": lm_stream})
     router = _router_with((object(), object(), None, "mlx_lm"))
 
-    chunks = _collect(lambda: router.stream_generate_document_as("local", "질문", "DOC SYSTEM"))
+    chunks = _collect(
+        lambda: router.stream_generate_document_as("local", "질문", "DOC SYSTEM")
+    )
 
     assert chunks == ["본문"]
     assert seen["prompt"].startswith("<|im_start|>system\nDOC SYSTEM<|im_end|>")
@@ -495,9 +522,9 @@ def test_stream_generate_document_as_templates_the_document_messages(monkeypatch
     tokenizer = _TemplateTokenizer()
     router = _router_with((object(), tokenizer, None, "mlx_lm"))
 
-    assert _collect(lambda: router.stream_generate_document_as(None, "보고서 써줘", "DOC SYSTEM")) == [
-        "본문"
-    ]
+    assert _collect(
+        lambda: router.stream_generate_document_as(None, "보고서 써줘", "DOC SYSTEM")
+    ) == ["본문"]
     assert tokenizer.messages == [
         {"role": "system", "content": "DOC SYSTEM"},
         {"role": "user", "content": "보고서 써줘"},

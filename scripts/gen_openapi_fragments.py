@@ -120,7 +120,11 @@ def schema_refs(node: Any) -> Set[str]:
     names: Set[str] = set()
     if isinstance(node, dict):
         for key, value in node.items():
-            if key == "$ref" and isinstance(value, str) and value.startswith(SCHEMA_REF_PREFIX):
+            if (
+                key == "$ref"
+                and isinstance(value, str)
+                and value.startswith(SCHEMA_REF_PREFIX)
+            ):
                 names.add(value[len(SCHEMA_REF_PREFIX) :])
             else:
                 names.update(schema_refs(value))
@@ -155,7 +159,9 @@ def family_of(key: str, mapping: Mapping[str, Any]) -> str:
     return family
 
 
-def split_spec(spec: Mapping[str, Any], mapping: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
+def split_spec(
+    spec: Mapping[str, Any], mapping: Mapping[str, Any]
+) -> Dict[str, Dict[str, Any]]:
     """Carve the spec into one fragment payload per family."""
     schemas = spec["components"]["schemas"]
     families: Dict[str, Dict[str, Any]] = {}
@@ -210,7 +216,9 @@ def build_envelope(spec: Mapping[str, Any], attributed: Set[str]) -> Dict[str, A
     skeleton: Dict[str, Any] = {
         key: value for key, value in spec.items() if key not in ("paths", "components")
     }
-    components = {key: value for key, value in spec["components"].items() if key != "schemas"}
+    components = {
+        key: value for key, value in spec["components"].items() if key != "schemas"
+    }
     components["schemas"] = {name: schemas[name] for name in unattributed}
     skeleton["components"] = components
     return {
@@ -283,7 +291,9 @@ def render_all(spec: Mapping[str, Any], mapping: Mapping[str, Any]) -> Dict[str,
         attributed.update(fragment["components"]["schemas"])
     envelope = build_envelope(spec, attributed)
     index = build_index(spec, fragments, envelope)
-    rendered = {f"{name}.json": canonical_json(fragment) for name, fragment in fragments.items()}
+    rendered = {
+        f"{name}.json": canonical_json(fragment) for name, fragment in fragments.items()
+    }
     rendered[ENVELOPE_NAME] = canonical_json(envelope)
     rendered[INDEX_NAME] = canonical_json(index)
     return rendered
@@ -300,9 +310,7 @@ def write_fragments(directory: Path, rendered: Mapping[str, str]) -> List[str]:
             changed.append(name)
         target.write_text(text, encoding="utf-8")
     stale = sorted(
-        path.name
-        for path in directory.glob("*.json")
-        if path.name not in rendered
+        path.name for path in directory.glob("*.json") if path.name not in rendered
     )
     for name in stale:
         (directory / name).unlink()
@@ -327,9 +335,15 @@ def check_fragments(directory: Path, rendered: Mapping[str, str]) -> List[str]:
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--spec", type=Path, default=SPEC_PATH, help="committed contract")
-    parser.add_argument("--mapping", type=Path, default=MAPPING_PATH, help="route → family map")
-    parser.add_argument("--out", type=Path, default=FRAGMENT_DIR, help="fragment directory")
+    parser.add_argument(
+        "--spec", type=Path, default=SPEC_PATH, help="committed contract"
+    )
+    parser.add_argument(
+        "--mapping", type=Path, default=MAPPING_PATH, help="route → family map"
+    )
+    parser.add_argument(
+        "--out", type=Path, default=FRAGMENT_DIR, help="fragment directory"
+    )
     parser.add_argument(
         "--check",
         action="store_true",

@@ -77,7 +77,9 @@ class ModelRuntimeState:
     IS_PUBLIC_MODE: bool = False
     keyring: Any = None
     get_current_user: Callable[[Any], Optional[str]] = _missing_current_user
-    get_user_api_key: Callable[[Optional[str], str], Optional[str]] = _missing_user_api_key
+    get_user_api_key: Callable[[Optional[str], str], Optional[str]] = (
+        _missing_user_api_key
+    )
 
 
 def create_model_runtime_state(**deps: Any) -> ModelRuntimeState:
@@ -88,6 +90,7 @@ def create_model_runtime_state(**deps: Any) -> ModelRuntimeState:
     if unknown:
         raise TypeError(f"unknown model runtime dependencies: {', '.join(unknown)}")
     return ModelRuntimeState(**deps)
+
 
 def _download_allowed(
     allow_download: bool = False, *, state: ModelRuntimeState

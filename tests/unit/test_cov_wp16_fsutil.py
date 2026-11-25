@@ -273,5 +273,7 @@ def test_the_two_sha256_helpers_agree_on_the_same_utf8_content() -> None:
     ``text_hash`` is compared across the Python and Rust halves — so the byte
     form and the text form must not drift into two different digests.
     """
-    assert fsutil._sha256_bytes("계약서".encode("utf-8")) == fsutil._sha256_text("계약서")
+    assert fsutil._sha256_bytes("계약서".encode("utf-8")) == fsutil._sha256_text(
+        "계약서"
+    )
     assert len(fsutil._sha256_bytes(b"")) == 64

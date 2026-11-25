@@ -27,7 +27,9 @@ class _FakeMx:
 
 
 class _FakeTokenizer:
-    def apply_chat_template(self, _messages, tokenize=False, add_generation_prompt=True):
+    def apply_chat_template(
+        self, _messages, tokenize=False, add_generation_prompt=True
+    ):
         return "prompt"
 
 
@@ -94,7 +96,9 @@ def test_gemma4_12b_unified_does_not_retry_unsupported_mlx_lm(monkeypatch):
     monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
     monkeypatch.setattr(router_loading, "VLM_AVAILABLE", True)
     monkeypatch.setattr(router_loading, "LM_AVAILABLE", True)
-    monkeypatch.setattr(router_loading, "_local_model_type", lambda _model_id: "gemma4_unified")
+    monkeypatch.setattr(
+        router_loading, "_local_model_type", lambda _model_id: "gemma4_unified"
+    )
 
     llm = router_mod.LLMRouter()
     with pytest.raises(ValueError, match="gemma4_unified"):

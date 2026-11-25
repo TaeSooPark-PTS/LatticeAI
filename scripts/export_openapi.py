@@ -111,7 +111,9 @@ def main() -> int:
 
             app = create_worker_app()
             schema = app.openapi()
-    target.write_text(json.dumps(schema, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(schema, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"wrote {target} with {len(schema.get('paths', {}))} paths")
     return 0
 

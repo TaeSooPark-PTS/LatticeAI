@@ -62,7 +62,11 @@ def _sha256_text(text: str) -> str:
 
 def _safe_iso_from_stat_mtime(mtime: float) -> str:
     try:
-        return datetime.fromtimestamp(float(mtime), tz=timezone.utc).replace(tzinfo=None).isoformat()
+        return (
+            datetime.fromtimestamp(float(mtime), tz=timezone.utc)
+            .replace(tzinfo=None)
+            .isoformat()
+        )
     except (TypeError, ValueError, OSError):
         return ""
 

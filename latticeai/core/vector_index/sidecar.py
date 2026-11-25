@@ -115,17 +115,16 @@ def load_store_items_for(
     for start in range(0, len(wanted), 400):
         chunk = wanted[start : start + 400]
         qmarks = ",".join("?" * len(chunk))
-        query = "SELECT item_id, embedding FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=? AND item_id IN (%s)" % qmarks  # noqa: S608
+        query = (
+            "SELECT item_id, embedding FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=? AND item_id IN (%s)"  # noqa: S608
+            % qmarks
+        )
         for item_id, blob in conn.execute(query, (model_id, int(dim), *chunk)):
             vector = decode_f32le(bytes(blob or b""), int(dim))
             if len(vector) != int(dim):
                 continue
             by_id[str(item_id)] = vector
-    return [
-        (item_id, by_id[item_id], {})
-        for item_id in wanted
-        if item_id in by_id
-    ]
+    return [(item_id, by_id[item_id], {}) for item_id in wanted if item_id in by_id]
 
 
 def _open_and_stamp(path: Path, model_id: str, dim: int) -> Tuple[int, str]:
@@ -339,12 +338,19 @@ def query_sidecar(
             known_ts = index.indexed_at
             all_present = current_set.issubset(store_stamps.keys())
             existing_untouched = (
-                all(known_ts.get(cid) == store_stamps.get(cid) for cid in current_labels)
+                all(
+                    known_ts.get(cid) == store_stamps.get(cid) for cid in current_labels
+                )
                 if known_ts
                 else store_size > cached_size
             )
             missing = [cid for cid in store_stamps if cid not in current_set]
-            if all_present and existing_untouched and not missing and cached_size == store_size:
+            if (
+                all_present
+                and existing_untouched
+                and not missing
+                and cached_size == store_size
+            ):
                 index.save(
                     path,
                     fingerprint=sidecar_fingerprint(model_id, dim, cached_size),
@@ -443,9 +449,7 @@ def sidecar_freshness(
             "detail": "no HNSW sidecar next to the brain database",
         }
     stamp_stale = (
-        meta_stamp is not None
-        and store_stamp is not None
-        and meta_stamp != store_stamp
+        meta_stamp is not None and store_stamp is not None and meta_stamp != store_stamp
     )
     stale = (meta_size != store_size) or stamp_stale
     if meta_size != store_size:

@@ -22,8 +22,22 @@ ROLE_CAPABILITIES: Dict[str, Set[str]] = {
         "pipeline",
         "desktop:control",
     },
-    "member": {"workspace:read", "workspace:write", "chat", "search", "files", "pipeline"},
-    "user": {"workspace:read", "workspace:write", "chat", "search", "files", "pipeline"},
+    "member": {
+        "workspace:read",
+        "workspace:write",
+        "chat",
+        "search",
+        "files",
+        "pipeline",
+    },
+    "user": {
+        "workspace:read",
+        "workspace:write",
+        "chat",
+        "search",
+        "files",
+        "pipeline",
+    },
     "viewer": {"workspace:read", "chat", "search"},
 }
 
@@ -40,4 +54,6 @@ def role_has_capability(role: str, capability: str) -> bool:
 
 def require_capability(role: str, capability: str) -> None:
     if not role_has_capability(role, capability):
-        raise PermissionError(f"role '{normalize_role(role)}' lacks capability '{capability}'")
+        raise PermissionError(
+            f"role '{normalize_role(role)}' lacks capability '{capability}'"
+        )

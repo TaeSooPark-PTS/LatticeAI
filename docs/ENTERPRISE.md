@@ -84,8 +84,11 @@ discoverable. None are implemented in Community.
 
 ```python
 from latticeai.core.enterprise import (
-    Edition, EnterpriseCapability, capability_registry,
+    Edition,
+    EnterpriseCapability,
+    capability_registry,
 )
+
 
 class EnterpriseProvider:
     def edition(self) -> Edition:
@@ -93,6 +96,7 @@ class EnterpriseProvider:
 
     def is_enabled(self, capability: EnterpriseCapability) -> bool:
         return capability in MY_LICENSED_CAPABILITIES
+
 
 # Enterprise package startup:
 capability_registry.register_provider(EnterpriseProvider())

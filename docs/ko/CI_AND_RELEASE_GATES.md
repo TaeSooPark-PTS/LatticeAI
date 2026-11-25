@@ -2,7 +2,7 @@
 
 # CI 및 릴리스 게이트
 
-> **상태: 정본 (2026-11-25 갱신) — 현재 릴리스: 14.1.0 — Living Synthesis**
+> **상태: 정본 (2026-11-25 갱신) — 현재 릴리스: 14.1.1 — Living Synthesis**
 
 `main` 브랜치와 릴리스를 보호하는 GitHub Actions 워크플로우, 공급망 하드닝(액션 SHA 고정), CI 통과 강제형 자동 CD 파이프라인, 권장 브랜치 보호 설정을 정리한 문서입니다. 관련 문서: [`SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), [`BENCHMARKS.md`](../BENCHMARKS.md).
 
@@ -37,7 +37,7 @@ Python 매트릭스마다 반복 실행하지 않고 `ubuntu-latest`에서 한 �
 
 | 레그 | OpenAPI 동기화 | Python 린트 (`ruff` + `mypy`) | 검색 베이스라인 (`hnswlib`) | 단위 테스트 | 커버리지 하한 (90% 이상) | 제품 준비 게이트 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3.11 + ubuntu-latest | 실행 | 실행(`BLE`, McCabe <= 20, Bandit `S608` + 최소 예외) | 실행 (`.[ann]`) | `pytest tests/unit/` | 미실행 | 실행 |
+| 3.11 + ubuntu-latest | 실행 | 실행(`ruff format --check .`, `BLE`, 전역 McCabe <= 20·`C901` 예외 0건, Bandit `S608` + 최소 예외) | 실행 (`.[ann]`) | `pytest tests/unit/` | 미실행 | 실행 |
 | 3.12 + ubuntu-latest | 미실행 | 미실행 | 미실행 | `pytest tests/unit/` | 미실행 | 미실행 |
 | 3.14 + ubuntu-latest | 미실행 | 미실행 | 미실행 | `--cov` 실행에 통합 | 실행 (`fail_under = 90`) | 미실행 |
 | 3.11 + macos-latest | 미실행 | 미실행 | 미실행 | `pytest tests/unit/` | 미실행 | 미실행 |

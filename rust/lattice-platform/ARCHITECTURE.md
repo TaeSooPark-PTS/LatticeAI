@@ -90,7 +90,7 @@ not a second copy, preventing last-writer-wins races over a single document.
 file, one format; `lattice-chat` and `lattice-host` call into it from outside
 rather than growing writers of their own.
 
-## Public API Surface (14.1.0)
+## Public API Surface (14.1.1)
 
 `src/lib.rs` exposes only the seven canonical domain modules (`adminops`,
 `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)

@@ -44,11 +44,15 @@ def create_search_router(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get("/api/embeddings/status")
-    async def embeddings_status(request: Request, refresh: bool = False) -> Dict[str, Any]:
+    async def embeddings_status(
+        request: Request, refresh: bool = False
+    ) -> Dict[str, Any]:
         require_user(request)
         resolved = embedding_info() if embedding_info else {}
         try:
-            payload = dict(service.embeddings_status(resolved=resolved, refresh=refresh))
+            payload = dict(
+                service.embeddings_status(resolved=resolved, refresh=refresh)
+            )
         except ValueError as exc:
             _raise_embedder_error(exc)
         payload.setdefault("recommended_model", RECOMMENDED_EMBEDDING_MODEL)

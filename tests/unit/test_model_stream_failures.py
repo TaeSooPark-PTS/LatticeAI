@@ -65,7 +65,9 @@ class _FakeChunk:
 
 
 class _FakeTokenizer:
-    def apply_chat_template(self, _messages, tokenize=False, add_generation_prompt=True):
+    def apply_chat_template(
+        self, _messages, tokenize=False, add_generation_prompt=True
+    ):
         return "prompt"
 
 
@@ -123,7 +125,9 @@ def _cloud_router(error: BaseException, provider: str = "test") -> router_mod.LL
     return router
 
 
-def _consume(stream_factory, chunks: list[str], *, timeout: float = STREAM_TIMEOUT) -> None:
+def _consume(
+    stream_factory, chunks: list[str], *, timeout: float = STREAM_TIMEOUT
+) -> None:
     """Drive ``stream_factory()`` to exhaustion, appending everything yielded.
 
     Returns normally on a clean stream and lets the failure propagate, so a
@@ -224,7 +228,9 @@ def test_mlx_chat_stream_failure_reaches_the_consumer_as_an_exception(monkeypatc
     with pytest.raises(router_mod.ModelStreamError) as excinfo:
         _consume(lambda: router.stream_generate("질문"), chunks)
 
-    assert chunks == ["안녕", "하세요"], "tokens produced before the failure still count"
+    assert chunks == ["안녕", "하세요"], (
+        "tokens produced before the failure still count"
+    )
     assert not any("⚠️ Error" in chunk for chunk in chunks)
     assert "MLX chat stream failed" in str(excinfo.value)
     assert excinfo.value.__cause__ is boom
@@ -244,7 +250,9 @@ def test_mlx_chat_stream_that_fails_before_any_token_yields_nothing(monkeypatch)
     with pytest.raises(router_mod.ModelStreamError) as excinfo:
         _consume(lambda: router.stream_generate("질문"), chunks)
 
-    assert chunks == [], "a failed stream must not produce a single character of 'answer'"
+    assert chunks == [], (
+        "a failed stream must not produce a single character of 'answer'"
+    )
     assert excinfo.value.__cause__ is boom
 
 
@@ -263,7 +271,9 @@ def test_mlx_document_stream_failure_reaches_the_consumer_as_an_exception(monkey
     chunks: list[str] = []
 
     with pytest.raises(router_mod.ModelStreamError) as excinfo:
-        _consume(lambda: router.stream_generate_document_as(None, "질문", "system"), chunks)
+        _consume(
+            lambda: router.stream_generate_document_as(None, "질문", "system"), chunks
+        )
 
     assert chunks == ["# 보고서"]
     assert not any("⚠️ Error" in chunk for chunk in chunks)
@@ -327,7 +337,9 @@ def test_cloud_document_stream_failure_propagates_through_the_public_api():
     chunks: list[str] = []
 
     with pytest.raises(router_mod.ModelStreamError):
-        _consume(lambda: router.stream_generate_document_as(None, "질문", "system"), chunks)
+        _consume(
+            lambda: router.stream_generate_document_as(None, "질문", "system"), chunks
+        )
 
     assert chunks == []
 
@@ -370,8 +382,7 @@ def _router_trees() -> list[ast.Module]:
     are exactly the code this fence exists for.
     """
     return [
-        ast.parse(path.read_text(encoding="utf-8"))
-        for path in sorted(ROUTER_SOURCES)
+        ast.parse(path.read_text(encoding="utf-8")) for path in sorted(ROUTER_SOURCES)
     ]
 
 
@@ -386,7 +397,9 @@ def _executable_string_literals(tree: ast.Module) -> list[str]:
     docstrings = {
         id(node.body[0].value)
         for node in ast.walk(tree)
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        )
         and node.body
         and isinstance(node.body[0], ast.Expr)
         and isinstance(node.body[0].value, ast.Constant)

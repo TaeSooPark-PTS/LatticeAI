@@ -184,7 +184,9 @@ def test_a_health_probe_that_raises_degrades_instead_of_crashing_startup(monkeyp
 
     monkeypatch.setattr(ep.OllamaEmbeddingProvider, "health", _explode)
 
-    resolved = resolve_embedder("ollama", model="bge-m3", base_url="http://ollama.invalid")
+    resolved = resolve_embedder(
+        "ollama", model="bge-m3", base_url="http://ollama.invalid"
+    )
 
     assert resolved.fell_back is True
     assert resolved.active == "hash"

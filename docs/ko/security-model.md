@@ -75,13 +75,13 @@ CORS_ALLOWED_ORIGINS = ["http://localhost:4825", "http://127.0.0.1:4825"]
 
 ```python
 MAGIC_NUMBERS = {
-    ".pdf":  b"%PDF",
+    ".pdf": b"%PDF",
     ".docx": b"PK\x03\x04",
     ".xlsx": b"PK\x03\x04",
     ".pptx": b"PK\x03\x04",
-    ".png":  b"\x89PNG",
-    ".jpg":  b"\xff\xd8\xff",
-    ".zip":  b"PK\x03\x04",
+    ".png": b"\x89PNG",
+    ".jpg": b"\xff\xd8\xff",
+    ".zip": b"PK\x03\x04",
 }
 ```
 

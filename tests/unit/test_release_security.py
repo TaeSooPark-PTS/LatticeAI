@@ -9,7 +9,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_machine_local_bot_and_agent_files_are_excluded_from_packages():
-    package_files = set(json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["files"])
+    package_files = set(
+        json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["files"]
+    )
     assert {
         "!bin/pts-grok",
         "!scripts/launch-pts-grok.sh",

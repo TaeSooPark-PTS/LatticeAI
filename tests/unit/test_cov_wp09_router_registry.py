@@ -232,7 +232,9 @@ def test_max_local_models_comes_from_the_environment(monkeypatch):
 # ── Memory policy enforcement ────────────────────────────────────────────
 
 
-def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(monkeypatch):
+def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(
+    monkeypatch,
+):
     monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._max_local_models = 2
@@ -320,14 +322,19 @@ def test_load_model_hands_a_cloud_reference_to_the_cloud_loader(monkeypatch):
 
     def fake_load_cloud(provider, model, api_key_override=None, owner=None):
         seen.update(
-            provider=provider, model=model, api_key_override=api_key_override, owner=owner
+            provider=provider,
+            model=model,
+            api_key_override=api_key_override,
+            owner=owner,
         )
         return "Cloud provider ready: openai:gpt-4o::alice"
 
     router._load_cloud_model = fake_load_cloud
 
     result = asyncio.run(
-        router.load_model("cloud:openai:gpt-4o", api_key_override="sk-test", owner="alice")
+        router.load_model(
+            "cloud:openai:gpt-4o", api_key_override="sk-test", owner="alice"
+        )
     )
 
     assert result == "Cloud provider ready: openai:gpt-4o::alice"
@@ -343,7 +350,9 @@ def test_load_model_refuses_a_local_model_when_mlx_never_bound(monkeypatch):
     """The guard after ``ensure_mlx_runtime`` is what stops an ``NoneType``
     crash deep inside the worker thread."""
     calls = []
-    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: calls.append("ensure"))
+    monkeypatch.setattr(
+        router_loading, "ensure_mlx_runtime", lambda: calls.append("ensure")
+    )
     monkeypatch.setattr(router_loading, "mx", None)
     router = router_mod.LLMRouter()
 
@@ -456,9 +465,7 @@ def test_load_model_falls_back_to_text_for_any_model_without_vision(
     assert loaded == ["Qwen/Qwen2.5-0.5B-Instruct-AWQ"]
 
 
-def test_a_failed_text_retry_reports_the_original_loader_failure(
-    monkeypatch, tmp_path
-):
+def test_a_failed_text_retry_reports_the_original_loader_failure(monkeypatch, tmp_path):
     """The text path is a fallback, so the useful diagnosis is the first one.
 
     Raising the second failure would tell an operator their model is not a
@@ -524,7 +531,9 @@ def test_load_model_loads_a_draft_model_on_the_text_path(monkeypatch, tmp_path):
     router = router_mod.LLMRouter()
 
     result = asyncio.run(
-        router.load_model("mlx-community/gemma-4-12b", draft_model_id="mlx-community/draft")
+        router.load_model(
+            "mlx-community/gemma-4-12b", draft_model_id="mlx-community/draft"
+        )
     )
 
     assert result == "Success: mlx-community/gemma-4-12b_mlx-community/draft (mlx_lm)"
@@ -533,7 +542,9 @@ def test_load_model_loads_a_draft_model_on_the_text_path(monkeypatch, tmp_path):
     assert cached[2] is draft
 
 
-def test_load_model_evicts_a_resident_local_model_to_stay_in_budget(monkeypatch, tmp_path):
+def test_load_model_evicts_a_resident_local_model_to_stay_in_budget(
+    monkeypatch, tmp_path
+):
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(
         router_loading, "vlm_load", lambda _model_id: (object(), _TemplateTokenizer())

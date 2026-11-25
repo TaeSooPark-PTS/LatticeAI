@@ -94,7 +94,9 @@ def test_merge_picks_the_spelling_the_document_actually_uses() -> None:
     ]
     # Korean surfaces merge through their particles.
     korean = "지식그래프는 노드를 담는다. 지식그래프에서 찾는다."
-    assert merge_entity_aliases(["지식그래프에서", "지식그래프"], korean) == ["지식그래프"]
+    assert merge_entity_aliases(["지식그래프에서", "지식그래프"], korean) == [
+        "지식그래프"
+    ]
     # Nothing to merge is not an error; empties simply drop out.
     assert merge_entity_aliases(["", "   ", "..."]) == []
 
@@ -174,7 +176,10 @@ def test_english_definition_becomes_a_definition_edge() -> None:
 
 def test_korean_definition_becomes_a_definition_edge() -> None:
     found = _relations("지식그래프란 노드와 엣지로 이루어진 자료구조이다.")
-    assert any(relation == "설명함" and evidence == "definition" for _, relation, _, evidence in found)
+    assert any(
+        relation == "설명함" and evidence == "definition"
+        for _, relation, _, evidence in found
+    )
 
 
 def test_english_part_of_points_from_the_part_to_the_whole() -> None:

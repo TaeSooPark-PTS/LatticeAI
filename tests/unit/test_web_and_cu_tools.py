@@ -61,7 +61,9 @@ class _LocalTestServer:
                     self.wfile.write(body)
                 elif self.path.startswith("/redirect-to-metadata"):
                     self.send_response(302)
-                    self.send_header("Location", "http://169.254.169.254/latest/meta-data/")
+                    self.send_header(
+                        "Location", "http://169.254.169.254/latest/meta-data/"
+                    )
                     self.end_headers()
                 elif self.path.startswith("/search"):
                     payload = {
@@ -205,7 +207,10 @@ def test_validate_web_url_blocks_ssrf_metadata_private_ips_and_bad_schemes(monke
         with pytest.raises(ToolError, match="loopback"):
             validate_web_url(loopback)
 
-    assert validate_web_url("https://example.com/path?a=1") == "https://example.com/path?a=1"
+    assert (
+        validate_web_url("https://example.com/path?a=1")
+        == "https://example.com/path?a=1"
+    )
 
 
 def test_validate_web_url_offline_mode_and_loopback_allow(monkeypatch):
@@ -218,8 +223,12 @@ def test_validate_web_url_offline_mode_and_loopback_allow(monkeypatch):
         validate_web_url("http://127.0.0.1:8080/test")
 
     monkeypatch.setenv("LATTICEAI_WEB_ALLOW_LOOPBACK", "1")
-    assert validate_web_url("http://127.0.0.1:8080/test") == "http://127.0.0.1:8080/test"
-    assert validate_web_url("http://localhost:8080/test") == "http://localhost:8080/test"
+    assert (
+        validate_web_url("http://127.0.0.1:8080/test") == "http://127.0.0.1:8080/test"
+    )
+    assert (
+        validate_web_url("http://localhost:8080/test") == "http://localhost:8080/test"
+    )
     assert validate_web_url("http://[::1]:8080/test") == "http://[::1]:8080/test"
 
     with pytest.raises(ToolError, match="offline"):
@@ -318,13 +327,17 @@ def test_parse_duckduckgo_html_unwraps_uddg_links():
     </div>
     """
     parsed = parse_duckduckgo_html(sample, max_results=3)
-    assert parsed == [("Example & Title", "https://example.com/a", "Sample snippet text.")]
+    assert parsed == [
+        ("Example & Title", "https://example.com/a", "Sample snippet text.")
+    ]
 
 
 # ── Computer-Use Observe-Act-Verify Loopback Bridge & Fallback ───────────────
 
 
-def test_computer_bridge_rejects_non_loopback_and_routes_loopback_actions(monkeypatch, local_server):
+def test_computer_bridge_rejects_non_loopback_and_routes_loopback_actions(
+    monkeypatch, local_server
+):
     monkeypatch.setattr(computer, "_CU_AVAILABLE", False)
     monkeypatch.setattr(computer, "_pyautogui", None)
 

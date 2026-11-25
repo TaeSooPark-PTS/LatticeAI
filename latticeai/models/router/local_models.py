@@ -20,7 +20,13 @@ def hf_model_dir(repo_id: str) -> Path:
 
 def hf_cache_model_dir(repo_id: str) -> Optional[Path]:
     """Return a usable Hugging Face cache snapshot for an already-downloaded model."""
-    cache_root = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
+    cache_root = (
+        Path.home()
+        / ".cache"
+        / "huggingface"
+        / "hub"
+        / f"models--{repo_id.replace('/', '--')}"
+    )
     snapshots = cache_root / "snapshots"
     if not snapshots.exists():
         return None

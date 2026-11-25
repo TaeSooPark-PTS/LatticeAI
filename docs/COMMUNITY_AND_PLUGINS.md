@@ -2,7 +2,7 @@
 
 # Community And Plugins
 
-Current release: **14.1.0 — Living Synthesis**.
+Current release: **14.1.1 — Living Synthesis**.
 
 LatticeAI defines a clear path from a local-first Rust-host Digital Brain
 platform to a governed product ecosystem. The immediate goal is small and

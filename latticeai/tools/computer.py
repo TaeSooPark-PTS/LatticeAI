@@ -23,7 +23,9 @@ _BRIDGE_TIMEOUT_SECONDS = 5
 
 def _bridge_url() -> Optional[str]:
     """Read and validate LATTICEAI_COMPUTER_BRIDGE_URL (loopback only, fail-closed)."""
-    raw = str(_os_environ.get("LATTICEAI_COMPUTER_BRIDGE_URL") or "").strip().rstrip("/")
+    raw = (
+        str(_os_environ.get("LATTICEAI_COMPUTER_BRIDGE_URL") or "").strip().rstrip("/")
+    )
     if not raw:
         return None
     parsed = urllib.parse.urlsplit(raw)
@@ -32,12 +34,18 @@ def _bridge_url() -> Optional[str]:
         raise ToolError(
             "LATTICEAI_COMPUTER_BRIDGE_URL must use http:// or https:// on loopback."
         )
-    if parsed.username is not None or parsed.password is not None or "@" in parsed.netloc:
+    if (
+        parsed.username is not None
+        or parsed.password is not None
+        or "@" in parsed.netloc
+    ):
         raise ToolError("LATTICEAI_COMPUTER_BRIDGE_URL contains an invalid authority.")
     try:
         port = parsed.port
     except ValueError as exc:
-        raise ToolError(f"LATTICEAI_COMPUTER_BRIDGE_URL has an invalid port: {exc}") from exc
+        raise ToolError(
+            f"LATTICEAI_COMPUTER_BRIDGE_URL has an invalid port: {exc}"
+        ) from exc
     if port is not None and (port <= 0 or port > 65535):
         raise ToolError("LATTICEAI_COMPUTER_BRIDGE_URL has an invalid port.")
 
@@ -55,7 +63,9 @@ def _bridge_url() -> Optional[str]:
     return raw
 
 
-def _bridge_get_json(url: str, timeout: int = _BRIDGE_TIMEOUT_SECONDS) -> Dict[str, Any]:
+def _bridge_get_json(
+    url: str, timeout: int = _BRIDGE_TIMEOUT_SECONDS
+) -> Dict[str, Any]:
     req = urllib.request.Request(
         url,
         headers={"Accept": "application/json"},
@@ -130,7 +140,13 @@ def computer_ui_inspect(app: Optional[str] = None) -> Dict[str, Any]:
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 frontmost = proc.stdout.strip()
-        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
+        except (
+            OSError,
+            subprocess.SubprocessError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ):
             quiet()
         return {
             "available": False,
@@ -159,16 +175,27 @@ _CU_AVAILABLE = False
 # _CU_AVAILABLE flag is what every call site checks.
 _pyautogui: Any = None
 
+
 def _init_computer_use():
     global _CU_AVAILABLE, _pyautogui
     try:
         import pyautogui as _pag
-        _pag.FAILSAFE = True   # 마우스를 좌상단 코너로 이동하면 중단
+
+        _pag.FAILSAFE = True  # 마우스를 좌상단 코너로 이동하면 중단
         _pag.PAUSE = 0.25
         _pyautogui = _pag
         _CU_AVAILABLE = True
-    except (ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
+    except (
+        ImportError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        AttributeError,
+        KeyError,
+    ):
         quiet()
+
 
 _init_computer_use()
 
@@ -194,7 +221,9 @@ def computer_screenshot() -> Dict[str, Any]:
         if _PLATFORM == "Darwin":
             r = subprocess.run(
                 ["screencapture", "-x", "-t", "png", tmp],
-                capture_output=True, timeout=10, check=False,
+                capture_output=True,
+                timeout=10,
+                check=False,
             )
             if r.returncode != 0:
                 raise ToolError(f"screencapture 실패: {r.stderr.decode()}")
@@ -203,11 +232,13 @@ def computer_screenshot() -> Dict[str, Any]:
             screenshot = _pyautogui.screenshot()
             screenshot.save(tmp)
         else:
-            raise ToolError("스크린샷 불가: macOS 전용 screencapture 또는 pyautogui 필요")
+            raise ToolError(
+                "스크린샷 불가: macOS 전용 screencapture 또는 pyautogui 필요"
+            )
         with open(tmp, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
         size = os.path.getsize(tmp)
-        w, h = (_pyautogui.size() if _CU_AVAILABLE else (0, 0))
+        w, h = _pyautogui.size() if _CU_AVAILABLE else (0, 0)
         return {
             "screenshot_b64": b64,
             "format": "png",
@@ -223,7 +254,9 @@ def computer_screenshot() -> Dict[str, Any]:
             quiet()
 
 
-def computer_click(x: int, y: int, button: str = "left", double: bool = False) -> Dict[str, Any]:
+def computer_click(
+    x: int, y: int, button: str = "left", double: bool = False
+) -> Dict[str, Any]:
     """화면 좌표 (x, y)를 클릭합니다."""
     base = _bridge_url()
     if base is not None:
@@ -272,7 +305,11 @@ def computer_type(text: str, interval: float = 0.04) -> Dict[str, Any]:
     if not _CU_AVAILABLE:
         raise ToolError("pyautogui를 사용할 수 없습니다.")
     _pyautogui.write(str(text), interval=float(interval))
-    return {"action": "type", "text": (text[:60] + "...") if len(text) > 60 else text, "chars": len(text)}
+    return {
+        "action": "type",
+        "text": (text[:60] + "...") if len(text) > 60 else text,
+        "chars": len(text),
+    }
 
 
 def computer_key(key: str) -> Dict[str, Any]:
@@ -290,7 +327,9 @@ def computer_key(key: str) -> Dict[str, Any]:
     return {"action": "key", "key": key}
 
 
-def computer_scroll(x: int, y: int, direction: str = "down", clicks: int = 3) -> Dict[str, Any]:
+def computer_scroll(
+    x: int, y: int, direction: str = "down", clicks: int = 3
+) -> Dict[str, Any]:
     """화면 좌표에서 스크롤합니다."""
     base = _bridge_url()
     if base is not None:
@@ -310,7 +349,13 @@ def computer_scroll(x: int, y: int, direction: str = "down", clicks: int = 3) ->
     _pyautogui.moveTo(x, y)
     amount = -clicks if direction == "down" else clicks
     _pyautogui.scroll(amount)
-    return {"action": "scroll", "x": x, "y": y, "direction": direction, "clicks": clicks}
+    return {
+        "action": "scroll",
+        "x": x,
+        "y": y,
+        "direction": direction,
+        "clicks": clicks,
+    }
 
 
 def computer_move(x: int, y: int) -> Dict[str, Any]:
@@ -356,7 +401,10 @@ def computer_status() -> Dict[str, Any]:
     }
 
 
-def vision_analyze(image_b64: str, prompt: str = "Describe this image in detail. What do you see? Be concise and factual.") -> Dict[str, Any]:
+def vision_analyze(
+    image_b64: str,
+    prompt: str = "Describe this image in detail. What do you see? Be concise and factual.",
+) -> Dict[str, Any]:
     """Analyze an image using the loaded multimodal VLM (if current model supports vision).
 
     Designed to pair perfectly with computer_screenshot() output (screenshot_b64).

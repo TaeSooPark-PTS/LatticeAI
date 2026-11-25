@@ -6,11 +6,15 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "run_real_model_rag_eval.py"
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[2] / "scripts" / "run_real_model_rag_eval.py"
+)
 
 
 def _load_eval_module() -> Any:
-    spec = importlib.util.spec_from_file_location("run_real_model_rag_eval", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "run_real_model_rag_eval", SCRIPT_PATH
+    )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -93,7 +97,9 @@ def test_fabricated_citation_penalizes_claim_support_rate(monkeypatch: Any) -> N
     assert out["grounding_gate_passed"] is False
 
 
-def test_hallucinated_extra_claim_penalizes_claim_support_rate(monkeypatch: Any) -> None:
+def test_hallucinated_extra_claim_penalizes_claim_support_rate(
+    monkeypatch: Any,
+) -> None:
     mod = _load_eval_module()
     monkeypatch.setattr(
         mod,

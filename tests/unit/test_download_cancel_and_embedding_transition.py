@@ -46,7 +46,9 @@ def test_hardware_recommendation_includes_batch_and_auto_drain() -> None:
     assert low_ram["auto_drain_on_ready"] is True
 
 
-def test_activate_downloaded_embedding_model_enqueues_fallback_nodes(tmp_path: Path) -> None:
+def test_activate_downloaded_embedding_model_enqueues_fallback_nodes(
+    tmp_path: Path,
+) -> None:
     assert is_embedding_model_id("mlx-community/embeddinggemma-2-4bit")
     assert not is_embedding_model_id("mlx-community/gemma-4-e4b-it-4bit")
 

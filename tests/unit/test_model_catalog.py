@@ -17,7 +17,10 @@ def test_catalog_reexport_identity():
     assert model_runtime.ENGINE_MODEL_CATALOG is model_catalog.ENGINE_MODEL_CATALOG
     assert model_runtime.MODEL_ENGINE_ALIASES is model_catalog.MODEL_ENGINE_ALIASES
     assert model_runtime.ENGINE_INSTALLERS is model_catalog.ENGINE_INSTALLERS
-    assert model_runtime.filter_lower_family_versions is model_catalog.filter_lower_family_versions
+    assert (
+        model_runtime.filter_lower_family_versions
+        is model_catalog.filter_lower_family_versions
+    )
 
 
 def test_catalog_engines_present():
@@ -32,12 +35,22 @@ def test_catalog_entries_have_required_keys():
         for model in models:
             for key in ("id", "name", "family", "tag"):
                 assert key in model, f"{engine} entry missing {key}: {model}"
-            for key in ("source_country", "source_company", "execution_method", "internet_requirement", "modality"):
-                assert model.get(key), f"{engine} entry missing source policy {key}: {model}"
+            for key in (
+                "source_country",
+                "source_company",
+                "execution_method",
+                "internet_requirement",
+                "modality",
+            ):
+                assert model.get(key), (
+                    f"{engine} entry missing source policy {key}: {model}"
+                )
             # Text-only entries are catalogued too (the ultralight and
             # general-purpose tiers), so each row must state which it is.
             assert model["modality"] in {"multimodal", "text"}
-            assert model["architecture"], f"{engine} entry missing architecture: {model}"
+            assert model["architecture"], (
+                f"{engine} entry missing architecture: {model}"
+            )
             assert model["lifecycle"] == "recommended"
 
 
@@ -69,10 +82,20 @@ def test_catalog_omits_superseded_generation_models():
     }
     chat_ids = {mid for mid in all_ids if "embeddinggemma" not in mid}
     blocked_fragments = (
-        "gemma-3", "gemma3", "gemma-2",
-        "qwen2.5", "qwen3-vl",
-        "llama-3", "llama-4", "llama4",
-        "smollm", "phi-", "mistral", "pixtral", "moondream", "deepseek",
+        "gemma-3",
+        "gemma3",
+        "gemma-2",
+        "qwen2.5",
+        "qwen3-vl",
+        "llama-3",
+        "llama-4",
+        "llama4",
+        "smollm",
+        "phi-",
+        "mistral",
+        "pixtral",
+        "moondream",
+        "deepseek",
     )
     for fragment in blocked_fragments:
         assert not any(fragment in model_id for model_id in chat_ids), fragment
@@ -82,7 +105,9 @@ def test_catalog_omits_superseded_generation_models():
 
 def test_embeddinggemma_2_pc_tailored_recommendations():
     # Apple Silicon >= 8 GB RAM recommends google/embeddinggemma-2 with MLX 4-bit (~0.5 GB)
-    emb_16 = model_catalog.recommend_embedding_for_hardware(ram_gb=16.0, apple_silicon=True)
+    emb_16 = model_catalog.recommend_embedding_for_hardware(
+        ram_gb=16.0, apple_silicon=True
+    )
     assert emb_16["id"] == "google/embeddinggemma-2"
     assert emb_16["hf_repo_id"] == "google/embeddinggemma-2"
     assert emb_16["mlx_repo_id"] == "mlx-community/embeddinggemma-2-4bit"
@@ -93,7 +118,9 @@ def test_embeddinggemma_2_pc_tailored_recommendations():
     assert emb_16["memory_footprint_gb"] == 0.5
 
     # Constrained RAM (< 8 GB) recommends google/embeddinggemma-300m (~0.3 GB)
-    emb_4 = model_catalog.recommend_embedding_for_hardware(ram_gb=6.0, apple_silicon=True)
+    emb_4 = model_catalog.recommend_embedding_for_hardware(
+        ram_gb=6.0, apple_silicon=True
+    )
     assert emb_4["id"] == "google/embeddinggemma-300m"
     assert emb_4["hf_repo_id"] == "google/embeddinggemma-300m"
     assert emb_4["mlx_repo_id"] == "mlx-community/embeddinggemma-300m-4bit"
@@ -139,4 +166,3 @@ def test_auxiliary_gguf_and_shard_completeness_guards(tmp_path):
     assert _shards_complete(tmp_path) is False
     (tmp_path / "model-00002-of-00002.safetensors").write_bytes(b"s2")
     assert _shards_complete(tmp_path) is True
-

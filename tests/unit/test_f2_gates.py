@@ -34,7 +34,9 @@ def gate(monkeypatch):
 
 # ── the environment layer (the historical behaviour) ─────────────────────────
 @pytest.mark.parametrize("word", sorted(TRUTHY))
-def test_every_truthy_word_this_product_has_ever_accepted_still_works(gate, monkeypatch, word):
+def test_every_truthy_word_this_product_has_ever_accepted_still_works(
+    gate, monkeypatch, word
+):
     monkeypatch.setenv(ENV, f"  {word.upper()} ")
     assert gate.enabled() is True
     assert gate() is True
@@ -79,7 +81,7 @@ def test_a_bound_resolver_beats_everything_including_an_override(gate, monkeypat
     gate.bind(lambda: next(answers))
 
     assert gate.source() == "resolver"
-    assert gate.enabled() is True   # resolved per call…
+    assert gate.enabled() is True  # resolved per call…
     assert gate.enabled() is False  # …not once at bind time
 
     gate.reset()

@@ -114,7 +114,12 @@ def test_profiles_expose_embeddinggemma_2_and_300m() -> None:
 
 def test_factory_builds_huggingface_provider_for_all_aliases() -> None:
     assert "huggingface" in PROVIDER_TYPES
-    for alias in ("huggingface", "hf", "sentence-transformers", "sentence_transformers"):
+    for alias in (
+        "huggingface",
+        "hf",
+        "sentence-transformers",
+        "sentence_transformers",
+    ):
         prov = build_embedding_provider(alias)
         assert isinstance(prov, HuggingFaceEmbeddingProvider)
         assert prov.provider == "huggingface"
@@ -127,7 +132,9 @@ def test_factory_builds_huggingface_provider_for_all_aliases() -> None:
         assert meta["max_tokens"] == 2048
 
 
-def test_huggingface_provider_with_sentence_transformers(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_huggingface_provider_with_sentence_transformers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     loaded_models: List[str] = []
     encoded_Batches: List[List[str]] = []
 
@@ -135,7 +142,9 @@ def test_huggingface_provider_with_sentence_transformers(monkeypatch: pytest.Mon
         def __init__(self, model_name: str) -> None:
             loaded_models.append(model_name)
 
-        def encode(self, texts: List[str], normalize_embeddings: bool = True) -> List[List[float]]:
+        def encode(
+            self, texts: List[str], normalize_embeddings: bool = True
+        ) -> List[List[float]]:
             encoded_Batches.append(list(texts))
             return [[3.0, 4.0] + [0.0] * 766 for _ in texts]
 
@@ -164,7 +173,9 @@ def test_huggingface_provider_with_sentence_transformers(monkeypatch: pytest.Mon
     assert len(p_vecs[0]) == 768
 
 
-def test_huggingface_provider_with_transformers_mean_pooling(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_huggingface_provider_with_transformers_mean_pooling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delitem(sys.modules, "sentence_transformers", raising=False)
 
     class FakeTokenizer:
@@ -198,14 +209,18 @@ def test_huggingface_provider_with_transformers_mean_pooling(monkeypatch: pytest
     tf_mod.AutoModel = FakeModel  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "transformers", tf_mod)
 
-    prov = HuggingFaceEmbeddingProvider(_RemoteConfig(model="google/embeddinggemma-2", dim=4))
+    prov = HuggingFaceEmbeddingProvider(
+        _RemoteConfig(model="google/embeddinggemma-2", dim=4)
+    )
     vecs = prov.embed_batch(["hello world"])
     assert vecs == [[1.0, 0.0, 0.0, 0.0]]
     assert prov.dim == 4
     assert prov.model_id == "huggingface:google/embeddinggemma-2:4"
 
 
-def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(tmp_path: Path) -> None:
+def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(
+    tmp_path: Path,
+) -> None:
     assert LOCAL_MLX_MODELS[0] == ("mlx-community/embeddinggemma-2-4bit", 768, False)
     assert LOCAL_MLX_MODELS[1] == ("mlx-community/embeddinggemma-300m-4bit", 768, False)
     assert LOCAL_HF_MODELS[0] == ("google/embeddinggemma-2", 768, False)
@@ -231,7 +246,9 @@ def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(tmp_path: 
     assert hf_found.dim == 768
     assert hf_found.source == "local_model"
 
-    detected = detect_embedder(AUTO_PROVIDER, "", {"HF_HUB_CACHE": str(hf_cache)}, probe_ollama=False)
+    detected = detect_embedder(
+        AUTO_PROVIDER, "", {"HF_HUB_CACHE": str(hf_cache)}, probe_ollama=False
+    )
     assert detected.found
     assert detected.provider == "huggingface"
     assert detected.model == "google/embeddinggemma-2"
@@ -239,11 +256,17 @@ def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(tmp_path: 
     assert detected.source == "local_model"
 
 
-def test_autodetect_finds_embeddinggemma_2_in_latticeai_models_dir(tmp_path: Path) -> None:
+def test_autodetect_finds_embeddinggemma_2_in_latticeai_models_dir(
+    tmp_path: Path,
+) -> None:
     home_dir = tmp_path / "home"
-    direct_model_dir = home_dir / ".latticeai" / "models" / "google" / "embeddinggemma-2"
+    direct_model_dir = (
+        home_dir / ".latticeai" / "models" / "google" / "embeddinggemma-2"
+    )
     direct_model_dir.mkdir(parents=True, exist_ok=True)
-    (direct_model_dir / "config.json").write_text('{"hidden_size": 768}', encoding="utf-8")
+    (direct_model_dir / "config.json").write_text(
+        '{"hidden_size": 768}', encoding="utf-8"
+    )
     (direct_model_dir / "model.safetensors").write_bytes(b"\x00" * 16)
 
     found = detect_embedder("auto", "", {"HOME": str(home_dir)}, probe_ollama=False)
@@ -260,7 +283,9 @@ def test_item13_auto_activates_semantic_embeddings_when_cached_and_falls_back_wh
     # 1. Empty cache -> offline zero-download deterministic hash fallback
     empty_cache = tmp_path / "empty"
     empty_cache.mkdir()
-    offline = resolve_embedder(AUTO_PROVIDER, extra={"env": {"HF_HUB_CACHE": str(empty_cache)}})
+    offline = resolve_embedder(
+        AUTO_PROVIDER, extra={"env": {"HF_HUB_CACHE": str(empty_cache)}}
+    )
     assert offline.active == "hash"
     assert offline.fell_back is False
     assert offline.provider.grade == "fallback"

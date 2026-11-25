@@ -73,7 +73,10 @@ def test_latticeai_internal_modules_use_physical_tools_package():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                if any(alias.name == "tools" or alias.name.startswith("tools.") for alias in node.names):
+                if any(
+                    alias.name == "tools" or alias.name.startswith("tools.")
+                    for alias in node.names
+                ):
                     offenders.append(f"{path.relative_to(REPO_ROOT)}:{node.lineno}")
             elif isinstance(node, ast.ImportFrom):
                 if node.module == "tools" or str(node.module).startswith("tools."):

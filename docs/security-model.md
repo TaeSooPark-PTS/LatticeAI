@@ -85,13 +85,13 @@ Set `LATTICEAI_RATE_LIMIT=0` to disable (for local development only).
 
 ```python
 MAGIC_NUMBERS = {
-    ".pdf":  b"%PDF",
+    ".pdf": b"%PDF",
     ".docx": b"PK\x03\x04",
     ".xlsx": b"PK\x03\x04",
     ".pptx": b"PK\x03\x04",
-    ".png":  b"\x89PNG",
-    ".jpg":  b"\xff\xd8\xff",
-    ".zip":  b"PK\x03\x04",
+    ".png": b"\x89PNG",
+    ".jpg": b"\xff\xd8\xff",
+    ".zip": b"PK\x03\x04",
 }
 ```
 

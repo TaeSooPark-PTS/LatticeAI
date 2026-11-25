@@ -46,10 +46,15 @@ def main(argv: list[str] | None = None) -> int:
     py_sbom = out / "sbom-python.json"
     ok, err = _run(
         [
-            sys.executable, "-m", "pip_audit",
-            "-r", str(root / args.requirements),
-            "-f", "cyclonedx-json",
-            "-o", str(py_sbom),
+            sys.executable,
+            "-m",
+            "pip_audit",
+            "-r",
+            str(root / args.requirements),
+            "-f",
+            "cyclonedx-json",
+            "-o",
+            str(py_sbom),
         ]
     )
     results.append(("python (pip-audit)", ok, err or str(py_sbom)))

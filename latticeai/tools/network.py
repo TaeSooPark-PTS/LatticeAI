@@ -12,7 +12,9 @@ from latticeai.core.quiet import quiet
 
 def _run_network_command(parts: List[str], timeout: int = 5) -> str:
     try:
-        completed = subprocess.run(parts, capture_output=True, text=True, timeout=timeout, check=False)
+        completed = subprocess.run(
+            parts, capture_output=True, text=True, timeout=timeout, check=False
+        )
         if completed.returncode != 0:
             return ""
         return completed.stdout.strip()
@@ -49,7 +51,9 @@ def network_status() -> Dict[str, Any]:
     if guessed_ip and guessed_ip not in local_ips.values():
         local_ips["default_route"] = guessed_ip
 
-    public_ip = _run_network_command(["curl", "-sS", "--max-time", "3", "https://api.ipify.org"])
+    public_ip = _run_network_command(
+        ["curl", "-sS", "--max-time", "3", "https://api.ipify.org"]
+    )
     wifi_info = _run_network_command(["networksetup", "-getinfo", "Wi-Fi"])
 
     primary_local_ip = local_ips.get("en0") or local_ips.get("en1") or guessed_ip or ""

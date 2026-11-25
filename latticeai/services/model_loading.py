@@ -5,6 +5,7 @@ Unifies the synchronous ``_prepare_model_sources`` path and the streaming
 preparation pipeline so engine installation, download consent, progress
 reporting, and local-server startup never diverge between blocking and SSE flows.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -53,6 +54,7 @@ def _get_model_runtime_deps(runtime_state: Any) -> Dict[str, Any]:
         parse_model_ref,
         pull_ollama_model_with_progress,
     )
+
     return {
         "_download_allowed": partial(_download_allowed, state=runtime_state),
         "_download_block": _download_block,
@@ -60,7 +62,9 @@ def _get_model_runtime_deps(runtime_state: Any) -> Dict[str, Any]:
         "_friendly_model_runtime_error": _friendly_model_runtime_error,
         "_ModelResolution": _ModelResolution,
         "_model_runtime_compatibility": _model_runtime_compatibility,
-        "_smoke_test_loaded_model": partial(_smoke_test_loaded_model, state=runtime_state),
+        "_smoke_test_loaded_model": partial(
+            _smoke_test_loaded_model, state=runtime_state
+        ),
         "download_hf_model": download_hf_model,
         "engine_installed": engine_installed,
         "ensure_engine_ready": partial(ensure_engine_ready, state=runtime_state),
@@ -85,7 +89,9 @@ def _get_model_runtime_deps(runtime_state: Any) -> Dict[str, Any]:
     }
 
 
-def _emit(deps: Any, emit_progress: ProgressEmitter, stage: str, message: str, **kwargs: Any) -> None:
+def _emit(
+    deps: Any, emit_progress: ProgressEmitter, stage: str, message: str, **kwargs: Any
+) -> None:
     if emit_progress is not None:
         emit_progress(deps["model_download_progress_payload"](stage, message, **kwargs))
 
@@ -120,19 +126,52 @@ def _prepare_mlx_or_hf(
     if explicit_path.exists():
         if emit_progress is None:
             return parsed_model, model_id, None
-        _emit(deps, emit_progress, "download", "로컬 모델 경로를 확인했습니다.", percent=100, detail=str(explicit_path), eta_seconds=0)
-        return parsed_model, model_id, {"model": parsed_model, "path": str(explicit_path), "cached": True}
+        _emit(
+            deps,
+            emit_progress,
+            "download",
+            "로컬 모델 경로를 확인했습니다.",
+            percent=100,
+            detail=str(explicit_path),
+            eta_seconds=0,
+        )
+        return (
+            parsed_model,
+            model_id,
+            {"model": parsed_model, "path": str(explicit_path), "cached": True},
+        )
     if not deps["hf_model_ready"](parsed_model, "local_mlx"):
         if not deps["_download_allowed"](allow_download):
             deps["_download_block"](parsed_provider, parsed_model)
-        dl_kwargs = {"progress_emit": emit_progress} if emit_progress is not None else {}
-        download_result = deps["download_hf_model"](parsed_model, "local_mlx", **dl_kwargs)
-        next_model, next_id = _apply_gated_fallback_result(download_result, parsed_provider, parsed_model, model_id)
+        dl_kwargs = (
+            {"progress_emit": emit_progress} if emit_progress is not None else {}
+        )
+        download_result = deps["download_hf_model"](
+            parsed_model, "local_mlx", **dl_kwargs
+        )
+        next_model, next_id = _apply_gated_fallback_result(
+            download_result, parsed_provider, parsed_model, model_id
+        )
         return next_model, next_id, download_result
     if emit_progress is None:
         return parsed_model, model_id, None
-    _emit(deps, emit_progress, "download", "이미 다운로드된 모델을 확인했습니다.", percent=100, eta_seconds=0)
-    return parsed_model, model_id, {"model": parsed_model, "path": str(deps["hf_model_dir"](parsed_model)), "cached": True}
+    _emit(
+        deps,
+        emit_progress,
+        "download",
+        "이미 다운로드된 모델을 확인했습니다.",
+        percent=100,
+        eta_seconds=0,
+    )
+    return (
+        parsed_model,
+        model_id,
+        {
+            "model": parsed_model,
+            "path": str(deps["hf_model_dir"](parsed_model)),
+            "cached": True,
+        },
+    )
 
 
 def _prepare_ollama(
@@ -142,12 +181,21 @@ def _prepare_ollama(
     allow_download: bool,
     emit_progress: ProgressEmitter,
 ) -> tuple[str, str, Optional[Dict[str, object]]]:
-    _emit(deps, emit_progress, "engine", "Ollama 서버를 확인하는 중입니다.", percent=12, indeterminate=True)
+    _emit(
+        deps,
+        emit_progress,
+        "engine",
+        "Ollama 서버를 확인하는 중입니다.",
+        percent=12,
+        indeterminate=True,
+    )
     deps["ensure_ollama_server"]()
     if emit_progress is None:
         ollama = deps["local_binary"]("ollama")
         if not ollama:
-            raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+            raise ModelRuntimeError(
+                status_code=400, detail="Ollama가 설치되지 않았습니다."
+            )
         if parsed_model not in deps["get_ollama_pulled_models"]():
             if not deps["_download_allowed"](allow_download):
                 deps["_download_block"]("ollama", parsed_model)
@@ -159,16 +207,45 @@ def _prepare_ollama(
                 check=False,
             )
             if completed.returncode != 0:
-                raise ModelRuntimeError(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
-            return parsed_model, model_id, {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
+                raise ModelRuntimeError(
+                    status_code=500,
+                    detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패",
+                )
+            return (
+                parsed_model,
+                model_id,
+                {
+                    "provider": "ollama",
+                    "model": parsed_model,
+                    "returncode": completed.returncode,
+                },
+            )
         return parsed_model, model_id, None
 
     if parsed_model not in deps["get_ollama_pulled_models"]():
         if not deps["_download_allowed"](allow_download):
             deps["_download_block"]("ollama", parsed_model)
-        return parsed_model, model_id, deps["pull_ollama_model_with_progress"](parsed_model, progress_emit=emit_progress)
-    _emit(deps, emit_progress, "download", "이미 다운로드된 Ollama 모델을 확인했습니다.", percent=100, detail=parsed_model, eta_seconds=0)
-    return parsed_model, model_id, {"provider": "ollama", "model": parsed_model, "cached": True}
+        return (
+            parsed_model,
+            model_id,
+            deps["pull_ollama_model_with_progress"](
+                parsed_model, progress_emit=emit_progress
+            ),
+        )
+    _emit(
+        deps,
+        emit_progress,
+        "download",
+        "이미 다운로드된 Ollama 모델을 확인했습니다.",
+        percent=100,
+        detail=parsed_model,
+        eta_seconds=0,
+    )
+    return (
+        parsed_model,
+        model_id,
+        {"provider": "ollama", "model": parsed_model, "cached": True},
+    )
 
 
 def _prepare_omlx(
@@ -182,16 +259,41 @@ def _prepare_omlx(
         if not deps["_download_allowed"](allow_download):
             deps["_download_block"]("omlx", parsed_model)
         if emit_progress is not None:
-            download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress) or {}
+            download_result = (
+                deps["download_hf_model"](
+                    parsed_model, "local_mlx", progress_emit=emit_progress
+                )
+                or {}
+            )
     elif emit_progress is not None:
         download_result = {"provider": "omlx", "model": parsed_model, "cached": True}
-        _emit(deps, emit_progress, "download", "이미 다운로드된 모델을 확인했습니다.", percent=100, detail=parsed_model, eta_seconds=0)
-    _emit(deps, emit_progress, "server", "oMLX 서버를 시작하는 중입니다.", percent=92, indeterminate=True)
+        _emit(
+            deps,
+            emit_progress,
+            "download",
+            "이미 다운로드된 모델을 확인했습니다.",
+            percent=100,
+            detail=parsed_model,
+            eta_seconds=0,
+        )
+    _emit(
+        deps,
+        emit_progress,
+        "server",
+        "oMLX 서버를 시작하는 중입니다.",
+        percent=92,
+        indeterminate=True,
+    )
     served_model = deps["ensure_omlx_server"](parsed_model)
     return (
         served_model,
         f"omlx:{served_model}",
-        {**download_result, "provider": "omlx", "model": served_model, "server_ready": True},
+        {
+            **download_result,
+            "provider": "omlx",
+            "model": served_model,
+            "server_ready": True,
+        },
     )
 
 
@@ -212,14 +314,38 @@ def _prepare_hf_server_engine(
         if not deps["_download_allowed"](allow_download):
             deps["_download_block"](provider, parsed_model)
         if emit_progress is not None:
-            download_result = deps["download_hf_model"](parsed_model, provider, progress_emit=emit_progress) or {}
-            parsed_model, model_id = _apply_gated_fallback_result(download_result, provider, parsed_model, model_id)
+            download_result = (
+                deps["download_hf_model"](
+                    parsed_model, provider, progress_emit=emit_progress
+                )
+                or {}
+            )
+            parsed_model, model_id = _apply_gated_fallback_result(
+                download_result, provider, parsed_model, model_id
+            )
     elif emit_progress is not None:
         download_result = {"provider": provider, "model": parsed_model, "cached": True}
-        _emit(deps, emit_progress, "download", cached_msg, percent=100, detail=parsed_model, eta_seconds=0)
+        _emit(
+            deps,
+            emit_progress,
+            "download",
+            cached_msg,
+            percent=100,
+            detail=parsed_model,
+            eta_seconds=0,
+        )
     _emit(deps, emit_progress, "server", server_msg, percent=92, indeterminate=True)
     deps[ensure_key](parsed_model)
-    return parsed_model, model_id, {**download_result, "provider": provider, "model": parsed_model, "server_ready": True}
+    return (
+        parsed_model,
+        model_id,
+        {
+            **download_result,
+            "provider": provider,
+            "model": parsed_model,
+            "server_ready": True,
+        },
+    )
 
 
 def _prepare_lmstudio(
@@ -235,12 +361,17 @@ def _prepare_lmstudio(
     }
     if parsed_model not in downloaded and not deps["_download_allowed"](allow_download):
         deps["_download_block"]("lmstudio", parsed_model)
-    _emit(deps, emit_progress, "download", "LM Studio 모델을 확인하는 중입니다.", percent=35, indeterminate=True)
+    _emit(
+        deps,
+        emit_progress,
+        "download",
+        "LM Studio 모델을 확인하는 중입니다.",
+        percent=35,
+        indeterminate=True,
+    )
     ensured = deps["ensure_lmstudio_model"](parsed_model)
     resolved_model = str(
-        ensured.get("instance_id")
-        or ensured.get("resolved_model")
-        or parsed_model
+        ensured.get("instance_id") or ensured.get("resolved_model") or parsed_model
     ).strip()
     return resolved_model, f"lmstudio:{resolved_model}", ensured
 
@@ -258,11 +389,27 @@ def _prepare_model_sources(
     download_result: Optional[Dict[str, object]] = None
 
     if parsed_provider in _LOCAL_ENGINES:
-        _emit(deps, emit_progress, "engine", "실행 엔진을 확인하는 중입니다.", percent=2, indeterminate=True)
-        if not deps["engine_installed"](parsed_provider) and not deps["_download_allowed"](allow_download):
+        _emit(
+            deps,
+            emit_progress,
+            "engine",
+            "실행 엔진을 확인하는 중입니다.",
+            percent=2,
+            indeterminate=True,
+        )
+        if not deps["engine_installed"](parsed_provider) and not deps[
+            "_download_allowed"
+        ](allow_download):
             deps["_engine_install_block"](parsed_provider)
         install_result = deps["ensure_engine_ready"](parsed_provider)
-        _emit(deps, emit_progress, "engine", "실행 엔진 준비가 완료되었습니다.", percent=10, indeterminate=False)
+        _emit(
+            deps,
+            emit_progress,
+            "engine",
+            "실행 엔진 준비가 완료되었습니다.",
+            percent=10,
+            indeterminate=False,
+        )
 
     if parsed_provider in {"local_mlx", "huggingface"}:
         parsed_model, model_id, download_result = _prepare_mlx_or_hf(
@@ -278,22 +425,41 @@ def _prepare_model_sources(
         )
     elif parsed_provider == "vllm":
         parsed_model, model_id, download_result = _prepare_hf_server_engine(
-            deps, "vllm", "ensure_vllm_server",
-            "이미 다운로드된 모델을 확인했습니다.", "vLLM 서버를 시작하는 중입니다.",
-            parsed_model, model_id, allow_download, emit_progress,
+            deps,
+            "vllm",
+            "ensure_vllm_server",
+            "이미 다운로드된 모델을 확인했습니다.",
+            "vLLM 서버를 시작하는 중입니다.",
+            parsed_model,
+            model_id,
+            allow_download,
+            emit_progress,
         )
     elif parsed_provider == "llamacpp":
         parsed_model, model_id, download_result = _prepare_hf_server_engine(
-            deps, "llamacpp", "ensure_llamacpp_server",
-            "이미 다운로드된 GGUF 모델을 확인했습니다.", "llama.cpp 서버를 시작하는 중입니다.",
-            parsed_model, model_id, allow_download, emit_progress,
+            deps,
+            "llamacpp",
+            "ensure_llamacpp_server",
+            "이미 다운로드된 GGUF 모델을 확인했습니다.",
+            "llama.cpp 서버를 시작하는 중입니다.",
+            parsed_model,
+            model_id,
+            allow_download,
+            emit_progress,
         )
     elif parsed_provider == "lmstudio":
         parsed_model, model_id, download_result = _prepare_lmstudio(
             deps, parsed_model, allow_download, emit_progress
         )
     else:
-        _emit(deps, emit_progress, "engine", "모델 연결을 준비하는 중입니다.", percent=30, indeterminate=True)
+        _emit(
+            deps,
+            emit_progress,
+            "engine",
+            "모델 연결을 준비하는 중입니다.",
+            percent=30,
+            indeterminate=True,
+        )
 
     return {
         "install_result": install_result,
@@ -329,12 +495,19 @@ async def prepare_and_load_model(
     parsed_provider, parsed_model = deps["parse_model_ref"](model_id)
     if parsed_provider == "mlx":
         parsed_provider = "local_mlx"
-    compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
+    compatibility = deps["_model_runtime_compatibility"](
+        parsed_model, engine=parsed_provider
+    )
     if compatibility.get("supported") is False:
         raise ModelRuntimeError(status_code=400, detail=compatibility)
 
     sources = await asyncio.to_thread(
-        _prepare_model_sources, deps, parsed_provider, parsed_model, model_id, allow_download
+        _prepare_model_sources,
+        deps,
+        parsed_provider,
+        parsed_model,
+        model_id,
+        allow_download,
     )
     install_result = sources["install_result"]
     download_result = sources["download_result"]
@@ -342,7 +515,11 @@ async def prepare_and_load_model(
     model_id = sources["model_id"]
 
     effective_email = (user_email or deps["get_current_user"](request) or "").strip()
-    user_api_key = deps["get_user_api_key"](effective_email, parsed_provider) if parsed_provider != "local_mlx" else None
+    user_api_key = (
+        deps["get_user_api_key"](effective_email, parsed_provider)
+        if parsed_provider != "local_mlx"
+        else None
+    )
     msg = await deps["router"].load_model(
         model_id,
         adapter_path,
@@ -355,9 +532,13 @@ async def prepare_and_load_model(
     ready_to_chat = True
     compat_status = "ok"
     try:
-        smoke_result = await deps["_smoke_test_loaded_model"](resolution, api_key_override=user_api_key)
+        smoke_result = await deps["_smoke_test_loaded_model"](
+            resolution, api_key_override=user_api_key
+        )
         ready_to_chat = bool(smoke_result.get("ok"))
-        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
+        compat_status = str(
+            smoke_result.get("status") or ("ok" if ready_to_chat else "degraded")
+        )
     except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
         logging.warning("smoke test failed for %s: %s", resolution.load_id, exc)
         compat_status = "unknown"
@@ -370,7 +551,12 @@ async def prepare_and_load_model(
         "installed_now": bool(install_result.get("installed_now")),
         "download": download_result,
         "resolution": resolution.to_dict(),
-        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
+        "downloaded": bool(
+            download_result
+            and not (
+                isinstance(download_result, dict) and download_result.get("cached")
+            )
+        ),
         "loaded": True,
         "ready_to_chat": ready_to_chat,
         "compatibility_status": compat_status,
@@ -399,7 +585,9 @@ async def prepare_and_load_model_stream(
     parsed_provider, parsed_model = deps["parse_model_ref"](model_id)
     if parsed_provider == "mlx":
         parsed_provider = "local_mlx"
-    compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
+    compatibility = deps["_model_runtime_compatibility"](
+        parsed_model, engine=parsed_provider
+    )
     if compatibility.get("supported") is False:
         raise ModelRuntimeError(status_code=400, detail=compatibility)
 
@@ -412,25 +600,38 @@ async def prepare_and_load_model_stream(
     def blocking_prepare() -> None:
         try:
             sources = _prepare_model_sources(
-                deps, parsed_provider, parsed_model, model_id, allow_download, emit_progress=emit_progress
+                deps,
+                parsed_provider,
+                parsed_model,
+                model_id,
+                allow_download,
+                emit_progress=emit_progress,
             )
-            work_result.update({
-                "model_id": sources["model_id"],
-                "parsed_provider": parsed_provider,
-                "parsed_model": sources["parsed_model"],
-                "install_result": sources["install_result"],
-                "download_result": sources["download_result"],
-            })
+            work_result.update(
+                {
+                    "model_id": sources["model_id"],
+                    "parsed_provider": parsed_provider,
+                    "parsed_model": sources["parsed_model"],
+                    "install_result": sources["install_result"],
+                    "download_result": sources["download_result"],
+                }
+            )
             work_queue.put({"kind": "done"})
         except ModelRuntimeError as exc:
-            work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
+            work_queue.put(
+                {"kind": "error", "status_code": exc.status_code, "detail": exc.detail}
+            )
         except Exception as exc:
             logging.exception("model prepare stream worker failed")
-            work_queue.put({
-                "kind": "error",
-                "status_code": 500,
-                "detail": deps["_friendly_model_runtime_error"](exc, model_id=model_id, engine=parsed_provider),
-            })
+            work_queue.put(
+                {
+                    "kind": "error",
+                    "status_code": 500,
+                    "detail": deps["_friendly_model_runtime_error"](
+                        exc, model_id=model_id, engine=parsed_provider
+                    ),
+                }
+            )
 
     from latticeai.services.model_runtime.download import clear_download_cancel
 
@@ -441,7 +642,9 @@ async def prepare_and_load_model_stream(
     worker.start()
 
     cancelled = False
-    async for ev in _iter_prepare_queue_events(work_queue, request, model_id, parsed_model):
+    async for ev in _iter_prepare_queue_events(
+        work_queue, request, model_id, parsed_model
+    ):
         if ev == "__cancelled__":
             cancelled = True
             break
@@ -492,15 +695,22 @@ async def _finalize_loaded_stream_events(
             yield ev
         return
 
-    yield sse_event("progress", deps["model_download_progress_payload"](
-        "load",
-        "모델을 메모리에 로드하는 중입니다.",
-        percent=96,
-        indeterminate=True,
-    ))
+    yield sse_event(
+        "progress",
+        deps["model_download_progress_payload"](
+            "load",
+            "모델을 메모리에 로드하는 중입니다.",
+            percent=96,
+            indeterminate=True,
+        ),
+    )
 
     effective_email = (user_email or deps["get_current_user"](request) or "").strip()
-    user_api_key = deps["get_user_api_key"](effective_email, prepared_provider) if prepared_provider != "local_mlx" else None
+    user_api_key = (
+        deps["get_user_api_key"](effective_email, prepared_provider)
+        if prepared_provider != "local_mlx"
+        else None
+    )
     msg = await deps["router"].load_model(
         prepared_model_id,
         None,
@@ -515,21 +725,30 @@ async def _finalize_loaded_stream_events(
         engine_aliases=deps["MODEL_ENGINE_ALIASES"],
     )
     resolution_stream.update_after_load(actual_current=deps["router"].current_model_id)
-    yield sse_event("progress", deps["model_download_progress_payload"](
-        "smoke_test",
-        "채팅 호환성 테스트 중입니다.",
-        percent=98,
-        indeterminate=True,
-    ))
+    yield sse_event(
+        "progress",
+        deps["model_download_progress_payload"](
+            "smoke_test",
+            "채팅 호환성 테스트 중입니다.",
+            percent=98,
+            indeterminate=True,
+        ),
+    )
     smoke_result: Dict[str, object] = {}
     ready_to_chat = True
     compat_status = "ok"
     try:
-        smoke_result = await deps["_smoke_test_loaded_model"](resolution_stream, api_key_override=user_api_key)
+        smoke_result = await deps["_smoke_test_loaded_model"](
+            resolution_stream, api_key_override=user_api_key
+        )
         ready_to_chat = bool(smoke_result.get("ok"))
-        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
+        compat_status = str(
+            smoke_result.get("status") or ("ok" if ready_to_chat else "degraded")
+        )
     except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
-        logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
+        logging.warning(
+            "smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc
+        )
         compat_status = "unknown"
     result = {
         "status": "ok",
@@ -537,21 +756,31 @@ async def _finalize_loaded_stream_events(
         "model": prepared_model_id,
         "current": deps["router"].current_model_id,
         "engine": prepared_provider,
-        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
+        "installed_now": bool(
+            isinstance(install_result, dict) and install_result.get("installed_now")
+        ),
         "download": download_result,
         "resolution": resolution_stream.to_dict(),
-        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
+        "downloaded": bool(
+            download_result
+            and not (
+                isinstance(download_result, dict) and download_result.get("cached")
+            )
+        ),
         "loaded": True,
         "ready_to_chat": ready_to_chat,
         "compatibility_status": compat_status,
         "smoke_test": smoke_result,
     }
-    yield sse_event("progress", deps["model_download_progress_payload"](
-        "done",
-        "모델 준비가 완료되었습니다.",
-        percent=100,
-        eta_seconds=0,
-    ))
+    yield sse_event(
+        "progress",
+        deps["model_download_progress_payload"](
+            "done",
+            "모델 준비가 완료되었습니다.",
+            percent=100,
+            eta_seconds=0,
+        ),
+    )
     yield sse_event("done", result)
 
 
@@ -610,14 +839,18 @@ def _maybe_build_embedding_done_payload(
     transition = activate_downloaded_embedding_model(
         prepared_model_name, provider=prepared_provider
     )
-    is_cached = isinstance(download_result, dict) and bool(download_result.get("cached"))
+    is_cached = isinstance(download_result, dict) and bool(
+        download_result.get("cached")
+    )
     result = {
         "status": "ok",
         "message": f"임베딩 모델 준비 및 시맨틱 전환 완료: {prepared_model_name}",
         "model": prepared_model_id,
         "current": deps["router"].current_model_id,
         "engine": prepared_provider,
-        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
+        "installed_now": bool(
+            isinstance(install_result, dict) and install_result.get("installed_now")
+        ),
         "download": download_result,
         "downloaded": bool(download_result and not is_cached),
         "loaded": True,

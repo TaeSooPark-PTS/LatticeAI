@@ -42,7 +42,9 @@ def test_features_that_cancel_out_leave_an_unnormalizable_vector(module):
 
 @pytest.mark.parametrize("module", MODULES)
 def test_an_ordinary_sentence_is_l2_normalized(module):
-    vec = module.LocalEmbeddingModel(dim=64).embed("hybrid retrieval over the knowledge graph")
+    vec = module.LocalEmbeddingModel(dim=64).embed(
+        "hybrid retrieval over the knowledge graph"
+    )
 
     assert len(vec) == 64
     assert math.isclose(math.sqrt(sum(v * v for v in vec)), 1.0, rel_tol=1e-9)

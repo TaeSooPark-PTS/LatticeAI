@@ -67,6 +67,7 @@ from typing import Any, Dict, List, Mapping, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+
 # ``scripts`` is not a package, so the generator is loaded by path — the same
 # trick the parity generators and their tests use. Importing it rather than
 # retyping its constants is what keeps *one* serialiser in the pipeline: if the
@@ -202,7 +203,9 @@ def merge_fragments(
                 paths.setdefault(path, {})[method] = operation
         for name, schema in fragment["components"]["schemas"].items():
             existing = schemas.get(name)
-            if existing is not None and canonical_json(existing) != canonical_json(schema):
+            if existing is not None and canonical_json(existing) != canonical_json(
+                schema
+            ):
                 raise CompositionError(
                     f"schema {name} differs between fragments (seen again in {family}) — "
                     "shared schemas must be byte-identical copies"
@@ -236,7 +239,10 @@ def diff_report(composed_text: str, committed_text: str, limit: int = 40) -> Lis
     committed_schemas = set(committed["components"]["schemas"])
     for label, names in (
         ("missing from the composition", sorted(committed_schemas - composed_schemas)),
-        ("present only in the composition", sorted(composed_schemas - committed_schemas)),
+        (
+            "present only in the composition",
+            sorted(composed_schemas - committed_schemas),
+        ),
     ):
         if names:
             lines.append(f"{len(names)} schema(s) {label}: {', '.join(names[:limit])}")
@@ -288,7 +294,9 @@ def worker_spec_problems(
         for method in item
     }
     served = {
-        key for key, path, _ in spec_operations(worker_spec) if path not in EXEMPT_WORKER_PATHS
+        key
+        for key, path, _ in spec_operations(worker_spec)
+        if path not in EXEMPT_WORKER_PATHS
     }
     extra = sorted(served - kept)
     if extra:
@@ -327,14 +335,22 @@ def compose(
 
     if worker_spec_path is not None:
         worker_spec = load_json(worker_spec_path)
-        problems.extend(worker_spec_problems(worker_spec, fragments[WORKER_FAMILY], envelope))
+        problems.extend(
+            worker_spec_problems(worker_spec, fragments[WORKER_FAMILY], envelope)
+        )
     return composed_text, problems
 
 
 def main(argv: List[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Compose the OpenAPI contract from fragments.")
-    parser.add_argument("--fragments", type=Path, default=FRAGMENT_DIR, help="fragment directory")
-    parser.add_argument("--spec", type=Path, default=SPEC_PATH, help="committed contract")
+    parser = argparse.ArgumentParser(
+        description="Compose the OpenAPI contract from fragments."
+    )
+    parser.add_argument(
+        "--fragments", type=Path, default=FRAGMENT_DIR, help="fragment directory"
+    )
+    parser.add_argument(
+        "--spec", type=Path, default=SPEC_PATH, help="committed contract"
+    )
     parser.add_argument(
         "--worker-spec",
         type=Path,
