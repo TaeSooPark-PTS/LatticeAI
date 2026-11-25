@@ -1,15 +1,3 @@
-//! The timer itself: state, one tick, and the loop that repeats it.
-//!
-//! Why `sleep` in a loop rather than `tokio::time::Interval`: an `Interval` has
-//! one fixed period, and this schedule is not fixed — a failing worker stretches
-//! it (see [`crate::schedule::Backoff`]). `Interval` would also try to *catch
-//! up* after a slow tick, firing back to back, which is the opposite of what a
-//! drain that just timed out needs.
-//!
-//! The first tick runs immediately on spawn. The moment a backlog most needs
-//! attention is right after a restart, and waiting a full interval to discover
-//! that is a minute of a user watching nothing happen.
-
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,11 +14,9 @@ use crate::queue::{read_counts, QueueCounts};
 use crate::schedule::Backoff;
 use crate::tick::{self, pick_resumable, DrainOutcome, ResumeOutcome, TickReport};
 
-/// Safety cap on "keep draining while the queue is full" waves in one tick.
 const MAX_DRAIN_WAVES: u32 = 32;
 use lattice_core::graph_write::GraphWriter;
 
-/// The scheduler could not be built.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobsError(String);
 
@@ -42,27 +28,16 @@ impl std::fmt::Display for JobsError {
 
 impl std::error::Error for JobsError {}
 
-/// Everything `/host/jobs` answers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SchedulerSnapshot {
-    /// Whether the periodic loop is running. `false` means the routes still
-    /// work and nothing is on a timer — an honest "manual only".
     pub enabled: bool,
-    /// Configured seconds between successful ticks.
     pub interval: u64,
-    /// Whether interrupted ingestion jobs are resumed too.
     pub autoresume: bool,
-    /// The worker being ticked.
     pub worker_origin: String,
-    /// The most recent tick, or `null` before the first one.
     pub last_tick: Option<TickReport>,
-    /// Seconds until the next tick, or `null` when nothing has ticked yet.
     pub next_due_in: Option<u64>,
-    /// Whether the delay is currently stretched by consecutive failures.
     pub backing_off: bool,
-    /// The last few ticks, newest first.
     pub recent_ticks: Vec<TickReport>,
-    /// The embed backlog, read straight from SQLite.
     pub queue_counts: QueueCounts,
 }
 
@@ -73,7 +48,6 @@ struct Inner {
     resume_progress: HashMap<String, u64>,
 }
 
-/// Drives the worker's background work on a timer.
 pub struct Scheduler {
     config: SchedulerConfig,
     client: Client,
@@ -83,7 +57,6 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    /// A scheduler with its own HTTP client.
     pub fn new(config: SchedulerConfig) -> Result<Self, JobsError> {
         let client = Client::builder()
             .no_proxy()
@@ -93,8 +66,6 @@ impl Scheduler {
         Ok(Self::with_client(config, client))
     }
 
-    /// A scheduler reusing an existing client (the host's, so the loopback
-    /// connection pool is shared).
     pub fn with_client(config: SchedulerConfig, client: Client) -> Self {
         let backoff = Backoff::new(config.interval, config.max_backoff);
         Self {
@@ -111,31 +82,23 @@ impl Scheduler {
         }
     }
 
-    /// Point ticks at the native drain (W3b) instead of POSTing the worker.
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// What this scheduler was configured with.
     pub fn config(&self) -> &SchedulerConfig {
         &self.config
     }
 
-    /// Whether the periodic loop is running.
     pub fn is_running(&self) -> bool {
         self.running.load(Ordering::SeqCst)
     }
 
-    /// The delay before the next tick, backoff included.
     pub fn next_delay(&self) -> Duration {
         self.lock().backoff.delay()
     }
 
-    /// Run one tick now: drain, then (opt-in) resume one ingestion job.
-    ///
-    /// Never fails. A worker that is down produces a report saying so, a longer
-    /// delay, and one line in the host log.
     pub async fn tick(&self) -> TickReport {
         let started = Instant::now();
         let mut report = TickReport::started();
@@ -181,8 +144,6 @@ impl Scheduler {
         self.drain_http(plan).await
     }
 
-    /// Native path: keep claiming while each wave comes back full, so a deep
-    /// backlog does not wait a minute between 25-node bites.
     async fn drain_native(
         &self,
         graph: GraphWriter,
@@ -231,9 +192,6 @@ impl Scheduler {
         Ok(total)
     }
 
-    /// HTTP path: one wave of concurrent POSTs, width from the plan. A fake
-    /// worker does not shrink `vector_jobs`, so we do not loop on the pending
-    /// count — only on what this wave actually claimed.
     async fn drain_http(&self, plan: crate::drain::DrainPlan) -> Result<DrainOutcome, String> {
         if plan.inflight <= 1 {
             return tick::drain_with_limit(&self.client, &self.config, plan.limit).await;
@@ -269,18 +227,14 @@ impl Scheduler {
         }
     }
 
-    /// The `/host/jobs` payload, with the queue counted off the event loop.
     pub async fn snapshot(&self) -> SchedulerSnapshot {
         let db = self.config.db_path.clone();
-        // One small SQLite read, but this process also serves the product's
-        // whole API surface; blocking calls belong on the blocking pool.
         let counts = tokio::task::spawn_blocking(move || read_counts(&db))
             .await
             .unwrap_or_else(|err| QueueCounts::unavailable(format!("queue read failed: {err}")));
         self.status(counts)
     }
 
-    /// The `/host/jobs` payload assembled around counts the caller already has.
     pub fn status(&self, queue_counts: QueueCounts) -> SchedulerSnapshot {
         let inner = self.lock();
         let next_due_in = inner.last_tick_at.map(|at| {
@@ -300,7 +254,6 @@ impl Scheduler {
         }
     }
 
-    /// Start the periodic loop; it stops when `shutdown` resolves.
     pub fn spawn<F>(self: Arc<Self>, shutdown: F) -> tokio::task::JoinHandle<()>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -327,8 +280,6 @@ impl Scheduler {
             return Ok(Vec::new());
         };
         let status = tick::resume(&self.client, &self.config, &job.job_id).await?;
-        // Remember how far it had got when we asked, so a resume that changes
-        // nothing is not re-issued every minute for ever.
         self.lock()
             .resume_progress
             .insert(job.job_id.clone(), job.processed);
@@ -364,9 +315,6 @@ impl Scheduler {
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        // A poisoned lock here would mean a panic inside `record`, which holds
-        // the guard across no user code at all. Recovering keeps a status route
-        // answering instead of turning one panic into a permanently 500 host.
         self.inner.lock().unwrap_or_else(|err| err.into_inner())
     }
 }
@@ -456,7 +404,6 @@ mod tests {
         assert_eq!(scheduler.next_delay(), Duration::from_secs(60));
         let snapshot = scheduler.status(QueueCounts::unavailable("x"));
         assert!(!snapshot.backing_off);
-        // A tick has happened, so the next one is now datable.
         assert!(snapshot.next_due_in.expect("due") <= 60);
     }
 

@@ -171,8 +171,7 @@
   font-size: 0.6rem;
 }
 
-/* The conversation drawer inside the dock reuses the history panel sizing the
-   old home shelf carried. */
+
 .brain-home-drawer-body .brain-history-list {
   max-height: none;
   overflow: visible;
@@ -218,17 +217,14 @@
   }
 
   .brain-centered-home {
-    /* Floor matches the hero's own minimum (heading 3.9rem + canvas 15rem) so
-       the auto-sized rows below cannot starve it on a short window. */
+    
     grid-template-rows: minmax(16.5rem, 1fr);
     grid-auto-rows: auto;
     padding: clamp(0.55rem, 1.4vh, 0.8rem) 0;
     overflow: visible;
   }
 
-  /* The desktop empty home is a one-viewport contract: the intro row may
-     only spend a bounded slice of height, and disappears entirely on
-     low-height viewports so the primary controls stay fully on screen. */
+  
   .brain-centered-home .brain-home-intro-row {
     margin-top: 0.6rem;
   }
@@ -337,10 +333,7 @@
   }
 }
 
-/* ── First 5 minutes card + home briefing row ─────────────────────────
-   The empty home greets brand-new users with a light guided checklist
-   next to an always-visible daily briefing. Both reuse existing surface
-   tokens so they read as part of the command deck, not a modal tour. */
+
 
 .brain-home-intro-row {
   display: grid;
@@ -373,10 +366,6 @@
   border-radius: 16px;
 }
 
-/* ── First Value Loop "30초 체험" track (backlog #3) ────────────────────────
-   Sits beside the first-five card in the intro row and reuses its visual
-   language. Inflow motes / success pulse come from the shared emotional
-   design classes, which are already gated on prefers-reduced-motion. */
 
 
 
@@ -402,11 +391,8 @@
 
 
 
-/* ── Quick controls: autonomy + appearance on the home ────────────────────
-   These two decisions are revised while working, so they belong on the screen
-   where the work happens rather than behind two navigations in Settings. Kept
-   deliberately quiet — a single hairline row of segmented chips — so it never
-   competes with the composer, which is the one loud thing on this page. */
+
+
 .brain-quick-controls {
   display: flex;
   flex-wrap: wrap;
@@ -531,12 +517,7 @@
   font-size: 0.68rem;
 }
 
-/* ── Hierarchy: one loud thing ────────────────────────────────────────────
-   The composer, the ingestion dock and the automation panel shared a single
-   border/background/shadow rule, so the deck read as three equal boxes and the
-   page had no obvious subject. This screen's job is "ask your Brain", so the
-   composer carries the emphasis and its two neighbours step back. Nothing here
-   changes behaviour — only which element the eye lands on first. */
+
 .brain-home-control-deck > .brain-composer {
   border-color: hsl(var(--primary) / 0.42);
   background: hsl(var(--surface));
@@ -569,7 +550,7 @@
   font-size: 0.76rem;
 }
 
-/* Supporting panels: same shape, quieter surface. */
+
 .brain-home-control-deck .brain-ingestion-dock,
 .brain-home-control-deck .brain-memory-automation.is-compact {
   border-color: hsl(var(--border) / 0.6);
@@ -583,17 +564,13 @@
   background: hsl(var(--surface) / 0.9);
 }
 
-/* The suggestion strip is a hint, not a destination. */
+
 .brain-home-prompt-strip > button {
   box-shadow: none;
 }
 
-/* (superseded below by the one-screen pass, kept for the canvas floor) */
-/* ── Fit the primary action on the first screen ──────────────────────────
-   The hero stage was 420px of a 744px viewport, which pushed the composer —
-   the thing this page exists for — below the fold. The stage's floor was set by
-   its source column, so tightening those rows is what actually buys the height
-   back; the canvas then drops ~9rem and the composer clears the fold. */
+
+
 .brain-centered-home .brain-flow-canvas {
   min-height: 15.5rem;
 }
@@ -612,17 +589,7 @@
   margin-bottom: 0.18rem;
 }
 
-/* ── Home fits one screen ────────────────────────────────────────────────
-   Measured on a 744px window: the decorative hero took 341px (51% of the
-   viewport) while the three cards that actually carry today's work — the
-   30-second try, the first-five checklist, and today's briefing — began at
-   674px and ran to 966px, i.e. entirely below the fold. You had to scroll to
-   discover the parts you act on.
 
-   Nothing is removed. The marketing-sized headline shrinks to a signpost, the
-   canvas gives back some height, and the bottom cards drop their long prose so
-   their titles and controls survive. That buys the ~220px needed to bring the
-   whole home into one screen. */
 .brain-centered-home .brain-flow-heading {
   min-height: 0;
 }
@@ -642,13 +609,7 @@
   min-height: 2.2rem;
 }
 
-/* ── Sources read across, not down ───────────────────────────────────────
-   The five capture sources sat in a vertical column pinned top-to-bottom, so
-   they alone set the canvas floor at ~290px and any attempt to shorten the
-   hero made the canvas overflow its grid track and cover the controls beneath
-   it. Laid out as a row along the top they need ~30px instead of ~170px, the
-   canvas can be short, and five short labels are quicker to scan side by side
-   than stacked anyway. Every source is still here. */
+
 .brain-centered-home .brain-flow-sources {
   top: 0.85rem;
   right: 1rem;
@@ -679,35 +640,30 @@
   transform: none;
 }
 
-/* With the left column gone the canvas only has to hold the organism, the
-   graph cards and the status row. */
+
 .brain-centered-home .brain-flow-canvas {
   min-height: 12.5rem;
 }
 
-/* Graph cards start below the source row. */
+
 .brain-centered-home .brain-flow-graph > .brain-flow-column-label {
   top: 3rem;
 }
 
 
-/* Shorter cards so three rows still clear the status bar in a short canvas. */
+
 .brain-centered-home .brain-flow-node {
   min-height: 2.2rem;
   max-width: 7.6rem;
   padding: 0.32rem 0.5rem;
 }
 
-/* Two-line Korean labels made the cards ~50px tall, half again what the row
-   spacing assumes, so they collided in a short canvas. One line each keeps
-   every card the same height; the full title is still on the tooltip and one
-   click away in the graph. */
+
 .brain-centered-home .brain-flow-node > strong {
   -webkit-line-clamp: 1;
 }
 
-/* Type over title stacked two lines high, which is more than the row spacing a
-   short canvas allows. Side by side keeps both facts and halves the card. */
+
 .brain-centered-home .brain-flow-node {
   display: flex;
   min-height: 1.75rem;
@@ -727,10 +683,7 @@
   white-space: nowrap;
 }
 
-/* The organism was sized from the viewport (min(25vw, 20rem) ≈ 320px) while the
-   canvas is now ~220px, so it overflowed and `overflow: hidden` clipped a fifth
-   of it away. Size it from the canvas instead: it now scales with whatever
-   height the hero row gets, and stays whole at every window size. */
+
 .brain-centered-home .brain-flow-organism {
   width: auto;
   height: 80%;

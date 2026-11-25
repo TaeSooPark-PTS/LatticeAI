@@ -1,14 +1,8 @@
-//! Embedding model recommendations, public mirror / quantized fallbacks,
-//! and byte-level download progress helpers for hardware-aware retrieval.
-//!
-//! Separated from `probe.rs` to keep individual files focused and under line limits.
-
 use super::probe::{CatalogHint, HostProbe};
 use serde_json::{json, Value};
 
 pub const DEFAULT_HF_ENDPOINT: &str = "https://huggingface.co";
 
-/// Catalog hints for Google EmbeddingGemma 2 / 300M models and public quantized mirrors.
 pub(crate) const EMBEDDING_CATALOG_HINTS: &[(&str, CatalogHint)] = &[
     (
         "google/embeddinggemma-2",
@@ -109,8 +103,6 @@ pub(crate) fn embedding_catalog_hints(id: &str) -> Option<&'static CatalogHint> 
         .map(|(_, hint)| hint)
 }
 
-/// Ordered list of unauthenticated public mirrors and quantized distributions
-/// for gated Hugging Face embedding models.
 pub fn public_mirror_repos(model_id: &str) -> Vec<&'static str> {
     match model_id.trim() {
         "google/embeddinggemma-300m" | "mlx-community/embeddinggemma-300m-4bit" => vec![
@@ -128,7 +120,6 @@ pub fn public_mirror_repos(model_id: &str) -> Vec<&'static str> {
     }
 }
 
-/// Quantized GGUF / MLX / ONNX distribution map for an embedding model family.
 pub fn quantized_distributions(model_id: &str) -> Value {
     match model_id.trim() {
         "google/embeddinggemma-300m" | "mlx-community/embeddinggemma-300m-4bit" => json!({
@@ -146,7 +137,6 @@ pub fn quantized_distributions(model_id: &str) -> Value {
     }
 }
 
-/// Build gated fallback & public mirror metadata for explicit token/endpoint inputs.
 pub fn gated_fallback_for_env(
     model_id: &str,
     engine: &str,
@@ -201,7 +191,6 @@ fn ambient_hf_endpoint() -> Option<String> {
         .find_map(|key| std::env::var(key).ok().filter(|v| !v.trim().is_empty()))
 }
 
-/// Compute real-time byte-level download progress with `speed_bps` and `eta_seconds`.
 pub fn compute_download_progress(
     stage: &str,
     current_file: Option<&str>,
@@ -248,14 +237,10 @@ pub fn compute_download_progress(
     obj
 }
 
-/// Format a progress payload as an SSE `event: progress` frame.
 pub fn format_sse_download_progress(progress: &Value) -> String {
     format!("event: progress\ndata: {}\n\n", progress)
 }
 
-/// Build a PC-tailored embedding model recommendation (`google/embeddinggemma-2`
-/// or `google/embeddinggemma-300m` on constrained RAM < 8 GB) accounting for
-/// host RAM and Apple Silicon unified memory vs CPU/GPU.
 pub fn recommend_embedding_for_host(probe: &HostProbe, engine: &str) -> Value {
     let effective_ram_gb = if probe.ram_bytes.is_none() || probe.ram_gb == 0 {
         16.0

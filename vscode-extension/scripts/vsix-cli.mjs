@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-/**
- * Cross-platform VSIX package & publish helper (replaces Unix-only $npm_package_version).
- */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";

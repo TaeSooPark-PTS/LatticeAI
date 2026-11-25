@@ -5,11 +5,6 @@ import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { asArray, isRecord } from "@/lib/utils";
 
-// The knowledge garden in four beds (v9.9.7). Living Brain answers "how
-// healthy is my knowledge?" in aggregate; a gardener asks four concrete
-// questions instead: what arrived, what disagrees, what went stale, what the
-// rest leans on. Read-only — every bed links into existing surfaces rather
-// than inventing its own actions.
 
 export type GardenBedId = "recent" | "contradictions" | "stale" | "frequent";
 
@@ -37,12 +32,6 @@ function text(record: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
-/**
- * `GET /api/brain/garden` → the four beds the panel renders.
- *
- * Rows without an id or a title are dropped: an unlabelled plant is noise. A
- * missing bed becomes an empty bed, never a fabricated one.
- */
 export function parseGarden(data: unknown): { available: boolean; beds: GardenBed[] } {
   const root = isRecord(data) ? data : {};
   const beds = isRecord(root.beds) ? root.beds : {};

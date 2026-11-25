@@ -1,4 +1,4 @@
-/* Confirmation card for files actually written to the local workspace. */
+
 .brain-created-files {
   display: grid;
   gap: 0.4rem;
@@ -87,8 +87,7 @@
   font-size: 0.76rem;
 }
 
-/* Honesty badge: the file was rebuilt by the deterministic repair scaffold.
-   Base colors follow the dark default theme; light overrides below. */
+
 .brain-created-file-repaired {
   border: 1px solid hsl(var(--warning) / 0.55);
   border-radius: 999px;
@@ -99,7 +98,7 @@
   font-weight: 700;
 }
 
-/* Terminal non-success agent states — warm warning, never the success green. */
+
 .brain-agent-state-note {
   display: block;
   margin-top: 0.5rem;
@@ -179,8 +178,8 @@
   font-size: 0.76rem;
 }
 
-/* 근거 설명 행 — 왜 이 출처인지: 신뢰 배지 + 일치 단어 칩 */
-/* .brain-answer-proof li span 의 uppercase 라벨 스타일을 중화한다 */
+
+
 .brain-answer-proof li span.brain-citation-why,
 .brain-citation-why {
   display: flex;
@@ -200,8 +199,7 @@
   font-weight: 700;
 }
 
-/* 멀티모달 근거 (v11.1.0) — 이미지 노드는 썸네일 + 캡션으로 보여준다.
-   썸네일은 노드에 저장된 인라인 data: URI라 외부 요청이 없다. */
+
 .brain-answer-proof li span.brain-citation-visual,
 .brain-citation-visual {
   display: flex;
@@ -289,7 +287,7 @@
   padding: 0 5px;
 }
 
-/* 근거 → 행동 (v9.9.6): 이 답변이 실제로 쓴 출처로 바로 만들 수 있는 것들 */
+
 .brain-evidence-actions {
   display: grid;
   gap: 0.32rem;
@@ -342,7 +340,7 @@
   font-size: 0.68rem;
 }
 
-/* === Track: Chat inline source citations + a11y === */
+
 .brain-message-cited {
   display: grid;
   gap: 0.5rem;
@@ -405,7 +403,7 @@
   font-size: 0.68rem;
   font-style: italic;
 }
-/* === End track: Chat inline source citations + a11y === */
+
 
 @keyframes message-enter {
   from { opacity: 0; transform: translateY(6px); }
@@ -449,7 +447,7 @@
   padding: 0 0.35rem;
 }
 
-/* Progressive depths navigation — subtle, never a "sidebar" */
+
 .depths {
   position: fixed;
   bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
@@ -489,7 +487,7 @@
   background: hsl(var(--brain-core) / 0.11);
 }
 
-/* Full-bleed contemplative chambers for Memory / Knowledge / Relationships / Map */
+
 .mind-chamber {
   position: fixed;
   inset: 0;
@@ -536,7 +534,7 @@
   width: 100%;
 }
 
-/* The Map — artistic, slow, contemplative. Not a tool. */
+
 .mind-map-frame {
   height: calc(100vh - 9.5rem);
   border-radius: 16px;

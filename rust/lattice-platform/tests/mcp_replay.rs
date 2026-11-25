@@ -1,14 +1,3 @@
-//! The MCP-ecosystem families, replayed against the Python oracle:
-//! `mcp.py`, `agent_registry.py`, `agents.py` / `chat_agent_http.py`,
-//! `marketplace.py`, `plugins.py` and `tools.py` — plus the OpenAPI contract
-//! the six compose and the write-side guarantee `POST /tools/write_file`
-//! carries.
-//!
-//! Seven test binaries collapsed into one; each recompiled the same 14kB
-//! harness to run one replay loop. Every test function is the one it was.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod mcp_harness;
 
@@ -24,8 +13,6 @@ use mcp_harness::{
     cookie_session, load_http, load_openapi, match_value, query_string, substitute_path,
     to_openapi, Install,
 };
-
-// ── mcp.py ──
 
 #[tokio::test]
 async fn mcp_fixtures_replay() {
@@ -44,7 +31,6 @@ async fn replay_family(family: &str) {
     assert!(!cases.is_empty(), "{family} must have fixtures");
     let install = Install::start().await;
     let mut symbols = std::collections::HashMap::new();
-    // After bootstrap the custom MCP and agent exist.
     if let Ok(text) = std::fs::read_to_string(install.data_dir.join("custom_mcps.json")) {
         if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(&text) {
             if let Some(id) = items
@@ -136,8 +122,6 @@ fn mcp_market_mounted_routes_match_the_committed_contract() {
         .chain(agent_registry::MOUNTED)
         .chain(agents::MOUNTED)
         .chain(tools::MOUNTED)
-        // W3b: create_* are native product routes; their spec stays in
-        // worker_keep.json so fragment byte-composition is unchanged.
         .filter(|(_, p)| !p.starts_with("/tools/create_"))
         .map(|(m, p)| format!("{m} {}", to_openapi(p)))
         .collect();
@@ -161,8 +145,6 @@ fn mcp_market_mounted_routes_match_the_committed_contract() {
         );
     }
 }
-
-// ── agent_registry.py ──
 
 #[tokio::test]
 async fn agent_registry_fixtures_replay() {
@@ -227,8 +209,6 @@ async fn agent_registry_fixtures_replay() {
     assert!(failed.is_empty(), "{}", failed.join("\n\n"));
 }
 
-// ── agents.py / chat_agent_http.py ──
-
 #[tokio::test]
 async fn agents_and_loop_fixtures_replay() {
     let doc = mcp_harness::load_http("mcp_ecosystem.json");
@@ -237,11 +217,6 @@ async fn agents_and_loop_fixtures_replay() {
         .unwrap()
         .iter()
         .filter(|c| c["family"] == "agents.py" || c["family"] == "chat_agent_http.py")
-        // `GET /agents` is a page shell, not an agents route: it is filed under
-        // `ui_redirects.json` in the committed contract and, since the v11.6.0
-        // gateway integration (§1), served by `ui_redirects` — which preserves
-        // the query string the way `app_redirect(request)` does and which this
-        // router never did. `tests/ui_redirects_parity.rs` replays it there.
         .filter(|c| c["name"] != "agents_page")
         .cloned()
         .collect();
@@ -290,8 +265,6 @@ async fn agents_and_loop_fixtures_replay() {
     }
     assert!(failed.is_empty(), "{}", failed.join("\n\n"));
 }
-
-// ── marketplace.py ──
 
 #[tokio::test]
 async fn marketplace_fixtures_replay() {
@@ -346,8 +319,6 @@ async fn replay(family: &str) {
     }
     assert!(failed.is_empty(), "{}", failed.join("\n\n"));
 }
-
-// ── plugins.py ──
 
 #[tokio::test]
 async fn plugins_fixtures_replay() {
@@ -408,50 +379,24 @@ async fn plugins_fixtures_replay() {
     assert!(failed.is_empty(), "{}", failed.join("\n\n"));
 }
 
-// ── tools.py ──
-
-/// Everything in `tools_misc.json` that records the *recording machine* rather
-/// than the handler.
-///
-/// Every mask below is applied to both sides, and each one is here because the
-/// Python oracle captured a value that no other computer can reproduce — never
-/// because the two implementations disagree. Anything not named here is still
-/// compared literally.
 fn mask_machine_facts(name: &str, expected: &mut Value, actual: &mut Value) {
     match name {
         "obsidian_status" => {
-            // `ocr_engine` is a `which(tesseract)` probe: an absolute Homebrew
-            // path on the laptop that had it, `null` on a machine that does
-            // not. `@any` is the harness's existing token for "present in
-            // whatever form this host has it".
             if expected.get("ocr_engine").is_some() {
                 expected["ocr_engine"] = json!("@any");
             }
-            // The vault folders come back in directory order. The oracle did
-            // not sort them — `30_Projects` precedes `10_Wiki` in the
-            // recording — so the contract is the set, which APFS and overlayfs
-            // enumerate differently.
             sort_by_render(expected.pointer_mut("/folders"));
             sort_by_render(actual.pointer_mut("/folders"));
         }
         "search_files" => {
-            // Same story one level down: the recording lists `fixture-note.md`
-            // before `capture-write.md`, so the walk order was never sorted and
-            // the honest comparison is the multiset of matches.
             sort_matches(expected.pointer_mut("/result/matches"));
             sort_matches(actual.pointer_mut("/result/matches"));
         }
         "git_diff" => {
-            // The `git diff --no-index` option table is written by whichever
-            // git the machine ships, and it grows between releases. Keep the
-            // part that is behaviour — the "not a git repository" warning and
-            // the usage line it precedes — and cut the table off both sides.
             truncate_git_usage(expected.pointer_mut("/result/stderr"));
             truncate_git_usage(actual.pointer_mut("/result/stderr"));
         }
         "tool_permissions" => {
-            // v13.4.0 added `computer_ui_inspect`, `web_fetch`, and `web_search`.
-            // Verify their presence, then project onto the frozen v11.6.0 47-tool recording.
             const V13_4_TOOLS: [&str; 3] = ["computer_ui_inspect", "web_fetch", "web_search"];
             if let Some(Value::Array(items)) = actual.get_mut("permissions") {
                 for added in V13_4_TOOLS {
@@ -623,13 +568,3 @@ async fn tools_fixtures_replay() {
     }
     assert!(failed.is_empty(), "{}", failed.join("\n\n"));
 }
-
-// ── POST /tools/write_file: the write-side guarantee (v11.7.0) ──
-//
-// The hole this closes is named in the 11.6.0 release notes §5.3: Python
-// applied `sanitize_write_content` in the agent loop only, so a payload posted
-// to this endpoint — the VS Code extension's writes, an MCP tool call, a
-// script — was persisted exactly as the model produced it, fences and all.
-// The recorded HTTP fixtures (`fixtures/http/tools_misc.json`) all carry clean
-// content and are unaffected, which is the point: sanitize is an identity
-// transform on content that validates.

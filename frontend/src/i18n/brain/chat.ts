@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// The conversation itself: composer, dock, message actions, history, and the
-// delegate / code / agent affordances inside a chat.
 export const brainChatCopy: NamespaceCopy = {
   ko: {
     "brain.agent.needsReview": "완료를 검증하지 못했어요 — 결과를 직접 확인해 주세요.",

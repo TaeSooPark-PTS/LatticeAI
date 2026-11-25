@@ -1,15 +1,3 @@
-//! Request parameters for the native `/rust/search/*` routes.
-//!
-//! One parser serves both verbs: the query string is read first, then a JSON
-//! object body (POST only) is merged over it. That is what lets `GET
-//! /rust/search/hybrid?q=…` and `POST {"query": "…"}` be *the same endpoint*
-//! rather than two handlers that drift apart.
-//!
-//! Bad input is a 422 with a JSON body naming the offending field. FastAPI's
-//! own 422 carries a `detail` array because pydantic validates every field
-//! before answering; this parser stops at the first bad value, so the body is
-//! flat and says which one it was.
-
 use std::collections::HashMap;
 
 use axum::extract::Query;
@@ -19,24 +7,15 @@ use axum::Json;
 use lattice_core::parse_iso;
 use serde_json::{Map, Value};
 
-/// Largest request body the search routes will read.
-///
-/// These endpoints take a question and a handful of numbers. Anything past
-/// this is not a search request, and reading it would only make a mistake
-/// expensive.
 pub const MAX_BODY_BYTES: usize = 64 * 1024;
 
-/// A rejected request: which field, and why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParamError {
-    /// The parameter that failed, or `body` / `query` for framing failures.
     pub field: String,
-    /// Human-readable reason, including the offending value.
     pub detail: String,
 }
 
 impl ParamError {
-    /// Build an error for `field`.
     pub fn new(field: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
             field: field.into(),
@@ -67,14 +46,12 @@ impl IntoResponse for ParamError {
     }
 }
 
-/// The merged parameter bag for one search request.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SearchParams {
     values: Map<String, Value>,
 }
 
 impl SearchParams {
-    /// Parse the query string of `uri`.
     pub fn from_uri(uri: &Uri) -> Result<Self, ParamError> {
         let parsed = Query::<HashMap<String, String>>::try_from_uri(uri)
             .map_err(|err| ParamError::new("query", err.body_text()))?;
@@ -86,10 +63,6 @@ impl SearchParams {
         Ok(Self { values })
     }
 
-    /// Merge a JSON object body over whatever the query string said.
-    ///
-    /// An empty body is not an error — `POST` with everything in the query
-    /// string is a legitimate way to call these routes.
     pub fn merge_json(&mut self, raw: &[u8]) -> Result<(), ParamError> {
         if raw.iter().all(u8::is_ascii_whitespace) {
             return Ok(());
@@ -108,17 +81,11 @@ impl SearchParams {
         Ok(())
     }
 
-    /// First present value among `keys`, with the key that carried it.
     fn first<'a>(&'a self, keys: &[&'a str]) -> Option<(&'a str, &'a Value)> {
         keys.iter()
             .find_map(|key| self.values.get(*key).map(|value| (*key, value)))
     }
 
-    /// A required text parameter (`query`, aliased to `q`).
-    ///
-    /// Present-but-empty is allowed: the engines answer an empty query with an
-    /// explicitly empty result, and that is a truthful answer rather than an
-    /// error. Absent is not — a search with no question is a caller bug.
     pub fn required_text(&self, keys: &[&str]) -> Result<String, ParamError> {
         let name = keys.first().copied().unwrap_or("query");
         match self.first(keys) {
@@ -134,11 +101,6 @@ impl SearchParams {
         }
     }
 
-    /// An optional integer parameter, rejected outside `min..=max`.
-    ///
-    /// The engines themselves clamp (Python's `max(1, min(100, limit))`); this
-    /// front door refuses instead, because a clamped answer looks exactly like
-    /// the answer to the question that was asked, and it is not.
     pub fn optional_int(&self, key: &str, min: i64, max: i64) -> Result<Option<i64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);
@@ -157,7 +119,6 @@ impl SearchParams {
         }
     }
 
-    /// An optional float parameter, rejected outside `min..=max`.
     pub fn optional_float(&self, key: &str, min: f64, max: f64) -> Result<Option<f64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);
@@ -178,14 +139,6 @@ impl SearchParams {
         }
     }
 
-    /// The optional `now` override, as naive seconds since the epoch.
-    ///
-    /// Accepts the naive ISO-8601 the graph itself writes
-    /// (`2026-08-01T12:00:00`) or a raw epoch-second number. It exists for two
-    /// honest reasons: it is how a golden file can pin a decay curve, and it is
-    /// how a caller asks "how would this have ranked last Tuesday". It is only
-    /// reachable from this machine — the gateway refuses to bind anywhere but
-    /// loopback — and it changes nothing but the recency multiplier.
     pub fn optional_instant(&self, key: &str) -> Result<Option<f64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);

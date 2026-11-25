@@ -1,11 +1,3 @@
-"""The tool registry is the single source of truth.
-
-These tests keep the three lists that used to drift in lock-step:
-  * tools.TOOL_HANDLERS   — how a tool is invoked (dispatch)
-  * ToolRegistry governance — how the agent is allowed to use it (policy)
-  * ToolRegistry catalog — how the tool is described to the LLM (prompt)
-"""
-
 import re
 
 import pytest
@@ -36,8 +28,6 @@ def test_dispatchable_tools_are_governed_and_historical_writes_are_not_dispatche
     missing = set(registered) - set(TOOL_GOVERNANCE)
     assert not missing, f"handlers without governance: {sorted(missing)}"
     assert tools.DEFAULT_TOOL_REGISTRY.governance is not None
-    # Write tools may remain in governance for the native loop, but the
-    # worker table is read-only + pointer tools.
     for name in ("knowledge_save", "local_write", "write_file"):
         assert name in TOOL_GOVERNANCE
         assert name not in registered

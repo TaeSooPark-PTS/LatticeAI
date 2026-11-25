@@ -1,10 +1,3 @@
-"""Legacy debt gate — the root shim layer stays removed.
-
-9.9.1 deleted every root compatibility shim except ``server.py``. WP-P1
-deleted ``server.py`` too: the product server is ``lattice-host`` and the
-worker boots ``latticeai.worker_app:create_worker_app``.
-"""
-
 from __future__ import annotations
 
 import ast
@@ -13,7 +6,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# No Python modules are allowed at the repository root.
 ALLOWED_ROOT_MODULES: set[str] = set()
 
 REMOVED_ROOT_MODULES = [
@@ -86,7 +78,6 @@ def test_latticeai_internal_modules_use_physical_tools_package():
 
 
 def test_no_module_aliases_itself_to_a_moved_implementation():
-    """11.5.2 deleted the six ``sys.modules[__name__] = _impl`` shims."""
     offenders = []
     for package in ("latticeai", "lattice_brain"):
         for path in (REPO_ROOT / package).rglob("*.py"):
@@ -114,7 +105,6 @@ def test_no_module_aliases_itself_to_a_moved_implementation():
 
 
 def test_internal_shim_layers_are_gone():
-    """8.8.0 removed the internal-only shim layers for Brain Core extraction."""
     removed = [
         "lattice_brain.store",
         "lattice_brain.ingest",

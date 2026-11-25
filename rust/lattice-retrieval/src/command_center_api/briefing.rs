@@ -1,5 +1,3 @@
-//! `CommandCenterService.briefing` — the seven sections and the quick actions.
-
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -17,7 +15,6 @@ const BRIEFING_HISTORY_LIMIT: i64 = 2000;
 const HYGIENE_MIN_NODES: i64 = 200;
 const HYGIENE_STALE_DAYS: i64 = 7;
 
-/// One `GET /api/command/briefing` call.
 pub async fn briefing(
     state: &BrainState,
     user_email: &str,
@@ -29,8 +26,6 @@ pub async fn briefing(
     let scope = workspace_id.map(str::to_string);
     let graph = state.graph_enabled();
     let db_path = state.store().path().display().to_string();
-    // The instant the health and hygiene sections measure against, read once so
-    // both agree and so a replay can freeze it (`BrainState::with_utc_clock`).
     let now_utc = state.now_utc();
 
     let snapshot = state
@@ -55,8 +50,6 @@ pub async fn briefing(
             state: &doc,
             enable_graph: graph,
         };
-        // A read failure leaves the section empty rather than failing the whole
-        // briefing — the other six sections are already in hand.
         state
             .read({
                 let email = user_email.to_string();

@@ -1,15 +1,3 @@
-/**
- * VS Code surface-parity helpers (v9.9.6).
- *
- * Review 2026-07-27 P0 #1: "VS Code: 회상 grounding 배지, Review Center(또는
- * 최소한 pending proposals), 가능하면 step 요약". `extension.ts` needs the
- * editor host, so the parity decisions live in the pure `surface.ts` module
- * and are asserted here against the exact sidecar payload shapes.
- *
- * House rules verified: the extension never invents a grounding verdict the
- * server did not issue, never upgrades a NEEDS_REVIEW run into success, and
- * drops un-actionable proposal rows instead of rendering dead entries.
- */
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
@@ -71,7 +59,6 @@ test("proposals parse from the wrapped list and keep their target path", () => {
     changeClass: "modify_existing",
     createdAt: "2026-07-27T00:00:00Z",
   });
-  // Falls back to the path as the label when the item has no title.
   assert.equal(rows[1].title, "src/app.py");
   assert.equal(rows[1].changeClass, "delete");
 });
@@ -103,7 +90,6 @@ test("a NEEDS_REVIEW run is never summarized as success", () => {
   assert.equal(summary.headline, "완료로 처리하지 않았습니다.");
   assert.deepEqual(summary.details, ["형식을 2번 틀렸습니다."]);
   assert.deepEqual(summary.files, ["a.html"]);
-  // parse_error steps carry no execution evidence and are not listed as work.
   assert.equal(summary.steps.length, 1);
   assert.match(summary.steps[0], /write_file — a\.html/);
 });
@@ -147,9 +133,6 @@ test("English language selection picks the English explanation strings", () => {
   assert.equal(summary.headline, "English");
 });
 
-// ── v9.9.7: evidence → action + live step timeline ───────────────────────────
-// The 9.9.6 SURFACE_PARITY gaps for VS Code, closed. Same sidecar payloads the
-// web app consumes; the editor only renders them differently.
 
 const { citedSourceIds, parseEvidenceActions, stepLine } = require("../vscode-extension/out/surface.js");
 
@@ -158,7 +141,6 @@ test("cited source ids come from the same grounding verdict the badge uses", () 
     citedSourceIds({ grounding: { status: "supported", cited: [{ id: "n1" }, { id: "n2" }] } }),
     ["n1", "n2"],
   );
-  // Older payloads carry only source_ids.
   assert.deepEqual(
     citedSourceIds({ grounding: { status: "supported", source_ids: ["n3"] } }),
     ["n3"],
@@ -191,17 +173,10 @@ test("live step frames render with their phase, event and detail", () => {
   assert.match(stepLine({ phase: "execute", event: "tool", action: "x", ok: false }), /failed/);
   assert.match(stepLine({ phase: "execute", event: "blocked", reason: "destructive" }), /circle-slash/);
   assert.match(stepLine({ phase: "verify", event: "verdict", verdict: "PASS" }), /verdict=PASS/);
-  // Unknown events stay visible rather than vanishing.
   assert.match(stepLine({ phase: "future", event: "brand_new" }), /future\/brand_new/);
   assert.match(stepLine(null), /run\/step/);
 });
 
-// ── v10.4.0 surface parity: artifact cards + model recommendation ────────────
-//
-// SURFACE_PARITY listed VS Code artifacts and model choice as ◐. Both gaps
-// were rendering gaps, not contract gaps: the sidecar already reported
-// `artifacts[]` honesty flags and a hardware-derived recommendation, and the
-// editor was dropping them. These fix the parsing against the real shapes.
 
 const {
   artifactReport,
@@ -221,11 +196,9 @@ test("artifact cards carry the honesty flags a flat file list drops", () => {
   assert.equal(cards.length, 3);
   assert.equal(cards[0].repaired, false);
   assert.match(cards[0].detail, /2 KB/);
-  // A repaired scaffold must not read like clean model output.
   assert.equal(cards[1].repaired, true);
   assert.match(cards[1].label, /wand/);
   assert.match(cards[1].detail, /auto-repaired/);
-  // The extension never upgrades the server's validity verdict.
   assert.equal(cards[2].valid, false);
   assert.match(cards[2].detail, /failed validation/);
 });
@@ -309,9 +282,7 @@ test("LatticeAIClient approvalTokenCache is single-use and attaches Bearer Autho
     assert.equal(receivedAuth, "Bearer tok-123");
 
     await assert.rejects(async () => {
-      for await (const _chunk of client.streamGenerate("hi")) {
-        // should reject on 502 instead of silently returning empty
-      }
+      for await (const _chunk of client.streamGenerate("hi")) {}
     }, /HTTP 502/);
   } finally {
     server.close();

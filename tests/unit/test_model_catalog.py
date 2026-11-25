@@ -1,19 +1,7 @@
-"""Boundary tests for the extracted model catalog module.
-
-``latticeai.services.model_catalog`` owns the static engine/model catalog data
-that used to live inside ``model_runtime``. These tests pin two things:
-
-* the re-export identity (``model_runtime`` exposes the *same* objects), so the
-  historical ``from ...model_runtime import ENGINE_MODEL_CATALOG`` import path
-  cannot silently diverge from the catalog source of truth, and
-* basic catalog invariants relied on by the model APIs and recommendation flow.
-"""
-
 from latticeai.services import model_catalog, model_runtime
 
 
 def test_catalog_reexport_identity():
-    # model_runtime must re-export the *same* objects, not copies.
     assert model_runtime.ENGINE_MODEL_CATALOG is model_catalog.ENGINE_MODEL_CATALOG
     assert model_runtime.MODEL_ENGINE_ALIASES is model_catalog.MODEL_ENGINE_ALIASES
     assert model_runtime.ENGINE_INSTALLERS is model_catalog.ENGINE_INSTALLERS
@@ -45,8 +33,6 @@ def test_catalog_entries_have_required_keys():
                 assert model.get(key), (
                     f"{engine} entry missing source policy {key}: {model}"
                 )
-            # Text-only entries are catalogued too (the ultralight and
-            # general-purpose tiers), so each row must state which it is.
             assert model["modality"] in {"multimodal", "text"}
             assert model["architecture"], (
                 f"{engine} entry missing architecture: {model}"
@@ -65,16 +51,10 @@ def test_filter_lower_family_versions_never_grows_and_is_idempotent():
     for engine, models in model_catalog.ENGINE_MODEL_CATALOG.items():
         once = fn(models)
         assert len(once) <= len(models)
-        # idempotent: filtering an already-filtered list is a no-op
         assert [m["id"] for m in fn(once)] == [m["id"] for m in once]
 
 
 def test_catalog_omits_superseded_generation_models():
-    """Retired generations must not reach the picker through any engine.
-
-    ``gpt-oss`` is deliberately *not* in this list any more: GPT-OSS 20B is a
-    current recommended entry, and the old list banned it as "text-only".
-    """
     all_ids = {
         str(model["id"]).lower()
         for models in model_catalog.ENGINE_MODEL_CATALOG.values()
@@ -99,12 +79,10 @@ def test_catalog_omits_superseded_generation_models():
     )
     for fragment in blocked_fragments:
         assert not any(fragment in model_id for model_id in chat_ids), fragment
-    # Google EmbeddingGemma 2 must be present in the catalog despite the "gemma-2" substring.
     assert "google/embeddinggemma-2" in all_ids
 
 
 def test_embeddinggemma_2_pc_tailored_recommendations():
-    # Apple Silicon >= 8 GB RAM recommends google/embeddinggemma-2 with MLX 4-bit (~0.5 GB)
     emb_16 = model_catalog.recommend_embedding_for_hardware(
         ram_gb=16.0, apple_silicon=True
     )
@@ -117,7 +95,6 @@ def test_embeddinggemma_2_pc_tailored_recommendations():
     assert emb_16["dimensions"] == 768
     assert emb_16["memory_footprint_gb"] == 0.5
 
-    # Constrained RAM (< 8 GB) recommends google/embeddinggemma-300m (~0.3 GB)
     emb_4 = model_catalog.recommend_embedding_for_hardware(
         ram_gb=6.0, apple_silicon=True
     )

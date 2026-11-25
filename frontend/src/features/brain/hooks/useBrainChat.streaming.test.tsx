@@ -6,14 +6,6 @@ import { abortError, fakeChatStream } from "@/test/fakeChatStream";
 import { setup } from "@/test/brainChatHarness";
 import { useConversationSession } from "../conversationSession";
 
-/**
- * The streaming answer path — what the Brain does *while* it is answering.
- *
- * Every assertion here needs frames arriving over time, which is why this file
- * arrived with `@/test/fakeChatStream` rather than before it. The cases are the
- * ones a person actually meets: an answer building up token by token, a recall
- * pulse mid-answer, pressing stop, and the server refusing.
- */
 
 beforeEach(() => {
   useConversationSession.getState().resetConversation();
@@ -42,7 +34,6 @@ describe("useBrainChat streaming", () => {
       await stream.started;
     });
 
-    // Mid-stream: the first frame is already on screen and the run is live.
     expect(result.current.streaming).toBe(true);
     expect(result.current.messages.at(-1)?.content).toBe("로컬에서 ");
 
@@ -243,9 +234,6 @@ describe("useBrainChat streaming", () => {
   });
 
   it("leaves the organism at rest once the answer is done, even after a recall pulse", async () => {
-    // Regression: `onTrace` parked a 900ms timer that pushed the Brain back to
-    // "thinking". When the answer finished inside that window the timer still
-    // fired, and the orb sat thinking about a question it had already answered.
     const stream = fakeChatStream({
       frames: [
         { kind: "trace", trace: { retrieved: 3 } },
@@ -306,7 +294,6 @@ describe("useBrainChat streaming", () => {
       await send;
     });
 
-    // The abort landed between frames, so the second chunk never arrived.
     expect(result.current.messages.at(-1)?.content).toBe("생각 중");
     expect(result.current.streaming).toBe(false);
   });
@@ -417,7 +404,6 @@ describe("useBrainChat streaming", () => {
 
     expect(stream.calls.length).toBe(2);
     expect(stream.calls[1]!.message).toBe("같은 질문");
-    // One user turn and one assistant turn, not a growing transcript.
     expect(result.current.messages.length).toBe(2);
   });
 
@@ -546,7 +532,6 @@ describe("useBrainChat regenerate edges", () => {
     vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
     const { result } = setup();
 
-    // A stopped run can leave the user turn last.
     act(() => {
       useConversationSession.getState().setMessages([{ role: "user", content: "질문" }]);
     });
@@ -555,7 +540,6 @@ describe("useBrainChat regenerate edges", () => {
     });
     expect(stream.calls[0]!.message).toBe("질문");
 
-    // A doubled assistant tail loses only the trailing answer.
     act(() => {
       useConversationSession.getState().setMessages([
         { role: "user", content: "질문2" },
@@ -607,7 +591,6 @@ describe("useBrainChat regenerate edges", () => {
       await stream.started;
     });
 
-    // Simulate workspace switch / new chat clearing messages before stream frames settle.
     act(() => {
       useConversationSession.getState().setMessages([]);
     });

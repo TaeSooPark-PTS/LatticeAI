@@ -1,17 +1,3 @@
-//! Fast-path intents that answer before a model is consulted.
-//!
-//! Port of `latticeai/api/chat_intents.py`. Network status, `/clear`,
-//! current-URL and the file-action branch all live here so `POST /chat` can
-//! return before it ever asks the worker for tokens. The agent-loop fallback
-//! (`route_file_to_agent`) stays with `lattice-agent`.
-//!
-//! The file branch is now two jobs in two places: this module decides **which
-//! file** a request means (the target regex, the inferred name, the never-
-//! overwrite id) and owns the write door and the Brain ingest around it;
-//! [`crate::filegen`] decides **what goes in it** — the user's inline bytes, a
-//! model's document, or a real Word/PDF render. The one file action that needs
-//! no model at all, an inline `내용: …`, still answers without one.
-
 use std::path::{Path, PathBuf};
 
 use axum::http::{HeaderMap, StatusCode};
@@ -30,11 +16,6 @@ use crate::history::{clear_all, clear_conversation, history_scope, json_body};
 use crate::sse::{single_text_stream, stream_response};
 use crate::state::ChatState;
 
-/// `PREVIEWABLE_EXTENSIONS` — duplicated because lattice-agent keeps the table
-/// private on the run-body module. `.docx` is deliberately absent.
-///
-/// It is also the set [`crate::filegen::prompts`] must have an anchor for: what
-/// this surface can show, it can be asked to write.
 pub(crate) const PREVIEWABLE: &[&str] = &[
     ".css",
     ".csv",
@@ -58,7 +39,6 @@ pub(crate) const PREVIEWABLE: &[&str] = &[
     ".yml",
 ];
 
-/// `no_model_response` — the JSON 400 every stream×Accept combo must share.
 pub fn no_model_response(state: &ChatState, headers: &HeaderMap) -> Response {
     let lang = language_of(headers);
     let detail = if state.config.is_public {
@@ -81,7 +61,6 @@ pub fn no_model_response(state: &ChatState, headers: &HeaderMap) -> Response {
     )
 }
 
-/// `single_answer_response`.
 pub fn single_answer_response(stream: bool, answer: &str, model: &str) -> Response {
     if stream {
         return stream_response(single_text_stream(answer, model), &[("X-Model", model)]);
@@ -105,7 +84,6 @@ pub(crate) fn language_of(headers: &HeaderMap) -> &'static str {
     )
 }
 
-/// Best-effort host facts. The fixture body is `@any`; only status + type pin.
 pub fn network_status_info() -> Map<String, Value> {
     let mut info = Map::new();
     let hostname = hostname();
@@ -140,7 +118,6 @@ fn local_ip() -> Option<String> {
     Some(socket.local_addr().ok()?.ip().to_string())
 }
 
-/// `ChatIntentController.network`.
 pub async fn network(
     state: &ChatState,
     req: &ChatRequest,
@@ -153,7 +130,6 @@ pub async fn network(
     single_answer_response(req.stream, &answer, "network_status")
 }
 
-/// Attribution a persist call carries.
 pub struct HistoryMeta<'a> {
     pub email: Option<&'a str>,
     pub nickname: Option<&'a str>,
@@ -162,7 +138,6 @@ pub struct HistoryMeta<'a> {
     pub workspace_id: Option<&'a str>,
 }
 
-/// `ChatIntentController.clear`.
 pub async fn clear(
     state: &ChatState,
     req: &ChatRequest,
@@ -191,8 +166,6 @@ pub async fn clear(
                 workspace_id: workspace_id.map(str::to_string),
                 metadata,
             };
-            // Best-effort audit event: the history clear itself must still run
-            // if the graph write fails (same as the retired worker POST).
             let _ = tokio::task::spawn_blocking(move || graph.ingest_event(&request)).await;
         }
     }
@@ -242,7 +215,6 @@ pub async fn clear(
     single_answer_response(req.stream, &answer, "history")
 }
 
-/// `ChatIntentController.current_url`.
 pub async fn current_url(
     state: &ChatState,
     req: &ChatRequest,
@@ -256,7 +228,6 @@ pub async fn current_url(
     single_answer_response(req.stream, &answer, "client_url")
 }
 
-/// `next_available_path`.
 pub fn next_available_path(root: &Path, target: &str) -> Result<String, String> {
     let candidate = root.join(target);
     if !candidate.exists() {
@@ -303,15 +274,6 @@ pub(crate) fn previewable(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Put bytes on disk inside the agent workspace, and report where they landed.
-///
-/// **Every caller must have judged the content already.** This was the one write
-/// door v11.7.0 left open — it took a `&str` straight from the request and wrote
-/// it — and the door is closed structurally rather than by a check here: the
-/// only caller is [`crate::filegen`], which runs the same
-/// [`lattice_agent::content::sanitize`] pipeline `/tools/write_file` and the agent loop
-/// run before it ever gets this far. Bytes rather than text because a `.docx`
-/// that reaches here is a real document built by the render seam, not prose.
 pub(crate) fn write_bytes(
     root: &Path,
     rel: &str,
@@ -326,7 +288,6 @@ pub(crate) fn write_bytes(
     Ok((workspace.relative(&path), content.len()))
 }
 
-/// `file:` + sha256(workspace|digest)[:24], matching `_scoped_hash_id`.
 pub fn scoped_file_id(content: &str, workspace_id: Option<&str>) -> String {
     let digest = lattice_core::graph_write::pyaux::sha256_text(content);
     let identity = match workspace_id.filter(|id| !id.is_empty()) {
@@ -337,18 +298,6 @@ pub fn scoped_file_id(content: &str, workspace_id: Option<&str>) -> String {
     format!("file:{}", &hashed[..24.min(hashed.len())])
 }
 
-/// `ChatIntentController.direct_file_action`.
-///
-/// `None` means "not a direct write" — the request named no file this branch
-/// can infer, so the pipeline falls through.
-///
-/// Everything that decides *what bytes* a file gets is [`crate::filegen`]'s;
-/// this function decides *which file*, which is what the Python controller did
-/// before the branch grew a generator. The two refusals it used to answer with
-/// — "multi-file generation has no fixtures" and "model-driven generation is
-/// the un-fixtured path" — are gone: both are implemented in v11.9.0, and what
-/// is left here is the honest `no_model_loaded` when the request needs a model
-/// and none is loaded.
 pub async fn direct_file_action(
     state: &ChatState,
     req: &ChatRequest,
@@ -359,8 +308,6 @@ pub async fn direct_file_action(
 ) -> Option<Response> {
     let explicit = file_action_target(&req.message);
     if explicit.is_none() {
-        // A recognised project ("html + css + js", a React app, a Python
-        // package) names its own files; the manifest is the plan.
         if let Some(manifest) = infer_project_manifest(&req.message) {
             let Some(model_id) = model_id else {
                 return Some(no_model_response(state, headers));
@@ -394,37 +341,8 @@ pub async fn direct_file_action(
     )
 }
 
-/// `POST /worker/extract` — W5's LLM-first concept / triple / semantic seam.
 const EXTRACT_PATH: &str = "/worker/extract";
 
-/// `_ingest_generated_file` — index a just-generated file into the Brain.
-///
-/// The knowledge promise is "what Lattice makes, Lattice remembers": without
-/// this, generated files are invisible to recall until the user re-uploads
-/// them. Best-effort and additive — an ingestion problem never fails the file
-/// creation, and `LATTICEAI_INGEST_GENERATED=0` disables it.
-///
-/// **v11.7.0 correction.** This posted the item to
-/// `POST {worker}/knowledge-graph/ingest` until now. v11.6.0 took that route
-/// off the worker (it is absent from `rust/fixtures/worker_allowlist.json`), so
-/// the call 404'd — and because the fixture worker answered it, the reply still
-/// said `{"status": "ok"}` while nothing had been remembered. The write is
-/// native now, through the same [`GraphWriter`](lattice_core::graph_write::GraphWriter)
-/// door the upload path uses, with the W5 extract / W2 embed chain around it:
-///
-/// * [`GraphWriter::ingest_file`] because the material *is* a file on disk —
-///   that is what `IngestionItem(source_type="file", path=…)` routed to
-///   (`_ingest_file` → `ingest_document`), so the node id stays
-///   `file:<scoped hash of the bytes>` and the blob sidecar is still written;
-/// * the content is handed over as `extracted["content"]`, exactly as the
-///   native `POST /upload/document` door hands a parsed upload over, so the
-///   node's text is searchable rather than just its filename;
-/// * `write_vectors` runs only when the seam's embedder is the one this process
-///   would file the row under (W2 §4), and `record_ingestion` captures
-///   provenance whether or not it did.
-///
-/// The four reported keys are unchanged, so every client that reads
-/// `brain_ingest` reads the same shape — it is finally telling the truth.
 pub(crate) async fn ingest_generated(
     state: &ChatState,
     rel_path: &str,
@@ -484,7 +402,6 @@ pub(crate) async fn ingest_generated(
         let embedded = native_agrees
             && !outcome.node_id.is_empty()
             && graph.write_vectors(&outcome.node_id).status != "failed";
-        // Provenance must never turn an already-persisted file into a failure.
         let _ = graph.record_ingestion(&IngestionRecord {
             node_id: outcome.node_id.clone(),
             source_type: "file".into(),
@@ -516,7 +433,6 @@ pub(crate) async fn ingest_generated(
     }
 }
 
-/// `{"status": "failed", "detail": …}` — the shape the clients already parse.
 fn failed_ingest(detail: &str) -> Value {
     json!({
         "status": "failed",
@@ -524,12 +440,6 @@ fn failed_ingest(detail: &str) -> Value {
     })
 }
 
-/// Ask `/worker/extract` about a generated file, best-effort.
-///
-/// The same `kind` the garden and upload doors use for a document, so a file
-/// Lattice wrote and the same file uploaded produce one concept subgraph rather
-/// than two subtly different ones. No worker, or a failed call, means no
-/// concepts — never a lost file.
 async fn extract_for_file(state: &ChatState, text: &str) -> ExtractReply {
     if text.trim().is_empty() {
         return ExtractReply::default();
@@ -548,7 +458,6 @@ async fn extract_for_file(state: &ChatState, text: &str) -> ExtractReply {
     }
 }
 
-/// Ask `/worker/embed` for the file's passage vector, best-effort.
 async fn embed_for_file(state: &ChatState, text: &str) -> Option<SuppliedVector> {
     if text.trim().is_empty() {
         return None;
@@ -570,7 +479,6 @@ async fn embed_for_file(state: &ChatState, text: &str) -> Option<SuppliedVector>
     })
 }
 
-/// Persist both sides of an intent exchange through the native turn chain.
 pub async fn persist_exchange(
     state: &ChatState,
     req: &ChatRequest,
@@ -584,13 +492,6 @@ pub async fn persist_exchange(
     state.notify("assistant", answer, req.source.as_deref());
 }
 
-/// One turn through the native redact → audit → store → ingest chain.
-///
-/// Before WP-W3a this posted to `POST /worker/chat/record-turn` and threw the
-/// receipt away. It still throws the receipt away — no caller has ever read it —
-/// but the chain now runs here ([`crate::turn::write_chat_turn`]), so a turn
-/// lands whether or not the AI worker is reachable. That is a strict improvement
-/// over the seam: an unreachable worker used to lose the message.
 pub async fn persist_entry(state: &ChatState, role: &str, message: &str, meta: &HistoryMeta<'_>) {
     let _ = crate::turn::write_chat_turn(state, role, message, meta).await;
 }

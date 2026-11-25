@@ -5,17 +5,6 @@ import { humanizeModelId } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useActiveModelSwitcher } from "./hooks/useLibraryModels";
 
-/**
- * Which model is running, and how to change it — first, and on every tab.
- *
- * This screen used to open on a hero, then a tab strip, then a six-step setup
- * track, and only somewhere below that did it say which model was actually
- * loaded. The question that brings people here ("is my AI working, and can I
- * use a different one?") was answered by a stat cell in the middle of a
- * catalogue. It is the first block on the page now, and the alternatives it
- * offers are only ones a single click can really switch to: already
- * downloaded, no consent prompt, not the one already running.
- */
 export function ActiveModelCard() {
   const language = useAppStore((state) => state.language);
   const {

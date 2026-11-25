@@ -1,16 +1,3 @@
-"""wp11: the refusal paths of the approval-gated local filesystem tools.
-
-``latticeai/tools/local_files.py`` is the last hop before real user files, so
-every refusal it can produce is a promise: an unreadable directory, a file that
-is a directory, an oversized read and a decode failure have to surface as a
-:class:`ToolError` the API can turn into a 400 — never as a raw ``OSError``
-escaping into a 500.
-
-The size caps are re-pointed at a few bytes rather than writing a 2 MB fixture,
-and the OS refusals are injected at the ``pathlib`` seam instead of relying on
-``chmod`` (which does nothing when the CI leg runs as root).
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,7 +40,7 @@ def test_local_read_refuses_a_file_over_the_cap(tmp_path, monkeypatch):
         local_tools.local_read(str(target))
     message = str(excinfo.value)
     assert "파일이 너무 큽니다" in message
-    assert "10" in message  # the real size is reported back to the caller
+    assert "10" in message
 
 
 def test_local_read_wraps_a_failing_read(tmp_path, monkeypatch):

@@ -1,21 +1,3 @@
-//! The session store — `sessions.json`, sliding-window TTL, hashed at rest.
-//!
-//! Port of `latticeai/core/sessions.py` (v4). The file is
-//! `<data_dir>/sessions.json`, the same path Python uses, so live sessions
-//! survive the front door moving to Rust.
-//!
-//! Three properties are the contract:
-//!
-//! * **keys are `sha256(token)`**, so a process that can read the file cannot
-//!   hijack a session with what it finds there. A pre-v4 file whose keys are
-//!   raw tokens is re-keyed transparently on load;
-//! * **entries are positional** — `[subject, created_at, email]`, with older
-//!   1- and 2-element rows still readable, so the reader indexes defensively
-//!   exactly where Python's `_entry_*` helpers do;
-//! * **the TTL slides**: a session older than the refresh threshold is stamped
-//!   forward on read (and persisted), but only then, so a chatty client does
-//!   not rewrite the file on every request.
-
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -27,19 +9,15 @@ use sha2::{Digest, Sha256};
 use crate::clock::Clock;
 use crate::pyjson::{dumps_indent2, OrderedMap};
 
-/// 24 hours, `SESSION_TTL`.
 pub const SESSION_TTL: f64 = 60.0 * 60.0 * 24.0;
-/// 15 minutes, `SESSION_REFRESH_THRESHOLD`: only persist a bump past this.
 pub const SESSION_REFRESH_THRESHOLD: f64 = 60.0 * 15.0;
 
-/// `secrets.token_urlsafe(32)` — 32 random bytes, base64url, no padding.
 pub fn new_token() -> String {
     let mut bytes = [0u8; 32];
     getrandom::fill(&mut bytes).expect("the OS RNG is required to issue a session");
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
-/// The at-rest key for a token. A missing token hashes the empty string.
 pub fn hash_token(token: &str) -> String {
     let digest = Sha256::digest(token.as_bytes());
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -52,7 +30,6 @@ fn looks_hashed(key: &str) -> bool {
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
-/// The file-backed session table.
 #[derive(Debug)]
 pub struct SessionStore {
     path: PathBuf,
@@ -63,7 +40,6 @@ pub struct SessionStore {
 }
 
 impl SessionStore {
-    /// Open (or start) the store at `<data_dir>/sessions.json`.
     pub fn new(data_dir: &Path, ttl_seconds: f64, clock: Clock) -> Self {
         let path = data_dir.join("sessions.json");
         let store = Self {
@@ -81,13 +57,10 @@ impl SessionStore {
         store
     }
 
-    /// The file this store reads and writes.
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    /// `load_sessions`: read, migrate pre-v4 raw-token keys, persist if any
-    /// key moved. An unreadable file starts empty rather than failing.
     fn load(&self) {
         let Ok(text) = std::fs::read_to_string(&self.path) else {
             return;
@@ -118,7 +91,6 @@ impl SessionStore {
         }
     }
 
-    /// Issue a session for `subject`, recording `email` alongside it.
     pub fn create(&self, subject: &str, email: Option<&str>) -> String {
         let token = new_token();
         let entry = json!([subject, self.clock.now(), email.unwrap_or(subject),]);
@@ -128,24 +100,20 @@ impl SessionStore {
         token
     }
 
-    /// The email this token authenticates, if it is still live.
     pub fn get_email(&self, token: &str) -> Option<String> {
         self.entry(token).and_then(|entry| entry_email(&entry))
     }
 
-    /// The stable user id this token authenticates, if it is still live.
     pub fn get_subject(&self, token: &str) -> Option<String> {
         self.entry(token).and_then(|entry| entry_subject(&entry))
     }
 
-    /// Forget one session.
     pub fn invalidate(&self, token: &str) {
         let mut guard = self.sessions.lock().expect("session lock");
         guard.remove(&hash_token(token));
         self.persist(&guard);
     }
 
-    /// Revoke every live session belonging to `email`, returning how many were removed.
     pub fn revoke_for_email(&self, email: &str) -> usize {
         let needle = email.trim().to_ascii_lowercase();
         if needle.is_empty() {
@@ -175,17 +143,14 @@ impl SessionStore {
         count
     }
 
-    /// How many sessions are live in memory (test/observability seam).
     pub fn len(&self) -> usize {
         self.sessions.lock().expect("session lock").len()
     }
 
-    /// Whether the table is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// `_get_entry`: expire, slide, or return as-is.
     fn entry(&self, token: &str) -> Option<Value> {
         let now = self.clock.now();
         let key = hash_token(token);
@@ -207,13 +172,11 @@ impl SessionStore {
     }
 }
 
-/// `_entry_subject`: element 0, or `None` for an empty row.
 fn entry_subject(entry: &Value) -> Option<String> {
     let items = entry.as_array()?;
     items.first().and_then(Value::as_str).map(str::to_string)
 }
 
-/// `_entry_email`: element 2 when it is truthy, else element 0.
 fn entry_email(entry: &Value) -> Option<String> {
     let items = entry.as_array()?;
     if items.len() >= 3 {
@@ -224,7 +187,6 @@ fn entry_email(entry: &Value) -> Option<String> {
     entry_subject(entry)
 }
 
-/// `_entry_created_at`: element 1 as a float, else 0.
 fn entry_created_at(entry: &Value) -> f64 {
     entry
         .as_array()
@@ -323,19 +285,13 @@ mod tests {
             format!(r#"{{"{key}":["a@b.com"]}}"#),
         )
         .unwrap();
-        // A one-element row has no `created_at`, so it reads as epoch 0 and
-        // the email falls back to element 0 — the pre-v4 shape.
         let store = store(dir.path(), Clock::frozen(1_000.0));
         assert_eq!(store.get_email("t1").as_deref(), Some("a@b.com"));
         assert_eq!(store.get_subject("t1").as_deref(), Some("a@b.com"));
 
-        // A zero TTL means "use the default" (`int(ttl or SESSION_TTL)`), not
-        // "expire everything".
         let store = SessionStore::new(dir.path(), 0.0, Clock::frozen(10.0));
         assert_eq!(store.get_email("t1").as_deref(), Some("a@b.com"));
 
-        // Past the 24h default it is gone. (The reads above slid the stamp
-        // forward, which is why the clock has to move well past one TTL.)
         let store = SessionStore::new(dir.path(), SESSION_TTL, Clock::frozen(SESSION_TTL * 3.0));
         assert_eq!(store.get_email("t1"), None);
     }

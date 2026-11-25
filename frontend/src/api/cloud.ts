@@ -1,11 +1,5 @@
 import { get } from "./base";
 
-/**
- * GET /api/cloud/status — dual credential path (API key / local CLI OAuth).
- *
- * The endpoint may not exist yet. A 404 or a network error must present as
- * "not configured", never as a configured provider, and never throw.
- */
 export type CloudProviderMode = "api_key" | "cli_oauth" | "none";
 
 export type CloudProviderStatus = {

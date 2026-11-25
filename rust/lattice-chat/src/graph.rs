@@ -1,20 +1,3 @@
-//! The two graph reads a chat turn makes, and the trace it records.
-//!
-//! * [`build_context_quality`] — `chat_helpers.build_context_quality`, the
-//!   honest RAG signal the SPA renders as "근거 있음 / 제한적".
-//! * [`build_graph_trace`] — `WorkspaceGraphTrace.build_graph_trace`, the
-//!   answer trace with its source files, neighbour edges and confidence.
-//! * [`trace_record`] — the row `record_trace` would store.
-//!
-//! Retrieval itself is **not** reimplemented here: the matches come from
-//! `lattice_retrieval::keyword::search` and `lattice_retrieval::hybrid` — the
-//! same engines the `/rust/search/*` lanes already prove against goldens. What
-//! this module adds is the reshaping the chat trace does on top of them, plus
-//! the one-hop edge read (`neighbors`) that had no Rust caller before.
-//!
-//! Neither call may fail a turn. Python wraps both in `except Exception` and
-//! answers with an empty-but-shaped block; so does this.
-
 use std::collections::BTreeSet;
 
 use lattice_core::embeddings::LocalEmbeddingModel;
@@ -26,22 +9,11 @@ use serde_json::{json, Map, Value};
 
 use crate::pyvalue::field;
 
-/// How many matches the answer trace seeds from.
 pub const TRACE_LIMIT: i64 = 8;
-/// How many matches contribute neighbour edges.
 const EDGE_SEED_MATCHES: usize = 5;
-/// The hard cap on collected edges.
 const MAX_EDGES: usize = 24;
-/// `build_context_quality`'s default match count.
 pub const QUALITY_LIMIT: i64 = 6;
 
-/// `build_context_quality` — never raises, always four keys.
-///
-/// The Python original prefers `hybrid_search` and falls back to `search` for a
-/// store without the hybrid mixin. Every store this gateway opens has it, so
-/// the lexical fallback here is the *failure* branch rather than a second
-/// capability probe — and it reports `lexical_only`, which is what the fallback
-/// meant.
 pub fn build_context_quality(
     conn: Option<&Connection>,
     model: &LocalEmbeddingModel,
@@ -62,7 +34,6 @@ pub fn build_context_quality(
     )
 }
 
-/// [`build_context_quality`] with optional precomputed semantic query vector or degradation note.
 #[allow(clippy::too_many_arguments)]
 pub fn build_context_quality_with_query(
     conn: Option<&Connection>,
@@ -114,11 +85,6 @@ pub fn build_context_quality_with_query(
     }
 }
 
-/// `retrieval_reads.neighbors`' edge half — 1-hop edges, in insertion order.
-///
-/// Only the edges are read: `build_graph_trace` uses nothing else from the
-/// neighbour payload, and loading the neighbour *nodes* would be a second query
-/// whose result is discarded.
 pub fn neighbor_edges(conn: &Connection, node_id: &str) -> Vec<Value> {
     let (_, edges_table) = read_tables(conn);
     let sql = format!(
@@ -142,7 +108,6 @@ pub fn neighbor_edges(conn: &Connection, node_id: &str) -> Vec<Value> {
     }
 }
 
-/// The trace a turn with no graph produces.
 fn traceless(question: &str, context: &str) -> Value {
     json!({
         "source_files": [],
@@ -158,7 +123,6 @@ fn traceless(question: &str, context: &str) -> Value {
     })
 }
 
-/// The first metadata key that names a file, in the Python `or` order.
 fn source_of(node: &Value) -> Option<String> {
     let meta = node.get("metadata")?.as_object()?;
     for key in [
@@ -177,7 +141,6 @@ fn source_of(node: &Value) -> Option<String> {
     None
 }
 
-/// `WorkspaceGraphTrace.build_graph_trace`.
 pub fn build_graph_trace(
     conn: Option<&Connection>,
     question: &str,
@@ -247,9 +210,6 @@ pub fn build_graph_trace(
             }
             edges.push(edge);
             if edges.len() >= MAX_EDGES {
-                // Python `break`s the inner loop only, then `continue`s to the
-                // next seed — where the cap immediately stops it again. Leaving
-                // the whole scan is the same answer without the extra queries.
                 break 'seeds;
             }
         }
@@ -283,11 +243,6 @@ pub fn build_graph_trace(
     })
 }
 
-/// `workspace_os_utils._json_hash` for a list of scalars.
-///
-/// `json.dumps` defaults to `", "` between items — the *only* place in the
-/// product that is not the compact `","`, and the reason this renders the list
-/// by hand instead of calling `serde_json::to_string`.
 fn json_hash(values: &[Value]) -> String {
     let rendered: Vec<String> = values
         .iter()
@@ -297,16 +252,6 @@ fn json_hash(values: &[Value]) -> String {
     lattice_core::graph_write::pyaux::sha256_text(&payload)
 }
 
-/// `record_trace`'s row, without the storage.
-///
-/// The id is `trace-` plus the first 16 hex characters of
-/// `_json_hash([question, response, conversation_id, now])` — sha256 over a
-/// `json.dumps(..., ensure_ascii=False, sort_keys=True)` payload, whose
-/// separators are Python's spaced defaults, not the compact ones. The caller
-/// supplies the timestamp so a test can freeze it.
-///
-/// The trace's own keys are merged **over** the record's, exactly as
-/// `{**record, **trace}` does — a trace carrying `id` would win, and none does.
 pub fn trace_record(
     question: &str,
     response: &str,
@@ -386,15 +331,12 @@ mod tests {
         let (_dir, conn) = graph();
         let trace = build_graph_trace(Some(&conn), "리트리벌", "context", TRACE_LIMIT, None);
         assert_eq!(trace["graph_nodes"].as_array().unwrap().len(), 2);
-        // Only n1 carries a file-shaped metadata key.
         assert_eq!(trace["source_files"].as_array().unwrap().len(), 1);
         assert_eq!(trace["source_files"][0]["source"], "weights.md");
         assert_eq!(trace["source_files"][0]["jump"]["graph"], "/graph?node=n1");
-        // The duplicate (from, to, type) is collapsed.
         assert_eq!(trace["graph_edges"].as_array().unwrap().len(), 1);
         assert_eq!(trace["retrieval_metadata"]["matched_edges"], 1);
         assert_eq!(trace["retrieval_metadata"]["search_error"], "");
-        // 0.35 + 2/8*0.45 + 0.10 (edges present).
         assert_eq!(trace["confidence"], 0.5625);
     }
 
@@ -460,7 +402,6 @@ mod tests {
         assert_eq!(record["workspace_id"], "personal");
         assert_eq!(record["confidence"], 0.5);
         assert_eq!(record["grounding"]["status"], "supported");
-        // Deterministic in its four inputs.
         assert_eq!(
             record["id"],
             trace_record(

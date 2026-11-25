@@ -1,5 +1,3 @@
-//! HTTP handlers for the workflow designer family.
-
 use axum::body::Bytes;
 use axum::extract::{Path as AxumPath, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -20,8 +18,6 @@ use super::{
     is_awaiting_approval, ok, require_user, resume_paused, scope_from_request, start_run,
     store_data_dir, WorkflowDesignerState, ACTIVE_STATUSES, DEFAULT_WORKSPACE_ID,
 };
-
-// ── body parsing ─────────────────────────────────────────────────────────────
 
 pub(crate) fn problem(kind: &str, loc: Value, msg: &str, input: Value) -> OrderedMap {
     let mut entry = OrderedMap::new();
@@ -65,8 +61,6 @@ pub(crate) fn parse_object(bytes: &[u8]) -> Result<Map<String, Value>, Response>
         )])
     })
 }
-
-// ── handlers ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ListQuery {
@@ -282,8 +276,6 @@ pub(crate) async fn run_definition(
         Some(user.email.as_str())
     };
     let inputs = object.get("inputs").cloned().unwrap_or_else(|| json!({}));
-    // The accept payload is the queued snapshot. The executor then walks every
-    // step so list/replay/stop see a terminal (or paused) row.
     let response_run = start_run(
         &state.store,
         &workflow,

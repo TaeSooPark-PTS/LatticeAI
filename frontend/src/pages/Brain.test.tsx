@@ -7,16 +7,6 @@ import { fail, ok, renderPage } from "@/test/renderPage";
 import { useAppStore } from "@/store/appStore";
 import { BrainPage, SourceProvenanceList, viewLabel } from "./Brain";
 
-// Cytoscape draws into a real 2D canvas context, which jsdom does not provide
-// ("Could not create canvas of type 2d"). That is an environment gap, not the
-// behaviour under test — these tests are about where the map sits in the
-// hierarchy, not how it paints. The canvas itself is asserted for real by the
-// Playwright suite, which loads `#/knowledge-graph` and requires
-// `[data-testid='brain-cytoscape']` to be visible. Test-only select buttons
-// stand in for the real cytoscape click/keyboard handlers so the page's own
-// selection state (including the "collapsed group" id shape) stays reachable:
-// one targets a group id that is actually present in the fixture graphs
-// below, the other a group id that never is (nothing to find, either way).
 vi.mock("./brain/CytoscapeGraph", () => ({
   CytoscapeGraph: ({ ariaLabel, onSelect }: { ariaLabel?: string; onSelect?: (id: string | null) => void }) => (
     <div data-testid="brain-cytoscape" aria-label={ariaLabel}>
@@ -30,14 +20,6 @@ vi.mock("./brain/CytoscapeGraph", () => ({
   ),
 }));
 
-/**
- * The memory surface: graph, provenance, recall and portability.
- *
- * The property that matters most here is that every number says what it
- * counted. 10.0.0 replaced a bare "출처 반영률 12%" with two counts and a
- * sentence, precisely because a percentage with no denominator cannot be
- * checked by the person reading it.
- */
 
 const GRAPH = {
   nodes: [
@@ -48,20 +30,11 @@ const GRAPH = {
   stats: { nodes: 2, edges: 1 },
 };
 
-// A second fixture with explicit importance and a source path, used by the
-// explorer-interaction tests below: one node clears the default importance
-// filter comfortably (and carries a source, for the copy-source button), the
-// other sits low enough to be excluded once the importance floor is raised.
 const RICH_GRAPH = {
   nodes: [
     { id: "n1", type: "Document", title: "릴리스 절차", summary: "태그를 만들고 CI를 통과", source: "docs/RELEASE.md", importance_norm: 0.9 },
     { id: "n2", type: "Concept", title: "배포", summary: "", importance_norm: 0.05 },
-    // Clears the basic-mode importance floor (0.1) on its own, unlike n2, so
-    // it is reachable there without touching the slider — and has neither a
-    // summary nor a source, unlike n1.
     { id: "n3", type: "Concept", title: "제3의 개념", summary: "", importance_norm: 0.5 },
-    // A type with no `ui.entity.*` copy at all, so `graphTypeLabel` falls all
-    // the way through to `titleize(raw)`.
     { id: "n4", type: "MysteryType", title: "이상한 항목", summary: "", importance_norm: 0.6 },
   ],
   edges: [{ from: "n1", to: "n2", type: "언급함", weight: 0.7 }],
@@ -97,8 +70,6 @@ describe("BrainPage", () => {
   });
 
   it("never reports provenance as a bare percentage", async () => {
-    // 10.0.0 replaced "출처 반영률 12%" with two counts and a sentence, because
-    // a percentage with no denominator cannot be checked by its reader.
     render();
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/출처 반영률\s*\d+\s*%/);
@@ -145,15 +116,6 @@ describe("BrainPage", () => {
     expect(document.body.textContent).not.toMatch(/undefined/);
   });
 
-  /**
-   * The connections map is a subview, not a peer of search.
-   *
-   * As a third tab it was one of the first three choices a newcomer met here: a
-   * force-directed node cloud offered with exactly the weight of "search your
-   * memory", which is what nearly everyone opens this screen to do. Reordering
-   * the strip does not fix that — being *in* the strip is the problem, so these
-   * tests hold the demotion rather than the tab order.
-   */
   it("offers two ways in, and the connections map is not one of them", async () => {
     render();
     await waitFor(() => expect(screen.queryAllByRole("tab").length).toBeGreaterThan(0));
@@ -169,8 +131,6 @@ describe("BrainPage", () => {
     expect(entry.textContent).toContain("연결 지도 열기");
     await userEvent.click(entry);
 
-    // Entering the subview retires the tablist rather than leaving a strip with
-    // nothing selected, and the way out is explicit.
     await waitFor(() => expect(screen.queryAllByRole("tab")).toHaveLength(0));
     const back = screen.getByRole("button", { name: "기억 화면으로 돌아가기" });
     expect(screen.queryByTestId("open-connections-map")).toBeNull();
@@ -205,9 +165,6 @@ describe("BrainPage", () => {
   });
 
   it("a link to any of the memory-tab aliases opens the memory tab, not search", async () => {
-    // `normalizeBrainView` treats "relationships"/"provenance"/"sources"/
-    // "portability"/"care" as synonyms of "memory" — this drives the whole
-    // OR chain through its first (short-circuiting) branch.
     render({}, {}, { initialTab: "memory" });
     await waitFor(() => expect(screen.getByRole("tab", { name: "내 자료" }).getAttribute("aria-selected")).toBe("true"));
   });
@@ -259,8 +216,6 @@ describe("standalone status panels (kept for future advanced views)", () => {
 
   describe("viewLabel", () => {
     it("falls back to the generic brain title for a view outside the known tabs", () => {
-      // BrainView is a closed union in normal use; this direct call is the
-      // only way to reach the fallback the function still guards against.
       expect(viewLabel("ko", "not-a-real-view" as never)).toBe("Lattice Brain");
     });
   });
@@ -276,8 +231,6 @@ describe("SourceProvenanceList", () => {
     renderComponent(<SourceProvenanceList items={[
       { id: "s1", title: "대화 요약", source_type: "conversation", path: "conv/123", created_at: "2026-07-01T00:00:00" },
     ]} />);
-    // The type sits beside "· <timestamp>" as sibling text within one line,
-    // so only a substring match finds it.
     expect(screen.getByText(/^대화 ·/)).toBeTruthy();
     expect(screen.getByText("conv/123")).toBeTruthy();
     expect(screen.getByText("확인 가능")).toBeTruthy();
@@ -322,7 +275,6 @@ describe("search tab: HybridSearch", () => {
     render({ hybridSearch: () => Promise.resolve(ok({ matches: [{ title: "결과 A", type: "Document" }] })) });
     const input = await screen.findByPlaceholderText("사람, 문서, 주제로 검색");
 
-    // A composing Enter (mid-IME-conversion) must not fire a search.
     fireEvent.keyDown(input, { key: "Enter", isComposing: true });
     expect(latticeApi.hybridSearch).not.toHaveBeenCalled();
 
@@ -341,8 +293,6 @@ describe("search tab: HybridSearch", () => {
     await userEvent.type(input, "아무거나");
     expect((button as HTMLButtonElement).disabled).toBe(false);
     await userEvent.click(button);
-    // `result.matches || result` falls back to the whole (matches-less)
-    // envelope body; `EntityList` copes with that rather than crashing.
     await waitFor(() => expect(latticeApi.hybridSearch).toHaveBeenCalled());
     expect(document.body.textContent).not.toMatch(/undefined/);
   });
@@ -357,10 +307,6 @@ describe("memory tab: UnifiedMemoryPanel", () => {
 
   it("shows the advanced-mode summary with format, storage and export-ready copy", async () => {
     render({
-      // `stats` is unused by the rendered summary today but is still parsed
-      // (`isRecord(portData.stats) ? ... : {}`) on every render; supplying it
-      // as a real record exercises that parse's truthy branch. Same for
-      // `memoryManager`'s `usage` record below.
       graphPortability: ok({ graph_schema_version: "3", storage: { engine: "sqlite" }, stats: { nodes: 10 } }),
       memoryManager: ok({ usage: { sources: 4, total_items: 12, total_bytes: 2048 } }),
     }, { mode: "advanced" }, { initialTab: "memory" });
@@ -379,11 +325,8 @@ describe("memory tab: UnifiedMemoryPanel", () => {
     await waitFor(() => expect(screen.getByPlaceholderText("다시 찾을 기억의 내용...")).toBeTruthy());
     await userEvent.click(screen.getByText("출처와 이력"));
     await waitFor(() => expect(screen.queryByPlaceholderText("다시 찾을 기억의 내용...")).toBeNull());
-    // Re-opening recall collapses sources in turn.
     await userEvent.click(screen.getByText("기억 다시 찾기"));
     await waitFor(() => expect(screen.getByPlaceholderText("다시 찾을 기억의 내용...")).toBeTruthy());
-    // Clicking the header of the section that is already open collapses it
-    // to nothing rather than switching to another section.
     await userEvent.click(screen.getByText("기억 다시 찾기"));
     await waitFor(() => expect(screen.queryByPlaceholderText("다시 찾을 기억의 내용...")).toBeNull());
   });
@@ -404,7 +347,6 @@ describe("memory tab: UnifiedMemoryPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "벡터 다시 만들기" }));
     await waitFor(() => expect(latticeApi.memoryRebuild).toHaveBeenCalled());
 
-    // The "찾기" button itself, not just Enter, must trigger a recall too.
     await userEvent.clear(input);
     await userEvent.type(input, "다른 질문");
     await userEvent.click(screen.getByRole("button", { name: "찾기" }));
@@ -435,8 +377,6 @@ describe("memory tab: UnifiedMemoryPanel", () => {
       graphProvenance: () => Promise.resolve(ok({ id: "solo", title: "단일 출처" })),
     }, {}, { initialTab: "memory" });
     await userEvent.click(await screen.findByText("출처와 이력"));
-    // A bare record is not an array, so `asArray` yields nothing to render —
-    // the empty state, not a crash, is the correct outcome here.
     await waitFor(() => expect(screen.getByText("아직 출처가 없습니다")).toBeTruthy());
   });
 
@@ -461,16 +401,10 @@ describe("memory tab: UnifiedMemoryPanel", () => {
     await waitFor(() => expect(latticeApi.graphBackup).toHaveBeenCalled());
 
     const importBox = screen.getByPlaceholderText("가져오기 미리보기를 위해 내보낸 Brain 데이터를 붙여넣으세요");
-    // Both `{` and `[` start a special-key token for user-event's keyboard
-    // parser; only those opening characters need escaping (doubling) to be
-    // typed literally.
     await userEvent.type(importBox, '{{"nodes":[[]}');
     await userEvent.click(screen.getByRole("button", { name: "가져오기 미리보기" }));
     await waitFor(() => expect(latticeApi.graphImport).toHaveBeenCalledWith({ nodes: [] }, true));
     await waitFor(() => expect(screen.getByText("가져오기 미리보기 완료")).toBeTruthy());
-    // A successful preview clears nothing (only recall/import text fields
-    // clear themselves elsewhere) but does invalidate portability — the
-    // panel keeps showing the artifact for further edits.
   });
 
   it("turns invalid import JSON into a reported error instead of throwing", async () => {
@@ -483,8 +417,6 @@ describe("memory tab: UnifiedMemoryPanel", () => {
   });
 
   it("stringifies a non-Error rejection from the import call itself", async () => {
-    // JSON.parse always throws a genuine Error; a rejection thrown by the API
-    // call is the only way to reach the `String(err)` side of the catch.
     render({ graphImport: () => Promise.reject("plain string failure") }, {}, { initialTab: "memory" });
     await userEvent.click(await screen.findByText("내보내기와 백업"));
     const importBox = screen.getByPlaceholderText("가져오기 미리보기를 위해 내보낸 Brain 데이터를 붙여넣으세요");
@@ -510,26 +442,17 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
 
   it("reports a failed graph fetch instead of drawing an empty canvas", async () => {
     renderGraph({ graph: fail("server unavailable", { nodes: [], edges: [] }) });
-    // The page header's own text is present from the very first synchronous
-    // render, before the query has settled — waiting on it would pass
-    // whether or not the query ever resolved into its "ok: false" state, so
-    // wait on `OperationResult`'s own failure copy instead.
     await waitFor(() => expect(screen.getByText("요청을 처리하지 못했어요")).toBeTruthy());
     expect(screen.queryByTestId("brain-cytoscape")).toBeNull();
     expect(document.body.textContent).not.toMatch(/undefined|NaN/);
   });
 
   it("falls back to the envelope itself when its `.data` is nullish", async () => {
-    // `graph.data?.data ?? graph.data`: a response whose own `.data` is
-    // missing still has to resolve to *something* rather than `undefined`.
     renderGraph({ graph: () => Promise.resolve({ ok: true, status: 200, source: "live", data: null }) });
     await waitFor(() => expect(screen.getByText("아직 연결된 기억이 없어요")).toBeTruthy());
   });
 
   it("shows a loading panel while the graph query is in flight", async () => {
-    // "연결 지도" (the panel's own title) also names the page kicker and the
-    // subview nav bar, so the loading spinner's own copy is the unambiguous
-    // signal that this is `LoadingPanel`, not just the subview shell.
     let resolveGraph!: (value: unknown) => void;
     renderGraph({ graph: () => new Promise((resolve) => { resolveGraph = resolve; }) });
     await screen.findByText("불러오는 중…");
@@ -558,7 +481,6 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     const search = await screen.findByRole("textbox", { name: "지식 그래프 검색" });
     await userEvent.type(search, "배포");
     await waitFor(() => expect(screen.getByText("배포")).toBeTruthy());
-    // The other node no longer matches the query and drops out of view.
     expect(screen.queryByText("릴리스 절차")).toBeNull();
 
     const searchAll = screen.getByRole("button", { name: "전체 기억에서 찾기" });
@@ -574,8 +496,6 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     await userEvent.selectOptions(groupSelect!, "지식");
     await userEvent.selectOptions(labelSelect!, "모든 이름");
     await userEvent.selectOptions(labelSelect!, "이름 숨기기");
-    // No crash across every group/label combination is the contract here;
-    // the underlying filtering is graphExplorer's, already covered there.
     expect(screen.getByTestId("brain-cytoscape")).toBeTruthy();
   });
 
@@ -592,7 +512,6 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     await screen.findByText("릴리스 절차");
     const slider = screen.getByLabelText("최소 관계 중요도");
     expect(screen.getByText("10%+")).toBeTruthy();
-    // Dragging below the basic-mode floor snaps straight back to it.
     fireEvent.change(slider, { target: { value: "0" } });
     await waitFor(() => expect(screen.getByText("10%+")).toBeTruthy());
   });
@@ -610,35 +529,25 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     expect(screen.getByText("태그를 만들고 CI를 통과")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "출처 복사" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("docs/RELEASE.md"));
-    // Clearing the selection returns to the "important items" panel.
     await userEvent.click(screen.getByRole("button", { name: "선택 해제" }));
     await waitFor(() => expect(screen.getByText("중요한 항목")).toBeTruthy());
   });
 
   it("selects a node with neither a summary nor a source", async () => {
-    // Advanced mode's importance floor starts at 0, so the low-importance
-    // node is visible in the "important items" aside without touching the
-    // slider (basic mode's floor of 10% would hide it outright).
     renderGraph();
     await userEvent.click(await screen.findByText("배포"));
     expect(screen.queryByText("출처 복사")).toBeNull();
-    // No summary paragraph is rendered either — only the label/group/importance
-    // badges and the key/value block below them.
     expect(screen.queryByText("태그를 만들고 CI를 통과")).toBeNull();
   });
 
   it("renders the selected-node card as a plain key/value list in basic mode", async () => {
     renderGraph({}, { mode: "basic" });
     await userEvent.click(await screen.findByText("릴리스 절차"));
-    // KeyValueList (basic mode), not StructuredView, is what's rendering here:
-    // the real source path shows up rather than the "no source" placeholder.
     expect(screen.queryByText("출처 기록 없음")).toBeNull();
     expect(screen.getByText(/docs\/RELEASE\.md/)).toBeTruthy();
   });
 
   it("shows the no-source placeholder in the basic-mode key/value card", async () => {
-    // n3 clears the basic-mode importance floor (0.1) on its own and has no
-    // source of its own, unlike n1 above.
     renderGraph({}, { mode: "basic" });
     await userEvent.click(await screen.findByText("제3의 개념"));
     expect(screen.getByText("출처 기록 없음")).toBeTruthy();
@@ -647,14 +556,10 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
   it("selects a collapsed group and expands it back", async () => {
     renderGraph();
     await screen.findByTestId("brain-cytoscape");
-    // Collapse the "knowledge" group pill, then select the resulting cluster.
     await userEvent.click(screen.getByRole("button", { name: /^지식/ }));
     await waitFor(() => expect(screen.getByText("접힘")).toBeTruthy());
     await userEvent.click(screen.getByTestId("mock-select-knowledge-group"));
     await waitFor(() => expect(screen.getByText("접힌 묶음")).toBeTruthy());
-    // Expanding clears the pill's own collapsed badge; the aside card's
-    // static "you selected a group" label is unaffected by the toggle since
-    // the selection itself is not cleared.
     await userEvent.click(screen.getByRole("button", { name: "묶음 펼치기" }));
     await waitFor(() => expect(screen.queryByText("접힘")).toBeNull());
     expect(screen.getByText("접힌 묶음")).toBeTruthy();
@@ -664,8 +569,6 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     renderGraph();
     await screen.findByTestId("brain-cytoscape");
     await userEvent.click(screen.getByTestId("mock-select-missing-group"));
-    // "people" has no members in this fixture, so it never made it into
-    // `parsed.groups` — the id resolves to neither a node nor a group.
     await waitFor(() => expect(screen.getByText("아직 선택한 항목이 없어요")).toBeTruthy());
   });
 });

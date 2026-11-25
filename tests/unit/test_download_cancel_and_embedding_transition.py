@@ -1,5 +1,3 @@
-"""Unit tests for cooperative model download cancellation and post-download semantic embedding transition."""
-
 from __future__ import annotations
 
 import json

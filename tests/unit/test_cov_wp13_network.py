@@ -1,15 +1,3 @@
-"""wp13 coverage — ``latticeai.tools.network``.
-
-``network_status`` is a probe: it shells out to four macOS/BSD binaries and
-opens a UDP socket toward 8.8.8.8 to learn which interface the default route
-uses. None of that may happen in a test, so both seams are replaced — a fake
-``subprocess.run`` that returns canned stdout per argv, and a fake socket that
-reports a fixed source address. What is exercised for real is the parsing:
-which ``ifconfig`` lines become interfaces, which ``inet`` lines become
-addresses, when the default-route guess is added, and which address wins as
-``local_ip``.
-"""
-
 from __future__ import annotations
 
 import socket
@@ -36,7 +24,6 @@ utun3: flags=8051<UP,POINTOPOINT,RUNNING>
 
 
 def _fake_runner(table: Dict[str, str], *, exit_code: int = 0):
-    """Return a ``subprocess.run`` stand-in keyed by the first argv element."""
 
     def fake_run(parts: List[str], **kwargs):
         assert kwargs["capture_output"] is True
@@ -49,8 +36,6 @@ def _fake_runner(table: Dict[str, str], *, exit_code: int = 0):
 
 
 class _FakeSocket:
-    """Context-manager socket whose ``getsockname`` reports a fixed address."""
-
     def __init__(self, family, kind, source="192.168.0.42"):
         self.family = family
         self.kind = kind
@@ -68,9 +53,6 @@ class _FakeSocket:
 
     def getsockname(self):
         return (self._source, 51234)
-
-
-# ── _run_network_command ─────────────────────────────────────────────────────
 
 
 def test_run_network_command_returns_trimmed_stdout(monkeypatch) -> None:
@@ -99,9 +81,6 @@ def test_run_network_command_swallows_a_missing_binary(monkeypatch) -> None:
     assert _run_network_command(["networksetup", "-getinfo", "Wi-Fi"], timeout=1) == ""
 
 
-# ── network_status ───────────────────────────────────────────────────────────
-
-
 def test_network_status_merges_ipconfig_ifconfig_and_default_route(monkeypatch) -> None:
     monkeypatch.setattr(
         network_module.subprocess,
@@ -125,14 +104,10 @@ def test_network_status_merges_ipconfig_ifconfig_and_default_route(monkeypatch) 
     result = network_status()
 
     assert result["hostname"] == "test-host"
-    # ipconfig answered for every probed interface, so en0/en1/bridge100 are set.
     assert result["local_ips"]["en0"] == "192.168.0.42"
     assert result["local_ips"]["bridge100"] == "192.168.0.42"
-    # ifconfig contributed only interfaces ipconfig did not already claim, and
-    # never the loopback address.
     assert result["local_ips"]["utun3"] == "10.8.0.2"
     assert "lo0" not in result["local_ips"]
-    # The guessed default-route address was already known, so no extra key.
     assert "default_route" not in result["local_ips"]
     assert result["local_ip"] == "192.168.0.42"
     assert result["public_ip"] == "203.0.113.7"
@@ -154,14 +129,12 @@ def test_network_status_records_an_unseen_default_route(monkeypatch) -> None:
     result = network_status()
 
     assert result["local_ips"]["default_route"] == "172.16.3.4"
-    # en0 came from ifconfig parsing, not ipconfig, and still wins local_ip.
     assert result["local_ip"] == "192.168.0.42"
     assert result["public_ip"] == ""
     assert result["wifi_info"] == ""
 
 
 def test_network_status_survives_a_refused_udp_probe(monkeypatch) -> None:
-    """No route at all: every probe fails and the report is still well formed."""
 
     def fake_run(parts, **kwargs):
         return subprocess.CompletedProcess(parts, 1, "", "unavailable")
@@ -183,7 +156,6 @@ def test_network_status_survives_a_refused_udp_probe(monkeypatch) -> None:
 
 
 def test_network_status_probe_uses_a_datagram_socket(monkeypatch) -> None:
-    """The probe must not open a TCP connection to 8.8.8.8."""
     seen: List[_FakeSocket] = []
 
     def make_socket(family, kind):

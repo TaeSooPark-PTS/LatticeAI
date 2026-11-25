@@ -1,11 +1,7 @@
-//! Timestamps and stable JSON hashing for the designer store.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-
-// ── timestamps / hashing ─────────────────────────────────────────────────────
 
 pub(crate) fn now_iso() -> String {
     let now = SystemTime::now()
@@ -21,7 +17,6 @@ pub(crate) fn utc_parts(secs: u64) -> (i32, u32, u32, u32, u32, u32) {
     let hour = (rem / 3600) as u32;
     let min = ((rem % 3600) / 60) as u32;
     let sec = (rem % 60) as u32;
-    // Civil from days (Howard Hinnant).
     let z = z as i64 + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = (z - era * 146_097) as u64;

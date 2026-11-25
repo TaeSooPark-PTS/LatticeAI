@@ -1,5 +1,3 @@
-"""Unit tests for core config parsing, session storage, quiet mode, and permissions."""
-
 from __future__ import annotations
 
 import json
@@ -170,7 +168,6 @@ def test_config_remaining(tmp_path: Path, monkeypatch):
 def test_core_leftovers_users_sessions_config_quiet_permission(
     tmp_path: Path, monkeypatch
 ):
-    # merge without api_keys dicts
     migrated, _, changed = migrate_users(
         {
             "a@b.com": {"email": "a@b.com", "id": "user:1"},
@@ -180,13 +177,11 @@ def test_core_leftovers_users_sessions_config_quiet_permission(
     assert changed is True
     assert migrated["a@b.com"]["id"] == "user:1"
 
-    # sessions refresh path (0 is falsy in ctor)
     store = SessionStore(tmp_path / "s", ttl_seconds=1000, refresh_threshold_seconds=1)
     store._refresh_threshold_seconds = 0
     token = store.create("sub", email="e@x.com")
     assert store.get_subject(token) == "sub"
 
-    # static dir missing and packaged static also missing
     monkeypatch.setattr(sys, "prefix", str(tmp_path / "noprefix"))
     cfg = Config.from_env(
         {
@@ -197,7 +192,6 @@ def test_core_leftovers_users_sessions_config_quiet_permission(
     )
     assert cfg.static_dir.name == "no-static"
 
-    # quiet with exception but no traceback
     from latticeai.core import quiet as quiet_mod
 
     monkeypatch.setattr(sys, "exc_info", lambda: (ValueError, ValueError("x"), None))

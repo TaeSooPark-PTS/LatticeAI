@@ -1,5 +1,3 @@
-//! Workspace edition, activation, and organization membership handlers.
-
 use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};

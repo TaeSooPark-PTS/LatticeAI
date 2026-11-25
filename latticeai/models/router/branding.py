@@ -1,11 +1,3 @@
-"""이 제품의 이름과, 답변을 그 이름으로 되돌리는 규칙.
-
-The system prompt, the citation instruction appended only when retrieved
-context exists, and the legacy-alias rewrite every generated string passes
-through. ``_compose_system`` is byte-compatible with the historical prompt when
-there is no context: the return value is exactly ``base``.
-"""
-
 import re
 from typing import Optional
 
@@ -26,9 +18,6 @@ You are a Vision-Language Model (VLM). If an image is provided, analyze it.
 Be concise and respond in the user's language."""
 
 
-# Appended ONLY when retrieved context exists (review 2026-07-25 Wave 2.3):
-# grounded answers should cite their sources and admit gaps. Advisory prompt
-# guidance — grounding assessment stays annotation-only and never blocks.
 CITATION_INSTRUCTION = """The Context section above contains retrieved sources.
 Ground your claims in those sources and cite them inline as [1], [2], ... matching the order they appear in the Context.
 If the context does not cover the question, say so instead of inventing sources.
@@ -36,12 +25,6 @@ Never cite a source that is not in the Context."""
 
 
 def _compose_system(base: str, context: str) -> str:
-    """Compose the system prompt with optional retrieved context.
-
-    Byte-compatible with the historical prompt when ``context`` is empty:
-    the return value is exactly ``base``. When context exists, the Context
-    block plus :data:`CITATION_INSTRUCTION` are appended.
-    """
     if not context:
         return base
     return f"{base}\n\nContext:\n{context}\n\n{CITATION_INSTRUCTION}"

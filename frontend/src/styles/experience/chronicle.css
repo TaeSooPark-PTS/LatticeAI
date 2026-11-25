@@ -1,17 +1,4 @@
-/*
- * 연대기 (Brain Chronicle) — v11.3.0.
- *
- * Everything here is drawn from the shared token layer (잉크 + 옥빛): surfaces
- * from `--surface`/`--border`, the curve and the heat from `--primary` and
- * `--memory`, text from `--foreground`/`--muted-foreground`. There is not one
- * literal colour in this file, which is the whole of what makes dark mode work
- * — the theme flip in tokens.css redefines those triples and this sheet follows
- * without a second rule.
- *
- * Unlayered, like the rest of styles/experience/*, so these rules win over any
- * Tailwind utility that lands on the same box. The components below therefore
- * carry `chronicle-*` classes and no layout utilities.
- */
+
 
 .chronicle-page {
   display: grid;
@@ -64,7 +51,7 @@
   line-height: 1.6;
 }
 
-/* ── growth curve + scrubber ─────────────────────────────────────────── */
+
 
 .chronicle-growth-plot {
   position: relative;
@@ -94,8 +81,7 @@
   stroke-linejoin: round;
 }
 
-/* The track is the control, not the knob: a thumb-sized hit area is unusable
-   on a phone, so the whole plot is grabbable and the knob is only its mark. */
+
 .chronicle-growth-track {
   position: absolute;
   inset: 0;
@@ -182,7 +168,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── activity heat-map ───────────────────────────────────────────────── */
+
 
 .chronicle-heatmap-scroll {
   display: flex;
@@ -253,7 +239,7 @@
   gap: 3px;
 }
 
-/* ── the day's story ─────────────────────────────────────────────────── */
+
 
 .chronicle-day-groups {
   display: grid;
@@ -351,7 +337,7 @@
   font-size: var(--lt-type-small);
 }
 
-/* ── rewind ──────────────────────────────────────────────────────────── */
+
 
 .chronicle-rewind {
   border-color: hsl(var(--primary) / 0.4);
@@ -392,7 +378,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* ── narrow screens ──────────────────────────────────────────────────── */
+
 
 @media (max-width: 760px) {
   .chronicle-panel {
@@ -403,8 +389,7 @@
     height: 10rem;
   }
 
-  /* Two lanes per row rather than four: at 390px the four-column row gave each
-     number about 70px, and a five-digit count wrapped under its own label. */
+  
   .chronicle-lane-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -425,8 +410,7 @@
     justify-self: start;
   }
 
-  /* A 1rem cell is the smallest comfortable touch target for the grid, and the
-     row scrolls sideways rather than shrinking below it. */
+  
   .chronicle-heatmap-cell {
     width: 1rem;
     height: 1rem;

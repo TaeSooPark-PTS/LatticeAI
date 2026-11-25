@@ -429,8 +429,7 @@
   border-bottom-left-radius: 6px;
 }
 
-/* Per-answer actions: copy the reply, regenerate the latest answer. Quiet by
-   default; readable on hover/focus so the stream stays clean. */
+
 .brain-message-actions {
   display: flex;
   flex-wrap: wrap;
@@ -470,8 +469,7 @@
   color: hsl(var(--fg) / 0.74);
 }
 
-/* Lightweight Markdown inside chat replies: real bold, lists, and headings
-   instead of raw ** and * markers. The bubble is pre-wrap, so reset here. */
+
 .brain-md {
   white-space: normal;
   text-align: left;
@@ -547,7 +545,7 @@
   color: hsl(var(--fg-muted));
 }
 
-/* Fenced code inside chat replies: readable card + copy / save-as-file actions. */
+
 .brain-code-block {
   display: block;
   margin: 0.55rem 0;

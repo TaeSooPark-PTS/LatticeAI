@@ -85,19 +85,9 @@ function BrainShell({
     toggleMenu,
   } = useShellMenu(active);
 
-  // Four everyday destinations stay in the primary nav — 대화 · 자료 · 기억 ·
-  // 연대기, in the order `productShellRoutes` lists them; the three management
-  // destinations are one list rendered twice — as topbar quick links once the
-  // row is wide enough for them, and inside the menu below that. Building both
-  // from a single array is what stops the two copies from drifting apart;
-  // shell.css owns which one shows, from a single breakpoint, so they can never
-  // both appear or both vanish. That breakpoint moved out with the fourth
-  // everyday link: the topbar needs ~90px more before both rows fit.
   const primaryRoutes = productShellRoutes.filter((item) => (
     item.id === "brain" || item.id === "capture" || item.id === "memory" || item.id === "chronicle"
   ));
-  // Ordered here rather than inherited from the route table: what needs a
-  // decision comes before what is merely configurable.
   const secondaryOrder = ["act", "library", "system"];
   const secondaryRoutes = secondaryOrder.flatMap((id) => (
     productShellRoutes.filter((item) => item.id === id)
@@ -148,12 +138,6 @@ function BrainShell({
         </nav>
 
         <div className="brain-shell-actions">
-          {/* Management destinations, promoted out of the menu so nothing
-              everyday costs an extra tap. A second landmark needs its own name
-              or screen readers announce two indistinguishable navigations.
-              Visibility is owned by shell.css, which hides this copy and the
-              one in the menu on opposite sides of a single breakpoint — hence
-              no `flex` utility here, which would fight that rule. */}
           <nav
             className="brain-utility-quick-nav"
             aria-label={t(language, "shell.nav.utility")}
@@ -173,9 +157,7 @@ function BrainShell({
               );
             })}
           </nav>
-          {/* Language belongs beside appearance */}
           <LanguageSwitcher compact />
-          {/* Appearance toggle */}
           <button
             type="button"
             className="brain-theme-toggle"
@@ -231,14 +213,6 @@ function BrainShell({
               <span id="brain-more-navigation-label" className="brain-more-section-label">
                 {t(language, "shell.menu.manage")}
               </span>
-              {/* Named for what it holds, not for what the menu used to hold.
-                  This section carries the three management links only, and it
-                  is open at exactly the widths where the primary nav — desktop
-                  above, bottom bar below — is also on screen. Both were called
-                  "화면 이동", so a landmark list showed two navigations with the
-                  same name and no way to tell them apart. It shares its name
-                  with its topbar twin instead, which is never visible at the
-                  same time. */}
               <nav className="brain-more-nav" aria-label={t(language, "shell.nav.utility")}>
                 {secondaryRoutes.map((item) => {
                   const Icon = item.icon;
@@ -319,8 +293,6 @@ function BrainShell({
 
 function VsCodeSyncStatus({ language }: { language: Language }) {
   const mode = useAppStore((state) => state.mode);
-  // "VS Code" means nothing to a non-technical user. Only show the editor
-  // sync indicator once someone has opted into advanced/admin mode.
   if (mode === "basic") return null;
   return <VsCodeSyncStatusInner language={language} />;
 }

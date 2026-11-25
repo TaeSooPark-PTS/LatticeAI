@@ -21,7 +21,6 @@ use super::match_util::*;
 use super::seed::*;
 use super::*;
 
-/// One running install: auth + workspace + invitations + permissions.
 pub struct Install {
     pub origin: String,
     pub data_dir: PathBuf,
@@ -128,8 +127,6 @@ impl Install {
                     .get("source_id")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
-                // No local sources are seeded; every watch/remove is the
-                // unknown-source branch the fixture captured (uncaught 500).
                 if matches!(op, "set_local_source_watch" | "remove_local_source") {
                     return Err(format!("knowledge source not found: {source_id}"));
                 }
@@ -248,8 +245,6 @@ impl Install {
             .issue("POST", "/workspace/orgs", Some(&org_a), "session:owner")
             .await;
         assert_eq!(a.status, 200, "seed org a: {}", a.body);
-        // Same-second created_at ties sort by insertion in Python and by
-        // BTreeMap key here; a one-second gap makes created_at the tie-break.
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         let org_b = json!({"name": "Archive Target", "settings": {}});

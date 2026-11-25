@@ -272,8 +272,6 @@ pub(crate) async fn hybrid_response(
     };
     let key = scope_key(effective_email, workspace_id);
     let budget = budget_for(&key);
-    // P0.4: Redact inline secrets and mask PII from the user prompt before any
-    // outbound cloud LLM request (local conversation history retains original).
     let cloud_question = lattice_core::redact_pii_and_secrets(&question);
     let composed = crate::cloud::compose_prompt(
         crate::cloud::HYBRID_SYSTEM_PROMPT,

@@ -1,5 +1,3 @@
-//! FastAPI/Starlette-compatible query-string and JSON body parsing helpers.
-
 use axum::body::Body;
 use axum::http::Uri;
 use axum::response::Response;
@@ -7,16 +5,12 @@ use serde_json::{Map, Value};
 
 use super::{detail_response, missing_body, missing_query, validation_response, MAX_BODY_BYTES};
 
-// ── query + body parsing, with FastAPI's refusal shapes ─────────────────────
-
-/// The parsed query string of one request.
 #[derive(Debug, Clone, Default)]
 pub struct Query {
     values: Vec<(String, String)>,
 }
 
 impl Query {
-    /// Parse `?a=1&b=2`; the *last* value wins, as Starlette's `QueryParams` do.
     pub fn from_uri(uri: &Uri) -> Self {
         let mut values = Vec::new();
         if let Some(raw) = uri.query() {
@@ -31,7 +25,6 @@ impl Query {
         Self { values }
     }
 
-    /// The last value sent for `name`, if any.
     pub fn get(&self, name: &str) -> Option<&str> {
         self.values
             .iter()
@@ -40,7 +33,6 @@ impl Query {
             .map(|(_, value)| value.as_str())
     }
 
-    /// `name: str = default` with an optional `max_length` constraint.
     pub fn string(
         &self,
         name: &str,
@@ -61,7 +53,6 @@ impl Query {
         Ok(value)
     }
 
-    /// `name: str` with no default — 422 `missing` when absent.
     pub fn required_string(
         &self,
         name: &str,
@@ -73,7 +64,6 @@ impl Query {
         }
     }
 
-    /// `name: int = default`, optionally bounded by `ge` / `le`.
     pub fn int(
         &self,
         name: &str,
@@ -115,13 +105,11 @@ impl Query {
         Ok(parsed)
     }
 
-    /// The raw query string a workspace selector is read out of.
     pub fn workspace(&self) -> Option<&str> {
         self.get(lattice_auth::WORKSPACE_PARAM)
     }
 }
 
-/// `%xx` and `+` decoding, the two escapes a browser actually sends.
 fn percent_decode(raw: &str) -> String {
     let bytes = raw.replace('+', " ").into_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
@@ -141,10 +129,6 @@ fn percent_decode(raw: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// One request body, parsed as the JSON object a pydantic model needs.
-///
-/// An absent body is `{}` — the shape FastAPI gives a model whose fields all
-/// have defaults, and the reading every `POST` in these families starts from.
 pub async fn json_body(body: Body) -> Result<Value, Response> {
     let bytes = axum::body::to_bytes(body, MAX_BODY_BYTES)
         .await
@@ -154,9 +138,6 @@ pub async fn json_body(body: Body) -> Result<Value, Response> {
     if bytes.is_empty() {
         return Ok(Value::Object(Map::new()));
     }
-    // The `ctx.error` text FastAPI carries here is CPython's own decoder
-    // message and changes between releases, so it is deliberately not
-    // reproduced (WP-I2 §7.8 made the same call for the auth bodies).
     let parsed: Value = serde_json::from_slice(&bytes).map_err(|_| {
         validation_response(
             "json_invalid",
@@ -176,9 +157,6 @@ pub async fn json_body(body: Body) -> Result<Value, Response> {
     Ok(parsed)
 }
 
-// ── the readings a pydantic field gives a handler ───────────────────────────
-
-/// `field: str = ""` — anything that is not a string reads as the default.
 pub fn body_str(body: &Value, name: &str, default: &str) -> String {
     match body.get(name) {
         Some(Value::String(text)) => text.clone(),
@@ -186,7 +164,6 @@ pub fn body_str(body: &Value, name: &str, default: &str) -> String {
     }
 }
 
-/// `field: str` with no default — 422 `missing` when the key is absent.
 pub fn body_required_str(body: &Value, name: &str) -> Result<String, Response> {
     match body.get(name) {
         Some(Value::String(text)) => Ok(text.clone()),
@@ -200,7 +177,6 @@ pub fn body_required_str(body: &Value, name: &str) -> Result<String, Response> {
     }
 }
 
-/// `field: int = default`.
 pub fn body_int(body: &Value, name: &str, default: i64) -> i64 {
     match body.get(name) {
         Some(Value::Number(number)) => number.as_i64().unwrap_or(default),
@@ -208,7 +184,6 @@ pub fn body_int(body: &Value, name: &str, default: i64) -> i64 {
     }
 }
 
-/// `field: bool = default`.
 pub fn body_bool(body: &Value, name: &str, default: bool) -> bool {
     match body.get(name) {
         Some(Value::Bool(flag)) => *flag,
@@ -216,7 +191,6 @@ pub fn body_bool(body: &Value, name: &str, default: bool) -> bool {
     }
 }
 
-/// `field: Optional[bool] = None`.
 pub fn body_opt_bool(body: &Value, name: &str) -> Option<bool> {
     match body.get(name) {
         Some(Value::Bool(flag)) => Some(*flag),
@@ -224,7 +198,6 @@ pub fn body_opt_bool(body: &Value, name: &str) -> Option<bool> {
     }
 }
 
-/// `field: Optional[str] = None`.
 pub fn body_opt_str(body: &Value, name: &str) -> Option<String> {
     match body.get(name) {
         Some(Value::String(text)) => Some(text.clone()),
@@ -232,7 +205,6 @@ pub fn body_opt_str(body: &Value, name: &str) -> Option<String> {
     }
 }
 
-/// `field: List[str] = []`.
 pub fn body_str_list(body: &Value, name: &str) -> Vec<String> {
     match body.get(name) {
         Some(Value::Array(items)) => items

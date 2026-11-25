@@ -1,5 +1,3 @@
-"""Unit tests for filesystem, knowledge, document, and search tool/router branches."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -85,7 +83,6 @@ def test_filesystem_remaining_branches(tmp_path: Path, monkeypatch):
     assert hits["truncated"] is True
     hits = grep("nomatch", path=".")
     assert hits["matches"] == []
-    # binary / dir skips should not explode
     grep("secret", path=".")
 
     with pytest.raises(ToolError):
@@ -119,7 +116,6 @@ def test_filesystem_remaining_branches(tmp_path: Path, monkeypatch):
         preview_url("missing.html")
     assert "local_url" in preview_url("page.html")
 
-    # unicode decode skip in grep/search
     (root / "bad.md").write_bytes(b"\xff\xfe")
     grep("alpha", path=".")
     search_files("alpha", path=".")

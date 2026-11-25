@@ -1,15 +1,7 @@
-/**
- * Index status, embeddings, the model library and its install stream, host
- * sysinfo, documents and connected folders.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const { json } = require("./http.cjs");
 const { graphNodes, graphEdges } = require("./fixtures.cjs");
 
 module.exports = function handleModels({ req, res, url, pathname }) {
-  // ── v3 future API surfaces (integration targets) ──────────────────────────
   if (pathname === "/api/index/status") return json(res, {
     generated_at: "2026-06-06T12:00:00",
     pipelines: {
@@ -47,7 +39,6 @@ module.exports = function handleModels({ req, res, url, pathname }) {
     { id: "openai", label: "OpenAI-compatible", grade: "production" },
     { id: "custom", label: "Custom", grade: "production" },
   ] });
-  // ── v3.4.0 Platform Completion surfaces ───────────────────────────────────
   if (pathname === "/agents/api/run" && req.method === "POST") return json(res, {
     run: { id: "agent-run-live", agent_id: "agent:executor", status: "ok", created_at: "2026-06-07T10:06:00" },
     result: {
@@ -69,8 +60,6 @@ module.exports = function handleModels({ req, res, url, pathname }) {
     pre_run_hooks: { ran: 1, blocked: false },
     post_run_hooks: { ran: 1, blocked: false },
   });
-  // The one-click switcher on the model library calls this. Without it the
-  // primary action of the screen's first card 404s in every captured frame.
   if (pathname === "/models/load" && req.method === "POST") return json(res, {
     status: "ok", loaded: true, model_id: "mlx-community/gemma-4-26b-a4b-it-4bit", engine: "local_mlx",
   });
@@ -190,10 +179,6 @@ module.exports = function handleModels({ req, res, url, pathname }) {
       ],
     },
   });
-  // Install SSE stage tokens MUST match latticeai/services/model_loading.py
-  // prepare stream wire protocol (B2): engine → download → load → smoke_test → done.
-  // Frontend maps these to UI steps install/download/validate/load via
-  // friendlyInstallStage — never invent mock-only stage names.
   if (pathname === "/engines/prepare-model/stream" && req.method === "POST") {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
     const send = (event, obj) => res.write(`event: ${event}\ndata: ${JSON.stringify(obj)}\n\n`);
@@ -207,7 +192,6 @@ module.exports = function handleModels({ req, res, url, pathname }) {
     }, 420);
     return true;
   }
-  // readiness is backend-owned (roomy|tight|low). Mock max load is 61% → tight.
   if (pathname === "/local/sysinfo") return json(res, {
     cpu_pct: 34,
     ram_pct: 61,
@@ -236,9 +220,6 @@ module.exports = function handleModels({ req, res, url, pathname }) {
     if (pathname === "/knowledge-graph/local/sources") return json(res, localSources);
     if (pathname === "/knowledge-graph/local/roots") return json(res, { roots: [{ path: "/Users/you/Documents", label: "Documents" }, { path: "/Users/you/Desktop", label: "Desktop" }, { path: "/Users/you/code", label: "code" }] });
     if (pathname === "/knowledge-graph/local/watch/status") return json(res, localSources.watch);
-    // Per-folder memory state. The Sources screen now shows this card beside the
-    // recent-documents panel, so it has to answer here or the second row of the
-    // redesigned layout captures as a single half-empty column.
     if (pathname === "/knowledge-graph/local/health") return json(res, {
       count: 2,
       vector_freshness_global: { status: "fresh", pending_items: 0 },

@@ -1,5 +1,3 @@
-//! Pure-Rust RFC 7748 X25519 Montgomery-ladder Diffie-Hellman primitives.
-
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 
@@ -107,7 +105,6 @@ fn fe_inv(i: &FieldElem) -> FieldElem {
     c
 }
 
-/// RFC 7748 X25519 Diffie-Hellman scalar multiplication (`scalar * point`).
 pub(crate) fn x25519_scalarmult(n: &[u8; 32], p: &[u8; 32]) -> [u8; 32] {
     let mut z = *n;
     z[0] &= 248;
@@ -162,8 +159,6 @@ pub(crate) fn x25519_base(scalar: &[u8; 32]) -> [u8; 32] {
     x25519_scalarmult(scalar, &nine)
 }
 
-/// Convert this device's Ed25519 seed (`identity_key_seed`) to its RFC 7748
-/// clamped X25519 private scalar and Montgomery public key.
 pub(crate) fn identity_x25519_keypair(identity: &DeviceIdentity) -> ([u8; 32], [u8; 32]) {
     let mut scalar = identity.x25519_secret_scalar();
     scalar[0] &= 248;

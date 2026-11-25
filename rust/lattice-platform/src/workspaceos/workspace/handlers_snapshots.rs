@@ -1,5 +1,3 @@
-//! Workspace snapshot, time-machine, and memory handlers.
-
 use axum::body::Bytes;
 use axum::extract::{Path, Query, RawQuery, State};
 use axum::http::{HeaderMap, StatusCode};

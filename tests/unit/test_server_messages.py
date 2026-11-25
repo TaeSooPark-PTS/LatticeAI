@@ -1,13 +1,3 @@
-"""Server-side message catalog: parity, resolution, and end-to-end wiring.
-
-The catalog exists because the API used to answer in whichever language the
-endpoint's author was thinking in — Korean from `auth.py`, English from
-`browser.py` — so every user read half the product in a language they had not
-chosen. These tests hold that line: both languages for every message, a
-language resolved from the request rather than the call site, and no endpoint
-quietly reverting to a hardcoded literal.
-"""
-
 from __future__ import annotations
 
 import re
@@ -18,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from latticeai.core.messages import (  # noqa: E402
+from latticeai.core.messages import (
     DEFAULT_LANGUAGE,
     LANGUAGE_HEADER,
     MESSAGES,
@@ -32,15 +22,10 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 class _Request:
-    """Minimal stand-in: `resolve_language` only ever reads `.headers`."""
-
     def __init__(self, **headers: str) -> None:
         self.headers = {
             key.replace("_", "-").lower(): value for key, value in headers.items()
         }
-
-
-# ── catalog integrity ───────────────────────────────────────────────────
 
 
 def test_every_message_exists_in_every_language():
@@ -54,7 +39,6 @@ def test_every_message_exists_in_every_language():
 
 
 def test_no_message_is_the_same_string_in_both_languages():
-    """A copy-pasted entry is an untranslated one wearing a translation's clothes."""
     identical = [key for key, entry in MESSAGES.items() if entry["ko"] == entry["en"]]
     assert identical == []
 
@@ -69,9 +53,6 @@ def test_korean_entries_actually_contain_korean():
 def test_english_entries_contain_no_korean():
     hangul = re.compile(r"[가-힣]")
     assert [key for key, entry in MESSAGES.items() if hangul.search(entry["en"])] == []
-
-
-# ── language resolution ─────────────────────────────────────────────────
 
 
 def test_explicit_header_wins_over_browser_preference():
@@ -101,12 +82,7 @@ def test_resolution_survives_a_request_without_headers():
     assert resolve_language(Bare()) == DEFAULT_LANGUAGE
 
 
-# ── translation ─────────────────────────────────────────────────────────
-
-
 def test_unknown_key_returns_the_key_rather_than_raising():
-    # A missing message must never turn a 404 into a 500, and the namespaced
-    # key is something a bug report can be written about.
     assert translate("nope.not.a.key", "en") == "nope.not.a.key"
 
 
@@ -119,12 +95,6 @@ def test_http_error_carries_the_localized_detail():
     assert ko.detail != en.detail
 
 
-# ── the routers actually use it ─────────────────────────────────────────
-
-# 10.9.0 widened this from three routers to the everyday path. The same list
-# lives in scripts/check_server_i18n.mjs (which runs in `npm run lint` and is
-# stricter — it rejects an English literal too, not only a Korean one), and
-# test_the_two_gates_agree below fails if the two ever drift apart.
 MIGRATED_ROUTERS = [
     "latticeai/api/agent_worker_seam.py",
     "latticeai/api/health.py",
@@ -136,7 +106,6 @@ MIGRATED_ROUTERS = [
 
 
 def _raises_own_wording(source: str) -> bool:
-    """True if the router owns user-facing error wording (not status-only or pass-through)."""
     for line in source.splitlines():
         match = re.search(r"detail\s*=\s*(.+)$", line)
         if not match:
@@ -149,11 +118,6 @@ def _raises_own_wording(source: str) -> bool:
 
 
 def test_the_two_gates_agree_on_which_routers_are_migrated():
-    """One list in Python, one in the lint gate — they must name the same set.
-
-    Either gate alone can be satisfied while the other is not; a router that
-    slipped out of one list would look guarded and not be.
-    """
     gate = (REPO / "scripts/check_server_i18n.mjs").read_text(encoding="utf-8")
     body = gate.split("const LOCALIZED = [", 1)[1].split("]", 1)[0]
     from_gate = {
@@ -193,13 +157,6 @@ def test_migrated_routers_take_their_wording_from_the_catalog(relative):
 
 @pytest.mark.parametrize("relative", MIGRATED_ROUTERS)
 def test_migrated_routers_never_fix_the_language_at_the_raise_site(relative):
-    """The language comes from the request — resolved here, or passed in.
-
-    `chat_intents.py` is the second shape: it is reached from `chat.py`, which
-    resolves once at the HTTP edge and threads `language` down. Requiring
-    `resolve_language(` in every file would push a second resolution into a
-    module that has no request to resolve from.
-    """
     source = (REPO / relative).read_text(encoding="utf-8")
     if not _raises_own_wording(source):
         return
@@ -211,7 +168,6 @@ def test_migrated_routers_never_fix_the_language_at_the_raise_site(relative):
 
 
 def test_every_key_the_routers_reference_exists_in_the_catalog():
-    """A typo'd key renders as the key itself — caught here instead of in the UI."""
     referenced: set[str] = set()
     for relative in MIGRATED_ROUTERS:
         source = (REPO / relative).read_text(encoding="utf-8")
@@ -220,11 +176,7 @@ def test_every_key_the_routers_reference_exists_in_the_catalog():
     assert sorted(referenced - set(MESSAGES)) == []
 
 
-# ── end to end: a real request gets a real localized answer ─────────────
-
-
 def _seam_client(monkeypatch):
-    """The worker seam wired shut, so a localized 404 can be observed."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -269,7 +221,6 @@ def test_a_browser_that_only_sends_accept_language_is_still_understood(monkeypat
 
 
 def test_the_compute_seam_can_resolve_a_language_too(monkeypatch):
-    """Worker compute seams share the same catalog and header."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 

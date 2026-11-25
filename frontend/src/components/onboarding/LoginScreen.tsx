@@ -90,8 +90,6 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
             <p className="ritual-subtitle">{t(language, "flow.login.body")}</p>
           </header>
 
-          {/* The form is the whole job of this screen, so it is the only raised
-              surface on it. */}
           <div className="ritual-login-card">
             <form onSubmit={submit} className="ritual-form" aria-labelledby="login-title">
               <div className="ritual-field-stack">
@@ -162,11 +160,6 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 function ProductPromise() {
   const language = useAppStore((state) => state.language);
   return (
-    // Three bordered cards competing with the form became one quiet bar with
-    // hairline separators — same three facts, no second set of boxes under the
-    // one box that matters. The `.is-quiet` modifier carries that in styles.css;
-    // border/background utilities here would have lost to `.ritual-promise div`
-    // and only added an outer box around the inner ones.
     <aside className="ritual-promise is-quiet" aria-label={t(language, "flow.promise.aria")}>
       <div>
         <span>{t(language, "flow.promise.memory.k")}</span>

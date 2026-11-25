@@ -1,22 +1,9 @@
-"""Static local-model catalog, engine installers, and family-version filtering.
-
-5.2.0: Now sources the rich ENGINE_MODEL_CATALOG from the structured
-model_capability_registry (single source of truth with HF verification,
-download/load strategy, hardware, license, modality). Legacy flat shapes
-preserved exactly for all downstream (recommendation, api, runtime, frontend).
-
-The old inline _model() + ENGINE_MODEL_CATALOG data has been moved into
-latticeai/services/model_capability_registry.py (see there for full 5.2 fields).
-"""
-
 from __future__ import annotations
 
 import re
 import sys
 from typing import Any, Dict, List, Optional
 
-# 5.2.0: Delegate catalog data to the structured capability registry (rich + verified).
-# This keeps backward compat for every `from ...model_catalog import ENGINE_MODEL_CATALOG`.
 from latticeai.services.model_capability_registry import (
     build_engine_model_catalog as _build_engine_model_catalog,
 )
@@ -106,32 +93,10 @@ ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# 5.2.0 delegation: the rich catalog (with verification, hf_repo_id, strategies, hardware, license etc)
-# is defined in model_capability_registry. We build the legacy-shaped ENGINE_MODEL_CATALOG here
-# at import time so every existing consumer (runtime, api, recommendation, tests) is unaffected.
-#
-# The *raw* registry projection keeps every capability (incl. legacy generations
-# like Gemma 3 / Qwen2.5-VL / Pixtral) for transparency + HF verification. The
-# user-facing ENGINE_MODEL_CATALOG below is then narrowed to the aggressive 5.2.0
-# policy (latest family generations only, no text-only/legacy weights) and the
-# engine-specific ids/sizes are normalised. See `_finalize_engine_catalog`.
 _RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = (
     _build_engine_model_catalog()
 )
-# Filled in at module end once the blocklist, alias map and family-version filter
-# are all defined; declared here so the public name exists for static readers.
 ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = {}
-
-# Per-engine repo ids for the recommended catalog. Every repo below was resolved
-# through the HF API on 2026-08-10 and is stored in the Hub's canonical casing
-# (`google/gemma-4-12b-it` answers as `google/gemma-4-12B-it`; `ggml-org/
-# gemma-4-26b-a4b-it-GGUF` answers as `ggml-org/gemma-4-26B-A4B-it-GGUF`).
-# Lookups are lowercase, so each model is keyed by both its short name and its
-# full mlx repo id — see `_normalize_engine_entry` and `ModelResolution`.
-#
-# Removed in 11.2.0: `qwen3-vl-8b` and `llama-4-scout`. Their vllm/lmstudio
-# targets pointed at `meta-llama/Llama-4-Scout-17B-16E-Instruct`, which is
-# gated — the download could never succeed without Hub credentials.
 
 
 def _gguf_routes(
@@ -141,7 +106,6 @@ def _gguf_routes(
     *,
     ollama_tag: str = "Q4_K_M",
 ) -> Dict[str, str]:
-    """One model's engine map: MLX weights, a GGUF repo, and the upstream HF repo."""
     return {
         "local_mlx": mlx_repo,
         "omlx": mlx_repo.replace("/", "--"),
@@ -248,9 +212,6 @@ _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
     ),
 }
 
-# Names people actually type that are not the repo's own short name. Kept
-# because a user who asks for "gemma-4-26b-it-4bit" means the A4B build — there
-# is no other Gemma 4 26B — and resolving that to nothing would be pedantry.
 _COMMON_MISNAMES: Dict[str, str] = {
     "gemma-4-26b-it-4bit": "mlx-community/gemma-4-26b-a4b-it-4bit",
     "gemma-4-26b-qat-4bit": "mlx-community/gemma-4-26B-A4B-it-qat-4bit",
@@ -265,8 +226,6 @@ _COMMON_MISNAMES: Dict[str, str] = {
     "embeddinggemma-2-hf": "google/embeddinggemma-2",
 }
 
-# Keyed by both the lowercase short name ("gemma-4-12b-it-4bit") and the
-# lowercase full repo id, because callers reach this map from both directions.
 MODEL_ENGINE_ALIASES: Dict[str, Dict[str, str]] = {
     **{
         key: routes
@@ -276,7 +235,6 @@ MODEL_ENGINE_ALIASES: Dict[str, Dict[str, str]] = {
     **{alias: _ENGINE_ROUTES[repo] for alias, repo in _COMMON_MISNAMES.items()},
 }
 
-# Also expose registry helpers directly from here for consumers who want the rich objects
 get_all_capabilities = _get_all_capabilities
 get_capability = _get_capability
 get_embedding_capabilities = _get_embedding_capabilities
@@ -307,16 +265,6 @@ def _model_family_version(
     for family, pattern in _VERSIONED_MODEL_PATTERNS:
         match = pattern.search(text)
         if match:
-            # Every pattern captures at least one decimal digit and no other
-            # character but ``.``, so the parsed tuple is never empty — the
-            # old ``if version:`` guard could not fire and is gone.
-            #
-            # Compared at *major* granularity only (``[:1]``). The filter exists
-            # to hide superseded generations — Qwen 2.5 behind Qwen 3, Gemma 3
-            # behind Gemma 4 — not to pick a winner inside one generation.
-            # Comparing minors made Qwen3.5 9B (the mid VLM) vanish the moment
-            # Qwen3.6 27B joined the catalog, even though they fill different
-            # RAM tiers and ship side by side.
             return family, _version_tuple(match.group(1))[:1]
     return None
 
@@ -340,16 +288,6 @@ def filter_lower_family_versions(models: List[Dict[str, Any]]) -> List[Dict[str,
     ]
 
 
-# ── User-facing catalog assembly ──────────────────────────────────────────────
-# The capability registry already keeps superseded generations out of the
-# catalog by lifecycle (they live in its LEGACY list, recognised but never
-# offered). This blocklist is the second lock: a regression guard so a retired
-# generation cannot creep back into the model picker through a hand-edited
-# entry. Anything whose id contains one of these fragments is dropped from
-# ENGINE_MODEL_CATALOG.
-#
-# 11.2.0 removed ``gpt-oss`` from this list — GPT-OSS 20B is now a recommended
-# entry, not a retired one — and added the generations retired this release.
 _BLOCKED_CATALOG_FRAGMENTS = (
     "gemma-3",
     "gemma3",
@@ -381,13 +319,6 @@ def _is_blocked_catalog_id(model: Dict[str, Any]) -> bool:
 
 
 def _normalize_engine_entry(engine: str, model: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply historical engine-specific id + size conventions to a raw entry.
-
-    * Non-MLX engines resolve to their canonical packaged id via
-      :data:`MODEL_ENGINE_ALIASES` (e.g. ollama → ``hf.co/ggml-org/...GGUF``).
-    * Server / tool-managed engines advertise no fixed on-disk size, so the
-      execution tool validates the exact weights at pull time.
-    """
     if engine == "local_mlx":
         return model
     entry = dict(model)
@@ -404,8 +335,6 @@ def _normalize_engine_entry(engine: str, model: Dict[str, Any]) -> Dict[str, Any
     mapped = aliases.get(engine) if aliases else None
     if mapped:
         entry["id"] = f"{engine}:{mapped}"
-    # Tool-managed engines (ollama/vllm/lmstudio/llamacpp) pull on demand; the
-    # registry's MLX on-disk size does not apply to them.
     entry["size"] = "실행 도구에서 관리"
     return entry
 

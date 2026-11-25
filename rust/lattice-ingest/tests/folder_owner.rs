@@ -1,5 +1,3 @@
-//! N7: folder ingest accepts the trusted local owner and actually runs.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};

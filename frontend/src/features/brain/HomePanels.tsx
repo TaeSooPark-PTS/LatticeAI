@@ -23,11 +23,6 @@ import type {
   ConversationSummary,
 } from "./types";
 
-// A friendly, actionable path out of the "no model loaded" dead end: the chat
-// politely refuses without a model, so the way to fix it must be one click
-// away. A pill, not a banner — the full sentence rides on the tooltip and the
-// accessible name, so the screen keeps its calm and a screen reader keeps the
-// whole story.
 export function ModelMissingNotice({ language }: { language: Language }) {
   const detail = t(language, "brain.noModel.banner");
   return (
@@ -42,8 +37,6 @@ export function ModelMissingNotice({ language }: { language: Language }) {
   );
 }
 
-// Exported for unit tests: the panel only calls this behind an `updatedAt ?`
-// guard, so the empty-input contract is asserted directly.
 export function formatConversationTime(language: Language, updatedAt?: number): string {
   if (!updatedAt) return "";
   const locale = language === "ko" ? "ko-KR" : "en-US";
@@ -60,8 +53,6 @@ export function formatConversationTime(language: Language, updatedAt?: number): 
 const HISTORY_COLLAPSED_COUNT = 5;
 const HISTORY_EXPANDED_COUNT = 20;
 
-// Past conversations the Brain actually kept. Deleting uses a two-step inline
-// confirm instead of a blocking native dialog.
 export function PastConversationsPanel({
   language,
   items,

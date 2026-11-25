@@ -1,17 +1,3 @@
-"""Model preparation — the per-engine source work and its streaming twin.
-
-`_prepare_model_sources` and the `blocking_prepare` worker inside
-`prepare_and_load_model_stream` are the same decision tree written twice: for
-each engine, is the runtime installed, are the weights present, and may we go
-and get them? Every one of those branches ends in a subprocess, a download or a
-child server, so all of them arrive through the `runtime_state` dependency
-surface and are replaced here with recorders.
-
-The streaming half is asserted on the frames a browser would actually receive,
-because that is the only thing the Model Load screen can react to — a refusal
-that never reaches the wire is indistinguishable from a hang.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -46,7 +32,6 @@ def _progress_payload(stage, message, **kwargs):
 
 
 def _deps(**overrides):
-    """A permissive dependency surface; override the one key under test."""
     router = overrides.pop("router", None) or _Router()
     calls: dict = {
         "blocked": [],
@@ -134,7 +119,6 @@ def _deps(**overrides):
 
 @pytest.fixture()
 def patched(monkeypatch):
-    """Install a dependency surface and hand the test its recorder."""
 
     def install(**overrides):
         deps = _deps(**overrides)
@@ -157,9 +141,6 @@ def _fake_subprocess(monkeypatch, *, returncode=0, stderr=""):
         ),
     )
     return ran
-
-
-# ── _prepare_model_sources: the synchronous per-engine work ──────────────────
 
 
 def test_ollama_refuses_to_pull_a_missing_model_without_consent(monkeypatch):
@@ -316,9 +297,6 @@ def test_an_already_downloaded_lm_studio_model_loads_without_consent():
     assert result["parsed_model"] == "wp02-alpha:1"
 
 
-# ── prepare_and_load_model ───────────────────────────────────────────────────
-
-
 def _load(**kwargs):
     async def _scenario():
         return await asyncio.wait_for(
@@ -335,7 +313,6 @@ def _load(**kwargs):
 
 
 def test_the_legacy_mlx_prefix_is_canonicalised_to_local_mlx(patched):
-    """`mlx:` is the old spelling; everything downstream keys off local_mlx."""
     deps = patched(parse_model_ref=lambda _model_id: ("mlx", "wp02-model"))
 
     result = _load(model_id="mlx:wp02-model")
@@ -343,9 +320,6 @@ def test_the_legacy_mlx_prefix_is_canonicalised_to_local_mlx(patched):
     assert result["engine"] == "local_mlx"
     assert deps["_calls"]["engines"] == ["local_mlx"]
     assert deps["_router"].loaded[0]["model_id"] == "mlx:wp02-model"
-
-
-# ── prepare_and_load_model_stream ────────────────────────────────────────────
 
 
 def _run_stream(model_id="local_mlx:wp02-model", *, events=None, **kwargs):

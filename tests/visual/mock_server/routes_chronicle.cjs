@@ -1,23 +1,6 @@
-/**
- * Brain Chronicle fixtures — a populated eight-week history.
- *
- * The release screenshot of 연대기 is only worth publishing if the screen has
- * something on it, so this module hands back a Brain that has plainly been used:
- * a growth curve that climbs, a heat-map with light and heavy days, one rich
- * selected day, and an `as-of` slice for the rewind panel.
- *
- * Everything is derived from constants, never from `Date.now()`: two captures
- * taken a day apart have to produce identical pixels, and a "last 8 weeks"
- * fixture computed from the clock would move the whole grid every midnight.
- *
- * Returns true when this module answered the request; false lets the entry try
- * the next module, in the same order the original if-chain ran.
- */
 const { json } = require("./http.cjs");
 
 const DAY_MS = 86400000;
-// Anchored to the same June 2026 week the rest of the visual fixtures use, so
-// every captured screen looks like one computer on one day.
 const LAST_DAY = "2026-06-06";
 const WEEKS = 8;
 
@@ -27,22 +10,13 @@ function dayAt(offset) {
     .slice(0, 10);
 }
 
-/**
- * Sparse series: only days that carried something, ascending — the shape the
- * real service returns. Quiet days are simply absent, which is exactly the case
- * the UI has to fill in for itself.
- *
- * The pattern is deterministic rather than random: weekdays are busy, weekends
- * are light or missing, and one day near the end is the heaviest so the
- * heat-map's darkest level is always represented.
- */
 function buildSeries() {
   const series = [];
   for (let index = 0; index < WEEKS * 7; index += 1) {
     const offset = index - (WEEKS * 7 - 1);
     const date = dayAt(offset);
     const weekday = new Date(Date.parse(`${date}T00:00:00Z`)).getUTCDay();
-    if (weekday === 0) continue; // Sundays stay off the record entirely.
+    if (weekday === 0) continue;
     if (weekday === 6 && index % 3 !== 0) continue;
     const wave = index % 7;
     series.push({
@@ -53,7 +27,6 @@ function buildSeries() {
       conversations: weekday % 2,
     });
   }
-  // One unmistakable peak, so the darkest heat level is never merely theoretical.
   const peak = series[series.length - 4];
   peak.sources = 6;
   peak.entities = 11;
@@ -81,12 +54,6 @@ const overview = {
   series,
 };
 
-/**
- * One day with something in every group.
- *
- * `counts` deliberately exceed the group lengths for 자료, so the "이 밖에 N개가
- * 더 있어요" line is exercised by the capture rather than only by a unit test.
- */
 const richDay = {
   sources: [
     { id: "prov-1", title: "retrieval-design.pdf", source_type: "upload", captured_at: "T09:20:00", node_id: "file:retrieval" },
@@ -118,8 +85,6 @@ function dayPayload(date) {
   return {
     date,
     counts: {
-      // True totals, larger than the lists: the real service caps groups at 200
-      // and the screen has to say how many it is not showing.
       sources: richDay.sources.length + 3,
       entities: richDay.entities.length,
       conversations: richDay.conversations.length,
@@ -151,9 +116,6 @@ module.exports = function handleChronicle({ res, url, pathname }) {
   if (pathname === "/api/chronicle/as-of") {
     return json(res, {
       ts: url.searchParams.get("ts") || `${LAST_DAY}T23:59:59`,
-      // Deliberately larger than the overview's concept-only lane: the as-of
-      // slice counts every node, documents included, and the rewind panel says
-      // so instead of presenting the two as the same number.
       stats: { entities: 148, connections: 96 },
       top_entities: topEntities,
     });

@@ -1,9 +1,3 @@
-//! Native Rust Obsidian vault & Interop (`notion`, `git`, `mail`) ingestion.
-//!
-//! Replaces legacy forwarding to retired Python routes (`/api/ingestion/obsidian`,
-//! `/api/ingestion/interop`) so all Track 5 interop bridges write directly through
-//! `GraphWriter` (single-writer SQLite) with `dry_run` preview support.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::Read;
@@ -23,11 +17,6 @@ const MAX_INTEROP_FILES: usize = 500;
 const MAX_GIT_COMMITS: usize = 100;
 const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 
-/// Native Obsidian vault ingestion (`POST /api/ingestion/obsidian`).
-///
-/// Walks `.md` notes, extracts YAML/inline tags and `[[wikilink]]` targets,
-/// ingests notes through `GraphWriter`, and creates `LINKS_TO` edges between
-/// linked notes when `dry_run` is false.
 pub(super) async fn ingest_obsidian_native(
     state: &Arc<LocalFilesState>,
     graph: GraphWriter,
@@ -202,9 +191,6 @@ pub(super) async fn ingest_obsidian_native(
     }))
 }
 
-/// Native interop bridge ingestion (`POST /api/ingestion/interop`) for
-/// `notion` (directory or `.zip` export), `git` (local repo log), and
-/// `mail` (local `.eml` / `.ics` file or directory).
 pub(super) async fn ingest_interop_native(
     state: &Arc<LocalFilesState>,
     graph: GraphWriter,
@@ -330,7 +316,6 @@ fn collect_files_by_ext(dir: &Path, exts: &[&str], out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Extract `[[Target]]`, `[[Target|Alias]]`, and `[[Target#Heading]]` links.
 pub(crate) fn extract_wikilinks(text: &str) -> Vec<String> {
     let mut links = Vec::new();
     let mut seen = HashSet::new();

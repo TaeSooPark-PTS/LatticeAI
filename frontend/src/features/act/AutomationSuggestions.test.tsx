@@ -6,12 +6,6 @@ import { latticeApi } from "@/api/client";
 import { ok, renderPage } from "@/test/renderPage";
 import { AutomationSuggestions } from "./AutomationSuggestions";
 
-/**
- * The consent-first suggestion strip: what the Brain noticed, why, and an
- * install that only ever creates a disabled draft. The card copy must localise
- * per suggestion kind, and an already-installed suggestion must not offer a
- * second install.
- */
 
 const SUGGESTIONS = {
   suggestions: [
@@ -40,18 +34,13 @@ describe("AutomationSuggestions", () => {
       api: { automationOverview: ok(SUGGESTIONS) },
     });
     await screen.findByText("오늘 뭐 했지?");
-    // The subtitle carries how many questions were scanned.
     expect(screen.getByText(/최근 질문 7개 분석/)).toBeTruthy();
-    // Question kind: repeat count evidence and a daily cadence.
     expect(screen.getByText("4번 반복해서 물어보셨어요")).toBeTruthy();
     expect(screen.getAllByText("매일 자동 초안").length).toBeGreaterThan(0);
-    // Folder kind: file-count evidence and the new-knowledge cadence.
     expect(screen.getByText("파일 12개가 Brain에 담긴 폴더예요")).toBeTruthy();
     expect(screen.getAllByText("새 지식이 들어올 때").length).toBeGreaterThan(0);
-    // Missing reason payloads count as zero rather than exploding.
     expect(screen.getByText("파일 0개가 Brain에 담긴 폴더예요")).toBeTruthy();
     expect(screen.getByText("0번 반복해서 물어보셨어요")).toBeTruthy();
-    // The installed suggestion shows the draft badge instead of a button.
     expect(screen.getByText("초안 생성됨 — 검토 후 켜세요")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "자동화 만들기" })).toHaveLength(3);
   });
@@ -78,7 +67,6 @@ describe("AutomationSuggestions", () => {
     await screen.findByText("오늘 뭐 했지?");
     await userEvent.click(screen.getAllByRole("button", { name: "자동화 만들기" })[0]!);
     await screen.findByRole("button", { name: "만드는 중..." });
-    // The other cards keep their label but are disabled during the flight.
     const others = screen.getAllByRole("button", { name: "자동화 만들기" });
     expect(others).toHaveLength(2);
     expect(others.every((button) => (button as HTMLButtonElement).disabled)).toBe(true);

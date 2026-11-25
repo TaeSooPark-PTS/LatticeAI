@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/brain";
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,14 +33,6 @@ const BrainGovernanceHub = React.lazy(() =>
 
 type BrainTab = "knowledge" | "memory";
 
-/**
- * The map is a place you go *into* from the memory screens, not a third thing
- * you choose between. As a peer tab it was the first choice a newcomer saw on
- * this screen — a force-directed node cloud offered with the same weight as
- * "search your memory", which is the one thing most people came here to do. It
- * is now a subview: reached from a named secondary link, and left with a back
- * control. The URL (`#/knowledge-graph`) and everything it can do are unchanged.
- */
 type BrainView = BrainTab | "graph";
 
 const tabs: Array<{ id: BrainTab; labelKey: string }> = [
@@ -77,7 +67,6 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {viewLabel(language, view)}</div>
           <h1>{t(language, `brain.headline.${view}`)}</h1>
         </div>
-        {/* Coverage meter */}
         <CoverageMeter language={language} data={coverage.data?.data as Record<string, unknown> | undefined} />
       </header>
       {isGraph ? (
@@ -249,12 +238,8 @@ function UnifiedMemoryPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Unified summary bar */}
       <Card>
         <CardContent className="py-4">
-          {/* A schema number ("2") and a storage engine ("sqlite") are true but
-              unreadable. The plain view answers the two questions those fields
-              exist to answer — where does this live, and can I take it away. */}
           <StatGrid stats={mode === "basic" ? [
             { label: t(language, "brain.stats.sources"), value: usage.sources ?? 0 },
             { label: t(language, "brain.stats.items"), value: usage.total_items ?? 0 },
@@ -274,7 +259,6 @@ function UnifiedMemoryPanel() {
 
       <SelfModelPanel />
 
-      {/* Section 1 — Memory Recall */}
       <Card>
         <CardHeader
           className="cursor-pointer select-none"
@@ -309,7 +293,6 @@ function UnifiedMemoryPanel() {
         )}
       </Card>
 
-      {/* Section 2 — Sources & Provenance */}
       <Card>
         <CardHeader
           className="cursor-pointer select-none"
@@ -340,7 +323,6 @@ function UnifiedMemoryPanel() {
         )}
       </Card>
 
-      {/* Section 3 — Export & Backup */}
       <Card>
         <CardHeader
           className="cursor-pointer select-none"
@@ -390,9 +372,6 @@ export function SourceProvenanceList({ items, limit = 8 }: { items: unknown; lim
   return (
     <div className="grid gap-2">
       {rows.map((item, index) => {
-        // The backend names memory tiers in English ("Workspace Memory"). The
-        // id is the contract; the label is display, so localize by id and fall
-        // back to whatever the server sent for tiers we do not know.
         const tierKey = `brain.memoryTier.${String(item.id || "")}`;
         const tierLabel = t(language, tierKey);
         const title = tierLabel !== tierKey

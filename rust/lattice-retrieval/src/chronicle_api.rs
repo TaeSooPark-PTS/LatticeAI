@@ -1,5 +1,3 @@
-//! `latticeai/api/chronicle.py` — the bitemporal Brain timeline.
-
 pub mod json;
 pub mod pytime;
 pub mod routes;

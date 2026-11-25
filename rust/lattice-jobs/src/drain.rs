@@ -1,52 +1,17 @@
-//! Adaptive drain planning: how much to claim, how many requests to fly.
-//!
-//! The worker embed seam (`POST /worker/embed`) already accepts a `texts: []`
-//! batch — one request, many vectors. What this crate used to do was the
-//! opposite of that: one tick, one `POST /api/index/drain`, a fixed `limit`
-//! of 25, then a minute of waiting. A deep backlog therefore drained at
-//! 25 nodes/minute regardless of how idle the machine was.
-//!
-//! The planner here does not change any wire contract. It only chooses, from
-//! a pending count the scheduler already reads, a `limit` (still in 1..=100)
-//! and an in-flight width (1..=8). The drain handler still honours whatever
-//! `limit` the caller posted. A worker that answers 429 / 503 is treated as
-//! *busy* so the existing tick backoff stretches the schedule instead of
-//! retrying immediately.
-
 use crate::index_api::MAX_DRAIN_LIMIT;
 
-/// Upper bound on concurrent `POST /api/index/drain` calls in one tick.
 pub const MAX_INFLIGHT: usize = 8;
-/// Default slice of texts handed to one `POST /worker/embed`.
-///
-/// The worker already batches internally; this is the HTTP-level chunk so a
-/// 200-item claim does not become one enormous JSON body, and so two or four
-/// of them can fly at once against a rate-limited seam.
 pub const EMBED_BATCH: usize = 32;
-/// Upper bound on concurrent `/worker/embed` calls for one drain.
 pub const EMBED_INFLIGHT: usize = 4;
-/// Seconds a `running` claim may sit before the next drain steals it back.
-///
-/// A host that died mid-write leaves rows in `running`. Without a sweeper
-/// they stay owed forever. Two minutes is longer than one embed batch and
-/// shorter than the ten-minute failure cap.
 pub const STALE_RUNNING_SECS: u64 = 120;
 
-/// What one tick should ask of the drain endpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DrainPlan {
-    /// `limit` posted on each drain request (1..=[`MAX_DRAIN_LIMIT`]).
     pub limit: u32,
-    /// How many drain requests to fire at once (1..=[`MAX_INFLIGHT`]).
     pub inflight: usize,
-    /// Texts per `/worker/embed` body when the seam is used.
     pub embed_batch: usize,
 }
 
-/// Plan a tick from a measured pending count and the configured floor.
-///
-/// `pending = None` means the store was unreadable — do not invent a deep
-/// queue, just honour the configured limit with a single request.
 pub fn drain_plan(pending: Option<u64>, configured: u32) -> DrainPlan {
     let limit = match pending {
         Some(count) => adaptive_drain_limit(count, configured),
@@ -63,13 +28,6 @@ pub fn drain_plan(pending: Option<u64>, configured: u32) -> DrainPlan {
     }
 }
 
-/// Larger `limit` when the queue is deep; never outside 1..=100.
-///
-/// The configured value is the *floor* (clamped to the endpoint's range). A
-/// queue smaller than that floor still posts the floor — empty ticks stay
-/// cheap because they claim nothing. A queue between the floor and the cap
-/// posts `pending` itself, so one request can empty a mid-size backlog. A
-/// queue at or past the cap posts 100, and [`adaptive_concurrency`] fans out.
 pub fn adaptive_drain_limit(pending: u64, configured: u32) -> u32 {
     let floor = clamp_limit(configured);
     let cap = MAX_DRAIN_LIMIT as u32;
@@ -82,7 +40,6 @@ pub fn adaptive_drain_limit(pending: u64, configured: u32) -> u32 {
     }
 }
 
-/// How many drain requests to fly given a pending count and the chosen limit.
 pub fn adaptive_concurrency(pending: u64, limit: u32, max_inflight: usize) -> usize {
     if pending == 0 || limit == 0 {
         return 1;
@@ -91,23 +48,19 @@ pub fn adaptive_concurrency(pending: u64, limit: u32, max_inflight: usize) -> us
     waves.clamp(1, max_inflight.max(1))
 }
 
-/// Slice `items` into groups of at most `batch` for one HTTP embed each.
 pub fn embed_batches<T: Clone>(items: &[T], batch: usize) -> Vec<Vec<T>> {
     let size = batch.max(1);
     items.chunks(size).map(<[T]>::to_vec).collect()
 }
 
-/// How many `/worker/embed` calls to fly for this many batches.
 pub fn embed_inflight(batches: usize) -> usize {
     batches.clamp(1, EMBED_INFLIGHT).max(1)
 }
 
-/// HTTP statuses that mean "the worker is busy, back off" rather than "broken".
 pub fn is_worker_busy_status(status: u16) -> bool {
     matches!(status, 429 | 503)
 }
 
-/// Whether an error string from [`crate::tick::drain`] is a busy worker.
 pub fn is_worker_busy_error(error: &str) -> bool {
     error.contains(" 429")
         || error.contains(" 503")

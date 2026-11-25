@@ -1,26 +1,6 @@
-"""The v11.6.0 worker seams: what a Rust route package may make Python do.
-
-Two chains stay in Python after the front door moves to ``lattice-host``, and
-each one is here for a different reason — unified memory can only be read from
-the process holding the MLX context, and token generation never moves. So the
-assertions that matter are not "does it return 200": they are the gate, the
-whitelist, and the honesty of the readings.
-
-``POST /worker/chat/record-turn`` was the third, and this file used to drive it
-through the **real** ``write_chat_turn`` over fake stores. WP-W3a moved that
-whole chain into ``lattice-chat`` (its own tests assert the seam is requested
-zero times) and WP-P1 deleted the handler with the conversation store it wrote
-through, so its cases went with it.
-
-The MLX read is driven through a fake ``mlx.core`` module and a fake
-``subprocess.run`` (the technique ``test_cov_wp17b_static_routes.py`` uses), so
-the Apple-Silicon-only branch and the "no GPU here" branch both run on every
-platform instead of only on the machine that has one.
-"""
-
 from __future__ import annotations
 
-import subprocess
+import os
 import sys
 import types
 from typing import Any, List, Optional
@@ -36,9 +16,6 @@ from latticeai.core.messages import MESSAGES
 
 USER = "worker@local"
 MEMSIZE_16GB = str(16 * 1024**3) + "\n"
-
-
-# ── fakes ───────────────────────────────────────────────────────────────────
 
 
 class RecordingLimiter:
@@ -81,9 +58,6 @@ def seam_off(monkeypatch):
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
 
 
-# ── the gate: both seams are the host's, or nobody's ────────────────────────
-
-
 @pytest.mark.parametrize(
     ("method", "path", "body"),
     [
@@ -100,7 +74,6 @@ def test_every_seam_is_absent_until_the_host_opens_it(seam_off, method, path, bo
 
 
 def test_the_gate_reads_the_environment_per_request(monkeypatch):
-    """Not at import: a host that sets the switch after start-up still opens it."""
     client = _client()
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
     assert client.get("/worker/sysinfo").status_code == 404
@@ -121,9 +94,6 @@ def test_each_seam_call_is_charged_to_the_per_step_budget(seam_on):
     assert limiter.calls == [(USER, SEAM_RATE_BUCKET)] * 2
 
 
-# ── GET /worker/sysinfo ─────────────────────────────────────────────────────
-
-
 class _Completed:
     def __init__(self, stdout: str) -> None:
         self.stdout = stdout
@@ -131,11 +101,19 @@ class _Completed:
 
 
 def _fake_sysctl(monkeypatch, stdout: str) -> None:
-    monkeypatch.setattr(subprocess, "run", lambda cmd, **_kwargs: _Completed(stdout))
+    total = int(stdout.strip() or "0")
+
+    def fake_sysconf(name: str) -> int:
+        if name == "SC_PAGE_SIZE":
+            return 1
+        if name == "SC_PHYS_PAGES":
+            return total
+        return 0
+
+    monkeypatch.setattr(os, "sysconf", fake_sysconf)
 
 
 def _install_fake_mlx(monkeypatch, *, active_bytes: int, cache_bytes: int) -> None:
-    """Make the Apple-Silicon-only unified-memory read executable anywhere."""
     mlx = types.ModuleType("mlx")
     core = types.ModuleType("mlx.core")
     core.get_active_memory = lambda: active_bytes
@@ -146,7 +124,6 @@ def _install_fake_mlx(monkeypatch, *, active_bytes: int, cache_bytes: int) -> No
 
 
 def _hide_mlx(monkeypatch) -> None:
-    """``None`` in sys.modules makes the import fail on every platform."""
     monkeypatch.setitem(sys.modules, "mlx", None)
     monkeypatch.setitem(sys.modules, "mlx.core", None)
 
@@ -157,8 +134,8 @@ def test_the_probe_reports_unified_memory_the_way_local_sysinfo_does(monkeypatch
 
     result = probe_gpu_memory()
     assert result["mlx_available"] is True
-    assert result["gpu_mem_gb"] == 2.5  # active + cache, unified memory
-    assert result["gpu_mem_pct"] == 15.6  # 2.5 GB of 16 GB
+    assert result["gpu_mem_gb"] == 2.5
+    assert result["gpu_mem_pct"] == 15.6
     assert result["total_bytes"] == 16 * 1024**3
     assert result["detail"] is None
     assert "capabilities" in result
@@ -193,10 +170,10 @@ def test_a_machine_without_mlx_says_so_rather_than_reporting_a_fake_zero(monkeyp
 def test_a_sysctl_that_cannot_be_read_is_a_missing_reading_not_a_500(monkeypatch):
     _install_fake_mlx(monkeypatch, active_bytes=1024, cache_bytes=0)
 
-    def _boom(cmd, **_kwargs):
+    def _boom(_name: str) -> int:
         raise OSError("sysctl: command not found")
 
-    monkeypatch.setattr(subprocess, "run", _boom)
+    monkeypatch.setattr(os, "sysconf", _boom)
     assert probe_gpu_memory()["detail"] == "sysctl: command not found"
 
 
@@ -211,12 +188,7 @@ def test_the_route_answers_with_the_probe(seam_on, monkeypatch):
     assert response.json() == {"mlx_available": True, "gpu_mem_gb": 1.0}
 
 
-# ── POST /worker/llm/stream ─────────────────────────────────────────────────
-
-
 class FakeRouter:
-    """The in-process LLMRouter, reduced to the two stream methods chat calls."""
-
     def __init__(
         self,
         chunks: Optional[List[str]] = None,

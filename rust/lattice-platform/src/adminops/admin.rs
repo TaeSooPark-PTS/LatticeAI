@@ -1,13 +1,3 @@
-//! Admin console family — native (v11.6.0, WP-R2).
-//!
-//! Port of `latticeai/api/admin.py` plus the audit-log surface that file
-//! already owned (`latticeai/core/audit.py`). Other families (security
-//! dashboard, feature toggles) call [`append_audit_event`] / [`load_audit_log`]
-//! rather than growing a second writer.
-//!
-//! Storage is the same files Python uses, resolved through
-//! `lattice_core::db::tables::state_files` and written atomically.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -52,8 +42,6 @@ use handlers::{
     admin_update_vpc, admin_users, vpc_status,
 };
 
-/// Mounted (method, path) pairs — axum 0.7 spelling. Greedy `{email:path}`
-/// is `/*email`.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/admin/audit"),
     ("GET", "/admin/enterprise"),
@@ -76,15 +64,11 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/vpc/status"),
 ];
 
-/// Community edition notice, verbatim from `enterprise_admin.COMMUNITY_NOTICE`.
 pub const COMMUNITY_NOTICE: &str =
     "Community edition: this is an Enterprise extension point and is not \
 enforced. Local-first behaviour is always available. See \
 docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md.";
 
-// ── router state ─────────────────────────────────────────────────────────────
-
-/// What the admin family needs from the host.
 #[derive(Clone)]
 pub struct AdminState {
     pub auth: Arc<AuthState>,
@@ -152,7 +136,6 @@ pub fn router(state: AdminState) -> Router {
         .with_state(state)
 }
 
-/// Union of every R2 family's mounted routes (OpenAPI contract test).
 pub fn family_mounted() -> Vec<(&'static str, &'static str)> {
     let mut out = MOUNTED.to_vec();
     out.extend_from_slice(crate::adminops::security_dashboard::MOUNTED);

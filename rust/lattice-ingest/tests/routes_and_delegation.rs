@@ -1,18 +1,3 @@
-//! The dry-run routes and the note ingest, over real sockets.
-//!
-//! Two things are being proved, and only one of them is about HTTP:
-//!
-//! * `/rust/ingest/plan` and `/rust/ingest/chunk` answer what they promise and
-//!   **write nothing** — the plan test asserts the folder is byte-for-byte
-//!   unchanged afterwards, which is the only honest way to test a dry run;
-//! * [`NoteIngestor`] writes a watched note through `GraphWriter` in this
-//!   process, asks the worker only for the compute it owns, and **never** asks
-//!   it to write. The "worker" here is a throwaway axum app on a loopback port
-//!   that mounts `/knowledge-graph/ingest` as a tripwire: v11.6.0 removed that
-//!   route from the worker's allowlist while this crate still posted to it, so
-//!   the regression to guard is a request that should not exist rather than a
-//!   reply that should.
-
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -26,7 +11,6 @@ use lattice_ingest::api::{router, IngestApiConfig, CHUNK_PATH, PLAN_PATH};
 use lattice_ingest::worker::{NoteIngestError, NoteIngestor, NoteSubmission};
 use serde_json::{json, Value};
 
-/// Serve `app` on a loopback port and return its origin.
 async fn serve(app: Router) -> (String, tokio::task::JoinHandle<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -78,8 +62,6 @@ fn write(root: &Path, relative: &str, contents: &str) {
     std::fs::write(path, contents).expect("write");
 }
 
-/// Every file under `root`, as `(relative path, bytes)` — the "nothing moved"
-/// evidence for the dry-run claim.
 fn fingerprint(root: &Path) -> Vec<(String, Vec<u8>)> {
     fn walk(root: &Path, current: &Path, out: &mut Vec<(String, Vec<u8>)>) {
         let mut entries: Vec<_> = std::fs::read_dir(current)
@@ -151,13 +133,11 @@ async fn the_plan_route_describes_a_folder_and_changes_nothing() {
     assert_eq!(named["module.py"]["strategy"], Value::from("code"));
     assert_eq!(named["notes.txt"]["strategy"], Value::from("prose"));
     assert_eq!(named["guide.md"]["chunks"], Value::from(1));
-    // Character counts, not byte counts — the same choice the chunker makes.
     assert_eq!(named["guide.md"]["chars"], Value::from(20));
     assert!(
         named["guide.md"]["bytes"].as_u64() > named["guide.md"]["chars"].as_u64(),
         "the file is larger in bytes than in characters, and `chars` is the character count"
     );
-    // A PDF is admitted but not counted: extraction is the worker's job.
     assert_eq!(named["report.pdf"]["chunks"], Value::Null);
     assert!(named["report.pdf"]["note"]
         .as_str()
@@ -245,7 +225,6 @@ async fn the_chunk_route_is_the_pure_chunker_with_ids() {
     assert!(chunk["len_bytes"].as_u64() > chunk["len_chars"].as_u64());
     assert_eq!(body["text_hash"].as_str().expect("hash").len(), 64);
 
-    // An explicit strategy overrides the filename, and small windows work.
     let (_, plain) = post_json(
         &origin,
         CHUNK_PATH,
@@ -258,7 +237,6 @@ async fn the_chunk_route_is_the_pure_chunker_with_ids() {
     assert_eq!(plain["chunks"][1]["text"], Value::from("다라마"));
     assert_eq!(plain["chunks"][1]["meta"]["start_char"], Value::from(2));
 
-    // Whitespace-only text is zero chunks, not an error.
     let (status, empty) = post_json(&origin, CHUNK_PATH, json!({"text": "   \n "})).await;
     assert_eq!(status, 200);
     assert_eq!(empty["chunk_count"], Value::from(0));
@@ -289,7 +267,6 @@ async fn the_chunk_route_refuses_what_it_cannot_chunk() {
     handle.abort();
 }
 
-/// Every path the stand-in worker was asked for, in order.
 #[derive(Clone, Default)]
 struct SeamLog {
     paths: Arc<Mutex<Vec<String>>>,
@@ -310,10 +287,6 @@ impl SeamLog {
     }
 }
 
-/// A stand-in worker: the two compute seams, plus the retired write door as a
-/// tripwire. `/knowledge-graph/ingest` is mounted **and answers 200**, so a
-/// request to it would look like a success from the client's side — which is
-/// exactly why "nobody asked" has to be asserted rather than inferred.
 fn fake_worker(seams: SeamLog, embedder: Option<(String, usize)>) -> Router {
     Router::new()
         .route(
@@ -411,7 +384,6 @@ async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
     assert!(receipt.provenance_id.is_some());
     assert!(receipt.indexed, "the seam's embedder is the native one");
 
-    // The whole point: the compute seams were asked, the write door was not.
     assert_eq!(seams.count("/worker/extract"), 1);
     assert_eq!(
         seams.count("/worker/embed"),
@@ -426,7 +398,6 @@ async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
          into a route the worker stopped serving in v11.6.0"
     );
 
-    // …and the note really is in the Brain, concept and vector included.
     let node_id = receipt.node_id.clone();
     let (documents, concepts, vectors): (i64, i64, i64) = graph
         .store()
@@ -463,9 +434,6 @@ async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
 
 #[tokio::test]
 async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() {
-    // Semantic provider batches with their own model_id/dimension land under
-    // their own EmbeddingIndexContract without falling back to the local hash
-    // embedder (`allow_native_fallback = false`), avoiding dimension mixing.
     let seams = SeamLog::default();
     let (origin, handle) = serve(fake_worker(
         seams.clone(),
@@ -520,9 +488,6 @@ async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() 
 
 #[tokio::test]
 async fn an_unreachable_worker_costs_the_note_its_concepts_not_its_place() {
-    // Bind and immediately drop, so the port is almost certainly closed. Before
-    // v11.7.0 this was the *whole* ingest path, and an unreachable worker meant
-    // the note was gone.
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");
@@ -575,9 +540,6 @@ async fn an_empty_note_is_refused_before_anything_is_written() {
     assert_eq!(nodes, 0);
 }
 
-/// Percent-encode the few characters a temp path can contain that a query
-/// string would otherwise eat. Small on purpose: a full encoder is not the
-/// thing under test.
 fn urlencode(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     for byte in raw.bytes() {

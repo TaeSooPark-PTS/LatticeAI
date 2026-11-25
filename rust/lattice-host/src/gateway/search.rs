@@ -1,24 +1,3 @@
-//! Native `/rust/search/*` — `lattice-retrieval` answered by the host itself.
-//!
-//! These three routes are the first thing in the product that a Rust crate
-//! serves end to end: no worker involved, no proxy hop, the graph read straight
-//! off disk. What they answer is byte-identical to what the Python graph-layer
-//! engines answer for the same store and the same clock — that is what
-//! `tests/gateway_search.rs` asserts against the committed goldens.
-//!
-//! Three properties are deliberate and worth naming:
-//!
-//! * **No workspace scoping.** `allowed_workspaces = None`, which is Python's
-//!   `trusted_local_owner` branch: a loopback request on the owner's own
-//!   machine sees the whole brain. This is not a fail-open oversight; it is the
-//!   same branch the Python endpoints take for the same caller, and the gateway
-//!   refuses to bind anywhere but loopback so there is no other caller.
-//! * **Read only.** The connection is `SQLITE_OPEN_READ_ONLY`; the schema
-//!   belongs to Python and nothing here may migrate, vacuum or write it.
-//! * **Blocking work off the reactor.** SQLite and the brute-force scan are
-//!   synchronous and can take milliseconds; they run on `spawn_blocking` so a
-//!   search never stalls an in-flight SSE stream.
-
 use std::path::Path;
 use std::sync::Arc;
 
@@ -29,11 +8,6 @@ use axum::Json;
 use lattice_core::{open_read_only, LocalEmbeddingModel};
 use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
 use lattice_retrieval::keyword::search as keyword_search;
-// Two things this crate used to own a second copy of, both from the crate that
-// owns the engines: the 404 body for a store that does not exist, and the wall
-// clock the recency decay reads (naive local seconds, the way
-// `datetime.now().isoformat()` writes the stamps it is subtracted from). Two
-// clocks are two things a bug fix can move apart.
 use lattice_retrieval::routes::{brain_not_found, naive_local_now};
 use lattice_retrieval::vector::vector_search;
 use serde_json::Value;
@@ -41,26 +15,18 @@ use serde_json::Value;
 use super::params::{ParamError, SearchParams, MAX_BODY_BYTES};
 use super::GatewayState;
 
-/// Default `top_k` for the hybrid lane — `hybrid_search`'s own default.
 pub const DEFAULT_TOP_K: i64 = 20;
-/// Default `limit` for the single lanes — `SearchRequest.limit` in Python.
 pub const DEFAULT_LIMIT: i64 = 30;
-/// Both engines clamp their limit to this ceiling; the routes refuse past it.
 pub const MAX_LIMIT: i64 = 100;
 
-/// Which lane a request wants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Engine {
-    /// Two-channel alpha fusion of the lexical and vector lanes.
     Hybrid,
-    /// The lexical lane alone (FTS5 → LIKE → topic terms).
     Keyword,
-    /// The vector lane alone (brute-force cosine over the embedding index).
     Vector,
 }
 
 impl Engine {
-    /// The path segment this lane is mounted on.
     pub fn path(self) -> &'static str {
         match self {
             Engine::Hybrid => "hybrid",
@@ -70,7 +36,6 @@ impl Engine {
     }
 }
 
-/// A fully validated request, ready to run without touching HTTP again.
 #[derive(Debug, Clone)]
 enum Plan {
     Hybrid {
@@ -89,7 +54,6 @@ enum Plan {
 }
 
 impl Plan {
-    /// Validate `params` for `engine`, or say exactly which field is wrong.
     fn build(engine: Engine, params: &SearchParams) -> Result<Self, ParamError> {
         let query = params.required_text(&["query", "q"])?;
         let limit = params.optional_int("limit", 1, MAX_LIMIT)?;
@@ -98,9 +62,6 @@ impl Plan {
             Engine::Hybrid => {
                 let top_k = params.optional_int("top_k", 1, MAX_LIMIT)?;
                 let now = params.optional_instant("now")?;
-                // Python spells this floor `min_vector_score` on `hybrid_search`
-                // and `min_score` on `vector_search`; both spellings are the
-                // same knob, so both are accepted here.
                 let floor = params.optional_float("min_vector_score", 0.0, 1.0)?;
                 Plan::Hybrid {
                     query,
@@ -108,8 +69,6 @@ impl Plan {
                         top_k: top_k.or(limit).unwrap_or(DEFAULT_TOP_K),
                         alpha: params.optional_float("alpha", 0.0, 1.0)?,
                         min_vector_score: floor.or(min_score).unwrap_or(0.0),
-                        // The trusted-owner path: no scoping, exactly as the
-                        // Python endpoints resolve it for a loopback owner.
                         allowed_workspaces: None,
                         include_legacy_global: false,
                         now_secs: now.unwrap_or_else(naive_local_now),
@@ -129,7 +88,6 @@ impl Plan {
         })
     }
 
-    /// Run the plan against the store. Synchronous — call it on a blocking task.
     fn run(self, db: &Path) -> Result<Value, String> {
         let conn = open_read_only(db).map_err(|err| err.to_string())?;
         let model = LocalEmbeddingModel::from_env();
@@ -146,17 +104,14 @@ impl Plan {
     }
 }
 
-/// `GET|POST /rust/search/hybrid`.
 pub async fn hybrid(state: State<Arc<GatewayState>>, request: Request) -> Response {
     handle(state, request, Engine::Hybrid).await
 }
 
-/// `GET|POST /rust/search/keyword`.
 pub async fn keyword(state: State<Arc<GatewayState>>, request: Request) -> Response {
     handle(state, request, Engine::Keyword).await
 }
 
-/// `GET|POST /rust/search/vector`.
 pub async fn vector(state: State<Arc<GatewayState>>, request: Request) -> Response {
     handle(state, request, Engine::Vector).await
 }
@@ -199,7 +154,6 @@ async fn handle(
     }
 }
 
-/// 500 — the store exists but the engine could not read it.
 fn search_failed(engine: Engine, detail: String) -> Response {
     (
         StatusCode::INTERNAL_SERVER_ERROR,

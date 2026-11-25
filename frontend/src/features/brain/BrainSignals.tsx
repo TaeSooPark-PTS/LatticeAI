@@ -12,8 +12,6 @@ import {
 } from "./brainData";
 import type { IngestionJob, IngestionWatch, VectorFreshness } from "./types";
 
-// One fetch per view entry, gentle refresh afterwards. When the endpoint is
-// missing or reports "unavailable" the chip stays silent by design.
 export function useVectorFreshness() {
   const query = useQuery({
     queryKey: ["vectorFreshness"],
@@ -28,11 +26,6 @@ export function useVectorFreshness() {
   );
 }
 
-// Embedding-model swap recovery (v9.9.6). `stale_embedder` means the vector
-// index still holds rows built by the *previous* embedder: recall silently
-// degrades until a full rebuild runs. The old chip only rendered "pending",
-// so this state was invisible and offered no way out. It now names the
-// problem and does the one thing that fixes it.
 export function StaleEmbedderNotice({ language }: { language: Language }) {
   const qc = useQueryClient();
   const freshness = useVectorFreshness();
@@ -69,8 +62,6 @@ export function StaleEmbedderNotice({ language }: { language: Language }) {
   );
 }
 
-// Soft chip shown while some knowledge still waits for vector indexing, with
-// live embedded/total progress and a one-click immediate drain action.
 export function VectorFreshnessNotice({ language }: { language: Language }) {
   const qc = useQueryClient();
   const freshness = useVectorFreshness();
@@ -136,9 +127,6 @@ function isActiveJob(job: IngestionJob) {
   return ACTIVE_JOB_STATUSES.has(job.status);
 }
 
-// Exported for unit tests: the panel itself only ever passes the statuses it
-// keeps visible (queued/running/failed/partial), so the remaining arms are
-// exercised directly.
 export function jobStatusKey(status: IngestionJob["status"]) {
   if (status === "queued" || status === "running" || status === "completed" || status === "failed" || status === "partial") {
     return `brain.jobs.status.${status}`;
@@ -149,10 +137,6 @@ export function jobStatusKey(status: IngestionJob["status"]) {
 const REPORTABLE_JOB_STATUSES = new Set(["completed", "partial"]);
 const REPORT_ERROR_SAMPLES = 3;
 
-// Completion report for a finished folder/background ingest: what actually
-// landed ("+N documents"), how fresh the vector index is, and up to three
-// skipped/failed samples with their reasons. Every line degrades by hiding
-// itself when the API omits the underlying field — never a NaN.
 export function IngestionJobReportCard({
   language,
   job,
@@ -222,9 +206,6 @@ export function IngestionJobReportCard({
   );
 }
 
-// Background ingestion jobs (folder scans etc.): progress, failures, resume.
-// Polls only while a job is actually queued or running. When a watched job
-// finishes it stays on screen once as a completion report card.
 export function IngestionJobsPanel({ language }: { language: Language }) {
   const qc = useQueryClient();
   const freshness = useVectorFreshness();
@@ -249,8 +230,6 @@ export function IngestionJobsPanel({ language }: { language: Language }) {
     [jobsQ.data],
   );
 
-  // Report cards appear when a job we saw active transitions to a terminal
-  // "completed"/"partial" state while this panel is mounted.
   const previousStatusesRef = React.useRef<Map<string, string>>(new Map());
   const [reportJobIds, setReportJobIds] = React.useState<string[]>([]);
   React.useEffect(() => {
@@ -347,7 +326,6 @@ function watchBaseName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() || path;
 }
 
-// Relative "last scanned" line for a watch. Absent/unparseable → "not yet".
 function watchScanLabel(language: Language, lastScanAt: string): string {
   if (!lastScanAt) return t(language, "brain.watch.scan.never");
   const scanned = Date.parse(lastScanAt);
@@ -363,9 +341,6 @@ function watchScanLabel(language: Language, lastScanAt: string): string {
 
 const MAX_VISIBLE_WATCHES = 4;
 
-// Watch-mode health beside the ingestion dock: whether "connected" folders
-// actually flow. Renders only when at least one watch is enabled — no watch,
-// no card. Every line hides itself when the API omits the underlying field.
 export function WatchHealthCard({ language }: { language: Language }) {
   const query = useQuery({
     queryKey: ["ingestionWatch"],
@@ -458,10 +433,6 @@ function approvalClockTime(language: Language, expiresAt: string): string {
   });
 }
 
-// Paused approvals that survived a reload/restart (GET /agent/approvals) but
-// are not represented by any approval card in the current messages. The
-// notice only informs — the single-use token lives with the original card, so
-// the honest path forward is the original surface or a fresh request.
 export function PendingApprovalsNotice({
   language,
   knownRunIds,

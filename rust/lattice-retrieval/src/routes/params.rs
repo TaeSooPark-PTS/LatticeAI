@@ -1,18 +1,3 @@
-//! Request parameters for the native `/rust/*` retrieval routes.
-//!
-//! One parser serves both verbs: the query string is read first, then a JSON
-//! object body (POST only) is merged over it, so `GET …?q=…` and
-//! `POST {"query": "…"}` are the *same* endpoint rather than two handlers that
-//! drift apart.
-//!
-//! The conventions here match `lattice-host`'s `gateway::params` deliberately,
-//! because the two families of routes are mounted on one origin and a caller
-//! should not have to learn which crate answered: bad input is a 422 whose body
-//! is `{"error": "invalid_request", "field": …, "detail": …}`. FastAPI's own 422
-//! carries a `detail` array because pydantic validates every field before
-//! answering; this parser stops at the first bad value, so the body is flat and
-//! names the one that failed.
-
 use std::collections::HashMap;
 
 use axum::extract::Query;
@@ -22,23 +7,15 @@ use axum::Json;
 use lattice_core::parse_iso;
 use serde_json::{Map, Value};
 
-/// Largest request body these routes will read.
-///
-/// They take a question, a handful of numbers, and (for the context builder) a
-/// small seam payload. Anything past this is not one of those.
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 
-/// A rejected request: which field, and why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParamError {
-    /// The parameter that failed, or `body` / `query` for framing failures.
     pub field: String,
-    /// Human-readable reason, including the offending value.
     pub detail: String,
 }
 
 impl ParamError {
-    /// Build an error for `field`.
     pub fn new(field: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
             field: field.into(),
@@ -69,14 +46,12 @@ impl IntoResponse for ParamError {
     }
 }
 
-/// The merged parameter bag for one request.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RequestParams {
     values: Map<String, Value>,
 }
 
 impl RequestParams {
-    /// Parse the query string of `uri`.
     pub fn from_uri(uri: &Uri) -> Result<Self, ParamError> {
         let parsed = Query::<HashMap<String, String>>::try_from_uri(uri)
             .map_err(|err| ParamError::new("query", err.body_text()))?;
@@ -89,10 +64,6 @@ impl RequestParams {
         })
     }
 
-    /// Merge a JSON object body over whatever the query string said.
-    ///
-    /// An empty body is not an error — `POST` with everything in the query
-    /// string is a legitimate way to call these routes.
     pub fn merge_json(&mut self, raw: &[u8]) -> Result<(), ParamError> {
         if raw.iter().all(u8::is_ascii_whitespace) {
             return Ok(());
@@ -111,7 +82,6 @@ impl RequestParams {
         Ok(())
     }
 
-    /// Set a value the router took from the path rather than the query string.
     pub fn set(&mut self, key: &str, value: Value) {
         self.values.insert(key.to_string(), value);
     }
@@ -121,11 +91,6 @@ impl RequestParams {
             .find_map(|key| self.values.get(*key).map(|value| (*key, value)))
     }
 
-    /// A required text parameter (`query`, aliased to `q`).
-    ///
-    /// Present-but-empty is allowed: the engines answer an empty query with an
-    /// explicitly empty result, which is a truthful answer rather than an error.
-    /// Absent is not — a search with no question is a caller bug.
     pub fn required_text(&self, keys: &[&str]) -> Result<String, ParamError> {
         let name = keys.first().copied().unwrap_or("query");
         match self.first(keys) {
@@ -141,7 +106,6 @@ impl RequestParams {
         }
     }
 
-    /// An optional text parameter; a non-string is a rejection, not a coercion.
     pub fn optional_text(&self, key: &str) -> Result<Option<String>, ParamError> {
         match self.first(&[key]) {
             None | Some((_, Value::Null)) => Ok(None),
@@ -153,11 +117,6 @@ impl RequestParams {
         }
     }
 
-    /// An optional integer parameter, rejected outside `min..=max`.
-    ///
-    /// The engines themselves clamp (Python's `max(1, min(100, limit))`); this
-    /// front door refuses instead, because a clamped answer looks exactly like
-    /// the answer to the question that was asked, and it is not.
     pub fn optional_int(&self, key: &str, min: i64, max: i64) -> Result<Option<i64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);
@@ -176,7 +135,6 @@ impl RequestParams {
         }
     }
 
-    /// An optional float parameter, rejected outside `min..=max`.
     pub fn optional_float(&self, key: &str, min: f64, max: f64) -> Result<Option<f64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);
@@ -197,8 +155,6 @@ impl RequestParams {
         }
     }
 
-    /// An optional boolean; the query string spellings are `1/0`, `true/false`,
-    /// `yes/no`, `on/off`, matching what the Python config parser accepts.
     pub fn optional_bool(&self, key: &str) -> Result<Option<bool>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);
@@ -217,8 +173,6 @@ impl RequestParams {
             .ok_or_else(|| ParamError::new(key, format!("{key} must be a boolean, got {value}")))
     }
 
-    /// An optional JSON value: taken as-is from a body, parsed from a query
-    /// string. This is how the context builder's data seams arrive.
     pub fn optional_json(&self, key: &str) -> Result<Option<Value>, ParamError> {
         match self.first(&[key]) {
             None | Some((_, Value::Null)) => Ok(None),
@@ -229,8 +183,6 @@ impl RequestParams {
         }
     }
 
-    /// An optional map of channel weights, rejected unless every value is a
-    /// finite number — a weight map with a string in it is a typo, not a policy.
     pub fn optional_weights(&self, key: &str) -> Result<Option<Map<String, Value>>, ParamError> {
         let Some(value) = self.optional_json(key)? else {
             return Ok(None);
@@ -257,12 +209,6 @@ impl RequestParams {
         Ok(Some(weights))
     }
 
-    /// The optional `now` override, as naive seconds since the epoch.
-    ///
-    /// Accepts the naive ISO-8601 the graph itself writes, or a raw epoch
-    /// second. It exists so a golden can pin a decay curve and so a caller can
-    /// ask "how would this have ranked last Tuesday"; it is reachable only from
-    /// this machine, and it changes nothing but the recency multiplier.
     pub fn optional_instant(&self, key: &str) -> Result<Option<f64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);

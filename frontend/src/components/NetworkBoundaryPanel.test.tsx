@@ -25,8 +25,6 @@ const CATALOG = [
     warning_ko: "클라우드 모드는 선택된 로컬 노드의 압축 요약을 전송합니다.",
   },
   {
-    // A mode added server-side: English-only copy, a risk word this client has
-    // never heard of, an acknowledgement demanded but no warning shipped.
     id: "peer_sync",
     label: "Peer sync (beta)",
     summary: "Streams to paired devices.",
@@ -140,7 +138,6 @@ describe("NetworkBoundaryPanel", () => {
     expect(screen.getByTestId("network-boundary-option-cloud_allowed").textContent)
       .toContain("Minimal related nodes may be sent to a cloud LLM.");
 
-    // The warning too — the English reader gets the English caution.
     await userEvent.click(screen.getByTestId("network-boundary-option-cloud_allowed"));
     expect(screen.getByText("Cloud mode sends a compact summary of selected local nodes.")).toBeTruthy();
   });
@@ -158,12 +155,10 @@ describe("NetworkBoundaryPanel", () => {
     renderPanel();
 
     await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
-    // No Korean copy shipped — fall back to the server's English rather than hiding it.
     const row = screen.getByTestId("network-boundary-option-peer_sync");
     expect(row.textContent).toContain("Peer sync (beta)");
     expect(row.textContent).toContain("Streams to paired devices.");
 
-    // requires_ack still gates it, even with no warning copy to show.
     await userEvent.click(row);
     expect(screen.getByTestId("network-boundary-ack")).toBeTruthy();
     expect((screen.getByTestId("network-boundary-apply") as HTMLButtonElement).disabled).toBe(true);
@@ -177,8 +172,6 @@ describe("NetworkBoundaryPanel", () => {
     await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
     await userEvent.click(screen.getByTestId("network-boundary-option-cloud_allowed"));
 
-    // The server refuses cloud_allowed without acknowledge_risk, so the UI must
-    // not offer to send the request until the box is ticked.
     expect((screen.getByTestId("network-boundary-apply") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("클라우드 모드는 선택된 로컬 노드의 압축 요약을 전송합니다.")).toBeTruthy();
     expect(setMode).not.toHaveBeenCalled();
@@ -216,8 +209,6 @@ describe("NetworkBoundaryPanel", () => {
       expect(screen.getByTestId("network-boundary-preview-result")).toBeTruthy());
     expect(screen.getByText("· 릴리스 절차")).toBeTruthy();
     expect(screen.getByText("· 배포 체크리스트")).toBeTruthy();
-    // On local_only the preview is hypothetical, and must say so rather than
-    // implying data just left the machine.
     expect(screen.getByText(/아무것도 나가지 않습니다/)).toBeTruthy();
   });
 
@@ -252,7 +243,6 @@ describe("NetworkBoundaryPanel", () => {
     renderPanel();
 
     await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
-    // Dead switches invite the belief that they do something.
     expect(screen.queryByTestId("network-boundary-policy")).toBeNull();
   });
 
@@ -383,8 +373,6 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
 
     await waitFor(() =>
       expect(mark).toHaveBeenCalledWith("n1", true));
-    // Held rows read as excluded, so the list stays an honest picture of what
-    // would actually be sent.
     await waitFor(() =>
       expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("다시 허용"));
   });
@@ -409,7 +397,6 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
 
     await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
     await waitFor(() => expect(mark).toHaveBeenLastCalledWith("n1", false));
-    // Released: the row offers to hold it again and loses its strike-through.
     await waitFor(() =>
       expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("내보내지 않기"));
   });
@@ -429,7 +416,6 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
     await waitFor(() => expect(screen.getByTestId("network-boundary-hold-0")).toBeTruthy());
     await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
 
-    // Still offering to hold it: the UI must not claim a change the server refused.
     await waitFor(() =>
       expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("내보내지 않기"));
   });

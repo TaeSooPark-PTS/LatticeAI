@@ -1,18 +1,3 @@
-//! `SelfModelService` — what the Brain believes about its owner.
-//!
-//! This module is the **read** half. Every write in
-//! `lattice_brain/self_model.py` ends in `store._upsert_node` / `_upsert_edge`
-//! / `DELETE FROM nodes`; until v11.7.0 the four write routes delegated those
-//! over `POST /worker/graph/mutate`, a door the worker stopped serving in
-//! v11.6.0 — so they answered 404 on every live install. They are native now,
-//! in [`super::self_model_write`].
-//!
-//! The read reuses [`crate::self_model`] for the injected summary — the same
-//! function the document-generation context already assembles prompts with, so
-//! the profile a person sees and the profile a model is handed cannot drift.
-//! What is added here is `list_self_model`'s grouped listing, which the Self
-//! Model view renders.
-
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -22,17 +7,10 @@ use serde_json::Value;
 
 use super::shared::{detail_response, message_response};
 
-/// `self_model.KIND_ORDER` — the render order *is* the priority order.
 pub const KIND_ORDER: [&str; 5] = ["trait", "preference", "habit", "decision", "relationship"];
 
-/// `self_model.DEFAULT_SUMMARY_TOKENS`.
 pub const SUMMARY_TOKENS: i64 = crate::self_model::DEFAULT_SUMMARY_TOKENS;
 
-/// `SelfModelError.code` → the catalog id the router answers with.
-///
-/// Brain Core raises codes (it cannot import the catalog); which sentence a
-/// person reads is chosen at the HTTP edge, in their language. An unknown code
-/// degrades to the generic entry rather than leaking an English developer line.
 pub fn message_id(code: &str) -> &'static str {
     match code {
         "invalid_kind" => "self_model.invalid_kind",
@@ -47,17 +25,11 @@ pub fn message_id(code: &str) -> &'static str {
     }
 }
 
-/// `_self_model_error` — `not_found` is a 404, everything else a 400.
 pub fn error_response(code: &str, lang: &str) -> axum::response::Response {
     let status = if code == "not_found" { 404 } else { 400 };
     message_response(status, message_id(code), lang, &[])
 }
 
-/// A refusal the seam reported, mapped back onto the Self-Model contract.
-///
-/// The worker answers `500 worker_seam.graph_mutation_failed` with the store's
-/// own reason embedded; the codes below are the ones `SelfModelError` raises,
-/// so a caller keeps seeing the sentence the Python route gave it.
 pub fn seam_error(detail: &str, lang: &str) -> axum::response::Response {
     for code in [
         "not_found",
@@ -76,7 +48,6 @@ pub fn seam_error(detail: &str, lang: &str) -> axum::response::Response {
     detail_response(500, detail)
 }
 
-/// One fact, in `_row_to_fact`'s key order.
 fn row_to_fact(
     id: String,
     node_type: Value,
@@ -119,11 +90,6 @@ fn row_to_fact(
     Some(fact)
 }
 
-/// `_read_facts` — the legacy `nodes` table, deterministically ordered.
-///
-/// Deliberately *not* `read_tables`: the v4 write door maintains `nodes` as the
-/// compatibility projection of `nodes_v2`, so this answers the same rows in
-/// both read modes — the one reader in the crate that skips the view.
 pub fn read_facts(
     conn: &Connection,
     allowed: Option<&BTreeSet<String>>,
@@ -151,8 +117,6 @@ pub fn read_facts(
         facts.push(fact);
     }
     if let Some(allowed) = allowed {
-        // A fact with no workspace is personal-global and stays visible; this
-        // is the Self-Model's own scoping, not the graph layer's opt-in.
         facts.retain(|fact| match fact.get("workspace_id") {
             Some(Value::String(workspace)) if !workspace.is_empty() => allowed.contains(workspace),
             _ => true,
@@ -178,7 +142,6 @@ pub fn read_facts(
     Ok(facts)
 }
 
-/// `SelfModelService.profile` — the listing plus the injected summary.
 pub fn profile(
     conn: &Connection,
     workspace_id: Option<&str>,
@@ -251,7 +214,6 @@ pub fn profile(
     Ok(out)
 }
 
-/// The answer a Brain with no graph gives — `available: false`, with a reason.
 pub fn unavailable(detail: &str, now: &str, with_profile: bool) -> OrderedMap {
     let mut out = OrderedMap::new();
     out.insert("available", Value::Bool(false));
@@ -264,7 +226,6 @@ pub fn unavailable(detail: &str, now: &str, with_profile: bool) -> OrderedMap {
     out
 }
 
-/// `SelfModelService.GRAPH_UNAVAILABLE`.
 pub const GRAPH_UNAVAILABLE: &str = "self-model needs the knowledge graph";
 
 #[cfg(test)]

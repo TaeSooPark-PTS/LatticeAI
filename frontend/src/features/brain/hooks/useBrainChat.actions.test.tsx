@@ -9,10 +9,6 @@ import { setup } from "@/test/brainChatHarness";
 import { useConversationSession } from "../conversationSession";
 import type { BrainProactiveAction, MessageApproval } from "../types";
 
-/**
- * What the person can do with an answer once it exists: resolve a governed
- * plan, save a follow-up, or take one of the Brain's proactive offers.
- */
 
 beforeEach(() => {
   useConversationSession.getState().resetConversation();

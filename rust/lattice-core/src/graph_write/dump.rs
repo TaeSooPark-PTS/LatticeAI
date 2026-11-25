@@ -1,11 +1,3 @@
-//! The whole store, ordered, as JSON — the shape the parity goldens compare.
-//!
-//! Mirrors `scripts/gen_graph_write_goldens.py`'s `dump_store` exactly: the same
-//! table list, the same per-table order, the same BLOB rendering, and the same
-//! refusal to skip an object nobody classified. That last part is the load-
-//! bearing one — a table the port forgets to write would otherwise pass a
-//! comparison that never looked at it.
-
 use std::collections::BTreeMap;
 
 use rusqlite::types::ValueRef;
@@ -15,7 +7,6 @@ use serde_json::{json, Map, Value};
 use super::pyaux::{sha256_bytes, sha256_text};
 use crate::db::CoreError;
 
-/// Every logical table the write engine touches, in the golden's order.
 pub const DUMP_TABLES: [&str; 14] = [
     "graph_meta",
     "kg_meta",
@@ -33,10 +24,8 @@ pub const DUMP_TABLES: [&str; 14] = [
     "ingestion_provenance",
 ];
 
-/// The FTS content table, dumped through its logical columns.
 pub const FTS_TABLE: &str = "node_fts";
 
-/// A superkey per table — what makes the row order deterministic.
 const DUMP_ORDER: [(&str, &str); 14] = [
     ("graph_meta", "key"),
     ("kg_meta", "key"),
@@ -54,11 +43,6 @@ const DUMP_ORDER: [(&str, &str); 14] = [
     ("ingestion_provenance", "id"),
 ];
 
-/// Objects `sqlite_master` may hold that the dump deliberately skips.
-///
-/// `conversation_messages` is platform state bootstrap now creates so
-/// readers do not 500 on a fresh Brain. It is not a graph-write table and
-/// is not in the write-engine goldens.
 const SKIPPED: [&str; 4] = [
     "kgv2_nodes",
     "kgv2_edges",
@@ -67,21 +51,12 @@ const SKIPPED: [&str; 4] = [
 ];
 const SKIPPED_PREFIXES: [&str; 2] = ["node_fts_", "sqlite_"];
 
-/// How a `BLOB` column is rendered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Blobs {
-    /// Full lowercase hex — the byte-level proof.
     Hex,
-    /// `sha256:<hex>` — small enough for a per-step checkpoint.
     Digest,
 }
 
-/// Dump every table, ordered.
-///
-/// `substitutions` rewrites absolute paths out of the result: the file door
-/// stamps `blob_path` and `source_uri` into node metadata, and the machine's
-/// temp-directory layout is not part of the contract. Each `(from, to)` pair is
-/// applied to every string in the dump, in order.
 pub fn dump_store(
     conn: &Connection,
     blobs: Blobs,
@@ -135,9 +110,6 @@ pub fn dump_store(
     Ok(Value::Object(dump))
 }
 
-/// `value` with every object's keys in code-point order — `sort_keys=True`.
-///
-/// Explicit rather than inherited from `serde_json::Map`; see [`digest_dump`].
 fn sorted_keys(value: &Value) -> Value {
     match value {
         Value::Object(map) => {
@@ -154,10 +126,6 @@ fn sorted_keys(value: &Value) -> Value {
     }
 }
 
-/// The per-table `(rows, sha256)` checkpoint form.
-///
-/// The digest is taken over `json.dumps(rows, ensure_ascii=False,
-/// sort_keys=True, separators=(",", ":"))`, which is what the generator hashes.
 pub fn digest_dump(dump: &Value) -> Value {
     let Some(dump) = dump.as_object() else {
         return Value::Null;
@@ -172,15 +140,6 @@ pub fn digest_dump(dump: &Value) -> Value {
                 tables.insert(name.clone(), Value::Null);
             }
             Value::Array(items) => {
-                // `serde_json::to_string` is compact (`,` / `:`), which matches
-                // the generator's `separators=(",", ":")`, and CPython escapes
-                // nothing extra under `ensure_ascii=False` — nor does
-                // `serde_json`. The generator's `sort_keys=True` is reproduced
-                // by `sorted_keys` rather than by `Map` being a `BTreeMap`:
-                // `lattice-retrieval` enables `serde_json/preserve_order`, and
-                // cargo unifies features across a build, so in any build that
-                // contains that crate a `Map` iterates in insertion order and
-                // every digest here would differ from the golden.
                 let payload = serde_json::to_string(&sorted_keys(rows)).unwrap_or_default();
                 tables.insert(
                     name.clone(),

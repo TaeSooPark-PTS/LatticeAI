@@ -12,32 +12,18 @@ use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
 
 use super::*;
 
-/// The GPU half of the host probe, as the worker reports it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GpuReading {
-    /// Unified memory held by the ML runtime, in GiB.
     pub gpu_mem_gb: f64,
-    /// The same as a percentage of the machine's memory.
     pub gpu_mem_pct: f64,
 }
 
-/// A future returning what the machine's GPU is holding, or nothing.
 pub type GpuFuture<'a> = Pin<Box<dyn std::future::Future<Output = Option<GpuReading>> + Send + 'a>>;
 
-/// Where the GPU numbers come from.
-///
-/// The seam exists because MLX is Python-only: `api/static_routes.py` imports
-/// `mlx.core` purely for these two numbers, which is why a static-files module
-/// carried an ML dependency. Here the numbers are asked for
-/// ([`WORKER_SYSINFO_PATH`], added by WP-I6) and their absence is the same
-/// non-event it is in Python, where the import failure is swallowed and the
-/// fields stay zero.
 pub trait GpuSource: Send + Sync + 'static {
-    /// Read the current GPU memory, or `None` if this machine cannot say.
     fn read(&self) -> GpuFuture<'_>;
 }
 
-/// A machine with no ML runtime to ask: the fields stay zero.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoGpu;
 
@@ -47,25 +33,18 @@ impl GpuSource for NoGpu {
     }
 }
 
-/// The worker seam: `GET {origin}/worker/sysinfo`.
 #[derive(Debug, Clone)]
 pub struct WorkerGpuSource {
     client: WorkerSeamClient,
 }
 
 impl WorkerGpuSource {
-    /// A source pointed at the worker this host supervises.
-    ///
-    /// Builds its own HTTP client; prefer [`Self::with_client`] from a host that
-    /// already has a seam client, so the loopback connection pool is shared and
-    /// any credential the seam needs is configured in exactly one place.
     pub fn new(origin: impl AsRef<str>) -> Result<Self, WorkerSeamError> {
         Ok(Self {
             client: WorkerSeamClient::new(origin)?.with_timeout(GPU_SEAM_TIMEOUT),
         })
     }
 
-    /// A source over a seam client the caller already configured.
     pub fn with_client(client: WorkerSeamClient) -> Self {
         Self { client }
     }
@@ -74,31 +53,12 @@ impl WorkerGpuSource {
 impl GpuSource for WorkerGpuSource {
     fn read(&self) -> GpuFuture<'_> {
         Box::pin(async move {
-            // A worker that is down, refusing, or answering something else is
-            // "cannot say" — the same non-event as MLX failing to import in
-            // Python, which `quiet()` swallows. This route reports host load and
-            // must not become a second place the product looks unhealthy.
             let payload = self.client.get_json(WORKER_SYSINFO_PATH).await.ok()?;
             gpu_from_worker_payload(&payload)
         })
     }
 }
 
-/// Read the GPU numbers out of WP-I6's `GET /worker/sysinfo` body.
-///
-/// Shipped schema (`latticeai/api/worker_seams.py::probe_gpu_memory`):
-///
-/// ```json
-/// {"mlx_available": bool, "gpu_mem_gb": num, "gpu_mem_pct": num,
-///  "total_bytes": int, "detail": str | null}
-/// ```
-///
-/// Only the two numbers this route reports are taken. `mlx_available`,
-/// `total_bytes` and `detail` stay worker-side: `/local/sysinfo` has never
-/// exposed them, and inventing keys here would be a client-visible change.
-/// A payload missing either number is "cannot say", not zero, so a seam that
-/// regresses shows up as an absent GPU rather than an idle one. `false` plus
-/// zeros (no MLX on this machine) still parses — those zeros are the reading.
 pub fn gpu_from_worker_payload(payload: &Value) -> Option<GpuReading> {
     Some(GpuReading {
         gpu_mem_gb: payload.get("gpu_mem_gb")?.as_f64()?,
@@ -106,9 +66,7 @@ pub fn gpu_from_worker_payload(payload: &Value) -> Option<GpuReading> {
     })
 }
 
-/// What `/local/sysinfo` needs: somewhere to ask about the GPU.
 pub struct SysinfoState {
-    /// The GPU seam.
     pub gpu: Arc<dyn GpuSource>,
 }
 
@@ -118,13 +76,6 @@ impl std::fmt::Debug for SysinfoState {
     }
 }
 
-/// `GET /local/sysinfo`, on its own so it can be mounted behind the user gate.
-///
-/// The Python route calls `require_user`; this router does not, because
-/// authentication in this release is a layer (`lattice-auth`, WP-I2) rather than
-/// a line at the top of every handler. Mounting it bare is a difference from
-/// Python, and a host that does so is publishing its CPU and RAM load to
-/// anything that can reach the port.
 pub fn sysinfo_router(state: Arc<SysinfoState>) -> Router {
     Router::new()
         .route("/local/sysinfo", get_only(local_sysinfo))
@@ -142,13 +93,6 @@ async fn local_sysinfo(State(state): State<Arc<SysinfoState>>) -> Response<Body>
     response
 }
 
-/// `_probe_host_capacity` — CPU and RAM from this machine, GPU from the seam.
-///
-/// The Python original wraps all three samples in one `try`, so a failure while
-/// reading CPU means RAM and GPU are never read and the payload carries an
-/// `error` string with zeros beside it. That sequencing is reproduced rather
-/// than improved: a caller reading `cpu_pct: 0.0` next to `error` knows it was
-/// not sampled, whereas a partially-filled payload would look like an idle box.
 pub async fn probe_host_capacity(gpu: &dyn GpuSource) -> Value {
     let mut cpu_pct = 0.0;
     let mut ram_pct = 0.0;
@@ -202,19 +146,12 @@ async fn capture_stdout(program: &str, args: &[&str]) -> Result<String, String> 
     }
 }
 
-/// `top -l 1 -n 0`'s user+sys percentage, rounded as CPython rounds.
-///
-/// `None` when no line carries the pair — the Python original simply leaves the
-/// field at its default there, which is not the same as reading zero load, but
-/// is what the product has always reported.
 pub fn parse_cpu_percent(top_output: &str) -> Option<f64> {
     let mut latest = None;
     for line in top_output.lines() {
         if !line.contains("CPU usage") {
             continue;
         }
-        // The Python regex is `([\d.]+)% user.*?([\d.]+)% sys`: the first number
-        // before "% user", then the first before "% sys" *after* it.
         let Some(user_at) = line.find("% user") else {
             continue;
         };
@@ -233,7 +170,6 @@ pub fn parse_cpu_percent(top_output: &str) -> Option<f64> {
     latest
 }
 
-/// The `[\d.]+` run ending at `end`, parsed as a float.
 fn number_before(line: &str, end: usize) -> Option<f64> {
     let bytes = line.as_bytes();
     let mut start = end;
@@ -246,11 +182,6 @@ fn number_before(line: &str, end: usize) -> Option<f64> {
     line[start..end].parse().ok()
 }
 
-/// `vm_stat`'s used-pages percentage, rounded as CPython rounds.
-///
-/// The five counters Python sums are the whole of its idea of "memory in use";
-/// anything else `vm_stat` prints (page-ins, faults) is not memory and is
-/// ignored. A duplicate line overwrites, exactly as the Python dict does.
 pub fn parse_ram_percent(vm_stat_output: &str) -> f64 {
     const KEYS: [&str; 5] = [
         "Pages free",
@@ -288,11 +219,6 @@ fn first_integer(line: &str) -> Option<u64> {
     line[start..end].parse().ok()
 }
 
-/// `host_capacity_readiness` — one plain-language bucket for three numbers.
-///
-/// The heaviest of the three decides, so a machine that is fine on CPU and out
-/// of memory is not described as roomy. The thresholds live here, and only here,
-/// so basic-mode copy and advanced-mode numbers cannot disagree.
 pub fn host_capacity_readiness(cpu_pct: f64, ram_pct: f64, gpu_mem_pct: f64) -> &'static str {
     let load = cpu_pct.max(ram_pct).max(gpu_mem_pct);
     if load <= SYSINFO_READINESS_ROOMY_MAX {

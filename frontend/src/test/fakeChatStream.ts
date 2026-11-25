@@ -1,24 +1,3 @@
-/**
- * A scripted stand-in for `latticeApi.streamChat`.
- *
- * The streaming chat path was the largest untested surface in the product
- * (`useBrainChat` sat at 12% through 10.8.0) for one reason: every assertion
- * about it needs a *stream* — frames arriving over time, in a chosen order,
- * with the ability to stop between two of them and look at what the UI has.
- * A `mockResolvedValue` cannot express that, so the branches that matter —
- * partial text, a trace pulse, an approval pause, an abort mid-answer — were
- * never exercised.
- *
- * This is that missing harness. A test writes the frames it wants; the fake
- * replays them into the same handler callbacks the real reader calls, in
- * order, awaiting between each so React can flush. `pauseAfter` stops the
- * replay so the test can inspect mid-stream state, and `resume()` continues.
- *
- * It deliberately mirrors the *contract* of `streamChat`, not its transport:
- * no `ReadableStream`, no `text/event-stream` parsing. Frame decoding is the
- * job of `readEventStream`, which has its own tests; what is untested here is
- * everything the hook does with the frames once they arrive.
- */
 
 export type FakeChatFrame =
   | { kind: "chunk"; text: string }
@@ -52,13 +31,9 @@ export type FakeChatResult = {
 };
 
 export type FakeChatStream = {
-  /** Drop-in for `latticeApi.streamChat`. */
   streamChat: (body: Record<string, unknown>, handlers?: FakeChatHandlers) => Promise<FakeChatResult>;
-  /** Resolves once the replay has reached `pauseAfter` (or finished). */
   started: Promise<void>;
-  /** Continue a replay parked at `pauseAfter`. */
   resume: () => void;
-  /** Bodies the hook sent, in order — one per send. */
   calls: Array<Record<string, unknown>>;
 };
 
@@ -69,11 +44,8 @@ export function fakeChatStream({
   error,
 }: {
   frames?: FakeChatFrame[];
-  /** Trailer values the reader would have collected (context_quality, grounding, …). */
   result?: Partial<FakeChatResult>;
-  /** Park the replay after this many frames until `resume()` is called. */
   pauseAfter?: number;
-  /** Throw instead of resolving — an abort is `DOMException("…", "AbortError")`. */
   error?: unknown;
 } = {}): FakeChatStream {
   const calls: Array<Record<string, unknown>> = [];
@@ -93,7 +65,6 @@ export function fakeChatStream({
     let agent: Record<string, unknown> | null = null;
 
     for (let index = 0; index < frames.length; index += 1) {
-      // The real reader can be aborted between any two frames; so can this one.
       if (handlers.signal?.aborted) break;
       const frame = frames[index]!;
       if (frame.kind === "chunk") {
@@ -115,8 +86,6 @@ export function fakeChatStream({
       } else {
         handlers.onAgentStep?.(frame.step);
       }
-      // Yield so React can flush the state update this frame caused, exactly
-      // as a real network frame would.
       await Promise.resolve();
       if (pauseAfter !== undefined && index + 1 === pauseAfter) {
         announceStarted?.();
@@ -146,7 +115,6 @@ export function fakeChatStream({
   };
 }
 
-/** The abort the browser raises when a fetch signal fires mid-stream. */
 export function abortError(): DOMException {
   return new DOMException("The user aborted a request.", "AbortError");
 }

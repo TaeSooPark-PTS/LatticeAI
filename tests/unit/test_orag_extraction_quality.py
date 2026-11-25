@@ -1,11 +1,3 @@
-"""Entity normalization, typed relations and section provenance (v12.0.0).
-
-Every rule gets a Korean sample and an English one, because the two languages
-break in opposite directions: English glues grammar in *front* of a name ("The
-Vector Index") and Korean glues it *behind* one ("지식그래프에서"), and a rule
-that only ever saw one of them ships the other's duplicates into the graph.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -29,8 +21,6 @@ from lattice_brain.graph._kg_common.sections import (
     leading_offset,
     with_section,
 )
-
-# ── surface normalization ────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
@@ -67,17 +57,13 @@ def test_unconditional_particles_are_stripped(raw: str, expected: str) -> None:
 
 @pytest.mark.parametrize("word", ["고양이", "전문가", "정확도", "결과", "회의", "경로"])
 def test_words_that_merely_end_in_a_particle_survive(word: str) -> None:
-    """The failure mode this whole tier system exists to prevent."""
     assert strip_particle(word) == word
     assert strip_particle(word, f"{word}가 있다") == word
 
 
 def test_single_syllable_particles_need_the_text_to_agree() -> None:
-    # With no corroboration nothing is stripped…
     assert strip_particle("플랫폼이") == "플랫폼이"
-    # …and with the bare stem elsewhere in the passage, it is.
     assert strip_particle("플랫폼이", "플랫폼이 있고 플랫폼도 크다") == "플랫폼"
-    # A stem that only ever appears with this ending is part of the word.
     assert strip_particle("정확도", "정확도가 높고 정확도를 잰다") == "정확도"
 
 
@@ -92,12 +78,10 @@ def test_merge_picks_the_spelling_the_document_actually_uses() -> None:
     assert merge_entity_aliases(["lattice ai", "Lattice AI", "LATTICE AI"], text) == [
         "Lattice AI"
     ]
-    # Korean surfaces merge through their particles.
     korean = "지식그래프는 노드를 담는다. 지식그래프에서 찾는다."
     assert merge_entity_aliases(["지식그래프에서", "지식그래프"], korean) == [
         "지식그래프"
     ]
-    # Nothing to merge is not an error; empties simply drop out.
     assert merge_entity_aliases(["", "   ", "..."]) == []
 
 
@@ -105,9 +89,6 @@ def test_occurrence_count_is_case_insensitive_and_safe() -> None:
     assert occurrence_count("rag", "RAG and rag and Rag") == 3
     assert occurrence_count("", "anything") == 0
     assert occurrence_count("x", "") == 0
-
-
-# ── concept extraction: one entity, one node ─────────────────────────────────
 
 
 def test_a_name_inside_a_longer_name_is_not_a_second_concept() -> None:
@@ -119,14 +100,12 @@ def test_a_name_inside_a_longer_name_is_not_a_second_concept() -> None:
     lowered = {concept.lower() for concept in concepts}
     assert "graph rag" in lowered
     assert "vector index" in lowered
-    # "RAG", "Vector" and "Index" never appear outside those names.
     assert "rag" not in lowered
     assert "vector" not in lowered
     assert "index" not in lowered
 
 
 def test_a_korean_particle_does_not_hide_the_english_name_it_follows() -> None:
-    """`Lattice AI는` used to leave both `Lattice AI` *and* `Lattice`."""
     concepts = _extract_concepts_rules(
         "Lattice AI는 로컬에서 동작한다. Lattice AI는 그래프를 쓴다.", limit=12
     )
@@ -155,9 +134,6 @@ def test_korean_terms_before_the_wider_particle_set_are_found() -> None:
     concepts = _extract_concepts_rules("임베딩모델은 벡터스토어에 의존한다.", limit=12)
     assert "벡터스토어" in concepts
     assert "임베딩모델" in concepts
-
-
-# ── typed, directed relations ────────────────────────────────────────────────
 
 
 def _relations(text: str) -> set:
@@ -210,14 +186,12 @@ def test_contrast_becomes_a_contradiction_edge_in_both_languages() -> None:
 
 
 def test_a_korean_subject_reaches_its_object_across_a_clause() -> None:
-    """SOV: the particles decide the direction, the tail verb names the edge."""
     assert ("하이브리드검색", "사용함", "벡터검색", "verb") in _relations(
         "하이브리드검색은 키워드검색이 아니라 벡터검색을 쓴다."
     )
 
 
 def test_a_pattern_silences_the_coarse_pairing_around_it() -> None:
-    """The rejected alternative must not also become "A uses B"."""
     found = _relations("하이브리드검색은 키워드검색이 아니라 벡터검색을 쓴다.")
     assert ("하이브리드검색", "사용함", "키워드검색", "verb") not in found
 
@@ -242,11 +216,8 @@ def test_typed_relation_declines_when_nothing_matches() -> None:
     sentence = "Alpha Bravo sit here."
     positions = concept_positions(sentence, ["Alpha", "Bravo"])
     assert typed_relation(sentence, positions[0], positions[1]) is None
-    # A non-adjacent pair is only ever the Korean subject→object rule.
     assert typed_relation(sentence, positions[0], positions[1], adjacent=False) is None
 
-
-# ── section provenance ───────────────────────────────────────────────────────
 
 _SECTIONED = (
     "# 아키텍처\n\n"
@@ -262,7 +233,6 @@ def test_heading_spans_build_the_path_the_chunker_builds() -> None:
     assert [path for _, _, path in spans] == ["아키텍처", "아키텍처 > 저장소"]
     assert heading_at(spans, 0) == "아키텍처"
     assert heading_at(spans, len(_SECTIONED) - 1) == "아키텍처 > 저장소"
-    # Text before the first heading belongs to no section.
     assert heading_at(heading_spans("no headings here"), 0) == ""
 
 
@@ -279,7 +249,6 @@ def test_a_semantic_item_carries_its_section() -> None:
     items = _semantic_items(_SECTIONED)
     tasks = [item for item in items if item["type"] == "Task"]
     assert tasks and tasks[0]["section"] == "아키텍처 > 저장소"
-    # A document with no headings claims no section rather than an empty one.
     plain = _semantic_items("TODO: implement the extract seam now.")
     assert plain and "section" not in plain[0]
 

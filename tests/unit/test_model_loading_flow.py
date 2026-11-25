@@ -1,15 +1,3 @@
-"""Model preparation and loading — the gates before a model is allowed to load.
-
-`prepare_and_load_model` decides whether an engine may be installed, whether a
-model may be downloaded, and whether the loaded model actually answers. Every
-one of those is a consent boundary (downloads and installs are opt-in, per the
-local-first contract), so the branches are worth asserting rather than assuming.
-
-The module takes all of its collaborators through `runtime_state`, so these
-tests drive it with a recording fake and never touch a real engine, network,
-or subprocess.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -24,8 +12,6 @@ from latticeai.services.model_runtime import ModelRuntimeError
 
 
 class _Resolution:
-    """Stands in for _ModelResolution: records what was asked and loaded."""
-
     def __init__(self, model_id, engine=None, user_email=None, engine_aliases=None):
         self.load_id = model_id
         self.engine = engine
@@ -59,7 +45,6 @@ class _Router:
 
 
 def _deps(**over):
-    """A complete, permissive dependency surface; override one key per test."""
     router = over.pop("router", None) or _Router()
     calls: dict = {"blocked": [], "installed": [], "downloaded": []}
 
@@ -117,7 +102,6 @@ def _deps(**over):
 
 @pytest.fixture()
 def patched(monkeypatch):
-    """Install a dependency surface and hand the test its recorder."""
 
     def install(**over):
         deps = _deps(**over)
@@ -159,7 +143,6 @@ def test_an_unsupported_model_is_refused_with_the_compatibility_report(patched):
 
 
 def test_engine_install_is_blocked_unless_the_user_allowed_it(patched):
-    """Installing a runtime is a local-first consent boundary."""
     import asyncio
 
     deps = patched(engine_installed=lambda provider: False)
@@ -208,7 +191,6 @@ def test_a_missing_local_model_downloads_once_allowed(patched):
 
 
 def test_a_cached_download_is_not_reported_as_downloaded(patched):
-    """`downloaded: true` should mean bytes moved, not "we checked"."""
     import asyncio
 
     patched(
@@ -230,7 +212,6 @@ def test_ollama_without_the_binary_is_a_clear_refusal(patched):
 
 
 def test_lmstudio_resolves_to_the_instance_the_server_actually_gave(patched):
-    """LM Studio can hand back a different instance id; the result must say so."""
     import asyncio
 
     router = _Router()
@@ -245,7 +226,6 @@ def test_lmstudio_resolves_to_the_instance_the_server_actually_gave(patched):
 
 
 def test_a_loaded_model_that_fails_its_smoke_test_is_not_ready_to_chat(patched):
-    """Loading is not the same as answering; the caller must be able to tell."""
     import asyncio
 
     async def failing_smoke(resolution, api_key_override=None):

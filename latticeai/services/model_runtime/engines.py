@@ -1,24 +1,3 @@
-"""Local engine discovery, server hand-off, and the LM Studio HTTP client.
-
-Re-exports from ``latticeai.services.model_engines`` that keep the historical
-``model_runtime`` import path alive, plus the one piece of real logic that never
-belonged in the engine layer: the LM Studio native API (list / download / load)
-and its short-lived model cache.
-
-Until 11.5.2 the re-exports were fifteen hand-written one-line functions that
-forwarded their arguments, next to second copies of ``_json_request`` and the
-LM Studio base-URL pair. A forwarding wrapper is a place two implementations
-can drift — one of the copies had already grown a different fallback — so the
-names are now bound directly to the engine layer's and there is nothing left to
-disagree with.
-
-``_LMSTUDIO_MODELS_CACHE`` and ``_LMSTUDIO_MODELS_CACHE_TS`` are rebindable
-module state and therefore live here and nowhere else — the package
-``__init__`` deliberately does not re-export them, because a
-``from … import`` copy would freeze at import time and quietly disagree with
-the live value.
-"""
-
 from __future__ import annotations
 
 import http.client

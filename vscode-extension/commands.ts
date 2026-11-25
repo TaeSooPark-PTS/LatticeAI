@@ -1,11 +1,3 @@
-/**
- * Command registration.
- *
- * One place that maps every `ltcai.*` id in package.json to the function that
- * runs it. Keeping the map here — and the work in the surface modules — means
- * a missing `activationEvents` entry or a renamed command shows up as a diff in
- * one short file instead of somewhere in a thousand-line activate().
- */
 import * as vscode from "vscode";
 import { ChatPanel } from "./ChatPanel";
 import { ModelPicker } from "./modelPicker";
@@ -192,10 +184,6 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         workspace_folder: currentWorkspaceFolder(),
       });
       await reportSyncStatus("synced", "synced", editor.document.fileName);
-      // Recall parity (SURFACE_PARITY v9.9.6): the web app badges every
-      // answer with the server's grounding verdict. Ask the same /chat
-      // surface for the verdict on this question so the editor is not the
-      // one place that hides whether the answer used the Brain.
       await showRecallGrounding(question, message);
     }),
 
@@ -295,7 +283,6 @@ export function registerCommands(context: vscode.ExtensionContext): void {
       await refreshSyncStatus(true);
     }),
 
-    // ── Agent approval flow (SURFACE_PARITY, v9.9.5) ─────────────────────
     vscode.commands.registerCommand("ltcai.listApprovals", async () => {
       await showPendingApprovals(client, false);
     }),
@@ -308,7 +295,6 @@ export function registerCommands(context: vscode.ExtensionContext): void {
       await rejectPendingApproval(client);
     }),
 
-    // ── Review Center + agent run summary (SURFACE_PARITY, v9.9.6) ───────
     vscode.commands.registerCommand("ltcai.reviewCenter", async () => {
       await showReviewCenter(client);
     }),
@@ -317,7 +303,6 @@ export function registerCommands(context: vscode.ExtensionContext): void {
       await runAgentWithSummary(client);
     }),
 
-    // ── Evidence → action + live step timeline (SURFACE_PARITY, v9.9.7) ──
     vscode.commands.registerCommand("ltcai.evidenceActions", async () => {
       await showEvidenceActions(client, context);
     }),
@@ -326,7 +311,6 @@ export function registerCommands(context: vscode.ExtensionContext): void {
       await runAgentLive(client);
     }),
 
-    // ── v10.4.0 surface parity ───────────────────────────────────────────
     vscode.commands.registerCommand("ltcai.captureFolder", async () => {
       await captureFolder(client);
     }),

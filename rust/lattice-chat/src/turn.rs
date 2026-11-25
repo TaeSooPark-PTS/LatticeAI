@@ -1,52 +1,3 @@
-//! One chat turn, persisted natively: **redact → audit → store → ingest**.
-//!
-//! Port of `latticeai/runtime/history_writer.py::write_chat_turn`, which is the
-//! only place in the product that decides what a chat message looks like after
-//! redaction and what the audit log records about it. Until WP-W3a that chain
-//! ran in the Python worker and chat reached it over
-//! `POST /worker/chat/record-turn`; now every step runs here and that seam has
-//! no caller left (W2's retirement precondition 1 and 2).
-//!
-//! The order is the contract, and it is the Python module's own words:
-//!
-//! 1. **Redact first** — everything downstream (the audit preview, the durable
-//!    store, the knowledge graph) sees the redacted text, never the original.
-//!    [`crate::redact::redact_for_role`] is that step, byte-parity proved
-//!    against the live Python redactor by `tests/redact_parity.rs`.
-//! 2. **Audit before storing** — the row carries a masked preview and the
-//!    sensitivity verdict, so a message that should not have been sent is
-//!    visible in the log even if the store write later fails.
-//! 3. **Store** — `conversation_messages`, the unbounded episodic memory, in
-//!    the same SQLite file as the graph. Field-for-field
-//!    `lattice_brain.conversations.ConversationStore.append`, `message_hash`
-//!    included, so a natively written turn is indistinguishable from one Python
-//!    wrote and the `lattice-retrieval` history lanes read it unchanged
-//!    (`tests/turn_chain.rs` proves the round trip through `GET /history`).
-//! 4. **Ingest is best-effort** — graph growth may fail; the conversation store
-//!    may not. A skipped or failed ingest is `ingested: null`, which is exactly
-//!    what the seam reported.
-//!
-//! Nothing here raises: `write_chat_turn` swallows its own failures by design,
-//! because a chat reply must not be lost to a logging bug. What this module adds
-//! over the Python function is the [`RecordedTurn`] receipt — the same one the
-//! seam's `_TurnRecorder` produced — so a caller can see whether the row landed.
-//!
-//! ## What is *not* native, and why (the honest half)
-//!
-//! `ingest_message`'s concept / triple / semantic-item extraction is **LLM-first**
-//! (`lattice_brain/graph/_kg_common/extraction.py::_extract_concepts` asks a
-//! model before falling back to rules), so it is model compute and W1
-//! deliberately left it out of `lattice_core::graph_write`: those fields arrive
-//! *as data* on the request. WP-W5's `POST /worker/extract` is that compute.
-//! This chain calls it once per ingested turn and hands the reply's
-//! `concepts` / `triples` / `semantic` to [`GraphWriter::ingest_message`].
-//! Graph-off and empty text skip the call (Python never extracts those
-//! either — there is no ingest). A failed extract is best-effort: the turn
-//! still lands and the three fields stay empty, which is the same
-//! `ingested: null`-or-empty outcome Python reports when the compute cannot
-//! run. The Message/AIResponse/Chat/Person nodes and their edges land either
-//! way.
-
 use std::path::PathBuf;
 
 use lattice_auth::OrderedMap;
@@ -62,14 +13,9 @@ use crate::intents::HistoryMeta;
 use crate::redact::redact_for_role;
 use crate::state::ChatState;
 
-/// `IngestionPipeline(pipeline_name="unified-ingestion")`.
 const PIPELINE_NAME: &str = "unified-ingestion";
-/// `IngestionItem(source_type="chat_message", …)`.
 const SOURCE_TYPE: &str = "chat_message";
-/// `POST /worker/extract` — W5's LLM-first concept / triple / semantic seam.
 const EXTRACT_PATH: &str = "/worker/extract";
-/// `_message_hash`'s field order — the hash is the store's UNIQUE key, so this
-/// list is load-bearing rather than cosmetic.
 const HASH_FIELDS: [&str; 6] = [
     "role",
     "content",
@@ -79,23 +25,14 @@ const HASH_FIELDS: [&str; 6] = [
     "source",
 ];
 
-/// What one recorded turn produced.
-///
-/// Named for the receipt `POST /worker/chat/record-turn` used to answer with, and
-/// carrying the same three fields, because the whole point of W3a is that
-/// nothing downstream can tell the difference.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordedTurn {
-    /// Whether the durable store accepted the row.
     pub stored: bool,
-    /// The row as stored — **redacted**. `None` when the store refused.
     pub item: Option<Value>,
-    /// The ingestion receipt, or `None` when the graph is off or ingest failed.
     pub ingested: Option<Value>,
 }
 
 impl RecordedTurn {
-    /// The stored (redacted) text, when there is one.
     pub fn content(&self) -> Option<&str> {
         self.item
             .as_ref()
@@ -104,11 +41,6 @@ impl RecordedTurn {
     }
 }
 
-/// `_message_hash(item)` — sha256 over six fields joined by `|`.
-///
-/// `str(item.get(key) or "")` for each, so a missing key and an empty string
-/// hash the same, which is what makes a Python-written row and a Rust-written
-/// one collide on `INSERT OR IGNORE` instead of duplicating.
 pub fn message_hash(item: &Value) -> String {
     let basis: Vec<String> = HASH_FIELDS
         .iter()
@@ -122,12 +54,6 @@ pub fn message_hash(item: &Value) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// `ConversationStore._init_db`'s DDL, `IF NOT EXISTS` throughout.
-///
-/// A fresh machine has no `conversation_messages` table until something writes
-/// the first turn — in Python that is `ConversationStore.__init__`, which runs
-/// whether or not the graph is enabled. The column list and the three indexes
-/// are transcribed so a store this creates is the store Python would have.
 const CONVERSATION_DDL: &str = "
     CREATE TABLE IF NOT EXISTS conversation_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,10 +79,6 @@ const CONVERSATION_DDL: &str = "
       ON conversation_messages(workspace_id);
 ";
 
-/// The item `write_chat_turn` builds, in its key order.
-///
-/// `role`/`content`/`timestamp` always; the five attribution keys only when
-/// truthy — Python's `if value:`, so an empty string is as absent as `None`.
 fn build_item(role: &str, message: &str, timestamp: &str, meta: &HistoryMeta<'_>) -> Value {
     let mut item = OrderedMap::new();
     item.insert("role", json!(role));
@@ -173,17 +95,10 @@ fn build_item(role: &str, message: &str, timestamp: &str, meta: &HistoryMeta<'_>
             item.insert(key, json!(value));
         }
     }
-    // Through OrderedMap so the keys keep insertion order; `serde_json::Map` is
-    // a BTreeMap and would sort them.
     serde_json::from_str(&serde_json::to_string(&item).unwrap_or_else(|_| "null".into()))
         .unwrap_or(Value::Null)
 }
 
-/// The audit payload `write_chat_turn` passes to `append_audit_event`.
-///
-/// Ten keys, always all ten: Python hands them as keyword arguments, so a `None`
-/// lands in the row as `null` rather than being omitted. `content_chars` is
-/// `len(message)` — **characters**, since Python measures a `str`.
 fn audit_payload(role: &str, message: &str, meta: &HistoryMeta<'_>, sensitive: &Value) -> Value {
     fn optional(value: Option<&str>) -> Value {
         value.map(|text| json!(text)).unwrap_or(Value::Null)
@@ -216,11 +131,6 @@ fn audit_payload(role: &str, message: &str, meta: &HistoryMeta<'_>, sensitive: &
         .unwrap_or(Value::Null)
 }
 
-/// `ConversationStore.append` — one `INSERT OR IGNORE`, same eleven columns.
-///
-/// `metadata_json` holds whatever keys the item carries beyond the nine the
-/// table has columns for; a turn from this chain never has any, so it is `{}`,
-/// but the branch is kept because the store's contract has it.
 fn store_item(conn: &Connection, item: &Value) -> Result<(), rusqlite::Error> {
     conn.execute_batch(CONVERSATION_DDL)?;
     const KNOWN: [&str; 9] = [
@@ -275,12 +185,6 @@ fn store_item(conn: &Connection, item: &Value) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
-/// `IngestionResult.as_dict()` for a chat turn.
-///
-/// Thirteen keys in Python's order. The three additive v9.8 keys
-/// (`extraction_quality`, `warnings`, `quality_gate`) are omitted because the
-/// pipeline never populates them for `chat_message` — `_assess_item_quality` and
-/// `_observe_quality_gate` both return `None` for `CHAT_SOURCE_TYPES`.
 #[allow(clippy::too_many_arguments)]
 fn ingestion_result(
     node_id: &str,
@@ -314,7 +218,6 @@ fn ingestion_result(
         .unwrap_or(Value::Null)
 }
 
-/// The metadata `write_chat_turn` hangs on the `IngestionItem`.
 fn ingest_metadata(role: &str, meta: &HistoryMeta<'_>, item: &Value) -> Map<String, Value> {
     let mut metadata = Map::new();
     metadata.insert("role".into(), json!(role));
@@ -330,7 +233,6 @@ fn ingest_metadata(role: &str, meta: &HistoryMeta<'_>, item: &Value) -> Map<Stri
     metadata
 }
 
-/// `node_is_embedded(node_id)` — is there a vector row for this node?
 fn node_is_embedded(graph: &GraphWriter, node_id: &str) -> bool {
     graph
         .store()
@@ -348,11 +250,6 @@ fn node_is_embedded(graph: &GraphWriter, node_id: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// The blocking half of the chain: audit, store, ingest, vector sync.
-///
-/// Split out so the whole of it runs on `spawn_blocking` — an audit append, a
-/// SQLite insert and (with a graph) an embedding pass are three things that do
-/// not belong on the event loop (v10.9.0).
 struct Persist {
     message: String,
     item: Value,
@@ -368,29 +265,15 @@ struct Persist {
     vector_identity: VectorIdentity,
 }
 
-/// What `POST /worker/embed` said about the index this turn's vector joins.
-///
-/// The seam owns the embedding provider, so it — not a native guess — is the
-/// authority on which `(model_id, dim)` vectors are filed under (W2 §1, §4).
-///
-/// W5's supplied-vector door lets `ingest_message` file the worker's vector on
-/// the Message / AIResponse node. The identity check still decides whether
-/// `write_vectors` (native hash, incremental) may run: agreement licenses it;
-/// a mismatch leaves other nodes as backlog rather than overwriting the
-/// provider row.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VectorIdentity {
-    /// The seam embedded the text and the native model reproduced it bit for bit.
     Agrees,
-    /// The seam answered, and it is not the model this process writes with.
     Diverges(String),
-    /// The graph is off, so nothing was asked and nothing is written.
     NotAsked,
 }
 
 impl Persist {
     fn run(self) -> RecordedTurn {
-        // 2. Audit carries a masked preview and the verdict, never the body.
         if let Some(path) = self.audit_path.as_ref() {
             if let Some(payload) = self.audit_event.as_object() {
                 lattice_platform::adminops::admin::append_audit_event(
@@ -401,7 +284,6 @@ impl Persist {
             }
         }
 
-        // 3. Durable episodic memory.
         let stored = match self.conversation_db.as_ref() {
             Some(path) => match lattice_core::db::open_read_write(path) {
                 Ok(conn) => store_item(&conn, &self.item).is_ok(),
@@ -410,7 +292,6 @@ impl Persist {
             None => false,
         };
 
-        // 4. Best-effort Brain growth through the graph write engine.
         let ingested = match (self.graph.as_ref(), self.ingest.as_ref()) {
             (Some(graph), Some(request)) => self.grow(graph, request),
             _ => None,
@@ -423,23 +304,11 @@ impl Persist {
         }
     }
 
-    /// `IngestionPipeline.ingest` for a `chat_message`, minus what needs a model.
     fn grow(&self, graph: &GraphWriter, request: &IngestMessageRequest) -> Option<Value> {
         let outcome = graph.ingest_message(request).ok()?;
         let node_id = outcome.node_id.clone();
-        // `result.setdefault("title", item.title or text[:80])` — the raw text,
-        // not the cleaned title the node carries.
         let title: String = self.message.chars().take(80).collect();
 
-        // `_sync_vector_index`: run the incremental sync, and report a failure as
-        // backlog rather than as a failed ingest. The identity verdict gates it —
-        // re-embedding under a model the provider does not use only adds rows
-        // nobody will match.
-        //
-        // Stated deviation: Python also *queues* the node on `vector_jobs`
-        // (`_pending_detail` → "; queued for background embedding"). That table
-        // is one of the two W1 left with a Python door, so nothing is queued here
-        // and the detail says only why it is pending.
         let (indexing_status, vector_detail) = match &self.vector_identity {
             VectorIdentity::Agrees => {
                 let outcome = graph.write_vectors(&node_id);
@@ -462,7 +331,6 @@ impl Persist {
         };
         let embedded = node_is_embedded(graph, &node_id);
 
-        // Provenance must never turn an already-persisted ingest into a failure.
         let receipt = graph.record_ingestion(&IngestionRecord {
             node_id: node_id.clone(),
             source_type: SOURCE_TYPE.into(),
@@ -501,15 +369,6 @@ impl Persist {
     }
 }
 
-/// Ask `/worker/embed` for this text and check the answer against the model
-/// this process would file the vector under.
-///
-/// W2 precondition 4 in one function: "a native re-derived hash embedder is the
-/// failure mode to avoid — `similarity()` raises on a width mismatch, so a
-/// divergence silently kills vector search." Rather than trust that the two
-/// embedders agree, the seam is asked to embed the turn's text as a `passage`
-/// and its vector is compared to the native one **after both are encoded to the
-/// f32 the index stores**. Agreement is the licence to write natively.
 async fn vector_identity(
     state: &ChatState,
     text: &str,
@@ -565,7 +424,6 @@ async fn vector_identity(
     (VectorIdentity::Agrees, Some(supplied))
 }
 
-/// Plain-window chunks (1200 / 160). lattice-chat cannot depend on lattice-ingest.
 fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
     let cleaned: Vec<char> = text
         .trim_matches(lattice_core::pytext::is_py_space)
@@ -591,11 +449,6 @@ fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
     pieces
 }
 
-/// Batch-embed chunk texts via `/worker/embed` (`kind = "passage"`).
-///
-/// Accepts both hash and semantic provider vectors as long as the worker
-/// returned a valid `(model_id, dim)` matching each vector's width, so chunk
-/// rows share the same embedding space as the parent `Message` node.
 async fn supply_chunk_vectors(state: &ChatState, mut chunks: Vec<ChunkPiece>) -> Vec<ChunkPiece> {
     let (Some(worker), Some(_graph)) = (state.worker.as_ref(), state.graph.as_ref()) else {
         return chunks;
@@ -619,11 +472,6 @@ async fn supply_chunk_vectors(state: &ChatState, mut chunks: Vec<ChunkPiece>) ->
     chunks
 }
 
-/// Ask `/worker/extract` for this turn's concept subgraph.
-///
-/// Skipped when there is no text (Python's extractors return empty for that
-/// input, so the HTTP call would only buy a round trip). A missing worker or
-/// a failed call leaves the three fields empty — the ingest still runs.
 async fn extract_for_turn(state: &ChatState, text: &str) -> ExtractReply {
     if text.trim().is_empty() {
         return ExtractReply::default();
@@ -642,18 +490,12 @@ async fn extract_for_turn(state: &ChatState, text: &str) -> ExtractReply {
     }
 }
 
-/// `write_chat_turn(role, message, …)` — the whole chain, natively.
-///
-/// Never raises and never panics: every step swallows its own failure, exactly
-/// as the Python function does, because a reply must not be lost to a bookkeeping
-/// bug. The [`RecordedTurn`] says what actually happened.
 pub async fn write_chat_turn(
     state: &ChatState,
     role: &str,
     message: &str,
     meta: &HistoryMeta<'_>,
 ) -> RecordedTurn {
-    // 1. Redact before anything else sees the text.
     let message = redact_for_role(role, message);
     let item = build_item(role, &message, &naive_local_iso(), meta);
 
@@ -687,8 +529,6 @@ pub async fn write_chat_turn(
         content: message.clone(),
         user_email: meta.email.map(str::to_string),
         user_nickname: meta.nickname.map(str::to_string),
-        // `meta.get("source") or source_type` — an unattributed turn is filed
-        // under the pipeline's own name, not under nothing.
         source: Some(
             meta.source
                 .filter(|value| !value.is_empty())
@@ -728,16 +568,6 @@ pub async fn write_chat_turn(
         })
 }
 
-/// Offset-free UTC timestamp (`YYYY-MM-DDTHH:MM:SS[.ffffff]`), matching
-/// `lattice_brain.utils.local_now().isoformat()` and `lattice_retrieval::routes::naive_local_now`.
-///
-/// Both Rust and Python emit offset-free UTC stamps so `conversation_messages`
-/// sort consistently across non-UTC host timezones while preserving compatibility
-/// with existing offset-free rows.
-///
-/// Stated deviation: the fraction comes back through an `f64` of seconds, so the
-/// microseconds are accurate to about a quarter of one. `isoformat()` omits the
-/// fraction entirely when it is zero, and so does this.
 pub fn naive_local_iso() -> String {
     let now = lattice_retrieval::routes::naive_local_now();
     let seconds = now.floor();
@@ -750,7 +580,6 @@ pub fn naive_local_iso() -> String {
     }
 }
 
-/// `datetime.now(timezone.utc).isoformat()` — offset-aware, second resolution.
 fn utc_now_iso() -> String {
     let seconds = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -759,7 +588,6 @@ fn utc_now_iso() -> String {
     format!("{}+00:00", civil_iso(seconds as i64))
 }
 
-/// `YYYY-MM-DDTHH:MM:SS` for a count of seconds since the epoch.
 fn civil_iso(total: i64) -> String {
     let days = total.div_euclid(86_400);
     let tod = total.rem_euclid(86_400);

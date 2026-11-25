@@ -1,5 +1,3 @@
-//! `repair.py` — deterministic scaffolds, the last resort.
-
 use serde_json::Value;
 
 use crate::content::pydiff::splitlines;
@@ -10,9 +8,6 @@ use super::python::python_parses;
 use super::text::{contains_ci, ext_of, html_tag, matched};
 use super::validate::looks_like_refusal;
 
-// ── repair (`repair.py`) ────────────────────────────────────────────────────
-
-/// `html.escape(text)` — `quote=True`, so both quote characters go too.
 fn escape_html(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -21,7 +16,6 @@ fn escape_html(text: &str) -> String {
         .replace('\'', "&#x27;")
 }
 
-/// `repair_file_content(content, target_path, user_request)`.
 pub fn repair_file_content(content: &str, target_path: &str, user_request: &str) -> String {
     let ext = ext_of(target_path);
     let mut salvage = content.trim().to_string();
@@ -36,10 +30,6 @@ pub fn repair_file_content(content: &str, target_path: &str, user_request: &str)
         if let Some(sliced) = slice_json_document(&salvage) {
             return sliced;
         }
-        // `json.dumps({...}, ensure_ascii=False, indent=2)`, written out rather
-        // than serialised: `serde_json`'s key order depends on whether some
-        // *other* crate in the build enabled `preserve_order`, and a file's
-        // bytes must not.
         let quoted = |text: &str| Value::String(text.to_string()).to_string();
         return format!(
             "{{\n  \"request\": {},\n  \"content\": {}\n}}",
@@ -48,9 +38,6 @@ pub fn repair_file_content(content: &str, target_path: &str, user_request: &str)
         );
     }
     if ext == ".py" && !salvage.is_empty() {
-        // The repair guarantee for Python is parseability: unparseable output
-        // is preserved honestly as a commented-out draft, never as a broken
-        // module the user has to debug.
         if python_parses(&salvage).is_ok() {
             return salvage;
         }
@@ -68,7 +55,6 @@ pub fn repair_file_content(content: &str, target_path: &str, user_request: &str)
     if !salvage.is_empty() {
         return salvage;
     }
-    // Nothing usable at all — an honest placeholder in the right format.
     let comment = match ext.as_str() {
         ".py" | ".sh" => "# TODO: model produced no usable content for: ",
         ".js" | ".jsx" | ".ts" | ".tsx" => "// TODO: model produced no usable content for: ",
@@ -85,10 +71,8 @@ pub fn repair_file_content(content: &str, target_path: &str, user_request: &str)
     format!("{user_request}\n")
 }
 
-/// `_repair_html(salvage, user_request)`.
 fn repair_html(salvage: &str, user_request: &str) -> String {
     if contains_ci(salvage, "<html") || contains_ci(salvage, "<!doctype") {
-        // A real document that is merely truncated — close it.
         let mut doc = slice_html_document(salvage);
         let low = doc.to_lowercase();
         if !low.contains("</body>") && low.contains("<body") {
@@ -116,8 +100,6 @@ fn repair_html(salvage: &str, user_request: &str) -> String {
     } else {
         char_slice(user_request, 60)
     });
-    // Indentation is part of the file, so every line carries its own spaces
-    // rather than borrowing this source file's.
     format!(
         concat!(
             "<!DOCTYPE html>\n",

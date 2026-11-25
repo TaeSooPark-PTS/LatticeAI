@@ -1,8 +1,3 @@
-//! Worker command resolution: the three-rule chain and its priority order.
-//!
-//! Lives outside `src/supervisor/command.rs` so that file stays under the
-//! 500-line target; every symbol used here is public API.
-
 use std::path::PathBuf;
 
 use lattice_host::supervisor::command::{dedup_preserving_order, find_in_path, python_candidates};
@@ -21,8 +16,6 @@ fn probe_with_python_everywhere() -> StaticProbe {
 fn python_candidates_keep_declaration_order() {
     let probe = probe_with_python_everywhere();
     let candidates = python_candidates(&probe);
-    // The desktop shell sorted this list, which put "/aaa/bin/python3"
-    // ahead of the explicitly configured interpreter. Order is priority.
     assert_eq!(candidates[0], "/zzz/venv/bin/python");
     assert_eq!(candidates[1], "/aaa/bin/python3");
     assert!(candidates.iter().any(|c| c == "/usr/bin/python3"));
@@ -39,9 +32,6 @@ fn python_candidates_keep_declaration_order() {
 
 #[test]
 fn python_candidates_dedup_without_reordering() {
-    // /usr/bin is on PATH *and* in the absolute fallback list, so
-    // /usr/bin/python3 is produced twice; it must survive once, at the
-    // earlier (PATH-derived) position.
     let probe = StaticProbe::new()
         .with_path_dir("/usr/bin")
         .with_file("/usr/bin/python3");
@@ -89,9 +79,6 @@ fn rule_one_blank_command_falls_through() {
     assert_eq!(cmd.origin, CommandOrigin::PythonModule);
 }
 
-/// v11.6.0 §3: `ltcai` starts the **host**, so a host that spawned it as its
-/// worker would spawn another host, and that one another. The rule is gone;
-/// an `ltcai` on PATH is now simply not a worker.
 #[test]
 fn an_ltcai_on_path_is_no_longer_a_worker() {
     let probe = StaticProbe::new()
@@ -103,7 +90,6 @@ fn an_ltcai_on_path_is_no_longer_a_worker() {
         ResolveError::NotFound,
         "an ltcai on PATH must not be mistaken for a worker — it is this binary"
     );
-    // …and with a python beside it, the python wins rather than tying.
     let probe = probe
         .with_file("/aaa/bin/python3")
         .with_importable("/aaa/bin/python3");
@@ -114,8 +100,6 @@ fn an_ltcai_on_path_is_no_longer_a_worker() {
 
 #[test]
 fn rule_two_picks_the_first_importable_candidate_not_the_first_sorted() {
-    // Both interpreters can import the module. Priority order must pick
-    // LTCAI_PYTHON even though "/aaa/bin/python3" sorts first.
     let probe = probe_with_python_everywhere()
         .with_importable("/zzz/venv/bin/python")
         .with_importable("/aaa/bin/python3");
@@ -159,7 +143,6 @@ fn rule_three_accepts_resources_root_without_up_dir() {
     assert_eq!(cmd.cwd, Some(PathBuf::from("/App/Contents/Resources")));
 }
 
-/// A bundle built before the flip still boots (WP-P2 §checklist 3).
 #[test]
 fn rule_three_still_accepts_a_pre_v11_6_bundle() {
     let probe = StaticProbe::new()

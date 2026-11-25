@@ -7,16 +7,6 @@ import { useAppStore } from "@/store/appStore";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { SystemPage } from "./System";
 
-/**
- * The settings screen: seven destinations, two safety dials, and the account
- * surface. The seven no longer sit in one flat strip — they are sorted into
- * three named groups, so this file asserts the grouping as well as the panels.
- *
- * Until 10.3.0 this page had no unit test — Playwright drove its happy path,
- * which cannot reach a server that is down, a workspace list that is empty, or
- * a mode that hides half the page. Those are exactly the states where a
- * settings screen misleads someone.
- */
 
 const HEALTH = { status: "ok", version: "10.3.0", mode: "local" };
 const PROFILE = { email: "me@local", nickname: "Me", role: "admin", name: "Me" };
@@ -71,8 +61,6 @@ describe("SystemPage", () => {
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     const tabs = screen.getAllByRole("tab");
     expect(tabs.length).toBeGreaterThanOrEqual(6);
-    // aria-selected must track the active tab, or a screen reader announces
-    // the wrong panel.
     expect(tabs.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 
@@ -91,8 +79,6 @@ describe("SystemPage", () => {
     await userEvent.click(screen.getByRole("tab", { name: "환경설정" }));
     await waitFor(() => expect(screen.getByTestId("permission-mode-active")).toBeTruthy());
 
-    // The autonomy dial names its modes from the i18n table by id (the server
-    // ships "엄격"/"Strict"); the boundary dial still shows the server's label.
     expect(screen.getByTestId("permission-mode-active").textContent).toBe("먼저 물어보기");
     expect(screen.getByTestId("network-boundary-active").textContent).toBe("로컬만");
   });
@@ -108,7 +94,6 @@ describe("SystemPage", () => {
     render({ health: fail("server unavailable", {}) });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole("tab", { name: "환경설정" }));
-    // Some panel must say the request failed; silence would read as "healthy".
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/요청을 처리하지 못했어요|사용할 수 없|unavailable/i));
   });
@@ -121,12 +106,10 @@ describe("SystemPage", () => {
   });
 
   it("gates the admin panel behind the admin detail level, not just the tab", async () => {
-    // The tab is always listed; opening it must not reveal admin controls.
     render({}, { mode: "advanced" });
     await userEvent.click(screen.getByRole("tab", { name: "관리자" }));
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/관리자 모드|admin/i));
-    // The gate, not the controls: no role table should have rendered.
     expect(screen.queryByText(/adminRoles/)).toBeNull();
   });
 
@@ -151,22 +134,16 @@ describe("SystemPage", () => {
     render({}, { mode: "advanced" });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
 
-    // Each group is its own tablist and must carry an accessible name, or a
-    // screen reader announces three identical unlabelled tab strips.
     const lists = screen.getAllByRole("tablist");
     expect(lists).toHaveLength(3);
     expect(lists.map((list) => list.getAttribute("aria-label")
       || document.getElementById(list.getAttribute("aria-labelledby") || "")?.textContent))
       .toEqual(["나와 작업공간", "내 데이터 보관", "동작 방식과 연결"]);
 
-    // Grouping must not drop a destination on the floor.
     expect(screen.getAllByRole("tab")).toHaveLength(7);
   });
 
   it("leaves every group reachable from the keyboard, not just the selected one", async () => {
-    // A roving tabindex keys off the selected tab. With the selection living in
-    // one group, the other two would have every button at -1 and fall out of
-    // the Tab order entirely — reachable by mouse only.
     render({}, { mode: "advanced" });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
 
@@ -207,17 +184,13 @@ describe("SystemPage", () => {
   it("an unknown deep link selects nothing rather than a wrong panel", async () => {
     renderPage(<SystemPage initialTab="landing-page" />);
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
-    // No tab claims the bogus route and no panel is misattributed to it.
     expect(screen.queryByPlaceholderText("이메일")).toBeNull();
   });
 
   it("keeps everyday (basic) mode down to the four everyday destinations", async () => {
     render({}, { mode: "basic" });
-    // Wait for the account panels to answer, so the basic-mode account view
-    // (plain sentence, no payload dump) actually renders before we assert.
     await waitFor(() => expect(screen.getByText("me@local")).toBeTruthy());
     expect(screen.getAllByRole("tab")).toHaveLength(4);
-    // All three groups still render — none of them ends up empty.
     expect(screen.getAllByRole("tablist")).toHaveLength(3);
   });
 });
@@ -238,7 +211,6 @@ describe("SystemPage — account surface", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "로그인" }));
     await waitFor(() => expect(latticeApi.login).toHaveBeenCalledWith("me@x.io", "pw-1"));
-    // A successful sign-in resets the identity scope.
     await waitFor(() => expect(useAppStore.getState().workspaceId).toBeNull());
 
     await userEvent.click(screen.getByRole("button", { name: "가입" }));
@@ -294,7 +266,6 @@ describe("SystemPage — workspaces", () => {
     });
     await userEvent.click(screen.getByRole("tab", { name: "작업공간" }));
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
-    // A row without a name falls back to its id.
     expect(screen.getByText("w2")).toBeTruthy();
 
     await userEvent.click(screen.getAllByRole("button", { name: "사용" })[0]!);
@@ -312,7 +283,6 @@ describe("SystemPage — workspaces", () => {
     await userEvent.click(screen.getByRole("tab", { name: "작업공간" }));
     await waitFor(() => expect(screen.getByText("tok-1")).toBeTruthy());
 
-    // Without an email the invitation is open — the field must go out as null.
     await userEvent.click(screen.getByRole("button", { name: "초대 만들기" }));
     await waitFor(() => expect(latticeApi.createInvitation).toHaveBeenCalledWith({
       email: null, role: "member", expires_hours: 168,
@@ -351,7 +321,6 @@ describe("SystemPage — snapshots and activity", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "병합 복원" })[0]!);
     await waitFor(() => expect(latticeApi.restoreSnapshot).toHaveBeenCalledWith("s1"));
 
-    // An unnamed snapshot gets the localized default name, not "".
     await userEvent.click(screen.getByRole("button", { name: "스냅샷 만들기" }));
     await waitFor(() => expect(latticeApi.createSnapshot).toHaveBeenCalledWith("데스크톱 체크포인트"));
     fireEvent.change(screen.getByPlaceholderText("스냅샷 이름"), { target: { value: "주간" } });
@@ -532,12 +501,10 @@ describe("SystemPage — settings panels", () => {
     await waitFor(() => expect(screen.getByPlaceholderText("아카이브 암호문")).toBeTruthy());
 
     fireEvent.change(screen.getByPlaceholderText("검사 또는 복원할 아카이브 경로"), { target: { value: "/tmp/a.tgz" } });
-    // Inspect may run without a passphrase — it goes out as null, not "".
     await userEvent.click(screen.getByRole("button", { name: "검사" }));
     await waitFor(() => expect(latticeApi.brainArchiveInspect).toHaveBeenCalledWith({ path: "/tmp/a.tgz", passphrase: null }));
 
     fireEvent.change(screen.getByPlaceholderText("아카이브 암호문"), { target: { value: "pp" } });
-    // Without an export path the server picks the location — null, not "".
     await userEvent.click(screen.getByRole("button", { name: "아카이브 내보내기" }));
     await waitFor(() => expect(latticeApi.brainArchive).toHaveBeenCalledWith({ path: null, passphrase: "pp" }));
     fireEvent.change(screen.getByPlaceholderText("내보내기 경로(선택)"), { target: { value: "/tmp/out.tgz" } });
@@ -585,7 +552,6 @@ describe("SystemPage — settings panels", () => {
     await waitFor(() => expect(latticeApi.migratePostgres).toHaveBeenCalledWith({
       dsn: "postgres://x", schema_name: "lattice_brain", dry_run: true,
     }));
-    // Clearing the schema falls back to the default schema name.
     fireEvent.change(screen.getByPlaceholderText("데이터베이스 스키마"), { target: { value: "" } });
     await userEvent.click(screen.getByRole("button", { name: "마이그레이션 계획" }));
     await waitFor(() => expect(latticeApi.migratePostgres).toHaveBeenCalledTimes(2));
@@ -646,8 +612,6 @@ describe("SystemPage — admin tab", () => {
   it("keeps the admin panels honest when every service reports nothing", async () => {
     renderPage(<SystemPage initialTab="admin" />, { mode: "admin" });
     await waitFor(() => expect(document.querySelectorAll(".data-panel").length).toBeGreaterThanOrEqual(8));
-    // Wait until the hardening and security views have rendered their empty
-    // payloads — that is where every fallback phrase earns its keep.
     await waitFor(() => expect(document.querySelectorAll(".data-stat-grid").length).toBeGreaterThanOrEqual(2));
     expect(document.body.textContent).not.toMatch(/undefined|\[object Object\]/);
   });

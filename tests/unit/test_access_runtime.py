@@ -177,8 +177,6 @@ def test_loopback_no_auth_identity_is_authorized_as_trusted_local_owner():
     runtime = _runtime(require_auth=False)
     request = RequestStub()
 
-    # Preserve the long-standing anonymous Local User identity while making
-    # its authorization role explicit and consistent across policy callers.
     assert runtime["require_user"](request) == ""
     assert runtime["get_user_role"]("", {}) == "owner"
     assert runtime["require_admin"](request) == ("", {})

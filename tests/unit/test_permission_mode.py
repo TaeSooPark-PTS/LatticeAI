@@ -1,5 +1,3 @@
-"""Permission mode decision table (v9.9.8)."""
-
 from __future__ import annotations
 
 from latticeai.core.permission_mode import (

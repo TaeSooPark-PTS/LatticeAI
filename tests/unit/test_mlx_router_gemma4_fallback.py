@@ -1,5 +1,3 @@
-"""Regression coverage for Gemma 4 MLX loader routing."""
-
 import asyncio
 import importlib
 import os
@@ -7,12 +5,6 @@ import os
 import pytest
 
 from latticeai.models import router as router_mod
-
-# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
-# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
-# the load path reaches through them are read in the submodule that defines
-# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
-# rebound on the package ``__init__`` would leave those reads untouched.
 from latticeai.models.router import loading as router_loading
 
 
@@ -44,9 +36,6 @@ def test_router_import_preserves_explicit_mlx_draft_kind(monkeypatch):
 def test_router_import_sets_default_mlx_draft_kind(monkeypatch):
     monkeypatch.delenv("MLX_VLM_DRAFT_KIND", raising=False)
 
-    # The default is set at import of the submodule that owns the MLX runtime
-    # bindings (v11.3.0 decomposition); reloading the package ``__init__``
-    # would re-run only re-exports.
     importlib.reload(router_loading)
 
     assert os.environ["MLX_VLM_DRAFT_KIND"] == "mtp"

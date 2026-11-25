@@ -1,37 +1,11 @@
-/* ── The first screen ────────────────────────────────────────────────────
-   Three surfaces, in the order the first visit actually goes:
 
-     1. the station  — the first move and nothing else: who is listening, the
-                       box you type into, and the row answering "with what, and
-                       how far" (.brain-home-station)
-     2. the deck     — three things to try, if you would rather be offered one
-                       than think of one (.brain-secondary-deck)
-     3. a quiet row  — history, insights, everything else (.brain-home-quiet)
-
-   The station used to hold all three. Stacked in one tall card, the greeting
-   ran 5.4rem of organism down the middle of the screen before the composer,
-   and the suggestions sat between the composer and its own toolbar — so the
-   thing to do and the alternatives to doing it wore the same border, and the
-   controls for the composer were separated from it by an unrelated block. The
-   split gives the eye one target with a card to itself, and demotes the
-   suggestions to what they are: a second choice, on a second surface.
-
-   Anything graph-shaped stays behind the Brain itself: the knowledge graph
-   opens when you click the organism, so the home never shows a diagram.
-   This file loads after graph-home.css and is the authority on home layout. */
 
 .brain-centered-home {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Centred, not top-aligned. Once capture and the shelves left the canvas in
-     10.10.0 the column stopped reaching the floor, and a top-aligned station
-     left ~39% of the first screen as a dead band under the suggestions —
-     which reads as unfinished, not calm. Centring cannot clip here: the
-     height below is a `min-height`, so a column taller than it grows the box
-     rather than overflowing it, and centring in a box that fits its content
-     is a no-op. */
+  
   justify-content: center;
   min-height: calc(100vh - 7rem);
   gap: var(--lt-gap-block);
@@ -56,67 +30,46 @@
   z-index: -1;
 }
 
-/* Flex column children default to shrinking, which silently squashed the last
-   row when the page ran long. Every zone keeps its own height instead. */
+
 .brain-centered-home > * {
   flex: none;
 }
 
-/* ── 1. the station ───────────────────────────────────────────────────── */
+
 
 .brain-home-station {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* The station is the desk, not the page: a quiet paper surface. The 1px
-     stays transparent so the focus ring can colour it without a layout shift.
-     Soft depth, no ruled border — the composer inside is the thing that reads
-     as a control. */
+  
   border: 1px solid transparent;
   border-radius: var(--lt-radius-2xl);
   background: hsl(var(--surface));
   box-shadow: var(--elev-2);
-  /* Deliberately *not* `overflow: hidden`. The capture popover anchors to the
-     toolbar and opens below it, i.e. outside this box; clipping it made the
-     panel invisible, and — worse — turned the station into a scroll container,
-     so focusing the note field scrolled the greeting and half the composer out
-     of the card. The banner and the toolbar round their own outer corners
-     instead, which is all the clip was ever for.
-     No `transition` on the station itself: a focus assertion once read the
-     interpolating border-color as the resting state. */
+  
 }
 
-/* Typing anywhere in the station lifts the whole surface, not just the box —
-   the card is the unit of attention now. */
+
 .brain-home-station:focus-within {
   border-color: hsl(var(--primary) / 0.65);
   box-shadow: var(--elev-focus), var(--elev-2);
 }
 
-/* The greeting header: compact horizontal banner with LivingBrain beside title.
-   Untinted and unruled in 10.10.0 — the organism's own aura is the only colour
-   the header carries, and the composer below is the first bordered-feeling
-   thing the eye meets (via its focus ring, not a resting border). */
+
 .brain-home-station > .brain-hero {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--lt-space-4);
   width: 100%;
-  /* Bottom padding must hold the organism's aura box: at 0.55rem the halo's
-     bottom edge poked 0.65px past the banner, which the glow-geometry visual
-     test rightly reads as a glow escaping its row. */
+  
   padding: var(--lt-space-5) var(--lt-space-5) var(--lt-space-3);
   text-align: left;
   background: transparent;
   border-bottom: 0;
   border-radius: calc(var(--lt-radius-2xl) - 1px) calc(var(--lt-radius-2xl) - 1px) 0 0;
-  /* No `overflow: clip` any more: the stats badge opens its summary popover
-     out of this row, and a clip here swallowed it whole. The clip was only
-     ever halo containment, and the halo has been sized to the banner organism
-     via --aura-blur since 10.6.x — at 16px it dies inside the hero's own
-     padding, so there is nothing left to contain. */
+  
 }
 
 .brain-hero-organism {
@@ -126,10 +79,7 @@
   justify-content: center;
   flex-shrink: 0;
   margin-top: 0;
-  /* The organism's halo, scaled to the body it actually surrounds. Read the
-     note over `.brain-organism` below: this is a variable and not a
-     `box-shadow` rule because the shadow is set inline by LivingBrain, and an
-     inline style outranks every stylesheet. */
+  
   --aura-blur: 16px;
 }
 
@@ -149,9 +99,7 @@
   padding: 0;
 }
 
-/* A third of the size it renders at standing alone, because in the banner it
-   introduces the composer rather than headlining the screen. Shrinking the body
-   is only half of it — see `--aura-blur` on the wrapper above for the glow. */
+
 .brain-hero-organism .brain-organism {
   width: 3.4rem;
   height: 3.4rem;
@@ -159,14 +107,7 @@
   filter: drop-shadow(0 3px 10px hsl(var(--brain-core) / 0.28));
 }
 
-/* No `.brain-hero-organism .brain-aura { box-shadow: … }` here, though that is
-   the obvious way to write it and it was written that way first. It has no
-   effect: LivingBrain sets the aura's shadow inline, from the Brain's depth, and
-   an inline declaration outranks every selector in every sheet. The rule looked
-   right, read right, and the banner still rendered a 60px blur around a 58px
-   organism — a glow wider than its own body, sliced flat by the clip above into
-   a smudge with two straight edges. `--aura-blur` on the wrapper is the lever
-   that does work, because a custom property inherits into the inline value. */
+
 
 .brain-hero-header-text {
   display: flex;
@@ -175,8 +116,7 @@
   min-width: 0;
 }
 
-/* Ink, not gradient: the accent is reserved for the send CTA and the model
-   pill's action — a headline wearing it diluted both. */
+
 .brain-home-station > .brain-hero h1 {
   margin: 0;
   font-size: var(--lt-type-hero);
@@ -197,8 +137,7 @@
   line-height: var(--lt-leading-snug);
 }
 
-/* Status indicators (the model pill) keep to the hero's right edge, clear of
-   the reading line. */
+
 .brain-hero-trailing {
   display: flex;
   align-items: center;
@@ -206,7 +145,7 @@
   flex-shrink: 0;
 }
 
-/* ── 2. the composer, inside the station ──────────────────────────────── */
+
 
 .brain-home-station .brain-composer {
   width: 100%;
@@ -226,8 +165,7 @@
   position: relative;
   width: auto;
   margin: var(--lt-space-3) var(--lt-space-5) var(--lt-space-3);
-  /* The writing desk: the one surface the first glance should land on.
-     Raised paper, a quiet jade wash, soft depth — not a sunken trench. */
+  
   border: 1px solid transparent;
   border-radius: var(--lt-radius-xl);
   background: hsl(var(--surface-raised));
@@ -299,10 +237,9 @@
   border-radius: var(--lt-radius-lg);
 }
 
-/* ── 3. the station's floor: toolbar ───────────────────────────────────── */
 
-/* Capture moved into the composer's + menu, so the floor holds one thing: the
-   autonomy dial, right-aligned and untinted. */
+
+
 .brain-station-toolbar {
   position: relative;
   display: flex;
@@ -334,7 +271,7 @@
   flex-basis: 100%;
 }
 
-/* ── 4. Secondary Discovery Deck ────────────────────────────────────────── */
+
 
 .brain-secondary-deck {
   width: 100%;
@@ -345,23 +282,12 @@
   padding: var(--lt-space-2) var(--lt-space-2) 0;
 }
 
-/* Lifts when something inside it is focused, not when the pointer passes over
-   it. The deck is a container, not a control — a hover response on a whole card
-   promises a click it does not accept. `:focus-within` says something true
-   instead, and says it to the keyboard reader, who otherwise has no border to
-   tell them which of the two cards they are in. */
+
 .brain-secondary-deck:focus-within {
   border-color: hsl(var(--primary) / 0.4);
 }
 
-/* Scoped to the deck on purpose, and not written as a bare `.brain-home-prompt-strip`.
-   Two other unlayered sheets already claim that class at one-class specificity:
-   graph-home.css (earlier — `align-items/justify-content: center`, `overflow: hidden`,
-   `padding: 0 .35rem`, `min-height`) and responsive.css (later — `display: none`
-   under `max-width: 760px`). At equal specificity the later sheet wins, so a bare
-   rule here loses the strip entirely below 760px and inherits the centring above
-   it, which squeezed the card grid into a narrow column. The descendant
-   combinator puts this sheet back in charge, which is what it was before. */
+
 .brain-secondary-deck > .brain-home-prompt-strip {
   display: flex;
   flex-direction: column;
@@ -384,11 +310,7 @@
   letter-spacing: var(--lt-tracking-tight);
 }
 
-/* Named a grid and built as a column: two cards holding a four-character
-   title and a six-word sentence each were stacked down a 1200px deck, so
-   every card was ~85% empty and the pair cost twice the height it needed.
-   Auto-fit keeps one column when the deck is narrow and pairs them up when
-   there is room, without hard-coding how many suggestions there are. */
+
 .brain-prompt-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
@@ -414,17 +336,10 @@
   white-space: normal;
   cursor: pointer;
   box-shadow: var(--elev-1);
-  /* Colour/shadow only. The lift on hover is affordance.css's — it owns that
-     gesture and the prefers-reduced-motion cancellation. Do not restate
-     `transform` here. */
+  
 }
 
-/* Colour only. The lift on hover is affordance.css's — it owns that gesture for
-   every card-shaped control and, crucially, owns the `prefers-reduced-motion`
-   rule that cancels it. Declaring `transform` here instead would outrank that
-   cancellation (three classes to its two) and move the card for a reader who
-   asked the system not to. Depth deepens on hover; the accent stays put — it
-   belongs to the send CTA alone on this screen. */
+
 .brain-prompt-grid button:hover:not(:disabled) {
   background: hsl(var(--surface-raised));
   border-color: hsl(var(--primary) / 0.4);
@@ -446,8 +361,7 @@
   color: hsl(var(--foreground));
 }
 
-/* A quiet ink tick, not a glowing accent dot: the marker orders the cards, it
-   does not compete with the send CTA. */
+
 .brain-prompt-grid button > strong::before {
   content: "";
   display: inline-block;
@@ -476,15 +390,7 @@
   gap: 0.45rem;
 }
 
-/* Scoped to the row rather than written bare. `.brain-prompt-pill` is a shared
-   class with its own definitions in styles.css and conversation.css; a bare
-   rule in this sheet would restyle it on every screen that uses it.
 
-   Two things it has to say out loud. `min-height: 0`, because conversation.css
-   gives the pill 2.65rem and would leave the padding below doing nothing. And
-   `color`, on both states: on this deck a pill and a suggestion card are peers
-   and should read alike, whereas the shared pill dims to 0.8 alpha and turns
-   accent on hover — a colour change no card beside it makes. */
 .brain-prompt-pills-row > button.brain-prompt-pill {
   display: inline-flex;
   align-items: center;
@@ -498,11 +404,7 @@
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  /* No `transition` here on purpose. styles.css already gives the pill one, and
-     affordance.css cancels *that* one under `prefers-reduced-motion` with a
-     matching single-class selector. Restating it at two classes would outrank
-     the cancellation and keep the pill animating for a reader who asked it not
-     to — the same trap as the card's hover lift above. */
+  
 }
 
 .brain-prompt-pills-row > button.brain-prompt-pill:hover {
@@ -511,14 +413,10 @@
   color: hsl(var(--foreground));
 }
 
-/* ── 5. capture pill sizing ───────────────────────────────────────────────
-   File · folder · note · web share one pill shape with 문서/이미지 wherever
-   they appear: inside the composer's attachment row in a live conversation,
-   and on the station's toolbar on the home. */
+
 
 .brain-ingestion-dock.is-inline {
-  /* The panel anchors to the composer, so the dock must not be a containing
-     block — as a positioned 24px pill row it pinned the panel to itself. */
+  
   position: static;
   display: inline-flex;
   height: auto;
@@ -536,7 +434,7 @@
   display: contents;
 }
 
-/* One size for every capture control in the toolbar, 문서/이미지 included. */
+
 .brain-composer-attachments > :is(.brain-document-input, .brain-image-input),
 .brain-ingestion-dock.is-inline .brain-ingestion-dock-action {
   display: inline-flex;
@@ -555,8 +453,7 @@
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-  /* Background and colour ease; the border does not. Keyboard focus has to be
-     visible the instant it lands, not 150ms later. */
+  
   transition: background 150ms ease, color 150ms ease;
 }
 
@@ -586,7 +483,7 @@
   height: 0.9rem;
 }
 
-/* The stage dot the tile carries has no room in a pill. */
+
 .brain-ingestion-dock.is-inline .brain-ingestion-dock-action > i {
   display: none;
 }
@@ -598,28 +495,21 @@
   gap: 0.3rem;
 }
 
-/* Opening + must not grow a second row on a roomy home: the stage is
-   centred, so a 30px wrap recenters the column and the greeting jumps. */
+
 @media (min-width: 900px) {
   .brain-home-station .brain-composer-attachments {
     flex-wrap: nowrap;
   }
 }
 
-/* English labels are longer than Korean ones: "Document · Image · File ·
-   Folder · Note · Web" plus the keyboard hint overflowed one line and pushed
-   Send onto its own row. Send always keeps the right edge; the hint yields
-   first, then hides on narrow rows. */
-/* The row must shrink, not wrap: with flex-wrap the hint's full width was
-   honoured and Send was pushed onto a line of its own. The attachment pills
-   still wrap inside their own box. */
+
+
 .brain-composer-actions {
   align-items: center;
   flex-wrap: nowrap;
 }
 
-/* Wrap the keyboard hint rather than truncating it — "Shift+Enter for a new …"
-   loses the only part that matters. */
+
 .brain-composer-actions > .brain-composer-hint {
   flex: 0 1 auto;
   min-width: 0;
@@ -645,10 +535,7 @@
   }
 }
 
-/* The capture panel belongs to the composer it opens from. It anchors to the
-   composer in both surfaces, and opens whichever way there is room: down on the
-   home (upward covered the model notice), up in the conversation, where the
-   composer is stuck to the bottom of the screen. */
+
 .brain-composer {
   position: relative;
 }
@@ -670,9 +557,7 @@
   bottom: calc(100% + 0.5rem);
 }
 
-/* ── 6. the quiet row ───────────────────────────────────────────────────
-   Secondary controls. Visually quieter than the composer so the eye stays
-   on the one primary action. */
+
 
 .brain-centered-home > .brain-home-quiet {
   display: flex;
@@ -680,20 +565,13 @@
   align-items: stretch;
   gap: var(--lt-gap-tight);
   width: 100%;
-  /* No `margin-top: auto`. Inside a column with `min-height: 100vh`, that
-     pinned this row to the floor and opened a 205px band of nothing between
-     the suggestions and it — a third of the first screen the user ever sees,
-     holding no content. The row is quieter than the composer because of how
-     it is styled, not because of how far away it sits. Unruled in 10.10.0:
-     the dock rail inside it carries its own shape. */
+  
   padding-top: var(--lt-space-3);
   border-top: 0;
   opacity: 1;
 }
 
-/* Desktop: the continuity bar sits on the stage floor instead of stretching
-   the column. An in-flow bar ate the space the capture popover needs below
-   the composer, and focusing the note field then scrolled the greeting. */
+
 @media (min-width: 761px) {
   .brain-centered-home {
     padding-bottom: 4.5rem;
@@ -718,18 +596,7 @@
   box-shadow: none;
 }
 
-/* Short or narrow screens. The suggestion cards fold back to one-line chips and
-   the detail sentence returns to the tooltip it came from. Full cards are worth
-   the ~55px they cost on a roomy screen; on a 650px-tall laptop they pushed the
-   station's toolbar — add material, autonomy — off the first screen, and on a
-   phone they slid the shelves under the fixed bottom nav, where a tap lands on
-   the nav instead. Controls outrank suggestions when height is scarce.
 
-   The height threshold is 700px, not 800px. At 800px an ordinary laptop window
-   (a 900px-tall display leaves ~750px of viewport) fell into the scarce branch
-   and threw away the description sentence while ~160px of the screen below the
-   shelves sat empty — paying the cost of a short screen without being one. The
-   toolbar this protects still clears a 650px window at 700px. */
 @media (max-height: 700px), (max-width: 900px) {
   .brain-secondary-deck {
     padding: 0.6rem 0.8rem 0.65rem;
@@ -741,15 +608,10 @@
 
   .brain-prompt-grid {
     display: flex;
-    /* `flex-direction: row` is the whole point of this block and was the one
-       property it forgot to state. The base rule above sets `column`, so the
-       chips inherited a column axis and `flex-wrap` had nothing to wrap:
-       each "pill" stretched to the deck's full ~950px to hold four characters,
-       with its description already hidden below. Chips, not bars. */
+    
     flex-direction: row;
     flex-wrap: wrap;
-    /* Column flex stretches children across the cross axis; row flex must be
-       told not to stretch them down it. */
+    
     align-items: center;
     gap: 0.35rem;
   }
@@ -771,10 +633,7 @@
   }
 }
 
-/* A short window also tightens the greeting, which is the other block standing
-   between the composer and the toolbar. The banner is a row now, so the
-   organism shrinks below its 3.2rem default here rather than above it — the
-   old value predated the row and made a short screen taller, not shorter. */
+
 @media (max-height: 800px) {
   .brain-home-station > .brain-hero {
     padding-top: var(--lt-space-3);
@@ -802,8 +661,7 @@
     padding: var(--lt-space-4) var(--lt-space-3) var(--lt-space-5);
   }
 
-  /* The banner stacks on a phone: 3.2rem of organism plus a two-line title does
-     not fit one row at 640px, and the row left the title one word wide. */
+  
   .brain-home-station > .brain-hero {
     flex-direction: column;
     gap: var(--lt-space-2);
@@ -833,7 +691,7 @@
     min-height: 4.2rem;
   }
 
-  /* Thumb-friendly quiet row on small screens */
+  
   .brain-centered-home > .brain-home-quiet {
     gap: var(--lt-space-3);
     padding-top: var(--lt-space-3);

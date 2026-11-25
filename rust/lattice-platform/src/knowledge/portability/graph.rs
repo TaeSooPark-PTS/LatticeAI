@@ -25,7 +25,6 @@ fn export_artifact(state: &PortabilityState) -> OrderedMap {
     let (nodes, edges, chunks) = export_rows(&state.config.graph_db_path());
     let mut header = schema_versions();
     header.insert("format", json!(FORMAT));
-    // format first in Python: format, format_version, then schema versions.
     let mut ordered = OrderedMap::new();
     ordered.insert("format", json!(FORMAT));
     ordered.insert("format_version", json!(FORMAT_VERSION));
@@ -227,9 +226,6 @@ pub(crate) async fn import_graph(
             Err(err) => detail(axum::http::StatusCode::BAD_GATEWAY, &err.to_string()),
         }
     } else {
-        // `require_graph` above already refused a graph-less install, so this
-        // arm is the mis-wired one: a store without the native writer. The
-        // retired `/worker/graph/mutate` seam is not a second chance.
         detail(
             axum::http::StatusCode::BAD_REQUEST,
             "Invalid Knowledge Graph export artifact.",
@@ -485,9 +481,6 @@ pub(super) fn restore_backup_zip(
     let extracted = extract_named_file(&mut archive, "knowledge_graph.sqlite", &snapshot)?;
     let blobs_restored = restore_blobs_from_archive(&mut archive, &blobs_dir(state))?;
     if extracted {
-        // Close idle Store/GraphWriter fds *before* the rename so a WAL
-        // checkpoint cannot land on the incoming snapshot, then bump the
-        // generation after the swap so the next checkout reopens.
         if let Some(graph) = &state.graph {
             graph.store().discard_idle_handles();
         }
@@ -605,11 +598,6 @@ pub(super) fn restore_blobs_from_archive<R: Read + std::io::Seek>(
     Ok(count)
 }
 
-/// Replace the live database file with a consistent snapshot, atomically.
-///
-/// Same rename dance as `lattice_auth::atomic`: the live name only ever
-/// appears as a complete file. Sidecar WAL/SHM files from the previous
-/// generation are moved aside so they cannot be replayed onto the snapshot.
 pub(super) fn replace_live_db(live: &Path, snapshot: &Path) -> Result<(), String> {
     if !snapshot.exists() {
         return Err("restore snapshot is missing".into());

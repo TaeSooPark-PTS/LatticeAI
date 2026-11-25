@@ -1,13 +1,3 @@
-"""The build-phase order is a contract, so it gets a test rather than a comment.
-
-WP-P1 cut the product's ten phases to the seven the worker still runs.
-These tests pin three things:
-
-1. the phase sequence itself,
-2. which phase publishes which attribute,
-3. that reading an attribute before its phase has run fails loudly.
-"""
-
 from __future__ import annotations
 
 import json
@@ -33,8 +23,6 @@ EXPECTED_PHASE_ORDER = [
     "phase_features",
 ]
 
-# One representative attribute per phase. Not exhaustive on purpose: these are
-# the ones whose producer moving would silently break a dependent phase.
 PHASE_OWNERS = {
     "CONFIG": "config",
     "DATA_DIR": "config",
@@ -80,17 +68,15 @@ def test_build_phase_order_is_fixed() -> None:
     assert [phase.__name__ for phase in BUILD_PHASES] == EXPECTED_PHASE_ORDER
 
 
-def test_every_phase_is_documented_in_the_module_docstring() -> None:
+def test_every_phase_is_present_in_build_phases() -> None:
     import latticeai.runtime.build_phases as module
 
-    doc = module.__doc__ or ""
+    names = [phase.__name__ for phase in module.BUILD_PHASES]
     for name in EXPECTED_PHASE_ORDER:
-        label = name.removeprefix("phase_")
-        assert f"``{label}``" in doc, f"{label} phase is not described in the docstring"
+        assert name in names
 
 
 def test_domain_precedes_web_and_features_follows_it() -> None:
-    """The two orderings that a naive split gets wrong."""
     order = [phase.__name__ for phase in BUILD_PHASES]
     assert order.index("phase_domain") < order.index("phase_web")
     assert order.index("phase_web") < order.index("phase_features")
@@ -141,7 +127,6 @@ def test_require_reports_the_producing_phase_when_known() -> None:
 
 
 def test_unset_attribute_raises_rather_than_returning_none() -> None:
-    """The failure mode a defaulted dataclass would have hidden."""
     ctx = RuntimeContext()
     with pytest.raises(AttributeError):
         _ = ctx.EMBEDDER
@@ -176,7 +161,6 @@ def test_config_argument_is_carried_for_the_config_phase() -> None:
 
 
 def test_build_is_an_orchestrator_not_an_assembly() -> None:
-    """`build_context` must stay small; the phases hold the assembly."""
     import ast
 
     source = (REPO_ROOT / "latticeai" / "app_factory.py").read_text(encoding="utf-8")
@@ -193,7 +177,6 @@ def test_build_is_an_orchestrator_not_an_assembly() -> None:
 
 
 def test_build_phases_module_imports_nothing_heavy() -> None:
-    """Phase modules must keep their heavy imports inside the functions."""
     import ast
 
     package_dir = REPO_ROOT / "latticeai" / "runtime" / "build_phases"

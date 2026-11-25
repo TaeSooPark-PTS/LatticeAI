@@ -1,152 +1,40 @@
-"""The compute tool table — read-only tools, plus pointer actuation.
-
-All filesystem operations are confined to LATTICEAI_AGENT_ROOT, defaulting to
-./agent_workspace.
-
-v11.6.0 §W4 moved the mutating half of this table into ``lattice-agent``: the
-file writes, the todo write, the project scaffold, the vault saves, the two
-desktop openers, the exec surface and the four document creators all run in the
-Rust loop's own sandbox now, and the creators call ``POST /worker/render/*``
-for the bytes. ``TOOL_HANDLERS`` is what a stateless worker may still be asked
-to do: **twenty-five** read-only / capability handlers, plus the **six** pointer
-tools the loop deliberately keeps sending here (v11.6.0 gateway integration
-§4b) because mouse and keyboard actuation is ``pyautogui`` — a capability of
-this interpreter, not a file write Rust can perform. A native refusal would
-only take working pointer control away from an install that has it.
-
-That is the whole seam: ``POST /agent/tool``'s whitelist is
-``registered_tools()``, and there is no second table.
-"""
-
-import base64
-import json
-import os
-import platform
-import re
-import shlex
-import socket
-import subprocess
-import tempfile
-from html.parser import HTMLParser
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict
 
 from latticeai.core.tool_registry import ToolRegistry
 from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
-
-_PLATFORM = platform.system()  # "Darwin" | "Windows" | "Linux"
-
-
-# ── base: agent-root sandbox, shared constants, path helpers ──────────────────
-AGENT_ROOT = Path(os.getenv("LATTICEAI_AGENT_ROOT") or "agent_workspace").resolve()
-MAX_FILE_BYTES = 512_000
-MAX_COMMAND_SECONDS = 30
-MAX_COMMAND_OUTPUT = 12_000
-
-# The build/deploy script allow-lists and their longer timeouts used to live
-# here too. `run_build` / `run_deploy` are native (`lattice-agent`'s
-# `tools::shell`, which carries its own `BUILD_SCRIPT_NAMES`,
-# `DEPLOY_SCRIPT_NAMES`, `MAX_BUILD_SECONDS` and `MAX_DEPLOY_SECONDS`), so the
-# copies here had no reader in this interpreter — a second, unenforced
-# allow-list that could drift from the one that actually gates a subprocess.
-
-ALLOWED_GIT_SUBCOMMANDS = {"status", "diff", "log", "show"}
-
-TEXT_EXTENSIONS = {
-    ".css",
-    ".csv",
-    ".html",
-    ".js",
-    ".json",
-    ".jsx",
-    ".md",
-    ".py",
-    ".ts",
-    ".tsx",
-    ".txt",
-    ".xml",
-    ".yaml",
-    ".yml",
-}
-
-DOCUMENT_OUTPUT_DIR = "generated_documents"
-PRESENTATION_OUTPUT_DIR = "generated_presentations"
-SPREADSHEET_OUTPUT_DIR = "generated_spreadsheets"
+from latticeai.tools._shared import (
+    _CJK_FONT_CANDIDATES,
+    _PLATFORM,
+    _SUPPORTED_READ_EXTENSIONS,
+    AGENT_ROOT,
+    ALLOWED_GIT_SUBCOMMANDS,
+    DOCUMENT_MAX_READ_BYTES,
+    DOCUMENT_OUTPUT_DIR,
+    LOCAL_MAX_FILE_BYTES,
+    MAX_COMMAND_OUTPUT,
+    MAX_COMMAND_SECONDS,
+    MAX_FILE_BYTES,
+    PDF_OUTPUT_DIR,
+    PRESENTATION_OUTPUT_DIR,
+    SPREADSHEET_OUTPUT_DIR,
+    TEXT_EXTENSIONS,
+    ToolError,
+    _relative,
+    _resolve_path,
+    ensure_agent_root,
+    resolve_workspace_path,
+)
+from latticeai.tools.commands import *
+from latticeai.tools.computer import *
+from latticeai.tools.documents import *
+from latticeai.tools.filesystem import *
+from latticeai.tools.knowledge import *
+from latticeai.tools.local_files import *
+from latticeai.tools.network import *
+from latticeai.tools.web import *
 
 
-class ToolError(ValueError):
-    pass
-
-
-def ensure_agent_root() -> Path:
-    AGENT_ROOT.mkdir(parents=True, exist_ok=True)
-    return AGENT_ROOT
-
-
-def _resolve_path(path: str = "") -> Path:
-    ensure_agent_root()
-    if not path:
-        return AGENT_ROOT
-    candidate = (AGENT_ROOT / path).resolve()
-    if candidate != AGENT_ROOT and AGENT_ROOT not in candidate.parents:
-        raise ToolError("Path escapes the agent workspace.")
-    return candidate
-
-
-def resolve_workspace_path(path: str = "") -> Path:
-    """Public alias of the sandboxed workspace path resolver (v9.6.0)."""
-    return _resolve_path(path)
-
-
-def _relative(path: Path) -> str:
-    return str(path.relative_to(AGENT_ROOT))
-
-
-# ── document / local / read constants (shared by submodules) ──────────────────
-PDF_OUTPUT_DIR = "generated_pdfs"
-LOCAL_MAX_FILE_BYTES = 2_000_000  # 2 MB cap for local reads
-
-
-# CJK-capable fonts (Korean + Chinese + Japanese)
-_CJK_FONT_CANDIDATES = [
-    "/System/Library/Fonts/AppleSDGothicNeo.ttc",  # Korean (macOS)
-    "/System/Library/Fonts/STHeiti Light.ttc",  # Chinese (macOS)
-    "/System/Library/Fonts/PingFang.ttc",  # Chinese (macOS)
-    "/Library/Fonts/NanumGothic.ttf",  # Korean
-    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-]
-
-# `.html`/`.htm` joined in v12.0.0: they were classified as *code* and read
-# verbatim, so the graph stored markup instead of what the page says. See
-# `latticeai.tools.markup.html_to_text`.
-_SUPPORTED_READ_EXTENSIONS = {
-    ".pdf",
-    ".docx",
-    ".xlsx",
-    ".pptx",
-    ".txt",
-    ".md",
-    ".csv",
-    ".html",
-    ".htm",
-}
-DOCUMENT_MAX_READ_BYTES = 10_000_000  # 10 MB
-
-
-# ── focused tool submodules (re-exported flat for import compatibility) ───────
-from latticeai.tools.commands import *  # noqa: E402,F401,F403
-from latticeai.tools.computer import *  # noqa: E402,F401,F403
-from latticeai.tools.documents import *  # noqa: E402,F401,F403
-from latticeai.tools.filesystem import *  # noqa: E402,F401,F403
-from latticeai.tools.knowledge import *  # noqa: E402,F401,F403
-from latticeai.tools.local_files import *  # noqa: E402,F401,F403
-from latticeai.tools.network import *  # noqa: E402,F401,F403
-from latticeai.tools.web import *  # noqa: E402,F401,F403
-
-
-# ── tool registry: the single name → invocation source of truth ───────────────
 def _knowledge_scope(args: Dict[str, Any]) -> Dict[str, str]:
-    """Return the authenticated scope injected by server/runtime adapters."""
     workspace_id = str(args.get("workspace_id") or "").strip()
     user_email = str(args.get("user_email") or "").strip().lower()
     if not workspace_id or not user_email:
@@ -156,13 +44,7 @@ def _knowledge_scope(args: Dict[str, Any]) -> Dict[str, str]:
     return {"workspace_id": workspace_id, "user_email": user_email}
 
 
-# ── Tool registry: the single source of truth for name → invocation ───────────
-# Each entry binds the args dict to a tool function. ``execute_tool`` is a
-# lookup over this table — adding a tool means adding one entry here, not
-# editing an if/elif chain. server.py's governance map and catalog brief are
-# checked against ``registered_tools()`` so the three never silently drift.
 TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
-    # filesystem
     "list_dir": lambda a: list_dir(a.get("path", ".")),
     "workspace_tree": lambda a: workspace_tree(
         a.get("path", "."), a.get("max_depth", 3)
@@ -186,17 +68,13 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     ),
     "inspect_html": lambda a: inspect_html(a["path"]),
     "preview_url": lambda a: preview_url(a.get("path", "index.html")),
-    # planning
     "todo_read": lambda a: todo_read(),
-    # local filesystem
     "local_list": lambda a: local_list(a["path"]),
     "local_read": lambda a: local_read(a["path"]),
     "read_document": lambda a: read_document(a["path"]),
     "network_status": lambda a: network_status(),
-    # web research
     "web_fetch": lambda a: web_fetch(a["url"], a.get("max_chars", 4000)),
     "web_search": lambda a: web_search(a["query"], a.get("max_results", 5)),
-    # computer use
     "computer_screenshot": lambda a: computer_screenshot(),
     "computer_ui_inspect": lambda a: computer_ui_inspect(a.get("app")),
     "computer_click": lambda a: computer_click(
@@ -218,7 +96,6 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
         a.get("image_b64", ""),
         a.get("prompt", "Describe this image in detail. Be concise."),
     ),
-    # knowledge / obsidian
     "knowledge_search": lambda a: knowledge_search(
         a["query"], a.get("max_results", 5), **_knowledge_scope(a)
     ),
@@ -227,7 +104,6 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
         a["query"], a.get("max_results", 5), **_knowledge_scope(a)
     ),
     "obsidian_tree": lambda a: obsidian_tree(**_knowledge_scope(a)),
-    # git (read-only)
     "git_status": lambda a: git_status(a.get("cwd")),
     "git_diff": lambda a: git_diff(a.get("path"), a.get("cwd")),
     "git_log": lambda a: git_log(a.get("max_count", 5), a.get("cwd")),
@@ -239,7 +115,6 @@ DEFAULT_TOOL_REGISTRY = ToolRegistry(TOOL_HANDLERS)
 
 
 def registered_tools() -> frozenset:
-    """Names dispatchable through ``execute_tool`` — the seam other modules verify against."""
     return DEFAULT_TOOL_REGISTRY.registered_tools()
 
 

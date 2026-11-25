@@ -7,13 +7,6 @@ import { renderPage } from "@/test/renderPage";
 import "@/i18n/chronicle";
 import { RewindPanel } from "./RewindPanel";
 
-/**
- * The rewind panel prints a number that looks like it contradicts the curve
- * above it — `stats.entities` counts every node in the slice, documents
- * included, while the growth curve's "개념" lane counts concepts only. The note
- * saying so is the whole reason a reader can trust both, so it is asserted
- * here rather than left to a screenshot.
- */
 
 const AS_OF: ChronicleAsOf = {
   ts: "2026-06-03T23:59:59",

@@ -1,41 +1,3 @@
-//! The Workspace OS state store — the same bytes Python writes, in place.
-//!
-//! Port of `WorkspaceOSStore`'s persistence half
-//! (`latticeai/core/workspace_os.py`). The product side of this state is now
-//! Rust's (WP-I1's `state_files` map): `workspace_os.json`, the workspace
-//! registry, the timeline, and the `workspace_snapshots/` + `workspace_exports/`
-//! directories. Only the *review-item* branch stays with the Python worker.
-//!
-//! ## Where the state lives — and why it lives twice
-//!
-//! Python writes every save to **both** `knowledge_graph.sqlite`
-//! (`workspace_os_state`, one row keyed `'current'`) and
-//! `<data_dir>/workspace_os.json`, and reads SQLite first. The JSON file is not
-//! a cache: it is what a person can read, back up and hand to support, and it
-//! is the migration source on an install that predates the SQLite row. Writing
-//! one and not the other would make a live install silently diverge from
-//! itself, so both are written here too, in the same order.
-//!
-//! ## One deliberate improvement
-//!
-//! Python's `load_state` → mutate → `save_state` sequence has no lock: two
-//! concurrent writes race and the loser's change disappears. Here every
-//! mutation runs under [`WorkspaceOsStore::mutate`], which holds a process-wide
-//! lock across the load and the save. It cannot fix a second *process* writing
-//! the same file, but the gateway is one process and this is where the race
-//! actually happened.
-//!
-//! ## The lock only helps if there is one of it (v11.7.0)
-//!
-//! Until v11.6.0 the Review Center did **not** come through here: it kept its
-//! own in-memory copy of the same document and wrote the same file and the
-//! same SQLite row from its own module. One lock each is no lock at all, so a
-//! review write and a workspace write could still erase one another.
-//! [`crate::governance::review_queue::GovernanceState`] is now a facade over this store,
-//! and the host hands it *this* `Arc` rather than opening a second one — so
-//! "the process has one writer" is true of the whole document, not of half of
-//! it. Anything else that wants to write `workspace_os.json` belongs here too.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Weak};
@@ -49,33 +11,18 @@ use super::constants::{
 use super::pyutil::{deep_merge, listify, now_iso};
 use super::state::{default_state, migrate_workspaces};
 
-/// The file name of the human-readable state document.
 pub const STATE_FILE_NAME: &str = state_files::WORKSPACE_OS;
-/// The snapshot directory, one immutable JSON document per snapshot.
 pub const SNAPSHOTS_DIR_NAME: &str = state_files::WORKSPACE_SNAPSHOTS;
-/// The export directory, one zip per exported snapshot.
 pub const EXPORTS_DIR_NAME: &str = state_files::WORKSPACE_EXPORTS;
-/// The SQLite file the state row shares with the knowledge graph.
 pub const GRAPH_DB_FILE_NAME: &str = tables::GRAPH_DB;
 
-/// How many events the timeline keeps, and how far it is trimmed back to.
 const TIMELINE_CAP: usize = 10_000;
 const TIMELINE_TRIM_TO: usize = 8_000;
 
-/// What a store operation can refuse with.
-///
-/// The three variants are Python's three exception types verbatim, because the
-/// handlers translate them per route and the translation is *not* uniform:
-/// `Value` is a 400 in `upsert_memory`, a 409 in `restore_snapshot`, and a 400
-/// in the org routes. Collapsing them into one status here would have to be
-/// un-collapsed at every call site.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoreError {
-    /// Python's `FileNotFoundError` — the argument is what it carried.
     NotFound(String),
-    /// Python's `ValueError`.
     Value(String),
-    /// Python's `PermissionError`.
     Permission(String),
 }
 
@@ -89,10 +36,8 @@ impl std::fmt::Display for StoreError {
     }
 }
 
-/// A realtime hook fired for every timeline event, as Python's `event_sink` is.
 pub type EventSink = Arc<dyn Fn(&Value) + Send + Sync>;
 
-/// Local-first state store for the Workspace OS routes.
 pub struct WorkspaceOsStore {
     data_dir: PathBuf,
     state_path: PathBuf,
@@ -104,7 +49,6 @@ pub struct WorkspaceOsStore {
 }
 
 impl WorkspaceOsStore {
-    /// Open the store rooted at `data_dir`, creating the three directories.
     pub fn open(data_dir: &Path) -> Self {
         let data_dir = data_dir.to_path_buf();
         let snapshots_dir = data_dir.join(SNAPSHOTS_DIR_NAME);
@@ -123,23 +67,8 @@ impl WorkspaceOsStore {
         }
     }
 
-    /// **The** store for `data_dir` in this process.
-    ///
-    /// [`Self::open`] hands back an independent handle, and an independent
-    /// handle is an independent [`Self::write_lock`] — which is how one file
-    /// ended up with five writers that could not see each other's mutations
-    /// (v11.6.0 §5.3). Construction sites are spread across six modules and
-    /// three crates, so the invariant cannot be "remember to pass the handle
-    /// around": it is registered here, keyed by the directory itself, and
-    /// every caller that names the same directory gets the same lock.
-    ///
-    /// The registry holds `Weak`s, so a store whose last user is gone (a test
-    /// tempdir) is dropped and a later `shared()` on the same path — a reused
-    /// temp name — builds a fresh one rather than resurrecting stale paths.
     pub fn shared(data_dir: &Path) -> Arc<Self> {
         static REGISTRY: Mutex<Option<HashMap<PathBuf, Weak<WorkspaceOsStore>>>> = Mutex::new(None);
-        // Created first: `canonicalize` needs the directory to exist, and
-        // without it `/tmp/x` and `/private/tmp/x` register as two stores.
         let _ = std::fs::create_dir_all(data_dir);
         let key = std::fs::canonicalize(data_dir).unwrap_or_else(|_| data_dir.to_path_buf());
         let mut guard = REGISTRY.lock().unwrap_or_else(|error| {
@@ -156,35 +85,24 @@ impl WorkspaceOsStore {
         store
     }
 
-    /// Attach the realtime hook fired on every timeline event.
-    ///
-    /// Consuming, so it belongs to [`Self::open`]: a store handed out by
-    /// [`Self::shared`] is already someone else's too.
     pub fn with_event_sink(mut self, sink: EventSink) -> Self {
         self.event_sink = Some(sink);
         self
     }
 
-    /// The data directory this store is rooted at.
     pub fn data_dir(&self) -> &Path {
         &self.data_dir
     }
-    /// `<data_dir>/workspace_os.json`.
     pub fn state_path(&self) -> &Path {
         &self.state_path
     }
-    /// `<data_dir>/workspace_snapshots`.
     pub fn snapshots_dir(&self) -> &Path {
         &self.snapshots_dir
     }
-    /// `<data_dir>/workspace_exports`.
     pub fn exports_dir(&self) -> &Path {
         &self.exports_dir
     }
 
-    // ── SQLite half ──────────────────────────────────────────────────────
-
-    /// Open the state database, creating the two tables Python creates.
     fn connect(&self) -> Result<rusqlite::Connection, String> {
         let connection = lattice_core::db::open_read_write(&self.sqlite_path)
             .map_err(|error| format!("{error:?}"))?;
@@ -199,7 +117,6 @@ impl WorkspaceOsStore {
         Ok(connection)
     }
 
-    /// `_load_sqlite_state` — the stored document, or `None` for any failure.
     fn load_sqlite_state(&self) -> Option<Value> {
         let connection = self.connect().ok()?;
         let stored: Option<String> = connection
@@ -213,7 +130,6 @@ impl WorkspaceOsStore {
         parsed.is_object().then_some(parsed)
     }
 
-    /// `_save_sqlite_state`.
     fn save_sqlite_state(&self, state: &Value) {
         let Ok(connection) = self.connect() else {
             return;
@@ -232,11 +148,6 @@ impl WorkspaceOsStore {
         );
     }
 
-    /// `_import_json_state_once` — adopt a pre-SQLite `workspace_os.json`.
-    ///
-    /// The `.pre-sqlite.<stamp>.json` backup is kept: it is the only copy of a
-    /// document written by a version that had no SQLite row, and the guard
-    /// (`if not any(glob(...))`) means it is taken exactly once per install.
     fn import_json_state_once(&self, default: &Value) -> Value {
         let Ok(text) = std::fs::read_to_string(&self.state_path) else {
             return default.clone();
@@ -272,9 +183,6 @@ impl WorkspaceOsStore {
         );
     }
 
-    // ── load / save ──────────────────────────────────────────────────────
-
-    /// `load_state` — SQLite first, the JSON file once, the default otherwise.
     pub fn load_state(&self) -> Value {
         let default = default_state();
         let loaded = self.load_sqlite_state();
@@ -289,7 +197,6 @@ impl WorkspaceOsStore {
         state
     }
 
-    /// `save_state` — stamp the version and time, then write both stores.
     pub fn save_state(&self, state: &mut Value) {
         self.persist(state);
     }
@@ -302,18 +209,11 @@ impl WorkspaceOsStore {
         lattice_auth::atomic::write_text(&self.state_path, &text);
     }
 
-    /// Load, mutate and save under one lock.
-    ///
-    /// **Never** call [`Self::record_timeline_event`] from inside `body`: it
-    /// takes the same lock, and Python records its timeline events *after* the
-    /// save anyway, in a second load/save pair.
     pub fn mutate<T>(
         &self,
         body: impl FnOnce(&mut Value) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
         let guard = self.write_lock.lock().unwrap_or_else(|error| {
-            // A panic inside a mutation left the document untouched (every
-            // write happens at the end), so the lock is safe to reclaim.
             self.write_lock.clear_poison();
             error.into_inner()
         });
@@ -324,9 +224,6 @@ impl WorkspaceOsStore {
         Ok(outcome)
     }
 
-    // ── timeline ─────────────────────────────────────────────────────────
-
-    /// Append one bounded timeline entry directly into an already-locked state document.
     pub fn append_timeline_to_state(
         state: &mut Value,
         area: &str,
@@ -352,7 +249,6 @@ impl WorkspaceOsStore {
         entry
     }
 
-    /// Broadcast a committed timeline entry to the live SSE event sink, if bound.
     pub fn notify_timeline_entry(&self, entry: &Value) {
         if let Some(sink) = &self.event_sink {
             let mut echoed = entry.clone();
@@ -361,7 +257,6 @@ impl WorkspaceOsStore {
         }
     }
 
-    /// `record_timeline_event` — append one event and keep the list bounded.
     pub fn record_timeline_event(
         &self,
         area: &str,
@@ -385,7 +280,6 @@ impl WorkspaceOsStore {
         entry
     }
 
-    /// `_emit_execution_event` — a timeline event only for the named types.
     pub fn emit_execution_event(
         &self,
         area: &str,
@@ -399,7 +293,6 @@ impl WorkspaceOsStore {
         self.record_timeline_event(area, event_type, payload, workspace_id);
     }
 
-    /// `_emit_replayable_timeline_events` — replay a run's own timeline.
     pub fn emit_replayable_timeline_events(
         &self,
         area: &str,
@@ -427,9 +320,6 @@ impl WorkspaceOsStore {
         }
     }
 
-    // ── scope helpers ────────────────────────────────────────────────────
-
-    /// `_active_workspace_id` — the active workspace, or Personal.
     pub fn active_workspace_id(state: &Value) -> String {
         let active = state
             .get("active_workspace")
@@ -447,7 +337,6 @@ impl WorkspaceOsStore {
         }
     }
 
-    /// `_resolve_scope` — the workspace a write should be tagged with.
     pub fn resolve_scope(workspace_id: Option<&str>, state: &Value) -> String {
         match workspace_id.filter(|value| !value.is_empty()) {
             Some(named) => named.to_string(),
@@ -455,7 +344,6 @@ impl WorkspaceOsStore {
         }
     }
 
-    /// `_record_workspace` — the workspace a stored record belongs to.
     pub fn record_workspace(record: &Value) -> String {
         record
             .get("workspace_id")
@@ -465,7 +353,6 @@ impl WorkspaceOsStore {
             .to_string()
     }
 
-    /// `_scoped` — the records belonging to one workspace (all, when unscoped).
     pub fn scoped(records: Vec<Value>, workspace_id: Option<&str>) -> Vec<Value> {
         let Some(target) = workspace_id.filter(|value| !value.is_empty()) else {
             return records;
@@ -476,13 +363,6 @@ impl WorkspaceOsStore {
             .collect()
     }
 
-    // ── summary ──────────────────────────────────────────────────────────
-
-    /// `summary()` — the Workspace OS dashboard payload.
-    ///
-    /// The raw workspace registry is deliberately *not* here: it carries member
-    /// lists, and this payload is served to any authenticated caller.
-    /// `WorkspaceService.summary` adds a membership-filtered registry instead.
     pub fn summary(&self) -> Value {
         let state = self.load_state();
         let count = |key: &str| listify(state.get(key)).len();
@@ -548,14 +428,11 @@ mod tests {
         let first = WorkspaceOsStore::shared(dir.path());
         let second = WorkspaceOsStore::shared(dir.path());
         assert!(Arc::ptr_eq(&first, &second), "one directory, one store");
-        // A different directory is a different store, obviously.
         let other = tempfile::tempdir().expect("tempdir");
         assert!(!Arc::ptr_eq(
             &first,
             &WorkspaceOsStore::shared(other.path())
         ));
-        // …and the sharing is what makes the lock mean something: a write
-        // through one handle is visible through the other.
         first
             .mutate(|state| {
                 state["identity"] = json!("shared");
@@ -564,8 +441,6 @@ mod tests {
             .expect("mutate");
         assert_eq!(second.load_state()["identity"], json!("shared"));
 
-        // Dropping every user releases the entry rather than pinning the path
-        // (and its open SQLite handle) for the life of the process.
         let path = dir.path().to_path_buf();
         drop(first);
         drop(second);
@@ -580,7 +455,6 @@ mod tests {
         assert_eq!(state["version"], json!(WORKSPACE_OS_VERSION));
         assert!(dir.path().join(STATE_FILE_NAME).is_file());
         assert!(dir.path().join(GRAPH_DB_FILE_NAME).is_file());
-        // Second load comes from SQLite and is stable.
         assert_eq!(store.load_state()["created_at"], state["created_at"]);
     }
 
@@ -604,7 +478,6 @@ mod tests {
                 .count()
         };
         assert_eq!(backups(), 1);
-        // Loading again reads SQLite, so no second backup is taken.
         store.load_state();
         assert_eq!(backups(), 1);
     }

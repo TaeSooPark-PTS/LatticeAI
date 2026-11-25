@@ -1,11 +1,3 @@
-//! Deterministic local question mining.
-//!
-//! Reads user turns from `conversation_messages`, normalizes them (trim,
-//! lowercase, strip punctuation, Hangul kept), and clusters by exact-normalized
-//! match or cheap token-overlap. No LLM. A cluster with `count >= 2` is a
-//! pattern; each pattern yields a suggestion with a stable id so
-//! `/api/automation/install` can find it.
-
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -21,7 +13,6 @@ const MAX_HISTORY: i64 = 4000;
 const TOKEN_OVERLAP: f64 = 0.6;
 const MIN_CHARS: usize = 6;
 
-/// One mined recurring-question pattern.
 #[derive(Debug, Clone)]
 pub(crate) struct Pattern {
     pub(crate) id: String,
@@ -31,7 +22,6 @@ pub(crate) struct Pattern {
     pub(crate) evidence: Vec<String>,
 }
 
-/// One installable suggestion derived from a [`Pattern`].
 #[derive(Debug, Clone)]
 pub(crate) struct Suggestion {
     pub(crate) id: String,
@@ -41,7 +31,6 @@ pub(crate) struct Suggestion {
     pub(crate) count: i64,
 }
 
-/// The mining pass: how many user turns we actually read, plus clusters.
 #[derive(Debug, Clone)]
 pub(crate) struct Mining {
     pub(crate) questions_scanned: i64,
@@ -131,7 +120,6 @@ impl Mining {
     }
 }
 
-/// Mine the Brain sqlite under `data_dir`. Missing file or table → empty, scanned 0.
 pub(crate) fn mine(data_dir: &Path, workspace_id: Option<&str>) -> Mining {
     let path = data_dir.join(lattice_core::DB_FILE_NAME);
     if !path.exists() {
@@ -266,7 +254,6 @@ fn workspace_visible(scope: Option<&str>, row: Option<&str>) -> bool {
     }
 }
 
-/// Trim, lowercase, drop punctuation; Hangul syllables and alphanumerics stay.
 pub(crate) fn normalize(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut last_space = false;

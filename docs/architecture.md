@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.1.1 — Living Synthesis**.
+Current release: **14.1.2 — Living Synthesis**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite
@@ -113,7 +113,7 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 
 ## Compatibility & Upgrades
 
-14.1.1 preserves non-destructive, read-compatible upgrades across SQLite
+14.1.2 preserves non-destructive, read-compatible upgrades across SQLite
 Knowledge Graph schemas, `.latticebrain` archives (v2 KDF), and legacy
 `salt:key` password hashes (automatically verified alongside versioned
 `$scrypt$` hashes), while keeping Rust and Python timestamps unified on

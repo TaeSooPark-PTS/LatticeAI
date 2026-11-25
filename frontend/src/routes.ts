@@ -24,13 +24,8 @@ export const productShellRoutes = [
   { id: "brain", path: "brain", labelKey: "shell.route.brain", icon: Brain, description: "Talk with your living Brain" },
   { id: "capture", path: "capture", labelKey: "shell.route.capture", icon: FolderInput, description: "Bring in files, folders, and pages" },
   { id: "memory", path: "hybrid-search", labelKey: "shell.route.memory", icon: Database, description: "Search and revisit remembered knowledge" },
-  // Fourth everyday destination (11.3.0). Sits beside 기억 on purpose: both
-  // answer "what does my Brain hold" — memory by subject, the chronicle by day.
   { id: "chronicle", path: "chronicle", labelKey: "shell.route.chronicle", icon: History, description: "See how your Brain grew, day by day" },
   { id: "library", path: "models", labelKey: "shell.route.library", icon: Library, description: "Choose the local model powering your Brain" },
-  // Points at `review`, not `agents`: the Work screen now leads with what is
-  // waiting on the person, so the shell entry point has to land on the review
-  // inbox rather than on the goal composer sitting behind it.
   { id: "act", path: "review", labelKey: "shell.route.act", icon: Workflow, description: "Start work and review what needs attention" },
   { id: "system", path: "settings", labelKey: "shell.route.system", icon: Settings, description: "Keep your Brain safe and portable" },
 ] as const;
@@ -38,8 +33,6 @@ export const productShellRoutes = [
 export const directProductRoutes: Record<string, RouteTarget> = {
   brain: { primary: "brain", tab: "conversation" },
   capture: { primary: "capture", tab: "files" },
-  // The chronicle has one view, so it names no tab; the page picks its own
-  // starting point (the most recent day) from the data.
   chronicle: { primary: "chronicle" },
   "knowledge-graph": { primary: "brain", tab: "graph" },
   models: { primary: "library", tab: "models" },
@@ -52,8 +45,6 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
   onboarding: { primary: "system", tab: "account" },
   "hybrid-search": { primary: "brain", tab: "knowledge" },
   memory: { primary: "memory", tab: "memory" },
-  // The screen was designed under this name and the plan document still uses
-  // it; keep the word working as a bookmark.
   timeline: { primary: "chronicle" },
   ask: { primary: "brain", tab: "conversation" },
   chat: { primary: "brain", tab: "conversation" },
@@ -88,19 +79,12 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
 
 export const primaryRoutes = productShellRoutes;
 
-// The command palette's page list. This used to be a second, parallel copy of
-// the same destinations that the palette did not read — so re-pointing "작업"
-// here changed nothing, while the list the palette actually rendered kept the
-// old target. One list, read by the palette, is what keeps a label from meaning
-// two different screens depending on how you reached it.
 export const commandRoutes = [
   { id: "page-brain", labelKey: "shell.route.brain", target: "/brain", icon: Brain },
   { id: "page-capture", labelKey: "shell.route.capture", target: "/capture", icon: FolderInput },
   { id: "page-memory", labelKey: "shell.route.memory", target: "/hybrid-search", icon: Database },
   { id: "page-chronicle", labelKey: "shell.route.chronicle", target: "/chronicle", icon: History },
   { id: "page-library", labelKey: "shell.route.library", target: "/models", icon: Library },
-  // Same destination as the shell's "작업" link, which now opens the review
-  // inbox. Leaving this at /agents gave one label two landing places.
   { id: "page-act", labelKey: "shell.route.act", target: "/review", icon: Workflow },
   { id: "page-review", labelKey: "command.page.review", target: "/act/review", icon: FileSearch },
   { id: "page-system", labelKey: "shell.route.system", target: "/settings", icon: Settings },
@@ -116,10 +100,6 @@ export function parseHash() {
   if (primary) return { primary: primary.id as PrimaryRoute, tab: undefined, path };
   const aliased = compatibilityRouteAliases[normalized];
   if (aliased) return { primary: aliased.primary, tab: aliased.tab, path };
-  // `<primary>/<tab>` — the shape the palette and the daily briefing have always
-  // emitted for /act/review, /act/workflows and /brain/graph. Nothing resolved
-  // it, so every one of those landed on the Brain home instead of the screen it
-  // named. Checked last, so a named alias always wins over the generic form.
   const separator = normalized.indexOf("/");
   if (separator > 0) {
     const head = normalized.slice(0, separator);

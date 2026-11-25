@@ -1,15 +1,3 @@
-//! `/rust/agent/{run,resume,approvals}` — the loop as three routes.
-//!
-//! Homomorphic with Python's `/agent`, `/agent/resume` and `/agent/approvals`:
-//! same request fields, same terminal payload, same pause contract (`run_id` +
-//! a short-TTL token), same 403/404/410 answers on resume. A client written
-//! against one reads the other.
-//!
-//! Fail-closed is the property worth stating: a plan that needs approval never
-//! executes here. It is persisted, a token is handed out, and only a resume
-//! presenting the matching, unexpired token for the same user carries it into
-//! EXECUTING.
-
 use std::convert::Infallible;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -38,45 +26,17 @@ use crate::surface::runbody::{finish_payload, pause_payload, ResumeBody, RunBody
 use crate::surface::worker::WorkerClient;
 use crate::tools::sandbox::Workspace;
 
-/// What the host hands these routes.
 #[derive(Debug, Clone)]
 pub struct LoopConfig {
-    /// Where the AI worker listens, e.g. `http://127.0.0.1:4825`.
     pub worker_origin: String,
-    /// Where paused runs are persisted. See [`crate::kernel::runs`] for why this is not
-    /// Python's directory.
     pub runs_dir: std::path::PathBuf,
-    /// Shared HTTP client, so the loopback pool is not duplicated.
     pub client: Option<reqwest::Client>,
-    /// Where a `strict` mutation is staged for review.
-    ///
-    /// `None` uses [`crate::kernel::proposals::JsonProposalStore`] over
-    /// `LATTICEAI_DATA_DIR`. A host that runs the Review Center in this process
-    /// **must** inject that store instead — see [`crate::kernel::proposals`] for why a
-    /// second writer on the same file is not a second opinion but a lost item.
     pub proposals: Option<Arc<dyn crate::kernel::proposals::ProposalStore>>,
-    /// The `pre_tool` / `post_tool` sink every run's native tools fire through.
-    ///
-    /// `None` means no `hooks.json` is in reach of this process and no user
-    /// hook fires — the standalone contract. A host that mounts `/api/hooks`
-    /// **must** inject a sink over the very [`HooksStore`] those routes use,
-    /// for the reason the proposal store is injected: the registry keeps the
-    /// document and the run log in memory.
-    ///
-    /// [`HooksStore`]: https://docs.rs/lattice-platform
     pub hooks: Option<Arc<dyn crate::tools::HookSink>>,
-    /// The host's MCP tools and installed skills, as one catalog (v12.0.0).
-    ///
-    /// `None` means this process has no MCP surface and no skill registry in
-    /// reach, so a run's menu is its own tools. A host that mounts `/mcp`
-    /// **should** inject a catalog over the very dispatch those routes use —
-    /// see [`crate::tools::catalog`] — or the model is told about capabilities
-    /// it cannot invoke, which is worse than not mentioning them.
     pub external: Option<Arc<dyn crate::tools::ToolCatalog>>,
 }
 
 impl LoopConfig {
-    /// A config for `worker_origin` with the default store and a fresh client.
     pub fn new(worker_origin: impl Into<String>) -> Self {
         Self {
             worker_origin: worker_origin.into(),
@@ -88,7 +48,6 @@ impl LoopConfig {
         }
     }
 
-    /// Stage proposals into `store` — the Review Center's, in the product.
     pub fn with_proposals(
         mut self,
         store: Arc<dyn crate::kernel::proposals::ProposalStore>,
@@ -97,13 +56,11 @@ impl LoopConfig {
         self
     }
 
-    /// Fire `pre_tool` / `post_tool` through `sink` — the hooks registry's.
     pub fn with_hooks(mut self, sink: Arc<dyn crate::tools::HookSink>) -> Self {
         self.hooks = Some(sink);
         self
     }
 
-    /// Offer `catalog`'s MCP tools and skills on every run's menu (v12.0.0).
     pub fn with_catalog(mut self, catalog: Arc<dyn crate::tools::ToolCatalog>) -> Self {
         self.external = Some(catalog);
         self
@@ -117,11 +74,9 @@ impl LoopConfig {
     }
 }
 
-/// Authorizes access to a shared workspace for `(user_email, workspace_id)`.
 pub type ScopeAuthorizer =
     Arc<dyn Fn(Option<&str>, Option<&str>) -> Result<bool, String> + Send + Sync>;
 
-/// Shared state for the three loop routes.
 pub struct LoopState {
     workspace: Workspace,
     config: LoopConfig,
@@ -144,8 +99,6 @@ impl std::fmt::Debug for LoopState {
 impl LoopState {
     pub fn new(workspace: Workspace, config: LoopConfig) -> Self {
         let store = AgentRunStore::new(config.runs_dir.clone());
-        // Hygiene at construction, exactly where Python sweeps: long-expired
-        // records must not accumulate, and a sweep failure must not block boot.
         store.sweep_expired(None);
         Self {
             workspace,
@@ -156,15 +109,12 @@ impl LoopState {
         }
     }
 
-    /// Derive a per-user/per-workspace `AGENT_ROOT` under `base_workspace` on
-    /// every request rather than sharing one directory across users.
     pub fn isolated(base_workspace: Workspace, config: LoopConfig) -> Self {
         let mut state = Self::new(base_workspace, config);
         state.isolate_per_user = true;
         state
     }
 
-    /// Attach a workspace membership authorizer for shared workspaces.
     pub fn with_authorizer(mut self, authorizer: ScopeAuthorizer) -> Self {
         self.authorizer = Some(authorizer);
         self
@@ -221,11 +171,6 @@ impl LoopState {
         })
     }
 
-    /// The ports one run needs: the body's, with the host's proposal store and
-    /// the host's hook sink.
-    ///
-    /// Every `Runtime` these routes build comes through here, so neither
-    /// injection can be forgotten on one of the four paths.
     fn deps_for(&self, body: &RunBody) -> crate::kernel::agentloop::LoopDeps {
         self.deps_with_workspace(body, self.workspace.clone())
     }
@@ -248,7 +193,6 @@ impl LoopState {
     }
 }
 
-/// Mount the loop routes.
 pub fn loop_router(workspace: Workspace, config: LoopConfig) -> Router {
     Router::new()
         .route("/rust/agent/run", post(run))
@@ -257,7 +201,6 @@ pub fn loop_router(workspace: Workspace, config: LoopConfig) -> Router {
         .with_state(Arc::new(LoopState::new(workspace, config)))
 }
 
-/// Mount the loop routes with per-user/per-workspace root isolation enabled.
 pub fn loop_router_isolated(
     base_workspace: Workspace,
     config: LoopConfig,
@@ -278,7 +221,6 @@ fn refuse(status: StatusCode, detail: Value) -> Response {
     (status, Json(json!({"detail": detail}))).into_response()
 }
 
-/// A run either finished, or paused, or could not reach the reasoner.
 enum Outcome {
     Finished(AgentRunContext, Vec<Value>, Workspace),
     Paused(AgentRunContext, Value),
@@ -286,7 +228,6 @@ enum Outcome {
     Denied(StatusCode, Value),
 }
 
-/// Plan, then either pause for approval or drive to a terminal state.
 async fn drive(
     state: &Arc<LoopState>,
     body: &RunBody,
@@ -314,8 +255,6 @@ async fn drive(
         return Outcome::Unreachable(error.0);
     }
     let requirements = runtime.approval_requirements(&ctx, request);
-    // The legacy explicit pause and the approval gate share one path, one
-    // store and one resume — the wire label is the only difference.
     if body.human_in_loop || requirements["requires_approval"] == json!(true) {
         return Outcome::Paused(ctx, requirements);
     }
@@ -326,7 +265,6 @@ async fn drive(
     }
 }
 
-/// Persist the pause and build its payload.
 fn pause(
     state: &Arc<LoopState>,
     body: &RunBody,
@@ -344,8 +282,6 @@ fn pause(
     let (expires_epoch, expires_at) = approval_deadline();
     ctx.state_history
         .push(AgentState::WaitingApproval.as_str().to_string());
-    // Best-effort, exactly as Python: a store failure must not turn a pause
-    // into a failure. It only means this pause cannot survive a restart.
     state.store.save(
         &PausedRun {
             run_id: &run_id,
@@ -395,13 +331,9 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
         };
     }
 
-    // Live loop visibility: named `agent_step` frames while the run executes,
-    // then the same terminal payload the JSON response returns — a client that
-    // ignores named events sees the historical stream shape.
     let (sender, receiver) = mpsc::channel::<String>(256);
     let steps = sender.clone();
     let observer: crate::kernel::agentloop::StepObserver = Box::new(move |event: Value| {
-        // Telemetry: a full buffer drops a frame rather than stalling the loop.
         let _ = steps.try_send(format!(
             "event: agent_step\ndata: {}\n\n",
             serde_json::to_string(&event).unwrap_or_default()
@@ -447,8 +379,6 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
         .unwrap_or_else(|err| bad_request(format!("cannot open the stream: {err}")))
 }
 
-/// The mpsc receiver as a body stream. `futures-core`'s `Stream` is the only
-/// thing `Body::from_stream` needs, so this is the whole adapter.
 struct FrameStream {
     receiver: mpsc::Receiver<String>,
 }
@@ -482,7 +412,6 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
     };
     let stored_request: RunBody = match serde_json::from_value(record["req"].clone()) {
         Ok(request) => request,
-        // An unreconstructable request is not a resumable run.
         Err(_) => {
             return refuse(
                 StatusCode::NOT_FOUND,
@@ -513,7 +442,6 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
             json!("Invalid approval token for this run."),
         );
     }
-    // Token validated — the pending run is consumed either way.
     state.store.delete(&run_id);
 
     if !body.is_approved() {
@@ -552,7 +480,6 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
     if let Some(model) = body.reviewing_model.clone() {
         ctx.reviewing_model = Some(model);
     }
-    // The authenticated owner explicitly approved this plan.
     runtime.approve(&mut ctx, &request, true);
     match runtime.run_to_completion(&mut ctx, &request).await {
         Ok(()) => Json(finish_payload(

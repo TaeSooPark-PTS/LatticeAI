@@ -1,11 +1,3 @@
-//! Security & audit command center — native (v11.6.0, WP-R2).
-//!
-//! Port of `latticeai/api/security_dashboard.py`. Spreadsheet export is the
-//! one branch that must not grow a Rust xlsx crate: it asks the compute seam
-//! (`POST /worker/render/xlsx`) for the workbook's bytes via
-//! [`WorkerSeamClient`] and writes the response itself. The document
-//! parser/generator matrix stays in Python.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -40,9 +32,7 @@ pub const MOUNTED: &[(&str, &str)] = &[
 pub struct SecurityState {
     pub auth: Arc<AuthState>,
     pub data_dir: PathBuf,
-    /// Optional worker used only for `format=excel|xlsx` export.
     pub worker: Option<WorkerSeamClient>,
-    /// Override "today" (`YYYY-MM-DD`) so fixture replay can freeze the clock.
     pub today: Option<String>,
 }
 

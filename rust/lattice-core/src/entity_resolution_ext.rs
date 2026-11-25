@@ -1,6 +1,3 @@
-//! Extended Entity Resolution: Fuzzy & Multi-Signal Disambiguation, Persistent Aliases,
-//! Merge Audit Trail, Reference Migration, Selective Rollback & Cross-Workspace Guard (P0.3).
-
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -17,7 +14,6 @@ fn utc_now_iso() -> String {
     SystemClock.now_iso()
 }
 
-/// Decision band separating high-confidence auto-merges from human-review candidates.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MergeDecisionBand {
@@ -26,7 +22,6 @@ pub enum MergeDecisionBand {
     RejectedHomonym,
 }
 
-/// Breakdown of disambiguation signals explaining why two entities matched or collided.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DisambiguationSignals {
     pub exact_key_match: bool,
@@ -40,7 +35,6 @@ pub struct DisambiguationSignals {
     pub homonym_risk: bool,
 }
 
-/// One candidate entity merge pair evaluated by [`evaluate_merge_candidates`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EntityMergeCandidate {
     pub canonical_id: String,
@@ -54,7 +48,6 @@ pub struct EntityMergeCandidate {
     pub rationale: String,
 }
 
-/// Persistent audit record for one applied entity merge (supports selective unmerge).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EntityMergeAuditRecord {
     pub merge_id: String,
@@ -69,7 +62,6 @@ pub struct EntityMergeAuditRecord {
     pub rolled_back_at: Option<String>,
 }
 
-/// Pre-merge endpoint snapshot enabling lossless edge unmerge.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigratedEdgeSnapshot {
     pub edge_id: String,
@@ -77,7 +69,6 @@ pub struct MigratedEdgeSnapshot {
     pub original_to: String,
 }
 
-/// Ensure persistent tables for entity aliases, merge audit trail, and do-not-merge rules exist.
 pub fn ensure_entity_resolution_tables(conn: &Connection) -> Result<(), CoreError> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS entity_aliases (
@@ -113,7 +104,6 @@ pub fn ensure_entity_resolution_tables(conn: &Connection) -> Result<(), CoreErro
     Ok(())
 }
 
-/// Load all persisted `DIFFERENT_FROM` / do-not-merge pairs.
 pub fn load_do_not_merge_pairs(conn: &Connection) -> Result<BTreeSet<(String, String)>, CoreError> {
     let exists: bool = conn
         .query_row(
@@ -134,7 +124,6 @@ pub fn load_do_not_merge_pairs(conn: &Connection) -> Result<BTreeSet<(String, St
     Ok(pairs)
 }
 
-/// Persist an alias for `canonical_id` inside `workspace_id`.
 pub fn register_persistent_alias(
     conn: &Connection,
     workspace_id: &str,
@@ -157,7 +146,6 @@ pub fn register_persistent_alias(
     Ok(())
 }
 
-/// List persisted aliases for a canonical entity (or entire workspace when `canonical_id` is None).
 pub fn list_persistent_aliases(
     conn: &Connection,
     workspace_id: &str,
@@ -189,7 +177,6 @@ pub fn list_persistent_aliases(
     Ok(out)
 }
 
-/// Normalized Levenshtein similarity in `[0.0, 1.0]`.
 pub fn normalized_levenshtein(a: &str, b: &str) -> f64 {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
@@ -241,8 +228,6 @@ fn set_jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     inter / union
 }
 
-/// Evaluate exact + fuzzy entity merge candidates within a single strict `workspace_id`,
-/// separating high-confidence `AutoMerge` from `ReviewCandidate` and `RejectedHomonym`.
 pub fn evaluate_merge_candidates(
     conn: &Connection,
     workspace_id: &str,
@@ -310,7 +295,6 @@ pub fn evaluate_merge_candidates(
         });
     }
 
-    // Build neighbor sets for relational + provenance overlap.
     let id_set: HashSet<&str> = rows.iter().map(|r| r.id.as_str()).collect();
     let mut neighbors: HashMap<String, HashSet<String>> = HashMap::new();
     let mut prov_docs: HashMap<String, HashSet<String>> = HashMap::new();
@@ -383,8 +367,6 @@ pub fn evaluate_merge_candidates(
                 }
                 _ => 0.5,
             };
-            // Homonym collision guard: different entity types, conflicting explicit domains,
-            // or short acronym (<= 4 chars) with zero shared provenance/relations.
             let conflicting_domain = match (&a.domain_hint, &b.domain_hint) {
                 (Some(da), Some(db)) => da != db,
                 _ => false,
@@ -474,8 +456,6 @@ fn node_effective_workspace(conn: &Connection, node_id: &str) -> Result<String, 
         .unwrap_or_else(|| "personal".to_string()))
 }
 
-/// Execute one audited, reversible entity merge with strict cross-workspace prohibition
-/// and edge reference migration (preserving exact pre-merge snapshots for selective rollback).
 pub fn execute_audited_entity_merge(
     conn: &mut Connection,
     workspace_id: &str,
@@ -508,7 +488,6 @@ pub fn execute_audited_entity_merge(
     );
     let tx = conn.transaction()?;
 
-    // Snapshot & migrate incident edges (excluding SAME_AS and self-loops) to canonical_id.
     let mut migrated = Vec::new();
     let incident: Vec<(String, String, String)> = {
         let mut stmt = tx.prepare(
@@ -539,7 +518,6 @@ pub fn execute_audited_entity_merge(
         if new_from == new_to {
             continue;
         }
-        // Only migrate when it won't violate UNIQUE(from_node, to_node, type).
         if tx.execute(
             "UPDATE OR IGNORE edges SET from_node = ?1, to_node = ?2 WHERE id = ?3",
             params![new_from, new_to, eid],
@@ -553,7 +531,6 @@ pub fn execute_audited_entity_merge(
         }
     }
 
-    // Record persistent alias from duplicate's title onto canonical_id.
     if let Some(dup_title) = tx
         .query_row(
             "SELECT title FROM nodes WHERE id = ?1",
@@ -572,7 +549,6 @@ pub fn execute_audited_entity_merge(
         }
     }
 
-    // Link duplicate -> canonical via SAME_AS edge.
     let same_edge_id = format!("er_same_as:{duplicate_id}->{canonical_id}");
     tx.execute(
         "INSERT INTO edges(id, from_node, to_node, type, weight, metadata_json, created_at)
@@ -622,9 +598,6 @@ pub fn execute_audited_entity_merge(
     })
 }
 
-/// Selectively roll back one entity merge by `merge_id`, restoring all migrated edges
-/// to their original endpoints and adding a `DIFFERENT_FROM` blocklist entry so it
-/// will not be erroneously re-merged.
 pub fn rollback_entity_merge(
     conn: &mut Connection,
     merge_id: &str,
@@ -633,8 +606,6 @@ pub fn rollback_entity_merge(
     rollback_entity_merge_inner(conn, None, merge_id, add_do_not_merge)
 }
 
-/// Workspace-scoped entity merge rollback: verifies that `merge_id` and both
-/// referenced nodes belong to `workspace_id` before mutating any rows.
 pub fn rollback_entity_merge_in_workspace(
     conn: &mut Connection,
     workspace_id: &str,
@@ -650,7 +621,6 @@ pub fn rollback_entity_merge_in_workspace(
     rollback_entity_merge_inner(conn, Some(ws), merge_id, add_do_not_merge)
 }
 
-/// List recent entity merge audit records strictly scoped to `workspace_id`.
 pub fn list_entity_merges(
     conn: &Connection,
     workspace_id: &str,
@@ -827,7 +797,6 @@ mod tests {
             tx.commit().unwrap();
         }
 
-        // Person "Apple" vs Organization "Apple" in ws-1 -> must NEVER auto-merge.
         conn.execute_batch(
             "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at) VALUES
                 ('p-apple', 'Person', 'Apple', 'Singer', '{}', '{\"workspace_id\":\"ws-1\"}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
@@ -846,7 +815,6 @@ mod tests {
         )
         .unwrap();
 
-        // Type-scoped exact clustering keeps Person and Organization separate.
         let clusters =
             resolve_entities_in_conn(&conn, Some("ws-1"), &EntityAliasBook::new()).unwrap();
         assert!(!clusters
@@ -854,13 +822,11 @@ mod tests {
             .any(|c| c.member_node_ids.contains(&"p-apple".to_string())
                 && c.member_node_ids.contains(&"o-apple".to_string())));
 
-        // Candidate evaluator flags Person/Org collision as RejectedHomonym and Apple/Apple Inc as ReviewCandidate.
         let cands = evaluate_merge_candidates(&conn, "ws-1").unwrap();
         assert!(cands
             .iter()
             .any(|c| c.decision == MergeDecisionBand::RejectedHomonym));
 
-        // Cross-workspace merge MUST be rejected.
         let cross = execute_audited_entity_merge(
             &mut conn,
             "ws-1",
@@ -872,7 +838,6 @@ mod tests {
         );
         assert!(cross.is_err());
 
-        // Same-workspace audited merge migrates edge `e-mention` to `o-apple`.
         let merged = execute_audited_entity_merge(
             &mut conn,
             "ws-1",
@@ -893,12 +858,10 @@ mod tests {
             .unwrap();
         assert_eq!(target, "o-apple");
 
-        // Cross-workspace rollback must be rejected.
         assert!(
             rollback_entity_merge_in_workspace(&mut conn, "ws-2", &merged.merge_id, true).is_err()
         );
 
-        // Selective rollback in owning workspace restores `e-mention` back to `o-apple-inc` and records do-not-merge.
         let rolled =
             rollback_entity_merge_in_workspace(&mut conn, "ws-1", &merged.merge_id, true).unwrap();
         assert!(rolled.rolled_back_at.is_some());

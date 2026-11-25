@@ -1,5 +1,3 @@
-"""Unit tests for runtime services, process audit, compatibility, KG hooks, and GPU selection."""
-
 from __future__ import annotations
 
 import asyncio
@@ -194,12 +192,10 @@ def test_resolution_compat_governor_registry_local_models_origin(
     assert fast_postprocess("hi", {"postprocess": ["no-such"]}) == "hi"
     cfg = tmp_path / "config.json"
     cfg.write_text("{}", encoding="utf-8")
-    # empty model_type continues
     monkeypatch.setattr(
         "latticeai.core.model_compat._hf_model_dir",
         lambda raw: tmp_path,
     )
-    # don't care about return; just exercise empty model_type
     try:
         _local_model_type("org/m")
     except (OSError, ValueError, TypeError, RuntimeError):
@@ -239,7 +235,6 @@ def test_resolution_compat_governor_registry_local_models_origin(
     from fastapi import HTTPException
 
     configure_trusted_proxies(["not-a-cidr", "10.0.0.0/8"])
-    # exhaust a rate-limit bucket
     for _ in range(3):
         try:
             enforce_rate_limit("rl@x.com", "chat-extra", enabled=True)
@@ -326,7 +321,6 @@ def test_kg_hooks_access_readiness_and_profiles(tmp_path: Path, monkeypatch):
     assert _evidence_resolves(tmp_path, "blocked.txt::missing") is False
     assert _evidence_resolves(tmp_path, "nope.txt::x") is False
 
-    # OSError on evidence read
     monkeypatch.setattr(
         Path, "read_text", lambda self, *a, **k: (_ for _ in ()).throw(OSError("x"))
     )
@@ -334,20 +328,6 @@ def test_kg_hooks_access_readiness_and_profiles(tmp_path: Path, monkeypatch):
 
 
 def test_phase_platform_selects_the_gpu_device_when_mlx_imports(monkeypatch):
-    """The MLX success branch, executed on every platform.
-
-    ``phase_platform``'s two success lines run only where ``import mlx.core``
-    resolves — Apple silicon. On Linux the phase always took the ``except``
-    branch, which made those two lines the whole distance between 99.98% and
-    100% on a CI leg, on a machine property rather than on anything the code
-    does. A fake ``mlx.core`` installed into ``sys.modules`` *before* the
-    function-local import runs makes the branch reachable anywhere.
-
-    The assertions are the point, not the coverage: the phase must call the
-    module's own ``set_default_device`` with the module's own ``gpu``, and
-    publish that module as ``ctx.mx``. A monkeypatch with nothing asserted
-    behind it would light up the lines while proving nothing.
-    """
     from latticeai.runtime.build_phases.foundation import phase_platform
     from latticeai.runtime.runtime_context import RuntimeContext
 

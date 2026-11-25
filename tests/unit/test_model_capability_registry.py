@@ -1,5 +1,3 @@
-"""Tests for the structured model capability registry + verification artifacts."""
-
 from __future__ import annotations
 
 import json
@@ -27,28 +25,24 @@ from latticeai.services.model_catalog import (
 
 
 def _recommended():
-    """Current-generation slice, derived from the lifecycle field."""
     return [c for c in get_all_capabilities() if c.lifecycle == RECOMMENDED]
 
 
 def test_registry_has_core_models_and_verification():
     ids = {c.id for c in _recommended()}
-    # one entry per RAM tier, newest generation only
-    assert "mlx-community/LFM2.5-2.6B-4bit" in ids  # ultralight, text
-    assert "mlx-community/gemma-4-e2b-it-4bit" in ids  # ultralight, vision
-    assert "mlx-community/gemma-4-e4b-it-4bit" in ids  # light
-    assert "mlx-community/gemma-4-12B-it-4bit" in ids  # mid — note the capital B
-    assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids  # mid, vision
-    assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids  # general purpose
-    assert "mlx-community/gemma-4-26B-A4B-it-qat-4bit" in ids  # MoE QAT 4-bit
-    assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids  # MoE
-    assert (
-        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit" in ids
-    )  # MoE QAT OptiQ 4-bit
-    assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids  # MoE
-    assert "mlx-community/Qwen3.8-27B-4bit" in ids  # large dense 3.8
-    assert "mlx-community/Qwen3.6-27B-4bit" in ids  # large dense 3.6
-    assert "mlx-community/gemma-4-31b-it-4bit" in ids  # large
+    assert "mlx-community/LFM2.5-2.6B-4bit" in ids
+    assert "mlx-community/gemma-4-e2b-it-4bit" in ids
+    assert "mlx-community/gemma-4-e4b-it-4bit" in ids
+    assert "mlx-community/gemma-4-12B-it-4bit" in ids
+    assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids
+    assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids
+    assert "mlx-community/gemma-4-26B-A4B-it-qat-4bit" in ids
+    assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids
+    assert "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit" in ids
+    assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids
+    assert "mlx-community/Qwen3.8-27B-4bit" in ids
+    assert "mlx-community/Qwen3.6-27B-4bit" in ids
+    assert "mlx-community/gemma-4-31b-it-4bit" in ids
 
     verified = get_verified_models()
     assert len(verified) == len(ids)
@@ -63,22 +57,18 @@ def test_legacy_catalog_shape_preserved_and_enriched():
     mlx = ENGINE_MODEL_CATALOG["local_mlx"]
     assert len(mlx) >= 10
     m0 = mlx[0]
-    # legacy keys
     for key in ("id", "name", "family", "size", "modality", "pullable"):
         assert key in m0
-    # 5.2 rich keys
     assert "hf_repo_id" in m0
     assert "verification" in m0
     assert "hardware" in m0
     assert m0["verification"]["hf_exists"] is True
-    # family filter still works and keeps newest-ish
     filtered = filter_lower_family_versions(mlx)
     assert len(filtered) <= len(mlx)
     assert len(filtered) >= 6
 
 
 def test_verification_report_exists_and_valid():
-    # The script writes this; existence + parse proves the automation path
     report = Path(__file__).resolve().parents[2] / "verification_report.json"
     if not report.exists():
         pytest.skip("verification_report.json not present (run the script first in CI)")
@@ -88,10 +78,8 @@ def test_verification_report_exists_and_valid():
     assert summary["total"] in {len(get_all_capabilities()), len(chat_caps)}
     assert summary["hf_present"] == summary["total"]
     assert summary["recommended_failing"] == []
-    # The protocol is the point: metadata only, on the user's machine.
     assert summary["weights_downloaded"] == 0
     assert summary["models_loaded"] == 0
-    # The verdict must ship with its own criteria and its own limits.
     assert data["verdict_criteria"]["supported_mlx_architectures"]
     assert any("no model was loaded" in line for line in data["limitations"])
     assert all(r["verdict"] == "loadable_static" for r in data["results"])
@@ -167,10 +155,8 @@ def test_registry_only_models_do_not_enter_user_facing_catalog():
     verified_ids = {m["id"] for m in catalog_get_verified()}
 
     for cap in get_legacy_capabilities():
-        # Known well enough to name — the Hub check passed for all of them …
         assert get_capability(cap.id) is cap
         assert cap.verification.hf_exists is True
-        # … and still absent from everything a user can click.
         assert cap.id not in verified_ids
         assert cap.id.lower() not in all_catalog_ids
 

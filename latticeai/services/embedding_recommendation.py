@@ -1,10 +1,3 @@
-"""Embedding model capability registry and PC-tailored hardware recommendations.
-
-Dedicated module to keep `model_capability_registry.py` under the 1000-line cap
-while providing first-class Google EmbeddingGemma 2 / 300M recommendation logic,
-unauthenticated public mirror resolution, and quantized GGUF/MLX/ONNX fallbacks.
-"""
-
 from __future__ import annotations
 
 import os
@@ -61,7 +54,6 @@ def _canonical_embedding_repo(repo_id: str) -> Optional[str]:
 
 
 def has_hf_auth_token(env: Optional[Mapping[str, str]] = None) -> bool:
-    """Return True when an explicit Hugging Face authentication token is configured."""
     source = env if env is not None else os.environ
     for key in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN"):
         value = str(source.get(key) or "").strip()
@@ -71,7 +63,6 @@ def has_hf_auth_token(env: Optional[Mapping[str, str]] = None) -> bool:
 
 
 def resolve_hf_endpoint(env: Optional[Mapping[str, str]] = None) -> str:
-    """Resolve the active Hugging Face Hub endpoint or custom mirror URL."""
     source = env if env is not None else os.environ
     for key in ("HF_ENDPOINT", "HUGGINGFACE_HUB_ENDPOINT", "LATTICEAI_HF_MIRROR"):
         raw = str(source.get(key) or "").strip().rstrip("/")
@@ -88,7 +79,6 @@ PUBLIC_GGUF_MIRRORS: Dict[str, List[str]] = {
 
 
 def get_public_mirror_repos(repo_id: str, provider: str = "local_mlx") -> List[str]:
-    """Return ordered unauthenticated public mirror / quantized repos for an embedding or GGUF model."""
     norm_repo = str(repo_id or "").strip().lower()
     if norm_repo in PUBLIC_GGUF_MIRRORS:
         return list(PUBLIC_GGUF_MIRRORS[norm_repo])
@@ -113,7 +103,6 @@ def select_public_fallback_repo(
     *,
     prefer_8bit: bool = False,
 ) -> Optional[str]:
-    """Select the primary public unauthenticated fallback repo for a gated embedding model."""
     canonical = _canonical_embedding_repo(repo_id)
     if canonical is None:
         return None
@@ -135,7 +124,6 @@ def build_gated_fallback_metadata(
     provider: str = "local_mlx",
     env: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Build structured mirror/fallback metadata for gated HF embedding models."""
     canonical = _canonical_embedding_repo(repo_id) or "google/embeddinggemma-2"
     dists = dict(QUANTIZED_DISTRIBUTIONS[canonical])
     mirrors = get_public_mirror_repos(canonical, provider=provider)
@@ -180,7 +168,6 @@ def build_embedding_capabilities(
     hardware_profile_cls: type,
     verification_status_cls: type,
 ) -> List[Any]:
-    """Construct ModelCapability instances for EmbeddingGemma 2 / 300M."""
     return [
         model_capability_cls(
             id="google/embeddinggemma-2",
@@ -355,7 +342,6 @@ def recommend_embedding_for_hardware(
     get_capability_fn: Optional[Callable[[str], Any]] = None,
     env: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Return a PC-tailored embedding model recommendation accounting for RAM & accelerator."""
     effective_ram = 16.0 if ram_gb is None or ram_gb <= 0 else float(ram_gb)
     cap = get_capability_fn("google/embeddinggemma-2") if get_capability_fn else None
     mlx_cap = (
@@ -484,7 +470,6 @@ def recommend_embedding_for_hardware(
 
 
 def is_embedding_model_id(model_id: str) -> bool:
-    """Return True when ``model_id`` identifies an embedding model rather than a chat LLM."""
     lower = (model_id or "").strip().lower()
     if not lower:
         return False
@@ -510,7 +495,6 @@ def activate_downloaded_embedding_model(
     dim: int = 768,
     data_dir: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Persist the semantic embedding contract and enqueue fallback upgrade vector_jobs."""
     import json
     import sqlite3
     from datetime import datetime, timezone

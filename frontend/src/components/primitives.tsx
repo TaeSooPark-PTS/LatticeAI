@@ -113,14 +113,11 @@ function hideInBasic(key: string) {
 
 const RECORD_SUMMARY_KEYS = ["status", "state", "name", "title", "label", "summary", "version", "ready"];
 
-/** The one field of a nested object worth showing in a single-line preview. */
 function recordSummary(value: Record<string, unknown>) {
   for (const key of RECORD_SUMMARY_KEYS) {
     const candidate = value[key];
     if (candidate === null || candidate === undefined || candidate === "") continue;
     if (typeof candidate === "object") continue;
-    // scalarText never returns an empty string (absent values become "-"), so
-    // only the "-" placeholder needs skipping.
     const text = scalarText(candidate);
     if (text !== "-") return text.length > 96 ? shortId(text, 96) : text;
   }
@@ -168,10 +165,6 @@ export function ValuePreview({ value }: { value: unknown }) {
   if (isRecord(value)) {
     const keys = Object.keys(value);
     if (!keys.length) return <span className="text-muted-foreground">{t(language, "ui.value.noFields")}</span>;
-    // Listing the field NAMES rendered "Runtime → Ready, Version, Execution
-    // Mode, Mode +4", which reads like the value when it is really the schema.
-    // Summarise with a value a person can act on, and otherwise just say how
-    // much is in there.
     const summary = recordSummary(value);
     if (summary) return <span className="break-words">{summary}</span>;
     return <span className="text-muted-foreground">{t(language, "ui.value.fields", { count: fmtNumber(keys.length) })}</span>;
@@ -295,26 +288,15 @@ export function OperationResult({
   );
 }
 
-/**
- * Graph node types arrive as backend class names ("Chunk", "AIResponse"). Those
- * are schema words, so translate the ones we know and titleize the rest.
- */
-/**
- * Backend payload keys are schema words. The server-health panel printed
- * "Status / Version / Mode / Platform / Current Model" in English to a Korean
- * reader; translate the ones we know and titleize the rest.
- */
 function fieldLabel(key: string, language: Language) {
   const token = `ui.field.${key.toLowerCase()}`;
   const label = t(language, token);
   return label === token ? titleize(key) : label;
 }
 
-/** A model coordinate is never the right thing to show as a value. */
 function fieldValue(key: string, value: unknown) {
   if (!/model/i.test(key)) return value;
   if (typeof value === "string" && value.includes("/")) return humanizeModelId(value);
-  // "loaded_models" is a list of the same coordinates.
   if (Array.isArray(value)) {
     return value.map((item) => (typeof item === "string" && item.includes("/") ? humanizeModelId(item) : item));
   }
@@ -323,7 +305,6 @@ function fieldValue(key: string, value: unknown) {
 
 function entityTypeLabel(value: unknown, language: Language) {
   const raw = scalarText(value);
-  // Backends spell the same state as "Indexed", "indexed", or "INDEXED".
   const canonical = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
   for (const candidate of [raw, canonical]) {
     const key = `ui.entity.${candidate}`;
@@ -333,11 +314,8 @@ function entityTypeLabel(value: unknown, language: Language) {
   return humanText(raw);
 }
 
-/** Row copy from the i18n table when this list has a known set of ids. */
 function localized(prefix: string | undefined, item: Record<string, unknown>, suffix: string, language: Language) {
   if (!prefix) return "";
-  // Registry ids are namespaced ("agent:researcher"); `type` carries the bare
-  // role. Try both, most specific first.
   const candidates = [item.type, item.id, item.name]
     .map((value) => String(value || "").toLowerCase().split(":").pop() || "")
     .filter(Boolean);
@@ -357,10 +335,6 @@ function rowTitle(item: Record<string, unknown>, titleKey: string, index: number
   return `#${index + 1}`;
 }
 
-/**
- * Many payloads repeat the title as the summary. Printing both looked like the
- * list had rendered twice, so only show a detail that adds something.
- */
 function rowDetail(item: Record<string, unknown>, titleKey: string, index: number, mode: string) {
   const title = rowTitle(item, titleKey, index, mode);
   for (const candidate of [item.summary, item.description, item.path]) {
@@ -381,12 +355,6 @@ export function EntityList({
   titleKey?: string;
   metaKey?: string;
   limit?: number;
-  /**
-   * When the rows are a known, fixed set (agent roles, for instance), the
-   * backend ships English names. Give the i18n prefix and each row is looked up
-   * as `${labelPrefix}.${id}` and `${labelPrefix}.${id}.detail`, falling back to
-   * whatever the server sent.
-   */
   labelPrefix?: string;
 }) {
   const mode = useAppStore((state) => state.mode);
@@ -398,16 +366,11 @@ export function EntityList({
       {rows.map((item, index) => {
         const labelledTitle = localized(labelPrefix, item, "", language);
         const title = labelledTitle || rowTitle(item, titleKey, index, mode);
-        // A labelled row is already named by its role, so its type badge would
-        // only repeat it in the other language.
         const badge = labelledTitle ? "" : entityTypeLabel(item[metaKey] || item.status || item.state || "ready", language);
         return (
         <div key={String(item.id || item.name || index)} className="entity-list-row rounded-lg border border-border bg-background/55 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-medium">{title}</div>
-            {/* A type badge is a label for a person in every mode, not only in
-                basic — "Task" told an advanced user nothing extra. It is also
-                dropped when it merely repeats the title. */}
             {badge && badge.toLowerCase() !== title.toLowerCase()
               ? <Badge variant="muted">{badge}</Badge>
               : null}
@@ -502,7 +465,6 @@ export function ActionButton({
   );
 }
 
-/** Exported for tests: focus a tab button that may already have unmounted. */
 export function focusTabButton(button: HTMLButtonElement | null | undefined) {
   button?.focus();
 }
@@ -528,10 +490,6 @@ export function Tabs({
     onChange(tabs[nextIndex]!.id);
   };
 
-  // A roving tabindex hands focus to the selected tab, but a tablist that holds
-  // no selected tab — one group of a grouped switcher, say — would then have
-  // every button at -1 and drop out of the Tab order entirely. Fall back to the
-  // first tab so every tablist stays reachable from the keyboard.
   const selectedIndex = tabs.findIndex((tab) => tab.id === value);
   const focusableIndex = selectedIndex >= 0 ? selectedIndex : 0;
 

@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// Retention policy for output/release/: keep the newest N versioned evidence
-// directories (default 3, override with LTCAI_RELEASE_EVIDENCE_KEEP or argv).
-// Older captures are reproducible on demand via `npm run release:evidence`,
-// so keeping the full history only burns disk (13 versions ≈ 90MB).
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 

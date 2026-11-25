@@ -142,11 +142,6 @@ export const shellCopy: NamespaceCopy = {
     "ui.field.gpu_mem_pct": "GPU 메모리 사용률",
     "ui.field.gpu_mem_gb": "GPU 메모리",
     "ui.field.features": "기능 설정",
-    // `lattice_brain/graph/retrieval_reads.py` reports exactly two document
-    // states: "indexed" once the text has been broken up and is searchable,
-    // "ingested" while the file is stored but not yet searchable. Only the
-    // first had a translation, so an uploaded file sat in a Korean list
-    // wearing an English "Ingested" badge.
     "ui.entity.Indexed": "정리 완료",
     "ui.entity.Ingested": "정리 중",
     "ui.entity.Ready": "준비됨",
@@ -523,6 +518,4 @@ export const shellCopy: NamespaceCopy = {
   },
 };
 
-// Eager: the app frame, language switcher, and generic `ui.*` outcomes
-// render before any route resolves, so this namespace ships in the entry chunk.
 registerCopy(shellCopy);

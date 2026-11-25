@@ -1,5 +1,3 @@
-"""Coverage for remaining lattice_brain compute helpers."""
-
 from __future__ import annotations
 
 from pathlib import Path

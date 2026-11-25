@@ -214,8 +214,6 @@ function backupHealthLabel(data: unknown, language: Language) {
 
 function CareResultSummary({ result, language }: { result: ApiResult; language: Language }) {
   if (!result.ok) {
-    // Friendly localized message first; the raw backend detail is demoted to
-    // secondary text below it.
     return (
       <div className="brain-care-result-summary">
         <strong>{t(language, "care.result.error")}</strong>

@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ListFilter, RotateCcw, Search, ShieldCheck } from "lucide-react";
@@ -62,11 +60,6 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
           {t(language, "admin.summaryStatement", {
             users: users.length,
             logs: auditEvents.length + securityEvents.length,
-            // `.ok` is only "the request succeeded". A server answering 200
-            // with `status: "degraded"` was being summarised as 준비됨, which
-            // shows an admin a green light over a degraded service. Prefer the
-            // status the server actually reports and fall back to the
-            // request-level outcome only when it reports none.
             security:
               adminStatusLabel(securityQ.data?.data, "status") ||
               (securityQ.data?.ok ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable")),
@@ -319,10 +312,6 @@ function renderLogRow(event: ApiRecord, language: "ko" | "en") {
   );
 }
 
-// `sourceLabel` lived here unused: the rebuilt console reports each service by
-// the status the service itself returns, not by where the answer came from, so
-// there is no longer a "live / loading / unavailable" line to label. Deleted
-// rather than left dormant — dead code reads as a wiring mistake.
 
 function adminStatusLabel(data: unknown, key: string) {
   const record = isRecord(data) ? data : {};

@@ -1,18 +1,3 @@
-"""The AI-Worker seam: what the Rust loop is allowed to make Python do.
-
-Once orchestration moves to ``lattice-agent``, these three routes are the only
-way the loop reaches the model, the tool handlers, and the change governor. So
-the interesting assertions are not "does it return 200" — they are the denials.
-
-The guards are therefore driven through the **real**
-``latticeai.core.permission_mode.is_circuit_breaker`` and
-``latticeai.core.tool_governor.classify_tool_call``, over the **real** tool
-registry's policies. Only the things a unit test must not actually do are
-faked: generating with a model, executing a tool handler, and staging a
-proposal on disk. A test that faked the classifier could pass while the seam
-let ``rm -rf /`` through.
-"""
-
 from __future__ import annotations
 
 import os
@@ -37,12 +22,7 @@ from latticeai.tools import ToolError
 USER = "worker@local"
 
 
-# ── fakes: only the three things a unit test must not really do ─────────────
-
-
 class FakeRouter:
-    """Stands in for ``LLMRouter``; records the call, answers with a marker."""
-
     def __init__(self, text: str = "generated") -> None:
         self.text = text
         self.calls: list = []
@@ -75,16 +55,6 @@ class FakeRouter:
 
 
 class FakeDispatch:
-    """The real registry's policies, with the two injectable seams controlled.
-
-    ``policy_for`` delegates to the shipped service unless a test needs a
-    policy the registry does not contain (nothing in the registry is marked
-    ``destructive``, so the destructive-policy denial has no other way to be
-    exercised). ``_governed_path_exists`` is the probe the classifier asks
-    "does the target already exist?" — answering it from a fixture keeps the
-    test off the developer's real agent workspace.
-    """
-
     def __init__(
         self,
         *,
@@ -116,8 +86,6 @@ class FakeDispatch:
 
 
 class ProbelessDispatch:
-    """A dispatch port that never learned the existence probe."""
-
     def __init__(self) -> None:
         self.role_calls: list = []
 
@@ -129,8 +97,6 @@ class ProbelessDispatch:
 
 
 class FakeHooks:
-    """Records the ``pre_tool``/``post_tool`` lifecycle; can block like a hook."""
-
     def __init__(self, *, block: str = "") -> None:
         self.block = block
         self.fired: list = []
@@ -151,9 +117,6 @@ class RecordingLimiter:
         self.calls.append((email, bucket))
         if self.boom:
             raise HTTPException(status_code=429, detail="too many")
-
-
-# ── wiring ──────────────────────────────────────────────────────────────────
 
 
 def _client(
@@ -196,15 +159,7 @@ def seam_off(monkeypatch):
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
 
 
-# ── POST /agent/llm ─────────────────────────────────────────────────────────
-
-
 def test_llm_generates_once_and_returns_only_the_text(seam_off):
-    """No history, no context assembly — the whole answer is the completion.
-
-    ``seam_off`` on purpose: a completion has nothing to gate, so the LLM route
-    answers whether or not the host opened the tool seam.
-    """
     router = FakeRouter("hello from the model")
     response = _client(model_router=router).post(
         "/agent/llm",
@@ -227,21 +182,12 @@ def test_llm_generates_once_and_returns_only_the_text(seam_off):
             "temperature": 0.7,
             "stop": None,
             "prefix": None,
-            # The seam's ``context`` is the caller's whole prompt, never a corpus,
-            # so the citation mandate is never appended to it (v12.0.0). Small
-            # models obey it and answer tool calls with ``[1] …``.
             "cite_sources": False,
         }
     ]
 
 
 def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
-    """v12.0.0: the cheapest structural guarantee the seam offers.
-
-    A model whose reply is *forced* to begin ``{"thoughts": "`` cannot open
-    with a markdown fence, a ``<|channel|>`` frame or a paragraph of
-    enthusiasm — which is most of what the repair chain exists to undo.
-    """
     router = FakeRouter()
     client = _client(model_router=router)
 
@@ -251,7 +197,6 @@ def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
 
     assert client.post("/agent/llm", json={"message": "m"}).status_code == 200
     assert router.calls[-1]["prefix"] is None
-    # An empty string is not a prefix, the same rule ``stop`` follows.
     assert (
         client.post("/agent/llm", json={"message": "m", "prefix": ""}).status_code
         == 200
@@ -260,8 +205,6 @@ def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
 
 
 def test_a_prefix_longer_than_the_ceiling_is_a_422(seam_off):
-    """It is prepended to the prompt, so an unbounded prefix is an unbounded
-    prompt on the single MLX executor."""
     client = _client()
     body = {"message": "m", "prefix": "x" * (MAX_PREFIX_CHARS + 1)}
     assert client.post("/agent/llm", json=body).status_code == 422
@@ -270,13 +213,6 @@ def test_a_prefix_longer_than_the_ceiling_is_a_422(seam_off):
 
 
 def test_llm_forwards_stop_strings_and_an_omitted_list_is_no_stop(seam_off):
-    """v11.9.0: the kernel may end a completion at a string it names.
-
-    Two things are asserted together on purpose. The list reaches the router
-    verbatim — a stop string the caller cannot rely on is worse than none — and
-    an omitted or empty list arrives as ``None`` rather than ``[]``, because
-    ``[]`` down in the router would read as "a stop list was requested".
-    """
     router = FakeRouter()
     client = _client(model_router=router)
     assert (
@@ -292,13 +228,11 @@ def test_llm_forwards_stop_strings_and_an_omitted_list_is_no_stop(seam_off):
     )
     assert router.calls[1]["stop"] is None
 
-    # Bounded: a caller cannot make the sampler check a thousand needles.
     over = client.post("/agent/llm", json={"message": "go", "stop": ["x"] * 99})
     assert over.status_code == 422
 
 
 def test_llm_defaults_match_generate_as_own_defaults():
-    """An omitted model means the router's current one; the rest is 4096/0.2."""
     router = FakeRouter()
     response = _client(model_router=router).post("/agent/llm", json={"message": "go"})
     assert response.status_code == 200
@@ -317,7 +251,6 @@ def test_an_empty_model_id_is_the_same_as_no_model_id():
 
 
 def test_no_model_loaded_is_returned_as_text_not_dressed_up_as_an_error():
-    """``generate_as`` answers ``"No model."``; the loop records it and replans."""
     response = _client(model_router=FakeRouter("No model.")).post(
         "/agent/llm", json={"message": "go"}
     )
@@ -375,7 +308,6 @@ def test_llm_requires_an_authenticated_user():
 
 
 def test_llm_is_charged_against_the_per_step_bucket_not_the_per_run_one():
-    """``/agent``'s bucket refills once per 10s; a run makes a dozen of these."""
     limiter = RecordingLimiter()
     _client(limiter=limiter).post("/agent/llm", json={"message": "go"})
     assert limiter.calls == [(USER, SEAM_RATE_BUCKET)]
@@ -387,9 +319,6 @@ def test_a_rate_limited_worker_gets_the_limiters_own_answer():
         "/agent/llm", json={"message": "go"}
     )
     assert response.status_code == 429
-
-
-# ── the seam gate ───────────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
@@ -407,7 +336,6 @@ def test_the_side_effecting_routes_are_404_until_the_host_opens_the_seam(
 
 
 def test_the_gate_is_read_per_request_so_it_follows_the_environment(monkeypatch):
-    """Not captured at import: the same client answers differently once set."""
     client = _client()
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
     body = {"tool": "read_file", "args": {"path": "a.md"}}
@@ -424,7 +352,6 @@ def test_only_the_exact_value_one_opens_the_seam(monkeypatch, value):
 
 
 def test_a_closed_seam_answers_before_authentication_is_even_consulted(seam_off):
-    """The route family is closed, not merely unauthorized."""
     limiter = RecordingLimiter()
     response = _client(user=None, limiter=limiter).post(
         "/agent/tool", json={"tool": "read_file"}
@@ -433,15 +360,7 @@ def test_a_closed_seam_answers_before_authentication_is_even_consulted(seam_off)
     assert limiter.calls == []
 
 
-# ── POST /agent/tool: the mode-invariant denials ────────────────────────────
-
-
 def test_a_destructive_shell_command_is_refused_in_every_mode(seam_on):
-    """Driven through the real ``is_circuit_breaker`` over the real policy.
-
-    ``run_command``'s registry policy is a plain ``exec`` — nothing about the
-    tool is destructive. The refusal comes from the argument.
-    """
     dispatch = FakeDispatch()
     executed: list = []
     response = _client(
@@ -458,13 +377,10 @@ def test_a_destructive_shell_command_is_refused_in_every_mode(seam_on):
     assert response.status_code == 403
     assert "destructive shell command" in response.json()["detail"]
     assert executed == []
-    # The denial is decided before the user table is read: it is the same
-    # answer for every role.
     assert dispatch.role_calls == []
 
 
 def test_a_destructive_policy_is_refused_in_every_mode(seam_on):
-    """No registry tool is marked destructive, so the policy is supplied."""
     destructive = dict(DEFAULT_TOOL_DISPATCH_SERVICE.policy_for("write_file", {}))
     destructive["destructive"] = True
     response = _client(dispatch=FakeDispatch(policy=destructive)).post(
@@ -484,7 +400,6 @@ def test_a_home_wipe_path_is_refused_in_every_mode(seam_on):
 
 
 def test_a_deletion_cannot_be_staged_so_it_is_fail_closed(seam_on):
-    """Real ``classify_tool_call``: destructive change, no proposal support."""
     response = _client().post(
         "/agent/tool",
         json={"tool": "delete_file", "args": {"path": "notes.md"}},
@@ -497,14 +412,12 @@ def test_a_deletion_cannot_be_staged_so_it_is_fail_closed(seam_on):
 
 
 def test_overwriting_a_binary_document_is_fail_closed(seam_on):
-    """A document creator aimed at a file that exists cannot be diffed."""
     dispatch = FakeDispatch(exists=True)
     response = _client(dispatch=dispatch).post(
         "/agent/tool",
         json={"tool": "create_docx", "args": {"filename": "report.docx"}},
     )
     assert response.status_code == 409
-    # The classifier asked the *dispatch service's* probe, not a second one.
     assert dispatch.probe_calls == [("create_docx", "report.docx")]
 
 
@@ -519,7 +432,6 @@ def test_creating_a_new_document_is_additive_and_runs(seam_on):
 
 
 def test_a_dispatch_port_without_the_probe_classifies_as_additive(seam_on):
-    """ "We could not look" means "it is not there" to this classifier."""
     response = _client(dispatch=ProbelessDispatch()).post(
         "/agent/tool",
         json={"tool": "create_docx", "args": {"filename": "report.docx"}},
@@ -528,7 +440,6 @@ def test_a_dispatch_port_without_the_probe_classifies_as_additive(seam_on):
 
 
 def test_an_overwrite_of_a_text_file_is_allowed_because_it_can_be_staged(seam_on):
-    """``write_file`` is proposal-capable, so an existing target is not 409."""
     response = _client(dispatch=FakeDispatch(exists=True)).post(
         "/agent/tool",
         json={"tool": "write_file", "args": {"path": "notes.md", "content": "x"}},
@@ -536,11 +447,7 @@ def test_an_overwrite_of_a_text_file_is_allowed_because_it_can_be_staged(seam_on
     assert response.status_code == 200
 
 
-# ── POST /agent/tool: role, execution, and the transcript-ready error ───────
-
-
 def test_a_role_denial_from_the_shipped_service_stays_a_403(seam_on):
-    """``ToolDispatchService.check_role`` raises ``HTTPException`` itself."""
     denial = HTTPException(status_code=403, detail="admin only")
     response = _client(dispatch=FakeDispatch(role_error=denial)).post(
         "/agent/tool", json={"tool": "read_file", "args": {"path": "a.md"}}
@@ -574,7 +481,6 @@ def test_a_successful_tool_call_returns_the_handlers_result_verbatim(seam_on):
 
 
 def test_the_call_fires_the_shared_hook_lifecycle_as_an_agent(seam_on):
-    """Same ``pre_tool`` → execute → ``post_tool`` path the Python loop uses."""
     hooks = FakeHooks()
     _client(hooks=hooks).post(
         "/agent/tool",
@@ -600,7 +506,6 @@ def every_source_is_agent(hooks: FakeHooks) -> bool:
     ],
 )
 def test_a_tool_failure_is_the_steps_outcome_not_the_requests(seam_on, exc):
-    """The loop records errors as steps; an HTTP 5xx would look retryable."""
 
     def boom(_name, _args):
         raise exc
@@ -613,7 +518,6 @@ def test_a_tool_failure_is_the_steps_outcome_not_the_requests(seam_on, exc):
 
 
 def test_a_blocking_pre_tool_hook_is_reported_as_a_step_error(seam_on):
-    """Real ``dispatch_tool``: a blocking hook raises ``PermissionError``."""
     executed: list = []
     response = _client(
         hooks=FakeHooks(block="a hook said no"),
@@ -647,9 +551,6 @@ def test_args_default_to_an_empty_object(seam_on):
     assert seen == [{}]
 
 
-# ── the seam writes nothing it was not asked to ─────────────────────────────
-
-
 def test_the_router_registers_exactly_the_two_seam_paths():
     app = FastAPI()
     app.include_router(
@@ -662,10 +563,6 @@ def test_the_router_registers_exactly_the_two_seam_paths():
             enforce_rate_limit=RecordingLimiter(),
         )
     )
-    # fastapi >= 0.140 wraps an included router in an opaque entry that
-    # neither carries a flat ``route.path`` nor exposes ``.routes`` (the
-    # 11.0.0 idempotence-guard lesson). The OpenAPI schema is the one
-    # route inventory every supported fastapi version agrees on.
     paths = set(app.openapi()["paths"])
     assert {"/agent/llm", "/agent/tool"} <= paths
     assert not {path for path in paths if path.startswith("/agent/")} - {
@@ -675,6 +572,5 @@ def test_the_router_registers_exactly_the_two_seam_paths():
 
 
 def test_the_seam_variable_is_not_left_set_by_this_module():
-    """Guards the fixtures themselves: a leaked ``=1`` would hide the gate."""
     assert SEAM_ENV_VAR == "LATTICEAI_AGENT_TOOL_SEAM"
     assert os.environ.get(SEAM_ENV_VAR) in (None, "1", "0", "true", "yes", "")

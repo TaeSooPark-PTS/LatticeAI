@@ -1,16 +1,3 @@
-//! The write door: `_upsert_node`, `_upsert_edge`, `_upsert_chunk`,
-//! `_upsert_vector_item`, and the v2 projection they master through.
-//!
-//! Port of `lattice_brain/graph/write_master.py` plus
-//! `lattice_brain/graph/projection/v2_schema.py`'s per-row half. Every other
-//! op in this module tree goes through these four functions, which is the same
-//! shape the Python store has and for the same reason: there is exactly one
-//! place that decides what a node, an edge, a chunk and a vector row look like.
-//!
-//! Order matters and is Python's: `nodes_v2` is written **first** (strictly —
-//! a projection failure aborts the write rather than leaving the legacy table
-//! ahead of it), then the legacy `nodes`/`edges` row, then the vector row.
-
 use rusqlite::Transaction;
 use serde_json::{Map, Value};
 
@@ -27,11 +14,6 @@ pub(crate) use super::projection_v2::{
 };
 
 impl GraphWriter {
-    /// `_upsert_node` — v2 first (strict), then legacy, then the vector row.
-    ///
-    /// The default door embeds with the native hash model, which is what the
-    /// parity goldens cover. Call [`Self::upsert_node_with_vector`] to file a
-    /// vector `/worker/embed` already produced.
     pub(crate) fn upsert_node(
         &self,
         txn: &Transaction<'_>,
@@ -40,7 +22,6 @@ impl GraphWriter {
         self.upsert_node_with_vector(txn, spec, None)
     }
 
-    /// [`Self::upsert_node`], filing `supplied` instead of hashing inline.
     pub(crate) fn upsert_node_with_vector(
         &self,
         txn: &Transaction<'_>,
@@ -119,8 +100,6 @@ impl GraphWriter {
         Ok(spec.id.clone())
     }
 
-    /// `_upsert_edge` — the v4 write door: every new edge stores the canonical
-    /// `EdgeType`, and the label it came from survives in `metadata.legacy_label`.
     pub(crate) fn upsert_edge(
         &self,
         txn: &Transaction<'_>,
@@ -155,8 +134,6 @@ impl GraphWriter {
         );
         let now = self.clock.now_iso();
         let meta_json = json_of(&metadata);
-        // The normal write door dedupes even for synonym labels (legacy_type='');
-        // only an explicit `legacy_label` forces a distinct v2 row.
         let v2_legacy = if !passed_for_legacy.is_empty() && passed_for_legacy != edge_type {
             match spec.legacy_label {
                 Some(_) => passed_for_legacy.clone(),
@@ -208,7 +185,6 @@ impl GraphWriter {
         Ok(edge_id)
     }
 
-    /// `_upsert_chunk` — the retrieval chunk row plus its vector.
     pub(crate) fn upsert_chunk(
         &self,
         txn: &Transaction<'_>,
@@ -220,7 +196,6 @@ impl GraphWriter {
         self.upsert_chunk_with_vector(txn, chunk_id, source_node, text, metadata, None)
     }
 
-    /// [`Self::upsert_chunk`], filing `supplied` instead of hashing inline.
     pub(crate) fn upsert_chunk_with_vector(
         &self,
         txn: &Transaction<'_>,
@@ -246,8 +221,6 @@ impl GraphWriter {
             "parent_source_node".into(),
             Value::String(source_node.to_string()),
         );
-        // `source_node=chunk_id` is Python's, not a typo: a chunk's vector row
-        // points at the Chunk node, which is what the retrieval side joins on.
         self.upsert_vector_item_with(
             txn,
             &VectorItem {
@@ -262,14 +235,6 @@ impl GraphWriter {
         Ok(())
     }
 
-    /// `_upsert_vector_item` — `true` when a vector was actually (re)written.
-    ///
-    /// Text shorter than two characters deletes the row instead of embedding
-    /// noise, and an unchanged `(text_hash, dim, model)` is skipped: that skip
-    /// is what makes an incremental rebuild cheap, and it is also why swapping
-    /// the embedder re-embeds everything. Empty `supplied` values fall through
-    /// to the native hash model so a caller that asked for the door with
-    /// nothing in hand still writes a row.
     pub(crate) fn upsert_vector_item_with(
         &self,
         txn: &Transaction<'_>,
@@ -404,7 +369,6 @@ impl GraphWriter {
         Ok(true)
     }
 
-    /// `_node_exists`.
     pub(crate) fn node_exists(
         &self,
         txn: &Transaction<'_>,
@@ -421,8 +385,6 @@ impl GraphWriter {
     }
 }
 
-/// `_vector_text_for_node` — title, summary, and the metadata a search would
-/// legitimately match on, in this fixed key order.
 pub(crate) fn vector_text_for_node(
     title: &str,
     summary: &str,

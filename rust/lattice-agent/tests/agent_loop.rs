@@ -1,16 +1,3 @@
-//! The native loop against the committed Python trajectories.
-//!
-//! Every case here is the *same* run twice: once by `latticeai.core.agent` when
-//! `scripts/generate_agent_loop_fixtures.py` recorded it, and once by
-//! [`lattice_agent::kernel::agentloop::Runtime`] here, driven by the identical scripted
-//! reasoner and the identical tool results through a fake worker. What is
-//! compared is the whole record — final state, state history, transcript,
-//! rollback log, trace counters, the tool calls that were actually dispatched,
-//! and the audit trail — under the four normalisation rules the manifest names.
-//!
-//! Comparison is over canonical JSON rather than `==`, so a `bool` that quietly
-//! became an integer still fails.
-
 mod common;
 
 use common::{
@@ -48,19 +35,8 @@ fn actions() -> BTreeSet<String> {
     file_create_actions()
 }
 
-// ── deterministic helpers ────────────────────────────────────────────────────
-/// The three recorded rows v11.9.0 deliberately answers differently.
-///
-/// Python refused all three; the extended parse chain recovers all three, and
-/// each one is a real 2B failure mode (a trailing sentence, two objects in one
-/// reply, a reply the token limit cut off). What replaces the recorded answer
-/// is not "nothing" — it is a row in `extract_action_details_extended`,
-/// asserted by [`the_extended_parse_rungs_answer_their_recorded_cases`] below.
-/// A fourth key appearing here would be an unplanned behaviour change, which is
-/// why this list is a constant rather than a filter.
 const RECOVERED_PAST_PYTHON: [&str; 3] = ["broken_unclosed", "double_object", "slice_suffix"];
 
-/// Compare one raw reply against one recorded row.
 fn parse_row(case: &Value) -> (Value, Value) {
     let key = case["key"].as_str().expect("key");
     let raw = case["raw"].as_str().expect("raw");
@@ -74,7 +50,6 @@ fn parse_row(case: &Value) -> (Value, Value) {
             "error": loop_normalize(&json!(error.0), "<none>"),
         }),
     };
-    // `why` is prose for the reader of the fixture, not an assertion.
     let expected = Value::Object(
         case.as_object()
             .expect("row")
@@ -114,9 +89,6 @@ fn every_recorded_action_parses_the_way_python_parsed_it() {
 
 #[test]
 fn the_extended_parse_rungs_answer_their_recorded_cases() {
-    // The v11.9.0 rungs — `tag_strip`, `balanced`, `truncated_close` — plus the
-    // three rows they take past what Python could read. Not a parity record:
-    // Python never answered these, and the fixture says so in each row's `why`.
     let helpers = loop_golden("helpers.json");
     let recorded = helpers["extract_action_details_extended"]
         .as_array()
@@ -145,9 +117,6 @@ fn the_extended_parse_rungs_answer_their_recorded_cases() {
 
 #[test]
 fn the_verdict_parser_answers_its_recorded_cases() {
-    // VERIFY-only: the same rungs as extract_action_details, but a critic
-    // object that names `verdict` and forgets `"action": "verdict"` is still
-    // a verdict. Not a parity record.
     let helpers = loop_golden("helpers.json");
     let recorded = helpers["extract_verdict_details"].as_array().expect("rows");
     assert!(recorded.len() >= 4, "the verdict grid must stay wide");
@@ -286,7 +255,6 @@ fn truncation_and_learning_filters_match_their_recorded_answers() {
     );
 }
 
-// ── run store ────────────────────────────────────────────────────────────────
 #[test]
 fn the_run_store_contract_round_trips_the_recorded_contexts() {
     let mut failures = Vec::new();
@@ -312,7 +280,6 @@ fn the_run_store_contract_round_trips_the_recorded_contexts() {
     common::assert_no_failures(recorded.len(), failures, "run store round trips");
 }
 
-// ── the verdict mapping ──────────────────────────────────────────────────────
 #[tokio::test]
 async fn the_verdict_mapping_reaches_the_recorded_states() {
     let dir = scratch("verification");
@@ -324,7 +291,6 @@ async fn the_verdict_mapping_reaches_the_recorded_states() {
     let mut checked = 0usize;
 
     for case in &recorded {
-        // The two named rows drive the critic twice; the grid rows drive it once.
         let script: Vec<String> = match case["verdict"].as_str() {
             Some("never_parses") => vec!["prose".into(), "still prose".into()],
             Some("strict_retry_recovers") => vec![
@@ -379,8 +345,6 @@ async fn the_verdict_mapping_reaches_the_recorded_states() {
     assert!(checked >= 88, "the mapping grid must stay wide");
 }
 
-// ── end-to-end trajectories ──────────────────────────────────────────────────
-/// Replay one recorded trajectory through the native loop.
 async fn replay(case: &Value) -> (Value, Value) {
     let key = case["key"].as_str().expect("key");
     let dir = scratch(key);
@@ -406,9 +370,6 @@ async fn replay(case: &Value) -> (Value, Value) {
         .worker
         .load_tool_calls(&case["tool_calls"].as_array().cloned().unwrap_or_default());
 
-    // Staging is native (§P1c), so the recorded verdict is not injected into a
-    // worker any more: the loop really stages into this scratch store, and only
-    // the id — the one environment-dependent field — is the recorded one.
     let proposals = std::sync::Arc::new(PinnedProposalStore::new(dir.join("data")));
     let recorded_id = case["governor_verdict"]["proposal"]["id"].as_str();
     if let Some(id) = recorded_id {
@@ -463,9 +424,6 @@ async fn replay(case: &Value) -> (Value, Value) {
         "audit": case["audit"],
         "unused_script": case["unused_script"],
     });
-    // The tools the loop actually dispatched, in order, with the arguments it
-    // sent — a run that reached the same state by calling something else would
-    // otherwise pass.
     let dispatched: Vec<Value> = server
         .worker
         .observed_calls()
@@ -484,9 +442,6 @@ async fn replay(case: &Value) -> (Value, Value) {
         canonical(&json!(recorded_calls)),
         "{key}: the dispatched tool calls differ"
     );
-    // The other half of the same question for the proposal path: a trajectory
-    // recorded as `proposed` must have written a real review item here, and one
-    // recorded without a verdict must have written none.
     let staged = proposals.staged();
     let expected_staged =
         usize::from(case["governor_verdict"]["decision"].as_str() == Some("proposed"));
@@ -535,11 +490,6 @@ async fn the_trajectories_between_them_reach_every_terminal_state() {
 
 #[test]
 fn the_document_targets_resolve_to_the_recorded_paths() {
-    // The write-time twin of the governance check: the creators sanitize the
-    // caller's filename into their own output directory, so a "does the target
-    // exist?" test against the raw argument inspects a path nothing writes.
-    // Rust takes the basename with its own `path_name` and has its own
-    // empty-name fallback, which is exactly where the two could drift.
     let helpers = loop_golden("helpers.json");
     let recorded = helpers["document_targets"].as_array().expect("rows");
     let mut failures = Vec::new();
@@ -558,7 +508,6 @@ fn the_document_targets_resolve_to_the_recorded_paths() {
     common::assert_no_failures(recorded.len(), failures, "document targets");
 }
 
-/// One profile row, as the grid records it.
 fn profile_row(case: &Value) -> (Value, Value) {
     let model_id = case["model_id"].as_str();
     let override_name = case["override"].as_str().expect("override");
@@ -588,9 +537,6 @@ fn profile_row(case: &Value) -> (Value, Value) {
 
 #[test]
 fn the_agent_profile_dial_picks_the_recorded_profile() {
-    // Two decisions per row: the parameter count parsed out of the model id
-    // (where a `4bit` quantization suffix must not read as 4 billion), and the
-    // profile that follows from it under an explicit override.
     let helpers = loop_golden("helpers.json");
     let recorded = helpers["agent_profiles"].as_array().expect("rows");
     let mut failures = Vec::new();
@@ -605,12 +551,6 @@ fn the_agent_profile_dial_picks_the_recorded_profile() {
 
 #[test]
 fn the_effective_size_rows_pick_the_profile_their_model_actually_needs() {
-    // v11.9.0's extension: Gemma 4's MatFormer ids name an *effective* size
-    // (`e2b`), and mixture-of-experts ids name active parameters (`a4b`/`A3B`)
-    // beside a real one. Getting either wrong is a live product failure — the
-    // 8GB-tier default was running the standard loop with no direct-path
-    // fallback, and reading `a4b` as a size would put a 26B model on the tiny
-    // model's prompt. Python answered `standard` for every row here.
     let helpers = loop_golden("helpers.json");
     let recorded = helpers["agent_profiles_extended"].as_array().expect("rows");
     assert!(recorded.len() >= 6, "the extension grid must stay wide");

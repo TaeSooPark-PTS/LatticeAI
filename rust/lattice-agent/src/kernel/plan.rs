@@ -1,26 +1,12 @@
-//! `normalize_plan` — the minimal plan schema, enforced before execution.
-//!
-//! Seven rules in a fixed order (`latticeai.core.agent_helpers.normalize_plan`).
-//! Order is the contract, not an implementation detail: manifest rewriting runs
-//! *after* junk-step filtering and *before* the single-file heuristic, so a plan
-//! that was emptied by filtering still reaches the manifest, and a manifest
-//! request never falls through to the one-file fallback.
-//!
-//! Each applied repair is named in `fixes`, verbatim, because the loop trace and
-//! the weak-model harness read those labels.
-
 use serde_json::{json, Map, Value};
 
 use crate::parse::inference::{infer_file_target, infer_project_manifest};
 use crate::parse::pystr::{char_slice, is_truthy, py_str};
 
-/// Plan actions that count as "this plan only writes files".
 const FILE_CREATE_PLAN_ACTIONS: [&str; 2] = ["generate_file", "write_file"];
 
-/// A normalised plan plus the repairs that were needed.
 pub type Normalized = (Map<String, Value>, Vec<String>);
 
-/// `str(path or "")`, then the lowercased suffix from the last `.`.
 fn extension(path: Option<&Value>) -> String {
     let text = match path {
         Some(value) if is_truthy(value) => py_str(value),
@@ -38,7 +24,6 @@ fn step_path(step: &Value) -> Option<&Value> {
         .and_then(|args| args.get("path"))
 }
 
-/// True when a pure file-writing plan fails to cover the manifest's file types.
 fn plan_misses_manifest(steps: &[Value], manifest: &Value) -> bool {
     let all_file_creates = steps.iter().all(|step| {
         step.get("action")
@@ -62,7 +47,6 @@ fn plan_misses_manifest(steps: &[Value], manifest: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// `int(value or 0)` — Python's coercion, including which inputs raise.
 fn python_int(value: Option<&Value>) -> Result<i64, ()> {
     let Some(value) = value.filter(|value| is_truthy(value)) else {
         return Ok(0);
@@ -71,19 +55,16 @@ fn python_int(value: Option<&Value>) -> Result<i64, ()> {
         Value::Bool(_) => Ok(1),
         Value::Number(number) => match number.as_i64() {
             Some(exact) => Ok(exact),
-            // `int(3.7) == 3`: truncation toward zero, not rounding.
             None => number.as_f64().map(|float| float as i64).ok_or(()),
         },
         Value::String(text) => {
             let cleaned: String = text.trim().chars().filter(|c| *c != '_').collect();
             cleaned.parse::<i64>().map_err(|_| ())
         }
-        // `int([1])` / `int({'a': 1})` raise TypeError, which the caller records.
         _ => Err(()),
     }
 }
 
-/// Enforce the minimal plan schema so execution never starts adrift.
 pub fn normalize_plan(plan: &Value, user_message: &str) -> Normalized {
     let mut fixes: Vec<String> = Vec::new();
     let mut normalized = match plan {
@@ -114,14 +95,10 @@ pub fn normalize_plan(plan: &Value, user_message: &str) -> Normalized {
                 .collect()
         })
         .unwrap_or_default();
-    // `if raw_steps and steps != raw_steps` — a truthy non-list also differs.
     if is_truthy(&raw_steps) && Value::Array(steps.clone()) != raw_steps {
         fixes.push("steps_filtered".into());
     }
 
-    // Manifest-aware planning: for a recognised multi-file project the manifest,
-    // not the planner's improvisation, decides the file set — but only when the
-    // plan is empty or is a pure file-writing plan that misses part of it.
     if let Some(manifest) = infer_project_manifest(user_message) {
         let manifest_steps: Vec<Value> = manifest["files"]
             .as_array()
@@ -227,7 +204,6 @@ mod tests {
             assert!(fixes.contains(&"goal_defaulted".to_string()));
             assert_eq!(normalized["goal"], "do the thing");
         }
-        // A non-blank non-string goal is kept exactly as it arrived.
         let (normalized, fixes) = normalize(json!({"goal": 5}), "x");
         assert!(!fixes.contains(&"goal_defaulted".to_string()));
         assert_eq!(normalized["goal"], 5);
@@ -241,10 +217,8 @@ mod tests {
         );
         assert!(fixes.contains(&"steps_filtered".to_string()));
         assert_eq!(normalized["steps"], json!([{"action": "read_file"}]));
-        // A truthy non-list `steps` is also a filtering event.
         let (_, fixes) = normalize(json!({"goal": "g", "steps": "read a file"}), "g");
         assert!(fixes.contains(&"steps_filtered".to_string()));
-        // An empty list is falsy: nothing was filtered, so nothing is claimed.
         let (_, fixes) = normalize(json!({"goal": "g", "steps": []}), "g");
         assert!(!fixes.contains(&"steps_filtered".to_string()));
     }

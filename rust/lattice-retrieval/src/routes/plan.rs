@@ -1,17 +1,3 @@
-//! Turning a validated parameter bag into one runnable engine call.
-//!
-//! Validation and execution are split on purpose: [`Plan::build`] never touches
-//! the database and [`Plan::run`] never touches HTTP, so a bad request is
-//! answered before a file is opened and the blocking half can be handed to a
-//! worker thread whole.
-//!
-//! Every plan resolves scoping the same way — `allowed_workspaces = None`, the
-//! trusted-local-owner branch. That is not a fail-open oversight: it is the
-//! branch the Python endpoints take for a loopback caller on the owner's own
-//! machine, and these routes are meant to be mounted on a gateway that binds
-//! nowhere else. `user_email` and `include_legacy_global` remain available for a
-//! caller that wants to *narrow* the history it reads.
-
 use std::path::Path;
 
 use lattice_core::{open_read_only, CoreError, LocalEmbeddingModel};
@@ -30,37 +16,23 @@ use crate::self_model::DEFAULT_SUMMARY_TOKENS;
 use crate::service::{graph_search, GraphSearchOptions, Scope};
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 
-/// Ceiling every "how many rows" parameter is checked against.
 pub const MAX_LIMIT: i64 = 500;
 
-/// Which native route a request landed on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endpoint {
-    /// Three-channel service fusion.
     ServiceHybrid,
-    /// Keyword hits expanded through the graph.
     GraphSearch,
-    /// Edges, filtered and ordered.
     GraphRelationships,
-    /// Undirected breadth-first walk from one seed.
     GraphTraverse,
-    /// Raw chronological conversation history.
     History,
-    /// History grouped into conversations.
     Conversations,
-    /// One conversation's messages.
     ConversationMessages,
-    /// Substring search over the history, grouped.
     HistorySearch,
-    /// The budgeted context assembly.
     ContextAssemble,
-    /// The document-generation context: hybrid document search, a hop-labelled
-    /// traversal around it, and the budgeted markdown a writer prompt is given.
     ContextDocument,
 }
 
 impl Endpoint {
-    /// The path this endpoint is mounted on.
     pub fn path(self) -> &'static str {
         match self {
             Endpoint::ServiceHybrid => "/rust/search/service-hybrid",
@@ -77,7 +49,6 @@ impl Endpoint {
     }
 }
 
-/// A fully validated request, ready to run without touching HTTP again.
 #[derive(Debug)]
 pub enum Plan {
     ServiceHybrid {
@@ -114,11 +85,9 @@ pub enum Plan {
     ContextDocument(Box<DocumentContextRequest>),
 }
 
-/// The history scope a loopback owner gets, optionally narrowed by the caller.
 fn history_scope(params: &RequestParams) -> Result<HistoryScope, ParamError> {
     Ok(HistoryScope {
         user_email: params.optional_text("user_email")?,
-        // Never taken from the request: the owner reads their own machine.
         allowed_workspaces: None,
         include_legacy_global: params
             .optional_bool("include_legacy_global")?
@@ -169,7 +138,6 @@ fn recent_request(value: Option<Value>) -> Result<Option<RecentRequest>, ParamEr
 }
 
 impl Plan {
-    /// Validate `params` for `endpoint`, or say exactly which field is wrong.
     pub fn build(endpoint: Endpoint, params: &RequestParams) -> Result<Self, ParamError> {
         match endpoint {
             Endpoint::ServiceHybrid => Ok(Plan::ServiceHybrid {
@@ -191,8 +159,6 @@ impl Plan {
                 query: params.required_text(&["query", "q"])?,
                 options: GraphSearchOptions {
                     limit: params.optional_int("limit", 1, 100)?.unwrap_or(30),
-                    // -1 is how "no expansion" is spelled: the engine reads a
-                    // zero as Python does, i.e. as "unset, use the default".
                     expand_depth: params.optional_int("expand_depth", -1, 3)?.unwrap_or(1),
                     scope: Scope::default(),
                 },
@@ -210,7 +176,6 @@ impl Plan {
             Endpoint::GraphTraverse => Ok(Plan::Traverse {
                 node_id: params.required_text(&["node_id", "id"])?,
                 options: TraverseOptions {
-                    // -1 is how "the seed alone" is spelled; see `expand_depth`.
                     depth: params.optional_int("depth", -1, 4)?.unwrap_or(1),
                     limit: params.optional_int("limit", 1, MAX_LIMIT)?.unwrap_or(100),
                     allowed_workspaces: None,
@@ -255,13 +220,8 @@ impl Plan {
             Endpoint::ContextDocument => {
                 Ok(Plan::ContextDocument(Box::new(DocumentContextRequest {
                     query: params.required_text(&["query", "q"])?,
-                    // The engine clamps to 1..=50; this front door refuses
-                    // outside its own range rather than answering a different
-                    // question than the one that was asked.
                     max_results: params.optional_int("max_results", 1, 50)?.unwrap_or(10),
                     max_hops: params.optional_int("max_hops", 0, 4)?.unwrap_or(2),
-                    // Zero is admitted: it is how "spend the profile's own
-                    // ceiling and never trim the knowledge" is spelled.
                     budget: params
                         .optional_int("budget", 0, 1_000_000)?
                         .unwrap_or(DEFAULT_DOCUMENT_CONTEXT_BUDGET),
@@ -269,7 +229,6 @@ impl Plan {
                     self_model_tokens: params
                         .optional_int("self_model_tokens", 0, 10_000)?
                         .unwrap_or(DEFAULT_SUMMARY_TOKENS),
-                    // Loopback trust, as everywhere else in this router.
                     scope: Scope::default(),
                     now_secs: params
                         .optional_instant("now")?
@@ -279,7 +238,6 @@ impl Plan {
         }
     }
 
-    /// Run the plan against the store. Synchronous — call it on a blocking task.
     pub fn run(self, db: &Path) -> Result<Value, CoreError> {
         let conn = open_read_only(db)?;
         match self {
@@ -420,7 +378,6 @@ mod tests {
             "the profile rides along by default"
         );
         assert!(request.scope.allowed_workspaces.is_none());
-        // Zero budget and zero hops are legal answers, not typos.
         let Plan::ContextDocument(edge) = Plan::build(
             Endpoint::ContextDocument,
             &bag("?q=hi&budget=0&max_hops=0&include_self_model=no"),

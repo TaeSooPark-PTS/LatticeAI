@@ -1,5 +1,3 @@
-//! Internal helpers for audit, handlers, and reports.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::StatusCode;

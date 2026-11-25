@@ -1,24 +1,11 @@
-//! Upload byte unwrapping, multipart extraction, magic-byte filename sniffing,
-//! MIME hints, and standard base64 encoding for `/upload/document` and `/worker/parse`.
-
 use axum::http::HeaderMap;
 
-/// Extensions the worker parser matrix actually reads as documents.
 const PARSEABLE_EXTS: &[&str] = &[
     ".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv", ".html", ".htm",
 ];
-/// Binary (non-UTF-8) document types — always go through `/worker/parse`.
 const BINARY_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".doc", ".odt", ".epub"];
-/// Markup that *is* valid UTF-8 but is not what the document says. Reading an
-/// `.html` file verbatim put `<div class=…>` and whole `<script>` bodies into
-/// the graph; `/worker/parse` turns it into the page's text (v12.0.0).
 const MARKUP_EXTS: &[&str] = &[".html", ".htm"];
 
-/// Filename + raw file bytes from an upload request.
-///
-/// Multipart (`file` field, SPA/Telegram) is unwrapped so the blob we store
-/// is the document, not the envelope. A missing name falls back to
-/// `upload.bin`, then a magic-byte sniff may replace the extension.
 pub(crate) fn unwrap_upload(headers: &HeaderMap, body: &[u8]) -> (String, Vec<u8>) {
     let content_type = header_str(headers, "content-type");
     let hinted = filename_from_headers(headers);
@@ -31,7 +18,6 @@ pub(crate) fn unwrap_upload(headers: &HeaderMap, body: &[u8]) -> (String, Vec<u8
     (refine_filename(&sanitize_filename(&name), &bytes), bytes)
 }
 
-/// True when the upload cannot be treated as UTF-8 text.
 pub(crate) fn needs_parse(filename: &str, bytes: &[u8]) -> bool {
     let ext = crate::pystr::py_suffix(filename).to_ascii_lowercase();
     if BINARY_EXTS.contains(&ext.as_str()) || MARKUP_EXTS.contains(&ext.as_str()) {
@@ -64,7 +50,6 @@ pub(crate) fn mime_hint(filename: &str) -> Option<String> {
     }
 }
 
-/// Standard base64 (the worker's `ParseRequest.content_b64`).
 pub(crate) fn encode_base64(input: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
@@ -306,11 +291,8 @@ mod tests {
     use super::*;
     use axum::http::HeaderValue;
 
-    /// Deterministic one-page PDF used by the binary-upload unit tests.
-    /// Magic `%PDF` only; the HTTP test mocks `/worker/parse`. Do not regenerate.
     const TINY_PDF: &[u8] = b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n147\n%%EOF\n";
 
-    /// Deterministic ZIP-shaped DOCX stub (PK magic). Tests mock the parse seam.
     const TINY_DOCX: &[u8] = b"PK\x03\x04word/document.xml LatticeAI-docx-fixture";
 
     #[test]
@@ -333,12 +315,10 @@ mod tests {
 
     #[test]
     fn valid_utf8_markup_still_goes_through_the_parser() {
-        // The bytes are perfectly readable; what they *say* is not the text.
         let page = b"<html><body><h1>Title</h1><script>var x=1;</script></body></html>";
         assert!(needs_parse("page.html", page));
         assert!(needs_parse("page.HTM", page));
         assert_eq!(mime_hint("page.html").as_deref(), Some("text/html"));
-        // A name already carrying a parseable extension is never renamed.
         assert_eq!(refine_filename("page.html", page), "page.html");
     }
 

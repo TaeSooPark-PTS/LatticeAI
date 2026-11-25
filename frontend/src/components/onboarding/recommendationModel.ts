@@ -25,17 +25,11 @@ export type RecommendedModel = {
   downloadSize: string;
   storageLocation: string;
   externalHost: string;
-  /** Estimated download time in minutes. 0 when nothing needs downloading; null when size is unknown. */
   estimatedDownloadMinutes: number | null;
-  /** Estimated seconds to first response after the model is loaded. */
   estimatedFirstResponseSeconds: number;
-  /** Rough parameter scale (e.g. 8, 12, 70) parsed from the model name; null when unknown. */
   parameterBillions: number | null;
-  /** Whether unauthenticated public mirror / quantized GGUF·MLX fallback applies. */
   gatedFallback?: boolean;
-  /** Public mirror or quantized repository used when unauthenticated. */
   fallbackRepo?: string;
-  /** Ordered list of public mirror / quantized repositories. */
   publicMirrorRepos?: string[];
 };
 
@@ -108,8 +102,6 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   const byName = (pattern: RegExp) => pool.find((item) => pattern.test(`${item.name} ${item.id}`));
   const byId = (id?: unknown) => pool.find((item) => item.id === String(id));
   const best = byId(topPick.id) || byName(/gemma.*12|12b/i) || pool[0];
-  // Hoisted so the "no best/faster yet" reads happen even when the pool is
-  // empty and the find callbacks never run; behaviour is unchanged.
   const bestId = best?.id;
   const faster = pool.find((item) => item.id !== bestId && /qwen|8b|7b/i.test(`${item.name} ${item.id}`)) || pool.find((item) => item.id !== bestId);
   const fasterId = faster?.id;
@@ -122,10 +114,6 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   ].filter(Boolean) as RecommendedModel[];
 }
 
-/**
- * Derive the PC-tailored embedding model recommendation (`google/embeddinggemma-2`
- * on >=8 GB RAM / Apple Silicon, or `google/embeddinggemma-300m` on constrained <8 GB RAM).
- */
 export function recommendedEmbeddingModel(analysis: FlowAnalysis | null): RecommendedModel {
   const models = asRecord(analysis?.models);
   const recommendationRoot = asRecord(analysis?.recommendations?.recommendations);
@@ -230,25 +218,10 @@ export function recommendedEmbeddingModel(analysis: FlowAnalysis | null): Recomm
   };
 }
 
-/**
- * Explicit analysis lifecycle for the setup flow.
- * - `loading`: probes are still running; show a neutral checking state.
- * - `ready`: at least one genuinely supported model was derived from live data.
- * - `unavailable`: the environment could not be read, or nothing runs here.
- * There is deliberately no state that fabricates a "ready" model on failure.
- */
 export type AnalysisStatus = "loading" | "ready" | "unavailable";
 
-/**
- * Why the analysis is unavailable.
- * - `probe_failed`: the model-bearing endpoints did not respond, so we cannot
- *   make any honest claim about this computer.
- * - `no_supported_model`: the probes responded, but no model can run here
- *   (empty catalog / MLX-unsupported hardware / all entries unsupported).
- */
 export type AnalysisUnavailableReason = "probe_failed" | "no_supported_model";
 
-/** Success flag for each analysis probe. */
 export type AnalysisEndpointStatus = {
   setup: boolean;
   recommendations: boolean;
@@ -258,19 +231,11 @@ export type AnalysisEndpointStatus = {
 
 export type AnalysisOutcome = {
   status: AnalysisStatus;
-  /** Only ever contains supported models; empty unless status is `ready`. */
   recommendations: RecommendedModel[];
   reason: AnalysisUnavailableReason | null;
   failedEndpoints: string[];
 };
 
-/**
- * Derive an honest analysis outcome from the raw probe payloads and their
- * per-endpoint success flags. This never returns a supported fallback: when the
- * environment cannot be read or nothing runs locally, the status is
- * `unavailable` and `recommendations` is empty so the UI cannot mislead the
- * user into thinking a model is ready on their device.
- */
 export function evaluateAnalysis(input: {
   analysis: FlowAnalysis | null;
   endpoints: AnalysisEndpointStatus | null;
@@ -281,7 +246,6 @@ export function evaluateAnalysis(input: {
   }
   const failedEndpoints = (Object.keys(endpoints) as (keyof AnalysisEndpointStatus)[])
     .filter((key) => !endpoints[key]);
-  // Without the model-bearing endpoints we cannot claim anything is supported.
   const modelDataOk = endpoints.recommendations || endpoints.models;
   if (!modelDataOk) {
     return { status: "unavailable", recommendations: [], reason: "probe_failed", failedEndpoints };
@@ -293,17 +257,6 @@ export function evaluateAnalysis(input: {
   return { status: "ready", recommendations: supported, reason: null, failedEndpoints };
 }
 
-/**
- * The model to offer when the probes told us nothing about this machine.
- *
- * It is deliberately the *smallest* current entry rather than the best one: we
- * know nothing about the RAM here, and a model that runs everywhere is a better
- * guess than one that runs well on the machines it fits. Gemma 4 E2B still
- * reads pictures, so the fallback is not a downgrade in kind.
- *
- * (Through 11.1.x this named Qwen3-VL 8B, which 11.2.0 retired from the
- * catalog — the fallback was offering a model the picker no longer lists.)
- */
 export function fallbackModel(): RecommendedModel {
   return {
     id: "mlx-community/gemma-4-e2b-it-4bit",
@@ -326,7 +279,6 @@ export function fallbackModel(): RecommendedModel {
   };
 }
 
-/** Exported for tests: raw catalog rows are untyped, so every fallback here is live. */
 export function toRecommendedModel(row: ApiData): RecommendedModel {
   const compatibility = asRecord(row.runtime_compatibility);
   const id = String(row.id || row.model_id || row.recommended_load_id || "");
@@ -356,8 +308,6 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
     loadId,
     engine: String(row.recommended_engine || row.engine || "local_mlx"),
     name,
-    // `name` can never be empty (its own chain ends in a literal), so the old
-    // `name || id` / `|| "local_brain"` tails were dead code, not fallbacks.
     shortName: friendlyModelName(name),
     family: friendlyModelName(String(row.family || name)),
     size: String(row.size || ""),
@@ -377,7 +327,6 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
   };
 }
 
-/** Parse a download size string like "8GB", "8.5 GB", "512MB" into megabytes; null when unparseable. */
 export function parseDownloadMegabytes(value: string): number | null {
   const match = String(value || "").match(/([\d.]+)\s*(t|g|m)?b?/i);
   if (!match) return null;
@@ -386,33 +335,24 @@ export function parseDownloadMegabytes(value: string): number | null {
   const unit = (match[2] || "g").toLowerCase();
   if (unit === "t") return amount * 1024 * 1024;
   if (unit === "m") return amount;
-  return amount * 1024; // gigabytes (default assumption for model weights)
+  return amount * 1024;
 }
 
-/**
- * Estimate download minutes from a size string, assuming a conservative ~15 Mbps
- * (≈1.875 MB/s) average home connection. Returns null when the size is unknown so
- * the UI can fall back to a "time unknown" message instead of showing 0.
- */
 export function estimateDownloadMinutes(downloadSize: string): number | null {
   const megabytes = parseDownloadMegabytes(downloadSize);
   if (megabytes === null) return null;
-  const megabytesPerSecond = 15 / 8; // 15 Mbps
+  const megabytesPerSecond = 15 / 8;
   const minutes = megabytes / megabytesPerSecond / 60;
   return Math.max(1, Math.round(minutes));
 }
 
-/** Pull a rough parameter scale (billions) out of a model name like "Gemma 12B" or "qwen-8b". */
 export function parseParameterBillions(text: string): number | null {
   const match = String(text || "").match(/(\d{1,3}(?:\.\d)?)\s*b\b/i);
   if (!match) return null;
-  // The digit-only capture group always parses to a finite number, so the old
-  // `Number.isFinite` guard could never fail and has been dropped.
   const value = Number(match[1]);
   return value > 0 ? value : null;
 }
 
-/** Estimate seconds to first response from model scale: 8B→5s, 12B→10s, 70B→30s. */
 export function estimateFirstResponseSeconds(parameterBillions: number | null): number {
   if (parameterBillions === null) return 8;
   if (parameterBillions <= 9) return 5;

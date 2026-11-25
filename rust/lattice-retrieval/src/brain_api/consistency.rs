@@ -1,5 +1,3 @@
-//! Contradiction and consolidation scans.
-
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -11,7 +9,6 @@ use super::pyutil;
 use super::quality::{EdgeQuality, MemoryQuality};
 use super::sampling;
 
-/// `BrainIntelligenceService.contradictions`.
 pub async fn contradictions(
     state: &BrainState,
     user_email: &str,
@@ -157,7 +154,6 @@ pub async fn contradictions(
     out
 }
 
-/// `BrainIntelligenceService.consolidate`.
 pub async fn consolidate(
     state: &BrainState,
     apply: bool,

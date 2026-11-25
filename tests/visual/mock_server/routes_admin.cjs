@@ -1,16 +1,8 @@
-/**
- * Admin console, security, proposals and the automation review inbox.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const { json } = require("./http.cjs");
 const { port, appVersion, releaseRunId, workspaceOs, enterpriseOverview } = require("./fixtures.cjs");
 
 module.exports = function handleAdmin({ req, res, url, pathname }) {
   if (pathname === "/admin/summary") return json(res, { total_users: 2, active_users: 2, admin_users: 1, total_messages: 42, user_messages: 21, assistant_messages: 21 });
-  // Calm admin header (layout rebuild screen 10). ``attention`` so the
-  // non-ok layout is what the release capture actually shows.
   if (pathname === "/admin/health-summary") return json(res, {
     status: "attention",
     issue_count: 1,
@@ -67,16 +59,7 @@ module.exports = function handleAdmin({ req, res, url, pathname }) {
     severity_counts: { high: 0, medium: 1, low: 2 }, field_counts: { email: 4, api_key: 1 },
   });
   if (pathname.startsWith("/admin/security/")) return json(res, { cards: {}, users: [], events: [], files: [], field_counts: {} });
-  // Keeps the Review Center's pending-proposal badge consistent with the one
-  // change_proposal in the reviews fixture below.
   if (pathname === "/api/proposals/counts") return json(res, { pending: 1 });
-  // The runs tab promoted "설치된 자동화" to its second tier, between the
-  // approval inbox and the run history. This route did not exist, so the client
-  // fell back to its `installed: []` default and the promoted panel was
-  // captured as an empty state — the screenshot showed the new hierarchy with
-  // its middle tier blank. Two entries so the lg:grid-cols-2 layout is exercised,
-  // one already dry-run and one never run, which is what the card's two-step
-  // control is there to distinguish.
   if (pathname === "/api/automation/overview") {
     return json(res, {
       suggestions: [],
@@ -123,10 +106,6 @@ module.exports = function handleAdmin({ req, res, url, pathname }) {
         updated_at: "2026-06-22T12:05:00Z",
       },
       {
-        // A change proposal with a real diff. The Review Center card puts the
-        // evidence on the left and the approve/reject decision on the right,
-        // and without a proposal in the fixture the left column is empty — the
-        // release screenshot would show the layout with nothing in it.
         id: "rev-proposal-readme",
         status: "pending",
         effective_status: "pending",

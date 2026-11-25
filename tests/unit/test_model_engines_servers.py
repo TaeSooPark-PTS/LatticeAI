@@ -1,5 +1,3 @@
-"""Unit tests for local model engine discovery, server lifecycle, and Ollama pull."""
-
 from __future__ import annotations
 
 import json
@@ -95,7 +93,6 @@ def test_json_request_and_lmstudio_bases(monkeypatch):
         {"lmstudio": {"base_url": "http://localhost:1234/v1"}},
         raising=False,
     )
-    # import inside lmstudio_api_base — force the fallback path
     real_import = __import__
 
     def boom_import(name, *a, **k):
@@ -264,7 +261,6 @@ def test_ensure_vllm_server_branches(monkeypatch, tmp_path: Path):
 
     monkeypatch.setattr(model_engines.importlib.util, "find_spec", lambda _n: object())
     downloaded = {"n": 0}
-    # late imports come from model_runtime package
     monkeypatch.setattr(
         "latticeai.services.model_runtime.download_hf_model",
         lambda *_a, **_k: downloaded.__setitem__("n", 1),

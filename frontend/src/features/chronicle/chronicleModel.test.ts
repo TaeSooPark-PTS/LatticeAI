@@ -12,14 +12,6 @@ import {
   weekdayOf,
 } from "./chronicleModel";
 
-/**
- * The chronicle's arithmetic, tested where it is provable.
- *
- * Two of these properties would be invisible on screen until someone noticed
- * the wrong thing months later: a sparse series charted index-by-index (a
- * two-year gap drawn as one step), and calendar days derived from the local
- * clock (a grid that shifts by one column depending on the machine's timezone).
- */
 
 function point(date: string, values: Partial<ChronicleSeriesPoint> = {}): ChronicleSeriesPoint {
   return { date, sources: 0, entities: 0, connections: 0, conversations: 0, ...values };
@@ -37,16 +29,14 @@ describe("dayToMs / msToDay", () => {
   });
 
   it("refuses a well-shaped date that does not exist", () => {
-    // `Date.UTC(2026, 1, 31)` happily rolls over into March. Charting a day
-    // that never happened is worse than dropping the row.
     expect(dayToMs("2026-02-31")).toBeNull();
   });
 });
 
 describe("weekdayOf", () => {
   it("reads the weekday in UTC, so the grid never depends on the machine", () => {
-    expect(weekdayOf("2026-06-07")).toBe(0); // Sunday
-    expect(weekdayOf("2026-06-06")).toBe(6); // Saturday
+    expect(weekdayOf("2026-06-07")).toBe(0);
+    expect(weekdayOf("2026-06-06")).toBe(6);
   });
 
   it("answers Sunday for an unreadable day rather than throwing", () => {
@@ -60,7 +50,6 @@ describe("buildTimeline", () => {
   });
 
   it("fills the calendar between the first and last recorded day", () => {
-    // Sparse input: two days, four apart. The chart needs all five.
     const timeline = buildTimeline([
       point("2026-06-01", { sources: 2 }),
       point("2026-06-05", { entities: 3 }),
@@ -69,7 +58,6 @@ describe("buildTimeline", () => {
     expect(timeline.map((entry) => entry.date)).toEqual([
       "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
     ]);
-    // Cumulative, so the quiet middle holds its level instead of dropping.
     expect(timeline.map((entry) => entry.total)).toEqual([2, 2, 2, 2, 5]);
     expect(timeline.map((entry) => entry.daily)).toEqual([2, 0, 0, 0, 3]);
   });
@@ -132,7 +120,6 @@ describe("buildHeatmap", () => {
   });
 
   it("pads to whole weeks and leaves the padding without a date", () => {
-    // 2026-06-03 is a Wednesday, so Sunday..Tuesday before it are padding.
     const weeks = buildHeatmap(buildTimeline([point("2026-06-03", { sources: 1 })]));
     expect(weeks).toHaveLength(1);
     expect(weeks[0]!.key).toBe("2026-05-31");
@@ -146,8 +133,6 @@ describe("buildHeatmap", () => {
       point("2026-06-01", { sources: 1 }),
       point("2026-06-20", { sources: 4 }),
     ]));
-    // 2026-06-01 is a Monday and 2026-06-20 a Saturday, so the grid runs from
-    // Sunday 05-31 through 06-20: three whole columns.
     expect(weeks.map((week) => week.key)).toEqual(["2026-05-31", "2026-06-07", "2026-06-14"]);
     for (const week of weeks) expect(week.cells).toHaveLength(7);
   });
@@ -164,8 +149,6 @@ describe("growthPaths", () => {
       100,
       50,
     );
-    // Horizontal first, then vertical: the Brain did not learn half a document
-    // overnight, and a diagonal would claim it did.
     expect(line).toBe("M 0 25 L 100 25 L 100 0");
     expect(area).toContain("L 100 50 L 0 50 Z");
   });

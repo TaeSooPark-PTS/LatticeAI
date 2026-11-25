@@ -1,5 +1,3 @@
-"""The pointer extra is declared, and is not a core dependency."""
-
 from __future__ import annotations
 
 import tomllib
@@ -16,5 +14,4 @@ def test_pointer_extra_declares_pyautogui_and_is_not_core():
     assert any(dep.startswith("pyautogui") for dep in extras["pointer"])
     core = data["project"]["dependencies"]
     assert not any("pyautogui" in dep for dep in core)
-    # Empty extras such as pdf stay empty aliases; pointer is a real extra.
     assert extras["pointer"] != extras.get("pdf")

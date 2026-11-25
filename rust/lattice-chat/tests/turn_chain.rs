@@ -1,20 +1,3 @@
-//! The native chat-turn chain end to end (WP-W3a).
-//!
-//! `tests/chat_http.rs` proves the chain runs from `POST /chat` and that
-//! `/worker/chat/record-turn` is never requested. This file proves the four
-//! properties that make retiring that seam safe:
-//!
-//! 1. what the store holds is the **redacted** text, and an assistant's turn is
-//!    brand-normalised on top of it;
-//! 2. a turn written here reads back through the **existing** native history
-//!    routes (`GET /history`, `GET /history/conversations/{id}`) — the same
-//!    `lattice-retrieval` lanes that read Python-written rows;
-//! 3. with no graph the turn still stores, and says so with `ingested: null` —
-//!    the seam's own semantics;
-//! 4. when `/worker/embed` reports an embedder this process cannot reproduce,
-//!    the vector is left as backlog (`indexing_status: "pending"`) instead of
-//!    being written under the wrong model id, which is the failure W2 §4 names.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -69,7 +52,6 @@ fn meta<'a>(conversation: &'a str) -> HistoryMeta<'a> {
     }
 }
 
-/// A worker whose `/worker/embed` answers under `model_id`, with `dim` floats.
 async fn spawn_embed_worker(model_id: &'static str, dim: usize) -> String {
     let app = Router::new()
         .route(
@@ -103,7 +85,6 @@ async fn spawn_embed_worker(model_id: &'static str, dim: usize) -> String {
     format!("http://{addr}")
 }
 
-/// Serve the chat router and return `(origin, session token)`.
 async fn serve(state: ChatState, auth: &Arc<AuthState>) -> (String, String) {
     let token = auth
         .sessions()
@@ -147,9 +128,6 @@ async fn a_redacted_turn_reads_back_through_the_native_history_routes() {
     let auth = auth_for(data.path());
     let config = ChatConfig {
         data_dir: data.path().to_path_buf(),
-        // The read lanes need the path; the *writer* is deliberately unbound, so
-        // the store half must stand on its own and the database must be created
-        // on first write the way `ConversationStore.__init__` creates it.
         graph_db: Some(data.path().join("knowledge_graph.sqlite")),
         agent_root: data.path().join("agent"),
         ..ChatConfig::default()
@@ -191,7 +169,6 @@ async fn a_redacted_turn_reads_back_through_the_native_history_routes() {
         "no graph writer bound ⇒ ingested: null, the seam's own graph-off answer"
     );
 
-    // Read back through the routes the SPA and the extension actually call.
     let (origin, token) = serve(state, &auth).await;
     let history = get_json(&origin, "/history", &token).await;
     let items = history.as_array().expect("history array");
@@ -204,7 +181,6 @@ async fn a_redacted_turn_reads_back_through_the_native_history_routes() {
     assert_eq!(items[0]["conversation_id"], "conv-1");
     assert_eq!(items[1]["role"], "assistant");
     assert_eq!(items[1]["content"], "Lattice AI 가 답변합니다");
-    // The store's declared column order, as `/rust/history` has always answered.
     let keys: Vec<&String> = items[0].as_object().expect("item").keys().collect();
     assert_eq!(keys[0], "role");
     assert_eq!(keys[1], "content");
@@ -236,9 +212,6 @@ async fn the_same_turn_twice_is_one_row() {
             ..ChatConfig::default()
         },
     );
-    // `message_hash` is UNIQUE and the insert is `INSERT OR IGNORE`, so a retry
-    // of an identical turn is a no-op rather than a duplicate — the property the
-    // dedup column exists for.
     let item = write_chat_turn(&state, "user", "같은 말", &meta("conv-dup")).await;
     let timestamp = item.item.as_ref().expect("item")["timestamp"].clone();
     let repeat = json!({
@@ -327,9 +300,6 @@ async fn an_embedder_this_process_cannot_reproduce_leaves_the_vector_as_backlog(
         )
         .expect("nodes");
     assert_eq!(nodes, 1, "the graph write itself is unaffected");
-    // W5's supplied-vector door files the worker vector on the Message node.
-    // Other nodes (Chat / Person) still hash inline. The receipt stays
-    // `pending` because write_vectors would overwrite the provider row.
     let message_id: String = conn
         .query_row("SELECT id FROM nodes WHERE type='Message'", [], |row| {
             row.get(0)
@@ -400,9 +370,6 @@ async fn with_a_graph_but_no_worker_the_turn_still_lands() {
     )
     .with_graph(graph);
 
-    // No worker at all: this is the case the seam could not survive — a turn
-    // used to be lost when the AI worker was unreachable, because the chain
-    // itself lived there.
     let turn = write_chat_turn(&state, "assistant", "connect-ai 입니다", &meta("conv-off")).await;
     assert!(turn.stored);
     assert_eq!(turn.content(), Some("Lattice AI 입니다"));
@@ -422,7 +389,6 @@ async fn with_a_graph_but_no_worker_the_turn_still_lands() {
         )
         .expect("nodes");
     assert_eq!(responses, 1);
-    // The audit row is on R2's file, in R2's format, with no sink bound.
     let audit: Value = serde_json::from_str(
         &std::fs::read_to_string(data.path().join("audit_log.json")).expect("audit log"),
     )

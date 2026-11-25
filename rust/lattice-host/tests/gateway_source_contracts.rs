@@ -1,28 +1,8 @@
-//! Static source-level contracts for worker seam paths and review event vocabulary.
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use lattice_host::gateway::allowlist::Allowlist;
 
-// ── the static gate: no source file may name a stranded worker path ─────────
-//
-// The dynamic leak assertion above can only see the calls a probe happens to
-// reach. This half needs no request at all: it reads the source. A path literal
-// that *looks* like a worker request must be on the committed allowlist, on
-// [`NOT_WORKER_CALLS`] (with a reason), or on [`KNOWN_STRANDED_SEAM_PATHS`]
-// (named debt, capped so it can shrink but never grow).
-//
-// **The debt register is empty as of v11.7.0** and the gate is at its strongest
-// in that state: with nothing exempt, any new stranded path fails the build.
-
-/// Path literals that look like worker requests and are not.
-///
-/// `(literal, why it never crosses the hop)`. Everything here is a route this
-/// process mounts, a table describing one, or an assertion that a path is
-/// *refused*: the front door serving `/agent/eval` is the opposite of the front
-/// door asking a worker for it, and a test proving `/worker/graph/mutate` is
-/// never forwarded is the opposite of a call to it.
 const NOT_WORKER_CALLS: &[(&str, &str)] = &[
     (
         "/agent/resume",
@@ -50,13 +30,6 @@ const NOT_WORKER_CALLS: &[(&str, &str)] = &[
     ),
 ];
 
-/// Exemptions that are true of **one file**, as `(path, file suffix, why)`.
-///
-/// [`NOT_WORKER_CALLS`] licenses a literal everywhere, which is right for a
-/// route this process mounts — any file may name `/agent/eval`. It is wrong for
-/// a path that is dead: licensing `/worker/graph/mutate` globally would let the
-/// next call site walk straight back in behind an exemption written for a test
-/// assertion. So this list carries the file too, and the file has to match.
 const NOT_WORKER_CALLS_IN: &[(&str, &str, &str)] = &[
     (
         "/worker/graph/mutate",
@@ -77,33 +50,10 @@ const NOT_WORKER_CALLS_IN: &[(&str, &str, &str)] = &[
     ),
 ];
 
-/// Seam calls that still name a path the worker stopped serving.
-///
-/// `(path, occurrence ceiling in rust/*/src, what is stranded)`. This is a debt
-/// register, not an exemption: the ceiling only ever moves **down**, so a fix
-/// passes and a new call site fails.
-///
-/// **It is empty.** v11.6.0 left two entries, both closed in v11.7.0 (§F-G):
-///
-/// * `/worker/graph/mutate` ×9 — the WP-I6 graph-write seam, retired with the
-///   Python write door in v11.6.0. Five call sites in `lattice-platform`, two
-///   in `lattice-retrieval` and one in `lattice-ingest` were the `else` arm of
-///   a native `GraphWriter` branch, so a wired install never took them; the
-///   ninth, `memory_api::shared`, was the *only* path for the Self-Model's four
-///   writes and the contradiction stamps, which therefore answered 404 on every
-///   live install. All are native now (`graph_native::dispatch` and
-///   `memory_api::self_model_write`), and the fallbacks are deleted rather than
-///   left as plausible-looking options.
-/// * `/tools/create_xlsx` ×1 — `security_dashboard::export` posted the
-///   spreadsheet build to a **product** route this process mounts itself, so
-///   the xlsx export 502'd. It goes through `/worker/render/xlsx` now, which is
-///   on `rust/fixtures/worker_allowlist.json`.
 const KNOWN_STRANDED_SEAM_PATHS: &[(&str, usize, &str)] = &[];
 
-/// The call helpers whose first argument is a worker path.
 const SEAM_CALLS: [&str; 3] = ["post_json(", "get_json(", "stream_sse("];
 
-/// `rust/` — the workspace root both this crate and every scanned crate sit in.
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -111,7 +61,6 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Every `rust/*/src/**/*.rs`, sorted so a failure reads the same twice.
 fn rust_sources() -> Vec<PathBuf> {
     let mut out = Vec::new();
     let entries = std::fs::read_dir(workspace_root()).expect("rust/ is readable");
@@ -145,7 +94,6 @@ fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Every double-quoted literal on one line, escapes unescaped.
 fn string_literals(line: &str) -> Vec<String> {
     let chars: Vec<char> = line.chars().collect();
     let mut out = Vec::new();
@@ -178,20 +126,6 @@ fn string_literals(line: &str) -> Vec<String> {
     out
 }
 
-/// The path literals one file is answerable for, as `(line, literal)`.
-///
-/// Three rules, because one is not enough:
-///
-/// 1. **Prefix.** Anything starting `/worker/` or `/agent/` is the worker's
-///    namespace by construction, wherever it is written.
-/// 2. **Named constant.** `const X: &str = "/…";` is how a seam path is spelled
-///    when the call site is far from the declaration — which is precisely how
-///    `INGEST_PATH` hid a dead route in two crates.
-/// 3. **Call argument.** The first literal handed to `post_json` / `get_json` /
-///    `stream_sse`, matched across newlines so rustfmt's wrapping cannot hide it.
-///
-/// Whole-line comments are skipped: prose naming a path is documentation, and
-/// this module's own header would otherwise fail its own gate.
 fn path_literals(text: &str) -> BTreeSet<(usize, String)> {
     let mut out = BTreeSet::new();
     for (offset, line) in text.lines().enumerate() {
@@ -223,9 +157,6 @@ fn path_literals(text: &str) -> BTreeSet<(usize, String)> {
             if let Some(inner) = skipped.strip_prefix('"') {
                 if let Some(end) = inner.find('"') {
                     let literal = &inner[..end];
-                    // The literal's own line, not the call's: rustfmt wraps a
-                    // long call, and two reports for one call would double-count
-                    // it against the debt ceiling.
                     let start = after + (rest.len() - skipped.len()) + 1;
                     if is_pathish(literal) {
                         out.insert((text[..start].lines().count(), literal.to_string()));
@@ -238,11 +169,6 @@ fn path_literals(text: &str) -> BTreeSet<(usize, String)> {
     out
 }
 
-/// Whether a literal could be an HTTP path at all.
-///
-/// A leading `/` is not enough: `"// braces in comments { … }"` is a fixture
-/// for a code sanitiser, not a route. A path has one leading slash and no
-/// whitespace in it.
 fn is_pathish(literal: &str) -> bool {
     literal.len() > 1
         && literal.starts_with('/')
@@ -250,15 +176,10 @@ fn is_pathish(literal: &str) -> bool {
         && !literal.contains(char::is_whitespace)
 }
 
-/// A parameter segment in either FastAPI's spelling or axum's.
 fn is_placeholder(segment: &str) -> bool {
     segment.starts_with('{') || segment.starts_with(':') || segment.starts_with('*')
 }
 
-/// Whether a literal names an allowlisted route, template parameters included.
-///
-/// `"/worker/render/{kind}"` is the same route as the fixture's
-/// `/worker/render/docx`; a segment that is a parameter on either side matches.
 fn path_matches(literal: &str, allowed: &str) -> bool {
     if literal == allowed {
         return true;
@@ -342,14 +263,6 @@ fn no_source_file_names_a_stranded_worker_path() {
     }
 }
 
-/// The review-event vocabulary is one vocabulary, spelled in two crates.
-///
-/// `lattice-retrieval` writes review items too (synthesis and Self-Model
-/// proposals) and cannot name `lattice_platform::governance::review_queue` — the
-/// dependency runs the other way — so it declares the three constants again.
-/// This host is the one crate that can see both spellings, which makes it the
-/// only place the claim "they are the same" can be checked rather than
-/// asserted in a comment.
 #[test]
 fn the_review_event_vocabulary_is_one_vocabulary() {
     use lattice_retrieval::memory_api::wsos;

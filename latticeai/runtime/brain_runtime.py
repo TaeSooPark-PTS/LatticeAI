@@ -1,16 +1,3 @@
-"""Embedder resolution for the AI-Worker build.
-
-``build_brain_runtime`` used to open the knowledge-graph store and the
-conversation store. Rust owns every durable write after v11.6.0 §Wave 2.5, so
-what is left of "the Brain" inside the worker is the one port the compute seams
-need: something that turns text into a vector.
-
-The resolution rules are the product's, unchanged — a named profile supplies
-model/dimensions, explicit configuration overrides it, and a provider that
-cannot be reached degrades to the offline hash embedder while recording what
-was requested.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Optional, Tuple
@@ -32,16 +19,6 @@ def build_embedder_runtime(
     resolve_embedder: Callable[..., Any],
     detect: Optional[Callable[..., Detection]] = None,
 ) -> Any:
-    """Resolve the configured embedding provider once.
-
-    The resolution order is the product's, unchanged, with one addition at the
-    end: detection. What is on this machine is *always* looked up (so
-    ``GET /api/embeddings/status`` can say "a real embedder is right there"),
-    and it changes the resolution only when the operator asked for it with
-    ``LATTICEAI_EMBEDDING_PROVIDER=auto``. The finding rides back on the
-    resolved object as ``detected`` — an added attribute, so every existing
-    reader of ``ResolvedEmbedder`` is untouched.
-    """
 
     provider, model, dim = _configured(config, profile)
     detection = (detect or detect_embedder)(
@@ -61,13 +38,12 @@ def build_embedder_runtime(
     )
     try:
         resolved.detected = detection
-    except AttributeError:  # pragma: no cover - a stand-in without __dict__
+    except AttributeError:
         pass
     return resolved
 
 
 def _configured(config: Any, profile: Mapping[str, Any]) -> Tuple[str, str, int]:
-    """``(provider, model, dim)`` from configuration and the named profile."""
     provider = config.embedding_provider
     model = config.embedding_model or str(profile.get("model") or "")
     dim = config.embedding_dim or int(profile.get("dimensions") or 0)

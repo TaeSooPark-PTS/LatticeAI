@@ -1,17 +1,3 @@
-//! Server-side per-user & per-workspace isolation across agent, tools, MCP,
-//! skills, browser/computer-use, and automation routes (Review §7.2, P1).
-//!
-//! Derives `AGENT_ROOT` on the server from the authenticated session identity,
-//! tenant boundary, and [`WorkspaceResolver`]-verified workspace membership:
-//!
-//! * Unauthenticated desktop loopback (`!require_auth && email.is_empty()` and
-//!   personal scope): preserves `product.agent_root` for standalone local UX.
-//! * Authenticated personal workspace: `<base>/users/<sanitized_user_id>` (or
-//!   under `tenants/<sanitized_tenant>/` when tenant-bound).
-//! * Authorized shared organization workspace: `<base>/workspaces/<sanitized_ws_id>`.
-//! * Unauthorized or spoofed `workspace_id` / `tenant_id`: fails closed with
-//!   `403 Forbidden` and records a security audit event.
-
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -36,36 +22,23 @@ use super::onedoor::OneDoorState;
 
 const CACHE_CAP: usize = 128;
 
-/// Server-verified caller email header stamped after authentication.
 pub const HDR_USER_EMAIL: &str = "x-lattice-user-email";
-/// Server-verified caller role header stamped after authentication.
 pub const HDR_USER_ROLE: &str = "x-lattice-user-role";
-/// Server-verified caller tenant id header stamped after authentication.
 pub const HDR_TENANT_ID: &str = "x-lattice-tenant-id";
-/// Server-derived canonical agent workspace root header.
 pub const HDR_AGENT_ROOT: &str = "x-lattice-agent-root";
 
-/// Resolved server-side agent execution boundary for one request.
 #[derive(Debug, Clone)]
 pub struct ResolvedAgentScope {
-    /// Authenticated caller identity (`empty` only for unauthenticated loopback owner).
     pub identity: Identity,
-    /// Verified tenant identifier for the caller, if assigned or validated.
     pub tenant_id: Option<String>,
-    /// Verified workspace identifier (`"personal"` or an authorized org workspace id).
     pub workspace_id: String,
-    /// Server-derived filesystem root under which all agent tools are confined.
     pub agent_root: PathBuf,
-    /// Optional workspace/user-scoped skills directory.
     pub skills_dir: Option<PathBuf>,
-    /// Whether access to a shared organization workspace was authorized.
     pub shared_authorized: bool,
-    /// Whether strict per-user workspace confinement is active.
     pub isolated: bool,
 }
 
 impl ResolvedAgentScope {
-    /// Open and canonicalise the confined [`Workspace`] for this scope.
     pub fn workspace(&self) -> Result<Workspace, Box<Response>> {
         let ws = Workspace::new(&self.agent_root).map_err(|err| {
             Box::new(
@@ -138,8 +111,6 @@ fn hex_val(byte: u8) -> Option<u8> {
     }
 }
 
-/// Extract `workspace_id` from header, query, and/or JSON body, refusing
-/// mismatched values when multiple sources disagree.
 pub fn extract_requested_workspace(
     headers: &HeaderMap,
     uri: &axum::http::Uri,
@@ -177,28 +148,17 @@ pub fn extract_requested_workspace(
     Ok(None)
 }
 
-/// Inputs for [`resolve_agent_scope`].
 pub struct ScopeResolveRequest<'a> {
-    /// Auth state used to verify the caller identity and tenant membership.
     pub auth: &'a AuthState,
-    /// Optional shared workspace ACL resolver.
     pub resolver: Option<&'a dyn WorkspaceResolver>,
-    /// Base agent workspace root directory before per-user/workspace isolation.
     pub base_agent_root: &'a std::path::Path,
-    /// Root Lattice data directory used to derive isolated skills directories.
     pub data_dir: &'a std::path::Path,
-    /// Incoming HTTP request headers.
     pub headers: &'a HeaderMap,
-    /// Incoming HTTP request URI.
     pub uri: &'a axum::http::Uri,
-    /// Optional requested workspace identifier extracted from header/query/body.
     pub requested_ws: Option<&'a str>,
-    /// Whether the request intends to mutate workspace state.
     pub write_intent: bool,
 }
 
-/// Authenticate caller, validate tenant & workspace ACLs, and derive the
-/// isolated `AGENT_ROOT` on the server side.
 pub fn resolve_agent_scope(
     req: ScopeResolveRequest<'_>,
 ) -> Result<ResolvedAgentScope, Box<Response>> {
@@ -346,7 +306,6 @@ pub fn resolve_agent_scope(
     })
 }
 
-/// Remove client-supplied internal isolation headers and stamp server-verified ones.
 pub fn stamp_verified_headers(headers: &mut HeaderMap, scope: &ResolvedAgentScope) {
     for name in [
         HDR_USER_EMAIL,
@@ -378,11 +337,8 @@ pub fn stamp_verified_headers(headers: &mut HeaderMap, scope: &ResolvedAgentScop
     }
 }
 
-/// Cached per-scope routers so `/tools/*`, `/mcp*`, `/skills/*`, `/cu/*`, and
-/// `/rust/agent/{preflight,exec}` run inside the caller's isolated workspace.
 #[derive(Clone)]
 pub struct IsolationState {
-    /// Product state owning auth, workspace resolver, and base agent root.
     pub product: Arc<OneDoorState>,
     tools_cache: Arc<Mutex<HashMap<PathBuf, Router>>>,
     mcp_cache: Arc<Mutex<HashMap<(PathBuf, PathBuf), Router>>>,
@@ -391,7 +347,6 @@ pub struct IsolationState {
 }
 
 impl IsolationState {
-    /// Build an empty per-scope router cache backed by `product`.
     pub fn new(product: Arc<OneDoorState>) -> Self {
         Self {
             product,
@@ -546,8 +501,6 @@ fn write_intent_for(method: &Method, path: &str) -> bool {
     true
 }
 
-/// Enforce per-user/per-workspace isolation and tenant boundaries across all
-/// tool, MCP, skill, computer-use, browser, and automation surfaces.
 pub async fn enforce_agent_isolation(
     State(iso): State<IsolationState>,
     request: Request,

@@ -76,7 +76,6 @@ describe("parseFolderHealth", () => {
       folders: [42, { id: "f1", recent_errors: ["oops", { path: "p", detail: "why" }] }],
     });
     expect(parsed.folders.map((f) => f.id)).toEqual(["f1"]);
-    // No label or root_path → the id names the folder rather than a blank.
     expect(parsed.folders[0]!.label).toBe("f1");
     expect(parsed.folders[0]!.errors).toEqual([{ path: "p", detail: "why" }]);
   });

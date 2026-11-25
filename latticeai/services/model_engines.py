@@ -1,11 +1,3 @@
-"""Engine server management, pull, install and support logic extracted from model_runtime monolith.
-
-This module is the home for engine-specific server starting, model pulling and install flows.
-``model_runtime`` exposes compatibility callables, while application configuration
-is passed explicitly through the bound runtime service. Circular imports are
-avoided by late imports inside functions.
-"""
-
 from __future__ import annotations
 
 import http.client
@@ -149,10 +141,9 @@ def _json_request(
 
 
 def lmstudio_api_base() -> str:
-    # late to avoid issues
     try:
         from latticeai.services.model_runtime import (
-            OPENAI_COMPATIBLE_PROVIDERS,  # type: ignore
+            OPENAI_COMPATIBLE_PROVIDERS,
         )
 
         prov = OPENAI_COMPATIBLE_PROVIDERS
@@ -345,15 +336,6 @@ def wait_for_openai_compatible_server(
 
 
 def _reap_local_server(process: subprocess.Popen, label: str) -> None:
-    """Stop a previous local engine server and prove it is actually gone.
-
-    ``kill()`` only delivers the signal; without a following ``wait()`` the
-    child is never reaped and stays a zombie whose ``poll()`` keeps returning
-    ``None``. That used to read back as "the old server is still up", and the
-    caller returned without ever spawning the server it was asked for — a
-    silent success for a request that did nothing. If the process survives the
-    kill *and* the reap, the caller is told so with a 409 instead.
-    """
     process.terminate()
     try:
         process.wait(timeout=10)
@@ -551,16 +533,16 @@ def pull_ollama_model_with_progress(
     last_percent: Optional[float] = None
     lines: List[str] = []
     try:
-        assert process.stdout is not None  # noqa: S101 — invariant guard on a code path with no caller-facing error
-        for raw_line in process.stdout:
-            for part in re.split(r"[\r\n]+", raw_line):
-                line = part.strip()
-                if not line:
-                    continue
-                lines.append(line)
-                match = re.search(r"(\d{1,3}(?:\.\d+)?)\s*%", line)
-                if match:
-                    last_percent = min(100.0, float(match.group(1)))
+        if process.stdout is not None:
+            for raw_line in process.stdout:
+                for part in re.split(r"[\r\n]+", raw_line):
+                    line = part.strip()
+                    if not line:
+                        continue
+                    lines.append(line)
+                    match = re.search(r"(\d{1,3}(?:\.\d+)?)\s*%", line)
+                    if match:
+                        last_percent = min(100.0, float(match.group(1)))
                     if progress_emit:
                         progress_emit(
                             _progress_payload(
@@ -569,20 +551,9 @@ def pull_ollama_model_with_progress(
                                 percent=last_percent,
                                 detail=line[-180:],
                                 eta_seconds=None,
-                                indeterminate=False,
+                                indeterminate=last_percent is None,
                             )
                         )
-                elif progress_emit:
-                    progress_emit(
-                        _progress_payload(
-                            "download",
-                            "Ollama 모델 다운로드 중입니다.",
-                            percent=last_percent,
-                            detail=line[-180:],
-                            eta_seconds=None,
-                            indeterminate=last_percent is None,
-                        )
-                    )
         returncode = process.wait()
     except Exception:
         process.kill()
@@ -627,7 +598,6 @@ def get_ollama_pulled_models() -> set:
 
 
 def ensure_omlx_server(model_name: str) -> str:
-    """Ensure oMLX is running with tuned KV-cache/memory-guard and serving ``model_name``."""
     from urllib.parse import urlparse
 
     from latticeai.services.model_runtime import (
@@ -681,7 +651,6 @@ def ensure_omlx_server(model_name: str) -> str:
             )
 
     if not wait_for_openai_compatible_server("omlx", served_name, timeout=90):
-        # Fallback: check if oMLX exposed the original repo id
         if hf_repo in get_openai_compatible_server_models("omlx"):
             return hf_repo
         raise ModelRuntimeError(

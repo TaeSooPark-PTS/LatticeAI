@@ -1,11 +1,3 @@
-/**
- * Status bar + workspace sync reporting.
- *
- * Two status bar items and everything that writes to them: the model badge
- * (`$(brain) …`) and the sync badge (`$(check) Lattice synced`). Both read the
- * live bindings in `extensionState`, so the commands that trigger a sync do not
- * have to thread the items through every call.
- */
 import * as vscode from "vscode";
 import { client, extensionVersion, statusBar, syncStatusBar } from "./extensionState";
 

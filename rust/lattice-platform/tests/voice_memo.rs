@@ -1,5 +1,3 @@
-//! N8: a text-only voice memo must keep the caller's words.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;

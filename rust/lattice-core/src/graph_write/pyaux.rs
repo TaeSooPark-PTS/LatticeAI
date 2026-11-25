@@ -1,59 +1,12 @@
-//! The Python primitives the write engine's *bytes* depend on.
-//!
-//! None of these is interesting on its own. Every one of them decides either
-//! the exact text stored in a `*_json` column or an id derived by hashing that
-//! text, so writing any of them from Rust instinct would produce a store that
-//! reads back the same and hashes differently.
-//!
-//! The four that would silently diverge:
-//!
-//! * [`py_dumps`] is `json.dumps(value, ensure_ascii=False, sort_keys=True)`
-//!   with CPython's **default** separators (`", "` and `": "`).
-//!   `serde_json::to_string` writes `,` and `:`; every `metadata_json` in the
-//!   graph, and therefore every `edge:`/`event:` id hashed from one, would
-//!   differ by exactly those spaces.
-//! * [`slug`] keeps Hangul (`가-힣`) as-is and collapses everything else — the
-//!   `conversation:`/`person:`/`topic:` ids are built from it.
-//! * [`py_float_repr`] is `str(float)`: `1785974400.0`, not `1785974400`. It
-//!   seeds `vector_index_operations.id`.
-//! * [`truncate_chars`] (in [`crate::pytext`]) is Python's `[:n]` — characters,
-//!   not bytes. A 240-byte cut through a Korean title is a panic in Rust and a
-//!   different title in the store.
-
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
-/// `json.dumps(value, ensure_ascii=False, sort_keys=True)`, default separators.
-///
-/// The keys are sorted **here**, explicitly. They used to be left to
-/// `serde_json::Map`, which is a `BTreeMap` and therefore already iterates in
-/// code-point order — the order CPython's `sort_keys=True` produces, because
-/// UTF-8 byte order and code-point order agree for `str` keys. That reasoning
-/// was sound and the premise was not: `lattice-retrieval` enables
-/// `serde_json/preserve_order`, and cargo unifies features across a build, so
-/// in **every build that contains the product** (`lattice-host` depends on
-/// `lattice-retrieval`) a `Map` is an `IndexMap` and iterates in insertion
-/// order. `py_dumps` was then writing unsorted `metadata_json` — read-back
-/// identical, hashed differently, which is exactly the divergence this module
-/// exists to prevent. Sorting here makes the function independent of a feature
-/// another crate chose.
 pub fn py_dumps(value: &Value) -> String {
     let mut out = String::new();
     write_value(&mut out, value);
     out
 }
 
-/// `json.dumps(value, ensure_ascii=False)` — **no** `sort_keys`.
-///
-/// One writer in the graph omits `sort_keys`: `_store_pending_promotions`. Its
-/// value is a row in `graph_meta`, so the key order is part of the bytes, and
-/// CPython's is the order the dict was built in. `serde_json::Map` is a
-/// `BTreeMap` and has forgotten that, so the order is supplied: `key_order`
-/// first (those that are present), then whatever else the object carries.
-///
-/// Documented limit: an object whose extra keys the caller did not name falls
-/// back to sorted order for that tail. The only producer of the queue is
-/// `curate`, whose entries this covers exactly.
 pub fn py_dumps_ordered(value: &Value, key_order: &[&str]) -> String {
     let mut out = String::new();
     write_ordered(&mut out, value, key_order);
@@ -62,11 +15,6 @@ pub fn py_dumps_ordered(value: &Value, key_order: &[&str]) -> String {
 
 fn write_ordered(out: &mut String, value: &Value, key_order: &[&str]) {
     match value {
-        // Only the outermost objects are reordered: an array's elements are the
-        // records `_store_pending_promotions` builds, and everything *inside*
-        // one of those was itself written by `_json` and is therefore already
-        // sorted. Recursing with `key_order` would reorder a nested object that
-        // happened to share a key name with the outer one.
         Value::Array(items) => {
             out.push('[');
             for (index, item) in items.iter().enumerate() {
@@ -82,9 +30,6 @@ fn write_ordered(out: &mut String, value: &Value, key_order: &[&str]) {
                 .iter()
                 .filter_map(|wanted| map.keys().find(|key| key.as_str() == *wanted))
                 .collect();
-            // Whatever the caller did not name, in sorted order — the tail
-            // this function documents. `map.keys()` would be insertion order
-            // under `preserve_order` (see [`py_dumps`]).
             for key in sorted_keys(map) {
                 if !keys.contains(&key) {
                     keys.push(key);
@@ -105,13 +50,6 @@ fn write_ordered(out: &mut String, value: &Value, key_order: &[&str]) {
     }
 }
 
-/// The top-level keys of a JSON object, in **document** order.
-///
-/// `json.loads` gives CPython a dict in the order the document lists them, and
-/// two writers in the graph re-serialize a loaded dict without `sort_keys`. The
-/// order therefore survives a round trip in Python and would not survive one
-/// through `serde_json::Map`, which is a `BTreeMap`. Serde itself visits a map
-/// in document order, so this is a visitor rather than a hand-rolled scanner.
 pub fn object_key_order(raw: &str) -> Vec<String> {
     struct KeyOrder(Vec<String>);
 
@@ -139,10 +77,6 @@ pub fn object_key_order(raw: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// `lattice_brain.graph.json_utils._json` — `_json(data or {})`.
-///
-/// An absent map and an empty one are the same `"{}"` in Python, which is why
-/// the write door takes a `Map` rather than an `Option<Map>`.
 pub fn json_of(map: &Map<String, Value>) -> String {
     py_dumps(&Value::Object(map.clone()))
 }
@@ -179,11 +113,6 @@ fn write_value(out: &mut String, value: &Value) {
     }
 }
 
-/// An object's keys in code-point order — CPython's `sort_keys=True`.
-///
-/// Not `map.keys()`: whether that is already sorted depends on the
-/// `serde_json/preserve_order` feature, which a *different* crate in this
-/// workspace turns on (see [`py_dumps`]).
 fn sorted_keys(map: &Map<String, Value>) -> Vec<&String> {
     let mut keys: Vec<&String> = map.keys().collect();
     keys.sort();
@@ -192,17 +121,11 @@ fn sorted_keys(map: &Map<String, Value>) -> Vec<&String> {
 
 fn number_repr(number: &serde_json::Number) -> String {
     match number.as_f64() {
-        // `serde_json` keeps integers and floats apart, and so does CPython:
-        // `json.dumps(1)` is `1` while `json.dumps(1.0)` is `1.0`.
         Some(value) if !number.is_i64() && !number.is_u64() => py_float_repr(value),
         _ => number.to_string(),
     }
 }
 
-/// `str(float)` — CPython's shortest round-tripping repr, with the `.0`.
-///
-/// Rust's `{}` already emits the shortest round-tripping form, but it drops the
-/// fractional part of an integral float; CPython never does.
 pub fn py_float_repr(value: f64) -> String {
     if value.is_nan() {
         return "NaN".into();
@@ -222,7 +145,6 @@ pub fn py_float_repr(value: f64) -> String {
     }
 }
 
-/// `ensure_ascii=False` escaping: only what JSON itself requires.
 fn write_py_string(out: &mut String, text: &str) {
     out.push('"');
     for ch in text.chars() {
@@ -241,7 +163,6 @@ fn write_py_string(out: &mut String, text: &str) {
     out.push('"');
 }
 
-/// Format a byte slice as lowercase hexadecimal.
 pub fn hex_lower(bytes: &[u8]) -> String {
     use std::fmt::Write;
     let mut out = String::with_capacity(bytes.len() * 2);
@@ -251,24 +172,15 @@ pub fn hex_lower(bytes: &[u8]) -> String {
     out
 }
 
-/// `hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()`.
-///
-/// A Rust `&str` is already valid UTF-8, so `errors="replace"` never fires.
 pub fn sha256_text(text: &str) -> String {
     hex_lower(&Sha256::digest(text.as_bytes()))
 }
 
-/// `hashlib.sha256(data).hexdigest()`.
 pub fn sha256_bytes(data: &[u8]) -> String {
     hex_lower(&Sha256::digest(data))
 }
 
-/// `_kg_fsutil._slug` — the id-safe form of a label.
-///
-/// `[^0-9a-zA-Z가-힣._:@/-]+ → "-"`, then `strip("-")`, then `[:max_len]`
-/// **characters**. `"untitled"` when nothing survives.
 pub fn slug(text: &str, max_len: usize) -> String {
-    // `re.sub(r"\s+", " ", …).strip().lower()`
     let collapsed = crate::pytext::clean_text(text).to_lowercase();
     let mut replaced = String::with_capacity(collapsed.len());
     let mut in_run = false;
@@ -297,7 +209,6 @@ fn is_slug_char(ch: char) -> bool {
         || matches!(ch, '.' | '_' | ':' | '@' | '/' | '-')
 }
 
-/// `_scoped_slug_id` — legacy ids stay as they were; scoped ones get a prefix.
 pub fn scoped_slug_id(prefix: &str, value: &str, workspace_id: Option<&str>) -> String {
     let slugged = slug(value, 96);
     match workspace_id.filter(|w| !w.is_empty()) {
@@ -309,7 +220,6 @@ pub fn scoped_slug_id(prefix: &str, value: &str, workspace_id: Option<&str>) -> 
     }
 }
 
-/// `_scoped_hash_id` — content identity, workspace-isolated when scoped.
 pub fn scoped_hash_id(prefix: &str, value: &str, workspace_id: Option<&str>) -> String {
     let identity = match workspace_id.filter(|w| !w.is_empty()) {
         Some(workspace) => format!("{workspace}|{value}"),
@@ -318,7 +228,6 @@ pub fn scoped_hash_id(prefix: &str, value: &str, workspace_id: Option<&str>) -> 
     format!("{prefix}:{}", &sha256_text(&identity)[..24])
 }
 
-/// Python truthiness for a JSON value, as `if value:` applies it.
 pub fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -330,7 +239,6 @@ pub fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `str(value)` for the JSON scalars the metadata keys actually carry.
 pub fn py_str(value: &Value) -> String {
     match value {
         Value::Null => "None".into(),
@@ -342,10 +250,6 @@ pub fn py_str(value: &Value) -> String {
     }
 }
 
-/// `repr(some_str)` for the two sensitivity messages that interpolate `{x!r}`.
-///
-/// Narrow on purpose: CPython prefers single quotes and only switches to double
-/// quotes when the value itself contains a single quote and no double quote.
 pub fn py_repr_str(text: &str) -> String {
     let has_single = text.contains('\'');
     let has_double = text.contains('"');
@@ -370,9 +274,6 @@ pub fn py_repr_str(text: &str) -> String {
     out
 }
 
-// ── never-leaves stamping (port of `lattice_brain/sensitivity.py`) ───────────
-
-/// Path fragments checked case-insensitively against the POSIX form.
 pub const SENSITIVE_PATH_FRAGMENTS: [&str; 15] = [
     "/.ssh/",
     "/.gnupg/",
@@ -391,7 +292,6 @@ pub const SENSITIVE_PATH_FRAGMENTS: [&str; 15] = [
     ".keystore",
 ];
 
-/// Exact filenames that are secret-bearing by convention.
 pub const SENSITIVE_FILENAMES: [&str; 8] = [
     ".env",
     ".env.local",
@@ -403,12 +303,9 @@ pub const SENSITIVE_FILENAMES: [&str; 8] = [
     "secrets.json",
 ];
 
-/// `sensitivity.LOCAL_ONLY_FLAG`.
 pub const LOCAL_ONLY_FLAG: &str = "local_only";
-/// `sensitivity.LOCAL_ONLY_REASON`.
 pub const LOCAL_ONLY_REASON: &str = "local_only_reason";
 
-/// `sensitivity.sensitive_reason_for_path`.
 pub fn sensitive_reason_for_path(path: &str) -> Option<String> {
     if path.is_empty() {
         return None;
@@ -429,7 +326,6 @@ pub fn sensitive_reason_for_path(path: &str) -> Option<String> {
     None
 }
 
-/// `sensitivity.stamp_sensitivity` — never clears an existing flag.
 pub fn stamp_sensitivity(metadata: &mut Map<String, Value>, path: &str) -> Option<String> {
     let reason = sensitive_reason_for_path(path)?;
     metadata.insert(LOCAL_ONLY_FLAG.into(), Value::Bool(true));

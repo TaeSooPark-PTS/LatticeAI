@@ -1,15 +1,3 @@
-//! Event-driven filesystem watcher with debounce, batch coalescing, move detection,
-//! and periodic full-snapshot reconciliation.
-//!
-//! Addresses Review Sections 4.2 #1 and 15 (P1 — 증분 수집 및 멀티모달):
-//! - Uses OS filesystem notifications (`notify::RecommendedWatcher`) for low-latency
-//!   detection of local folder / vault changes without constant O(N) directory walks.
-//! - Coalesces bursty editor save sequences (temp-file write → rename → chmod) inside
-//!   a configurable debounce window (`debounce_window_ms`) and caps batch delivery
-//!   (`max_batch_size`) so bulk git checkouts never overwhelm the worker.
-//! - Runs periodic full reconciliation via [`WatchScanner`] (`reconcile_interval_ms`)
-//!   so missed OS events or offline changes made while Lattice was closed are 100% caught.
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
@@ -22,16 +10,11 @@ use notify::{
 use crate::hashes::sha256_bytes;
 use crate::watch::{ScanDiff, WatchConfig, WatchScanner};
 
-/// Configuration for [`DebouncedWatchEngine`].
 #[derive(Debug, Clone)]
 pub struct DebouncedWatchConfig {
-    /// Quiet period (ms) required after the latest touch on a path before emitting it.
     pub debounce_window_ms: u64,
-    /// Maximum number of paths emitted in a single drained batch.
     pub max_batch_size: usize,
-    /// Interval (ms) between full mtime+size snapshot reconciliations.
     pub reconcile_interval_ms: u64,
-    /// Underlying filter rules (supported extensions, ignored dirs, recursion, size cap).
     pub watch: WatchConfig,
 }
 
@@ -46,18 +29,13 @@ impl Default for DebouncedWatchConfig {
     }
 }
 
-/// High-level filesystem event normalized before debouncing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RawFsChange {
-    /// File created or modified at relative path.
     Touched(String),
-    /// File removed at relative path.
     Removed(String),
-    /// Atomic rename/move within the watched root (`from_rel` -> `to_rel`).
     Moved { from: String, to: String },
 }
 
-/// A detected move between two relative paths with identical content digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DetectedMove {
     pub from: String,
@@ -65,18 +43,12 @@ pub struct DetectedMove {
     pub content_sha256: String,
 }
 
-/// Coalesced, ready-to-process incremental batch emitted by [`DebouncedWatchEngine`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WatchBatch {
-    /// Relative paths created or modified (excluding pure moves when matched).
     pub upserts: Vec<String>,
-    /// Relative paths deleted from disk.
     pub removals: Vec<String>,
-    /// Files renamed/moved whose content hash matches a vanished path.
     pub moves: Vec<DetectedMove>,
-    /// Whether this batch included a full-tree periodic reconciliation pass.
     pub reconciled: bool,
-    /// Number of pending paths still queued behind `max_batch_size` or debounce window.
     pub remaining_queued: usize,
 }
 
@@ -99,7 +71,6 @@ struct PendingEntry {
     moved_from: Option<String>,
 }
 
-/// Stateful event-driven + periodic-reconciliation watcher for a single root directory.
 pub struct DebouncedWatchEngine {
     root: PathBuf,
     canonical_root: PathBuf,
@@ -113,7 +84,6 @@ pub struct DebouncedWatchEngine {
 }
 
 impl DebouncedWatchEngine {
-    /// Construct a watch engine rooted at `root` and seed its baseline snapshot + hashes.
     pub fn new(root: impl AsRef<Path>, config: DebouncedWatchConfig, now_ms: u64) -> Self {
         let root_path = root.as_ref().to_path_buf();
         let canonical_root =
@@ -139,10 +109,6 @@ impl DebouncedWatchEngine {
         }
     }
 
-    /// Start the OS-level `notify::RecommendedWatcher` on `root`.
-    ///
-    /// If OS watch registration fails (e.g. restrictive container ulimit), the
-    /// engine degrades gracefully to periodic reconciliation without failing closed.
     pub fn start_os_watcher(&mut self) -> Result<(), String> {
         let (tx, rx) = mpsc::channel();
         let notify_cfg = NotifyConfig::default().with_poll_interval(Duration::from_millis(500));
@@ -160,17 +126,14 @@ impl DebouncedWatchEngine {
         Ok(())
     }
 
-    /// Whether an active OS-level filesystem watcher is attached.
     pub fn has_os_watcher(&self) -> bool {
         self.watcher.is_some()
     }
 
-    /// Root directory being watched.
     pub fn root(&self) -> &Path {
         &self.root
     }
 
-    /// Record a normalized filesystem change at timestamp `now_ms`.
     pub fn record_change(&mut self, change: RawFsChange, now_ms: u64) {
         match change {
             RawFsChange::Touched(rel) => {
@@ -193,7 +156,6 @@ impl DebouncedWatchEngine {
                 if !self.accepts_relative_path(&rel, false) {
                     return;
                 }
-                // Ephemeral temp file created and deleted before ever being indexed -> drop both!
                 if !self.known_hashes.contains_key(&rel)
                     && self
                         .pending
@@ -234,7 +196,6 @@ impl DebouncedWatchEngine {
         }
     }
 
-    /// Drain any queued OS `notify::Event`s into the debounce buffer.
     pub fn pump_os_events(&mut self, now_ms: u64) -> usize {
         let mut events = Vec::new();
         if let Some(rx) = &self.rx {
@@ -286,7 +247,6 @@ impl DebouncedWatchEngine {
         }
     }
 
-    /// Force or trigger periodic full-snapshot reconciliation if `reconcile_interval_ms` elapsed.
     pub fn reconcile_if_due(&mut self, now_ms: u64, force: bool) -> bool {
         if !force
             && now_ms.saturating_sub(self.last_reconcile_ms) < self.config.reconcile_interval_ms
@@ -300,7 +260,6 @@ impl DebouncedWatchEngine {
             removed,
             ..
         } = self.scanner.scan_once().unwrap_or_default();
-        // Immediate promotion timestamp so reconciled misses do not wait another debounce window.
         let ready_ts = now_ms.saturating_sub(self.config.debounce_window_ms);
         for rel in added.into_iter().chain(changed) {
             self.pending.entry(rel).or_insert(PendingEntry {
@@ -319,8 +278,6 @@ impl DebouncedWatchEngine {
         true
     }
 
-    /// Pump OS events, run periodic reconciliation if due, and emit up to `max_batch_size`
-    /// debounced changes.
     pub fn poll_batch(&mut self, now_ms: u64, force_reconcile: bool) -> WatchBatch {
         self.pump_os_events(now_ms);
         let reconciled = self.reconcile_if_due(now_ms, force_reconcile);
@@ -361,8 +318,6 @@ impl DebouncedWatchEngine {
             }
         }
 
-        // Match moves either via explicit OS rename (`moved_from`) or by identical SHA-256
-        // against a vanished file in the same batch!
         let mut upserts = Vec::new();
         let mut moves = Vec::new();
 
@@ -383,7 +338,6 @@ impl DebouncedWatchEngine {
                 continue;
             }
 
-            // Content-hash move detection across simultaneous remove + add!
             let matched_removed = raw_removals
                 .iter()
                 .find(|rem| self.known_hashes.get(*rem) == Some(&digest))
@@ -400,7 +354,6 @@ impl DebouncedWatchEngine {
                 continue;
             }
 
-            // Skip pure metadata touch if bytes never actually changed!
             if self.known_hashes.get(&rel) == Some(&digest) {
                 continue;
             }
@@ -414,7 +367,6 @@ impl DebouncedWatchEngine {
             removals.push(rem);
         }
 
-        // Advance underlying snapshot so subsequent reconciliations don't re-report processed items.
         if !upserts.is_empty() || !removals.is_empty() || !moves.is_empty() {
             let _ = self.scanner.scan_once();
         }
@@ -503,17 +455,14 @@ mod tests {
         };
         let mut engine = DebouncedWatchEngine::new(dir.path(), cfg, 1_000);
 
-        // 1. Burst writes within 200ms debounce window coalesce into a single upsert!
         std::fs::write(dir.path().join("alpha.md"), "alpha v2").expect("v2");
         engine.record_change(RawFsChange::Touched("alpha.md".into()), 1_050);
         std::fs::write(dir.path().join("alpha.md"), "alpha v3").expect("v3");
         engine.record_change(RawFsChange::Touched("alpha.md".into()), 1_120);
 
-        // Ephemeral file created then deleted before debounce settles -> completely ignored!
         engine.record_change(RawFsChange::Touched("scratch.md".into()), 1_100);
         engine.record_change(RawFsChange::Removed("scratch.md".into()), 1_130);
 
-        // Too early (only 80ms after last alpha touch) -> empty batch!
         let early = engine.poll_batch(1_200, false);
         assert!(early.is_empty());
         assert_eq!(early.remaining_queued, 1);
@@ -523,7 +472,6 @@ mod tests {
         assert!(settled.removals.is_empty());
         assert_eq!(settled.remaining_queued, 0);
 
-        // 2. Rename/move detection via content SHA-256 (even if OS reported remove + create separately!).
         std::fs::rename(
             dir.path().join("move_me.md"),
             dir.path().join("renamed_target.md"),
@@ -539,11 +487,9 @@ mod tests {
         assert_eq!(moved.moves[0].from, "move_me.md");
         assert_eq!(moved.moves[0].to, "renamed_target.md");
 
-        // 3. Batch cap (`max_batch_size = 2`) + periodic reconciliation catching missed OS events!
         std::fs::write(dir.path().join("missed_one.md"), "one").expect("one");
         std::fs::write(dir.path().join("missed_two.md"), "two").expect("two");
         std::fs::write(dir.path().join("missed_three.md"), "three").expect("three");
-        // Notice: ZERO `record_change` calls — simulating dropped OS notifications!
         let recon_1 = engine.poll_batch(7_500, false);
         assert!(recon_1.reconciled);
         assert_eq!(recon_1.upserts.len(), 2);

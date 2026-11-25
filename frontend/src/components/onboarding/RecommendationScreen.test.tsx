@@ -78,7 +78,6 @@ describe("RecommendationScreen", () => {
   it("never renders a supported fallback card when the probe failed", () => {
     renderScreen({ status: "unavailable", reason: "probe_failed", recommendations: [] });
     expect(screen.getByRole("alert")).toBeTruthy();
-    // No fabricated model name and no primary CTA that implies readiness.
     expect(screen.queryByText(/Qwen/i)).toBeNull();
     expect(screen.queryByText(t("en", "flow.recommend.primary"))).toBeNull();
     expect(document.querySelector(".ritual-primary-model-button")).toBeNull();
@@ -115,13 +114,9 @@ describe("RecommendationScreen", () => {
   });
 
   it("names the top recommendation once instead of as a CTA above its own card", () => {
-    // The screen used to render items[0] twice: a bare CTA button at the top,
-    // then the same model again as the first card of the list below it, with
-    // nothing saying which to press. One hero card now owns both.
     renderScreen({ status: "ready", reason: null, recommendations: [supportedModel, faster, unsupported] });
     expect(screen.getAllByText("Gemma 3")).toHaveLength(1);
     expect(document.querySelectorAll(".ritual-primary-model-button")).toHaveLength(1);
-    // The hero is not one of the compact alternative cards.
     expect(document.querySelectorAll(".ritual-model-card.is-compact")).toHaveLength(2);
     expect(document.querySelector(".ritual-model-card.is-compact")?.textContent).not.toContain("Gemma 3");
   });
@@ -188,7 +183,6 @@ describe("RecommendationScreen", () => {
       screen.getByText(new RegExp(t("en", "flow.recommend.primaryNote", { time: download }))),
     ).toBeTruthy();
     expect(screen.getByText(new RegExp(t("en", "flow.recommend.nextHint")))).toBeTruthy();
-    // A known size shows itself instead of the ready badge.
     expect(screen.getByText("8GB")).toBeTruthy();
   });
 
@@ -212,7 +206,6 @@ describe("RecommendationScreen", () => {
     renderScreen({ status: "ready", reason: null, recommendations: [faster, supportedModel] });
     expect(screen.getByText(t("en", "flow.recommend.rank.faster"))).toBeTruthy();
     expect(screen.getByText(t("en", "flow.recommend.comparison.faster"))).toBeTruthy();
-    // The compact alternative with no size wears the ready badge.
     expect(
       document.querySelector(".ritual-model-card.is-compact .ritual-alt-size")?.textContent,
     ).toBe(t("en", "flow.recommend.sizeReady"));
@@ -229,7 +222,6 @@ describe("RecommendationScreen", () => {
   });
 
   it("falls back to a numbered choice label for an unknown role", () => {
-    // Runtime data is untyped: a role outside the known set must still label.
     renderScreen({
       status: "ready",
       reason: null,
@@ -251,8 +243,6 @@ describe("RecommendationScreen", () => {
       recommendations: [supportedModel, unsupported],
     });
     const card = screen.getByText("Llama 70B").closest("button") as HTMLButtonElement;
-    // fireEvent dispatches even on disabled controls (assistive tech and
-    // scripts can); the handler's own check must hold the line.
     fireEvent.click(card);
     expect(props.onSelect).not.toHaveBeenCalled();
   });

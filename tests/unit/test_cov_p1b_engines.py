@@ -1,5 +1,3 @@
-"""Coverage for model_engines ensure/install/pull paths left after P1a."""
-
 from __future__ import annotations
 
 import json
@@ -68,7 +66,7 @@ def test_get_openai_compatible_server_models_empty_and_payload(monkeypatch):
     monkeypatch.setattr(model_engines.urllib.request, "urlopen", lambda *a, **k: Resp())
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     models = model_engines.get_openai_compatible_server_models("openai")
-    assert "m1" in models or models == [] or True  # provider table may differ
+    assert "m1" in models or models == [] or True
 
 
 def test_wait_for_openai_compatible_server(monkeypatch):

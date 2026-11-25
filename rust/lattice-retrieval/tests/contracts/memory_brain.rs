@@ -1,5 +1,3 @@
-//! Mounted routes == `rust/fixtures/openapi/memory_brain.json`.
-
 use lattice_retrieval::brain_api;
 use lattice_retrieval::chronicle_api;
 use lattice_retrieval::command_center_api;

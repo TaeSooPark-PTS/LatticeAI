@@ -26,7 +26,6 @@ export function BrainComposer({
   onUploadDocument: (file: File) => void;
   onSend: () => void;
   onStop?: () => void;
-  /** Extra capture controls (file · folder · note · web) shown inside the + menu. */
   attachments?: React.ReactNode;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -34,14 +33,8 @@ export function BrainComposer({
   const [attachOpen, setAttachOpen] = React.useState(false);
   const attachMenuId = React.useId();
   const closeTimer = React.useRef<number | null>(null);
-  // When hover opens the menu, the click that lands milliseconds later must
-  // not read as "toggle closed" — that would make the menu close for exactly
-  // the person who reached for it. A click only closes a menu that has been
-  // open long enough to have been seen.
   const openedAt = React.useRef(0);
 
-  // Auto-grow with the draft up to the CSS max-height (9.5rem = 152px),
-  // so multi-line questions stay fully visible while typing.
   React.useEffect(() => {
     const element = textareaRef.current;
     if (!element) return;
@@ -56,9 +49,6 @@ export function BrainComposer({
     }
   };
 
-  // Hover closes the menu only when nothing inside it is in use: an open
-  // capture popover (folder/note/web input) or a focused field pins it open,
-  // otherwise the pointer drifting away would close the form mid-typing.
   const scheduleClose = () => {
     cancelScheduledClose();
     closeTimer.current = window.setTimeout(() => {
@@ -73,7 +63,6 @@ export function BrainComposer({
 
   React.useEffect(() => cancelScheduledClose, []);
 
-  // Outside click closes; Escape is handled on the wrapper below.
   React.useEffect(() => {
     if (!attachOpen) return;
     const dismiss = (event: Event) => {
@@ -93,9 +82,6 @@ export function BrainComposer({
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
-          // IME guard: while Korean/Japanese/Chinese text is still composing,
-          // Enter commits the composition — sending here would fire early and
-          // duplicate the last syllable.
           if (event.nativeEvent.isComposing) return;
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -145,8 +131,6 @@ export function BrainComposer({
           }}
           onKeyDown={(event) => {
             if (event.key !== "Escape" || !attachOpen) return;
-            // First Escape closes the capture popover (the dock handles it);
-            // only a bare menu closes on Escape here.
             if (attachRef.current?.querySelector(".brain-ingestion-dock-popover")) return;
             event.preventDefault();
             event.stopPropagation();
@@ -230,8 +214,6 @@ export function BrainComposer({
   );
 }
 
-// Exported for unit tests: the reader error path must be awaited directly —
-// through the input handler the rejection would float as an unhandled promise.
 export function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

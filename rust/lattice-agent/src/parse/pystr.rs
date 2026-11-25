@@ -1,21 +1,5 @@
-//! Python string/`repr` semantics the loop depends on for byte parity.
-//!
-//! Three of them are load-bearing and none is obvious in Rust:
-//!
-//! * **Slicing is by code point.** `str(raw)[:400]` in the parse-error step and
-//!   `str(thoughts)[:600]` in every executor step cut *characters*, not bytes.
-//!   A byte slice of Korean prose would panic or split a grapheme; the
-//!   transcript would then differ from Python's on the first non-ASCII run.
-//! * **`str(x or "")` is two operations.** Falsiness first (`None`, `False`,
-//!   `0`, `""`, `[]`, `{}` all become `""`), then `str`. `str(5)` is `"5"` and
-//!   `str(True)` is `"True"` — not what a JSON encoder would produce.
-//! * **`f"…{list_of_str}"` interpolates `repr`.** The rollback message embeds a
-//!   Python list literal, single quotes and all, so the port has to spell
-//!   `repr` out rather than reach for JSON.
-
 use serde_json::Value;
 
-/// `text[:limit]` — Python's code-point slice.
 pub fn char_slice(text: &str, limit: usize) -> &str {
     match text.char_indices().nth(limit) {
         Some((offset, _)) => &text[..offset],
@@ -23,12 +7,10 @@ pub fn char_slice(text: &str, limit: usize) -> &str {
     }
 }
 
-/// `len(text)` — code points, not bytes.
 pub fn char_len(text: &str) -> usize {
     text.chars().count()
 }
 
-/// Python truthiness for the JSON values the loop actually carries.
 pub fn is_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -40,7 +22,6 @@ pub fn is_truthy(value: &Value) -> bool {
     }
 }
 
-/// `str(value)`.
 pub fn py_str(value: &Value) -> String {
     match value {
         Value::Null => "None".into(),
@@ -52,7 +33,6 @@ pub fn py_str(value: &Value) -> String {
     }
 }
 
-/// `str(value or "")` — the idiom the executor reads `action`/`thoughts` with.
 pub fn py_str_or_empty(value: Option<&Value>) -> String {
     match value {
         Some(value) if is_truthy(value) => py_str(value),
@@ -60,7 +40,6 @@ pub fn py_str_or_empty(value: Option<&Value>) -> String {
     }
 }
 
-/// `repr(value)` for the JSON value space.
 pub fn py_repr(value: &Value) -> String {
     match value {
         Value::Null => "None".into(),
@@ -82,7 +61,6 @@ pub fn py_repr(value: &Value) -> String {
     }
 }
 
-/// `repr` of a `str`: single quotes, unless the text holds a `'` and no `"`.
 pub fn repr_str(text: &str) -> String {
     let quote = if text.contains('\'') && !text.contains('"') {
         '"'
@@ -108,7 +86,6 @@ pub fn repr_str(text: &str) -> String {
     out
 }
 
-/// `repr` of a `list[str]`, which is what the rollback message interpolates.
 pub fn py_list_repr(items: &[String]) -> String {
     let inner: Vec<String> = items.iter().map(|item| repr_str(item)).collect();
     format!("[{}]", inner.join(", "))
@@ -121,7 +98,6 @@ mod tests {
 
     #[test]
     fn slicing_counts_code_points_not_bytes() {
-        // 400 bytes of this is a panic; 4 characters of it is the answer.
         assert_eq!(char_slice("작업을 완료했습니다", 4), "작업을 ");
         assert_eq!(char_len("작업을"), 3);
         assert_eq!(char_slice("short", 99), "short");

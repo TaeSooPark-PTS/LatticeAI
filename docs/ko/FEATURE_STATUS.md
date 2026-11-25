@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.1.1)
+# Lattice AI 기능 현황 (v14.1.2)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.1.1 — Living Synthesis**.
+현재 릴리스: **14.1.2 — Living Synthesis**.
 
-이 문서는 `v14.1.1` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.1.2` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---
@@ -57,7 +57,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **멀티모달(이미지 · 오디오 · 비디오)** | 옵트인(기본 꺼짐) | `allow_multimodal` 활성화 시 `Image`/`ImageText`, `Audio`, `Video`(`Modality::Video` + `ffmpeg` 키프레임 + `.srt`/`.vtt`)를 지원합니다. OCR(`pytesseract`), VLM 캡션, 비전 임베딩, 음성 전사기, `ffmpeg`는 번들되지 않으며 미설치 시 가짜 출력 없이 `unavailable`로 보고합니다. |
 | **PostgreSQL 백엔드** | 계획됨(Planned) | 공식 로컬 라이브 저장소는 SQLite WAL입니다. PostgreSQL/pgvector는 드라이런 계획 및 수동 실행 CI 가드만 존재하는 계획 단계입니다. |
 | **텔레그램 브리지 & SSO/OIDC 로그인 콜백** | 제거됨 (11.6.0) | 제품 서버가 Rust(`lattice-host`)로 전환되면서 함께 은퇴했습니다. 비밀번호 로그인, 세션, `$scrypt$` 해싱, 레이트 리미팅, CSRF, SSO 설정 표면은 `lattice-auth`에서 네이티브로 유지됩니다. |
-| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.1.1_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
+| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.1.2_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
 
 ---
 
@@ -80,9 +80,9 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 
 ## Git에 유지되는 릴리스 이력 범위 (`v13.0.0+`)
 
-이 저장소는 현대화된 Rust 호스트 및 도메인 그룹 아키텍처 세대(`v13.0.0`부터 `v14.1.1`까지)의 공개 릴리스 이력을 유지합니다:
+이 저장소는 현대화된 Rust 호스트 및 도메인 그룹 아키텍처 세대(`v13.0.0`부터 `v14.1.2`까지)의 공개 릴리스 이력을 유지합니다:
 
-- `14.1.1` · `14.1.0` · `14.0.0`
+- `14.1.2` · `14.1.2` · `14.1.0` · `14.0.0`
 - `13.9.0` · `13.8.0` · `13.7.2` · `13.7.1` · `13.7.0` · `13.6.0` · `13.5.0` · `13.4.2` · `13.4.1` · `13.4.0` · `13.3.1` · `13.3.0` · `13.2.1` · `13.2.0` · `13.1.0` · `13.0.0`
 
 상세 변경 이력은 [`CHANGELOG.md`](./CHANGELOG.md), 아키텍처는 [`ARCHITECTURE.md`](./ARCHITECTURE.md), 보안 지원 범위는 [`SECURITY.md`](./SECURITY.md)를 참고하세요.

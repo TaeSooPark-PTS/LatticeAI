@@ -1,9 +1,6 @@
 import { t, type Language } from "@/i18n";
 import type { AgentStepEvent, MessageLoopSummary, MessageRunExplanation } from "./types";
 
-// How each loop event renders: a styled dot (CSS class, never an emoji in
-// code) + a short i18n label. Unknown events fall back to a neutral marker so
-// future backend additions degrade gracefully.
 type StepKind = "ok" | "error" | "blocked" | "proposed" | "info";
 
 export function stepKind(step: AgentStepEvent): StepKind {
@@ -51,10 +48,6 @@ function friendlyAction(language: Language, action?: string): string {
   return action;
 }
 
-// Machine detail shown next to the label: tool name, target file, decision/
-// verdict/state values. Raw data values, never display copy. MCP/skill rows
-// get a plain-language prefix so a first-run user is not left with a dotted
-// catalog name.
 function stepMeta(language: Language, step: AgentStepEvent): string {
   return [
     friendlyAction(language, step.action),
@@ -69,9 +62,6 @@ function stepMeta(language: Language, step: AgentStepEvent): string {
 
 const MAX_VISIBLE_STEPS = 30;
 
-// Compact vertical timeline of what the agent loop actually did — live while
-// the run streams (`event: agent_step` frames), collapsed to an expandable
-// one-line summary once the reply is done.
 export function AgentStepTimeline({
   language,
   steps,
@@ -137,9 +127,6 @@ export function AgentStepTimeline({
   );
 }
 
-// Loop transparency note: "모델 응답을 N회 보정했어요" — shown only when the
-// loop actually repaired model output (works for DONE runs too, where no
-// warning strip renders). The tooltip lists the top repair kinds.
 export function LoopRepairsNote({
   language,
   summary,
@@ -165,9 +152,6 @@ export function LoopRepairsNote({
   );
 }
 
-// Plain-language run outcome (v9.9.6). The repairs note above is a number;
-// this is the sentence. Rendered as a caution for every non-DONE code so a
-// NEEDS_REVIEW run can never be skimmed as a success.
 export function RunExplanationNote({
   language,
   explanation,

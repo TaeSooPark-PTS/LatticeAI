@@ -1,28 +1,13 @@
-//! The small Python behaviours the retrieval port leans on, ported exactly.
-//!
-//! `round6` is the one that decides rankings: CPython's `round(x, 6)` formats
-//! the *exact* value of the double to six decimals with round-half-even and
-//! parses the result back, which is precisely what Rust's `{:.6}` + `parse`
-//! does. Anything cheaper (`(x * 1e6).round() / 1e6`) rounds half-away-from-zero
-//! and disagrees on every tie.
-
 use serde_json::{Map, Value};
 
-/// `round(value, 6)` with CPython's semantics (round-half-even on the exact value).
 pub fn round6(value: f64) -> f64 {
     round_to(value, 6)
 }
 
-/// `round(value, 4)` — the precision the document-generation scores are stored at.
 pub fn round4(value: f64) -> f64 {
     round_to(value, 4)
 }
 
-/// `round(value, digits)` with CPython's semantics.
-///
-/// Public because `lattice-ingest` rounds the watch snapshot's mtimes to three
-/// places and must round them the *same* way: half-away-from-zero would report
-/// a spurious change on every file whose mtime lands on a tie.
 pub fn round_to(value: f64, digits: usize) -> f64 {
     if !value.is_finite() {
         return value;
@@ -30,15 +15,10 @@ pub fn round_to(value: f64, digits: usize) -> f64 {
     format!("{value:.digits$}").parse::<f64>().unwrap_or(value)
 }
 
-/// True for every character Python's `re` `\s` and `str.strip()` treat as space.
-///
-/// `char::is_whitespace` is the Unicode White_Space property; Python's is that
-/// plus the C0 separators `\x1c`–`\x1f`, which `str.isspace()` reports as space.
 pub fn is_py_space(c: char) -> bool {
     c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c)
 }
 
-/// `lattice_brain.graph._kg_common.text._clean_text` — collapse runs, strip.
 pub fn clean_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut pending_space = false;
@@ -56,23 +36,18 @@ pub fn clean_text(text: &str) -> String {
     out
 }
 
-/// Python's `text[:n]` — n **characters**, not bytes.
 pub fn truncate_chars(text: &str, n: usize) -> String {
     text.chars().take(n).collect()
 }
 
-/// Python's `str.rstrip()` — trailing whitespace by *Python's* definition of it,
-/// which is why it goes through [`is_py_space`] rather than `str::trim_end`.
 pub fn rstrip(text: &str) -> String {
     text.trim_end_matches(is_py_space).to_string()
 }
 
-/// Python's `str.strip()`, for the same reason.
 pub fn strip(text: &str) -> String {
     text.trim_matches(is_py_space).to_string()
 }
 
-/// `lattice_brain.graph.json_utils._safe_loads` — object or `{}`, never an error.
 pub fn safe_loads(raw: Option<&str>) -> Map<String, Value> {
     let Some(raw) = raw else { return Map::new() };
     if raw.is_empty() {
@@ -84,14 +59,6 @@ pub fn safe_loads(raw: Option<&str>) -> Map<String, Value> {
     }
 }
 
-/// `lattice_brain.utils.parse_iso`, as naive seconds since the Unix epoch.
-///
-/// Naive on purpose: every timestamp the graph writes comes from
-/// `datetime.now().isoformat(...)` with no offset, and `_recency_score`
-/// subtracts it from a naive `datetime.now()`. A stamp that *does* carry an
-/// offset makes Python raise `TypeError` out of the middle of `hybrid_search`;
-/// this returns `None` (→ "unknown age", never dampened) instead, which is the
-/// one deliberate divergence in this function.
 pub fn parse_iso(value: Option<&str>) -> Option<f64> {
     let raw = value?.trim();
     if raw.is_empty() {
@@ -130,7 +97,6 @@ fn parse_clock(rest: &str) -> Option<(u32, u32, u32, f64)> {
         return None;
     }
     let time = &rest[head.len_utf8()..];
-    // An offset would make Python return an aware datetime; see the doc comment.
     if time.contains('+') || time.contains('Z') || time.contains('z') || time.contains('-') {
         return None;
     }
@@ -154,7 +120,6 @@ fn parse_clock(rest: &str) -> Option<(u32, u32, u32, f64)> {
     Some((hour, minute, second, micros))
 }
 
-/// Days from 1970-01-01 for a proleptic Gregorian date (Hinnant's algorithm).
 fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
     let era = if y >= 0 { y } else { y - 399 } / 400;
@@ -165,10 +130,6 @@ fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
-/// `lattice_brain.graph._kg_fsutil._recency_score` with an explicit `now`.
-///
-/// `now` is a parameter rather than a call to the clock because a golden file
-/// that depends on wall-clock time is not a golden file.
 pub fn recency_score(updated_at: Option<&str>, now_secs: f64, half_life_days: f64) -> f64 {
     let Some(stamp) = parse_iso(updated_at) else {
         return 0.0;
@@ -178,7 +139,6 @@ pub fn recency_score(updated_at: Option<&str>, now_secs: f64, half_life_days: f6
     (-decay * age_days).exp()
 }
 
-/// `lattice_brain.graph._kg_common.text.citation_locator`.
 pub fn citation_locator(chunk_metadata: &Map<String, Value>) -> String {
     let mut parts: Vec<String> = Vec::new();
     let heading = py_str_or_empty(chunk_metadata.get("heading_path"));
@@ -198,7 +158,6 @@ pub fn citation_locator(chunk_metadata: &Map<String, Value>) -> String {
     parts.join(" · ")
 }
 
-/// `str(value or "")` for the JSON values a metadata blob can hold.
 fn py_str_or_empty(value: Option<&Value>) -> String {
     match value {
         Some(Value::String(text)) => text.clone(),
@@ -208,7 +167,6 @@ fn py_str_or_empty(value: Option<&Value>) -> String {
     }
 }
 
-/// `int(value) if value is not None else 0`, with Python's failure modes → 0.
 fn py_int_or_zero(value: Option<&Value>) -> i64 {
     match value {
         Some(Value::Number(number)) => number.as_f64().map(|v| v.trunc() as i64).unwrap_or(0),
@@ -222,8 +180,6 @@ fn py_int_or_zero(value: Option<&Value>) -> i64 {
 mod tests {
     use super::*;
 
-    /// Expectations produced by CPython 3.14 `round(x, 6)`; the hex forms pin the
-    /// exact doubles so no decimal literal can drift them.
     #[test]
     fn round6_matches_cpython() {
         let cases: [(f64, f64); 10] = [
@@ -250,7 +206,6 @@ mod tests {
         assert!(round6(f64::NAN).is_nan());
         assert_eq!(round6(f64::INFINITY), f64::INFINITY);
         assert_eq!(round6(123456.7890625), 123456.789062);
-        // `round(x, 4)` — the document-generation scores' precision.
         assert_eq!(
             round4(0.65975),
             0.6597,
@@ -325,7 +280,6 @@ mod tests {
         assert!((fresh - 1.0).abs() < 1e-15);
         let half = recency_score(Some("2026-05-01T00:00:00"), now, 14.0);
         assert!((half - 0.5).abs() < 1e-12, "{half}");
-        // Unparseable → 0.0, future → clamped to "now".
         assert_eq!(recency_score(Some("nope"), now, 14.0), 0.0);
         assert_eq!(recency_score(None, now, 14.0), 0.0);
         assert_eq!(recency_score(Some("2027-01-01T00:00:00"), now, 14.0), 1.0);

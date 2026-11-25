@@ -1,14 +1,3 @@
-//! `latticeai.tools.filesystem`'s writers, natively.
-//!
-//! Three handlers: `write_file`, `edit_file`, `todo_write`. Every path goes
-//! through [`Workspace::resolve`] — the same resolver the loop's snapshot and
-//! overwrite guard use — so there is one containment rule for the whole crate
-//! and no raw path ever reaches `std::fs`.
-//!
-//! The refusals are the Python strings verbatim, in the Python order. The order
-//! matters: `edit_file` compares `old_string` to `new_string` *before* it
-//! resolves the path, so a no-op edit on an escaping path reports the no-op.
-
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
@@ -16,32 +5,15 @@ use crate::parse::pystr::{char_slice, is_truthy, py_str};
 use crate::tools::args;
 use crate::tools::sandbox::{ToolError, Workspace, MAX_FILE_BYTES};
 
-/// Where `todo_write` persists, relative to the workspace root.
 pub const TODO_REL_PATH: &str = ".lattice/todos.json";
 
-/// `_TODO_ALLOWED_STATUS`, sorted — Python prints `sorted(...)` in its refusal.
 const TODO_ALLOWED_STATUS: [&str; 3] = ["completed", "in_progress", "pending"];
 
-/// The largest list `todo_write` accepts.
 const MAX_TODOS: usize = 50;
 
-/// `write_file(path, content)`.
-///
-/// The content passes [`crate::content::sanitize::sanitize_write_content`] before it
-/// reaches a disk (v11.7.0). Python ran that pipeline in the *loop* only, so a
-/// direct dispatch — `/agent/tool`, a hook, the harness — wrote whatever the
-/// model produced; this is the door that closes. Content that already validates
-/// is returned byte-for-byte, so nothing a person authored is touched, and the
-/// loop's own pass (`agentloop::gates`) is an identity transform when it gets
-/// here. The **result shape stays `{path, bytes}`**: the transcript's
-/// `content_sanitize` is the loop's to record, and a new key here would change
-/// what every existing reader of a tool result sees.
 pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let content = args::optional_str(args, "content", "")?;
-    // Missing/empty content must not land as a 0-byte success. Aliases
-    // (`content_source`/`text`/`body`) are skipped: live tape used
-    // `content_source` as a path, not the file text.
     if content.is_empty() {
         return Err(ToolError::tool(
             "write_file needs args.content (the full file text). Nothing was written.",
@@ -60,13 +32,6 @@ pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
     }))
 }
 
-/// `edit_file(path, old_string, new_string, replace_all=False)`.
-///
-/// **Not** sanitized, which is Python's scope and not an oversight:
-/// `new_string` is a fragment spliced into a file the user already has, so it
-/// has no file type to validate against and no document shape to repair to.
-/// Running the write-side pipeline over a replacement would judge a line of
-/// CSS as if it were a stylesheet and "repair" it into one.
 pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let old = args::required_str(args, "old_string")?;
@@ -111,9 +76,6 @@ pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Val
     }
     let bytes = crate::tools::safe_io::safe_write_bytes(workspace, &target, updated.as_bytes())?;
 
-    // `original[: original.find(old_string)].count("\n") + 1` — the newlines
-    // before the first occurrence. Byte or character index makes no difference
-    // to a newline count, so `str::find`'s byte offset is the same answer.
     let prefix = original.find(&old).unwrap_or(0);
     let edited_line = original[..prefix].matches('\n').count() + 1;
     Ok(json!({
@@ -124,9 +86,6 @@ pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Val
     }))
 }
 
-/// One cleaned todo. The field **order** is the file's key order: Python builds
-/// the dict as `{id, content, status}` and `json.dumps` writes insertion order,
-/// so a `BTreeMap` here would rewrite every existing todo file on first save.
 #[derive(Debug, Clone, Serialize)]
 struct Todo {
     id: String,
@@ -134,7 +93,6 @@ struct Todo {
     status: String,
 }
 
-/// `todo_write(todos)`.
 pub fn todo_write(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let raw = args::truthy_value(args, "todos")
         .cloned()
@@ -184,8 +142,6 @@ pub fn todo_write(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
     }
 
     let target = workspace.resolve(TODO_REL_PATH)?;
-    // `json.dumps(cleaned, ensure_ascii=False, indent=2)`: two-space indent, no
-    // escaped non-ASCII, no trailing newline. `to_string_pretty` is all three.
     let body = serde_json::to_string_pretty(&cleaned)
         .map_err(|error| ToolError::tool(error.to_string()))?;
     crate::tools::safe_io::safe_write_bytes(workspace, &target, body.as_bytes())?;
@@ -201,13 +157,10 @@ pub fn todo_write(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
     }))
 }
 
-/// `target.stat().st_size`, and zero for a file that vanished under us.
 pub(crate) fn file_size(path: &std::path::Path) -> u64 {
     std::fs::metadata(path).map(|meta| meta.len()).unwrap_or(0)
 }
 
-/// An `OSError` Python would let escape as a 500. Named as a deviation in the
-/// wiring note: the loop records an error step and the run continues.
 pub(crate) fn io_error(error: std::io::Error) -> ToolError {
     ToolError::tool(error.to_string())
 }
@@ -346,7 +299,6 @@ mod tests {
     #[test]
     fn the_edit_refusals_are_in_pythons_order() {
         let (_dir, workspace) = workspace();
-        // Identical strings are refused before the path is even resolved.
         assert_eq!(
             edit_file(
                 &workspace,

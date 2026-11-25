@@ -1,10 +1,3 @@
-//! Bi-temporal knowledge representation, point-in-time queries, and evolution vs contradiction analysis.
-//!
-//! Tracks both **valid time** (`valid_from` .. `valid_until` in the real world)
-//! and **transaction time** (`recorded_at`, `superseded_at` in the Brain store)
-//! inside `nodes.metadata_json.temporal` and `nodes_v2` lifecycle columns,
-//! preserving 100% legacy table compatibility and rollback safety.
-
 use std::collections::{BTreeSet, HashMap};
 
 use rusqlite::{params, Connection, Transaction};
@@ -27,7 +20,6 @@ fn parse_temporal_iso(value: Option<&str>) -> Option<f64> {
     if let Some(stripped) = raw.strip_suffix('Z').or_else(|| raw.strip_suffix('z')) {
         return parse_iso(Some(stripped));
     }
-    // Handle trailing +HH:MM or -HH:MM offset after the date prefix.
     if raw.len() > 16 {
         let (date_prefix, tail) = raw.split_at(10);
         if let Some(pos) = tail.rfind(['+', '-']) {
@@ -63,12 +55,10 @@ fn node_matches_workspace(row_ws: Option<&str>, meta: &Value, target_ws: &str) -
     scoped_workspace_visible(eff_ws, &allowed, workspace_is_default(Some(target_ws)))
 }
 
-/// Bi-temporal validity & transaction interval for a knowledge node.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TemporalInterval {
     pub valid_from: Option<String>,
     pub valid_until: Option<String>,
-    /// Canonical alias for `valid_until` aligned with `nodes_v2.valid_to`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub valid_to: Option<String>,
     pub recorded_at: String,
@@ -83,10 +73,6 @@ pub struct TemporalInterval {
 }
 
 impl TemporalInterval {
-    /// Whether this fact is active at `as_of_epoch` (seconds since Unix epoch).
-    ///
-    /// Evaluates valid-time bounds when present, falling back to transaction
-    /// timestamps (`recorded_at` / `superseded_at`).
     pub fn is_active_at_epoch(&self, as_of_epoch: f64) -> bool {
         let start = parse_temporal_iso(self.valid_from.as_deref())
             .or_else(|| parse_temporal_iso(Some(self.recorded_at.as_str())));
@@ -105,7 +91,6 @@ impl TemporalInterval {
         true
     }
 
-    /// Whether two intervals overlap in valid time.
     pub fn overlaps(&self, other: &Self) -> bool {
         let a_start = parse_temporal_iso(self.valid_from.as_deref())
             .or_else(|| parse_temporal_iso(Some(self.recorded_at.as_str())))
@@ -123,7 +108,6 @@ impl TemporalInterval {
     }
 }
 
-/// One temporally anchored knowledge statement.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TemporalFactRecord {
     pub node_id: String,
@@ -136,19 +120,14 @@ pub struct TemporalFactRecord {
     pub provenance_sources: Vec<String>,
 }
 
-/// Semantic distinction between historical change, refinement, and true conflict.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TemporalConflictKind {
-    /// Earlier state superseded by a newer decision (`valid_until <= valid_from` or `SUPERSEDES`).
     TemporalEvolution,
-    /// Coexisting refinement or scoped exception (`REFINES`, `EXTENDS`, `PART_OF`).
     ComplementaryRefinement,
-    /// Overlapping active claims that contradict one another (`CONTRADICTS`).
     ActiveContradiction,
 }
 
-/// Pairwise temporal/conflict classification between two facts on the same subject.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TemporalRelationClassification {
     pub from_node: String,
@@ -157,7 +136,6 @@ pub struct TemporalRelationClassification {
     pub rationale: String,
 }
 
-/// Point-in-time or present-day synthesis over a subject's temporal evolution.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct TemporalTimelineSummary {
     pub subject_query: String,
@@ -169,7 +147,6 @@ pub struct TemporalTimelineSummary {
 }
 
 impl TemporalTimelineSummary {
-    /// Whether there is at least one unresolved active contradiction at the queried time.
     pub fn has_active_contradiction(&self) -> bool {
         let active_ids: BTreeSet<&str> = self
             .active_facts
@@ -272,8 +249,6 @@ fn read_temporal_interval(
     }
 }
 
-/// Stamp bi-temporal metadata onto `node_id`, optionally marking `supersedes_node_id`
-/// as superseded as of `valid_from` (non-destructively preserving historical state).
 pub fn stamp_temporal_fact(
     txn: &Transaction<'_>,
     node_id: &str,
@@ -310,7 +285,6 @@ pub fn stamp_temporal_fact(
         "UPDATE nodes SET metadata_json = ?1 WHERE id = ?2",
         params![meta_json_str, node_id],
     )?;
-    // Sync valid_from / valid_to / updated_at onto nodes_v2 when present.
     let has_v2: bool = txn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='nodes_v2')",
@@ -417,8 +391,6 @@ pub fn stamp_temporal_fact(
     Ok(())
 }
 
-/// Query temporal facts matching `subject_query`, evaluated either at `as_of_iso`
-/// (point-in-time travel) or at current latest state (`as_of_iso = None`).
 pub fn query_temporal_timeline(
     conn: &Connection,
     workspace_id: Option<&str>,
@@ -697,7 +669,6 @@ mod tests {
         .expect("refines edge");
         txn.commit().expect("commit");
 
-        // 1. Point-in-time February: only January Python decision is active!
         let feb = query_temporal_timeline(
             &conn,
             Some("personal"),
@@ -709,7 +680,6 @@ mod tests {
         assert_eq!(feb.active_facts[0].node_id, "dec:jan");
         assert_eq!(feb.unreached_facts.len(), 2);
 
-        // 2. Point-in-time April: March Rust migration is active, January is historical!
         let apr = query_temporal_timeline(
             &conn,
             Some("personal"),
@@ -722,7 +692,6 @@ mod tests {
         assert_eq!(apr.historical_facts.len(), 1);
         assert_eq!(apr.historical_facts[0].node_id, "dec:jan");
 
-        // 3. Present-day state: Rust core (Mar) + retained Python modules (May) coexist without contradiction!
         let now = query_temporal_timeline(&conn, Some("personal"), "Project A", None).expect("now");
         let active_ids: Vec<&str> = now
             .active_facts

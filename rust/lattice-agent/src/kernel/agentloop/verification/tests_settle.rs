@@ -23,8 +23,6 @@ async fn the_legacy_next_state_aliases_still_mean_what_they_meant() {
         .await
         .expect("verify");
     assert_eq!(ctx.state, AgentState::Executing);
-    // The retry appends its own step after the verdict, so the verdict is
-    // the one before last.
     assert_eq!(ctx.transcript[1]["next_state"], "EXECUTING");
     assert_eq!(ctx.transcript[2]["retry_attempt"], 1);
 
@@ -49,7 +47,6 @@ async fn rollback_and_the_contradictory_and_unknown_verdicts() {
             json!({"action": "v", "verdict": "FAIL", "next_state": "ROLLBACK"}),
             AgentState::Rollback,
         ),
-        // DONE without a PASS is a contradiction the user must review.
         (
             json!({"action": "v", "verdict": "FAIL", "next_state": "DONE"}),
             AgentState::NeedsReview,
@@ -58,7 +55,6 @@ async fn rollback_and_the_contradictory_and_unknown_verdicts() {
             json!({"action": "v", "verdict": "FAIL", "next_state": "SOMETHING"}),
             AgentState::Failed,
         ),
-        // A 2B critic that names no next_state after a real write is DONE.
         (
             json!({"action": "verdict", "confidence": 0.9}),
             AgentState::Done,
@@ -96,7 +92,6 @@ async fn an_unparseable_critic_gets_exactly_one_strict_retry() {
         .expect("verify");
     assert_eq!(ctx.state, AgentState::Done);
     assert_eq!(harness.runtime_llm_calls(&ctx), 2);
-    // The retry is asked at temperature 0.0, and names the wire format.
     let asks = harness.worker.calls.lock().expect("lock").clone();
     assert_eq!(asks[1]["body"]["temperature"], 0.0);
     assert!(asks[1]["body"]["context"]
@@ -125,9 +120,6 @@ async fn a_critic_that_never_parses_is_unavailable_and_never_done() {
     assert_eq!(ctx.trace.summary()["parse_errors"], 2);
 }
 
-/// The live gemma_e2b:S2–S5 shape, one branch earlier than the retry
-/// exhaustion the same rule already covers: the tools ran, the run had an
-/// answer, and two unparseable critic replies threw both away.
 #[tokio::test]
 async fn an_unavailable_verifier_keeps_an_answer_the_run_already_produced() {
     let mut harness = harness(&["prose", "still prose"]).await;
@@ -162,8 +154,6 @@ async fn an_unavailable_verifier_keeps_an_answer_the_run_already_produced() {
     assert_eq!(step["verifier_available"], false);
 }
 
-/// The other half: no answer, or no evidence, and the caveat stands alone —
-/// which is the recorded behaviour every golden row pins.
 #[tokio::test]
 async fn an_unavailable_verifier_with_nothing_to_keep_is_the_caveat_alone() {
     for (transcript, answer) in [
@@ -384,7 +374,6 @@ async fn last_rung_pass_token_without_evidence_stays_needs_review() {
 
 #[test]
 fn last_rung_condition_is_the_documented_conjunction() {
-    // The four gates: token polarity, no opposing token, evidence, coverage.
     assert!(last_rung_token_verdict("PASS", true, true).is_some());
     assert!(last_rung_token_verdict("통과했습니다", true, true).is_some());
     assert!(last_rung_token_verdict("FAIL", true, true).is_some());
@@ -399,13 +388,7 @@ fn last_rung_condition_is_the_documented_conjunction() {
         "PASSED is not the PASS token"
     );
 }
-// ── v12.0.0 round 4: the counted answer survives every branch ──────────
 
-/// The live `gemma_e2b:S3` body, replayed. `list_dir` succeeded twice and
-/// returned two entries; the critic — which could not see the answer at all
-/// — failed the run for "not reporting the file count", and this branch
-/// then overwrote the answer with that complaint. The user was shown a
-/// sentence saying no count was reported, over a run that had counted.
 fn gemma_e2b_s3_transcript() -> Vec<Value> {
     let listing = json!({"state": "EXECUTING", "action": "list_dir",
         "args": {"path": "/ws"},
@@ -422,7 +405,6 @@ fn gemma_e2b_s3_transcript() -> Vec<Value> {
 
 const S3_REQUEST: &str = "이 폴더에 어떤 파일이 있는지 list_dir로 확인하고 파일 개수를 알려줘";
 
-/// The critic's own words from that run, verbatim.
 const S3_DOUBT: &str =
     "The execution finished without reporting the file count or listing the files found.";
 
@@ -467,18 +449,11 @@ async fn a_failed_verdict_never_throws_away_a_count_the_run_established() {
 
 #[tokio::test]
 async fn a_failed_verdict_with_nothing_counted_is_the_failure_it_always_was() {
-    // The other half, and the one every recorded trajectory takes: no count
-    // question, or nothing that counted anything. Byte for byte unchanged.
     let read_step = json!({"state": "EXECUTING", "action": "read_file",
                            "args": {"path": "README.md"}, "result": {"content": "hi"}});
     for (message, transcript, answered) in [
-        // Not a count question at all.
         ("README.md를 읽어줘", vec![read_step.clone()], "읽었습니다"),
-        // A count question over a run where nothing ran.
         (S3_REQUEST, Vec::new(), ""),
-        // A count question where the **model** claimed a figure and no tool
-        // counted anything: unattributed, so the FAILED verdict stands and
-        // an unverified claim is not dressed in a caveat and surfaced.
         (S3_REQUEST, vec![read_step.clone()], "파일이 7개 있습니다"),
     ] {
         let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
@@ -503,9 +478,6 @@ async fn a_failed_verdict_with_nothing_counted_is_the_failure_it_always_was() {
 
 #[tokio::test]
 async fn the_json_critic_is_shown_the_answer_the_run_will_give() {
-    // The guided closed question has carried the answer since it existed;
-    // the JSON critic was judging a count question with no count in front
-    // of it, which is what produced the live FAIL above.
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
          "next_state": "DONE", "reason": "the count was reported"}))])
     .await;
@@ -533,7 +505,6 @@ async fn the_json_critic_is_shown_the_answer_the_run_will_give() {
         context.contains("The answer this run will give the user:\n작업을 완료했습니다. (2개)"),
         "{context}"
     );
-    // A run that has phrased no answer yet renders no section at all.
     let mut silent = crate::kernel::agentloop::harness::harness(&[&verdict(
         json!({"action": "verdict", "verdict": "PASS",
                "next_state": "DONE", "reason": "ok"}),
@@ -567,7 +538,6 @@ async fn the_json_critic_is_shown_the_answer_the_run_will_give() {
 
 #[tokio::test]
 async fn a_verdict_over_proven_created_files_drops_bare_negation_and_restores_artifact_facts() {
-    // Live qwen05b_S1_a1 shape: write_file(notes/hello.md, 14B) + "I did nothing." with a PASS verdict
     let mut pass_harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
          "next_state": "DONE", "reason": "the work was done"}))])
     .await;

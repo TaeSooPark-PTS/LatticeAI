@@ -1,15 +1,3 @@
-/**
- * Every API call in the product goes through this module, and its whole job is
- * to never throw: a request that fails must come back as a typed `ApiResult`
- * with `ok: false`, an empty-but-correctly-shaped `data`, and a message a
- * non-developer can read.
- *
- * Only `emptyFor` was covered. The error-translation half — the part that
- * decides whether a user sees "the local service is unreachable" or a raw
- * `TypeError: Failed to fetch` — had no test, and a regression there is silent:
- * the page still renders, the list is still empty, and nobody learns that the
- * sidecar was down rather than the Brain being empty.
- */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -62,9 +50,6 @@ describe("workspaceHeaders", () => {
     expect(workspaceHeaders()["X-Workspace-Id"]).toBe("ws-42");
   });
 
-  // The server writes its own user-facing errors and cannot guess which
-  // language to write them in. Every request carries the choice the person
-  // made in the product, workspace or no workspace.
   it("always tells the server which language to answer in", () => {
     useAppStore.setState({ language: "en" });
     expect(workspaceHeaders()["X-Lattice-Language"]).toBe("en");
@@ -180,12 +165,6 @@ describe("friendlyCaughtError", () => {
   });
 });
 
-/**
- * The desktop shells. `tauriInvoke`, `selectFolder` and the Tauri half of
- * `apiBase` decide whether the app talks to a sidecar it discovered or to the
- * page's own origin. Wrong answers here don't throw — they quietly point every
- * request at the wrong place.
- */
 
 import { selectFolder, tauriInvoke } from "./base";
 
@@ -272,8 +251,6 @@ describe("selectFolder", () => {
 });
 
 describe("apiBase inside the desktop shell", () => {
-  // Each scenario needs a fresh module: `base.ts` caches the discovered origin
-  // for the lifetime of the module, which is exactly the behavior under test.
   async function freshBase() {
     vi.resetModules();
     const base = await import("./base");
@@ -295,9 +272,7 @@ describe("apiBase inside the desktop shell", () => {
     expect(store.getState().apiBase).toBe("http://127.0.0.1:8765");
     expect(tauriCore.invoke).toHaveBeenCalledWith("backend_origin");
 
-    // Second read: the stored base answers without a second invoke.
     expect(await base.apiBase()).toBe("http://127.0.0.1:8765");
-    // And even with the store cleared, the module-level promise is reused.
     store.setState({ apiBase: null });
     expect(await base.apiBase()).toBe("http://127.0.0.1:8765");
     expect(tauriCore.invoke).toHaveBeenCalledTimes(1);

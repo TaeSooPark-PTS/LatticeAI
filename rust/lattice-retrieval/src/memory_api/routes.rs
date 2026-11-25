@@ -1,12 +1,3 @@
-//! The sixteen `/api/memory/*` handlers, in FastAPI's order of operations.
-//!
-//! Every handler does the same three things in the same sequence, because that
-//! sequence is observable: **validate → authenticate → gate**. FastAPI parses
-//! the pydantic model before the function body runs, so an anonymous
-//! `POST /api/memory/clear {}` answers 422 about `scope` and never reaches
-//! `require_user` — `memory_brain.json` case `clear_auth_denied` records
-//! exactly that, and a port that authenticated first would fail it.
-
 use axum::extract::{Path as AxumPath, Request, State};
 use axum::response::Response;
 use axum::routing::{delete, get, post};
@@ -23,11 +14,6 @@ use super::shared::{
     json_body, lang_of, message_response, missing_query, ok_json, BrainState, Query,
 };
 
-/// The (method, path) table this family mounts, in axum spelling.
-///
-/// `rust/fixtures/openapi/memory_brain.json` records no greedy path parameters
-/// for this family, so `{node_id}` is a plain capture: a Self-Model id is
-/// `self:<kind>:<hash>` and never contains a slash.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/memory/manager"),
     ("GET", "/api/memory/brain-quality"),
@@ -47,7 +33,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("DELETE", "/api/memory/self-model/:node_id"),
 ];
 
-/// The mountable router for `latticeai/api/memory.py`.
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/memory/manager", get(manager))
@@ -74,7 +59,6 @@ pub fn router(state: BrainState) -> Router {
         .with_state(state)
 }
 
-/// Who is calling and which workspace they resolved to.
 struct Caller {
     email: String,
     scope: Option<String>,
@@ -111,7 +95,6 @@ async fn snapshot(state: &BrainState, caller: &Caller) -> Result<Snapshot, Respo
         .await
 }
 
-/// Run one blocking Workspace OS write off the reactor.
 async fn blocking<T, F>(work: F) -> Result<T, Response>
 where
     T: Send + 'static,
@@ -121,8 +104,6 @@ where
         .await
         .map_err(|error| detail_response(500, &format!("the task did not finish: {error}")))
 }
-
-// ── reads ───────────────────────────────────────────────────────────────────
 
 async fn manager(State(state): State<BrainState>, request: Request) -> Response {
     let caller = match authenticate(&state, request.headers(), request.uri().query(), false) {
@@ -158,7 +139,6 @@ async fn brain_quality(State(state): State<BrainState>, request: Request) -> Res
     }
 }
 
-/// The proof, and the recall it is demonstrated with.
 async fn proof_of(
     state: &BrainState,
     caller: &Caller,
@@ -172,7 +152,6 @@ async fn proof_of(
     } else {
         query.to_string()
     };
-    // `recall(query) if query else {…}` — an empty query never touches a tier.
     let recalled = if query.is_empty() {
         let mut empty = OrderedMap::new();
         empty.insert("query", Value::String(String::new()));
@@ -266,7 +245,6 @@ async fn brain_proof(State(state): State<BrainState>, request: Request) -> Respo
 }
 
 async fn tiers(State(state): State<BrainState>, request: Request) -> Response {
-    // `memory_tiers` calls `require_user` and nothing else — no read gate.
     match state.require_user(request.headers()) {
         Ok(_) => ok_json(&service::tiers()),
         Err(refusal) => refusal,
@@ -351,8 +329,6 @@ async fn memory_recall(State(state): State<BrainState>, request: Request) -> Res
     }
 }
 
-// ── the mutating half ───────────────────────────────────────────────────────
-
 async fn prune(State(state): State<BrainState>, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let payload = match json_body(body).await {
@@ -417,8 +393,6 @@ async fn rebuild(State(state): State<BrainState>, request: Request) -> Response 
             "Knowledge graph / vector index disabled.",
         ));
     }
-    // The rebuild writes `vector_embeddings` and `vector_index_operations`,
-    // both worker-owned, so it is delegated rather than run here.
     match state
         .mutate("rebuild_vector_index", serde_json::json!({}))
         .await
@@ -430,8 +404,6 @@ async fn rebuild(State(state): State<BrainState>, request: Request) -> Response 
             out.insert("result", result);
             ok_json(&out)
         }
-        // Python catches every exception from the rebuild and answers 200 with
-        // `status: "error"`; the seam's own refusal is that exception here.
         Err(refusal) => ok_json(&status_detail("error", &refusal_detail(refusal))),
     }
 }
@@ -443,7 +415,6 @@ fn status_detail(status: &str, detail: &str) -> OrderedMap {
     out
 }
 
-/// The `detail` a rendered refusal carries, for re-reporting inside a 200.
 fn refusal_detail(_refusal: Response) -> String {
     "vector index rebuild failed".to_string()
 }
@@ -489,8 +460,6 @@ async fn clear(State(state): State<BrainState>, request: Request) -> Response {
         Err(refusal) => refusal,
     }
 }
-
-// ── Self-Model ──────────────────────────────────────────────────────────────
 
 async fn self_model_profile(State(state): State<BrainState>, request: Request) -> Response {
     let caller = match authenticate(&state, request.headers(), request.uri().query(), false) {
@@ -553,8 +522,6 @@ async fn self_model_delete(
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    // `delete_self_model_fact` refuses a non-Self-Model id before it touches
-    // the store; the check is pure, so it answers here without a round trip.
     if !node_id.starts_with(crate::self_model::SELF_ID_PREFIX) {
         return self_model::error_response("not_self_model", caller.lang);
     }
@@ -581,7 +548,6 @@ async fn self_model_propose(State(state): State<BrainState>, request: Request) -
     let source = body_str(&payload, "source", "");
     let args = serde_json::json!({
         "text": body_str(&payload, "text", ""),
-        // `source=req.source or None` — an empty string is not a source.
         "source": if source.is_empty() { Value::Null } else { Value::String(source) },
         "user_email": caller.email,
         "workspace_id": caller.scope,
@@ -616,8 +582,6 @@ async fn self_model_apply(State(state): State<BrainState>, request: Request) -> 
             if self_model::message_id(&detail) == "self_model.invalid"
                 && !detail.contains("self_model")
             {
-                // `except (KeyError, FileNotFoundError)` — the review item is
-                // simply not there, which is a 404 about the *item*.
                 return message_response(404, "review.item_not_found", caller.lang, &[]);
             }
             self_model::seam_error(&detail, caller.lang)

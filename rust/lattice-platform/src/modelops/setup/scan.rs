@@ -1,18 +1,3 @@
-//! What this machine looks like, and what it would take to make it work.
-//!
-//! The read-only half of the setup wizard: probe the host, decide what it can
-//! run, and turn that into the environment block, the zero-config state, the
-//! recommendations, the install plan and the verification checks that
-//! `/setup/scan`, `/setup/auto` and the workspace onboarding surface all
-//! render. Nothing here writes, installs, or opens anything — that is
-//! `install.rs` and the handlers in [`super`].
-//!
-//! [`scan_environment`] is also called from outside this family
-//! (`crate::workspaceos::workspace::handlers_core`), which is why the machine
-//! description is derived here once rather than in each caller: two probes that
-//! disagree about whether this host has a GPU produce two different pieces of
-//! advice for the same machine.
-
 use std::path::PathBuf;
 
 use lattice_auth::OrderedMap;

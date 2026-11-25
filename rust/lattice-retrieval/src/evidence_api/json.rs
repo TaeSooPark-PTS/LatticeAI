@@ -1,44 +1,23 @@
-//! A JSON writer that keeps object key order — the response body's contract.
-//!
-//! Python dicts render in insertion order, and this family's answer is nested
-//! three deep (`actions[].label.ko`), so order has to survive at every level.
-//! [`lattice_auth::OrderedMap`] only keeps it at the *top* level: its values are
-//! `serde_json::Value`s, and `Value::Object` is a `BTreeMap` here
-//! (`serde_json/preserve_order` is deliberately off workspace-wide, WP-I2 §2),
-//! so nesting one re-sorts `{"ko", "en"}` into `{"en", "ko"}` and the body stops
-//! matching `rust/fixtures/http/memory_brain.json`. The unit test at the bottom
-//! pins that trap so the reason this type exists cannot be forgotten.
-//!
-//! Scope: a writer, not a parser. Keys are `&'static str` because every key in
-//! this family is a literal from the Python source.
-
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 
-/// One JSON value whose objects remember the order their keys were written in.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Json {
-    /// A string, number, boolean or null — anything with no key order to lose.
     Leaf(Value),
-    /// An object, in insertion order.
     Object(Vec<(&'static str, Json)>),
-    /// An array, in order.
     Array(Vec<Json>),
 }
 
 impl Json {
-    /// A JSON string.
     pub fn string(text: impl Into<String>) -> Self {
         Json::Leaf(Value::String(text.into()))
     }
 
-    /// A JSON boolean.
     pub fn boolean(flag: bool) -> Self {
         Json::Leaf(Value::Bool(flag))
     }
 
-    /// An array of JSON strings.
     pub fn strings<I, S>(items: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -47,10 +26,6 @@ impl Json {
         Json::Array(items.into_iter().map(Json::string).collect())
     }
 
-    /// Compact rendering, the separators `JSONResponse` uses.
-    ///
-    /// Serialization runs straight off [`Serialize`], never through
-    /// `serde_json::Value`, which is the whole point of the type.
     pub fn render(&self) -> String {
         serde_json::to_string(self).unwrap_or_else(|_| "null".to_string())
     }
@@ -109,8 +84,6 @@ mod tests {
 
     #[test]
     fn a_nested_serde_json_object_would_have_sorted_the_keys() {
-        // This crate enables `serde_json/preserve_order`, so `json!` keeps
-        // the insertion order Python's dicts have on the wire.
         assert_eq!(
             serde_json::to_string(&serde_json::json!({"ko": 1, "en": 2})).expect("render"),
             r#"{"ko":1,"en":2}"#

@@ -1,16 +1,3 @@
-//! ROLLBACK — putting the workspace back, honestly.
-//!
-//! A port of `latticeai.core.agent.recovery`. Three tiers, tried in order: git
-//! where the policy says the tool is git-rollbackable, then the pre-write
-//! snapshot the executor captured, and otherwise `mode="none"` — an admission,
-//! not a claim. Rollback always ends the run as FAILED, because it *is* the
-//! recovery from a failed verification.
-//!
-//! This is the one phase that touches the workspace directly instead of going
-//! through the worker seam. That is deliberate: a rollback that has to ask a
-//! possibly-broken worker for permission to undo the worker's own writes is not
-//! a rollback.
-
 use std::time::Duration;
 
 use serde_json::{json, Value};
@@ -27,8 +14,6 @@ impl Runtime {
             .cloned()
     }
 
-    /// Recover one path: git when governed and available, else the pre-write
-    /// snapshot, else an honest `mode="none"`.
     async fn rollback_one(&self, ctx: &AgentRunContext, path: &str, governance: &Value) -> Value {
         if governance.get("rollback").and_then(Value::as_str) == Some("git") {
             let mut result = self.git_checkout(path).await;
@@ -60,8 +45,6 @@ impl Runtime {
         })
     }
 
-    /// `ToolDispatchService.rollback_file`: `git checkout -- <path>` under the
-    /// agent root, with the same ten-second ceiling.
     async fn git_checkout(&self, path: &str) -> Value {
         let mut command = tokio::process::Command::new("git");
         command
@@ -81,8 +64,6 @@ impl Runtime {
                     &String::from_utf8_lossy(&output.stderr), 200,
                 ),
             }),
-            // Python wraps the call in `except Exception`, so a missing git or a
-            // timeout is a failed recovery attempt, never a failed run.
             Ok(Err(error)) => json!({"path": path, "ok": false, "error": error.to_string()}),
             Err(_) => json!({
                 "path": path, "ok": false,
@@ -91,7 +72,6 @@ impl Runtime {
         }
     }
 
-    /// ROLLBACK: recover written files (git → snapshot → none), then FAILED.
     pub async fn rollback(&mut self, ctx: &mut AgentRunContext, req: &RunRequest) {
         let mut rolled: Vec<Value> = Vec::new();
         let mut seen: Vec<String> = Vec::new();
@@ -159,8 +139,6 @@ impl Runtime {
         ctx.final_message = if recovered.is_empty() {
             "롤백을 시도했으나 복구할 파일이 없거나 git/스냅샷 복구 수단이 없습니다.".into()
         } else {
-            // Python interpolates the *list*, so the message carries a Python
-            // list literal — single quotes and all.
             format!(
                 "실행 실패로 롤백했습니다. 복구 파일: {}",
                 py_list_repr(&recovered)
@@ -178,7 +156,6 @@ impl Runtime {
             "rolled_back",
             &[("recovered", json!(recovered.len()))],
         );
-        // Rollback is recovery from a failed verification — terminal is FAILED.
         ctx.state = AgentState::Failed;
     }
 }
@@ -267,14 +244,11 @@ mod tests {
         let mut harness = harness(&[]).await;
         let mut ctx = harness.context();
         ctx.transcript = vec![
-            // A read with a result and a path: not a file create, not git.
             json!({"state": "EXECUTING", "action": "read_file", "args": {"path": "skip.md"},
                    "governance": {"rollback": "none"}, "result": {"path": "skip.md"}}),
-            // A blocked step has no result at all.
             json!({"state": "EXECUTING", "action": "write_file", "args": {"path": "blocked.md"},
                    "error": "BLOCKED"}),
             wrote("kept.md", "none"),
-            // The same path twice is recovered once.
             wrote("kept.md", "none"),
         ];
         harness.runtime.rollback(&mut ctx, &harness.request).await;
@@ -288,8 +262,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_git_governed_path_falls_back_to_the_snapshot_when_git_cannot_help() {
-        // The workspace is not a git repository, so `git checkout` fails and the
-        // snapshot tier answers — which is exactly the honest ordering.
         let mut harness = harness(&[]).await;
         std::fs::write(harness.root.join("tracked.md"), b"changed").expect("write");
         let mut ctx = harness.context();

@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Print the 7.8 product-readiness scorecard and fail CI when incomplete.
-
-Run it as often as you like — it re-probes the repo every time, so it is the
-single objective answer to "is this a finished product yet?". Exit code is 0
-only when every product gate resolves its evidence on disk.
-"""
 
 from __future__ import annotations
 
@@ -15,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from latticeai.services.product_readiness import product_readiness  # noqa: E402
+from latticeai.services.product_readiness import product_readiness
 
 
 def main() -> int:

@@ -1,5 +1,3 @@
-"""Unit tests for Google EmbeddingGemma 2 (`google/embeddinggemma-2`) integration and Item 13 semantic activation."""
-
 from __future__ import annotations
 
 import math
@@ -149,7 +147,7 @@ def test_huggingface_provider_with_sentence_transformers(
             return [[3.0, 4.0] + [0.0] * 766 for _ in texts]
 
     st_mod = types.ModuleType("sentence_transformers")
-    st_mod.SentenceTransformer = FakeSentenceTransformer  # type: ignore[attr-defined]
+    st_mod.SentenceTransformer = FakeSentenceTransformer
     monkeypatch.setitem(sys.modules, "sentence_transformers", st_mod)
 
     prov = build_embedding_provider("huggingface", model="google/embeddinggemma-2")
@@ -191,7 +189,6 @@ def test_huggingface_provider_with_transformers_mean_pooling(
 
     class FakeOutputs:
         def __init__(self, batch_size: int) -> None:
-            # 2 tokens per item, 4 dims: mean of [2, 0, 0, 0] and [4, 0, 0, 0] is [3, 0, 0, 0]
             self.last_hidden_state = [
                 [[2.0, 0.0, 0.0, 0.0], [4.0, 0.0, 0.0, 0.0]] for _ in range(batch_size)
             ]
@@ -205,8 +202,8 @@ def test_huggingface_provider_with_transformers_mean_pooling(
             return FakeOutputs(len(encoded["input_ids"]))
 
     tf_mod = types.ModuleType("transformers")
-    tf_mod.AutoTokenizer = FakeTokenizer  # type: ignore[attr-defined]
-    tf_mod.AutoModel = FakeModel  # type: ignore[attr-defined]
+    tf_mod.AutoTokenizer = FakeTokenizer
+    tf_mod.AutoModel = FakeModel
     monkeypatch.setitem(sys.modules, "transformers", tf_mod)
 
     prov = HuggingFaceEmbeddingProvider(
@@ -226,7 +223,6 @@ def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(
     assert LOCAL_HF_MODELS[0] == ("google/embeddinggemma-2", 768, False)
     assert LOCAL_HF_MODELS[1] == ("google/embeddinggemma-300m", 768, False)
 
-    # Plant both e5-small and embeddinggemma-2-4bit in MLX cache -> embeddinggemma-2-4bit wins.
     _plant_hf_snapshot(tmp_path, "mlx-community/multilingual-e5-small-mlx")
     _plant_hf_snapshot(tmp_path, "mlx-community/embeddinggemma-2-4bit")
     mlx_found = detect_local_mlx({"HF_HUB_CACHE": str(tmp_path)})
@@ -236,7 +232,6 @@ def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(
     assert mlx_found.dim == 768
     assert mlx_found.source == "local_model"
 
-    # Plant google/embeddinggemma-2 in HF cache -> detect_local_hf and detect_embedder find it.
     hf_cache = tmp_path / "hf_only"
     _plant_hf_snapshot(hf_cache, "google/embeddinggemma-2")
     hf_found = detect_local_hf({"HF_HUB_CACHE": str(hf_cache)})
@@ -280,7 +275,6 @@ def test_autodetect_finds_embeddinggemma_2_in_latticeai_models_dir(
 def test_item13_auto_activates_semantic_embeddings_when_cached_and_falls_back_when_empty(
     tmp_path: Path,
 ) -> None:
-    # 1. Empty cache -> offline zero-download deterministic hash fallback
     empty_cache = tmp_path / "empty"
     empty_cache.mkdir()
     offline = resolve_embedder(
@@ -291,7 +285,6 @@ def test_item13_auto_activates_semantic_embeddings_when_cached_and_falls_back_wh
     assert offline.provider.grade == "fallback"
     assert offline.provider.dim == 384
 
-    # 2. Cached google/embeddinggemma-2 -> seamless semantic activation (grade="production", 768d)
     populated_cache = tmp_path / "populated"
     _plant_hf_snapshot(populated_cache, "google/embeddinggemma-2")
     semantic = resolve_embedder(

@@ -1,17 +1,3 @@
-//! The Origin/Referer guard, ported branch for branch from `core/csrf.py`.
-//!
-//! Seven branches, in order, and the order *is* the policy — moving branch 3
-//! above branch 2 would make bearer clients depend on not sending a cookie,
-//! and moving branch 5 above branch 4 would let an opaque origin pass as
-//! "no origin at all". The reason label on each decision is the audit trail
-//! and rides in the refusal body, so the labels are part of the contract too.
-//!
-//! Threat model, restated from the original so the exemptions stay checkable:
-//! only ambient credentials are forgeable, so `Authorization: Bearer` and
-//! "no session cookie" are exempt; `Origin` is attacker-honest because a
-//! browser sets it; neither header present means the caller is not a browser,
-//! which is trusted only on a loopback bind.
-
 use axum::http::{HeaderMap, Method, StatusCode};
 use axum::response::Response;
 use serde_json::json;
@@ -22,10 +8,8 @@ use crate::origin::{effective_host, normalize_origin, same_site, IpNetwork, Orig
 use crate::pyjson::dumps_spaced;
 use crate::response::json_response_utf8;
 
-/// Methods that must not change state; everything else is guarded.
 pub const SAFE_METHODS: [&str; 4] = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
-/// Structured reason code naming which CSRF policy branch made the decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CsrfReason {
     SafeMethod,
@@ -39,7 +23,6 @@ pub enum CsrfReason {
 }
 
 impl CsrfReason {
-    /// Stable wire-contract reason string serialized in 403 refusal responses.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::SafeMethod => "safe-method",
@@ -60,37 +43,24 @@ impl std::fmt::Display for CsrfReason {
     }
 }
 
-/// Why a request was allowed or refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CsrfDecision {
-    /// Whether the request may proceed.
     pub allowed: bool,
-    /// Structured reason code naming the branch taken.
     pub reason: CsrfReason,
 }
 
-/// Everything one CSRF decision needs, so the policy stays pure.
 #[derive(Debug, Default, Clone)]
 pub struct CsrfRequest<'a> {
-    /// The HTTP method.
     pub method: &'a str,
-    /// The `Origin` header, if any.
     pub origin: Option<&'a str>,
-    /// The `Referer` header, if any.
     pub referer: Option<&'a str>,
-    /// The `Host` header, if any.
     pub host: Option<&'a str>,
-    /// The raw `Cookie` header, if any.
     pub cookie_header: Option<&'a str>,
-    /// The `Authorization` header, if any.
     pub authorization: Option<&'a str>,
-    /// The `X-Forwarded-Host` header, if any.
     pub forwarded_host: Option<&'a str>,
-    /// The direct peer address.
     pub peer: Option<&'a str>,
 }
 
-/// Decide whether one request may change state with a cookie credential.
 #[derive(Debug, Clone)]
 pub struct CsrfOriginPolicy {
     trusted: Vec<Origin>,
@@ -99,8 +69,6 @@ pub struct CsrfOriginPolicy {
 }
 
 impl CsrfOriginPolicy {
-    /// The server's own origin and loopback are trusted by construction; the
-    /// operator's `LATTICEAI_CSRF_TRUSTED_ORIGINS` entries are appended.
     pub fn new(
         trusted_origins: &[String],
         server_host: &str,
@@ -130,7 +98,6 @@ impl CsrfOriginPolicy {
         }
     }
 
-    /// The normalised allowlist, in the order it was built.
     pub fn trusted_origins(&self) -> &[Origin] {
         &self.trusted
     }
@@ -149,10 +116,6 @@ impl CsrfOriginPolicy {
         {
             return true;
         }
-        // Same-origin by the request's own Host: a browser sets Host from the
-        // URL it is fetching, so `Origin == Host` can only come from a page
-        // this server served. "The request's own Host" is the front door's,
-        // not the internal one a proxy hop rewrote it to.
         let front_door = effective_host(host_header, forwarded_host, peer, &self.trusted_proxies);
         match normalize_origin(front_door.as_deref()) {
             Some(own) => same_site(origin, &own),
@@ -160,7 +123,6 @@ impl CsrfOriginPolicy {
         }
     }
 
-    /// Allow or deny one request. Pure: no I/O, no app state.
     pub fn evaluate(&self, request: &CsrfRequest<'_>) -> CsrfDecision {
         let method = request.method.to_ascii_uppercase();
         if SAFE_METHODS.contains(&method.as_str()) {
@@ -173,7 +135,6 @@ impl CsrfOriginPolicy {
             .to_ascii_lowercase()
             .starts_with("bearer ")
         {
-            // Not ambient: a cross-site page cannot attach this header.
             return allow(CsrfReason::BearerAuth);
         }
         if !has_session_cookie(request.cookie_header) {
@@ -182,15 +143,12 @@ impl CsrfOriginPolicy {
 
         let mut stated = normalize_origin(request.origin);
         if stated.is_none() && request.origin.is_some_and(|value| !value.is_empty()) {
-            // An opaque origin ("null") explicitly claims untrusted provenance.
             return deny(CsrfReason::OpaqueOrigin);
         }
         if stated.is_none() {
             stated = normalize_origin(request.referer);
             if stated.is_none() {
                 return if self.bind_is_loopback {
-                    // Non-browser client on the same machine (CLI, desktop
-                    // shell, curl). Nothing on the network can reach this bind.
                     allow(CsrfReason::NoOriginLoopbackBind)
                 } else {
                     deny(CsrfReason::NoOriginReachableBind)
@@ -206,7 +164,6 @@ impl CsrfOriginPolicy {
         }
     }
 
-    /// Evaluate straight off an axum request's parts.
     pub fn evaluate_headers(
         &self,
         method: &Method,
@@ -227,7 +184,6 @@ impl CsrfOriginPolicy {
     }
 }
 
-/// The server's own origin plus loopback, in both schemes.
 fn default_origins(server_host: &str, server_port: u16) -> Vec<String> {
     let hosts = [server_host, "localhost", "127.0.0.1", "[::1]"];
     let mut origins = Vec::new();
@@ -256,8 +212,6 @@ fn deny(reason: CsrfReason) -> CsrfDecision {
     }
 }
 
-/// The 403 body, written the way `core/csrf.py` writes it: `json.dumps` with
-/// Python's default separators, so the spaces after `:` and `,` are real.
 pub fn csrf_denied_response(reason: CsrfReason) -> Response {
     let body = dumps_spaced(&[
         ("detail", json!(DENIED_DETAIL)),
@@ -386,8 +340,6 @@ mod tests {
             policy().evaluate(&probe),
             allow(CsrfReason::SameSiteOrTrustedOrigin)
         );
-        // A proxy that rewrote Host is why the forwarded authority is resolved
-        // first — but only from a peer that may forward.
         probe.host = Some("127.0.0.1:4826");
         probe.origin = Some("https://front.door");
         assert_eq!(policy().evaluate(&probe), deny(CsrfReason::CrossSiteOrigin));

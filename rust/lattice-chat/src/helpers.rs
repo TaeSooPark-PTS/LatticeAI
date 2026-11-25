@@ -1,21 +1,3 @@
-//! Pure chat helpers — a 1:1 port of `latticeai/api/chat_helpers.py`.
-//!
-//! Intent detection, file-target parsing, network-status formatting and the
-//! answer-citation binding. Everything here is a total function of its
-//! arguments: no database, no clock, no I/O. That is why the whole module is
-//! unit-testable against the Python originals' documented edges.
-//!
-//! `fancy_regex`, not `regex`: `_FILE_TARGET_RE` opens with the lookbehind
-//! `(?<![\w.-])`, which `regex` refuses to compile at all. The rest of the
-//! patterns would work either way, and are kept on one engine so the semantics
-//! (backtracking, leftmost-first) are `re`'s everywhere.
-//!
-//! Two Python behaviours a port loses by accident and this one keeps:
-//!
-//! * `detect_language` counts **characters**, not bytes — `len()` on a `str`.
-//! * `str.strip("`'\".,:;)]}")` strips a *set* of characters from both ends,
-//!   not a prefix; `trim_matches` over the same set is the equivalent.
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
@@ -32,7 +14,6 @@ fn hit(regex: &Regex, text: &str) -> bool {
     regex.is_match(text).unwrap_or(false)
 }
 
-/// The per-language instruction prepended to every prompt (`_LANG_HINT`).
 pub fn language_hint(language: &str) -> &'static str {
     match language {
         "ko" => "Respond in Korean (한국어로 답변하세요).",
@@ -40,7 +21,6 @@ pub fn language_hint(language: &str) -> &'static str {
     }
 }
 
-/// `detect_language` — `"ko"` when over 5 % of the characters are Hangul.
 pub fn detect_language(text: &str) -> &'static str {
     let total = text.chars().count().max(1);
     let korean = text.chars().filter(|c| ('가'..='힣').contains(c)).count();
@@ -60,7 +40,6 @@ const NETWORK_PHRASES: [&str; 6] = [
     "현재 네트워크",
 ];
 
-/// `is_network_status_request`.
 pub fn is_network_status_request(text: &str) -> bool {
     static CURRENT_IP: OnceLock<Regex> = OnceLock::new();
     static IP_VERB: OnceLock<Regex> = OnceLock::new();
@@ -85,7 +64,6 @@ pub fn is_network_status_request(text: &str) -> bool {
 
 const URL_PHRASES: [&str; 4] = ["현재 url", "current url", "page url", "페이지 url"];
 
-/// `is_current_url_request`.
 pub fn is_current_url_request(text: &str) -> bool {
     static PAGE_LINK: OnceLock<Regex> = OnceLock::new();
     static URL_VERB: OnceLock<Regex> = OnceLock::new();
@@ -105,12 +83,10 @@ pub fn is_current_url_request(text: &str) -> bool {
     )
 }
 
-/// `is_clear_command` — the two spellings of "wipe the screen".
 pub fn is_clear_command(text: &str) -> bool {
     matches!(strip(text).to_lowercase().as_str(), "/clear" | "/clear_all")
 }
 
-/// The characters `file_action_target` strips off both ends of its match.
 const TARGET_TRIM: [char; 10] = ['`', '\'', '"', '.', ',', ':', ';', ')', ']', '}'];
 
 fn file_target_re() -> &'static Regex {
@@ -138,8 +114,6 @@ const OVERRIDE_PHRASES: [&str; 6] = [
     "저장해",
     "만들어",
 ];
-/// Explicit artifact types are here on purpose: a user asking for "an html
-/// page" expects a real file, not a code block in chat.
 const FILE_WORDS: &[&str] = &[
     "file",
     "파일",
@@ -155,14 +129,11 @@ const FILE_WORDS: &[&str] = &[
     "webpage",
     "web page",
 ];
-/// The Python tuple also lists `만들어줘`, which is a superstring of `만들`:
-/// membership is unchanged, so it is not repeated here.
 const ACTION_WORDS: &[&str] = &[
     "create", "make", "write", "save", "generate", "edit", "update", "만들", "생성", "작성",
     "저장", "수정", "써줘",
 ];
 
-/// `is_file_action_request` — should this turn run file tools instead of prose?
 pub fn is_file_action_request(text: &str) -> bool {
     let raw = strip(text);
     if raw.is_empty() {
@@ -178,8 +149,6 @@ pub fn is_file_action_request(text: &str) -> bool {
 
     let has_target = file_target_re().is_match(&raw).unwrap_or(false);
     let has_file_word = FILE_WORDS.iter().any(|w| lower.contains(w));
-    // "만들어줘" is in the Python tuple as its own entry; it is a superstring of
-    // "만들", so the membership answer is identical and the list stays short.
     let has_action = ACTION_WORDS.iter().any(|w| lower.contains(w));
 
     if !has_action {
@@ -191,7 +160,6 @@ pub fn is_file_action_request(text: &str) -> bool {
     has_file_word
 }
 
-/// `file_action_target` — the first explicit workspace file the request names.
 pub fn file_action_target(text: &str) -> Option<String> {
     let found = file_target_re().find(text).ok().flatten()?;
     let trimmed = strip(found.as_str())
@@ -200,10 +168,6 @@ pub fn file_action_target(text: &str) -> Option<String> {
     Some(trimmed)
 }
 
-/// `inline_file_action_content` — short user-supplied content for a direct write.
-///
-/// Every pattern requires an explicit binder, so "create a text file report.txt"
-/// does not capture "file report.txt" as the file's content.
 pub fn inline_file_action_content(text: &str) -> Option<String> {
     static PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     let patterns = PATTERNS.get_or_init(|| {
@@ -227,7 +191,6 @@ pub fn inline_file_action_content(text: &str) -> Option<String> {
     None
 }
 
-/// `strip_generated_file_content` — unwrap a fenced block, if the model used one.
 pub fn strip_generated_file_content(text: &str) -> String {
     static FENCE: OnceLock<Regex> = OnceLock::new();
     let content = strip(text);
@@ -246,7 +209,6 @@ fn or_unknown(value: Option<&Value>) -> String {
     }
 }
 
-/// `format_network_status` — the answer the network intent speaks.
 pub fn format_network_status(info: &Map<String, Value>) -> String {
     let mut lines = vec![
         format!("내부 IP: {}", or_unknown(info.get("local_ip"))),
@@ -277,9 +239,6 @@ pub fn format_network_status(info: &Map<String, Value>) -> String {
     lines.join("\n")
 }
 
-// ── answer-citation binding ──────────────────────────────────────────────────
-
-/// `_GROUNDING_STOP_TOKENS` — tokens that overlap by accident, not by grounding.
 const STOP_TOKENS: &[&str] = &[
     "그리고",
     "그러나",
@@ -315,9 +274,7 @@ const STOP_TOKENS: &[&str] = &[
     "your",
 ];
 
-/// `GROUNDING_MIN_OVERLAP_TOKENS`.
 pub const GROUNDING_MIN_OVERLAP_TOKENS: usize = 2;
-/// `GROUNDING_MIN_OVERLAP_RATIO`.
 pub const GROUNDING_MIN_OVERLAP_RATIO: f64 = 0.08;
 
 fn grounding_tokens(text: &str) -> Vec<String> {
@@ -358,7 +315,6 @@ fn joined(parts: &[Value]) -> String {
         .join(" ")
 }
 
-/// One retrieved source, as `assess_answer_grounding` reduces it.
 struct Source {
     id: String,
     title: String,
@@ -430,7 +386,6 @@ fn sources_of(trace: Option<&Value>) -> Vec<Source> {
     sources
 }
 
-/// `pair_user_history` — one identity's exchanges, never someone else's replies.
 pub fn pair_user_history(history: &[Value], user_email: &str) -> Vec<Value> {
     let mut paired = Vec::new();
     let mut include_next_assistant = false;
@@ -454,7 +409,6 @@ pub fn pair_user_history(history: &[Value], user_email: &str) -> Vec<Value> {
     paired
 }
 
-/// `build_recent_chat_context` over an already-scoped history slice.
 pub fn build_recent_chat_context(
     history: &[Value],
     limit: usize,
@@ -513,11 +467,6 @@ pub fn build_recent_chat_context(
     lines.join("\n")
 }
 
-/// `assess_answer_grounding` — bind an answer to its sources, honestly.
-///
-/// Annotation only: the answer is never modified or blocked. `no_context` is a
-/// distinct status from `unsupported` so the UI can tell "the Brain had nothing"
-/// from "the Brain had sources and the answer ignored them".
 pub fn assess_answer_grounding(
     answer: &str,
     trace: Option<&Value>,
@@ -577,8 +526,6 @@ pub fn assess_answer_grounding(
         let title = strip(&source.title).to_lowercase();
         let explicit =
             !title.is_empty() && title.chars().count() >= 4 && answer_lower.contains(&title);
-        // Explicit citation OR token overlap. Comparisons are explicit: a 0.0
-        // score is falsy but a valid value, so `or`-style defaults are wrong.
         if explicit
             || (shared >= GROUNDING_MIN_OVERLAP_TOKENS && ratio >= GROUNDING_MIN_OVERLAP_RATIO)
         {

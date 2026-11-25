@@ -15,8 +15,6 @@ function citationDomId(messageId: string, citationId: string): string {
 
 type Citation = NonNullable<Message["proof"]>["citations"][number];
 
-// Inline, keyboard-focusable citation markers rendered next to the answer text.
-// Activating one moves focus to the matching row in the evidence card below.
 export function InlineCitationMarkers({
   language,
   proof,
@@ -99,7 +97,6 @@ export function AnswerProofCard({
                 <span>{citation.source}</span>
                 <strong>{citation.title}</strong>
                 <CitationVisual language={language} citation={citation} />
-                {/* Where inside the document — only when the chunk proves it. */}
                 {citation.locator ? (
                   <em className="brain-citation-locator" data-testid="citation-locator">
                     {citation.locator}
@@ -193,14 +190,6 @@ function ClaimVerificationStrip({
   );
 }
 
-// Multi-modal evidence (v11.1.0): when the citation is a picture, show the
-// picture. The thumbnail is the inline data: URI stored on the Image node at
-// ingest — never a path served back out of the user's disk, which would mean
-// either a new static route or going around the local-file approval gate.
-//
-// The caption is shown only when a vision-language model actually wrote one.
-// With no model there is no caption line, because "photo.png (PNG 3024x4032)"
-// dressed up as a description is exactly the thing this release removed.
 export function isLocalImageLocator(locator?: string): boolean {
   const raw = (locator || "").trim();
   if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("data:")) return false;
@@ -299,11 +288,6 @@ export function CitationVisual({
   );
 }
 
-// Evidence → action (v9.9.6): the sources this answer actually used become
-// one-click follow-ups. The server composes evidence-scoped prompts; clicking
-// one sends it through the normal chat path, so there is no second, weaker
-// generation road. Actions are fetched lazily — an answer nobody follows up on
-// costs nothing.
 export function EvidenceActionRow({
   language,
   query,
@@ -384,9 +368,6 @@ export function EvidenceActionRow({
   );
 }
 
-// Evidence explainability: show *why* the Brain picked a citation — which
-// query words matched and how confident the recall is — instead of asking
-// the user to trust a bare list.
 function CitationWhy({
   language,
   citation,
@@ -421,7 +402,6 @@ type SourceNode = {
   provenance: Array<{ key: string; value: string }>;
 };
 
-// Metadata keys worth surfacing as provenance ("where this text came from").
 const PROVENANCE_KEYS = [
   "source",
   "source_uri",
@@ -433,8 +413,6 @@ const PROVENANCE_KEYS = [
   "provenance_id",
 ];
 
-// GET /api/graph/node → {node: {id,type,title,summary,metadata,...}}.
-// Defensive parse; null when the payload has no node record.
 export function parseSourceNode(data: unknown): SourceNode | null {
   const root = isRecord(data) ? data : {};
   const node = isRecord(root.node) ? root.node : null;
@@ -452,10 +430,6 @@ export function parseSourceNode(data: unknown): SourceNode | null {
   };
 }
 
-// The cited source's stored text (graph node summary) + provenance, in the
-// same modal shell as file previews. The honest failure mode matters:
-// citations that are not graph nodes (older recalls) show a clear error
-// instead of pretending there is nothing to see.
 export function SourceChunkModal(
   props: { language: Language; onClose: () => void } & (
     | { citation: Citation; nodeId?: undefined; fallbackTitle?: undefined }

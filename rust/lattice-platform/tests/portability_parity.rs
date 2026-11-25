@@ -1,14 +1,3 @@
-//! WP-R9: fixture replay + OpenAPI contract for every family that shares the
-//! portability harness — portability, network, the network-boundary dial,
-//! computer use, project sessions, realtime and voice.
-//!
-//! These were seven test binaries, each a dozen lines around one `Install`,
-//! each recompiling the same 550-line harness. They are one binary now; every
-//! test function is the one it was, only the `MOUNTED` imports are aliased so
-//! seven identically-named constants can live in one scope.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 #[path = "portability_harness/mod.rs"]
 mod harness;
@@ -23,8 +12,6 @@ use lattice_platform::knowledge::voice::{KEEP as VOICE_KEEP, MOUNTED as VOICE_MO
 use lattice_platform::toolsurface::computer_use::MOUNTED as COMPUTER_USE_MOUNTED;
 use lattice_platform::workspaceos::project_sessions::MOUNTED as PROJECT_SESSIONS_MOUNTED;
 use lattice_platform::workspaceos::realtime::MOUNTED as REALTIME_MOUNTED;
-
-// ── portability ────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn portability_fixtures_replay() {
@@ -45,8 +32,6 @@ fn portability_routes_match_the_committed_contract() {
     });
 }
 
-// ── peer network ───────────────────────────────────────────────────────────
-
 #[tokio::test]
 async fn network_fixtures_replay() {
     let install = Install::start().await;
@@ -59,8 +44,6 @@ fn network_routes_match_the_committed_contract() {
     let spec = openapi_fragment("portability_network.json");
     assert_mounted_matches_fragment(NETWORK_MOUNTED, &spec, |op| op.contains("/network/"));
 }
-
-// ── the network-boundary dial ──────────────────────────────────────────────
 
 #[tokio::test]
 async fn network_boundary_fixtures_replay() {
@@ -76,8 +59,6 @@ fn network_boundary_routes_match_the_committed_contract() {
         op.contains("/api/network-boundary")
     });
 }
-
-// ── computer use ───────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn computer_use_fixtures_replay() {
@@ -96,13 +77,9 @@ fn computer_use_routes_match_the_committed_contract() {
     });
 }
 
-// ── project sessions ───────────────────────────────────────────────────────
-
 #[tokio::test]
 async fn project_sessions_fixtures_replay() {
     let install = Install::start().await;
-    // Seed the project the list/get/update fixtures read, then replay in order
-    // so `$project_id` / `$project_created` bind from the live answers.
     let fixture = load_fixture("tools_misc.json");
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -136,8 +113,6 @@ fn project_sessions_routes_match_the_committed_contract() {
     });
 }
 
-// ── realtime presence / feed / SSE ─────────────────────────────────────────
-
 #[tokio::test]
 async fn realtime_fixtures_replay() {
     let install = Install::start().await;
@@ -159,15 +134,8 @@ fn activity_page_is_not_claimed() {
     );
 }
 
-// ── voice ──────────────────────────────────────────────────────────────────
-
 #[test]
 fn voice_router_claims_the_whole_surviving_family() {
-    // W3b: POST /api/capture/voice is product-native. v11.8.0 deleted the only
-    // other route in the family, GET /api/capture/voice/status, so the KEEP
-    // table is empty and capture is all there is. The committed spec is
-    // unchanged either way — fragment bytes are not a function of what the
-    // worker still serves, only of frontend/openapi.json.
     assert_eq!(VOICE_MOUNTED, &[("POST", "/api/capture/voice")]);
     assert!(
         VOICE_KEEP.is_empty(),

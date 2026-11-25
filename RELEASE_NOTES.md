@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.1.2 - Living Synthesis] (2026-11-25)
+
+Enforced a repository-wide zero-comments standard across every tracked source language: stripped all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives while preserving only machine-parsed shebangs and `/// <reference ... />` directives; resolved every surfaced Ruff, mypy, TypeScript, and Rust Clippy issue directly in source code without weakening any global lint or type-check configuration; wired `npm run check:no-comments` (`scripts/check_no_comments.mjs`) into `npm run lint` and `.github/workflows/ci.yml`; and documented the permanent no-comments policy in `AGENTS.md`, `CONTRIBUTING.md`, and Korean mirrors.
+
+See [docs/releases/RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md).
+
 # [v14.1.1 - Living Synthesis] (2026-11-25)
 
 Completed the zero-technical-debt pass across Python formatting, McCabe complexity, server i18n ratcheting, and container hygiene: formatted all 219 Python files with `ruff format .` in a dedicated commit (`55ba57c381a433066fd94434c3a6250c4a1beb59`) recorded in `.git-blame-ignore-revs` and enforced `ruff format --check .` in `npm run lint:python` / CI; decomposed `create_models_router` and `create_worker_compute_router`, removed all remaining `"C901"` per-file ignores in `pyproject.toml` (`max-complexity = 20` enforced globally with zero exemptions), and split `/worker/extract` tests into `tests/unit/test_worker_compute_extract.py`; closed `scripts/check_server_i18n.mjs` to `0 unclaimed` modules by explicitly registering `worker_compute_render.py` and `worker_resilience.py` in `NON_ROUTER_HELPERS` and failing closed on any future unclassified `latticeai/api/*.py` module; and added explicit `--chown=lattice:lattice --chmod=0755` to the `lattice-host` runtime copy in `Dockerfile`.
@@ -118,10 +124,11 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.1.1** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.1.2** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
+- [v14.1.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.1.md)
 - [v14.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.0.md)
 - [v14.0.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.0.0.md)

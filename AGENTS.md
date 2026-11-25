@@ -2,7 +2,7 @@
 
 # LatticeAI Project AGENTS.md
 
-Current release: **14.1.1 — Living Synthesis**.
+Current release: **14.1.2 — Living Synthesis**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -120,6 +120,13 @@ When refactoring:
 - Remove dead code when safe
 - Remove obsolete compatibility layers when no longer needed
 - Leave the codebase cleaner than it was found
+
+---
+
+## No-Comments Policy
+
+- Never write comments of any kind in source code (including inline comments, block comments, docstrings, JSDoc, and linter/type-checker suppressions such as `# noqa`, `# type: ignore`, `// @ts-expect-error`, or `// eslint-disable`). Always fix the underlying code instead.
+- Only machine-parsed directives strictly required by the OS or compiler (such as line-1 shebangs `#!/usr/bin/env ...` and TypeScript `/// <reference ... />`) are permitted, and enforced by `npm run check:no-comments`.
 
 ---
 

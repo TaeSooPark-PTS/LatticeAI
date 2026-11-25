@@ -1,20 +1,3 @@
-//! `BrainHealthMixin.health_report`, reduced to the three readings the
-//! briefing's `health` section renders.
-//!
-//! The briefing reads `overall_score`, `grade` and the first three
-//! `recommended_actions`. Those three still require the whole scored diagnosis:
-//! the composite averages only the dimensions that could be measured, and every
-//! action is a *dimension's* verdict. So all four dimensions are computed here —
-//! what is not built is the published `dimensions` / `coverage` / `reason`
-//! blocks, which no command-centre response can reach.
-//!
-//! Two Python readings are load-bearing and reproduced as-is:
-//!
-//! * a dimension that cannot be measured scores `None` and is left **out** of
-//!   the average, rather than scoring a flattering 100;
-//! * `if cons_dim.get("contradiction_edges")` and `if emb.get("needs_reindex")`
-//!   are truthiness tests, so a measured **zero** raises no action.
-
 use std::collections::{BTreeSet, HashMap};
 
 use lattice_auth::OrderedMap;
@@ -25,13 +8,9 @@ use super::store::{parse_ts, py_round_int, py_text};
 use crate::memory_api::kg;
 use crate::shape::{py_str, truthy};
 
-/// `constants._STALE_DAYS`.
 const STALE_DAYS: i64 = 45;
-/// `constants._GRAPH_SAMPLE_LIMIT`.
 pub(crate) const GRAPH_SAMPLE_LIMIT: i64 = 800;
 
-/// `_graph_sample` — one scoped slice, with the store's `from`/`to` edge keys
-/// normalised to the `source`/`target` the quality layer reads.
 pub(crate) struct GraphSample {
     pub(crate) nodes: Vec<Value>,
     pub(crate) edges: Vec<Value>,
@@ -39,7 +18,6 @@ pub(crate) struct GraphSample {
 }
 
 impl GraphSample {
-    /// The degraded slice both failure branches answer with.
     fn unavailable() -> Self {
         Self {
             nodes: Vec::new(),
@@ -49,7 +27,6 @@ impl GraphSample {
     }
 }
 
-/// `BrainSamplingMixin._graph_sample`.
 pub(crate) fn graph_sample(
     conn: &Connection,
     workspace_id: Option<&str>,
@@ -66,9 +43,6 @@ pub(crate) fn graph_sample(
         .edges
         .into_iter()
         .map(|mut edge| {
-            // `setdefault`: the store never writes these two keys, so they
-            // always take the `from`/`to` values — and `from`/`to` stay, because
-            // the health report reads both spellings.
             if let Some(map) = edge.as_object_mut() {
                 let from = map.get("from").cloned().unwrap_or(Value::Null);
                 let to = map.get("to").cloned().unwrap_or(Value::Null);
@@ -85,22 +59,15 @@ pub(crate) fn graph_sample(
     }
 }
 
-/// What the briefing takes from `health_report()`.
 pub(crate) struct HealthReport {
-    /// `overall_score` — `None` when nothing could be measured.
     pub(crate) overall_score: Option<i64>,
-    /// `grade`, or `None` alongside a `None` score.
     pub(crate) grade: Option<&'static str>,
-    /// `recommended_actions`, in the order the report appends them.
     pub(crate) actions: Vec<Value>,
 }
 
-/// One measured dimension.
 struct Dimension {
     score: Option<i64>,
-    /// `stale_nodes` / `orphan_nodes` / `pending_items` / `contradiction_edges`.
     detail: i64,
-    /// `needs_reindex`, the only boolean an action reads.
     flag: bool,
 }
 
@@ -114,10 +81,6 @@ impl Dimension {
     }
 }
 
-/// `health_report(user_email=…, workspace_id=…)`.
-///
-/// `now_utc` is `datetime.now(timezone.utc)` as epoch seconds — the exact
-/// reading the freshness cutoff subtracts 45 days from.
 pub(crate) fn health_report(
     conn: &Connection,
     db_path: &str,
@@ -130,8 +93,6 @@ pub(crate) fn health_report(
     let embedding = embedding_dimension(conn, db_path, enable_graph);
     let consistency = consistency_dimension(sample);
 
-    // Insertion order is the dict order: freshness, connectivity,
-    // embedding_coverage, consistency.
     let scores: Vec<i64> = [&freshness, &connectivity, &embedding, &consistency]
         .iter()
         .filter_map(|dimension| dimension.score)
@@ -186,7 +147,6 @@ pub(crate) fn health_report(
     }
 }
 
-/// The four grade words, at their four thresholds.
 fn grade_of(score: i64) -> &'static str {
     if score >= 85 {
         "excellent"
@@ -206,7 +166,6 @@ fn action(id: &str, reason: &str) -> Value {
     serde_json::to_value(&entry).unwrap_or(Value::Null)
 }
 
-/// How much of the sampled knowledge saw recent updates.
 fn freshness_dimension(sample: &GraphSample, now_utc: f64) -> Dimension {
     if !sample.available || sample.nodes.is_empty() {
         return Dimension::unavailable();
@@ -230,7 +189,6 @@ fn freshness_dimension(sample: &GraphSample, now_utc: f64) -> Dimension {
     }
 }
 
-/// Orphan nodes are knowledge the Brain cannot reason across.
 fn connectivity_dimension(sample: &GraphSample) -> Dimension {
     if !sample.available || sample.nodes.is_empty() {
         return Dimension::unavailable();
@@ -238,7 +196,6 @@ fn connectivity_dimension(sample: &GraphSample) -> Dimension {
     let mut connected: BTreeSet<String> = BTreeSet::new();
     for edge in &sample.edges {
         for (primary, fallback) in [("source", "from_node"), ("target", "to_node")] {
-            // `str(edge.get(primary) or edge.get(fallback) or "")`.
             let endpoint = edge
                 .get(primary)
                 .filter(|value| truthy(value))
@@ -261,8 +218,6 @@ fn connectivity_dimension(sample: &GraphSample) -> Dimension {
     }
 }
 
-/// `str(value)` with no `or ""` — an absent key stringifies to `"None"`, which
-/// is a name no edge endpoint can carry, so such a node reads as an orphan.
 fn py_str_of(value: Option<&Value>) -> String {
     match value {
         None | Some(Value::Null) => "None".to_string(),
@@ -270,14 +225,11 @@ fn py_str_of(value: Option<&Value>) -> String {
     }
 }
 
-/// Semantic recall only works for indexed items.
 fn embedding_dimension(conn: &Connection, db_path: &str, enable_graph: bool) -> Dimension {
     if !enable_graph {
         return Dimension::unavailable();
     }
     let Ok(status) = kg::index_status(conn, db_path) else {
-        // `except Exception: index_status = {"error": str(exc)}` — no `scale`,
-        // so the dimension is unavailable either way.
         return Dimension::unavailable();
     };
     let status = serde_json::to_value(&status).unwrap_or(Value::Null);
@@ -285,9 +237,6 @@ fn embedding_dimension(conn: &Connection, db_path: &str, enable_graph: bool) -> 
     let Some(coverage) = scale.get("coverage_ratio").and_then(Value::as_f64) else {
         return Dimension::unavailable();
     };
-    // `scale.get("source_items", index_status.get("source_items"))` — the
-    // fallback is unreachable while `scale` carries the key, and `== 0` is the
-    // "an empty index covers 100% of nothing" guard.
     let indexable = scale
         .get("source_items")
         .or_else(|| status.get("source_items"))
@@ -305,11 +254,6 @@ fn embedding_dimension(conn: &Connection, db_path: &str, enable_graph: bool) -> 
     }
 }
 
-/// Edge duplication plus contradiction pressure.
-///
-/// `compute_quality_metrics` also reports `avg_conf` and `avg_evidence`; the
-/// health report reads neither (`pressure` is `dup_rate` plus the contradiction
-/// share), and no command-centre response publishes `edge_metrics`.
 fn consistency_dimension(sample: &GraphSample) -> Dimension {
     if !sample.available || sample.edges.is_empty() {
         return Dimension::unavailable();
@@ -318,8 +262,6 @@ fn consistency_dimension(sample: &GraphSample) -> Dimension {
     let mut seen: HashMap<String, ()> = HashMap::new();
     let mut duplicates = 0_usize;
     for edge in &sample.edges {
-        // `(source, target, type)` as the dict key; the unit separator cannot
-        // occur inside a JSON rendering of any of the three.
         let key = format!(
             "{}\u{1f}{}\u{1f}{}",
             edge.get("source").unwrap_or(&Value::Null),
@@ -429,7 +371,6 @@ mod tests {
             json!({"source": "b", "target": "c", "type": "MENTIONS"}),
         ];
         let measured = consistency_dimension(&sample(vec![json!({"id": "a"})], edges));
-        // dup_rate 0.25 + a 1-in-4 contradiction share = 0.5 pressure.
         assert_eq!(measured.score, Some(50));
         assert_eq!(measured.detail, 1);
     }

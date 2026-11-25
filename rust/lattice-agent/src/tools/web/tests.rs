@@ -46,13 +46,11 @@ fn ssrf_blocks_metadata_private_ips_loopback_and_bad_schemes() {
     std::env::remove_var("LATTICEAI_NETWORK_MODE");
     std::env::remove_var("LATTICEAI_WEB_ALLOW_LOOPBACK");
 
-    // Disallowed schemes
     assert!(validate_web_url("file:///etc/passwd").is_err());
     assert!(validate_web_url("ftp://example.com/file").is_err());
     assert!(validate_web_url("javascript:alert(1)").is_err());
     assert!(validate_web_url("gopher://127.0.0.1:70").is_err());
 
-    // Cloud metadata endpoints
     for blocked in [
         "http://169.254.169.254/latest/meta-data/",
         "http://169.254.170.2/v2/credentials",
@@ -65,7 +63,6 @@ fn ssrf_blocks_metadata_private_ips_loopback_and_bad_schemes() {
         );
     }
 
-    // RFC1918 / link-local / unspecified
     for private_url in [
         "http://10.0.0.1/admin",
         "http://172.16.0.1/internal",
@@ -82,7 +79,6 @@ fn ssrf_blocks_metadata_private_ips_loopback_and_bad_schemes() {
         );
     }
 
-    // Loopback blocked by default
     for loopback in [
         "http://127.0.0.1:8080/api",
         "http://localhost:8080/api",
@@ -94,7 +90,6 @@ fn ssrf_blocks_metadata_private_ips_loopback_and_bad_schemes() {
         );
     }
 
-    // Public HTTPS URL allowed
     assert_eq!(
         validate_web_url("https://example.com/docs?q=1").expect("valid public url"),
         "https://example.com/docs?q=1"
@@ -112,8 +107,6 @@ fn offline_mode_and_loopback_override_behave_as_specified() {
     assert!(validate_web_url("https://example.com").is_err());
     assert!(validate_web_url("http://127.0.0.1:8080/test").is_err());
 
-    // Allowing loopback permits 127.0.0.1/localhost/[::1] even when offline,
-    // while still blocking external hosts and metadata IPs.
     std::env::set_var("LATTICEAI_WEB_ALLOW_LOOPBACK", "1");
     assert!(validate_web_url("http://127.0.0.1:8080/test").is_ok());
     assert!(validate_web_url("http://localhost:8080/test").is_ok());

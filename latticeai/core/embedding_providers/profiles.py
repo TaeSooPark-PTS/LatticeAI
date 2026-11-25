@@ -1,10 +1,3 @@
-"""The production embedding profiles the setup and admin surfaces offer.
-
-A literal table, deliberately: a profile is a *named, supported* combination of
-provider, model and dimensionality, so the UI can offer a short list of things
-known to work instead of asking the user to assemble one.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -13,7 +6,6 @@ RECOMMENDED_EMBEDDING_MODEL = "google/embeddinggemma-2"
 RECOMMENDED_EMBEDDING_PROFILE = "local:embeddinggemma-2"
 
 PRODUCTION_PROVIDER_PROFILES: Dict[str, Dict[str, Any]] = {
-    # ── primary Google EmbeddingGemma 2 profiles ──────────────────────────
     "local:embeddinggemma-2": {
         "id": "local:embeddinggemma-2",
         "provider": "huggingface",
@@ -54,14 +46,6 @@ PRODUCTION_PROVIDER_PROFILES: Dict[str, Dict[str, Any]] = {
         "label": "Google EmbeddingGemma 300M (저사양 PC 로컬)",
         "detail": "저사양 PC를 위한 경량 다국어 시맨틱 임베딩 모델 (google/embeddinggemma-300m / mlx-community/embeddinggemma-300m-4bit, 768차원, 300MB).",
     },
-    # ── one-click local profiles (v12.0.0) ────────────────────────────────
-    # These three carry `hf_repo_id` and `download_gb` because they are the
-    # ones a setup surface can *offer to fetch*: the id is what
-    # `huggingface_hub.snapshot_download` takes and what
-    # `autodetect.detect_local_mlx` looks for in the cache, so "offer",
-    # "download" and "detect" all name the same string. The rest of the table
-    # describes providers the user has to bring themselves (an Ollama server,
-    # an API key), which is why they have no repo id.
     "local:multilingual-e5-small": {
         "id": "local:multilingual-e5-small",
         "provider": "mlx",

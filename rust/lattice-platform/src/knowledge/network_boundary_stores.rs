@@ -1,5 +1,3 @@
-//! Mode catalog, `BoundaryStore`, `PolicyStore`, and `TokenBudget` for [`super`].
-
 use std::path::PathBuf;
 
 use lattice_auth::OrderedMap;
@@ -84,7 +82,6 @@ fn mode_contract(mode: &str) -> OrderedMap {
     map
 }
 
-/// `network_boundary.json`.
 pub struct BoundaryStore {
     path: PathBuf,
 }
@@ -184,7 +181,6 @@ impl BoundaryStore {
     }
 }
 
-/// `hybrid_policy.json`.
 pub struct PolicyStore {
     path: PathBuf,
 }

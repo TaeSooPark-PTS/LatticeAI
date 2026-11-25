@@ -1,10 +1,3 @@
-//! Env-gated HNSW candidate fetch + exact rescore.
-//!
-//! Default env never enters this module. When `LATTICEAI_VECTOR_INDEX=hnsw`,
-//! search asks the worker sidecar for `k * 4` ids (capped at 200) and then
-//! scores those rows with the same cosine the brute path uses — approximate
-//! recall, exact ordering. Any failure falls back to brute with the reason.
-
 use lattice_core::db::WORKER_ORIGIN_ENV;
 use lattice_core::read::{vector_row_from, VectorRow, VECTOR_ROW_SELECT};
 use lattice_core::worker::WorkerSeamClient;
@@ -17,18 +10,11 @@ use crate::vector::{
     recall_report_custom, vector_match, BackendSelection, BRUTE_FORCE_BACKEND, VECTOR_INDEX_ENV,
 };
 
-/// How many ANN candidates to fetch per requested hit.
-///
-/// `k * 4` is the contract minimum; 8 is what keeps recall@10 ≥ 0.95 on the
-/// ragbench synthetic store (near-duplicate hash vectors). Still capped at 200.
 pub const HNSW_CANDIDATE_MULTIPLIER: i64 = 8;
-/// Same cap as `VECTOR_QUERY_K_CAP` on the worker.
 pub const HNSW_WORKER_K_CAP: i64 = 200;
 
 static BOUND_ORIGIN: OnceLock<String> = OnceLock::new();
 
-/// Remember the host's worker origin so search does not need every caller
-/// to thread a seam through the golden-pinned `vector_search` signature.
 pub fn bind_worker_origin(origin: &str) {
     let trimmed = origin.trim().trim_end_matches('/');
     if trimmed.is_empty() {
@@ -45,12 +31,10 @@ fn worker_origin() -> Option<String> {
         .or_else(|| BOUND_ORIGIN.get().cloned())
 }
 
-/// True when search can reach the HNSW sidecar (env origin or a bound seam).
 pub(crate) fn hnsw_worker_is_bound() -> bool {
     worker_origin().is_some()
 }
 
-/// What the worker returned for one ANN query.
 #[derive(Debug, Clone)]
 pub struct HnswReply {
     pub ids: Vec<String>,
@@ -61,7 +45,6 @@ pub struct HnswReply {
     pub detail: Option<String>,
 }
 
-/// Try the sidecar. `Err` is the honest fallback reason.
 pub fn query_worker(model_id: &str, dim: i64, vector: &[f64], k: i64) -> Result<HnswReply, String> {
     let origin = worker_origin()
         .ok_or_else(|| format!("{WORKER_ORIGIN_ENV} is not set and no worker seam is bound"))?;
@@ -138,7 +121,6 @@ fn block_on_json(client: &WorkerSeamClient, path: &str, body: &Value) -> Result<
     .map_err(|error| format!("worker {path}: {error}"))
 }
 
-/// Load the named vector rows (same SELECT the brute scan uses).
 pub fn load_rows(
     conn: &Connection,
     model_id: &str,
@@ -172,7 +154,6 @@ fn sort_key(item: &Map<String, Value>) -> (f64, String) {
     )
 }
 
-/// Worker query + exact rescore, or the fallback reason.
 pub fn try_hnsw(
     query: &str,
     query_vector: &[f64],
@@ -253,7 +234,6 @@ pub fn try_hnsw(
     .map_err(|error| format!("rescore: {error}"))
 }
 
-/// Exact-rescore the worker's candidate ids into a `vector_search` payload.
 #[allow(clippy::too_many_arguments)]
 pub fn rescore(
     conn: &Connection,
@@ -335,15 +315,12 @@ pub fn rescore(
     Ok(Value::Object(out))
 }
 
-/// Fetch up to the worker cap. `k * 8` is the floor; the cap is what
-/// keeps recall@10 ≥ 0.95 on a near-duplicate hash store.
 pub fn candidate_k(limit: i64) -> i64 {
     (limit * HNSW_CANDIDATE_MULTIPLIER)
         .clamp(64, HNSW_WORKER_K_CAP)
         .max(limit)
 }
 
-/// Fallback `index` block: requested HNSW, served brute, reason named.
 pub fn fallback_selection(reason: &str) -> BackendSelection {
     BackendSelection {
         requested: "hnsw".into(),

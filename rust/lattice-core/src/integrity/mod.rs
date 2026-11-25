@@ -1,19 +1,3 @@
-//! Unified Knowledge Graph Data Integrity Checker & Safe Repair Engine (P0.2).
-//!
-//! Verifies referential integrity, provenance coverage, orphan chunks/vectors,
-//! duplicate natural keys, cross-workspace reference leaks, missing local file
-//! paths, primary-vs-secondary index drift (`nodes_v2`, `edges_v2`, `node_fts`,
-//! `bm25_node_stats`, `vector_embeddings`), and DAG-invariant relationship cycles.
-//!
-//! Repair guarantees:
-//! - Dry-run preview with explicit blast-radius summary before any mutation.
-//! - Automatic `VACUUM INTO` snapshot backup prior to executing repairs when a
-//!   `backup_path` is provided.
-//! - Strict split between provably safe auto-repairs (dangling edge/occurrence
-//!   cleanup, orphan vector cleanup, FTS5/v2 mirror resync) and approval-gated
-//!   repairs (breaking cycles, removing cross-workspace leaked edges, pruning
-//!   missing local file records).
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
@@ -22,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::CoreError;
 
-/// Severity of an integrity finding.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IntegritySeverity {
@@ -31,7 +14,6 @@ pub enum IntegritySeverity {
     Info,
 }
 
-/// Whether a repair action is provably safe for automatic execution or requires explicit user approval.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RepairSafety {
@@ -39,7 +21,6 @@ pub enum RepairSafety {
     RequiresApproval,
 }
 
-/// Canonical categories matching the P0.2 Mandatory Integrity Checks.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum IntegrityIssueKind {
@@ -61,7 +42,6 @@ pub enum IntegrityIssueKind {
     CyclicRelationship,
 }
 
-/// One detected integrity issue with affected record IDs and repair classification.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IntegrityFinding {
     pub kind: IntegrityIssueKind,
@@ -73,7 +53,6 @@ pub struct IntegrityFinding {
     pub recommended_action: String,
 }
 
-/// Full diagnostic report produced by [`check_graph_integrity`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IntegrityReport {
     pub healthy: bool,
@@ -86,7 +65,6 @@ pub struct IntegrityReport {
     pub counts_by_kind: BTreeMap<String, usize>,
 }
 
-/// Blast-radius estimate for a planned repair operation.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RepairBlastRadius {
     pub rows_deleted: usize,
@@ -96,7 +74,6 @@ pub struct RepairBlastRadius {
     pub approval_gated_actions: usize,
 }
 
-/// One discrete repair action included in a [`RepairPlan`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlannedRepairAction {
     pub action_id: String,
@@ -107,7 +84,6 @@ pub struct PlannedRepairAction {
     pub will_execute: bool,
 }
 
-/// Dry-run preview plan returned before any mutation occurs.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RepairPlan {
     pub dry_run: bool,
@@ -115,24 +91,15 @@ pub struct RepairPlan {
     pub actions: Vec<PlannedRepairAction>,
 }
 
-/// Policy controlling which repair actions may run.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RepairOptions {
-    /// When true, compute blast-radius preview without writing.
     pub dry_run: bool,
-    /// Explicit set of `action_id`s approved by the user for `RequiresApproval` repairs.
     pub approved_actions: BTreeSet<String>,
-    /// Optional path where an atomic SQLite snapshot backup is written before mutating.
     pub backup_path: Option<String>,
-    /// Strict workspace scope. When `Some(ws)`, both inspection and repair are
-    /// strictly limited to rows owned by `ws` and cross-workspace mutations are
-    /// prohibited. `None` runs global DB-wide repair (requires explicit admin
-    /// authorization at the API layer).
     #[serde(default)]
     pub workspace_id: Option<String>,
 }
 
-/// Outcome of executing [`execute_integrity_repair`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RepairExecutionResult {
     pub dry_run: bool,
@@ -217,7 +184,7 @@ fn detect_cycles(edges: &[(String, String, String)]) -> Vec<String> {
             .or_default()
             .push((v.as_str(), edge_id.as_str()));
     }
-    let mut state: HashMap<&str, u8> = HashMap::new(); // 0=unvisited, 1=visiting, 2=done
+    let mut state: HashMap<&str, u8> = HashMap::new();
     let mut cycle_edges: BTreeSet<String> = BTreeSet::new();
 
     fn dfs<'a>(
@@ -250,17 +217,10 @@ fn detect_cycles(edges: &[(String, String, String)]) -> Vec<String> {
     cycle_edges.into_iter().collect()
 }
 
-/// Run the full Knowledge Graph data-integrity audit against `conn` (global scope).
 pub fn check_graph_integrity(conn: &Connection) -> Result<IntegrityReport, CoreError> {
     check_graph_integrity_scoped(conn, None)
 }
 
-/// Run the Knowledge Graph data-integrity audit against `conn`, optionally
-/// restricted to a single `workspace_id`.
-///
-/// When `workspace_id` is `Some(ws)`, all row-level checks are strictly filtered
-/// to records owned by `ws` so callers cannot inspect or repair data belonging
-/// to other workspaces.
 pub fn check_graph_integrity_scoped(
     conn: &Connection,
     workspace_id: Option<&str>,
@@ -268,7 +228,6 @@ pub fn check_graph_integrity_scoped(
     let ws = workspace_id.map(str::trim).filter(|s| !s.is_empty());
     let mut findings = Vec::new();
 
-    // 1. SQLite low-level integrity & foreign-key checks.
     let integrity_rows = collect_string_col(conn, "PRAGMA integrity_check")?;
     let sqlite_integrity_ok =
         integrity_rows.len() == 1 && integrity_rows[0].eq_ignore_ascii_case("ok");
@@ -313,7 +272,6 @@ pub fn check_graph_integrity_scoped(
         0
     };
 
-    // 2. Dangling edges (`edges`, `edges_v2`, `edge_occurrences`).
     if table_exists(conn, "edges") && table_exists(conn, "nodes") {
         let dangling = if let Some(w) = ws {
             if table_exists(conn, "nodes_v2") {
@@ -412,7 +370,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 3. Orphan chunks, vectors, and provenance rows.
     if table_exists(conn, "chunks") && table_exists(conn, "nodes") {
         let orphan_chunks = if let Some(w) = ws {
             collect_string_col_param(
@@ -565,7 +522,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 4. Cross-workspace reference leaks.
     if table_exists(conn, "edges") && table_exists(conn, "nodes_v2") {
         let leaks = if let Some(w) = ws {
             collect_string_col_param(
@@ -600,7 +556,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 5. Duplicate natural keys (active source_uri collisions).
     if table_exists(conn, "nodes") && table_exists(conn, "nodes_v2") {
         let dup_uris = if let Some(w) = ws {
             collect_string_col_param(
@@ -643,7 +598,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 6. Missing / deleted file paths in `local_file_index`.
     if table_exists(conn, "local_file_index") {
         let missing_paths: Vec<String> = if let Some(w) = ws {
             if table_exists(conn, "nodes") {
@@ -707,7 +661,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 7. Primary DB vs secondary index drift (`nodes_v2`, `node_fts`, `vector_embeddings`).
     if table_exists(conn, "nodes") && table_exists(conn, "nodes_v2") {
         let v2_missing = if let Some(w) = ws {
             collect_string_col_param(
@@ -821,7 +774,6 @@ pub fn check_graph_integrity_scoped(
         );
     }
 
-    // 8. Cyclic DAG-invariant relationships & `superseded_by` chains.
     let mut dag_edges: Vec<(String, String, String)> = Vec::new();
     if table_exists(conn, "edges") {
         let type_list = DAG_EDGE_TYPES

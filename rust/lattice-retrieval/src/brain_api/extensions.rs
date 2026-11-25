@@ -1,12 +1,3 @@
-//! Digital Brain Platform routes (v13.8.0–v13.9.0): integrity check & scoped repair,
-//! entity merge review & rollback, temporal timeline & relationship evolution,
-//! topic clusters & knowledge gaps, knowledge corrections, and embedding registry.
-//!
-//! Folded directly into [`super::routes::router`] and [`super::routes::MOUNTED`].
-//! Every route enforces workspace authentication and strict workspace scoping through
-//! [`BrainState`], validates all mutation targets against the authorized workspace,
-//! and routes all writes through the shared single-writer [`Store`] pool.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use axum::extract::{Path, Request, State};
@@ -185,7 +176,6 @@ async fn brain_integrity_repair(State(state): State<BrainState>, req: Request) -
         backup_path,
         workspace_id,
     };
-    // Route all integrity repair writes through the shared Store single-writer pool.
     let res = state
         .store()
         .write_conn(move |conn| execute_integrity_repair(conn, &opts))
@@ -202,7 +192,6 @@ async fn brain_entity_candidates(State(state): State<BrainState>, req: Request) 
         Err(r) => return r,
     };
     let ws_c = ws.clone();
-    // Ensure entity resolution tables exist and list candidates + recent merges via shared Store.
     let res = state
         .store()
         .write_conn(move |conn| {
@@ -397,7 +386,6 @@ async fn brain_relationship_evolution(State(state): State<BrainState>, req: Requ
     }
 }
 
-/// P3.1 Topic Clustering via deterministic label propagation over workspace graph edges.
 async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> Response {
     let (_email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,
@@ -481,7 +469,6 @@ async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> 
     }
 }
 
-/// P3.1 Knowledge Gaps Detector (isolated entities, missing provenance, low-evidence claims).
 async fn brain_knowledge_gaps(State(state): State<BrainState>, req: Request) -> Response {
     let (_email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,

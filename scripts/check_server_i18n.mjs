@@ -1,34 +1,9 @@
 #!/usr/bin/env node
-/**
- * Server-side i18n ratchet.
- *
- * Every string the API hands a person used to be a literal at the raise site,
- * written in whichever language the author happened to be thinking in. One user
- * could get `"사용자를 찾을 수 없습니다."` from one router and, two files over,
- * `"Knowledge Graph ingestion is disabled."` — half the product in a language
- * they never chose.
- *
- * `latticeai/core/messages.py` fixed the mechanism; this gate keeps the fix from
- * eroding. Routers listed in LOCALIZED below are done: they must raise through
- * `http_error(...)` / `translate(...)`, never a literal. Routers not yet listed
- * are honestly *not* claimed to be localized — adding one to the list is how a
- * migration is declared finished, and from then on it cannot slip back.
- *
- * Pass-throughs (`detail=str(exc)`, `detail=exc.to_detail()`, a variable) are
- * allowed: the wording belongs to the service that raised, and moving it here
- * would only relocate the problem.
- */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const API_DIR = "latticeai/api";
 
-// Routers whose user-facing details are in the message catalog. Append here
-// when a router is migrated. A name is removed only when the router itself is
-// deleted — never to quiet a failure — and the loop below turns a stale name
-// into an error rather than a skip, so the two cases cannot be confused.
-// `tools` left this list in v11.8.0 with `latticeai/api/tools.py`, whose two
-// routes had no caller anywhere in the tree.
 const LOCALIZED = [
   "agent_worker_seam",
   "health",
@@ -38,14 +13,8 @@ const LOCALIZED = [
   "worker_seams",
 ];
 
-// Non-router helper and internal loopback middleware modules under latticeai/api/
-// that never define user-facing HTTP routes. Every `.py` file under latticeai/api/
-// (except `__init__.py`) must appear in either LOCALIZED or NON_ROUTER_HELPERS.
 const NON_ROUTER_HELPERS = [
-  // Pure Office/PDF binary builders and Pydantic request schemas; no HTTP routes.
   "worker_compute_render",
-  // Internal loopback `/worker/*` timeout/idempotency middleware returning
-  // machine-readable status codes (`worker_compute_timeout`, etc.) to lattice-host.
   "worker_resilience",
 ];
 
@@ -73,13 +42,8 @@ for (const name of LOCALIZED) {
     const match = line.match(/detail\s*=\s*(.+)$/);
     if (!match) return;
     const value = match[1].trim();
-    // Anything that is not a quoted literal is a pass-through: `str(exc)`, a
-    // variable, `translate(...)`, a dict. Those carry no wording of their own.
     if (!/^f?"/.test(value)) return;
-    // A literal used as an argument to a string method — `"; ".join(errors)` —
-    // is a separator, not a message.
     if (/^f?"[^"]*"\s*\./.test(value)) return;
-    // An empty string carries no wording either.
     if (/^f?"\s*"/.test(value)) return;
     failures.push(
       `${file}:${index + 1}: literal error detail — use http_error("<key>", …) `
@@ -112,9 +76,6 @@ for (const name of unclaimed) {
   );
 }
 
-// Rust canonical catalog check (v13.0.0): `rust/lattice-core/src/messages.rs`
-// must keep sorted, non-empty `(id, ko, en)` entries and `lattice-auth` must
-// delegate to `lattice_core::messages` instead of carrying a duplicate CATALOG.
 const rustCoreMessages = readFileSync("rust/lattice-core/src/messages.rs", "utf8");
 const rustEntries = [];
 const tupleRegex = /^\s*\(\s*"([^"]+)"\s*,\s*"((?:\\.|[^"\\])*)"\s*,\s*"((?:\\.|[^"\\])*)"\s*\)\s*,/gm;

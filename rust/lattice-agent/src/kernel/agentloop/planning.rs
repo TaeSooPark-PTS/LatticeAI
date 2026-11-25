@@ -1,10 +1,3 @@
-//! PLAN and APPROVAL — deciding what to do, and whether it may be done.
-//!
-//! A port of `latticeai.core.agent.planning`. [`Runtime::approval_requirements`]
-//! is the read-only half of exactly the predicate [`Runtime::approve`] enforces,
-//! which is what lets the HTTP layer pause a run as `awaiting_approval` instead
-//! of failing it closed — without weakening the gate.
-
 use serde_json::{json, Map, Value};
 
 use super::{RunRequest, Runtime};
@@ -17,7 +10,6 @@ use crate::parse::pystr::{char_slice, is_truthy, py_str};
 use crate::seam::worker::{Completion, WorkerError};
 
 impl Runtime {
-    /// PLAN: the planner role produces a structured plan JSON.
     pub async fn plan(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -53,8 +45,6 @@ impl Runtime {
                 Value::Object(action)
             }
             Err(error) => {
-                // A planner that cannot answer in JSON does not stop the run —
-                // the empty plan is normalised into something executable.
                 ctx.trace.parse_error("plan", &error.0, true);
                 json!({
                     "action": "plan", "state": "PLAN",
@@ -108,7 +98,6 @@ impl Runtime {
         Ok(())
     }
 
-    /// Read-only preview of the approval gate for a planned run.
     pub fn approval_requirements(&self, ctx: &AgentRunContext, req: &RunRequest) -> Value {
         let mode = self.resolve_permission_mode(ctx, req);
         let steps = ctx.steps();
@@ -167,8 +156,6 @@ impl Runtime {
         })
     }
 
-    /// APPROVAL: check governance, record the decision, and either proceed to
-    /// EXECUTING or terminate the run as FAILED.
     pub fn approve(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -264,8 +251,6 @@ mod tests {
             .plan(&mut ctx, &harness.request)
             .await
             .expect("plan");
-        // The parse failure is recovered by the fallback plan — whose goal is
-        // already the request, so only the heuristic step is a repair.
         assert_eq!(
             ctx.transcript[0]["plan_fixes"],
             json!(["heuristic_file_step"])
@@ -383,7 +368,6 @@ mod tests {
             "governor tools are skipped"
         );
         assert_eq!(preview["requires_approval"], false);
-        // With no governor wired, the same plan does block.
         harness.runtime.deps.governor_enabled = false;
         let preview = harness
             .runtime

@@ -1,19 +1,5 @@
-"""Concept and triple extraction — LLM-first, rules as the fallback.
-
-Moved verbatim out of ``_kg_common`` (v11.3.0 decomposition). The two seams
-tests reach for live **here**, next to the code that reads them:
-``ENABLE_LLM_EXTRACTION`` and ``get_llm_router``. Patching them on the
-``_kg_common`` package would rebind the package attribute and leave this
-module's own globals untouched, so the patch target is
-``lattice_brain.graph._kg_common.extraction``.
-"""
-
 from __future__ import annotations
 
-# F841: `_extract_concepts_rules` builds `pattern_with_suffix` alongside the
-# pattern it actually matches on; it documents the pair and is left as it was
-# under the module-wide directive `_kg_common.py` carried before the split.
-# ruff: noqa: F841
 import asyncio
 import functools
 import http.client
@@ -178,8 +164,6 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
     return None
 
 
-# Triples carry a numeric ``weight``/``confidence`` alongside string fields,
-# so the value type is Any rather than str.
 def _llm_extract_triples(
     text: str, concepts: List[str], limit: int = 20
 ) -> Optional[List[Dict[str, Any]]]:
@@ -218,10 +202,6 @@ def _llm_extract_triples(
                     relation = str(item.get("relation", "관련됨"))
                     evidence_text = str(item.get("evidence", ""))[:240]
                     confidence = float(item.get("confidence", 0.8))
-                    # An LLM triple that names a real verb and cites the
-                    # sentence it came from is semantic evidence; a bare
-                    # "관련됨" with no quoted evidence is the model restating
-                    # co-occurrence, and is weighted (and labelled) as such.
                     is_semantic = bool(evidence_text) and relation != "관련됨"
                     triples.append(
                         {
@@ -249,7 +229,6 @@ def _llm_extract_triples(
 
 
 _CONCEPT_STOP: set = {
-    # English stop words
     "the",
     "and",
     "for",
@@ -312,7 +291,6 @@ _CONCEPT_STOP: set = {
     "new",
     "get",
     "set",
-    # Korean stop words
     "사용자",
     "내용",
     "파일",
@@ -364,26 +342,14 @@ _CONCEPT_STOP: set = {
 
 
 def _extract_concepts(text: str, limit: int = 12) -> List[str]:
-    """LLM-first concept extraction with rule-based fallback.
-
-    Both paths are pushed through :func:`merge_entity_aliases` before they
-    leave, so ``"Lattice AI"`` / ``"lattice  ai"`` / ``"지식그래프에서"`` become
-    one concept and therefore one node. The merge is deterministic and needs no
-    model — the LLM is free to be inconsistent about case and 조사, and the
-    graph still gets one entity.
-    """
     llm_result = _llm_extract_concepts(text, limit)
     if llm_result:
         return merge_entity_aliases(llm_result, text)[:limit]
     return _extract_concepts_rules(text, limit)
 
 
-#: Longest a concept may be, in words. A name is a name; five words is already
-#: generous for "OpenAI GPT-4o Mini Preview". Past that it is a clause.
 _MAX_CONCEPT_WORDS = 5
 
-# Precompiled once: each of these used to be a ``re.findall`` literal inside
-# ``_extract_concepts_rules``, which recompiled them on every document.
 _RE_BACKTICK = re.compile(r"`([^`]{2,40})`")
 _RE_CODE_PUNCT = re.compile(r"[\(\)\[\]{}]")
 _RE_DQUOTE = re.compile(r'"([^"]{2,40})"')
@@ -408,10 +374,6 @@ _RE_KO_DEFINITION = re.compile(r"([가-힣]{2,12}?)(?:이란|란)(?![가-힣])")
 _RE_HYPHEN_ID = re.compile(r"\b([a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9.]+)+)\b")
 _RE_TOPIC_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]{2,}|[가-힣]{2,12}")
 
-#: A capitalized sentence opener is not part of the name that follows it.
-#: "The Vector Index" and "Unlike Keyword Search" are the sentence's grammar,
-#: not the entity's; the lowercase forms already sit in :data:`_CONCEPT_STOP`,
-#: and these are the ones that also appear capitalized at a sentence start.
 _LEADING_STOPWORDS: frozenset = frozenset(
     {
         "a",
@@ -460,21 +422,15 @@ _LEADING_STOPWORDS: frozenset = frozenset(
     }
 )
 
-#: The character class a term's own edge must not touch. A Latin word ends at
-#: the next Latin letter, **not** at the Korean particle glued to it: with a
-#: blanket `\w` guard, `"Lattice AI"` never matches inside `"Lattice AI는"` and
-#: the containment de-duplication silently keeps `"Lattice"` as a second node.
 _ASCII_EDGE = "A-Za-z0-9_"
 _HANGUL_EDGE = "가-힣"
 
 
 def _edge_class(char: str) -> str:
-    """Which character class would continue the word ``char`` ends (or starts)."""
     return _HANGUL_EDGE if "가" <= char <= "힣" else _ASCII_EDGE
 
 
 def _in_edge_class(char: str, edge: str) -> bool:
-    """True when ``char`` would continue a word whose edge class is ``edge``."""
     if edge is _HANGUL_EDGE:
         return "가" <= char <= "힣"
     return (
@@ -486,18 +442,11 @@ def _in_edge_class(char: str, edge: str) -> bool:
 
 
 def _fold_len_stable(term: str) -> bool:
-    """True when case-folding ``term`` cannot move character offsets.
-
-    ``re.IGNORECASE`` and ``str.lower()`` agree on span starts for these
-    terms; anything else (``İ``, ``ß``) falls back to the compiled regex so
-    the match list stays byte-identical.
-    """
     return len(term) == len(term.lower()) == len(term.upper())
 
 
 @functools.lru_cache(maxsize=4096)
 def _whole_word_re(term: str) -> re.Pattern[str]:
-    """The compiled whole-word pattern for ``term`` (cached)."""
     return re.compile(
         f"(?<![{_edge_class(term[0])}])"
         + re.escape(term)
@@ -507,11 +456,6 @@ def _whole_word_re(term: str) -> re.Pattern[str]:
 
 
 def _drop_leading_stopwords(phrase: str) -> str:
-    """``phrase`` without the sentence-grammar words in front of the name.
-
-    Stops before eating the whole phrase: a two-word match that is *entirely*
-    stopwords is returned unchanged and refused later by ``_add``.
-    """
     words = phrase.split()
     while len(words) > 1 and words[0].lower() in _LEADING_STOPWORDS:
         words = words[1:]
@@ -523,13 +467,6 @@ def _whole_word_spans(
     haystack: str,
     haystack_lower: Optional[str] = None,
 ) -> List[Any]:
-    """``(start, end)`` for every whole-word occurrence of ``term``.
-
-    On case-fold-stable terms this is a ``str.find`` walk with the same
-    lookaround rules as the compiled regex; anything whose lower/upper
-    length differs (or an empty term) uses the regex so the span list
-    cannot drift.
-    """
     if not term:
         return []
     if _fold_len_stable(term):
@@ -542,7 +479,6 @@ def _spans_by_find(
     haystack: str,
     haystack_lower: Optional[str] = None,
 ) -> List[Any]:
-    """Whole-word spans via case-folded ``find`` — identical to the regex."""
     needle = term.lower()
     hay = haystack_lower if haystack_lower is not None else haystack.lower()
     left_edge = _edge_class(term[0])
@@ -563,7 +499,6 @@ def _spans_by_find(
 
 
 def _term_is_whole_word_in(short: str, longer: str) -> bool:
-    """True when ``short`` occurs as a whole word inside ``longer``."""
     if not short:
         return False
     if _fold_len_stable(short):
@@ -572,18 +507,6 @@ def _term_is_whole_word_in(short: str, longer: str) -> bool:
 
 
 def _always_inside(short: str, longer: List[str], spans: Dict[str, List[Any]]) -> bool:
-    """True when every occurrence of ``short`` sits inside a longer concept.
-
-    Span containment rather than a per-term count, because a short term can be
-    covered by *different* longer terms in different places — "Vector" is
-    inside "Vector Index" here and "Vector Search" there, and counting against
-    one long term at a time would keep it as a third, meaningless node.
-
-    ``spans`` is precomputed once per document by the caller. Scanning the text
-    again per (short, long) pair is quadratic in the *candidate count* times
-    linear in the document, which on a 100 KB file took minutes; the same
-    answer from cached spans is interval arithmetic over a few dozen tuples.
-    """
     hits = spans.get(short) or []
     if not hits:
         return False
@@ -595,9 +518,6 @@ def _always_inside(short: str, longer: List[str], spans: Dict[str, List[Any]]) -
 
 
 def _add_rule_concept(seen: Dict[str, str], term: str) -> None:
-    # A candidate that crosses a line, or runs past a handful of words, is
-    # a quoted *passage* the backtick and quote rules swept up — the graph
-    # was storing whole sentences as entity names.
     if "\n" in term or len(term.split()) > _MAX_CONCEPT_WORDS:
         return
     key = term.strip().lower()
@@ -606,32 +526,20 @@ def _add_rule_concept(seen: Dict[str, str], term: str) -> None:
 
 
 def _collect_rule_concept_candidates(text: str) -> List[str]:
-    seen: Dict[str, str] = {}  # concept_lower → original form
+    seen: Dict[str, str] = {}
 
-    # 1. Backtick-quoted code/term (highest confidence)
     for m in _RE_BACKTICK.findall(text):
-        if not _RE_CODE_PUNCT.search(m):  # skip code expressions
+        if not _RE_CODE_PUNCT.search(m):
             _add_rule_concept(seen, m)
 
-    # 2. Double/single quoted terms
     for m in _RE_DQUOTE.findall(text):
         _add_rule_concept(seen, m)
 
-    # 3. Multi-word English proper nouns (Title Case or ALL-CAPS first word, 2–4 words).
-    #    The inner separator is `[ \t]+`, not `\s+`: `\s` crosses newlines, so a
-    #    heading glued to the next line's first word produced phantom concepts
-    #    like "Retrieval Lattice AI" — and, worse, consumed the "Lattice AI"
-    #    the next pass would have found (regex scanning does not overlap).
-    #    Pattern A: Mixed-case first word — "Lattice AI", "Tool Use", "Graph RAG"
     for m in _RE_PROPER_MIXED.findall(text):
         _add_rule_concept(seen, _drop_leading_stopwords(m))
-    #    Pattern B: ALL-CAPS first word — "VS Code", "MCP Server", "GPT-4o Mini"
     for m in _RE_PROPER_CAPS.findall(text):
         _add_rule_concept(seen, _drop_leading_stopwords(m))
 
-    # 4. Single capitalized proper noun.
-    #    Use ASCII-boundary lookaround instead of \b so Korean particles
-    #    (와, 의, 는 …) after an English word don't block the match.
     freq: Dict[str, int] = {}
     for w in _RE_PROPER_SINGLE.findall(text):
         freq[w] = freq.get(w, 0) + 1
@@ -640,10 +548,8 @@ def _collect_rule_concept_candidates(text: str) -> List[str]:
         if m.lower() not in _CONCEPT_STOP and (cnt >= 2 or m not in sentence_starts):
             _add_rule_concept(seen, m)
 
-    # 5. Korean technical compound nouns, particle stems, and definition stems.
     _collect_korean_rule_concepts(text, seen)
 
-    # 6. Hyphenated / versioned identifiers (gpt-4o, gemma-4, mlx-vlm)
     for m in _RE_HYPHEN_ID.findall(text):
         if len(m) >= 4:
             _add_rule_concept(seen, m)
@@ -654,10 +560,6 @@ def _collect_rule_concept_candidates(text: str) -> List[str]:
 def _collect_korean_rule_concepts(text: str, seen: Dict[str, str]) -> None:
     for m in _RE_KO_COMPOUND.findall(text):
         _add_rule_concept(seen, m)
-    # Korean standalone terms that appear before a particle. Multi-syllable
-    # particles come first in the alternation: the group is greedy, so
-    # "지식그래프에서" has to be offered 에서 before 에 or the leftover 서
-    # blocks the match entirely.
     ko_counts: Dict[str, int] = {}
     for m in _RE_KO_PARTICLE.findall(text):
         if m.lower() not in _CONCEPT_STOP and len(m) >= 2:
@@ -666,34 +568,11 @@ def _collect_korean_rule_concepts(text: str, seen: Dict[str, str]) -> None:
             if len(m) >= 3 or ko_counts[m] >= 2:
                 _add_rule_concept(seen, m)
 
-    # 5b. The term a Korean definition sentence is *about*: `지식그래프란 …이다`.
-    #     The stem is lazy and the marker must end the word, so `설명이란` keeps
-    #     `설명` (the `이` belongs to `이란`) and `의견란에` is left alone
-    #     entirely (`란` there is part of the noun, not a marker).
     for m in _RE_KO_DEFINITION.findall(text):
         _add_rule_concept(seen, m)
 
 
 def _deduplicate_contained_concepts(values: List[str], text: str) -> List[str]:
-    # De-duplicate by containment: drop the shorter term when every occurrence
-    # of it in the source text is *inside* a longer concept.
-    #
-    #   "Lattice" → dropped, every occurrence is "Lattice AI"
-    #   "RAG"     → dropped, every occurrence is "Graph RAG"   (new: suffixes)
-    #   "Claude"  → kept, it also appears on its own
-    #   "Lat"     → kept, "Lattice AI" does not contain it as a whole word
-    #
-    # Until v12.0.0 this only looked at *prefixes*, so "Graph RAG" and "RAG"
-    # both became nodes and the graph answered one question with two entities.
-    # Which candidates *could* swallow which is decided on the candidate
-    # strings alone — matching "Vector" inside "Vector Index" is a few
-    # characters of work. Only the terms that survive that filter are then
-    # searched for in the document, so a 100 KB file is scanned a handful of
-    # times instead of once per candidate pair.
-    # The pair filter is a plain substring test before it is a regex one. A
-    # long document yields well over a thousand raw candidates, and a regex
-    # compiled per *pair* is two million compilations — seconds of work to
-    # answer a question `in` answers in nanoseconds for all but a few pairs.
     lowered = [value.lower() for value in values]
     lengths = [len(value) for value in values]
     swallowers: Dict[int, List[int]] = {}
@@ -723,22 +602,9 @@ def _deduplicate_contained_concepts(values: List[str], text: str) -> List[str]:
 
 
 def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
-    """Extract meaningful named concepts from text (rule-based).
-
-    Priority order:
-    1. Backtick / quoted terms (explicitly technical)
-    2. Multi-word proper nouns (Lattice AI, GPT-4o, Claude Sonnet)
-    3. Single capitalized proper nouns not at sentence start (Claude, Python, FastAPI)
-    4. Korean compound technical terms (멀티모달, 에이전트, 그래프RAG)
-    5. Hyphenated / versioned identifiers (gpt-4o, mlx-vlm, gemma-4)
-    """
     text = str(text or "")
     values = _collect_rule_concept_candidates(text)
     final = _deduplicate_contained_concepts(values, text)
-    # The surface merge is the last word: whatever the six passes above
-    # produced, two spellings of one entity leave as one concept and therefore
-    # as one node. Applied after the prefix de-duplication so the two rules
-    # compose rather than fight.
     return merge_entity_aliases(final, text)[:limit]
 
 
@@ -747,7 +613,6 @@ def _extract_triples(
     concepts: List[str],
     limit: int = 20,
 ) -> List[Dict[str, Any]]:
-    """LLM-first triple extraction with rule-based fallback."""
     llm_result = _llm_extract_triples(text, concepts, limit)
     if llm_result:
         return llm_result
@@ -755,7 +620,6 @@ def _extract_triples(
 
 
 def _topic_candidates(text: str, limit: int = 8) -> List[str]:
-    """Return compact keyword candidates for fallback graph search."""
     candidates = _extract_concepts(text, limit=limit)
     if candidates:
         return candidates[:limit]

@@ -1,5 +1,3 @@
-//! SQLite `ingestion_jobs` persistence and interop source availability helpers.
-
 use std::sync::Arc;
 
 use lattice_auth::OrderedMap;
@@ -93,7 +91,6 @@ fn ensure_jobs_table(conn: &rusqlite::Connection) -> Result<(), CoreError> {
             owner_email TEXT NOT NULL DEFAULT ''
         )",
     )?;
-    // Additive migration for pre-13.8.0 databases.
     let cols: Vec<String> = conn
         .prepare("PRAGMA table_info(ingestion_jobs)")?
         .query_map([], |r| r.get::<_, String>(1))?

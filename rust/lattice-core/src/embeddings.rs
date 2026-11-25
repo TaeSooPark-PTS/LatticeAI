@@ -1,12 +1,3 @@
-//! Port of `lattice_brain/embeddings.py` — the deterministic local embedder.
-//!
-//! Bit-for-bit parity is the whole contract here: the vectors in
-//! `vector_embeddings` were written by the Python model, and a Rust query vector
-//! that differs in the last ulp produces a different ranking. Three places
-//! decide that and each is called out below: the tokenizer's feature list, the
-//! blake2b-8 hash (digest length is a BLAKE2 *parameter*, not a truncation), and
-//! the accumulation **order** of the dot product.
-
 use blake2::digest::consts::U8;
 use blake2::{Blake2b, Digest};
 
@@ -15,23 +6,17 @@ pub use crate::embedding_contract::{
     EmbeddingIndexContract, DEFAULT_EMBEDDING_MODE, DEFAULT_INDEX_VERSION, NORMALIZATION_L2,
 };
 
-/// `LATTICEAI_VECTOR_DIM`, read once per model construction.
 pub const VECTOR_DIM_ENV: &str = "LATTICEAI_VECTOR_DIM";
-/// `lattice_brain.embeddings.DEFAULT_EMBEDDING_DIM` with nothing configured.
 pub const DEFAULT_EMBEDDING_DIM: usize = 384;
-/// Primary Hugging Face semantic embedding model (`google/embeddinggemma-2`).
 pub const EMBEDDINGGEMMA_2_MODEL_ID: &str = "google/embeddinggemma-2";
-/// Output vector dimensionality of `google/embeddinggemma-2`.
 pub const EMBEDDINGGEMMA_2_DIM: usize = 768;
 
 type Blake2b64 = Blake2b<U8>;
 
-/// `lattice_brain.embeddings.embedding_model_id`.
 pub fn embedding_model_id(dim: usize) -> String {
     format!("lattice-local-hash-v1:{dim}")
 }
 
-/// The deterministic offline embedder Python writes the index with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalEmbeddingModel {
     dim: usize,
@@ -45,7 +30,6 @@ impl Default for LocalEmbeddingModel {
 }
 
 impl LocalEmbeddingModel {
-    /// A model of an explicit dimension.
     pub fn new(dim: usize) -> Self {
         Self {
             dim,
@@ -53,12 +37,6 @@ impl LocalEmbeddingModel {
         }
     }
 
-    /// Resolve the dimension from `LATTICEAI_VECTOR_DIM` (default 384).
-    ///
-    /// Deviation from Python, stated rather than hidden: `int(os.getenv(...))`
-    /// raises at import on a malformed value and takes the process down. A
-    /// library cannot do that to its host, so an unparseable value falls back to
-    /// the documented default here.
     pub fn from_env() -> Self {
         let dim = std::env::var(VECTOR_DIM_ENV)
             .ok()
@@ -68,22 +46,18 @@ impl LocalEmbeddingModel {
         Self::new(dim)
     }
 
-    /// The vector width this model emits.
     pub fn dim(&self) -> usize {
         self.dim
     }
 
-    /// `lattice-local-hash-v1:{dim}` — the value stored in `embedding_model`.
     pub fn model_id(&self) -> &str {
         &self.model_id
     }
 
-    /// Explicit offline hash fallback contract for this model.
     pub fn contract(&self) -> EmbeddingIndexContract {
         EmbeddingIndexContract::from_hash(self.model_id.clone(), self.dim)
     }
 
-    /// `LocalEmbeddingModel.embed` — hashed bag of features, L2 normalized.
     pub fn embed(&self, text: &str) -> Vec<f64> {
         let mut vector = vec![0.0f64; self.dim];
         let features = tokenize(text);
@@ -94,7 +68,6 @@ impl LocalEmbeddingModel {
             let (index, sign) = hash_to_index(feature, self.dim);
             vector[index] += sign;
         }
-        // `math.sqrt(sum(v * v for v in vector))` — index order, f64 accumulator.
         let mut total = 0.0f64;
         for value in &vector {
             total += value * value;
@@ -109,11 +82,6 @@ impl LocalEmbeddingModel {
         vector
     }
 
-    /// `LocalEmbeddingModel.similarity` — plain dot product, strict on width.
-    ///
-    /// The accumulation is sequential and in index order because Python's
-    /// `sum(...)` is: any reassociation (chunking, SIMD, Kahan) changes the last
-    /// bits and therefore changes tie-breaks in the ranking above.
     pub fn similarity(&self, left: &[f64], right: &[f64]) -> Result<f64, CoreError> {
         if left.len() != right.len() {
             return Err(CoreError::DimensionMismatch {
@@ -128,7 +96,6 @@ impl LocalEmbeddingModel {
         Ok(total)
     }
 
-    /// `LocalEmbeddingModel.encode` — little-endian f32, no header.
     pub fn encode(&self, vector: &[f64]) -> Vec<u8> {
         let mut out = Vec::with_capacity(vector.len() * 4);
         for value in vector {
@@ -137,7 +104,6 @@ impl LocalEmbeddingModel {
         out
     }
 
-    /// `LocalEmbeddingModel.decode` — including its recount on a length mismatch.
     pub fn decode(&self, payload: &[u8], dim: Option<usize>) -> Vec<f64> {
         if payload.is_empty() {
             return Vec::new();
@@ -158,7 +124,6 @@ impl LocalEmbeddingModel {
     }
 }
 
-/// `lattice_brain.embeddings._hash_to_index` — blake2b(8) → (index, sign).
 pub fn hash_to_index(feature: &str, dim: usize) -> (usize, f64) {
     let mut hasher = Blake2b64::new();
     hasher.update(feature.as_bytes());
@@ -182,13 +147,6 @@ fn is_hangul(c: char) -> bool {
     ('\u{AC00}'..='\u{D7A3}').contains(&c)
 }
 
-/// `lattice_brain.embeddings._tokenize`.
-///
-/// Hand-scanned rather than regex-driven: the pattern
-/// `[a-z0-9][a-z0-9_.:/+-]{1,}|[가-힣]{2,}` has two disjoint alternatives, both
-/// greedy with nothing following them, so the leftmost-first match at each
-/// position is simply "the longest run", and a scanner states that without
-/// dragging a regex engine into the crate that must stay smallest.
 pub fn tokenize(text: &str) -> Vec<String> {
     let chars: Vec<char> = text.to_lowercase().chars().collect();
     let mut features: Vec<String> = Vec::new();
@@ -239,17 +197,12 @@ fn push_features(token: &[char], features: &mut Vec<String>) {
     }
 }
 
-/// Default dimension for `FallbackTextEmbedder` (matches EmbeddingGemma 2 768-d).
 pub const DEFAULT_FALLBACK_DIM: usize = EMBEDDINGGEMMA_2_DIM;
 
-/// Model identifier for `FallbackTextEmbedder`.
 pub fn fallback_embedding_model_id(dim: usize) -> String {
     format!("lattice-fallback-subword-v2:{dim}")
 }
 
-/// Upgraded offline zero-download text embedder using multi-scale character
-/// n-grams (3..5-grams + CJK bigrams), word unigrams/bigrams, IDF/positional
-/// weighting, 2-probe signed random projection, and L2 normalization.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FallbackTextEmbedder {
     dim: usize,
@@ -263,7 +216,6 @@ impl Default for FallbackTextEmbedder {
 }
 
 impl FallbackTextEmbedder {
-    /// Construct a `FallbackTextEmbedder` with explicit target dimension (default 768).
     pub fn new(dim: usize) -> Self {
         let resolved = if dim == 0 { DEFAULT_FALLBACK_DIM } else { dim };
         Self {
@@ -272,7 +224,6 @@ impl FallbackTextEmbedder {
         }
     }
 
-    /// Construct from `LATTICEAI_VECTOR_DIM` or default 768.
     pub fn from_env() -> Self {
         let dim = std::env::var(VECTOR_DIM_ENV)
             .ok()
@@ -290,12 +241,10 @@ impl FallbackTextEmbedder {
         &self.model_id
     }
 
-    /// Explicit offline subword fallback contract for this model.
     pub fn contract(&self) -> EmbeddingIndexContract {
         EmbeddingIndexContract::from_hash(self.model_id.clone(), self.dim)
     }
 
-    /// Deterministically embed `text` into a unit-normalized `dim`-dimensional vector.
     pub fn embed(&self, text: &str) -> Vec<f64> {
         let features = extract_fallback_features(text);
         project_weighted_features(&features, self.dim)
@@ -444,8 +393,6 @@ fn scan_fallback_tokens(text: &str) -> Vec<String> {
     tokens
 }
 
-/// Extract multi-scale subword n-grams (3..5-grams + CJK bigrams), word unigrams/bigrams,
-/// and IDF/positional weights for `FallbackTextEmbedder`.
 pub fn extract_fallback_features(text: &str) -> Vec<(String, f64)> {
     let cleaned = strip_instruction_prefix(text).to_lowercase();
     if cleaned.is_empty() {
@@ -606,8 +553,6 @@ pub fn extract_fallback_features(text: &str) -> Vec<(String, f64)> {
     weighted
 }
 
-/// Project weighted features into a unit-normalized `dim`-dimensional vector
-/// using 2-probe signed Blake2b-64 random projection.
 pub fn project_weighted_features(features: &[(String, f64)], dim: usize) -> Vec<f64> {
     let mut vector = vec![0.0f64; dim];
     if dim == 0 || features.is_empty() {
@@ -665,16 +610,13 @@ mod tests {
 
     #[test]
     fn tokenizer_matches_the_python_feature_shapes() {
-        // Latin token >= 5 chars gets trigrams; the short one does not.
         assert_eq!(tokenize("Hi"), vec!["tok:hi"]);
         let long = tokenize("Lattice");
         assert_eq!(long[0], "tok:lattice");
         assert_eq!(long.len(), 1 + "lattice".len() - 2);
         assert_eq!(long[1], "tri:lat");
-        // A single leading char with no tail is not a token at all.
         assert!(tokenize("a").is_empty());
         assert!(tokenize("").is_empty());
-        // Punctuation is part of the tail class, so paths stay one token.
         assert_eq!(tokenize("a/b")[0], "tok:a/b");
     }
 
@@ -683,7 +625,6 @@ mod tests {
         assert_eq!(tokenize("회의"), vec!["tok:회의"]);
         let three = tokenize("회의록");
         assert_eq!(three, vec!["tok:회의록", "ko:회의", "ko:의록"]);
-        // One lone syllable is not a token.
         assert!(tokenize("회").is_empty());
         assert!(tokenize("회 a").is_empty());
     }
@@ -696,7 +637,6 @@ mod tests {
         assert!((norm - 1.0).abs() < 1e-12, "not unit length: {norm}");
         assert_eq!(vector.len(), 384);
         assert_eq!(model.embed("hybrid retrieval"), vector);
-        // No features at all → the zero vector, never a NaN from 0/0.
         assert!(model.embed("!!!").iter().all(|v| *v == 0.0));
     }
 
@@ -711,7 +651,6 @@ mod tests {
         for (a, b) in vector.iter().zip(back.iter()) {
             assert_eq!(*b, *a as f32 as f64);
         }
-        // A wrong declared dim recomputes the count from the payload length.
         assert_eq!(model.decode(&blob, Some(7)).len(), 384);
         assert_eq!(model.decode(&blob, None).len(), 384);
         assert_eq!(model.decode(&blob, Some(0)).len(), 384);
@@ -750,7 +689,6 @@ mod tests {
             "expected strong Korean morphological/bigram similarity: rel={sim_rel}, unrel={sim_unrel}"
         );
 
-        // English morphological variants (retrieve / retrieval / retrieving) match via 3..5-grams
         let e1 = embedder.embed("retrieving documents from vector index");
         let e2 = embedder.embed("document retrieval with vector indexing");
         let e3 = embedder.embed("css animation keyframe button border");

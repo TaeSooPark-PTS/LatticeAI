@@ -1,11 +1,3 @@
-//! Agent Quality Evaluation integration suite (Review §7.3, P2).
-//!
-//! Exercises [`lattice_agent::kernel::eval`] end-to-end against real [`Runtime`]
-//! executions over `ReplayServer` + `NativeTools`, preserving all AGENTS.md
-//! Agent Loop invariants (`LoopTrace`, deterministic `extract_action_details`,
-//! fail-closed `verification.rs`, `probe.rs` profile selection, proposal-first
-//! change governance).
-
 mod common;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -35,8 +27,6 @@ fn scratch(name: &str) -> std::path::PathBuf {
 async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
     let mut results = Vec::new();
 
-    // 1. Equivalent file-creation task across `standard` and `compact` profiles,
-    //    including a repaired trailing-comma JSON action on the compact model.
     for (profile_name, model_id, write_completion) in [
         (
             "standard",
@@ -47,8 +37,6 @@ async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
         (
             "compact",
             "qwen2.5:1.5b",
-            // Deliberately wrapped in prose + markdown fence with trailing comma
-            // to exercise deterministic `extract_action_details` repair tracking.
             "Sure! Here is the call:\n```json\n{\"action\": \"write_file\", \"args\": {\"path\": \"hello.txt\", \"content\": \"hello world\\n\",},}\n```"
                 .to_string(),
         ),
@@ -123,8 +111,6 @@ async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
         results.push(evaluated);
     }
 
-    // 2. Ungrounded claim & fail-closed verification (`NEEDS_REVIEW`):
-    //    Model claims it created `ghost_report.md` without calling any tool.
     {
         let dir = scratch("ungrounded");
         let ws = Workspace::new(dir.join("agent_workspace")).expect("ws");
@@ -139,8 +125,6 @@ async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
             .to_string(),
             json!({"action": "final", "message": "Finished writing ghost_report.md."}).to_string(),
             json!({"action": "final", "message": "Finished writing ghost_report.md."}).to_string(),
-            // Even if verifier model tries to say PASS, verification.rs fails closed
-            // because no execution evidence exists on disk or in transcript.
             json!({"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok", "corrections": []})
                 .to_string(),
         ]);
@@ -182,8 +166,6 @@ async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
         results.push(evaluated);
     }
 
-    // 3. Proposal-first governance safe abort: existing file mutation is staged
-    //    as a change_proposal in `ask` mode, human rejects it, disk is untouched.
     {
         let dir = scratch("safe_abort");
         let ws = Workspace::new(dir.join("agent_workspace")).expect("ws");
@@ -217,8 +199,6 @@ async fn evaluates_cross_model_consistency_repairs_claims_and_safe_aborts() {
         ctx.state = AgentState::Planning;
         ctx.state_history.push(ctx.state.as_str().into());
         runtime.plan(&mut ctx, &req).await.expect("plan");
-        // Approve the plan so execution reaches the overwrite of existing config.toml,
-        // which proposal-first governance must stage as a `change_proposal` instead of writing.
         runtime.approve(&mut ctx, &req, false);
         runtime
             .run_to_completion(&mut ctx, &req)

@@ -7,15 +7,6 @@ import { renderPage } from "@/test/renderPage";
 import "@/i18n/chronicle";
 import { changeKindLabel, DayStory, entityTypeLabel, sourceTypeLabel } from "./DayStory";
 
-/**
- * The day's story is where storage vocabulary would leak into a reader's face:
- * `web_url`, `Concept`, `fact_superseded` are all real values on this payload,
- * and basic mode is the default here. Each one is asserted as a sentence.
- *
- * The other property worth pinning is the difference between `counts` and
- * `groups`: the server caps a group at 200 and this component shows eight, so
- * "seven documents" with four rows on screen must still say seven.
- */
 
 function day(overrides: Partial<ChronicleDay> = {}): ChronicleDay {
   return {
@@ -88,7 +79,6 @@ describe("DayStory", () => {
 
   it("says how many it is not showing rather than dropping them", () => {
     render(day({ counts: { sources: 9, entities: 1, conversations: 2, changes: 1 } }));
-    // Nine that day, two in the payload: the other seven are stated.
     expect(screen.getByText("이 밖에 7개가 더 있어요.")).toBeTruthy();
   });
 

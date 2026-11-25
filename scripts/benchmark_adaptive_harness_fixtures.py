@@ -1,5 +1,3 @@
-"""Task definitions, workspace seeding, Brain corpus, UI elements, and fixture tool simulation."""
-
 from __future__ import annotations
 
 import json
@@ -36,9 +34,7 @@ RAW_SYSTEM_PROMPT = (
 
 
 def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
-    """Return the deterministic 25-task suite (5 per category)."""
     return [
-        # --- 1. Tool Calling (5) ---
         {
             "id": "tc_01_read_config",
             "category": "tool_calling",
@@ -87,7 +83,6 @@ def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
                 "answer_contains": ["127.0.0.1"],
             },
         },
-        # --- 2. Web Handling (5) ---
         {
             "id": "web_01_fetch_spec",
             "category": "web_handling",
@@ -146,7 +141,6 @@ def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
                 "answer_contains_all": ["18", "8443"],
             },
         },
-        # --- 3. Computer Use (5) ---
         {
             "id": "cu_01_click_export",
             "category": "computer_use",
@@ -207,7 +201,6 @@ def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
                 "require_any_tool": ["computer_click"],
             },
         },
-        # --- 4. Answer Quality (5) ---
         {
             "id": "aq_01_exact_metrics",
             "category": "answer_quality",
@@ -268,7 +261,6 @@ def build_benchmark_tasks(base_url: str) -> List[Dict[str, Any]]:
                 "answer_contains_all": ["fmt", "clippy", "nextest"],
             },
         },
-        # --- 5. RAG Grounding (5) ---
         {
             "id": "rag_01_superseded_port",
             "category": "rag_grounding",
@@ -424,7 +416,6 @@ UI_ELEMENTS: List[Dict[str, Any]] = [
 
 
 def seed_workspace(ws: Path) -> None:
-    """Create deterministic files inside a fresh task workspace."""
     (ws / "config").mkdir(parents=True, exist_ok=True)
     (ws / "src").mkdir(parents=True, exist_ok=True)
     (ws / "data").mkdir(parents=True, exist_ok=True)
@@ -587,7 +578,6 @@ def execute_fixture_tool(
     cu_events: List[str],
     filter_superseded: bool = False,
 ) -> Tuple[Optional[Any], Optional[str]]:
-    """Execute deterministic workspace, Brain, and simulated UI pointer tools."""
     try:
         if tool in {"list_dir", "read_file", "write_file", "grep"}:
             return _execute_workspace_fixture_tool(tool, args, ws)

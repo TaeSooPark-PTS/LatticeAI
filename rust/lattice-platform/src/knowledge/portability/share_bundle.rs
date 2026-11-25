@@ -1,5 +1,3 @@
-//! Selective subgraph extraction, workspace filtering, and Ed25519 signature verification.
-
 use std::collections::{HashMap, HashSet};
 
 use base64::engine::general_purpose::STANDARD as B64_STANDARD;
@@ -14,8 +12,6 @@ use super::super::{PortabilityState, SUBGRAPH_FORMAT};
 use crate::adminops::admin::enterprise::emit_sanitized_governance_audit;
 use crate::http_reply;
 use crate::knowledge::network_boundary::{HARD_BLOCK_METADATA_FLAGS, HARD_BLOCK_NODE_TYPES};
-
-// ── Selective Subgraph Builder & Signature Helpers ───────────────────────────
 
 pub(super) fn build_subgraph_bundle(
     state: &PortabilityState,

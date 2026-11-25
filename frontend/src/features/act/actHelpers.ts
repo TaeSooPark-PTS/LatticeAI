@@ -25,7 +25,6 @@ export function humanRunTitle(run: Record<string, unknown>): string {
   return "";
 }
 
-/** Look up an approval action by its stable enum, never by the already-localised label. */
 export function approvalActionLabel(data: Record<string, unknown>, language: Language): string {
   const rawAction = firstString(data.action, data.tool, data.type) || "";
   const actionToken = rawAction.toLowerCase().replace(/[\s-]+/g, "_");

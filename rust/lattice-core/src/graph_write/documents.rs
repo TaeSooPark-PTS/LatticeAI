@@ -1,15 +1,3 @@
-//! Deleting, flagging, and the local-source writes.
-//!
-//! Port of `documents.py::delete_document_tree`,
-//! `write_master.py::set_node_sensitivity`, `discovery.py`'s two source writes,
-//! and the orphan sweep in `discovery_index/cleanup.py` that
-//! `remove_local_source` leans on.
-//!
-//! All four are `GRAPH_MUTATION_OPS` entries the Wave-2 route families added to
-//! the Python whitelist (R2 setup demo-corpus delete, R6 local-knowledge watch
-//! and workspace indexing removal, R9 network-boundary sensitivity); W3
-//! replaces those seam calls with the methods below.
-
 use rusqlite::{ToSql, Transaction};
 use serde_json::{json, Value};
 
@@ -137,7 +125,6 @@ fn delete_node_subgraph(
     }
 
     if clean_provenance {
-        // Sweep any pre-existing orphan edges (e.g., legacy PART_OF leftovers).
         txn.execute(
             "DELETE FROM edges WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = edges.from_node) \
              OR NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = edges.to_node)",
@@ -155,15 +142,6 @@ fn delete_node_subgraph(
 }
 
 impl GraphWriter {
-    /// `set_node_sensitivity` — mark (or unmark) one node as never-leaving.
-    ///
-    /// The cloud filter has always looked for this flag; until 10.2.0 nothing
-    /// could set it, so the guard was unreachable. This is the user-driven half
-    /// — ingestion stamps secret-bearing *paths* automatically, and this covers
-    /// what a path cannot tell you, like a note whose content is private.
-    ///
-    /// Unmarking is allowed and audited by the caller, and clears the reason
-    /// with the flag so a stale justification cannot linger.
     pub fn set_node_sensitivity(
         &self,
         node_id: &str,
@@ -186,12 +164,6 @@ impl GraphWriter {
                 }));
             };
             let mut metadata = safe_loads(stored.as_deref());
-            // This writer is `json.dumps(metadata, ensure_ascii=False)` — the
-            // one *without* `sort_keys`. CPython's dict remembers the order the
-            // document listed, and a key assigned for the first time is
-            // appended; `serde_json::Map` is a `BTreeMap` and would file
-            // `local_only` alphabetically instead. The stored order is read
-            // back so the two agree byte for byte.
             let mut key_order = super::pyaux::object_key_order(stored.as_deref().unwrap_or("{}"));
             if local_only {
                 metadata.insert(super::pyaux::LOCAL_ONLY_FLAG.into(), json!(true));
@@ -240,13 +212,6 @@ impl GraphWriter {
         })
     }
 
-    /// `delete_document_tree` — an ingested node plus everything it owns.
-    ///
-    /// Removes the node, its retrieval chunks (both the `chunks` rows and the
-    /// `Chunk` nodes), the auto-extracted Task/Decision nodes that point back at
-    /// it, every touching edge, the vector rows, and — only when it becomes
-    /// orphaned — the `Source` node it was indexed from. Shared `Concept` nodes
-    /// are deliberately left alone: another document may cite them.
     pub fn delete_document_tree(&self, node_id: &str) -> Result<Value, CoreError> {
         let node_id = node_id.trim().to_string();
         if node_id.is_empty() {
@@ -276,12 +241,6 @@ impl GraphWriter {
         })
     }
 
-    /// Delete one node and its owned subgraph (`PART_OF`/touching edges,
-    /// chunks, vectors, orphan `Source` nodes, BM25 stats, and provenance).
-    ///
-    /// Unified with [`Self::delete_document_tree`] so single-node deletion
-    /// never leaves dangling `PART_OF` edges, orphan chunks/vectors, or stale
-    /// provenance records behind.
     pub fn delete_node(&self, node_id: &str) -> Result<bool, CoreError> {
         let node_id = node_id.trim().to_string();
         if node_id.is_empty() {
@@ -293,12 +252,6 @@ impl GraphWriter {
         })
     }
 
-    /// `KGStoreV2.stamp_node_validity` — write a node's validity window.
-    ///
-    /// Only the fields actually supplied are written; `None` leaves the stored
-    /// value alone, so a second resolution cannot silently un-supersede an
-    /// earlier one. `Ok(false)` means nothing was written — either no field was
-    /// supplied or there is no such row.
     pub fn stamp_node_validity(
         &self,
         node_id: &str,
@@ -318,8 +271,6 @@ impl GraphWriter {
         if node_id.is_empty() || fields.is_empty() {
             return Ok(false);
         }
-        // The column names are this function's own three literals, never a
-        // caller's string, so the format! cannot carry a caller's SQL.
         let assignments = fields
             .iter()
             .map(|(column, _)| format!("{column}=?"))
@@ -352,7 +303,6 @@ impl GraphWriter {
         })
     }
 
-    /// Terminate or supersede a relationship in `edges_v2` without deleting historical lineage (P1.2).
     pub fn terminate_edge(
         &self,
         edge_id: &str,
@@ -382,7 +332,6 @@ impl GraphWriter {
         })
     }
 
-    /// `set_local_source_watch` — turn a connected folder's watcher on or off.
     pub fn set_local_source_watch(
         &self,
         source_id: &str,
@@ -413,11 +362,6 @@ impl GraphWriter {
         })
     }
 
-    /// `remove_local_source` — drop one approved folder and its derived graph.
-    ///
-    /// Deliberately non-destructive for the user's files: only index rows,
-    /// graph nodes, edges and chunks derived from the source are removed. The
-    /// original folder is never touched.
     pub fn remove_local_source(&self, source_id: &str) -> Result<Value, CoreError> {
         let source_id = source_id.trim().to_string();
         if source_id.is_empty() {
@@ -470,7 +414,6 @@ impl GraphWriter {
         })
     }
 
-    /// `_delete_local_file_graph` — one indexed file's node and what it owns.
     fn delete_local_file_graph(
         &self,
         txn: &Transaction<'_>,
@@ -536,8 +479,6 @@ impl GraphWriter {
         crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &[file_node_id.to_string()])?;
         delete_node_set(txn, &owned_ids)?;
 
-        // An auto-extracted concept only goes when nothing outside the set
-        // still points at it.
         let mut removable: Vec<String> = Vec::new();
         for node_id in &auto_candidate_ids {
             let mut statement =
@@ -566,7 +507,6 @@ impl GraphWriter {
         Ok(())
     }
 
-    /// `_cleanup_local_graph_orphans` — sweep childless Folder/Drive/Computer.
     fn cleanup_local_graph_orphans(
         &self,
         txn: &Transaction<'_>,
@@ -660,15 +600,10 @@ impl GraphWriter {
         Ok(())
     }
 
-    /// Direct `_upsert_node` access for callers that already know the rows.
-    ///
-    /// The seam W3 replaces for `/knowledge-graph/nodes`-shaped writes.
     pub fn upsert_nodes(&self, nodes: &[super::types::NodeSpec]) -> Result<Vec<String>, CoreError> {
         self.upsert_nodes_with_vectors(nodes, &[])
     }
 
-    /// [`Self::upsert_nodes`], filing a supplied vector for each matching
-    /// `node.id`. Unnamed nodes still hash inline.
     pub fn upsert_nodes_with_vectors(
         &self,
         nodes: &[super::types::NodeSpec],
@@ -687,7 +622,6 @@ impl GraphWriter {
         })
     }
 
-    /// Direct `_upsert_edge` access, same contract as [`Self::upsert_nodes`].
     pub fn upsert_edges(&self, edges: &[super::types::EdgeSpec]) -> Result<Vec<String>, CoreError> {
         self.store.with_write_txn(|txn| {
             let mut ids = Vec::with_capacity(edges.len());
@@ -699,7 +633,6 @@ impl GraphWriter {
     }
 }
 
-/// The nested `delete_nodes` helper inside `_delete_local_file_graph`.
 fn delete_node_set(txn: &Transaction<'_>, ids: &[String]) -> Result<(), CoreError> {
     if ids.is_empty() {
         return Ok(());

@@ -1,17 +1,3 @@
-"""Images on the same contract as text — with two deliberate differences.
-
-**No fallback.** The hash embedder turns text into a real, if crude, cosine
-signal; hashing a file path says nothing about the picture, so an unavailable
-vision model is reported unavailable and the caller skips the embedding rather
-than storing a decoy.
-
-**A separate space by default.** A CLIP-family image vector is not comparable
-with a BGE text vector, so ``space == "image"`` means "index these apart and
-join them by late fusion". Only a genuinely shared-space model may declare
-``space == "shared"``, and only then can a text query be scored against image
-vectors.
-"""
-
 from __future__ import annotations
 
 import os
@@ -26,11 +12,8 @@ from .base import (
     _RemoteConfig,
 )
 
-#: CLIP ViT-B/32 width — the most common local image-embedding output.
 DEFAULT_VISION_DIM = 512
-#: Image vectors live in their own index and join text results by late fusion.
 VISION_SPACE_IMAGE = "image"
-#: A genuinely multimodal model (CLIP-style) can share the text space — opt-in.
 VISION_SPACE_SHARED = "shared"
 VISION_SPACES = (VISION_SPACE_IMAGE, VISION_SPACE_SHARED)
 VISION_PROVIDER_TYPES = ("mlx", "custom")
@@ -58,17 +41,8 @@ def _normalize_space(value: Any) -> str:
 
 
 class VisionEmbeddingProvider(EmbeddingProvider):
-    """Turns an image *file path* into a vector.
-
-    Subclasses implement :meth:`embed_images`; everything else — the single
-    ``embed_image``, L2 normalization, locking the index identity to the width
-    the model actually returned, and the refusal to embed text outside a shared
-    space — is shared here.
-    """
-
     provider = "vision"
     grade = "production"
-    #: ``"image"`` (own index, late fusion) or ``"shared"`` (same space as text)
     space: str = VISION_SPACE_IMAGE
 
     def __init__(self, cfg: _RemoteConfig):
@@ -76,14 +50,11 @@ class VisionEmbeddingProvider(EmbeddingProvider):
         self.dim = int(cfg.dim or DEFAULT_VISION_DIM)
         self.space = _normalize_space(cfg.extra.get("space"))
 
-    # ── required ──────────────────────────────────────────────────────────
     def embed_images(self, paths: Sequence[str]) -> List[List[float]]:
         raise NotImplementedError
 
-    # ── derived (shared) ──────────────────────────────────────────────────
     @property
     def shares_text_space(self) -> bool:
-        """True when a text query may be scored against these vectors."""
         return self.space == VISION_SPACE_SHARED
 
     def embed_image(self, path: str) -> List[float]:
@@ -93,12 +64,6 @@ class VisionEmbeddingProvider(EmbeddingProvider):
         return vectors[0]
 
     def embed_batch(self, texts: Sequence[str]) -> List[List[float]]:
-        """Text side of a multimodal model — only in a shared space.
-
-        Scoring a BGE query vector against CLIP image vectors produces a number
-        with no meaning, so the image-space default refuses rather than
-        returning something a caller would rank on.
-        """
         if not self.shares_text_space:
             raise EmbeddingUnavailable(
                 f"{self.model_id} embeds images into a separate space; text "
@@ -110,7 +75,6 @@ class VisionEmbeddingProvider(EmbeddingProvider):
         raise NotImplementedError
 
     def _normalize_rows(self, rows: Iterable[Any]) -> List[List[float]]:
-        """L2-normalize, and lock the index identity to the real width."""
         out: List[List[float]] = []
         for row in rows:
             vec = [float(x) for x in (row or [])]
@@ -134,13 +98,6 @@ class VisionEmbeddingProvider(EmbeddingProvider):
 
 
 class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
-    """Local CLIP-family image embedder loaded through ``mlx_clip``.
-
-    Guarded import, opt-in, never a core dependency: the module must expose
-    ``load(model)`` returning an encoder with ``encode_image(paths)`` and —
-    for a shared space — ``encode_text(texts)``.
-    """
-
     provider = "mlx-vision"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -153,8 +110,8 @@ class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
     def _load(self) -> Any:
         if self._encoder is not None:
             return self._encoder
-        try:  # optional dependency; only imported when this provider is used
-            import mlx_clip  # type: ignore
+        try:
+            import mlx_clip
 
             self._encoder = mlx_clip.load(self._cfg.model)
         except Exception as exc:
@@ -203,12 +160,6 @@ class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
 
 
 class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
-    """A user-supplied ``module:callable`` that embeds image paths.
-
-    The callable receives ``List[str]`` (paths) and returns
-    ``List[List[float]]``. Configured via ``LATTICEAI_VISION_EMBEDDING_TARGET``.
-    """
-
     provider = "custom-vision"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -238,9 +189,6 @@ class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
         return self._normalize_rows(rows)
 
     def _embed_texts_raw(self, texts: Sequence[str]) -> List[List[float]]:
-        # A dotted image embedder is one callable over paths; a shared space
-        # would need a second, text-side entry point this contract has no slot
-        # for. Saying so beats scoring a query against the wrong function.
         raise EmbeddingUnavailable(
             f"{self.model_id} is an image-only callable and has no text encoder"
         )
@@ -273,7 +221,6 @@ def build_vision_provider(
     timeout: float = 30.0,
     extra: Optional[Dict[str, Any]] = None,
 ) -> VisionEmbeddingProvider:
-    """Construct a vision provider by name. Never makes a network call."""
     kind = str(provider or "").strip().lower()
     cfg = _RemoteConfig(
         model=model,
@@ -292,8 +239,6 @@ def build_vision_provider(
 
 @dataclass
 class ResolvedVisionEmbedder:
-    """A vision provider, or an honest account of why there isn't one."""
-
     provider: Optional[VisionEmbeddingProvider]
     requested: str
     health: Dict[str, Any]
@@ -308,11 +253,6 @@ class ResolvedVisionEmbedder:
         return self.provider.space if self.provider is not None else VISION_SPACE_IMAGE
 
     def as_port(self) -> Optional[Callable[[str], List[float]]]:
-        """The one-argument seam Brain Core injects (``None`` when absent).
-
-        ``lattice_brain`` must not import ``latticeai``, so the ingestion
-        pipeline never sees this class — only the callable it hands over.
-        """
         if self.provider is None:
             return None
         return self.provider.embed_image
@@ -339,12 +279,6 @@ def resolve_vision_embedder(
     extra: Optional[Dict[str, Any]] = None,
     probe: bool = True,
 ) -> ResolvedVisionEmbedder:
-    """Build the requested vision provider, or report it unavailable.
-
-    Unlike :func:`resolve_embedder` there is no fallback: a hashed file path is
-    not a picture. An empty ``provider`` means the user never asked for image
-    embeddings, which is a configuration state rather than a failure.
-    """
     requested = str(provider or "").strip().lower()
     if not requested:
         return ResolvedVisionEmbedder(
@@ -385,7 +319,7 @@ def resolve_vision_embedder(
         ValueError,
         TypeError,
         AttributeError,
-    ) as exc:  # a provider probe must never crash startup
+    ) as exc:
         health = {"status": "unavailable", "detail": str(exc)}
     if health.get("status") != "ok":
         return ResolvedVisionEmbedder(

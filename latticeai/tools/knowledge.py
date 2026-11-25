@@ -1,5 +1,3 @@
-"""Knowledge-base / Obsidian vault tools over the local brain directory."""
-
 from __future__ import annotations
 
 import hashlib
@@ -21,13 +19,6 @@ def knowledge_scope_root(
     workspace_id: Optional[str] = None,
     user_email: Optional[str] = None,
 ) -> Path:
-    """Resolve a private vault partition for an authenticated workspace user.
-
-    Calls without either value preserve the historical single-user/local vault
-    API. Authenticated tool surfaces always provide both values. A half-scoped
-    request fails closed so a missing identity can never fall back to the
-    shared legacy vault.
-    """
     workspace = str(workspace_id or "").strip()
     user = str(user_email or "").strip().lower()
     if not workspace and not user:

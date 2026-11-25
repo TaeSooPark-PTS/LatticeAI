@@ -1,5 +1,3 @@
-//! Execution, preview, single-agent HTTP loop, and resume handlers for [`super`].
-
 use std::path::{Path, PathBuf};
 
 use axum::extract::State;
@@ -229,8 +227,6 @@ pub(super) async fn agent_run_preview(
     );
     json_response(StatusCode::OK, &text, None)
 }
-
-// ── /agent loop (original paths; reuse lattice-agent when a model is loaded)
 
 pub(super) async fn agent_http(
     State(state): State<AgentsState>,

@@ -1,25 +1,3 @@
-//! Folder / vault watch: the declaration, the poller, and the delivery.
-//!
-//! Three things that were three separate half-features until v11.7.0.
-//! `crate::watch` could detect a change and `crate::worker::NoteIngestor` could
-//! write a note, but nothing joined them — `bridge_wired` reported `false` and
-//! was telling the truth. This module is the join, and it is split out of
-//! `ingest.rs` because it is a background subsystem rather than another
-//! request handler: the HTTP routes in that file call four functions from here
-//! (`read_watch_file`, `enable_watch`, `disable_watch`, `vault_watch_on`) and
-//! know nothing else about it.
-//!
-//! Two files hold the state, on purpose:
-//!
-//! * `folder_watch.json` — the user's *declaration* (which folders, which kind,
-//!   on or off), small enough to read by eye;
-//! * `folder_watch_state.json` — the machine's, one entry per watch: the
-//!   snapshot the next scan diffs against plus the last scan's report. A
-//!   per-file `(mtime, size)` map of a vault does not belong in the
-//!   declaration, and would be echoed into every `GET /api/ingestion/watch`
-//!   response if it lived there. Persisting it is also what makes a restart
-//!   resume instead of re-ingesting the folder.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -40,15 +18,6 @@ fn watch_path(data_dir: &Path) -> PathBuf {
     data_dir.join("folder_watch.json")
 }
 
-/// Machine state per watch: the snapshot the next scan diffs against and the
-/// last scan's report.
-///
-/// A second file on purpose. `folder_watch.json` is the user's *declaration*
-/// (which folders, which kind, on or off) and stays small enough to read by
-/// eye; a per-file `(mtime, size)` snapshot of a vault does not belong in it,
-/// and would be echoed into every `GET /api/ingestion/watch` response if it did.
-/// Persisting the snapshot is also what makes a restart resume where the last
-/// scan stopped instead of re-ingesting the whole folder.
 fn watch_state_path(data_dir: &Path) -> PathBuf {
     data_dir.join("folder_watch_state.json")
 }
@@ -69,7 +38,6 @@ fn write_watch_state(data_dir: &Path, state: &Map<String, Value>) {
     );
 }
 
-/// The declaration file, watches array only.
 fn stored_watches(data_dir: &Path) -> Vec<Value> {
     std::fs::read_to_string(watch_path(data_dir))
         .ok()
@@ -78,7 +46,6 @@ fn stored_watches(data_dir: &Path) -> Vec<Value> {
         .unwrap_or_default()
 }
 
-/// One watch as the API reports it: the declaration plus its live scan report.
 fn merged_watch(entry: &Value, state: &Map<String, Value>) -> Value {
     let id = entry.get("id").and_then(Value::as_str).unwrap_or_default();
     let runtime = state.get(id).and_then(Value::as_object);
@@ -136,8 +103,6 @@ pub(super) fn read_watch_file(data_dir: &Path) -> Value {
             "default": false,
             "source": if std::env::var("LATTICEAI_VAULT_WATCH").is_ok() { "env" } else { "default" },
             "detail": "Watching an external vault re-syncs it in the background; it is off until you turn it on.",
-            // v11.7.0: the poller delivers through `NoteIngestor`, natively.
-            // This said `false` for as long as there was nothing behind it.
             "bridge_wired": true
         },
         "note": "Watch mode is opt-in and off by default. Incremental OS events sync edits/moves and reconcile deleted files cleanly."
@@ -151,10 +116,6 @@ fn now_iso(state: &LocalFilesState) -> String {
     }
 }
 
-/// `enable()` — consent, not ingestion.
-///
-/// The baseline is taken **here**, so turning a watch on never re-ingests a
-/// folder that was already ingested; only what changes afterwards flows.
 pub(super) fn enable_watch(
     state: &LocalFilesState,
     path: &str,
@@ -256,8 +217,6 @@ pub(super) fn disable_watch(data_dir: &Path, watch_id: &str, path: &str) -> Opti
         watch_path(data_dir),
         serde_json::to_string_pretty(&stored).unwrap_or_else(|_| "{}".into()),
     );
-    // The snapshot goes with the declaration: re-enabling the same folder later
-    // must take a fresh baseline rather than replay everything it missed.
     let mut state = runtime.clone();
     if let Some(id) = removed.get("id").and_then(Value::as_str) {
         state.remove(id);
@@ -280,28 +239,12 @@ pub(super) fn vault_watch_on() -> bool {
     )
 }
 
-// ── the vault-watch bridge ─────────────────────────────────────────────────
-//
-// Detection has been testable since v11.5.0 (`crate::watch`) and the native
-// note write since v11.7.0 (`crate::worker::NoteIngestor`). Nothing joined
-// them: `bridge_wired` reported `false`, and it was telling the truth. This is
-// the join.
-//
-// Deliberately **not** `watch::poll_watch`. That helper drives one in-memory
-// `WatchScanner`, which is right for a test and wrong for an install: a scanner
-// that only exists in memory forgets its snapshot when the process restarts and
-// re-ingests the folder. Here every tick rebuilds the scanners from the
-// snapshots on disk, so `scan_once` — the tested core — still does the diffing,
-// and a restart resumes.
-
-/// Live pollers, one per data directory, keyed so `ensure` is idempotent.
 fn pollers() -> &'static Mutex<HashMap<PathBuf, tokio::sync::watch::Sender<bool>>> {
     static POLLERS: OnceLock<Mutex<HashMap<PathBuf, tokio::sync::watch::Sender<bool>>>> =
         OnceLock::new();
     POLLERS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Whether a poller is running for this install *right now*.
 fn polling_now(data_dir: &Path) -> bool {
     pollers()
         .lock()
@@ -320,11 +263,6 @@ fn stop_poller(data_dir: &Path) {
     }
 }
 
-/// Start the poller for this install, unless one is already running.
-///
-/// A no-op outside a Tokio runtime (`Handle::try_current`), so a synchronous
-/// caller — a router built in a plain `#[test]`, say — gets `false` rather than
-/// the panic `tokio::spawn` would raise.
 pub(super) fn ensure_poller(state: &Arc<LocalFilesState>) -> bool {
     let data_dir = state.config.data_dir().to_path_buf();
     if tokio::runtime::Handle::try_current().is_err() {
@@ -381,7 +319,6 @@ pub(super) fn ensure_poller(state: &Arc<LocalFilesState>) -> bool {
                         .await
                         .unwrap_or_default();
                     if !batches.is_empty() {
-                        // P2.2: deliver incremental moves with `moved_from_uri` directly before reconciling.
                         if let Some(graph) = state.graph().cloned() {
                             let mut ingestor = NoteIngestor::new(graph);
                             if let Some(seam) = state.seam() {
@@ -472,10 +409,6 @@ fn sync_os_watch_engines(
     engines.retain(|id, _| active_ids.contains(id));
 }
 
-/// Resume the pollers a previous run left declared in `folder_watch.json`.
-///
-/// The snapshots are on disk, so resuming ingests what changed while the
-/// process was down and nothing else.
 pub fn resume_watches(state: &Arc<LocalFilesState>) -> bool {
     let has_watches = stored_watches(state.config.data_dir()).iter().any(|watch| {
         watch
@@ -486,12 +419,6 @@ pub fn resume_watches(state: &Arc<LocalFilesState>) -> bool {
     has_watches && ensure_poller(state)
 }
 
-/// One pass over every enabled watch. Returns the per-watch reports.
-///
-/// Never raises: one unreadable folder is a counted failure, not the end of the
-/// poller. Files that vanished from a watched folder are pruned from the
-/// Brain through [`super::prune::prune_deleted`] (GraphWriter, confirm=true).
-/// Disk files are never deleted.
 pub async fn scan_watches(state: &Arc<LocalFilesState>) -> Value {
     let data_dir = state.config.data_dir().to_path_buf();
     let Some(graph) = state.graph().cloned() else {
@@ -681,7 +608,6 @@ fn record_report(
     entry.insert("tracked_files".into(), json!(snapshot.len()));
     entry.insert("last_scan_at".into(), json!(now));
     entry.insert("last_result".into(), report.clone());
-    // Three is what the home card shows; keeping more would only grow the file.
     entry.insert(
         "last_errors".into(),
         json!(errors.iter().take(3).collect::<Vec<_>>()),

@@ -1,31 +1,3 @@
-//! The two opt-in ranking paths: graph candidate expansion and RRF fusion.
-//!
-//! Both were product features with switches in the home dock's 기능 drawer and
-//! rows in `lattice-platform`'s feature catalog marked `live: true`. Neither
-//! existed in this crate. `hybrid_search` hard-coded `fusion_strategy =
-//! "alpha"` and emitted a `graph_expansion` block whose `enabled` was the
-//! literal `false`, so flipping either switch changed nothing at all. They
-//! were Python (`lattice_brain/graph/fusion.py`), and that module went with
-//! the write path.
-//!
-//! This is the port, gated exactly as the catalog says it is gated:
-//!
-//! * `LATTICEAI_GRAPH_EXPANSION=1` — after ranking, walk one hop out from the
-//!   strongest hits and add neighbours that were never candidates. A node one
-//!   edge away from a match is otherwise **unreachable**, no matter how
-//!   relevant: neither the keyword index nor the vector index knows it exists.
-//! * `LATTICEAI_FUSION_RRF=1` — fuse the two channels by *position* instead of
-//!   by score. Lexical scores are `1/rank` and vector scores are a normalized
-//!   cosine; a weighted sum of two scales that do not mean the same thing is a
-//!   number, not a ranking.
-//!
-//! ## Off is byte-identical
-//!
-//! Both gates are read once and default to off, and every function here is
-//! called only inside `if enabled`. With neither variable set, `hybrid_search`
-//! executes exactly the statements it executed before — which is what keeps
-//! `rust/fixtures/golden`'s 75 parity cases and 13 suites unchanged.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_core::pytext::{round6, safe_loads};
@@ -34,19 +6,11 @@ use lattice_core::CoreError;
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-/// `LATTICEAI_GRAPH_EXPANSION` — one-hop candidate expansion.
 pub const GRAPH_EXPANSION_ENV: &str = "LATTICEAI_GRAPH_EXPANSION";
-/// `LATTICEAI_FUSION_RRF` — rank fusion instead of score fusion.
 pub const FUSION_RRF_ENV: &str = "LATTICEAI_FUSION_RRF";
 
-/// How many of the top hits are walked out from.
 pub const EXPANSION_SEEDS: usize = 3;
-/// A neighbour enters at this fraction of the seed's score. It is a lead, not
-/// a match: something *near* an answer must never outrank the answer.
 pub const EXPANSION_SCORE_FACTOR: f64 = 0.5;
-/// RRF's smoothing constant, from Cormack et al. 2009. 60 is the published
-/// default and the one every comparable implementation uses; a different value
-/// here would make our ranking incomparable to everyone else's for no gain.
 pub const RRF_K: f64 = 60.0;
 
 fn flag(name: &str) -> bool {
@@ -60,17 +24,14 @@ fn flag(name: &str) -> bool {
     )
 }
 
-/// Whether one-hop expansion is switched on for this process.
 pub fn expansion_enabled() -> bool {
     flag(GRAPH_EXPANSION_ENV)
 }
 
-/// Whether rank fusion replaces alpha fusion for this process.
 pub fn rrf_enabled() -> bool {
     flag(FUSION_RRF_ENV)
 }
 
-/// One node reached by walking a single edge out from a hit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Neighbour {
     pub node_id: String,
@@ -79,27 +40,16 @@ pub struct Neighbour {
     pub summary: Value,
     pub metadata: Value,
     pub updated_at: Value,
-    /// Which hit it hangs off, so the answer can say *why* this is here.
     pub seed_id: String,
-    /// The edge's canonical taxonomy value (`USES`, `PART_OF`, …) — that is
-    /// what `edges.type` holds once the writer has normalized it.
     pub edge_type: String,
-    /// The label the writer was handed (`사용함`, `구성요소`, …), when it
-    /// differs from the canonical value and the writer kept it. This is the
-    /// word a Korean-speaking reader recognises.
     pub edge_label: String,
-    /// The edge's own weight.
     pub edge_weight: f64,
-    /// The evidence sentence the extractor stored on the edge, if any.
     pub edge_context: String,
-    /// `verb` | `definition` | `structure` | `contrast` | `cooccurrence`.
     pub edge_evidence: String,
-    /// Whether the edge points seed → neighbour (`true`) or the other way.
     pub outgoing: bool,
 }
 
 impl Neighbour {
-    /// The `via` block a match carries so a reader can see the path in.
     pub fn provenance(&self) -> Value {
         let mut via = Map::new();
         via.insert("seed_node_id".into(), Value::String(self.seed_id.clone()));
@@ -129,7 +79,6 @@ impl Neighbour {
     }
 }
 
-/// What the walk did, for the result's `graph_expansion` block.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ExpansionReport {
     pub seeds: usize,
@@ -139,7 +88,6 @@ pub struct ExpansionReport {
 }
 
 impl ExpansionReport {
-    /// The `graph_expansion` block, in the shape the off path already emits.
     pub fn as_json(&self, cap: i64) -> Value {
         let mut map = Map::new();
         map.insert("enabled".into(), Value::Bool(true));
@@ -152,10 +100,6 @@ impl ExpansionReport {
     }
 }
 
-/// One-hop neighbours of `seeds`, excluding anything already in the result.
-///
-/// Ordered by edge weight then node id — deterministic, because a ranking that
-/// depends on SQLite's row order is a ranking that changes under VACUUM.
 pub fn one_hop(
     conn: &Connection,
     seeds: &[String],
@@ -181,8 +125,6 @@ pub fn one_hop(
         let rows = match edges_of(conn, edges_table, seed.as_str()) {
             Ok(rows) => rows,
             Err(_) => {
-                // A seed whose edges cannot be read costs that seed, not the
-                // search. The count is reported rather than swallowed.
                 report.failed_seeds += 1;
                 continue;
             }
@@ -198,9 +140,6 @@ pub fn one_hop(
             let Some((node_type, title, summary, node_meta, updated_at)) =
                 load_node(conn, nodes_table, other.as_str())?
             else {
-                // An edge to a node that is not there is a dangling edge, not
-                // a candidate. Silently skipping it is right; inventing a
-                // titleless row for it is not.
                 continue;
             };
             out.push(Neighbour {
@@ -283,12 +222,6 @@ fn string_field(metadata: &Map<String, Value>, key: &str) -> String {
         .to_string()
 }
 
-/// Reciprocal Rank Fusion over per-channel positions.
-///
-/// `ranks` maps node id → its 1-based position in each channel it appeared in.
-/// A node missing from a channel simply contributes nothing for it — RRF has
-/// no notion of "zero score", which is exactly why it does not care that the
-/// two channels measure different things.
 pub fn rrf_scores(ranks: &BTreeMap<String, Vec<usize>>) -> BTreeMap<String, f64> {
     ranks
         .iter()
@@ -333,7 +266,6 @@ mod tests {
 
     #[test]
     fn both_gates_are_off_unless_the_environment_says_otherwise() {
-        // The suite runs with neither variable set; that is the shipped state.
         assert!(!expansion_enabled());
         assert!(!rrf_enabled());
         assert_eq!(EXPANSION_SEEDS, 3);
@@ -365,7 +297,6 @@ mod tests {
         assert_eq!(found[0].title, json!("Near"));
         assert_eq!(found[0].metadata["a"], json!(1));
         assert_eq!(found[1].provenance()["direction"], "incoming");
-        // An edge with no context claims none rather than an empty string.
         assert!(found[1].provenance().get("context").is_none());
     }
 
@@ -435,9 +366,6 @@ mod tests {
 
     #[test]
     fn a_neighbour_is_worth_half_its_seed() {
-        // Stated as arithmetic rather than as a bare inequality so the
-        // intent survives a refactor: a lead must never outrank the match it
-        // was reached from, and must not be free either.
         let seed_score = 0.8_f64;
         let lead = seed_score * EXPANSION_SCORE_FACTOR;
         assert!(lead < seed_score, "a neighbour cannot outrank its seed");

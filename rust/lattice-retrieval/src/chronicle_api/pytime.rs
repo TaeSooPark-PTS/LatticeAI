@@ -1,63 +1,19 @@
-//! The date arithmetic `latticeai/services/chronicle.py` does, ported.
-//!
-//! Three Python functions decide which day a row belongs to, and every count
-//! the chronicle reports is downstream of them:
-//!
-//! * `lattice_brain.utils.parse_iso` — `datetime.fromisoformat`, with every
-//!   failure (including an empty stamp) flattened to `None`;
-//! * `_local` — an offset-aware stamp is moved into the configured timezone and
-//!   stripped of its offset; a naive one is taken as already being in it,
-//!   because that is what the store writes;
-//! * `parse_day` / `parse_timestamp` — the two 422 gates on the router.
-//!
-//! **The configured timezone.** Python reads `LATTICE_TZ` / `LTCAI_TZ` and
-//! falls back to the system zone. There is no IANA database in this workspace,
-//! so the conversion here goes through `localtime_r(3)` — the system zone,
-//! which is Python's answer whenever those two variables are unset (the
-//! default) or name the machine's own zone. It only matters for a stamp that
-//! *carries* an offset, and nothing in the product writes one: every stored
-//! stamp comes from `now_iso()`, which is naive. The one reachable input is the
-//! `ts` query parameter of `GET /api/chronicle/as-of`.
-//!
-//! **What `fromisoformat` accepts here.** CPython 3.11 widened it to most of
-//! ISO 8601. This port covers what a stored stamp or a client can plausibly
-//! carry — extended and basic dates (`2026-08-11`, `20260811`), any single
-//! separator character, extended and basic times (`09`, `09:00`, `09:00:00`,
-//! `090000`) with a `.`/`,` fraction truncated to microseconds, and `Z` or
-//! `±HH[:MM[:SS]]` offsets. Week dates (`2026-W32-1`) and ordinal dates are
-//! **not** accepted; Python would parse them, this answers `None`, which the
-//! router renders as the same 422 a client gets for any other unreadable
-//! stamp. Recorded rather than hidden.
-
-/// A naive civil timestamp — Python's `datetime` with `tzinfo=None`.
-///
-/// The field order is the derive order, so `Ord` is chronological and
-/// `min()`/`max()` over a lane of moments answer what Python's do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Naive {
-    /// Proleptic Gregorian year, `1..=9999` as `datetime` allows.
     pub year: i32,
-    /// `1..=12`.
     pub month: u32,
-    /// `1..=31`, validated against the month.
     pub day: u32,
-    /// `0..=23`.
     pub hour: u32,
-    /// `0..=59`.
     pub minute: u32,
-    /// `0..=59`.
     pub second: u32,
-    /// `0..=999_999`.
     pub micro: u32,
 }
 
 impl Naive {
-    /// `moment.date().isoformat()`.
     pub fn date_iso(&self) -> String {
         format!("{:04}-{:02}-{:02}", self.year, self.month, self.day)
     }
 
-    /// `moment.isoformat(timespec="seconds")` — microseconds are dropped.
     pub fn iso_seconds(&self) -> String {
         format!(
             "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
@@ -65,7 +21,6 @@ impl Naive {
         )
     }
 
-    /// Seconds since the Unix epoch, reading the fields as UTC.
     fn epoch_secs(&self) -> i64 {
         days_from_civil(self.year as i64, self.month, self.day) * 86_400
             + self.hour as i64 * 3_600
@@ -89,33 +44,24 @@ impl Naive {
     }
 }
 
-/// What `datetime.fromisoformat` returns: a civil timestamp, maybe with an
-/// offset attached.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Parsed {
-    /// The wall-clock fields as written.
     pub naive: Naive,
-    /// `tzinfo.utcoffset()` in seconds, or `None` for a naive stamp.
     pub offset_secs: Option<i32>,
 }
 
-/// `lattice_brain.utils.parse_iso` — every failure is `None`, never an error.
 pub fn parse_iso(value: &str) -> Option<Parsed> {
     if value.is_empty() {
-        // `if not value: return None` — the falsy check, before the parse.
         return None;
     }
     fromisoformat(value)
 }
 
-/// `_local(moment)` — the moment as naive wall-clock in the configured zone.
 pub fn local(parsed: Parsed) -> Naive {
     let Some(offset) = parsed.offset_secs else {
         return parsed.naive;
     };
     let utc = parsed.naive.epoch_secs() - offset as i64;
-    // `localtime_r` only fails on an instant the platform cannot represent;
-    // reading it as UTC is the honest remainder, not a silent shift.
     let fields = system_local(utc).unwrap_or_else(|| Naive::from_epoch_utc(utc, 0));
     Naive {
         micro: parsed.naive.micro,
@@ -123,31 +69,18 @@ pub fn local(parsed: Parsed) -> Naive {
     }
 }
 
-/// `_moment(value)` — a stored stamp as local wall-clock, or `None`.
 pub fn moment(value: &str) -> Option<Naive> {
     parse_iso(strip(value).as_str()).map(local)
 }
 
-/// `_day_of(value)` — `YYYY-MM-DD` in the configured zone, or `None`.
 pub fn day_of(value: &str) -> Option<String> {
     moment(value).map(|moment| moment.date_iso())
 }
 
-/// `str.strip()` with Python's whitespace set.
 pub fn strip(text: &str) -> String {
     lattice_core::pytext::strip(text)
 }
 
-/// `chronicle.parse_day` — `YYYY-MM-DD` normalized, or `None` for the 422.
-///
-/// Python matches `\d{4}-\d{2}-\d{2}` with `re`, whose `\d` is Unicode-aware,
-/// then hands the text to `date.fromisoformat`, which is ASCII-only. A
-/// non-ASCII digit therefore passes the regex and fails the constructor —
-/// `ValueError` either way, which is why this checks ASCII digits directly.
-///
-/// `today` (any case) is today's local date — the token the product surface
-/// and the live acceptance matrix use. There is one failure, not several, so
-/// this answers `Option` rather than a `Result` whose error carries nothing.
 pub fn parse_day(value: &str) -> Option<String> {
     let text = strip(value);
     if text.eq_ignore_ascii_case("today") {
@@ -162,7 +95,6 @@ pub fn parse_day(value: &str) -> Option<String> {
     Some(format!("{year:04}-{month:02}-{day:02}"))
 }
 
-/// Today's wall-clock date in the system zone, as `YYYY-MM-DD`.
 fn today_iso() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -173,14 +105,10 @@ fn today_iso() -> String {
         .date_iso()
 }
 
-/// `chronicle.parse_timestamp` — the store's own stamp format, or `None` for
-/// the 422.
 pub fn parse_timestamp(value: &str) -> Option<String> {
     let parsed = parse_iso(strip(value).as_str())?;
     Some(local(parsed).iso_seconds())
 }
-
-// ── datetime.fromisoformat ──────────────────────────────────────────────────
 
 fn fromisoformat(text: &str) -> Option<Parsed> {
     let chars: Vec<char> = text.chars().collect();
@@ -206,8 +134,6 @@ fn fromisoformat(text: &str) -> Option<Parsed> {
             offset_secs: None,
         });
     }
-    // Any single character separates date from time (`T`, `t`, a space, and in
-    // 3.11 anything else); an empty remainder is a ValueError.
     let time_text: String = rest[1..].iter().collect();
     if time_text.is_empty() {
         return None;
@@ -226,8 +152,6 @@ fn fromisoformat(text: &str) -> Option<Parsed> {
     if hour != 24 {
         return Some(Parsed { naive, offset_secs });
     }
-    // `datetime` accepts 24:00:00 and rolls into the next day; anything else at
-    // hour 24 is a ValueError.
     if minute != 0 || second != 0 || micro != 0 {
         return None;
     }
@@ -266,7 +190,6 @@ fn date_fields(chars: &[char], extended: bool) -> Option<(i32, u32, u32)> {
     }
 }
 
-/// `datetime(year, month, day)`'s own range checks.
 fn check_date(year: i32, month: u32, day: u32) -> Option<()> {
     if !(1..=9999).contains(&year) || !(1..=12).contains(&month) {
         return None;
@@ -291,10 +214,8 @@ fn is_leap(year: i32) -> bool {
     (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
-/// Split a trailing `Z` or `±HH[:MM[:SS]]` off the time text.
 fn split_offset(time_text: &str) -> Option<(String, Option<i32>)> {
     if let Some(body) = time_text.strip_suffix('Z') {
-        // Lowercase `z` is not accepted by CPython, and neither is it here.
         return Some((body.to_string(), Some(0)));
     }
     match time_text.find(['+', '-']) {
@@ -317,11 +238,9 @@ fn offset_seconds(text: &str) -> Option<i32> {
         return None;
     }
     let total = hour as i32 * 3_600 + minute as i32 * 60 + second as i32;
-    // `timezone` refuses an offset of 24 hours or more.
     (total < 86_400).then_some(total)
 }
 
-/// `HH`, `HH:MM`, `HH:MM:SS[.ffffff]`, `HHMM`, `HHMMSS[.ffffff]`.
 fn clock_fields(text: &str) -> Option<(u32, u32, u32, u32)> {
     let (clock, micro) = match text.find(['.', ',']) {
         None => (text, 0u32),
@@ -352,7 +271,6 @@ fn clock_fields(text: &str) -> Option<(u32, u32, u32, u32)> {
     if fields.is_empty() || fields.len() > 3 {
         return None;
     }
-    // A fraction is only legal once the seconds field is present.
     if micro != 0 && fields.len() != 3 {
         return None;
     }
@@ -369,8 +287,6 @@ fn clock_fields(text: &str) -> Option<(u32, u32, u32, u32)> {
     }
     Some((hour, minute, second, micro))
 }
-
-// ── civil calendar arithmetic (Hinnant) ─────────────────────────────────────
 
 fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
@@ -395,7 +311,6 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m as u32, d as u32)
 }
 
-/// The system zone's wall clock for a UTC instant, delegated to `lattice-core`.
 fn system_local(utc_secs: i64) -> Option<Naive> {
     let parts = lattice_core::graph_write::clock::local_wall_parts(utc_secs)?;
     Some(Naive {
@@ -430,8 +345,6 @@ mod tests {
         assert_eq!(naive("2026-08-11T0900").hour, 9);
         assert_eq!(naive("2026-08-11T09:00:00.1234567").micro, 123_456);
         assert_eq!(naive("2026-08-11T09:00:00,123").micro, 123_000);
-        // 24:00 rolls the day, which is the one clock value that moves a row
-        // into the *next* bucket.
         assert_eq!(naive("2026-08-11T24").date_iso(), "2026-08-12");
         assert_eq!(
             parse_iso("2026-08-11T09:00:00Z")
@@ -485,8 +398,6 @@ mod tests {
     fn an_offset_is_moved_into_the_configured_zone_and_a_naive_stamp_is_not() {
         let naive = parse_iso("2026-08-11T09:00:00").expect("naive");
         assert_eq!(local(naive).iso_seconds(), "2026-08-11T09:00:00");
-        // Two spellings of the same instant land on the same wall clock,
-        // whatever this machine's zone is — that is the property `_local` has.
         let utc = parse_iso("2026-08-11T00:00:00Z").expect("aware");
         let plus_nine = parse_iso("2026-08-11T09:00:00+09:00").expect("aware");
         assert_eq!(local(utc), local(plus_nine));

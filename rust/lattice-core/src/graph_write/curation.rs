@@ -1,18 +1,3 @@
-//! Curation — port of `lattice_brain/graph/projection/curation.py`.
-//!
-//! Two jobs and the queue between them. [`GraphWriter::curate`] applies the
-//! curator's gated topic promotion — or, in review mode, parks it in
-//! `graph_meta` for a human decision; [`GraphWriter::curate_noise`] removes
-//! heuristic concept nodes whose document-frequency stats mark them as noise and
-//! normalizes free-string relation verbs.
-//!
-//! Both are explicit and observable: everything skipped is reported with a
-//! reason, and `dry_run=true` is the default for the destructive one.
-//!
-//! The **decision** for promotion (topic extraction, clustering, scoring) is
-//! NLP and reaches this module as [`super::types::CuratorOverlay`]; the
-//! decision for noise is arithmetic over rows and lives in [`super::curator`].
-
 use rusqlite::{ToSql, Transaction};
 use serde_json::{json, Map, Value};
 
@@ -28,16 +13,11 @@ use super::pyaux::{slug, truthy};
 use super::types::{CurateNoiseRequest, CurateRequest, EdgeSpec, NodeSpec, PromotionCandidate};
 use super::GraphWriter;
 
-/// `curation._PROMOTION_REVIEW_ENV`.
 pub const PROMOTION_REVIEW_ENV: &str = "LATTICEAI_GRAPH_PROMOTION_REVIEW";
-/// `curation._PENDING_PROMOTIONS_KEY`.
 pub const PENDING_PROMOTIONS_KEY: &str = "pending_promotions";
-/// `curation._PENDING_PROMOTIONS_CAP`.
 pub const PENDING_PROMOTIONS_CAP: usize = 100;
-/// `curation._LAST_NOISE_CURATE_KEY`.
 pub const LAST_NOISE_CURATE_KEY: &str = "last_noise_curate_at";
 
-/// The content node types `curate` scans and `curate_noise` counts.
 const CONTENT_TYPES: [&str; 9] = [
     "Document",
     "File",
@@ -49,13 +29,8 @@ const CONTENT_TYPES: [&str; 9] = [
     "Slide",
     "Spreadsheet",
 ];
-/// The node types `curate_noise` considers removable.
 const CONCEPT_TYPES: [&str; 5] = ["Concept", "Feature", "Topic", "Code", "Error"];
 
-/// The key order `curate` builds a queued promotion in.
-///
-/// `_store_pending_promotions` writes `json.dumps(..., ensure_ascii=False)`
-/// with no `sort_keys`, so the stored bytes carry the dict's insertion order.
 const PENDING_PROMOTION_KEY_ORDER: [&str; 6] = [
     "id",
     "label",
@@ -76,28 +51,16 @@ fn promotion_review_default() -> bool {
     )
 }
 
-/// The rows `curate` scans, which the worker's overlay was computed from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CurateScan {
-    /// `{id, text, kind}` per scanned content node, in Python's order.
     pub documents: Vec<Value>,
-    /// Lower-cased `Topic`/`Concept` titles already in the graph.
     pub existing_labels: Vec<String>,
 }
 
 impl GraphWriter {
-    /// The read half of `curate`, exposed so the worker can compute the overlay
-    /// against exactly the rows the write half will validate against.
     pub fn curate_scan(&self, max_documents: i64) -> Result<CurateScan, CoreError> {
         let limit = max_documents.clamp(1, 2000);
         self.store.with_read_conn(|conn| {
-            // `_read_tables()`: the scan reads the v2 reconstruction views when
-            // they are available, and that is not cosmetic. `nodes` never
-            // updates `type` on conflict while `nodes_v2` does, so a node
-            // upserted first as `Chat` and later as `Conversation` reads as
-            // content in one table and not in the other — a one-row difference
-            // in `documents_scanned` that would silently change what the
-            // curator was asked to promote.
             let (nodes_table, _) = crate::read::read_tables(conn);
             let placeholders = vec!["?"; CONTENT_TYPES.len()].join(",");
             let mut params: Vec<&dyn ToSql> = CONTENT_TYPES
@@ -153,7 +116,6 @@ impl GraphWriter {
         })
     }
 
-    /// `curate` — write the curator's promotions, or park them for review.
     pub fn curate(&self, request: &CurateRequest) -> Result<Value, CoreError> {
         let scan = self.curate_scan(request.max_documents)?;
         let valid_ids: Vec<String> = scan
@@ -217,14 +179,6 @@ impl GraphWriter {
         }))
     }
 
-    /// `_write_promotion` — one Topic node, its importance, its MENTIONS edges.
-    ///
-    /// The single write path shared by direct `curate()` and
-    /// [`GraphWriter::apply_promotions`], so a human-approved promotion lands
-    /// exactly like an auto-promoted one. `valid_source_ids` restricts the
-    /// linkable sources to this run's scanned rows; `None` (apply-after-review)
-    /// checks each stored source for existence instead, so a node deleted
-    /// between propose and apply is skipped rather than an error.
     fn write_promotion(
         &self,
         txn: &Transaction<'_>,
@@ -299,14 +253,11 @@ impl GraphWriter {
         }))
     }
 
-    /// `pending_promotions` — what is waiting for a human decision.
     pub fn pending_promotions(&self) -> Result<Vec<Value>, CoreError> {
         self.store
             .with_write_txn(|txn| self.read_pending_promotions(txn))
     }
 
-    /// `apply_pending_promotions` — write the stored proposals (all when
-    /// `ids` is `None`); applied entries leave the queue.
     pub fn apply_promotions(&self, ids: Option<&[String]>) -> Result<Value, CoreError> {
         self.store.with_write_txn(|txn| {
             let mut applied = Vec::new();
@@ -339,7 +290,6 @@ impl GraphWriter {
         })
     }
 
-    /// `reject_pending_promotions` — drop them without writing.
     pub fn reject_promotions(&self, ids: Option<&[String]>) -> Result<Value, CoreError> {
         self.store.with_write_txn(|txn| {
             let mut rejected: Vec<String> = Vec::new();
@@ -409,7 +359,6 @@ impl GraphWriter {
         Ok(())
     }
 
-    /// `_merge_pending_promotions` — dedupe by id, newest wins, cap at 100.
     fn merge_pending_promotions(
         &self,
         txn: &Transaction<'_>,
@@ -440,7 +389,6 @@ impl GraphWriter {
         Ok(entries)
     }
 
-    /// `curate_noise` — remove noise concepts and normalize free-string verbs.
     pub fn curate_noise(&self, request: &CurateNoiseRequest) -> Result<Value, CoreError> {
         let max_removals = request.max_removals.max(0) as usize;
         self.store.with_write_txn(|txn| {
@@ -481,8 +429,6 @@ impl GraphWriter {
                 let heuristic = meta.get("auto_extracted").map(truthy).unwrap_or(false)
                     || meta.get("source").and_then(Value::as_str) == Some("graph_curator")
                     || meta.get("curated") == Some(&Value::Bool(true));
-                // Document frequency: distinct *content* nodes linked to this
-                // concept in either direction.
                 let mut df_params: Vec<&dyn ToSql> =
                     vec![&id as &dyn ToSql, &id as &dyn ToSql, &id as &dyn ToSql];
                 df_params.extend(CONTENT_TYPES.iter().map(|value| value as &dyn ToSql));
@@ -560,8 +506,6 @@ impl GraphWriter {
                         |row| row.get(0),
                     )?;
                     renamed_edges += count;
-                    // UNIQUE(from_node, to_node, type): merge rows that collide
-                    // after the rename instead of failing the UPDATE.
                     txn.execute(
                         "UPDATE OR IGNORE edges SET type=? WHERE type=?",
                         rusqlite::params![canonical, original],
@@ -571,9 +515,6 @@ impl GraphWriter {
                         rusqlite::params![original],
                     )?;
                 }
-                // Every applied run is stamped — even a no-op one means the
-                // graph was inspected, so the Command Center hygiene advisory
-                // stops re-suggesting for a while.
                 txn.execute(
                     "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
                     rusqlite::params![LAST_NOISE_CURATE_KEY, self.clock.now_iso()],
@@ -614,7 +555,6 @@ impl GraphWriter {
         })
     }
 
-    /// `last_noise_curate_at` — when the last applied run inspected the graph.
     pub fn last_noise_curate_at(&self) -> Result<Option<String>, CoreError> {
         self.store.with_read_conn(|conn| {
             Ok(conn
@@ -628,10 +568,6 @@ impl GraphWriter {
         })
     }
 
-    /// `mark_superseded` — record that one node was replaced by another.
-    ///
-    /// The old node stays queryable (knowledge is durable); readers follow the
-    /// revision chain through `nodes_v2.superseded_by`.
     pub fn mark_superseded(
         &self,
         old_node_id: &str,

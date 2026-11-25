@@ -1,16 +1,5 @@
-"""Pure filesystem / path / hash / file-classification helpers.
-
-Split out of _kg_common so that module keeps only the text/NLP extraction
-logic. These depend only on stdlib and the static tables in _kg_constants —
-no dependency back on _kg_common — so the import graph stays linear
-(_kg_constants ← _kg_fsutil ← _kg_common). _kg_common re-exports every name
-here via ``from ._kg_fsutil import *`` (its computed __all__ then forwards
-them to the graph mixins), so existing call sites are unaffected.
-"""
-
 from __future__ import annotations
 
-# ruff: noqa: F403,F405
 import hashlib
 import math
 import os
@@ -24,7 +13,22 @@ from ..quiet import quiet
 from ..utils import local_now as _local_now
 from ..utils import now_iso as _now
 from ..utils import parse_iso as _parse_iso
-from ._kg_constants import *  # noqa: F401,F403
+from ._kg_constants import (
+    COMMON_EXCLUDED_DIRS,
+    COMMON_EXCLUDED_FILE_NAMES,
+    COMMON_EXCLUDED_FILE_SUFFIXES,
+    LINUX_EXCLUDED_PREFIXES,
+    LOCAL_CODE_EXTENSIONS,
+    LOCAL_DOCUMENT_EXTENSIONS,
+    LOCAL_IMAGE_EXTENSIONS,
+    LOCAL_SIZE_LIMITS,
+    LOCAL_SLIDE_EXTENSIONS,
+    LOCAL_SPREADSHEET_EXTENSIONS,
+    LOCAL_TEXT_EXTENSIONS,
+    MACOS_EXCLUDED_PREFIXES,
+    SENSITIVE_PATH_KEYWORDS,
+    WINDOWS_EXCLUDED_NAMES,
+)
 
 
 def _recency_score(

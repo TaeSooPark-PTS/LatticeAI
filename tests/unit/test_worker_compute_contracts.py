@@ -1,5 +1,3 @@
-"""EmbeddingIndexContract and sysinfo tests split from test_worker_compute.py."""
-
 from __future__ import annotations
 
 from typing import Any

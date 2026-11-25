@@ -1,5 +1,3 @@
-//! The two `/api/command/*` handlers.
-
 use axum::extract::{Request, State};
 use axum::response::Response;
 use axum::routing::get;
@@ -11,13 +9,11 @@ use crate::memory_api::wsos;
 use super::briefing;
 use super::search::{self, SearchRequest};
 
-/// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/command/briefing"),
     ("GET", "/api/command/search"),
 ];
 
-/// The mountable router for `latticeai/api/command_center.py`.
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/command/briefing", get(command_briefing))
@@ -76,8 +72,6 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
     let email = caller.email.clone();
     let scope = caller.scope.clone();
     let doc = wsos::load(state.store(), state.data_dir());
-    // `CommandCenterService(enable_graph=…)`: read before the closure takes over,
-    // because the knowledge group is the one group that needs a graph.
     let enable_graph = state.graph_enabled();
     match state
         .read(move |conn| {

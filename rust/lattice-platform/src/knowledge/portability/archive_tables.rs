@@ -1,6 +1,3 @@
-//! Knowledge Graph full-table JSON export, SQLite integrity check, and
-//! transactional SQLite/JSON restore helpers.
-
 use std::io::{Cursor, Read};
 use std::path::Path;
 
@@ -75,7 +72,6 @@ pub(super) fn apply_decrypted_payload(
         );
     }
 
-    // Verify live post-restore DB integrity and table count equivalence.
     let live_path = state.config.graph_db_path();
     let integrity = check_sqlite_integrity(&live_path)?;
     if integrity != "ok" {

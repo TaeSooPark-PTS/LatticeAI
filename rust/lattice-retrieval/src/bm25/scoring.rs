@@ -1,8 +1,3 @@
-//! Calibrated field-weighted Okapi BM25F scoring and scoped corpus loader.
-//!
-//! Backed by [`super::sidecar::Bm25SidecarIndex`] for O(1) field-length &
-//! `df(t)` lookup and inverted posting-list candidate evaluation.
-
 use lattice_core::{clean_text, CoreError, NodeRow};
 use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
 
@@ -11,28 +6,17 @@ use crate::service::Scope;
 use super::sidecar::Bm25SidecarIndex;
 use super::sidecar_cache::with_bm25_sidecar_snapshot;
 
-/// Okapi BM25F hyperparameters and field weights.
 #[derive(Debug, Clone)]
 pub struct Bm25fParams {
-    /// Term frequency saturation (`k1`, standard 1.2).
     pub k1: f64,
-    /// Default document length normalization (`b`, standard 0.75).
     pub b: f64,
-    /// Weight for document/node `title`.
     pub title_weight: f64,
-    /// Length normalization `b` for `title`.
     pub b_title: f64,
-    /// Weight for `tags`, markdown `#` headings, `[[wikilinks]]`, and `concepts`.
     pub tags_headings_weight: f64,
-    /// Length normalization `b` for `tags_headings`.
     pub b_tags_headings: f64,
-    /// Weight for `summary` / body content.
     pub body_weight: f64,
-    /// Length normalization `b` for `body`.
     pub b_body: f64,
-    /// Weight for auxiliary metadata fields.
     pub metadata_weight: f64,
-    /// Length normalization `b` for `metadata`.
     pub b_metadata: f64,
 }
 
@@ -62,7 +46,6 @@ pub(crate) fn node_type_multiplier(node_type: &str) -> f64 {
     }
 }
 
-/// Knowledge lifecycle state used to exclude or down-rank retired nodes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KnowledgeLifecycleStatus {
     #[default]
@@ -72,7 +55,6 @@ pub enum KnowledgeLifecycleStatus {
 }
 
 impl KnowledgeLifecycleStatus {
-    /// Resolve lifecycle status from explicit status string and `superseded_by` pointer.
     pub fn from_raw(status: Option<&str>, superseded_by: Option<&str>) -> Self {
         if superseded_by.is_some_and(|s| !s.trim().is_empty()) {
             return Self::Superseded;
@@ -84,12 +66,10 @@ impl KnowledgeLifecycleStatus {
         }
     }
 
-    /// True when the node is retired (`Superseded` or `Deprecated`).
     pub fn is_retired(self) -> bool {
         matches!(self, Self::Superseded | Self::Deprecated)
     }
 
-    /// Relative scoring multiplier when historical nodes are explicitly included.
     pub fn multiplier(self) -> f64 {
         match self {
             Self::Active => 1.0,
@@ -112,13 +92,9 @@ pub(crate) fn importance_multiplier(importance_score: Option<f64>) -> f64 {
     0.85 + 0.30 * clamped
 }
 
-/// Options controlling scoped corpus loading and lifecycle inclusion.
 #[derive(Debug, Clone)]
 pub struct CorpusLoadOptions {
-    /// Maximum candidate rows fetched after SQL scope & lifecycle filtering.
     pub max_rows: i64,
-    /// When false (default), `superseded` and `deprecated` nodes are excluded in SQL.
-    /// When true, historical nodes are included after `active` nodes and down-ranked in scoring.
     pub include_historical: bool,
 }
 
@@ -131,7 +107,6 @@ impl Default for CorpusLoadOptions {
     }
 }
 
-/// Scoped node row paired with resolved lifecycle, importance, and visibility metadata.
 #[derive(Debug, Clone)]
 pub struct ScopedNodeRecord {
     pub node: NodeRow,
@@ -140,7 +115,6 @@ pub struct ScopedNodeRecord {
     pub visibility: Option<String>,
 }
 
-/// Detailed BM25F scoring breakdown for one node.
 #[derive(Debug, Clone)]
 pub struct Bm25fScoredNode {
     pub node: NodeRow,
@@ -151,7 +125,6 @@ pub struct Bm25fScoredNode {
     pub tags: Vec<String>,
 }
 
-/// Score a slice of `NodeRow` documents against `query` using calibrated field-weighted Okapi BM25F.
 pub fn bm25f_score_nodes(
     rows: &[NodeRow],
     query: &str,
@@ -237,8 +210,6 @@ pub(crate) struct NodeScopeSqlParts {
     pub visibility_select: &'static str,
 }
 
-/// Build shared SQL workspace membership predicate + bound parameters so
-/// `bm25::scoring`, `keyword`, `graph_rag`, and `vector` share identical scope rules.
 pub(crate) fn build_workspace_sql_predicate(
     ws_expr: &str,
     presence_guard: Option<&str>,
@@ -274,8 +245,6 @@ pub(crate) fn build_workspace_sql_predicate(
     Some((clause, params))
 }
 
-/// Build shared SQL JOIN / WHERE / ORDER BY expressions for `nodes n` so workspace
-/// and lifecycle filters execute in SQL *before* `ORDER BY ... LIMIT`.
 pub(crate) fn build_node_scope_sql(
     schema: NodesV2SchemaInfo,
     node_alias: &str,
@@ -406,8 +375,6 @@ pub(crate) fn build_node_scope_sql(
     }
 }
 
-/// Load scoped candidate nodes and resolved lifecycle/importance/visibility metadata,
-/// applying workspace & lifecycle filters in SQL *before* `ORDER BY ... LIMIT`.
 pub fn load_scoped_corpus_records(
     conn: &Connection,
     scope: &Scope,
@@ -458,7 +425,6 @@ pub fn load_scoped_corpus_records(
     Ok(records)
 }
 
-/// Load scoped candidate nodes from SQLite `nodes` table for BM25F scoring with explicit options.
 pub fn load_scoped_corpus_with_options(
     conn: &Connection,
     scope: &Scope,
@@ -470,7 +436,6 @@ pub fn load_scoped_corpus_with_options(
         .collect())
 }
 
-/// Load scoped candidate nodes from SQLite `nodes` table for BM25F scoring.
 pub fn load_scoped_corpus(
     conn: &Connection,
     scope: &Scope,
@@ -486,8 +451,6 @@ pub fn load_scoped_corpus(
     )
 }
 
-/// Run field-weighted Okapi BM25F search over the scoped Knowledge Graph nodes
-/// using a lock-free snapshot of [`Bm25SidecarIndex`].
 pub fn bm25f_search_with_options(
     conn: &Connection,
     query: &str,
@@ -507,8 +470,6 @@ pub fn bm25f_search_with_options(
     Ok(scored)
 }
 
-/// Run field-weighted Okapi BM25F search over the scoped Knowledge Graph nodes
-/// using the cached pre-tokenized [`Bm25SidecarIndex`].
 pub fn bm25f_search(
     conn: &Connection,
     query: &str,

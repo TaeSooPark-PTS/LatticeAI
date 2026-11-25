@@ -1,12 +1,3 @@
-"""The mutable model registry: what is loaded, what is current, what to evict.
-
-Everything here is guarded by one reentrant lock, because the eviction path
-nests (``_enforce_local_model_limit`` → ``unload_model`` → ``_release_memory``)
-and because generation must never change ``_current`` — that value is a
-UI/default preference shared by every request, so a request-scoped model is
-taken as an immutable snapshot instead.
-"""
-
 import os
 import threading
 import time
@@ -19,22 +10,13 @@ from .catalog import CloudModel
 
 
 class _RegistryMixin(_Core):
-    """The loaded-model registry half of :class:`LLMRouter`."""
-
     def __init__(self):
-        # A local entry is (model, tokenizer, draft_model, loader_kind); a
-        # cloud entry is a CloudModel. `_unpack_local_cache` splits them.
         self._cache: Dict[str, Any] = {}
         self._current: Optional[str] = None
         self._last_used: Dict[str, float] = {}
         self._max_local_models = max(
             1, int(os.getenv("LATTICEAI_MAX_LOCAL_MODELS", "1"))
         )
-        # Guards the mutable model registry (_cache/_current/_last_used).
-        # Reentrant because the eviction path nests: _enforce_local_model_limit
-        # → unload_model → _release_memory. Never held across the heavy
-        # ``run_in_executor`` load (only the sync insert/read is guarded), so a
-        # long model load can't block a concurrent switch/unload from acquiring.
         self._lock = threading.RLock()
 
     @property
@@ -142,13 +124,6 @@ class _RegistryMixin(_Core):
     def _model_snapshot(
         self, model_id: Optional[str] = None
     ) -> tuple[Optional[str], object | None]:
-        """Return an immutable request-scoped view of a loaded model.
-
-        Generation must never change ``_current``: that value is a UI/default
-        preference shared by every request.  Capturing the cache entry while
-        holding the registry lock prevents concurrent requests from selecting
-        or restoring each other's models.
-        """
         with self._lock:
             selected = model_id or self._current
             if not selected:

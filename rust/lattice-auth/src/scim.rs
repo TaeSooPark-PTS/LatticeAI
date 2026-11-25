@@ -1,9 +1,3 @@
-//! SCIM 2.0 user provisioning and deprovisioning guards.
-//!
-//! Enforces constant-time bearer authentication, domain allowlists, tenant
-//! boundary isolation, role escalation ceilings, immediate session revocation
-//! on deactivation, and structured audit emission.
-
 use axum::http::{header, HeaderMap};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map};
@@ -13,7 +7,6 @@ use crate::policy::normalize_role;
 use crate::state::AuthState;
 use crate::users::{ensure_user_identity, normalize_email};
 
-/// SCIM 2.0 provisioning policy for an enterprise tenant.
 #[derive(Debug, Clone)]
 pub struct ScimConfig {
     pub enabled: bool,
@@ -37,7 +30,6 @@ impl Default for ScimConfig {
     }
 }
 
-/// Normalized SCIM user payload validated before writing to [`crate::Users`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScimUserProvision {
     pub user_name: String,
@@ -48,7 +40,6 @@ pub struct ScimUserProvision {
     pub tenant_id: Option<String>,
 }
 
-/// Result of applying a SCIM user provisioning or deprovisioning request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScimProvisionResult {
     pub email: String,
@@ -58,7 +49,6 @@ pub struct ScimProvisionResult {
     pub revoked_sessions: usize,
 }
 
-/// Failure from SCIM bearer authentication or policy enforcement.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScimPolicyError {
     Disabled,
@@ -88,7 +78,6 @@ impl std::fmt::Display for ScimPolicyError {
     }
 }
 
-/// Verify the SCIM bearer token in constant time (fail-closed if disabled or empty).
 pub fn authorize_scim_request(
     config: &ScimConfig,
     headers: &HeaderMap,
@@ -115,8 +104,6 @@ pub fn authorize_scim_request(
     Ok(())
 }
 
-/// Provision, update, or deprovision a user via SCIM while enforcing tenant
-/// isolation, domain allowlists, role ceilings, session revocation, and audit.
 pub fn apply_scim_user(
     state: &AuthState,
     config: &ScimConfig,

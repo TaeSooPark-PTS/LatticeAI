@@ -1,38 +1,5 @@
-"""Model runtime and provider helpers for Lattice AI.
-
-This module owns local/cloud model preparation, engine detection, model download,
-provider-specific server startup, smoke tests, and runtime feature payloads. It is
-configured by ``server_app`` with app-level state but has no FastAPI app import.
-
-Split into cohesive submodules in v11.3.0 (no behaviour change): ``state`` (the
-immutable ``ModelRuntimeState`` and the consent gates), ``engines`` (engine
-wrappers + the LM Studio client), ``download`` (Hugging Face readiness and
-fetch), ``status`` (``engine_status`` / ``runtime_features`` / ``install_engine``),
-``loading`` (identity resolution and the load entrypoints) and ``service`` (the
-bound ``ModelRuntimeService``). This module
-re-exports every name the single file exposed, so
-``latticeai.services.model_runtime.X`` keeps working — including the private
-names ``model_loading._get_model_runtime_deps`` imports.
-
-Two deliberate omissions: ``engines._LMSTUDIO_MODELS_CACHE`` and
-``_LMSTUDIO_MODELS_CACHE_TS`` are *rebound* by ``get_lmstudio_models``, so a
-re-export here would be a snapshot frozen at import time. They stay reachable
-at ``latticeai.services.model_runtime.engines``, which is where the live values
-are.
-
-Stubbing note: rebinding a name *here* changes only this module's name — the
-lazy ``from latticeai.services.model_runtime import …`` calls in
-``model_engines`` and ``model_loading`` read it, but a submodule that uses the
-name holds its own reference. A test standing in for a helper patches the
-submodule that uses it.
-"""
-
 from __future__ import annotations
 
-# The single file had no ``__all__``, so its public surface was "every module
-# global" — including the names it imported for its own use. Every re-export
-# below therefore uses the redundant-alias form: it reproduces exactly that
-# surface, and it marks each name as deliberate rather than a leftover import.
 from latticeai.core.quiet import quiet as quiet
 from latticeai.models.router import HF_MODELS_ROOT as HF_MODELS_ROOT
 from latticeai.models.router import (
@@ -43,10 +10,6 @@ from latticeai.models.router import ensure_mlx_runtime as ensure_mlx_runtime
 from latticeai.models.router import hf_cache_model_dir as hf_cache_model_dir
 from latticeai.models.router import hf_model_dir as hf_model_dir
 from latticeai.models.router import parse_model_ref as parse_model_ref
-
-# Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
-# here so existing ``from ...model_runtime import ENGINE_MODEL_CATALOG`` imports
-# keep working.
 from latticeai.services.model_catalog import (
     _VERSIONED_MODEL_PATTERNS as _VERSIONED_MODEL_PATTERNS,
 )
@@ -117,11 +80,6 @@ from latticeai.services.model_runtime.download import (
 from latticeai.services.model_runtime.engines import (
     _LMSTUDIO_MODELS_CACHE_TTL as _LMSTUDIO_MODELS_CACHE_TTL,
 )
-
-# The private aliases the historical module bound for its own use — including
-# the ones ``model_loading._get_model_runtime_deps`` imports by name. They are
-# re-exported from the submodule that already binds them under exactly these
-# names, which is ruff's redundant-alias re-export form.
 from latticeai.services.model_runtime.engines import (
     _LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
 )

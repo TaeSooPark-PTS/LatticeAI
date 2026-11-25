@@ -1,14 +1,3 @@
-"""wp12 coverage — the Ollama and OpenAI-compatible providers, offline.
-
-Both providers ``import httpx`` inside the call, which is the seam: a fake
-``httpx`` module injected with ``monkeypatch.setitem(sys.modules, ...)`` is
-picked up at call time and dropped again when the test ends, so no socket is
-opened and the branches (batch endpoint, the ``/api/embed`` → ``/api/embeddings``
-404 downgrade, transport failure, health) run identically on every platform.
-The recorded requests are asserted too — a provider that embeds by calling the
-wrong endpoint would still "not raise".
-"""
-
 from __future__ import annotations
 
 import sys
@@ -71,7 +60,6 @@ class _FakeClient:
 
 
 def _install_httpx(monkeypatch, handler):
-    """Inject a fake ``httpx`` and return the list requests are recorded in."""
     calls = []
     module = types.ModuleType("httpx")
 
@@ -83,8 +71,6 @@ def _install_httpx(monkeypatch, handler):
     return calls
 
 
-# ``build_embedding_provider`` passes ``dim=0`` when the caller did not pin one,
-# which is what asks the provider to guess from the model name.
 def _ollama(**kwargs):
     kwargs.setdefault("model", "nomic-embed-text")
     kwargs.setdefault("dim", 0)
@@ -95,9 +81,6 @@ def _openai(**kwargs):
     kwargs.setdefault("model", "text-embedding-3-small")
     kwargs.setdefault("dim", 0)
     return OpenAICompatibleEmbeddingProvider(_RemoteConfig(**kwargs))
-
-
-# ── Ollama ───────────────────────────────────────────────────────────────────
 
 
 def test_ollama_defaults_to_the_loopback_server_and_a_known_dimension():
@@ -131,9 +114,7 @@ def test_ollama_batches_through_api_embed_and_locks_the_true_dimension(monkeypat
     vectors = prov.embed_batch(["alpha", "beta"])
 
     assert [round(x, 6) for x in vectors[0]] == [0.6, 0.8]
-    # a zero vector has no direction to normalize — it is returned as-is
     assert vectors[1] == [0.0, 0.0]
-    # the server's real dimensionality overrides the guessed one
     assert prov.dim == 2
     assert len(calls) == 1
 
@@ -162,7 +143,6 @@ def test_ollama_downgrades_to_the_single_prompt_endpoint_on_404(monkeypatch):
     vectors = prov.embed_batch(["alpha", "beta"])
 
     assert vectors[0] == [0.0, 1.0]
-    # an embedding the old endpoint declined to produce becomes a zero vector
     assert vectors[1] == [0.0, 0.0]
     assert [c["url"] for c in calls] == [
         "http://ollama.example:11434/api/embed",
@@ -196,7 +176,6 @@ def test_a_reachable_ollama_server_is_healthy(monkeypatch):
         "status": "ok",
         "detail": "Ollama reachable at http://127.0.0.1:11434",
     }
-    # the health probe caps the wait rather than inheriting the embed timeout
     assert len(calls) == 1
     assert calls[0]["timeout"] == 5.0
 
@@ -211,9 +190,6 @@ def test_an_ollama_server_that_answers_with_an_error_is_unavailable(monkeypatch)
 
     assert health["status"] == "unavailable"
     assert "Ollama unreachable: server error 500" in health["detail"]
-
-
-# ── OpenAI-compatible ────────────────────────────────────────────────────────
 
 
 def test_the_openai_provider_defaults_to_the_public_endpoint_and_a_known_dimension():

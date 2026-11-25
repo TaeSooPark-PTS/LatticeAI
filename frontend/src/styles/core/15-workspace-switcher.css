@@ -1,8 +1,4 @@
-/* ============================================================
-   Track: Workspace/profile switcher + admin surface discovery
-   Adds discoverable shell entry points for workspace/profile
-   switching and the admin console. Token-native, additive.
-   ============================================================ */
+
 .brain-shell-switchers {
   display: inline-flex;
   flex-wrap: wrap;

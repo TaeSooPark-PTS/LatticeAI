@@ -1,5 +1,3 @@
-//! `ingest_content` — the unified text / URL / browser-tab / note door.
-
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -11,10 +9,6 @@ use super::super::GraphWriter;
 use super::IngestOutcome;
 
 impl GraphWriter {
-    /// `ingest_source` — the unified text / URL / browser-tab / note door.
-    ///
-    /// Idempotent by content hash: re-ingesting the same `(source_type,
-    /// source_uri, text)` reuses the same node id and reports `duplicate`.
     pub fn ingest_content(
         &self,
         request: &IngestContentRequest,

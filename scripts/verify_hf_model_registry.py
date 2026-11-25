@@ -1,49 +1,4 @@
 #!/usr/bin/env python3
-"""Verify the Lattice AI model capability registry against the Hugging Face API.
-
-Usage:
-  python3 scripts/verify_hf_model_registry.py
-  python3 scripts/verify_hf_model_registry.py --out verification_report.json
-
-What it does
-------------
-For every entry in the registry (recommended *and* recognised-only) it asks the
-public HF REST API for the repo metadata and its file tree, then records:
-
-* whether the repo exists and is reachable **without credentials**
-* the Hub's canonical id, so a case drift in our catalog is caught
-  (``mlx-community/gemma-4-12b-it-4bit`` answers as ``…-12B-it-4bit``)
-* the ``gated`` flag — a gated repo cannot be downloaded by our users
-* ``library_name`` / tags, the config ``model_type``, downloads, likes,
-  ``lastModified``
-* the sibling files: ``config.json``, at least one ``.safetensors`` shard, and a
-  tokenizer file — plus the exact byte sum of every sibling, which is compared
-  against the ``size`` / ``download_size_gb`` recorded in the registry.
-
-**It never downloads weights and never loads a model.** There is deliberately no
-flag that could: the only network calls are two JSON GETs per repo. Verifying a
-catalog must not cost the person running it a 20GB download.
-
-The loadability verdict — and what it is *not*
-----------------------------------------------
-"Can this model actually load?" is answered **statically**, from three signals:
-
-  (a) the repo declares the MLX library (``library_name == "mlx"`` or an ``mlx``
-      tag), so an MLX-format conversion exists;
-  (b) the config architecture (``model_type``) is in SUPPORTED_MLX_ARCHITECTURES
-      below, i.e. a loader for it shipped in mlx-lm / mlx-vlm; and
-  (c) the community has downloaded it — a repo nobody has ever pulled is not
-      evidence of anything.
-
-**This is not a load test.** It cannot detect a corrupt shard, a quantisation
-the installed mlx build rejects, a tokenizer mismatch, or an mlx-vlm version
-older than the architecture. A ``loadable`` verdict here means "nothing in the
-published metadata says this cannot load", not "this loaded". The only authority
-on a real load remains the loader plus the smoke test on the user's own machine.
-
-Exit code: 0 when every recommended entry is reachable, ungated, correctly cased
-and statically loadable; 1 otherwise.
-"""
 
 from __future__ import annotations
 
@@ -56,7 +11,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# Add repo root so we can import the registry directly
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -71,7 +25,7 @@ except (
     OSError,
     RuntimeError,
     SyntaxError,
-) as e:  # pragma: no cover - import guard for standalone runs
+) as e:
     print("ERROR: Could not import model_capability_registry:", e)
     sys.exit(2)
 
@@ -79,16 +33,7 @@ except (
 HF_API = "https://huggingface.co/api/models/{repo}"
 HF_TREE = "https://huggingface.co/api/models/{repo}/tree/main?recursive=true"
 
-# Architectures with a loader in the MLX stack, as published by the projects
-# themselves. Source (checked 2026-08-10):
-#   mlx-lm   — https://github.com/ml-explore/mlx-lm/tree/main/mlx_lm/models
-#   mlx-vlm  — https://github.com/Blaizzy/mlx-vlm/tree/main/mlx_vlm/models
-# The module basename in those directories *is* the HF config ``model_type``,
-# which is why this can be matched exactly rather than guessed. Entries here are
-# limited to the architectures this registry actually ships or recognises; it is
-# not a mirror of the full upstream list.
 SUPPORTED_MLX_ARCHITECTURES: Dict[str, str] = {
-    # vision-language loaders (mlx-vlm)
     "gemma4": "mlx-vlm",
     "gemma4_unified": "mlx-vlm",
     "gemma3": "mlx-vlm",
@@ -99,16 +44,12 @@ SUPPORTED_MLX_ARCHITECTURES: Dict[str, str] = {
     "qwen2_5_vl": "mlx-vlm",
     "mllama": "mlx-vlm",
     "llama4": "mlx-vlm",
-    # text loaders (mlx-lm)
     "gpt_oss": "mlx-lm",
     "lfm2": "mlx-lm",
     "llama": "mlx-lm",
     "qwen3": "mlx-lm",
 }
 
-#: Below this many all-time downloads we refuse to call an entry proven by the
-#: community. It is a weak signal on purpose — it only ever *downgrades* a
-#: verdict, it never promotes one.
 MIN_COMMUNITY_DOWNLOADS = 100
 
 VERDICT_LOADABLE = "loadable_static"
@@ -129,7 +70,6 @@ LIMITATIONS = [
 
 
 def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[int]]:
-    """GET a JSON document. Returns ``(payload, http_status)``; payload is None on failure."""
     req = urllib.request.Request(
         url, headers={"User-Agent": "LatticeAI-model-registry-verifier/2.0"}
     )
@@ -138,8 +78,6 @@ def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[
             raw = resp.read().decode("utf-8", errors="replace")
             return (json.loads(raw) if raw.strip() else {}), int(resp.status)
     except urllib.error.HTTPError as e:
-        # 404 = gone. 401 = the Hub's answer for "gone or private" to an
-        # anonymous client; either way our users cannot download it.
         return None, int(e.code)
     except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError) as e:
         print(f"  net error {url}: {type(e).__name__}")
@@ -147,7 +85,6 @@ def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[
 
 
 def _mlx_signal(info: Dict[str, Any]) -> bool:
-    """True when the repo advertises MLX-format weights."""
     tags = [str(t).lower() for t in (info.get("tags") or [])]
     return str(info.get("library_name") or "").lower() == "mlx" or "mlx" in tags
 
@@ -163,7 +100,6 @@ def _siblings(repo: str) -> Tuple[List[Dict[str, Any]], Optional[int]]:
 
 
 def verify_one(cap: ModelCapability) -> Dict[str, Any]:
-    """Measure one registry entry against the Hub. Metadata requests only."""
     repo = cap.hf_repo_id
     result: Dict[str, Any] = {
         "id": cap.id,
@@ -242,7 +178,6 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
         if cap.download_size_gb is not None:
             result["size_delta_gb"] = round(measured - cap.download_size_gb, 2)
 
-    # ── static verdict ────────────────────────────────────────────────────────
     if result["gated"]:
         reasons.append(f"gated={result['gated']} — needs Hub credentials")
     if not result["canonical_case_matches"]:

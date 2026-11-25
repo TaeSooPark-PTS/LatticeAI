@@ -1,5 +1,3 @@
-//! Tool governance tables, catalog, and permission lookup.
-
 use lattice_auth::OrderedMap;
 use serde_json::json;
 

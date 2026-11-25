@@ -78,7 +78,6 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
     let old_text = "Quantum Lattice Consensus Protocol Recovery";
     let old_vec = hash_model.embed(old_text);
 
-    // Insert 1 older node (2024) in `ws-target`.
     conn.execute(
         "INSERT INTO nodes (id, type, title, summary, metadata_json, updated_at)
          VALUES ('target-old-1', 'Decision', ?1, 'Critical recovery steps for consensus partition.', ?2, '2024-03-01T00:00:00Z')",
@@ -98,7 +97,6 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
     )
     .unwrap();
 
-    // Insert 5,500 newer (2026) nodes & vectors in `ws-other` (exceeding 5,000 sidecar cap).
     let tx = conn.transaction().unwrap();
     let noise_vec = hash_model.embed("Quarterly sync telemetry heartbeat log");
     let noise_blob = hash_model.encode(&noise_vec);
@@ -135,12 +133,10 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
 
     let scope = Scope::for_workspace("ws-target");
 
-    // 1. Scoped corpus loader returns the old `ws-target` node despite 5,500 newer nodes elsewhere.
     let corpus = load_scoped_corpus(&conn, &scope, 5_000).unwrap();
     assert_eq!(corpus.len(), 1);
     assert_eq!(corpus[0].id, "target-old-1");
 
-    // 2. BM25F search recalls `target-old-1`.
     let bm25_hits = bm25f_search(
         &conn,
         "Quantum Consensus Recovery",
@@ -152,7 +148,6 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
     assert_eq!(bm25_hits.len(), 1);
     assert_eq!(bm25_hits[0].node.id, "target-old-1");
 
-    // 3. Keyword search recalls `target-old-1` even though 5,500 newer matches exist in `ws-other`.
     let mut allowed = BTreeSet::new();
     allowed.insert("ws-target".to_string());
     let kw = lattice_retrieval::keyword::search(
@@ -167,7 +162,6 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
     assert_eq!(kw_matches.len(), 1);
     assert_eq!(kw_matches[0]["id"], "target-old-1");
 
-    // 4. Scoped aligned vector search recalls `target-old-1`.
     let vec_res = vector_search_aligned(
         &conn,
         VectorQueryInput::Model(&hash_model),
@@ -184,7 +178,6 @@ fn workspace_scope_sql_filter_prevents_newer_other_workspace_crowding_out_old_kn
     assert_eq!(vec_matches.len(), 1);
     assert_eq!(vec_matches[0]["node_id"], "target-old-1");
 
-    // 5. Full 3-way GraphRAG search recalls `target-old-1`.
     let graphrag = hybrid_bm25_vector_graph_search(
         &conn,
         &hash_model,
@@ -222,7 +215,6 @@ fn lifecycle_status_excludes_superseded_and_deprecated_by_default_and_downranks_
     )
     .unwrap();
 
-    // Default (`include_historical = false`) excludes superseded & deprecated.
     let default_hits = bm25f_search(
         &conn,
         "Cache Eviction Policy",
@@ -234,7 +226,6 @@ fn lifecycle_status_excludes_superseded_and_deprecated_by_default_and_downranks_
     let default_ids: Vec<&str> = default_hits.iter().map(|h| h.node.id.as_str()).collect();
     assert_eq!(default_ids, vec!["active-node"]);
 
-    // Historical lookup (`include_historical = true`) recalls all 3 and ranks active first.
     let hist_hits = bm25f_search_with_options(
         &conn,
         "Cache Eviction Policy",
@@ -269,7 +260,6 @@ fn vector_search_reports_semantic_match_hash_fallback_and_reindex_required() {
     )
     .unwrap();
 
-    // Store a non-hash 768-d embedding (`google/embeddinggemma-2`).
     let mut stored_vec = vec![0.0_f64; 768];
     stored_vec[0] = 0.8;
     stored_vec[1] = 0.6;
@@ -280,7 +270,6 @@ fn vector_search_reports_semantic_match_hash_fallback_and_reindex_required() {
     )
     .unwrap();
 
-    // 1. Active query is hash model (384-d) while DB only has 768-d semantic vectors -> `reindex_required`.
     let hash_model = LocalEmbeddingModel::default();
     let legacy_res = vector_search(&conn, &hash_model, "Semantic Embedding", 10, 0.0).unwrap();
     assert_eq!(legacy_res["provider_status"], "reindex_required");
@@ -304,7 +293,6 @@ fn vector_search_reports_semantic_match_hash_fallback_and_reindex_required() {
     assert_eq!(aligned_mismatch["provider_status"], "reindex_required");
     assert_eq!(aligned_mismatch["reindex_required"], true);
 
-    // 2. Semantic query matching model & dim (`google/embeddinggemma-2` OR alias `embeddinggemma-2:768`) -> `semantic_provider_match`.
     let mut q_vec = vec![0.0_f64; 768];
     q_vec[0] = 0.8;
     q_vec[1] = 0.6;
@@ -329,7 +317,6 @@ fn vector_search_reports_semantic_match_hash_fallback_and_reindex_required() {
     assert_eq!(matches[0]["node_id"], "doc-sem");
     assert!(matches[0]["score"].as_f64().unwrap() > 0.99);
 
-    // 3. Adding hash vector & querying with hash model -> `hash_fallback`.
     let h_vec = hash_model.embed("Semantic Embedding Contract");
     conn.execute(
         "INSERT INTO vector_embeddings (item_id, item_type, source_node, embedding, embedding_dim, embedding_model, indexed_at)
@@ -374,20 +361,17 @@ fn sidecar_precomputes_subword_incrementally_without_per_query_recomputation() {
         ..GraphRagOptions::default()
     };
 
-    // Query 1 computes subword embeddings once for all 25 nodes.
     let _ =
         hybrid_bm25_vector_graph_search(&conn, &model, "subword caching benchmark", &opts).unwrap();
     let stats_1 = cached_sidecar_stats(&conn, &scope).expect("stats after q1");
     assert_eq!(stats_1.subword_computed_nodes, 25);
 
-    // Query 2 (different query, unchanged corpus) must recompute 0 subword embeddings!
     let _ =
         hybrid_bm25_vector_graph_search(&conn, &model, "incremental index node", &opts).unwrap();
     let stats_2 = cached_sidecar_stats(&conn, &scope).expect("stats after q2");
     assert_eq!(stats_2.subword_computed_nodes, 25);
     assert!(stats_2.cache_hits > stats_1.cache_hits);
 
-    // Modify 1 node -> only 1 additional subword embedding computed!
     conn.execute(
         "UPDATE nodes SET summary = 'Updated single node content for incremental check', updated_at = '2026-04-02T00:00:00Z' WHERE id = 'n-3'",
         [],
@@ -431,7 +415,6 @@ fn sidecar_cache_pool_supports_concurrent_snapshot_reads_and_bounded_eviction() 
         }
     }
 
-    // 1. Entry count cap (`64`) eviction test.
     let pool_count = SidecarCachePool::new(64, DEFAULT_MAX_CACHE_BYTES);
     let conn = Connection::open(&db_path).unwrap();
     for ws in 0..75 {
@@ -443,7 +426,6 @@ fn sidecar_cache_pool_supports_concurrent_snapshot_reads_and_bounded_eviction() 
     }
     assert_eq!(pool_count.entry_count(), 64);
 
-    // 2. Byte-budget LRU/cost-aware eviction test.
     let single_scope = Scope::for_workspace("ws-0");
     let single_snap = pool_count
         .snapshot_for_conn(&conn, &single_scope, 5_000, false, false, true)
@@ -462,7 +444,6 @@ fn sidecar_cache_pool_supports_concurrent_snapshot_reads_and_bounded_eviction() 
     assert!(pool_bytes.entry_count() <= 3);
     assert!(pool_bytes.total_estimated_bytes() <= budget_bytes);
 
-    // 3. Concurrent snapshot reads across multiple threads without mutex serialization on reads.
     let shared_pool = Arc::new(SidecarCachePool::new(64, DEFAULT_MAX_CACHE_BYTES));
     {
         let warm = shared_pool
@@ -584,7 +565,6 @@ fn default_native_hnsw_achieves_high_recall_at_10_with_bruteforce_rollback() {
         "tauri macos dmg notarization codesign bundle",
         "hnsw navigable small world cosine rescore recall",
     ];
-    // Populate 600 nodes (>= HNSW_AUTO_MIN_ROWS = 512) so default unset env uses NativeHnsw!
     for idx in 0..600 {
         let topic = topics[idx % topics.len()];
         let nid = format!("doc:bench:{idx:04}");

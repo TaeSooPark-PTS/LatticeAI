@@ -8,18 +8,6 @@ const VIEW_WIDTH = 1000;
 const VIEW_HEIGHT = 220;
 const WEEK = 7;
 
-/**
- * The cumulative growth curve, with a handle that moves the whole screen in time.
- *
- * Hand-rolled SVG rather than a charting dependency: this draws one area and one
- * step line, and a library would put tens of kilobytes on a lazy chunk to do it.
- *
- * The handle is the screen's only time control, so it is a real slider — arrow
- * keys move a day, PageUp/PageDown a week, Home/End to the ends — and it is the
- * track, not the knob, that carries `role="slider"`. A knob-sized hit area is
- * unusable with a thumb; the track is the full width of the chart, so a tap
- * anywhere along it lands on that day.
- */
 export function GrowthScrubber({
   timeline,
   index,
@@ -31,9 +19,6 @@ export function GrowthScrubber({
   onIndexChange: (next: number) => void;
   language: Language;
 }) {
-  // The element being dragged, held rather than a boolean: the window-level
-  // move handler needs a box to measure, and taking it from the pointerdown
-  // event means there is no nullable ref to defend against mid-drag.
   const [dragTrack, setDragTrack] = React.useState<HTMLElement | null>(null);
   const maxIndex = Math.max(timeline.length - 1, 0);
   const point = timeline[index];
@@ -42,8 +27,6 @@ export function GrowthScrubber({
 
   const selectAt = React.useCallback((clientX: number, track: HTMLElement) => {
     const rect = track.getBoundingClientRect();
-    // A zero-width track means the chart has not been laid out yet. Dividing by
-    // it would send the handle to NaN and the day query to `undefined`.
     if (rect.width <= 0) return;
     const ratio = (clientX - rect.left) / rect.width;
     const clamped = Math.min(Math.max(ratio, 0), 1);
@@ -54,9 +37,6 @@ export function GrowthScrubber({
     if (!dragTrack) return;
     const move = (event: PointerEvent) => selectAt(event.clientX, dragTrack);
     const stop = () => setDragTrack(null);
-    // Bound on the window rather than captured on the element: pointer capture
-    // is not available everywhere this app runs, and a drag that wanders off
-    // the chart still has to keep tracking.
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", stop);
     window.addEventListener("pointercancel", stop);
@@ -149,12 +129,6 @@ function Lane({ labelKey, value, language }: { labelKey: string; value?: number;
   );
 }
 
-/**
- * Where a key press lands, or `null` when the key is not ours to handle.
- *
- * Exported because this table *is* the keyboard contract of the control, and it
- * is clearer stated once than proven through six render tests.
- */
 export function nextIndexFor(key: string, index: number, maxIndex: number): number | null {
   const moves: Record<string, number> = {
     ArrowLeft: -1,

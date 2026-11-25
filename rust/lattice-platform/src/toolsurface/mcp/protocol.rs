@@ -1,11 +1,3 @@
-//! Streamable-HTTP MCP JSON-RPC at `POST /mcp`.
-//!
-//! This route is mounted on the product router and listed in
-//! [`super::MOUNTED`] as `POST /mcp` — one JSON-RPC envelope, not
-//! per-method schemas. Session auth is the same `require_user` every other
-//! product route uses (loopback no-auth installs resolve to the local
-//! owner, which is what a localhost client such as Claude Desktop sees).
-
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};

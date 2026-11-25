@@ -1,5 +1,3 @@
-"""Coverage for keep-set core helpers: io, origin, quiet, policy, messages."""
-
 from __future__ import annotations
 
 from pathlib import Path

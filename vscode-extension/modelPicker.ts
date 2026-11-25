@@ -6,7 +6,6 @@ export class ModelPicker {
   constructor(private client: LatticeAIClient) {}
 
   async show(): Promise<string | undefined> {
-    // 서버 살아있는지 체크
     const alive = await this.client.isAlive();
     if (!alive) {
       const action = await vscode.window.showErrorMessage(
@@ -23,10 +22,6 @@ export class ModelPicker {
 
     const { recommended, loaded, current } = await this.client.listModels();
 
-    // The web Library view explains *why* a model suits this machine. The
-    // picker used to list a catalogue with no reasoning, which SURFACE_PARITY
-    // recorded as ◐. The recommendation is read from the server, never
-    // recomputed here — an unavailable scan simply means no banner.
     let advice: ReturnType<typeof parseModelRecommendation> = null;
     try {
       advice = parseModelRecommendation(await this.client.setupScan());
@@ -52,7 +47,6 @@ export class ModelPicker {
       });
     }
 
-    // 이미 로드된 모델 (즉시 전환 가능)
     if (loaded.length > 0) {
       items.push({ label: "── Loaded (instant switch) ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
       for (const id of loaded) {
@@ -65,7 +59,6 @@ export class ModelPicker {
       }
     }
 
-    // 추천 모델 (다운로드/로드 필요)
     items.push({ label: "── Recommended multimodal models ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
 
     const tagIcons: Record<string, string> = {
@@ -75,7 +68,7 @@ export class ModelPicker {
     };
 
     for (const m of recommended) {
-      if (loaded.includes(m.id)) continue; // 위에 이미 표시됨
+      if (loaded.includes(m.id)) continue;
       const sourceDetail = [
         m.source_country,
         m.source_company,
@@ -91,7 +84,6 @@ export class ModelPicker {
       });
     }
 
-    // 직접 입력
     items.push({ label: "── Custom ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
     items.push({
       label: "$(add) Enter HuggingFace model ID...",

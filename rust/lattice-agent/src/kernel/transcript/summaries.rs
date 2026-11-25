@@ -2,18 +2,12 @@ use super::*;
 use crate::parse::pystr::char_slice;
 use serde_json::Value;
 
-/// A file this run actually read, from which a summary may be grounded.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcedText {
     pub path: String,
     pub content: String,
 }
 
-/// Whether the request asked for a summary of something that was read.
-///
-/// Whole-word `summary` / `summarize` so `summarily` and account-adjacent
-/// English do not fire; Korean markers (`요약`, `정리해`, `줄여`) are not
-/// fragments of other words in the product's copy.
 pub fn request_asks_for_a_summary(request: &str) -> bool {
     let hay = request.to_lowercase();
     hay.contains("요약")
@@ -34,7 +28,6 @@ fn is_read_action(action: &str) -> bool {
             .is_some_and(|(_, bare)| bare == "read_file")
 }
 
-/// The most recent successful file read this run can ground a summary in.
 pub fn attributed_summary(transcript: &[Value]) -> Option<SourcedText> {
     transcript.iter().rev().find_map(|step| {
         if step.get("error").is_some() {
@@ -86,7 +79,6 @@ fn answer_is_generic_ack(answer: &str) -> bool {
     chars < 80 && (lower.contains("요약") || lower.contains("summar"))
 }
 
-/// Whether the answer already carries a grounded slice of the source.
 pub fn answer_carries_summary(answer: &str, source: &SourcedText) -> bool {
     if answer_is_generic_ack(answer) {
         return false;
@@ -128,9 +120,6 @@ fn excerpt(text: &str, max_chars: usize) -> String {
     out
 }
 
-/// Restore a grounded summary when the request asked for one and the answer
-/// is still thin. The words come from a `read_file` / `mcp.read_file` result
-/// already on the transcript — never invented.
 pub fn complete_a_summary(said: &str, request: &str, transcript: &[Value]) -> String {
     if !request_asks_for_a_summary(request) {
         return said.to_string();
@@ -157,8 +146,6 @@ pub fn complete_a_summary(said: &str, request: &str, transcript: &[Value]) -> St
     }
 }
 
-/// A summary request whose answer still does not carry the file's own words
-/// after [`complete_a_summary`] has had its chance.
 pub fn answer_owes_a_summary(answer: &str, request: &str, transcript: &[Value]) -> bool {
     if !request_asks_for_a_summary(request) {
         return false;
@@ -169,7 +156,6 @@ pub fn answer_owes_a_summary(answer: &str, request: &str, transcript: &[Value]) 
     }
 }
 
-/// Synthesize a strictly grounded answer from active (non-superseded) evidence passages.
 pub fn synthesize_active_evidence_answer(
     passages: &[crate::kernel::transcript::rag_grounding::EvidencePassage],
 ) -> Option<String> {
@@ -191,8 +177,6 @@ pub fn synthesize_active_evidence_answer(
     Some(lines.join("\n"))
 }
 
-/// Complete an answer with deterministic findings from executed read, search,
-/// web, knowledge, and computer-use tool steps when the model's answer omits them.
 pub fn complete_tool_findings(said: &str, request: &str, transcript: &[Value]) -> String {
     if request_asks_for_a_count(request) || request_asks_for_a_summary(request) {
         return said.to_string();
@@ -365,7 +349,6 @@ pub fn complete_tool_findings(said: &str, request: &str, transcript: &[Value]) -
     }
 }
 
-/// Count repair, summary repair, and transcript tool-finding synthesis.
 pub fn complete_counted_and_summarized(said: &str, request: &str, transcript: &[Value]) -> String {
     let said = complete_a_count(said, request, transcript);
     let said = complete_a_summary(&said, request, transcript);

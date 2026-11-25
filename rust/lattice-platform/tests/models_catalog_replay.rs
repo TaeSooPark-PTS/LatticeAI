@@ -1,13 +1,3 @@
-//! The R10 families: the models catalog, the permission-mode dial and the
-//! workflow designer — fixture replay for each, plus the OpenAPI contract the
-//! three compose and the worker-KEEP tripwire that guards it.
-//!
-//! Four test binaries collapsed into one, all recompiling the same 12kB
-//! support module. Every test function is the one it was; only the three
-//! identically-named `router` factories are aliased so they can share a scope.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 #[path = "models_catalog_support/mod.rs"]
 mod support;
@@ -25,8 +15,6 @@ use lattice_platform::workspaceos::permission_mode::{
     router as permission_mode_router, PermissionModeState, MOUNTED as PERMISSION,
 };
 use serde_json::json;
-
-// ── models_catalog.py ──
 
 #[tokio::test(flavor = "multi_thread")]
 async fn models_catalog_fixtures_replay() {
@@ -116,8 +104,6 @@ async fn leftover_mode_and_engines_require_auth() {
     handle.abort();
 }
 
-// ── permission_mode.py ──
-
 #[tokio::test(flavor = "multi_thread")]
 async fn permission_mode_fixtures_replay() {
     let root = support::fixture("platform_misc.json");
@@ -168,8 +154,6 @@ async fn permission_mode_fixtures_replay() {
     handle.abort();
 }
 
-// ── workflow_designer.py ──
-
 #[tokio::test(flavor = "multi_thread")]
 async fn workflow_designer_fixtures_replay() {
     let root = support::fixture("tools_misc.json");
@@ -191,7 +175,6 @@ async fn workflow_designer_fixtures_replay() {
             case["branch"].as_str().unwrap_or("?")
         );
         let path = case["path"].as_str().unwrap();
-        // STATIC page shell — WP-I4 owns GET /workflows.
         if path == "/workflows" {
             continue;
         }
@@ -296,9 +279,6 @@ async fn seed_workflows(
         .expect("automation id");
     symbols.insert("$automation_workflow_id".into(), automation_id.to_string());
 
-    // The shared ecosystem capture stamped a dry-run last_execution onto the
-    // recipe (an `edited` event). Reproduce that so list/install already-
-    // installed match the recorded document.
     let _ = support::issue(
         origin,
         "PATCH",
@@ -342,8 +322,6 @@ async fn seed_workflows(
         installed.body
     );
 }
-
-// ── the composed OpenAPI contract ──
 
 #[test]
 fn mounted_routes_match_the_committed_contract() {

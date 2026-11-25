@@ -1,19 +1,3 @@
-//! Insertion-ordered JSON objects, and the two Python writers we must match.
-//!
-//! `serde_json::Map` is a `BTreeMap`, so a round-trip through it *sorts* the
-//! keys. Two behaviours in the Python original depend on the file's own order
-//! and would silently change meaning under sorting:
-//!
-//! * `users.json` — `get_user_role` falls back to "the first user registered is
-//!   the admin" (`next(iter(users))`), which is insertion order on disk;
-//! * every rewrite of `users.json` / `sessions.json` should leave a file whose
-//!   diff against the previous one is the change, not a reshuffle.
-//!
-//! Enabling `serde_json/preserve_order` would fix it — and would also flip
-//! every *other* crate in this workspace to insertion order through feature
-//! unification, invalidating goldens that were recorded against sorted maps.
-//! So the ordered map lives here, scoped to this crate.
-
 use std::fmt;
 
 use serde::de::{MapAccess, Visitor};
@@ -21,21 +5,18 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
-/// A JSON object that remembers the order its keys arrived in.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OrderedMap {
     entries: Vec<(String, Value)>,
 }
 
 impl OrderedMap {
-    /// An empty object.
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
         }
     }
 
-    /// The value stored under `key`, if any.
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.entries
             .iter()
@@ -43,13 +24,10 @@ impl OrderedMap {
             .map(|(_, value)| value)
     }
 
-    /// Whether `key` is present.
     pub fn contains_key(&self, key: &str) -> bool {
         self.get(key).is_some()
     }
 
-    /// Insert or replace. A replaced key keeps its original position, which is
-    /// what `dict[key] = value` does in Python.
     pub fn insert(&mut self, key: impl Into<String>, value: Value) {
         let key = key.into();
         match self.entries.iter_mut().find(|(name, _)| *name == key) {
@@ -58,37 +36,31 @@ impl OrderedMap {
         }
     }
 
-    /// Remove `key`, returning what was there.
     pub fn remove(&mut self, key: &str) -> Option<Value> {
         let index = self.entries.iter().position(|(name, _)| name == key)?;
         Some(self.entries.remove(index).1)
     }
 
-    /// Entries in insertion order.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
         self.entries
             .iter()
             .map(|(key, value)| (key.as_str(), value))
     }
 
-    /// Mutable entries in insertion order.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut Value)> {
         self.entries
             .iter_mut()
             .map(|(key, value)| (key.as_str(), value))
     }
 
-    /// The first key, i.e. Python's `next(iter(mapping), None)`.
     pub fn first_key(&self) -> Option<&str> {
         self.entries.first().map(|(key, _)| key.as_str())
     }
 
-    /// How many entries this object holds.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-    /// Whether the object has no entries.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -128,23 +100,10 @@ impl<'de> Deserialize<'de> for OrderedMap {
     }
 }
 
-/// `json.dumps(payload, ensure_ascii=False, indent=2)` — what
-/// `core/io_utils.atomic_write_json` writes.
-///
-/// `serde_json::to_string_pretty` already uses a two-space indent, `": "` and
-/// `",\n"`, and leaves non-ASCII unescaped, so the two agree byte for byte
-/// (including `{}` for an empty object).
 pub fn dumps_indent2<T: Serialize>(payload: &T) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(payload)
 }
 
-/// `json.dumps(payload)` with Python's **default** separators (`", "`, `": "`).
-///
-/// FastAPI's `JSONResponse` renders compact (`separators=(",", ":")`), which is
-/// what `serde_json::to_string` produces — but the CSRF middleware in
-/// `core/csrf.py` hand-writes its refusal with `json.dumps(...)` and no
-/// separators argument, so that one body carries the spaces. It is a body
-/// clients and tests key on, so it gets written the way Python writes it.
 pub fn dumps_spaced(entries: &[(&str, Value)]) -> String {
     let rendered: Vec<String> = entries
         .iter()

@@ -1,28 +1,15 @@
-//! Port selection.
-//!
-//! Ports are inconsistent across the current entry points (CLI/electron 4825,
-//! Tauri 8765, e2e 4899). The host unifies on 4825, respects
-//! `LATTICEAI_PORT`, and scans upward when the preferred port is taken. The
-//! *chosen* port is the single source of truth — it is what the worker gets in
-//! its environment and what the status snapshot reports.
-
 use std::fmt;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 
 use super::command::HostProbe;
 
-/// The unified default worker/gateway port.
 pub const DEFAULT_PORT: u16 = 4825;
 
-/// How many consecutive ports to try before giving up.
 pub const DEFAULT_SCAN_ATTEMPTS: u16 = 64;
 
-/// No free port in the scanned range.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortError {
-    /// First port that was tried.
     pub start: u16,
-    /// How many ports were tried.
     pub attempts: u16,
 }
 
@@ -39,13 +26,10 @@ impl fmt::Display for PortError {
 
 impl std::error::Error for PortError {}
 
-/// Whether `port` can be bound on 127.0.0.1 right now.
 pub fn is_port_free(port: u16) -> bool {
     TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port)).is_ok()
 }
 
-/// The configured preferred port: `LATTICEAI_PORT` when it parses, else
-/// [`DEFAULT_PORT`].
 pub fn preferred_port(probe: &dyn HostProbe, keys: &[&str]) -> u16 {
     for key in keys {
         if let Some(raw) = probe.env_var(key) {
@@ -59,7 +43,6 @@ pub fn preferred_port(probe: &dyn HostProbe, keys: &[&str]) -> u16 {
     DEFAULT_PORT
 }
 
-/// Scan upward from `start` for a bindable loopback port, skipping `exclude`.
 pub fn find_free_port(start: u16, attempts: u16, exclude: &[u16]) -> Result<u16, PortError> {
     for offset in 0..attempts.max(1) {
         let Some(port) = start.checked_add(offset) else {
@@ -115,7 +98,6 @@ mod tests {
 
     #[test]
     fn scan_skips_a_busy_port_and_returns_the_next_free_one() {
-        // Hold a real listener so the port is genuinely busy.
         let held = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0)).expect("bind");
         let busy = held.local_addr().expect("addr").port();
         assert!(!is_port_free(busy), "the held port is genuinely busy");
@@ -143,10 +125,6 @@ mod tests {
 
     #[test]
     fn zero_attempts_probes_the_start_port_and_nothing_beyond() {
-        // Deliberately asserts only the direction that stays true no matter
-        // what else on the machine is grabbing ports: the held port is busy
-        // for the whole test, and a zero-attempt scan must neither succeed on
-        // it nor wander upward to a free neighbour.
         let held = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0)).expect("bind");
         let busy = held.local_addr().expect("addr").port();
         let err = find_free_port(busy, 0, &[]).expect_err("busy start, single probe");

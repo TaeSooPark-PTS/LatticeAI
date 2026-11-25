@@ -1,38 +1,20 @@
-//! Personal and workspace memory records.
-//!
-//! Port of `core/workspace_memory.py` plus the `get_memory` / `delete_memory` /
-//! `search_memories` methods the store keeps beside it.
-//!
-//! An upsert also ingests the memory into the knowledge graph, and a graph
-//! write is not this process's to make (WAVE2_COMMON rule 6). So the operation
-//! is split in two: [`plan`] decides what the record will be — including which
-//! workspace it belongs to, which the seam call needs — and [`commit`] writes
-//! it with whatever the seam answered. Python does the same three steps in the
-//! same order inside one function; splitting them is what lets the middle one
-//! be an `await`.
-
 use serde_json::{json, Map, Value};
 
 use super::constants::MEMORY_KINDS;
 use super::pyutil::{json_hash_prefix, listify, now_iso};
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// A memory record decided but not yet written.
 #[derive(Debug, Clone)]
 pub struct MemoryPlan {
-    /// The record as it will be stored, before the graph outcome is attached.
     pub record: Value,
-    /// Whether this is a new record or an update of an existing one.
     pub is_new: bool,
 }
 
 impl MemoryPlan {
-    /// The workspace the ingest should be tagged with.
     pub fn workspace_id(&self) -> Option<&str> {
         self.record.get("workspace_id").and_then(Value::as_str)
     }
 
-    /// The memory id, for the ingest metadata.
     pub fn memory_id(&self) -> &str {
         self.record
             .get("id")
@@ -40,7 +22,6 @@ impl MemoryPlan {
             .unwrap_or_default()
     }
 
-    /// The kind, for the ingest title.
     pub fn kind(&self) -> &str {
         self.record
             .get("kind")
@@ -48,7 +29,6 @@ impl MemoryPlan {
             .unwrap_or_default()
     }
 
-    /// The content, for the ingest title.
     pub fn content(&self) -> &str {
         self.record
             .get("content")
@@ -56,7 +36,6 @@ impl MemoryPlan {
             .unwrap_or_default()
     }
 
-    /// The tags, for the ingest metadata.
     pub fn tags(&self) -> Value {
         self.record
             .get("tags")
@@ -65,7 +44,6 @@ impl MemoryPlan {
     }
 }
 
-/// Decide the record an upsert will write.
 #[allow(clippy::too_many_arguments)]
 pub fn plan(
     store: &WorkspaceOsStore,
@@ -102,8 +80,6 @@ pub fn plan(
     let is_new = existing.is_none();
     let mut record = existing.unwrap_or_else(|| json!({"id": memory_id, "created_at": now}));
 
-    // A new record lands in the resolved scope; an existing one keeps its own,
-    // so a re-scoped caller cannot drag someone else's memory into their vault.
     let scope = if is_new {
         WorkspaceOsStore::resolve_scope(workspace_id, &state)
     } else {
@@ -125,7 +101,6 @@ pub fn plan(
     Ok(MemoryPlan { record, is_new })
 }
 
-/// Write the planned record, carrying whatever the graph seam answered.
 pub fn commit(
     store: &WorkspaceOsStore,
     plan: MemoryPlan,
@@ -176,10 +151,6 @@ pub fn commit(
     Ok(record)
 }
 
-/// `list_memories` — newest first, scoped, and filtered by owner and kind.
-///
-/// The owner filter keeps records with **no** owner as well as this caller's:
-/// ownerless memories predate accounts and stay visible to the local user.
 pub fn list_memories(
     store: &WorkspaceOsStore,
     user_email: Option<&str>,
@@ -202,7 +173,6 @@ pub fn list_memories(
     json!({"memories": memories})
 }
 
-/// `search_memories` — substring over content, tags and kind.
 pub fn search_memories(
     store: &WorkspaceOsStore,
     query: &str,
@@ -239,7 +209,6 @@ pub fn search_memories(
     json!({"query": query, "memories": memories})
 }
 
-/// `get_memory` — the stored record, or not-found.
 pub fn get_memory(store: &WorkspaceOsStore, memory_id: &str) -> Result<Value, StoreError> {
     listify(store.load_state().get("memories"))
         .into_iter()
@@ -247,7 +216,6 @@ pub fn get_memory(store: &WorkspaceOsStore, memory_id: &str) -> Result<Value, St
         .ok_or_else(|| StoreError::NotFound(memory_id.to_string()))
 }
 
-/// `delete_memory`.
 pub fn delete_memory(store: &WorkspaceOsStore, memory_id: &str) -> Result<Value, StoreError> {
     let workspace_id = store.mutate(|state| {
         let memories = listify(state.get("memories"));
@@ -276,10 +244,6 @@ pub fn delete_memory(store: &WorkspaceOsStore, memory_id: &str) -> Result<Value,
     Ok(json!({"status": "ok", "memory_id": memory_id}))
 }
 
-/// `authorize_memory_delete` — owning the record, or writing its workspace.
-///
-/// Ownerless records with no workspace keep their pre-v4 behaviour: any
-/// authenticated local user may delete them.
 pub fn authorize_delete(
     store: &WorkspaceOsStore,
     record: &Value,
@@ -396,7 +360,6 @@ mod tests {
         )
         .unwrap();
         assert!(!planned.is_new);
-        // An existing record keeps its own workspace, not the requested one.
         assert_eq!(planned.workspace_id(), Some("personal"));
         let updated = commit(&store, planned, None).unwrap();
         assert_eq!(updated["content"], json!("second"));
@@ -489,7 +452,6 @@ mod tests {
         let none = search_memories(&store, "없는말", None, 20, None);
         assert!(none["memories"].as_array().unwrap().is_empty());
         assert_eq!(none["query"], json!("없는말"));
-        // limit 0 clamps up to 1, a huge limit clamps down to 100.
         assert_eq!(
             search_memories(&store, "", None, 0, None)["memories"]
                 .as_array()
@@ -553,7 +515,6 @@ mod tests {
             StoreError::Permission("'c@d.test' lacks 'write' on workspace 'org-Team'".into())
         );
 
-        // Ownerless and unscoped stays deletable by any local user.
         assert!(authorize_delete(&store, &json!({"id": "m3"}), Some("x@y.test"), None).is_ok());
     }
 }

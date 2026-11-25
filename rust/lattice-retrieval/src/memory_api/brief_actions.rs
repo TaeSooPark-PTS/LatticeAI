@@ -1,5 +1,3 @@
-//! Ranked next-actions, suggested questions, and proactive actions for Brain Brief.
-
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -24,7 +22,6 @@ fn top4(rows: Vec<OrderedMap>) -> Vec<Value> {
     rows.iter().take(4).map(json).collect()
 }
 
-/// `_brain_brief_actions`.
 pub(super) fn next_actions(
     state: &str,
     has_durable_evidence: bool,
@@ -84,7 +81,6 @@ pub(super) fn next_actions(
     top4(rows)
 }
 
-/// `_brain_brief_suggested_questions`.
 pub(super) fn suggested_questions(
     focus: &OrderedMap,
     has_durable_evidence: bool,
@@ -118,8 +114,6 @@ pub(super) fn suggested_questions(
         serde_json::json!({"focus": value})
     };
     if !has_durable_evidence || focus_kind == "empty" {
-        // Returned as built, *not* sorted or truncated — the Python early
-        // return skips the `sorted(...)[:4]` the other branch ends with.
         return vec![
             json(&question(
                 "start_brain",
@@ -168,7 +162,6 @@ pub(super) fn suggested_questions(
     top4(rows)
 }
 
-/// `_brain_brief_proactive_actions` — concrete, one-click next steps.
 pub(super) fn proactive_actions(
     focus: &OrderedMap,
     state: &str,
@@ -219,7 +212,6 @@ pub(super) fn proactive_actions(
         entry
     };
     if !has_durable_evidence {
-        // Both returned unsorted, as the Python early return does.
         return vec![
             json(&row(
                 "proactive_add_source",

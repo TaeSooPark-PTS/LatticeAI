@@ -1,39 +1,3 @@
-"""Find the real embedder that is already on this machine.
-
-The default text embedder is :class:`~.text.HashEmbeddingProvider` — feature
-hashing into 384 dimensions. It is deterministic, offline and always available,
-and it is **not semantic**: two sentences that mean the same thing in different
-words score near zero against each other. Every recall complaint about "왜 못
-찾지" that is not a keyword problem is this.
-
-A real provider has always been configurable (``LATTICEAI_EMBEDDING_PROVIDER``),
-but nothing ever *looked* for one, so a machine with a perfectly good embedding
-model already in its Hugging Face cache still hashed. This module is that look:
-
-1. an explicit configuration always wins and is never second-guessed;
-2. otherwise, if a known embedding model is already **downloaded**, name it —
-   filesystem only, no network, no download;
-3. otherwise, if an Ollama server is reachable and has an embedding model
-   pulled, name that;
-4. otherwise, nothing was found, and the hash fallback stays.
-
-Detection **reports**; adoption is a separate decision the caller makes (see
-:func:`resolve_auto_provider`). ``LATTICEAI_EMBEDDING_PROVIDER=auto`` adopts
-what was found; anything else leaves the resolution exactly as it was and the
-finding travels to ``GET /api/embeddings/status`` as ``detected``, so the setup
-surface can offer the switch instead of taking it.
-
-## Why adoption is not automatic
-
-Rust files every vector under ``(embedding_model, embedding_dim)`` and searches
-only rows whose identity matches the embedder it holds — today the hash model.
-Switching the *worker's* provider therefore does not corrupt anything (the two
-identities never mix), but until the read path can embed a query through the
-same provider, provider vectors are written and never read. Adopting silently
-would buy inference cost and no recall. The switch is real, tested and one env
-var away; it is not a default.
-"""
-
 from __future__ import annotations
 
 import os
@@ -41,23 +5,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-#: ``LATTICEAI_EMBEDDING_PROVIDER=auto`` — adopt whatever detection found.
 AUTO_PROVIDER = "auto"
-#: Set to ``0``/``false`` to skip detection entirely (and its Ollama probe).
 AUTODETECT_ENV = "LATTICEAI_EMBEDDING_AUTODETECT"
-#: Where the Ollama probe looks when nothing else says.
 OLLAMA_BASE_ENV = "LATTICEAI_EMBEDDING_BASE_URL"
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
 
-#: Local Hugging Face / sentence-transformers embedding models, best first.
 LOCAL_HF_MODELS: Tuple[Tuple[str, int, bool], ...] = (
     ("google/embeddinggemma-2", 768, False),
     ("google/embeddinggemma-300m", 768, False),
 )
 
-#: Local MLX embedding models this build knows how to drive, best first.
-#: ``dim`` is the model's true output width; ``prefix`` marks the E5 family,
-#: whose quality depends on the ``query:`` / ``passage:`` instruction.
 LOCAL_MLX_MODELS: Tuple[Tuple[str, int, bool], ...] = (
     ("mlx-community/embeddinggemma-2-4bit", 768, False),
     ("mlx-community/embeddinggemma-300m-4bit", 768, False),
@@ -67,7 +24,6 @@ LOCAL_MLX_MODELS: Tuple[Tuple[str, int, bool], ...] = (
     ("mlx-community/snowflake-arctic-embed-l-v2.0-8bit", 1024, False),
 )
 
-#: Ollama model names that are embedders rather than chat models.
 OLLAMA_EMBEDDING_MODELS: Tuple[Tuple[str, int], ...] = (
     ("bge-m3", 1024),
     ("mxbai-embed-large", 1024),
@@ -78,16 +34,11 @@ OLLAMA_EMBEDDING_MODELS: Tuple[Tuple[str, int], ...] = (
 
 @dataclass
 class Detection:
-    """What was found, and how. Every field is safe to show a user."""
-
-    #: ``"mlx"`` | ``"ollama"`` | ``""`` when nothing was found.
     provider: str = ""
     model: str = ""
     dim: int = 0
-    #: ``configured`` | ``local_model`` | ``ollama`` | ``none``.
     source: str = "none"
     detail: str = ""
-    #: Every candidate that was looked for and not found, for the UI to offer.
     candidates: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -107,13 +58,11 @@ class Detection:
 
 
 def autodetect_enabled(env: Optional[Dict[str, str]] = None) -> bool:
-    """Whether to look at all. On unless explicitly switched off."""
     raw = (env or dict(os.environ)).get(AUTODETECT_ENV, "1").strip().lower()
     return raw not in {"0", "false", "no", "off"}
 
 
 def hf_cache_roots(env: Optional[Dict[str, str]] = None) -> List[Path]:
-    """Every directory a Hugging Face snapshot could be under, in order."""
     values = env if env is not None else dict(os.environ)
     roots: List[Path] = []
     for key in ("HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "LATTICEAI_MODELS_DIR"):
@@ -154,13 +103,6 @@ def _has_model_files(directory: Path) -> bool:
 
 
 def _snapshot_dir(repo_id: str, roots: List[Path]) -> Optional[Path]:
-    """The snapshot directory holding this repo's weights, if it is on disk.
-
-    A cache entry exists as soon as *anything* has been fetched, so presence of
-    the directory is not enough: a snapshot with a ``config.json`` and at least
-    one weight file is what "already downloaded" has to mean, or the detector
-    names a model that cannot load.
-    """
     flattened = "models--" + repo_id.replace("/", "--")
     for root in roots:
         snapshots = root / flattened / "snapshots"
@@ -175,7 +117,6 @@ def _snapshot_dir(repo_id: str, roots: List[Path]) -> Optional[Path]:
 
 
 def detect_local_hf(env: Optional[Dict[str, str]] = None) -> Detection:
-    """The best already-downloaded Hugging Face embedding model, or an empty finding."""
     roots = hf_cache_roots(env)
     candidates: List[Dict[str, Any]] = []
     for repo_id, dim, prefixed in LOCAL_HF_MODELS:
@@ -207,7 +148,6 @@ def detect_local_hf(env: Optional[Dict[str, str]] = None) -> Detection:
 
 
 def detect_local_mlx(env: Optional[Dict[str, str]] = None) -> Detection:
-    """The best already-downloaded MLX embedding model, or an empty finding."""
     roots = hf_cache_roots(env)
     candidates: List[Dict[str, Any]] = []
     for repo_id, dim, prefixed in LOCAL_MLX_MODELS:
@@ -243,12 +183,6 @@ def detect_ollama(
     timeout: float = 1.5,
     env: Optional[Dict[str, str]] = None,
 ) -> Detection:
-    """An Ollama server with an embedding model pulled, or an empty finding.
-
-    One localhost GET with a short timeout. Any failure — no server, no httpx,
-    a slow answer — is "not found", never an error: detection must not be able
-    to delay or fail a boot.
-    """
     values = env or dict(os.environ)
     base = (base_url or values.get(OLLAMA_BASE_ENV, "") or DEFAULT_OLLAMA_BASE).rstrip(
         "/"
@@ -299,11 +233,6 @@ def detect_embedder(
     env: Optional[Dict[str, str]] = None,
     probe_ollama: bool = True,
 ) -> Detection:
-    """What this machine could embed with, without downloading anything.
-
-    A configured provider is reported back as ``source="configured"`` and no
-    probing happens: the operator already answered the question.
-    """
     values = env if env is not None else dict(os.environ)
     configured = str(configured_provider or "").strip().lower()
     if configured in {"hf", "sentence-transformers", "sentence_transformers"}:
@@ -352,13 +281,6 @@ def resolve_auto_provider(
     configured_dim: int,
     detection: Detection,
 ) -> Tuple[str, str, int]:
-    """The ``(provider, model, dim)`` the embedder should actually be built with.
-
-    Only ``provider == "auto"`` changes anything, and only when detection found
-    something; ``auto`` with nothing found resolves to ``hash``, which is the
-    honest answer rather than a construction that will fail its probe.
-    Explicit configuration is returned untouched.
-    """
     requested = str(configured_provider or "").strip().lower()
     if requested != AUTO_PROVIDER:
         return configured_provider, configured_model, configured_dim

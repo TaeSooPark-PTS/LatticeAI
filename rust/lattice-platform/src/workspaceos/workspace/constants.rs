@@ -1,36 +1,14 @@
-//! Workspace OS vocabulary: types, roles, permissions, areas, defaults.
-//!
-//! Port of `latticeai/core/workspace_os_constants.py`. Everything here is a
-//! name the behaviour in the sibling modules is written against, so it is
-//! stated once and never re-spelled.
-//!
-//! `WORKSPACE_OS_VERSION` is deliberately the **crate** version rather than a
-//! literal: Python keeps `"11.5.2"` in lockstep with the product version
-//! through `scripts/bump_version.py`, and `rust/Cargo.toml`'s
-//! `workspace.package.version` is bumped by the same script. Reading it from
-//! `CARGO_PKG_VERSION` means a bump cannot leave the two disagreeing.
-
-/// `WORKSPACE_OS_VERSION` — stamped into every state document and snapshot.
 pub const WORKSPACE_OS_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// The two kinds of workspace. Single-user `personal`, shared `organization`.
 pub const WORKSPACE_TYPES: [&str; 2] = ["personal", "organization"];
 
-/// The workspace every install starts with and falls back to.
 pub const DEFAULT_WORKSPACE_ID: &str = "personal";
 
-/// Role hierarchy for organization workspaces, in Python's declared order.
 pub const WORKSPACE_ROLES: [&str; 4] = ["owner", "admin", "member", "viewer"];
 
-/// The capability-style permissions roles are checked against.
 pub const WORKSPACE_PERMISSIONS: [&str; 4] =
     ["read", "write", "manage_members", "manage_workspace"];
 
-/// `ROLE_PERMISSIONS` — the permissions each role holds.
-///
-/// Python stores a `set` per role and every reader either tests membership or
-/// emits `sorted(perms)`; the arrays below are already in sorted order, which
-/// is what `list_workspaces` and `new_workspace_record` serialize.
 pub const ROLE_PERMISSIONS: [(&str, &[&str]); 4] = [
     (
         "owner",
@@ -44,7 +22,6 @@ pub const ROLE_PERMISSIONS: [(&str, &[&str]); 4] = [
     ("viewer", &["read"]),
 ];
 
-/// Whether `role` holds `permission`. Unknown role ⇒ `false`.
 pub fn role_grants(role: &str, permission: &str) -> bool {
     ROLE_PERMISSIONS
         .iter()
@@ -52,7 +29,6 @@ pub fn role_grants(role: &str, permission: &str) -> bool {
         .is_some_and(|(_, grants)| grants.contains(&permission))
 }
 
-/// The navigation areas a workspace exposes.
 pub const WORKSPACE_AREAS: [&str; 9] = [
     "graph",
     "snapshot",
@@ -65,7 +41,6 @@ pub const WORKSPACE_AREAS: [&str; 9] = [
     "timeline",
 ];
 
-/// The named first-run steps, in order. `current_step` advances through this.
 pub const ONBOARDING_STEPS: [&str; 9] = [
     "account",
     "admin",
@@ -78,10 +53,8 @@ pub const ONBOARDING_STEPS: [&str; 9] = [
     "complete",
 ];
 
-/// Statuses one onboarding step may hold (`workspace_onboarding.py`).
 pub const ONBOARDING_STATUSES: [&str; 5] = ["pending", "running", "complete", "failed", "skipped"];
 
-/// The memory kinds `upsert_memory` accepts.
 pub const MEMORY_KINDS: [&str; 7] = [
     "short_term",
     "workspace",
@@ -92,7 +65,6 @@ pub const MEMORY_KINDS: [&str; 7] = [
     "long_term",
 ];
 
-/// Timeline event types that are additionally emitted as execution events.
 pub const EXECUTION_EVENT_TYPES: [&str; 15] = [
     "agent_started",
     "handoff_created",
@@ -111,7 +83,6 @@ pub const EXECUTION_EVENT_TYPES: [&str; 15] = [
     "execution_interrupted",
 ];
 
-/// The five agents a fresh state document ships with, in Python's order.
 pub const DEFAULT_AGENTS: [(&str, &str, &str, &[&str]); 5] = [
     (
         "agent:planner",
@@ -145,7 +116,6 @@ pub const DEFAULT_AGENTS: [(&str, &str, &str, &[&str]); 5] = [
     ),
 ];
 
-/// `feature_flags` as a brand-new state document carries them, in order.
 pub const DEFAULT_FEATURE_FLAGS: [(&str, bool); 22] = [
     ("workspace_os", true),
     ("graph_trace", true),
@@ -171,15 +141,11 @@ pub const DEFAULT_FEATURE_FLAGS: [(&str, bool); 22] = [
     ("realtime_execution_observability", true),
 ];
 
-/// Folders Local Computer Memory offers to watch when none are named.
 pub const DEFAULT_COMPUTER_MEMORY_SCOPES: [&str; 3] = ["Downloads", "Documents", "Repositories"];
 
-/// The consent notice a fresh `computer_memory` block carries.
 pub const COMPUTER_MEMORY_NOTICE: &str =
     "Local Computer Memory is OFF by default and requires explicit approval.";
 
-/// Graph and installed skills are machine-global, not per-workspace.
-/// `WorkspaceService.SHARED_GLOBAL_AREAS`.
 pub const SHARED_GLOBAL_AREAS: [&str; 2] = ["graph", "skills"];
 
 #[cfg(test)]

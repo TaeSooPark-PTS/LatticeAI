@@ -1,15 +1,3 @@
-//! The wire shapes of `/rust/agent/*` — request in, run payload out.
-//!
-//! Kept apart from the handlers so the *protocol* is readable on its own. Two
-//! things it is deliberately faithful about:
-//!
-//! * the request mirrors Python's `AgentRequest` field for field, plus the data
-//!   the native loop needs because it is not the process that owns the tool
-//!   registry (the policy table, the tool-name sets, the prompts);
-//! * the response mirrors what `AgentHTTPController._finish` and
-//!   `_pause_for_approval` return, so a client written against `/agent` reads
-//!   `/rust/agent/run` without a second parser.
-
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
@@ -26,7 +14,6 @@ use crate::parse::pystr::{is_truthy, py_str};
 use crate::surface::worker::WorkerClient;
 use crate::tools::sandbox::Workspace;
 
-/// `PREVIEWABLE_EXTENSIONS`, sorted for binary search.
 const PREVIEWABLE_EXTENSIONS: [&str; 20] = [
     ".css",
     ".csv",
@@ -62,7 +49,6 @@ fn default_language_hint() -> String {
     "English".into()
 }
 
-/// `POST /rust/agent/run`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RunBody {
     pub message: String,
@@ -102,7 +88,6 @@ pub struct RunBody {
     pub project_context: Option<String>,
     #[serde(default)]
     pub self_model_summary: Option<String>,
-    // ── registry data the loop takes as input, never re-derives ─────────
     #[serde(default)]
     pub policies: Option<PolicyTable>,
     #[serde(default)]
@@ -113,49 +98,18 @@ pub struct RunBody {
     pub scoped_knowledge_tools: Option<Vec<String>>,
     #[serde(default)]
     pub tool_names: Option<Vec<String>>,
-    /// The caller's role, for the native tools' `check_role` port.
-    ///
-    /// **Server-injected**, like `user_email` beside it: the gateway resolves it
-    /// from the session before it calls, and a client cannot widen what it may
-    /// run by claiming `owner` any more than it can by claiming somebody else's
-    /// address. Absent means Python's own default (`user`), which is the
-    /// restrictive answer — admin-only tools refuse.
     #[serde(default)]
     pub user_role: Option<String>,
     #[serde(default = "governor_default")]
     pub governor_enabled: bool,
-    /// The three role prompts.
-    ///
-    /// **Optional since v11.9.0, and absent means the built-in.** They used to
-    /// default to empty strings that nothing filled, so a request that did not
-    /// carry a prompt library got a model that had never been told the JSON
-    /// action contract. A supplied prompt still wins outright — see
-    /// [`crate::prompts`] for what an omitted one resolves to.
     #[serde(default)]
     pub planner_prompt: Option<String>,
     #[serde(default)]
     pub executor_prompt: Option<String>,
     #[serde(default)]
     pub critic_prompt: Option<String>,
-    /// Skills the host has installed, as briefs (v11.9.0).
-    ///
-    /// **A contract, not a capability.** Each entry is rendered into the
-    /// executor prompt as one line under `Available skills`, and that is all
-    /// this crate does with it: the loop never resolves a name, loads a skill
-    /// body, or executes one. The registry that owns skills is the platform's,
-    /// and it is the caller's job to send only what the run may actually use —
-    /// a name here is a suggestion to the model, never an authorization.
     #[serde(default)]
     pub skills: Option<Vec<crate::prompts::SkillBrief>>,
-    /// Measure the executing model instead of guessing from its id (v12.0.0).
-    ///
-    /// **On unless the caller says otherwise**, like `governor_enabled` beside
-    /// it: a request that says nothing wants the loop to work, and working
-    /// means knowing which dial this model can hold. Off costs the run nothing
-    /// and falls back to the size prior — which is what a benchmark harness
-    /// pinning its own conditions wants, and what
-    /// [`crate::kernel::agentloop::LoopDeps::new`] does by default. See
-    /// [`crate::kernel::probe`].
     #[serde(default = "probe_default")]
     pub probe_profile: bool,
 }
@@ -176,12 +130,10 @@ fn set_of(values: Option<&Vec<String>>, fallback: BTreeSet<String>) -> BTreeSet<
 }
 
 impl RunBody {
-    /// `max(1, min(max_steps, 50))`.
     pub fn clamped_max_steps(&self) -> u32 {
         self.max_steps.clamp(1, 50)
     }
 
-    /// The loop request this body describes.
     pub fn to_request(&self) -> RunRequest {
         RunRequest {
             message: self.message.clone(),
@@ -191,7 +143,6 @@ impl RunBody {
             user_email: self.user_email.clone(),
             temperature: self.temperature,
             max_steps: self.clamped_max_steps(),
-            // Python fixes the verification retry ceiling at the call site.
             max_retry: 3,
             planning_model: self.planning_model.clone(),
             executing_model: self.executing_model.clone(),
@@ -206,15 +157,10 @@ impl RunBody {
         }
     }
 
-    /// The ports this body configures around a worker and a workspace.
     pub fn to_deps(&self, worker: WorkerClient, workspace: Workspace) -> LoopDeps {
         self.to_deps_with_hooks(worker, workspace, None)
     }
 
-    /// [`RunBody::to_deps`], with the host's `pre_tool` / `post_tool` sink.
-    ///
-    /// The sink is the host's, never the body's: a request cannot name the
-    /// hooks that will judge it any more than it can name its own role.
     pub fn to_deps_with_hooks(
         &self,
         worker: WorkerClient,
@@ -224,12 +170,6 @@ impl RunBody {
         self.to_deps_with_ports(worker, workspace, hooks, None)
     }
 
-    /// [`RunBody::to_deps_with_hooks`], with the host's tool catalog too.
-    ///
-    /// The catalog is the host's for the same reason the hook sink is: what is
-    /// installed on this machine is not something a request may claim. A body
-    /// that names a skill still only *names* it — whether choosing that name
-    /// does anything is decided by what the host injected here.
     pub fn to_deps_with_ports(
         &self,
         worker: WorkerClient,
@@ -238,16 +178,10 @@ impl RunBody {
         external: Option<std::sync::Arc<dyn crate::tools::ToolCatalog>>,
     ) -> LoopDeps {
         let policies = self.policies.clone().unwrap_or_default();
-        // Absent `tool_names` means the escalation hint names whatever the
-        // policy table knows, which is the closest honest stand-in for
-        // `sorted(deps.tool_governance)`.
         let tool_names = self
             .tool_names
             .clone()
             .unwrap_or_else(|| policies.tools.keys().cloned().collect::<Vec<String>>());
-        // The native tools take the run's role and the run's denylist, so a
-        // request that carries its own policy table is refused against *that*
-        // table's prefixes rather than a second built-in copy.
         let mut tools = crate::tools::NativeTools::new(
             workspace.clone(),
             crate::tools::ToolConfig::from_env()
@@ -287,7 +221,6 @@ impl RunBody {
     }
 }
 
-/// `POST /rust/agent/resume`.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct ResumeBody {
     #[serde(default)]
@@ -296,7 +229,6 @@ pub struct ResumeBody {
     pub approval_token: Option<String>,
     #[serde(default = "approved_default")]
     pub approved: bool,
-    /// Python accepts either spelling; `approve` wins when present.
     #[serde(default)]
     pub approve: Option<bool>,
     #[serde(default)]
@@ -328,7 +260,6 @@ impl ResumeBody {
     }
 }
 
-/// `collect_created_files`.
 pub fn collect_created_files(
     transcript: &[Value],
     file_create_actions: &BTreeSet<String>,
@@ -364,7 +295,6 @@ pub fn collect_created_files(
     Value::Array(files)
 }
 
-/// `collect_artifacts`.
 pub fn collect_artifacts(transcript: &[Value], file_create_actions: &BTreeSet<String>) -> Value {
     let mut artifacts = Vec::new();
     for step in transcript {
@@ -411,12 +341,6 @@ pub fn collect_artifacts(transcript: &[Value], file_create_actions: &BTreeSet<St
     Value::Array(artifacts)
 }
 
-/// The terminal payload, mirroring `AgentHTTPController._finish`.
-///
-/// Two named differences from Python's: `explanation` (plain-language outcome
-/// prose, produced by `latticeai.core.run_explain`, which stays with the
-/// surface that renders it) is absent, and `audit` — the events the loop
-/// raised — is present, because the seam has no audit sink to write them to.
 pub fn finish_payload(
     ctx: &AgentRunContext,
     body: &RunBody,
@@ -447,7 +371,6 @@ pub fn finish_payload(
     payload
 }
 
-/// The pause payload, mirroring `AgentHTTPController._pause_for_approval`.
 pub fn pause_payload(
     ctx: &AgentRunContext,
     body: &RunBody,
@@ -500,7 +423,6 @@ pub fn pause_payload(
     payload.insert("reviewing_model".into(), json!(body.reviewing_model));
     payload.insert("loop".into(), ctx.trace.summary());
     if body.human_in_loop {
-        // Historical wire field — the run id doubles as the context id.
         payload.insert("context_id".into(), json!(run_id));
     }
     Value::Object(payload)
@@ -529,8 +451,6 @@ mod tests {
 
     #[test]
     fn an_omitted_prompt_library_resolves_to_the_built_in_prompts() {
-        // The v11.9.0 fix at the wire: a body that carries no prompts is the
-        // ordinary case, and it used to mean the model was told nothing.
         let body: RunBody = serde_json::from_str(r#"{"message": "hi"}"#).expect("body");
         assert_eq!(body.planner_prompt, None);
         let dir = tempfile::tempdir().expect("tempdir");
@@ -554,7 +474,6 @@ mod tests {
             .contains("\"action\": \"plan\""));
         assert!(deps.prompts.critic_prompt().contains("\"next_state\""));
 
-        // And a caller with its own library still wins.
         let body = RunBody {
             executor_prompt: Some("HOST".into()),
             ..RunBody::default()
@@ -581,12 +500,9 @@ mod tests {
         assert_eq!(request.skills[0].name, "release-manager");
         assert_eq!(request.skills[0].when, "on request");
         assert_eq!(request.skills[1].brief, "", "the two hints are optional");
-        // A resumed run reads its stored body back, so the briefs must survive
-        // the round trip the run store makes.
         let stored = serde_json::to_value(&body).expect("serialize");
         let restored: RunBody = serde_json::from_value(stored).expect("deserialize");
         assert_eq!(restored.to_request().skills, request.skills);
-        // Absent is an empty list, never a null the prompt would render.
         let bare: RunBody = serde_json::from_str(r#"{"message": "hi"}"#).expect("body");
         assert!(bare.to_request().skills.is_empty());
     }
@@ -650,7 +566,6 @@ mod tests {
         let body: ResumeBody =
             serde_json::from_str(r#"{"modified_plan": {"goal": "m"}}"#).expect("body");
         assert_eq!(body.plan_edit(), Some(&json!({"goal": "m"})));
-        // An empty edit is no edit.
         let body: ResumeBody = serde_json::from_str(r#"{"edited_plan": {}}"#).expect("body");
         assert_eq!(body.plan_edit(), None);
     }
@@ -702,7 +617,6 @@ mod tests {
         let mut sorted = PREVIEWABLE_EXTENSIONS.to_vec();
         sorted.sort_unstable();
         assert_eq!(PREVIEWABLE_EXTENSIONS.to_vec(), sorted);
-        // The Python set has twenty members; a silent drop shows up here.
         assert_eq!(PREVIEWABLE_EXTENSIONS.len(), 20);
         assert!(PREVIEWABLE_EXTENSIONS.binary_search(&".yml").is_ok());
     }

@@ -23,11 +23,6 @@ export function StatusCard({ title, status, detail }: { title: string; status: s
   );
 }
 
-/**
- * How you get in, as a sentence. The payload underneath is a provider list and
- * an OIDC discovery URL — real, but not an answer to the question this panel is
- * on the screen to answer. Advanced mode still gets the payload.
- */
 export function SignInOptionsView({ data }: { data: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);

@@ -1,5 +1,3 @@
-"""Local deterministic embeddings used by the standalone Brain Core package."""
-
 from __future__ import annotations
 
 import asyncio
@@ -75,13 +73,6 @@ def _hash_to_index(feature: str, dim: int) -> tuple[int, float]:
 
 @dataclass(frozen=True)
 class LocalEmbeddingModel:
-    """Deterministic local embedder.
-
-    This is intentionally not presented as a production semantic model. It is
-    a real, offline cosine signal for local-first operation and tests; setup
-    wizard provisioning can replace it with a user-consented model/provider.
-    """
-
     dim: int = DEFAULT_EMBEDDING_DIM
     model_id: str = EMBEDDING_MODEL_ID
 
@@ -105,15 +96,9 @@ class LocalEmbeddingModel:
         return [value / norm for value in vector]
 
     async def embed_async(self, text: str) -> List[float]:
-        """Offload CPU-bound hashing onto a worker thread so async loops stay responsive."""
         return await asyncio.to_thread(self.embed, text)
 
     def similarity(self, left: Iterable[float], right: Iterable[float]) -> float:
-        # strict=True: a dimension mismatch means the two vectors came from
-        # different embedding models. Truncating to the shorter one produces a
-        # plausible-looking similarity that is meaningless — exactly the silent
-        # wrongness this codebase keeps finding. Callers that can hit a model
-        # swap already handle failure and fall back to lexical search.
         left_v, right_v = list(left), list(right)
         if len(left_v) != len(right_v):
             raise ValueError(
@@ -135,17 +120,6 @@ class LocalEmbeddingModel:
             count = len(payload) // 4
         return list(struct.unpack(f"<{count}f", payload[: count * 4]))
 
-
-# Removed in v11.1.0: ``VisionStub`` / ``get_vision_embedder``.
-#
-# They produced a "caption" (``Image pic.png (PNG 12x8)``) and an "image
-# embedding" (a hash of the filename and pixel dimensions) with no model
-# involved, and ``discovery_index`` stored both. Once in the graph neither was
-# distinguishable from something a vision model had actually said, which is the
-# one property a caption must have. The honest seam is now
-# :class:`lattice_brain.multimodal.MultimodalPorts`: a caption exists only when
-# a vision-language model produced it, an image vector only when a vision model
-# produced it, and their absence is recorded as an absence.
 
 __all__ = [
     "DEFAULT_EMBEDDING_DIM",

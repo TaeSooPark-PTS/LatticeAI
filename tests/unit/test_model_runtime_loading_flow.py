@@ -1,5 +1,3 @@
-"""Unit tests for model resolution, engine readiness, and prepare/load streaming."""
-
 from __future__ import annotations
 
 import asyncio
@@ -76,7 +74,6 @@ def test_ensure_lmstudio_model_paths(monkeypatch):
     with pytest.raises(ModelRuntimeError):
         engines_mod.ensure_lmstudio_model("k1")
 
-    # download path: not found, then poll
     monkeypatch.setattr(
         engines_mod, "_find_lmstudio_model_key", lambda name, models: None
     )
@@ -94,7 +91,6 @@ def test_ensure_lmstudio_model_paths(monkeypatch):
 
     monkeypatch.setattr(engines_mod, "_json_request", json_seq)
     monkeypatch.setattr(engines_mod.time, "sleep", lambda *_a, **_k: None)
-    # after download, found + loaded
     calls = {"g": 0}
 
     def models(force=False):
@@ -179,7 +175,6 @@ def test_engine_installed_and_safe_plan(monkeypatch, tmp_path: Path):
         "exists",
         lambda self: str(self).endswith("LM Studio.app") or Path.exists(self),
     )
-    # avoid patching Path.exists globally — use a dedicated missing path check
     monkeypatch.setattr(
         engines_mod.shutil,
         "which",
@@ -336,14 +331,12 @@ def test_prepare_and_load_and_stream(monkeypatch):
 
 
 def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: Path):
-    # cached download without progress_emit (120->129)
     monkeypatch.setattr(download_mod, "hf_model_ready", lambda *_a, **_k: True)
     monkeypatch.setattr(download_mod, "hf_model_dir", lambda _r: tmp_path / "m")
     monkeypatch.setattr(download_mod, "hf_cache_model_dir", lambda _r: None)
     cached = download_mod.download_hf_model("org/m")
     assert cached["cached"] is True
 
-    # emit_byte_progress without total_bytes + throttle return
     monkeypatch.setattr(download_mod.importlib.util, "find_spec", lambda _n: object())
     monkeypatch.setattr(download_mod, "hf_model_ready", lambda *_a, **_k: False)
     monkeypatch.setattr(
@@ -389,11 +382,9 @@ def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: P
     monkeypatch.setattr(download_mod, "hf_model_ready", ready_flip)
     download_mod.download_hf_model("org/m", progress_emit=lambda *_a, **_k: None)
 
-    # lmstudio candidate with empty parts
     assert engines_mod._lmstudio_candidate_keys("-")
     assert engines_mod._lmstudio_candidate_keys("--gguf")
 
-    # download already completed — skip poll loop
     monkeypatch.setattr(engines_mod, "ensure_lmstudio_server", lambda: None)
     monkeypatch.setattr(engines_mod, "_find_lmstudio_model_key", lambda *a, **k: None)
     monkeypatch.setattr(
@@ -418,7 +409,6 @@ def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: P
 
 
 def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
-    # ensure_engine_ready successful install of non-mlx
     state = create_model_runtime_state()
     installed = {"now": False}
     monkeypatch.setattr(
@@ -437,7 +427,6 @@ def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
     out = loading_mod.ensure_engine_ready("ollama", state=state)
     assert out["installed_now"] is True
 
-    # lmstudio wait loop: fail then sleep then succeed
     calls = {"n": 0}
 
     def json_req(*_a, **_k):
@@ -455,7 +444,6 @@ def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(model_engines.time, "sleep", lambda *_a, **_k: None)
     model_engines.ensure_lmstudio_server()
 
-    # ollama wait loop: after spawn, probe raises then succeeds
     runs = {"n": 0}
 
     def run(*_a, **_k):
@@ -513,7 +501,6 @@ def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
     result = model_engines.install_engine("ollama")
     assert result["daemon_started"] is True
 
-    # idle unload prints when models are returned
     class Router:
         def unload_idle_models(self, seconds):
             return ["idle-a"]
@@ -541,7 +528,6 @@ def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
     async def fake_sleep(_n):
         raise asyncio.CancelledError()
 
-    # first sleep happens, then we cancel via CancelledError after unload
     sleeps = {"n": 0}
 
     async def sleep_once(_n):

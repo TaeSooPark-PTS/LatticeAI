@@ -1,11 +1,3 @@
-"""Model loading, prepare and stream logic extracted from model_runtime for server decomp.
-
-Unifies the synchronous ``_prepare_model_sources`` path and the streaming
-``prepare_and_load_model_stream`` worker onto a single engine-dispatched source
-preparation pipeline so engine installation, download consent, progress
-reporting, and local-server startup never diverge between blocking and SSE flows.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -384,7 +376,6 @@ def _prepare_model_sources(
     allow_download: bool,
     emit_progress: ProgressEmitter = None,
 ) -> Dict[str, Any]:
-    """Make sure the engine and weights this model needs exist locally."""
     install_result: Dict[str, object] = {}
     download_result: Optional[Dict[str, object]] = None
 

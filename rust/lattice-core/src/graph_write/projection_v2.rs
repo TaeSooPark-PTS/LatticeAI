@@ -1,10 +1,3 @@
-//! Per-row `nodes_v2` / `edges_v2` / `edge_occurrences` projection helpers.
-//!
-//! Port of `lattice_brain/graph/projection/v2_schema.py`'s per-row write half.
-//! Both the live [`super::GraphWriter`] write door (`primitives`) and the
-//! schema backfill (`schema`) project through these functions so there is a
-//! single definition of canonical v2 row semantics.
-
 use rusqlite::{ToSql, Transaction};
 use serde_json::Value;
 
@@ -14,7 +7,6 @@ use crate::pytext::safe_loads;
 use super::pyaux::{py_dumps, py_str, sha256_text, truthy};
 use super::taxonomy::{edge_type_from_legacy, node_type_from_legacy};
 
-/// The arguments `_v2_project_node` takes.
 pub(crate) struct NodeProjection<'a> {
     pub node_id: &'a str,
     pub node_type: &'a str,
@@ -22,16 +14,12 @@ pub(crate) struct NodeProjection<'a> {
     pub summary: Option<&'a str>,
     pub metadata_json: Option<&'a str>,
     pub created_at: Option<&'a str>,
-    /// Python defaults this to `_now()`; both call sites always pass a stamp
-    /// (the write door passes the clock, the backfill passes the legacy row's),
-    /// so the fallback is unreachable and is not reproduced.
     pub updated_at: &'a str,
     pub owner: Option<&'a str>,
     pub workspace_id: Option<&'a str>,
     pub visibility: Option<&'a str>,
 }
 
-/// The arguments `_v2_project_edge` takes.
 pub(crate) struct EdgeProjection<'a> {
     pub from_node: &'a str,
     pub to_node: &'a str,
@@ -40,16 +28,9 @@ pub(crate) struct EdgeProjection<'a> {
     pub metadata_json: Option<&'a str>,
     pub edge_id: Option<&'a str>,
     pub created_at: Option<&'a str>,
-    /// `None` is Python's "argument not passed"; `Some("")` is an explicit
-    /// empty legacy label, and the two behave differently.
     pub legacy_type: Option<&'a str>,
 }
 
-/// `_v2_project_node` with `strict=True`.
-///
-/// Called by [`super::schema`]'s backfill with `updated_at` from the legacy
-/// row; in that case there is no clock reading at all, which is why this is a
-/// free function rather than a `GraphWriter` method.
 pub(crate) fn project_node_v2(
     txn: &Transaction<'_>,
     spec: &NodeProjection<'_>,
@@ -113,7 +94,6 @@ pub(crate) fn project_node_v2(
     Ok(())
 }
 
-/// `_v2_project_edge` with `strict=True`, including the `edge_occurrences` row.
 pub(crate) fn project_edge_v2(
     txn: &Transaction<'_>,
     spec: &EdgeProjection<'_>,
@@ -238,7 +218,6 @@ pub(crate) fn project_edge_v2(
     Ok(())
 }
 
-/// `_v2_delete_nodes` — mirror a legacy deletion (edges cascade on the FK).
 pub(crate) fn delete_nodes_v2(txn: &Transaction<'_>, ids: &[String]) -> Result<(), CoreError> {
     if ids.is_empty() {
         return Ok(());
@@ -252,7 +231,6 @@ pub(crate) fn delete_nodes_v2(txn: &Transaction<'_>, ids: &[String]) -> Result<(
     Ok(())
 }
 
-/// A `serde_json` scalar bound the way Python's sqlite3 binds the same value.
 pub(crate) struct JsonScalar<'a>(pub &'a Value);
 
 impl ToSql for JsonScalar<'_> {

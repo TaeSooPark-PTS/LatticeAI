@@ -1,11 +1,3 @@
-//! `WorkerSeamClient` against a real worker — a small axum server on a real
-//! loopback port.
-//!
-//! A mock would prove the client calls a function; this proves it speaks HTTP:
-//! that the JSON body arrives as the worker's handler sees it, that a refusal
-//! keeps its status, that an event stream is not buffered on the way through,
-//! and that a configured header actually rides along.
-
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -22,8 +14,6 @@ use tokio::sync::mpsc;
 
 use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
 
-/// What the stub saw, so a test can assert on the request and not only the
-/// answer.
 #[derive(Default)]
 struct Seen {
     calls: AtomicUsize,
@@ -31,7 +21,6 @@ struct Seen {
     last_headers: std::sync::Mutex<Vec<(String, String)>>,
 }
 
-/// A worker that answers on a port the OS picked, shut down when dropped.
 struct FakeWorker {
     origin: String,
     seen: Arc<Seen>,
@@ -138,8 +127,6 @@ async fn slow() -> Response {
     ([("content-type", "application/json")], "{}").into_response()
 }
 
-/// Two events with a real gap between them: a client that buffered the body
-/// would only see them both at the end.
 async fn sse(State(seen): State<Arc<Seen>>, headers: HeaderMap, body: String) -> Response {
     record(
         &seen,
@@ -159,8 +146,6 @@ async fn sse(State(seen): State<Arc<Seen>>, headers: HeaderMap, body: String) ->
         .into_response()
 }
 
-/// `tokio_stream::wrappers::ReceiverStream`, hand-rolled rather than adding a
-/// dependency for one test.
 struct ChannelStream(mpsc::Receiver<Result<Vec<u8>, std::io::Error>>);
 
 impl Stream for ChannelStream {
@@ -246,7 +231,6 @@ async fn html_from_a_booting_worker_is_a_malformed_answer_not_a_panic() {
 
 #[tokio::test]
 async fn an_unreachable_worker_is_a_transport_failure_with_the_path() {
-    // Port 1 on loopback: nothing listens, and the connect timeout bounds it.
     let client = WorkerSeamClient::new("http://127.0.0.1:1").expect("client");
     let err = client.get_json("/health").await.unwrap_err();
     assert!(matches!(err, WorkerSeamError::Transport { .. }));
@@ -265,7 +249,6 @@ async fn the_timeout_is_the_callers_to_set() {
         .unwrap_err();
     assert!(matches!(err, WorkerSeamError::Transport { .. }));
 
-    // And no retry happened behind the caller's back.
     assert_eq!(
         worker.seen.calls.load(Ordering::SeqCst),
         0,
@@ -309,8 +292,6 @@ async fn an_event_stream_arrives_in_pieces_rather_than_at_the_end() {
 
 #[tokio::test]
 async fn a_refused_stream_is_an_error_before_any_bytes_flow() {
-    // A 401 delivered as an event stream would otherwise reach the browser as
-    // an empty, successful-looking chat.
     let worker = FakeWorker::start().await;
     let err = worker
         .client()

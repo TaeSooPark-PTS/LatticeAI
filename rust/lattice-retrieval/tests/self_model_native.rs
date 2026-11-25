@@ -1,19 +1,3 @@
-//! The Self-Model's four write routes and the contradiction stamps, natively.
-//!
-//! Until v11.7.0 all five posted to `POST /worker/graph/mutate` — a door the
-//! Python worker stopped serving in v11.6.0. On a live install
-//! `POST /api/memory/self-model` answered 404, `…/propose` proposed nothing,
-//! `…/apply` applied nothing, `DELETE …/{node_id}` deleted nothing, and
-//! `resolve_contradiction` reported `stamps: []` on every resolution. The
-//! fixture replay stayed green throughout, because the harness's stand-in
-//! worker answered on the seam's behalf.
-//!
-//! `memory_api_replay` pins the recorded *bodies* (and asserts the seam is
-//! never called). This file pins what the recorded bodies cannot: that the
-//! rows land in `knowledge_graph.sqlite` and `workspace_os.json`.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod common;
 
@@ -59,13 +43,6 @@ fn node(conn: &rusqlite::Connection, id: &str) -> Option<(String, String, String
     .ok()
 }
 
-/// Change one stored review item's `kind`, through the document's real medium.
-///
-/// Rewriting `workspace_os.json` alone would be ignored: `wsos::load` reads the
-/// `workspace_os_state` SQLite row **first** and only falls back to the file.
-/// That asymmetry is exactly why the standalone `JsonProposalStore` needed a
-/// document owner (§F-G §3), and a test that forgot it would be testing a file
-/// nothing reads.
 fn retype_review_item(install: &Install, item_id: &str, kind: &str) {
     let conn = rusqlite::Connection::open(install.data_dir().join("knowledge_graph.sqlite"))
         .expect("store");
@@ -111,8 +88,6 @@ async fn a_users_own_edit_writes_the_root_the_fact_and_the_edge() {
     assert_eq!(fact["type"], json!("Habit"));
     assert_eq!(fact["origin"], json!("user"));
     assert_eq!(fact["signal"], json!("user_edit"));
-    // The trailing full stop is normalised away before the id is derived, so
-    // the same statement typed twice lands on one node rather than two.
     assert_eq!(fact["text"], json!("매일 아침 회의록을 정리합니다"));
 
     let conn = graph(&install);
@@ -137,7 +112,6 @@ async fn a_users_own_edit_writes_the_root_the_fact_and_the_edge() {
         .expect("edges");
     assert_eq!(edges, 1, "one PART_OF edge to the root");
 
-    // …and the profile route reads back what was written.
     let (status, profile) = get(&install, "/api/memory/self-model").await;
     assert_eq!(status, 200);
     let ids: Vec<&str> = profile["facts"]
@@ -149,7 +123,6 @@ async fn a_users_own_edit_writes_the_root_the_fact_and_the_edge() {
     assert!(ids.contains(&node_id.as_str()), "{ids:?}");
     assert_eq!(profile["counts"]["habit"], json!(1));
 
-    // Writing it again is an upsert, not a second fact.
     let (status, again) = post(
         &install,
         "/api/memory/self-model",
@@ -185,8 +158,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
     assert_eq!(item["status"], json!("pending"));
     assert_eq!(item["payload"]["node_type"], json!("Preference"));
 
-    // **Extraction never writes.** The candidate is a review item and nothing
-    // else, which is the whole governance rule for this subgraph.
     assert!(
         node(&graph(&install), &fact_id).is_none(),
         "a proposal must not write the node"
@@ -194,7 +165,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
     let (_, profile) = get(&install, "/api/memory/self-model").await;
     assert_eq!(profile["count"], json!(0));
 
-    // The same text again proposes nothing: the subject is already open.
     let (_, again) = post(
         &install,
         "/api/memory/self-model/propose",
@@ -204,7 +174,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
     assert_eq!(again["proposed_count"], json!(0));
     assert_eq!(again["suppressed"], json!(1));
 
-    // Applying is the single door from a proposal to a node.
     let (status, applied) = post(
         &install,
         "/api/memory/self-model/apply",
@@ -225,7 +194,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
     );
     assert_eq!(metadata["origin"], json!("proposal"));
 
-    // The review item is approved in the shared document, not just in memory.
     let document: Value = serde_json::from_str(
         &std::fs::read_to_string(install.data_dir().join("workspace_os.json")).expect("read"),
     )
@@ -238,7 +206,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
         .expect("the item");
     assert_eq!(stored["status"], json!("approved"));
 
-    // …and now that the fact is known, it is never proposed again.
     let (_, third) = post(
         &install,
         "/api/memory/self-model/propose",
@@ -252,7 +219,6 @@ async fn a_proposal_writes_nothing_until_it_is_applied() {
 #[tokio::test]
 async fn applying_something_that_is_not_a_self_model_proposal_refuses() {
     let install = Install::start().await;
-    // An unknown id is a 404 about the *item*.
     let (status, body) = post(
         &install,
         "/api/memory/self-model/apply",
@@ -261,7 +227,6 @@ async fn applying_something_that_is_not_a_self_model_proposal_refuses() {
     .await;
     assert_eq!(status, 404, "{body}");
 
-    // A real review item of another kind is a 400 about the *proposal*.
     let (_, proposed) = post(
         &install,
         "/api/memory/self-model/propose",
@@ -318,7 +283,6 @@ async fn deleting_a_fact_removes_the_row_and_refuses_anything_else() {
         .expect("count");
     assert_eq!(v2, 0, "and from its v2 projection");
 
-    // Deleting it twice is a 404 about the fact…
     let again = client
         .delete(format!(
             "{}/api/memory/self-model/{node_id}",
@@ -330,8 +294,6 @@ async fn deleting_a_fact_removes_the_row_and_refuses_anything_else() {
         .expect("delete");
     assert_eq!(again.status().as_u16(), 404);
 
-    // …and a node that is not a Self-Model node is refused before the store is
-    // touched, so this route can never delete an ordinary memory.
     let stray = client
         .delete(format!(
             "{}/api/memory/self-model/doc:whatever",
@@ -344,18 +306,9 @@ async fn deleting_a_fact_removes_the_row_and_refuses_anything_else() {
     assert_eq!(stray.status().as_u16(), 400);
 }
 
-/// Resolving a contradiction stamps the graph, and the stamps are real.
-///
-/// `resolve_contradiction` has reported `stamps: []` on every install since
-/// v11.6.0 — it posted `stamp_contradiction` to the retired seam and swallowed
-/// the failure (`Err(_) => Value::Array(Vec::new())`), so the Review Center
-/// said "applied" and the two memories kept claiming to be true at once.
 #[tokio::test]
 async fn resolving_a_contradiction_writes_the_validity_window() {
     let install = Install::start().await;
-    // Two memories that disagree, and a contradiction proposal over them. The
-    // synthesis pipeline raises these itself; seeding one directly keeps this
-    // test about the *stamp*, which is the half that was broken.
     let conn = graph(&install);
     for (id, title) in [
         ("mem:older", "알파 퓨전 유지"),
@@ -387,7 +340,6 @@ async fn resolving_a_contradiction_writes_the_validity_window() {
     assert_eq!(resolved["status"], json!("approved"));
     let stamps = resolved["stamps"].as_array().expect("stamps");
     assert_eq!(stamps.len(), 2, "replace stamps both sides: {stamps:?}");
-    // Python's key order: `node_id`, the fields this arm supplied, `updated`.
     assert_eq!(
         stamps[0],
         json!({"node_id": "mem:older", "valid_to": "2026-08-14T12:00:00",
@@ -419,7 +371,6 @@ async fn resolving_a_contradiction_writes_the_validity_window() {
     assert_eq!(from.as_deref(), Some("2026-08-14T12:00:00"));
     assert!(to.is_none() && superseded.is_none());
 
-    // The item is approved once; resolving it again is a 400 about the kind.
     let (status, _) = post(
         &install,
         "/api/brain/contradictions/resolve",
@@ -429,7 +380,6 @@ async fn resolving_a_contradiction_writes_the_validity_window() {
     assert_eq!(status, 404, "an unknown item is a 404");
 }
 
-/// Append one contradiction proposal, through the medium `wsos::load` reads.
 fn seed_contradiction(install: &Install, older: &str, newer: &str) -> String {
     let conn = rusqlite::Connection::open(install.data_dir().join("knowledge_graph.sqlite"))
         .expect("store");

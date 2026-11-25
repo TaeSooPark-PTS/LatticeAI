@@ -1,14 +1,3 @@
-"""model_engines discovery helpers — where an engine lives and whether it is supported.
-
-Every probe here reaches for something the test machine is not allowed to have:
-a real ``ollama`` on PATH, a Windows install directory, an LM Studio bundle, an
-HTTP endpoint. So each one is exercised against the module's *own* view of
-``shutil`` / ``platform`` / ``sys`` / ``urllib`` (``monkeypatch.setattr(
-model_engines, ...)``), never the stdlib's. The CI coverage leg is ubuntu, where
-the darwin and Windows branches would otherwise be unreachable rather than
-merely untested.
-"""
-
 from __future__ import annotations
 
 import json
@@ -25,8 +14,6 @@ from latticeai.services.model_errors import ModelRuntimeError
 
 
 class _Response:
-    """The minimal ``urlopen`` result ``_json_request`` consumes."""
-
     def __init__(self, body: bytes) -> None:
         self._body = body
 
@@ -41,7 +28,6 @@ class _Response:
 
 
 def _fake_urllib(monkeypatch, urlopen) -> None:
-    """Replace only ``model_engines``' view of urllib, never the stdlib's."""
     monkeypatch.setattr(
         model_engines,
         "urllib",
@@ -86,9 +72,6 @@ def _fake_which(monkeypatch, table: dict) -> None:
     )
 
 
-# ── progress payload bridge ──────────────────────────────────────────────────
-
-
 def test_progress_payload_delegates_to_the_runtime_formatter():
     payload = model_engines._progress_payload(
         "download", "받는 중", percent=42.44, detail="model", indeterminate=False
@@ -103,13 +86,9 @@ def test_progress_payload_delegates_to_the_runtime_formatter():
 def test_progress_payload_degrades_to_empty_when_the_runtime_cannot_be_imported(
     monkeypatch,
 ):
-    """Progress reporting must never be the reason a download fails."""
     monkeypatch.setitem(sys.modules, "latticeai.services.model_runtime", None)
 
     assert model_engines._progress_payload("download", "받는 중", percent=10) == {}
-
-
-# ── binary discovery ─────────────────────────────────────────────────────────
 
 
 def test_local_binary_prefers_whatever_is_on_path(monkeypatch):
@@ -121,7 +100,6 @@ def test_local_binary_prefers_whatever_is_on_path(monkeypatch):
 def test_local_binary_falls_back_to_the_windows_install_directory(
     monkeypatch, tmp_path
 ):
-    """Windows ships ollama.exe outside PATH, so PATH-miss is not absence."""
     exe = tmp_path / "Programs" / "Ollama" / "ollama.exe"
     exe.parent.mkdir(parents=True)
     exe.write_text("", encoding="utf-8")
@@ -227,9 +205,6 @@ def test_vllm_metal_python_reports_only_a_real_interpreter(monkeypatch, tmp_path
     assert model_engines.vllm_metal_python() is None
 
 
-# ── json transport ───────────────────────────────────────────────────────────
-
-
 def test_json_request_parses_a_get_response(monkeypatch):
     seen = {}
 
@@ -290,9 +265,6 @@ def test_json_request_and_openai_models_reject_non_http_schemes(monkeypatch):
     assert model_engines.get_openai_compatible_server_models("openai") == []
 
 
-# ── LM Studio base URLs ──────────────────────────────────────────────────────
-
-
 def test_lmstudio_api_base_uses_the_runtime_provider_table(monkeypatch):
     monkeypatch.delenv("LMSTUDIO_BASE_URL", raising=False)
 
@@ -309,7 +281,6 @@ def test_lmstudio_api_base_prefers_the_environment_override(monkeypatch):
 
 
 def test_lmstudio_api_base_falls_back_when_the_runtime_is_unimportable(monkeypatch):
-    """A circular-import failure must still yield the documented default."""
     monkeypatch.setitem(sys.modules, "latticeai.services.model_runtime", None)
     monkeypatch.delenv("LMSTUDIO_BASE_URL", raising=False)
 
@@ -322,9 +293,6 @@ def test_lmstudio_native_base_drops_the_openai_suffix(monkeypatch):
 
     monkeypatch.setenv("LMSTUDIO_BASE_URL", "http://127.0.0.1:1234")
     assert model_engines.lmstudio_native_api_base() == "http://127.0.0.1:1234"
-
-
-# ── engine support matrix ────────────────────────────────────────────────────
 
 
 def test_every_engine_but_vllm_is_unconditionally_supported():
@@ -357,9 +325,6 @@ def test_vllm_support_depends_on_platform_and_python(
         assert status["reason"] is None
     else:
         assert needle in status["reason"]
-
-
-# ── install command construction ─────────────────────────────────────────────
 
 
 def test_unknown_engine_has_no_install_command():

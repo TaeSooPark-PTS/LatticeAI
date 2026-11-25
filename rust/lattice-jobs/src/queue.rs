@@ -1,48 +1,19 @@
-//! The embed backlog, counted straight out of SQLite.
-//!
-//! `GET /host/jobs` must be able to say how much work is owed even while the
-//! worker is down — that is precisely when someone is looking — so the counts
-//! do not travel through the worker's HTTP API. They come from the same
-//! read-only handle the native search lanes use
-//! ([`lattice_core::open_read_only`]): `SQLITE_OPEN_READ_ONLY`, WAL, bounded
-//! busy timeout. This crate cannot write, migrate, or vacuum a store whose
-//! schema Python owns, and that is a property of the connection rather than a
-//! promise in a comment.
-//!
-//! The query is Python's verbatim (`vector_index/jobs.py`
-//! `VectorJobStore.counts`): `SELECT status, COUNT(*) … GROUP BY status`,
-//! zero-filled over the four known statuses, with any unknown status carried
-//! through rather than dropped.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::Serialize;
 
-/// The queue's lifecycle, as Python's `VECTOR_JOB_STATUSES` names it.
 pub const VECTOR_JOB_STATUSES: [&str; 4] = ["pending", "running", "done", "failed"];
 
-/// Backlog counts, or an honest "nothing is counting".
-///
-/// `available: false` is deliberately not the same answer as four zeros: a
-/// store with no `vector_jobs` table has no backlog *measured*, and a
-/// scheduler that read that as "no backlog" would report an idle queue for a
-/// Brain it cannot see.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct QueueCounts {
-    /// Whether the table was actually read.
     pub available: bool,
-    /// `{status: count}`, zero-filled over the known statuses.
     pub counts: BTreeMap<String, u64>,
-    /// Nodes still owed an embedding — `pending` plus `running`, the same sum
-    /// `VectorEmbedQueue.pending_count` returns.
     pub pending: u64,
-    /// Why the counts are unavailable, when they are.
     pub detail: Option<String>,
 }
 
 impl QueueCounts {
-    /// Zeros with a reason — never mistaken for a measured empty queue.
     pub fn unavailable(detail: impl Into<String>) -> Self {
         Self {
             available: false,
@@ -52,14 +23,11 @@ impl QueueCounts {
         }
     }
 
-    /// How many nodes are in a given status (0 when absent).
     pub fn get(&self, status: &str) -> u64 {
         self.counts.get(status).copied().unwrap_or(0)
     }
 }
 
-/// Count `vector_jobs` in `db`. Never fails: an unreadable store is an
-/// [`QueueCounts::unavailable`] with the cause attached.
 pub fn read_counts(db: &Path) -> QueueCounts {
     let conn = match lattice_core::open_read_only(db) {
         Ok(conn) => conn,
@@ -68,8 +36,6 @@ pub fn read_counts(db: &Path) -> QueueCounts {
     let mut statement =
         match conn.prepare("SELECT status, COUNT(*) FROM vector_jobs GROUP BY status") {
             Ok(statement) => statement,
-            // The overwhelmingly common case: a Brain that has never had to defer
-            // an embedding, so the lazily created table does not exist yet.
             Err(err) => return QueueCounts::unavailable(format!("{err}")),
         };
     let rows = statement.query_map([], |row| {
@@ -109,7 +75,6 @@ fn zeroed() -> BTreeMap<String, u64> {
 mod tests {
     use super::*;
 
-    /// The DDL from `lattice_brain/graph/vector_index/jobs.py`, verbatim.
     const DDL: &str = "CREATE TABLE IF NOT EXISTS vector_jobs (
                   node_id TEXT PRIMARY KEY,
                   status TEXT NOT NULL DEFAULT 'pending',
@@ -154,7 +119,6 @@ mod tests {
         assert_eq!(counts.get("running"), 1);
         assert_eq!(counts.get("done"), 1);
         assert_eq!(counts.get("failed"), 1);
-        // Owed = queued plus in flight, the same sum Python reports.
         assert_eq!(counts.pending, 3);
     }
 

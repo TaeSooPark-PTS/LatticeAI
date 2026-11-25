@@ -1,12 +1,3 @@
-/**
- * The autonomy dial reads its own words, not the server's.
- *
- * `latticeai/core/permission_mode.py` ships each mode with English and Korean
- * text, and the Korean was the engineering term transliterated. So the rule
- * here is: translate by **id**, and fall back to whatever the server sent when
- * this app has no copy for that id — a mode added server-side must still
- * render rather than disappear. Both halves are asserted below.
- */
 
 import { describe, expect, it } from "vitest";
 
@@ -17,8 +8,6 @@ import {
   permissionModeWarning,
 } from "./permissionCopy";
 
-// A mode this app has no copy for: every lookup must fall through to the
-// server's own strings.
 const unknownMode = {
   id: "shadow_mode",
   label: "Shadow mode",
@@ -72,9 +61,6 @@ describe("permissionModeWarning", () => {
   });
 
   it("falls back to the server warning per language, and to nothing when absent", () => {
-    // `strict` has a label and a summary in this app but deliberately no
-    // warning, so this exercises the per-key fallback rather than a whole
-    // unknown mode.
     expect(permissionModeWarning({ id: "strict", label: "x", warning_ko: "조심", warning: "Careful" }, "ko")).toBe("조심");
     expect(permissionModeWarning({ id: "strict", label: "x", warning: "Careful" }, "ko")).toBe("Careful");
     expect(permissionModeWarning(unknownMode, "en")).toBe("Experimental.");

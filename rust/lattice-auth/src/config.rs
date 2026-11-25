@@ -1,16 +1,3 @@
-//! The environment this crate reads, parsed once.
-//!
-//! Ports the auth-relevant slice of `latticeai/core/config.py` plus the two
-//! derivations that live outside it: `secure_cookies` (`security_runtime.py`,
-//! `is_public or network_exposed`) and the CSRF allowlist the web runtime
-//! assembles (`cors_allowed_origins + csrf_trusted_origins`).
-//!
-//! Two safety clamps from the Python original are reproduced exactly, because
-//! they are the reason a LAN binding cannot be talked into being open:
-//! `require_auth` is forced **on** and `open_registration` forced **off**
-//! whenever the bind is externally reachable, no matter what the environment
-//! says.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -18,60 +5,35 @@ use serde_json::Value;
 
 use crate::origin::IpNetwork;
 
-/// Where the identity provider sends the browser back to.
 pub const SSO_CALLBACK_PATH: &str = "/auth/sso/callback";
 
-/// The SSO surface `GET /auth/sso/config` publishes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SsoSettings {
-    /// Whether single sign-on is both configured and switched on.
     pub enabled: bool,
-    /// Display name for the provider.
     pub provider_name: String,
-    /// OIDC discovery document URL.
     pub discovery_url: String,
-    /// OAuth client id.
     pub client_id: String,
-    /// OAuth client secret — never published, only its presence.
     pub client_secret: String,
-    /// Where the provider returns the browser.
     pub redirect_uri: String,
-    /// Requested scopes.
     pub scopes: String,
 }
 
-/// Everything `lattice-auth` needs to know about this install.
 #[derive(Debug, Clone)]
 pub struct AuthConfig {
-    /// `<data_dir>` — where `users.json` and `sessions.json` live.
     pub data_dir: PathBuf,
-    /// The bind address, used for the CSRF default origins.
     pub host: String,
-    /// The front door's port, likewise.
     pub port: u16,
-    /// `is_public or network_exposed` — anything but this machine can connect.
     pub externally_reachable: bool,
-    /// Whether the bind is loopback (the CSRF no-origin exemption).
     pub bind_is_loopback: bool,
-    /// Whether a session is required at all.
     pub require_auth: bool,
-    /// Whether `POST /register` accepts an uninvited caller.
     pub open_registration: bool,
-    /// Whether the invite gate is switched on.
     pub invite_gate_enabled: bool,
-    /// `Secure` on the session cookie.
     pub secure_cookies: bool,
-    /// Session lifetime in seconds, and the cookie's `Max-Age`.
     pub session_ttl: i64,
-    /// Emails promoted to `admin` regardless of their stored role.
     pub admin_emails: Vec<String>,
-    /// Whether the token-bucket limiter is armed.
     pub rate_limit_enabled: bool,
-    /// Browser origins allowed to send cookie-authenticated writes.
     pub csrf_trusted_origins: Vec<String>,
-    /// Peers whose `X-Forwarded-*` headers may be believed.
     pub trusted_proxies: Vec<IpNetwork>,
-    /// The SSO surface, env defaults merged with `sso_config.json`.
     pub sso: SsoSettings,
 }
 
@@ -82,14 +44,12 @@ impl Default for AuthConfig {
 }
 
 impl AuthConfig {
-    /// Parse the live process environment.
     pub fn from_env() -> Self {
         let env: HashMap<String, String> = std::env::vars().collect();
         let home = std::env::var_os("HOME").map(PathBuf::from);
         Self::from_map(&env, home.as_deref())
     }
 
-    /// Parse an explicit environment — the seam tests and fixtures use.
     pub fn from_map(env: &HashMap<String, String>, home: Option<&Path>) -> Self {
         let value = |key: &str, default: &str| -> String {
             let raw = env.get(key).map(String::as_str).unwrap_or("");
@@ -133,8 +93,6 @@ impl AuthConfig {
         let data_dir =
             lattice_core::resolve_data_dir(env.get("LATTICEAI_DATA_DIR").map(String::as_str), home);
 
-        // The web runtime hands the guard the CORS allowlist *and* the
-        // operator's extra origins; both halves are trusted for writes.
         let mut csrf_trusted_origins = vec![
             format!("http://localhost:{port}"),
             format!("http://127.0.0.1:{port}"),
@@ -168,10 +126,7 @@ impl AuthConfig {
             port,
             externally_reachable,
             bind_is_loopback,
-            // An explicit `false` must never turn a reachable bind into an
-            // unauthenticated service.
             require_auth: externally_reachable || flag("LATTICEAI_REQUIRE_AUTH", false),
-            // Likewise: a reachable bind is closed-registration regardless.
             open_registration: !externally_reachable && flag("LATTICEAI_OPEN_REGISTRATION", true),
             invite_gate_enabled: flag("LATTICEAI_INVITE_GATE_ENABLED", false),
             secure_cookies: externally_reachable,
@@ -194,10 +149,6 @@ impl AuthConfig {
         }
     }
 
-    /// Merge `<data_dir>/sso_config.json` over the env defaults, exactly as
-    /// `sso_config_runtime.load_sso_config` does (including the final
-    /// `enabled` re-derivation, which no stored `true` can survive without a
-    /// discovery URL, a client id and a secret).
     pub fn with_stored_sso(mut self) -> Self {
         let path = self.data_dir.join("sso_config.json");
         if let Ok(text) = std::fs::read_to_string(&path) {
@@ -245,7 +196,6 @@ fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `latticeai.core.security.host_is_loopback`.
 pub fn host_is_loopback(host: &str) -> bool {
     if matches!(host, "localhost" | "127.0.0.1" | "::1") {
         return true;

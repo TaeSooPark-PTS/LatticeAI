@@ -1,16 +1,3 @@
-"""Model registry, memory policy and the local load path of ``LLMRouter``.
-
-The registry is the mutable state every request reads: which model is the
-default, which are resident, and which one gets evicted when the memory policy
-bites. These tests drive it with fake cache entries — a local entry is the
-``(model, tokenizer, draft, loader_kind)`` tuple, a cloud entry is a
-``CloudModel`` — so the invariants are checked without loading weights.
-
-``router_mod.CloudModel`` is resolved at call time rather than imported by
-name: the MLX import-contract tests reload this module during the full suite,
-which rebinds the class object.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -19,22 +6,11 @@ import time
 import pytest
 
 from latticeai.models import router as router_mod
-
-# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
-# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
-# the load path reaches through them are read in the submodule that defines
-# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
-# rebound on the package ``__init__`` would leave those reads untouched.
 from latticeai.models.router import loading as router_loading
-
-# ``hf_model_dir`` reads the root from its own module globals, so after the
-# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
 from latticeai.models.router import local_models as router_local_models
 
 
 class _FakeMx:
-    """Stands in for ``mlx.core`` so memory release is deterministic."""
-
     gpu = object()
 
     def __init__(self):
@@ -78,9 +54,6 @@ def _collect(stream_factory, timeout: float = 10.0) -> list:
     return chunks
 
 
-# ── Registry reads ───────────────────────────────────────────────────────
-
-
 def test_loaded_model_ids_reports_the_resident_set_in_load_order():
     router = router_mod.LLMRouter()
     router._cache = {"first": _local_entry(), "second": _cloud_entry("second")}
@@ -118,9 +91,6 @@ def test_only_non_cloud_entries_count_towards_the_local_memory_budget():
     assert router._is_local_model("never-loaded") is False
 
 
-# ── Unloading ────────────────────────────────────────────────────────────
-
-
 def test_unload_model_promotes_a_survivor_as_the_new_default(monkeypatch):
     fake_mx = _FakeMx()
     monkeypatch.setattr(router_loading, "mx", fake_mx)
@@ -145,7 +115,6 @@ def test_unload_model_leaves_no_default_when_the_last_model_goes(monkeypatch):
     router._current = "only"
 
     router.unload_model("only")
-    # Unloading something that was never resident is a no-op, not an error.
     router.unload_model("never-loaded")
 
     assert router.loaded_model_ids == []
@@ -215,7 +184,6 @@ def test_model_memory_policy_reports_the_budget_and_the_residents():
     assert snapshot["loaded_count"] == 2
     assert list(snapshot["last_used"]) == ["a"]
 
-    # The report is a copy: mutating it cannot corrupt the registry.
     snapshot["last_used"]["a"] = -1.0
     assert router.model_memory_policy()["last_used"]["a"] != -1.0
 
@@ -224,12 +192,8 @@ def test_max_local_models_comes_from_the_environment(monkeypatch):
     monkeypatch.setenv("LATTICEAI_MAX_LOCAL_MODELS", "4")
     assert router_mod.LLMRouter()._max_local_models == 4
 
-    # A nonsensical budget is clamped, never zero.
     monkeypatch.setenv("LATTICEAI_MAX_LOCAL_MODELS", "0")
     assert router_mod.LLMRouter()._max_local_models == 1
-
-
-# ── Memory policy enforcement ────────────────────────────────────────────
 
 
 def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(
@@ -248,10 +212,7 @@ def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(
 
     router._enforce_local_model_limit("incoming")
 
-    # Exactly one eviction: enough headroom for the incoming model.
     assert router.loaded_model_ids == ["new", "cloud"]
-    # A cloud handle costs no local memory, so the budget never evicts one —
-    # even though it is the least recently used entry of all.
     assert router._is_local_model("cloud") is False
 
 
@@ -292,9 +253,6 @@ def test_release_memory_skips_a_backend_without_a_cache_api(monkeypatch):
     assert router.loaded_model_ids == []
 
 
-# ── _model_snapshot and the "nothing loaded" answers ─────────────────────
-
-
 def test_model_snapshot_reports_nothing_when_no_model_is_selected():
     assert router_mod.LLMRouter()._model_snapshot() == (None, None)
 
@@ -307,9 +265,6 @@ def test_stream_generate_without_a_loaded_model_yields_the_no_model_marker():
     router = router_mod.LLMRouter()
 
     assert _collect(lambda: router.stream_generate("질문")) == ["No model."]
-
-
-# ── load_model ───────────────────────────────────────────────────────────
 
 
 def test_load_model_hands_a_cloud_reference_to_the_cloud_loader(monkeypatch):
@@ -347,8 +302,6 @@ def test_load_model_hands_a_cloud_reference_to_the_cloud_loader(monkeypatch):
 
 
 def test_load_model_refuses_a_local_model_when_mlx_never_bound(monkeypatch):
-    """The guard after ``ensure_mlx_runtime`` is what stops an ``NoneType``
-    crash deep inside the worker thread."""
     calls = []
     monkeypatch.setattr(
         router_loading, "ensure_mlx_runtime", lambda: calls.append("ensure")
@@ -372,8 +325,6 @@ def test_load_model_returns_the_cached_stack_without_reloading(monkeypatch):
     monkeypatch.setattr(router_loading, "vlm_load", _never)
     monkeypatch.setattr(router_loading, "lm_load", None)
     router = router_mod.LLMRouter()
-    # The cache key folds in the draft model: the same target with a different
-    # assistant is a different stack.
     router._cache = {"target_draft": _local_entry()}
 
     result = asyncio.run(router.load_model("target", draft_model_id="draft"))
@@ -393,7 +344,6 @@ def _prepare_local_load(monkeypatch, tmp_path) -> None:
 def test_load_model_without_mlx_vlm_still_loads_gemma4_through_mlx_lm(
     monkeypatch, tmp_path
 ):
-    """No mlx-vlm installed is a load *failure* the Gemma 4 path recovers from."""
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(router_loading, "vlm_load", None)
     loaded = []
@@ -415,15 +365,6 @@ def test_load_model_without_mlx_vlm_still_loads_gemma4_through_mlx_lm(
 def test_load_model_without_mlx_vlm_refuses_a_model_that_declares_vision(
     monkeypatch, tmp_path
 ):
-    """A checkpoint that says it is multimodal is never downgraded to text.
-
-    v12.0.0 generalised the mlx-lm retry from "the id looks like Gemma 4" to
-    "the checkpoint's own config declares no vision", because the old rule was
-    a one-family roster that failed every plain text model MLX-VLM cannot open.
-    What did **not** change is this: answering an image request from a
-    text-only load is worse than refusing it, so a config carrying
-    ``vision_config`` still surfaces the original failure.
-    """
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(router_loading, "vlm_load", None)
     monkeypatch.setattr(
@@ -441,12 +382,6 @@ def test_load_model_without_mlx_vlm_refuses_a_model_that_declares_vision(
 def test_load_model_falls_back_to_text_for_any_model_without_vision(
     monkeypatch, tmp_path
 ):
-    """The v12.0.0 generalisation: "every small model works" needs this.
-
-    A 0.5B Qwen, an AWQ checkpoint, any fine-tune with a text-only
-    architecture — MLX-VLM cannot open them and MLX-LM can. Before this the
-    load failed outright unless the *name* matched Gemma 4.
-    """
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(router_loading, "vlm_load", None)
     loaded: list = []
@@ -466,11 +401,6 @@ def test_load_model_falls_back_to_text_for_any_model_without_vision(
 
 
 def test_a_failed_text_retry_reports_the_original_loader_failure(monkeypatch, tmp_path):
-    """The text path is a fallback, so the useful diagnosis is the first one.
-
-    Raising the second failure would tell an operator their model is not a
-    text model, which they knew.
-    """
     _prepare_local_load(monkeypatch, tmp_path)
 
     def broken_vlm_load(_model_id):

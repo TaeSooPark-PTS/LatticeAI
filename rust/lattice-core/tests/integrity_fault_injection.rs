@@ -1,5 +1,3 @@
-//! Fault-injection test suite for P0.2 Knowledge Graph Data Integrity Checker.
-
 use std::collections::{BTreeSet, HashSet};
 
 use lattice_core::graph_write::schema::bootstrap;
@@ -22,10 +20,8 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
     let mut conn = Connection::open(&db_path).expect("open db");
     init_db(&mut conn);
 
-    // Disable FKs temporarily to inject real corruption patterns.
     conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
 
-    // Valid nodes across two workspaces + one node missing from nodes_v2 & node_fts.
     conn.execute(
         "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
          VALUES ('doc-a', 'Document', 'Alpha', 'Alpha text', '{}', '{\"workspace_id\":\"ws-a\",\"source_uri\":\"file:///a.md\"}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
@@ -60,7 +56,6 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
     conn.execute("DELETE FROM node_fts WHERE node_id = 'doc-drift'", [])
         .unwrap();
 
-    // Inject: dangling edge, cross-workspace edge, cycle, orphan chunk, orphan vector, missing file.
     conn.execute(
         "INSERT INTO edges(id, from_node, to_node, type, weight, metadata_json, created_at)
          VALUES ('e-dangling', 'doc-a', 'ghost-node', 'RELATES_TO', 1.0, '{}', '2026-01-01'),
@@ -107,7 +102,6 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
     assert!(kinds.contains(&IntegrityIssueKind::IndexDriftV2));
     assert!(kinds.contains(&IntegrityIssueKind::IndexDriftFts));
 
-    // Dry-run preview must not mutate DB.
     let dry = execute_integrity_repair(
         &mut conn,
         &RepairOptions {
@@ -123,7 +117,6 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
     assert!(dry.plan.blast_radius.approval_gated_actions >= 3);
     assert_eq!(dry.rows_repaired, 0);
 
-    // SafeAuto only: repairs safe issues, leaves approval-gated issues untouched, writes backup.
     let safe = execute_integrity_repair(
         &mut conn,
         &RepairOptions {
@@ -142,7 +135,6 @@ fn fault_injection_detects_all_corruption_patterns_and_repairs_safely() {
         .skipped_approval_actions
         .contains(&"break_relationship_cycles".to_string()));
 
-    // Execute approved repairs.
     let approved: BTreeSet<String> = [
         "sever_cross_workspace_edges",
         "break_relationship_cycles",
@@ -179,7 +171,6 @@ fn workspace_scoped_integrity_repair_isolates_other_workspaces() {
     conn.execute_batch("PRAGMA foreign_keys = OFF;")
         .expect("fk off");
 
-    // Two workspaces: ws-a and ws-b, each with its own dangling edge and drift.
     conn.execute(
         "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
          VALUES ('a1', 'Document', 'A1', 'doc a1', '{}', '{\"source_uri\":\"file:///a1.md\",\"workspace_id\":\"ws-a\"}', '2026-01-01', '2026-01-01'),
@@ -194,7 +185,6 @@ fn workspace_scoped_integrity_repair_isolates_other_workspaces() {
         [],
     )
     .unwrap();
-    // Dangling edges: one in ws-a, one in ws-b, plus a cross-workspace leak edge.
     conn.execute(
         "INSERT INTO edges(id, from_node, to_node, type, weight, metadata_json, created_at)
          VALUES ('e-dang-a', 'a1', 'missing-a', 'RELATES_TO', 1.0, '{}', '2026-01-01'),
@@ -204,7 +194,6 @@ fn workspace_scoped_integrity_repair_isolates_other_workspaces() {
     )
     .unwrap();
 
-    // Scoped check for ws-a sees only ws-a's dangling edge and the cross-workspace leak.
     let rep_a = check_graph_integrity_scoped(&conn, Some("ws-a")).unwrap();
     let dang_a = rep_a
         .findings
@@ -213,8 +202,6 @@ fn workspace_scoped_integrity_repair_isolates_other_workspaces() {
         .expect("ws-a dangling edge");
     assert_eq!(dang_a.sample_ids, vec!["e-dang-a".to_string()]);
 
-    // Scoped repair for ws-a (even if sever_cross_workspace_edges is requested!)
-    // must ONLY delete e-dang-a and backfill a1 FTS; it must NOT delete e-dang-b or e-leak.
     let mut approved = BTreeSet::new();
     approved.insert("sever_cross_workspace_edges".to_string());
     let repaired = execute_integrity_repair(

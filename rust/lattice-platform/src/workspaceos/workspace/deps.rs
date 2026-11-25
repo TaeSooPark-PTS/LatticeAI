@@ -1,27 +1,3 @@
-//! What this family needs from the rest of the product, stated as one object.
-//!
-//! Port of the workspace slice of `latticeai/services/app_context.py`. The
-//! Python router took ~20 callables through `context.require(...)`; the same
-//! dependencies are gathered here, for the same reason: this module must not
-//! import the families that own the knowledge graph, the model router, or the
-//! setup wizard, or the crate becomes one tangle instead of thirteen families.
-//!
-//! Two kinds of dependency, and the split is the important part:
-//!
-//! * **Graph reads** ([`GraphReads`]) — stats, the node/edge window, local
-//!   sources, neighbours. Owned by the knowledge-graph family, supplied by the
-//!   integrator. Absent ⇒ the graph is off, which is a state Python models too
-//!   (`_workspace_graph()` answers `None`, `graph_stats_safe()` answers
-//!   `{"disabled": true}`).
-//! * **Graph writes** ([`GraphSeam`]) — every one of them runs on
-//!   [`lattice_core::graph_write::GraphWriter`], in this process. There is one
-//!   writer of `knowledge_graph.sqlite` and since v11.6.0 it is this binary.
-//!
-//! Everything else is a provider closure with an honest default. A default
-//! that cannot answer says so (`None`, `{"disabled": true}`, a 503) rather than
-//! inventing a plausible-looking payload — a fabricated hardware probe is worse
-//! than a missing one.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -30,42 +6,24 @@ use serde_json::{json, Value};
 
 use super::constants::WORKSPACE_OS_VERSION;
 
-/// The knowledge-graph reads this family performs.
-///
-/// Every method answers `Option`: `None` is "this reader could not say", which
-/// the callers turn into the same empty shape Python produces when the graph is
-/// disabled. Implementations are synchronous because they are SQLite reads;
-/// callers that can block for long run them off the request path.
 pub trait GraphReads: Send + Sync {
-    /// `graph.stats()`.
     fn stats(&self) -> Option<Value>;
-    /// `graph.graph(limit=…)` — `{"nodes": [...], "edges": [...]}`.
     fn window(&self, limit: usize) -> Option<Value>;
-    /// `graph.local_sources()` — `{"sources": [...]}`.
     fn local_sources(&self) -> Option<Value>;
-    /// `graph.neighbors(node_id)` — `{"neighbors": [...], "edges": [...]}`.
     fn neighbors(&self, node_id: &str) -> Option<Value>;
 }
 
-/// One `ingest_event` call, named the way the Python store names it.
 #[derive(Debug, Clone, Default)]
 pub struct IngestEvent {
-    /// The node type — `"Memory"`, `"AgentRun"`, `"Workflow"`, …
     pub event_type: String,
-    /// The human-readable title.
     pub title: String,
-    /// Who caused it, when there is a signed-in person.
     pub user_email: Option<String>,
-    /// Always `"workspace_os"` or `"vscode"` from this family.
     pub source: String,
-    /// The workspace the resulting node belongs to.
     pub workspace_id: Option<String>,
-    /// Free-form metadata carried onto the node.
     pub metadata: Value,
 }
 
 impl IngestEvent {
-    /// The `args` object [`GraphSeam::mutate`] expects for `ingest_event`.
     pub fn as_args(&self) -> Value {
         json!({
             "event_type": self.event_type,
@@ -78,29 +36,13 @@ impl IngestEvent {
     }
 }
 
-/// How this family writes the knowledge graph.
-///
-/// [`GraphSeam::Absent`] is the graph-disabled install. [`GraphSeam::Native`]
-/// is production — [`GraphWriter`], in this process. [`GraphSeam::Stub`]
-/// exists so the fixture replay can pin the *shape* of a mutation without
-/// standing up a write engine; no production path can reach it.
-///
-/// There was a fourth variant, `Worker(WorkerSeamClient)`, that posted to the
-/// Python `POST /worker/graph/mutate` door. That door was retired in v11.6.0
-/// and the variant had no constructor left anywhere in the workspace, so it
-/// could only ever have been a 404 waiting to happen; it is deleted rather
-/// than kept as a plausible-looking option.
 #[derive(Clone)]
 pub enum GraphSeam {
-    /// No graph on this install — every write is skipped, as Python skips it.
     Absent,
-    /// Native write engine (W3b).
     Native(GraphWriter),
-    /// A caller-supplied answer, for tests.
     Stub(GraphMutator),
 }
 
-/// `mutate(op, payload)` — a stubbed graph write's answer, or its refusal text.
 pub type GraphMutator = Arc<dyn Fn(&str, &Value) -> Result<Value, String> + Send + Sync>;
 
 impl std::fmt::Debug for GraphSeam {
@@ -114,12 +56,10 @@ impl std::fmt::Debug for GraphSeam {
 }
 
 impl GraphSeam {
-    /// Whether a write can even be attempted.
     pub fn is_available(&self) -> bool {
         !matches!(self, Self::Absent)
     }
 
-    /// Run one whitelisted op, returning the write engine's result verbatim.
     pub async fn mutate(&self, op: &str, args: Value) -> Result<Value, String> {
         match self {
             Self::Absent => Err("knowledge graph is disabled".to_string()),
@@ -134,18 +74,15 @@ impl GraphSeam {
         }
     }
 
-    /// `graph.ingest_event(...)` — the op five of this family's writes use.
     pub async fn ingest_event(&self, event: &IngestEvent) -> Result<Value, String> {
         self.mutate("ingest_event", event.as_args()).await
     }
 
-    /// `graph.import_graph(data, mode="merge")` — snapshot restore.
     pub async fn import_graph(&self, data: &Value, mode: &str) -> Result<Value, String> {
         self.mutate("import_graph_data", json!({"data": data, "mode": mode}))
             .await
     }
 
-    /// `graph.set_local_source_watch(source_id, enabled)`.
     pub async fn set_local_source_watch(
         &self,
         source_id: &str,
@@ -158,7 +95,6 @@ impl GraphSeam {
         .await
     }
 
-    /// `graph.remove_local_source(source_id)`.
     pub async fn remove_local_source(&self, source_id: &str) -> Result<Value, String> {
         self.mutate("remove_local_source", json!({"source_id": source_id}))
             .await
@@ -265,51 +201,29 @@ fn native_dispatch(graph: &GraphWriter, op: &str, args: &Value) -> Result<Value,
     result.map_err(|error| error.to_string())
 }
 
-/// A closure that answers a JSON payload.
 pub type JsonProvider = Arc<dyn Fn() -> Value + Send + Sync>;
-/// A closure that answers a list of JSON records.
 pub type RecordsProvider = Arc<dyn Fn() -> Vec<Value> + Send + Sync>;
-/// `append_audit_event(event_type, fields)` — records, answers nothing.
 pub type AuditAppender = Arc<dyn Fn(&str, &Value) + Send + Sync>;
-/// `_fetch_skills_marketplace()` — the catalog, or why it could not be read.
 pub type SkillsCatalog = Arc<dyn Fn() -> Result<Vec<Value>, String> + Send + Sync>;
-/// `install_skill(plugin, skill)` — the installed record, or the refusal text.
 pub type SkillInstaller = Arc<dyn Fn(&str, &str) -> Result<Value, String> + Send + Sync>;
-/// `get_recommendations(environment)` — `(recommendations, catalog)`.
 pub type ModelRecommender = Arc<dyn Fn(&Value) -> (Value, Value) + Send + Sync>;
 
-/// Everything this family reads from elsewhere, with its defaults.
 #[derive(Clone)]
 pub struct WorkspaceProviders {
-    /// Knowledge-graph reads, or `None` when the graph is off.
     pub graph_reads: Option<Arc<dyn GraphReads>>,
-    /// `_workspace_models_payload()`.
     pub models: JsonProvider,
-    /// `_workspace_settings_payload()`.
     pub settings: JsonProvider,
-    /// `get_history()` — the chat log a snapshot captures.
     pub history: RecordsProvider,
-    /// `get_audit_log()` — the events the timeline and audit views merge in.
     pub audit_events: RecordsProvider,
-    /// `append_audit_event(event_type, fields)`.
     pub append_audit_event: AuditAppender,
-    /// Where installed skills live (`SKILLS_DIR`; package-relative in Python).
     pub skills_dir: Option<PathBuf>,
-    /// `_fetch_skills_marketplace()`.
     pub skills_marketplace: SkillsCatalog,
-    /// `install_skill(plugin, skill)`.
     pub install_skill: Option<SkillInstaller>,
-    /// `scan_environment()` — the setup wizard's host probe.
     pub scan_environment: Option<JsonProvider>,
-    /// `local_sysinfo(request)` — CPU/RAM/GPU telemetry.
     pub local_sysinfo: Option<JsonProvider>,
-    /// `get_recommendations(environment)` + the tri-state catalog.
     pub model_recommendations: Option<ModelRecommender>,
-    /// `LOCAL_KG_WATCHER.status()`.
     pub watcher_status: Option<JsonProvider>,
-    /// `LOCAL_MODEL` — the onboarding recommendation default.
     pub local_model: String,
-    /// `PUBLIC_MODEL` — the same, for the hosted lane.
     pub public_model: String,
 }
 
@@ -338,7 +252,6 @@ impl Default for WorkspaceProviders {
     }
 }
 
-/// `_value(env, name, fallback)` — set-but-empty counts as unset.
 fn env_or(name: &str, fallback: &str) -> String {
     std::env::var(name)
         .ok()
@@ -357,11 +270,6 @@ fn env_bool(name: &str, fallback: bool) -> bool {
     }
 }
 
-/// `_workspace_models_payload()` with no model router attached.
-///
-/// The two *configured* names are environment, so they are real; the two
-/// *runtime* fields belong to the model router and are stated as "nothing
-/// loaded", which is what an install with no router has.
 fn default_models_payload() -> Value {
     json!({
         "current_model": Value::Null,
@@ -373,7 +281,6 @@ fn default_models_payload() -> Value {
     })
 }
 
-/// `_workspace_settings_payload()` — every field is an environment value.
 fn default_settings_payload() -> Value {
     let is_public = env_or("LATTICEAI_MODE", "local") == "public";
     json!({
@@ -388,12 +295,9 @@ fn default_settings_payload() -> Value {
     })
 }
 
-/// The dependency bundle a router is built with.
 #[derive(Clone)]
 pub struct WorkspaceDeps {
-    /// How graph writes leave this process.
     pub seam: GraphSeam,
-    /// Everything read from elsewhere.
     pub providers: WorkspaceProviders,
 }
 
@@ -407,12 +311,10 @@ impl Default for WorkspaceDeps {
 }
 
 impl WorkspaceDeps {
-    /// `_workspace_graph()` — the graph object, or `None` when it is off.
     pub fn graph(&self) -> Option<&dyn GraphReads> {
         self.providers.graph_reads.as_deref()
     }
 
-    /// `graph_stats_safe()` — stats, `{"disabled": true}`, or `{"error": …}`.
     pub fn graph_stats_safe(&self) -> Value {
         match self.graph().and_then(GraphReads::stats) {
             Some(stats) => stats,
@@ -423,11 +325,6 @@ impl WorkspaceDeps {
         }
     }
 
-    /// The edition/capability matrix `capability_registry.describe()` answers.
-    ///
-    /// Community is the only edition this binary can be: the Enterprise seam is
-    /// a Python plugin protocol (`core/enterprise.py`) with no Rust registrar,
-    /// so answering anything else would be a claim the build cannot support.
     pub fn edition(&self) -> Value {
         json!({
             "edition": "community",
@@ -453,7 +350,6 @@ impl WorkspaceDeps {
         })
     }
 
-    /// The product version, for callers that want it without the constant.
     pub fn version(&self) -> &'static str {
         WORKSPACE_OS_VERSION
     }

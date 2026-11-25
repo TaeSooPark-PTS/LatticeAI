@@ -1,11 +1,3 @@
-//! The two `/host/jobs` routes.
-//!
-//! A router factory, not a server: `lattice-host` owns the listener and mounts
-//! this router behind `require_open_posture` and `csrf_guard`. As defense in
-//! depth, this router also verifies that standalone callers either target a
-//! loopback `Host` or present an explicit `Authorization: Bearer` token,
-//! refusing unauthenticated remote hosts with HTTP 403.
-
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -56,7 +48,6 @@ fn guard_jobs_request(headers: &HeaderMap) -> Result<(), Response> {
     Ok(())
 }
 
-/// `GET /host/jobs` and `POST /host/jobs/tick`, ready to merge into the host.
 pub fn router(state: Arc<Scheduler>) -> Router {
     Router::new()
         .route("/host/jobs", get(jobs_status))
@@ -64,7 +55,6 @@ pub fn router(state: Arc<Scheduler>) -> Router {
         .with_state(state)
 }
 
-/// `GET /host/jobs` — the schedule, the last ticks, and the backlog.
 pub async fn jobs_status(State(state): State<Arc<Scheduler>>, headers: HeaderMap) -> Response {
     if let Err(refusal) = guard_jobs_request(&headers) {
         return refusal;
@@ -72,9 +62,6 @@ pub async fn jobs_status(State(state): State<Arc<Scheduler>>, headers: HeaderMap
     Json(state.snapshot().await).into_response()
 }
 
-/// `POST /host/jobs/tick` — run one tick now, then answer the same shape
-/// `GET /host/jobs` does, so the caller reads the tick it just caused as
-/// `last_tick` rather than having to learn a second payload.
 pub async fn jobs_tick(State(state): State<Arc<Scheduler>>, headers: HeaderMap) -> Response {
     if let Err(refusal) = guard_jobs_request(&headers) {
         return refusal;

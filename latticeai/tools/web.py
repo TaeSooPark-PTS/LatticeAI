@@ -1,7 +1,3 @@
-"""Guarded web fetch and search tools with SSRF protection, HTML distillation,
-and indirect prompt-injection sanitization (Python parity with tools::web).
-"""
-
 from __future__ import annotations
 
 import html
@@ -69,8 +65,6 @@ _CLOUD_METADATA_HOSTS = {
 
 
 class DistilledPage(dict):
-    """Distilled HTML page supporting both attribute and dict access."""
-
     def __init__(
         self, title: str = "", text: str = "", links: Optional[List[str]] = None
     ) -> None:
@@ -156,7 +150,6 @@ def _classify_ip(
 
 
 def validate_web_url(raw: str) -> str:
-    """Validate a web URL against SSRF, cloud metadata, private IPs, and offline mode."""
     trimmed = str(raw or "").strip()
     if not trimmed:
         raise ToolError("URL is required.")
@@ -354,7 +347,6 @@ def _normalize_distilled_lines(raw_text: str) -> str:
 
 
 def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
-    """Strip noise elements and distill HTML into structured text, title, and links."""
     cleaned = str(html_text or "")
     for pat in _STRIP_BLOCK_PATTERNS:
         cleaned = pat.sub(" ", cleaned)
@@ -399,7 +391,6 @@ def distill_html_to_text(html_text: str, base_url: str = "") -> DistilledPage:
 
 
 def sanitize_untrusted_web_text(text: str) -> Tuple[str, int]:
-    """Strip LLM control tokens and redact indirect prompt-injection directives."""
     current = str(text or "")
     redacted_count = 0
 
@@ -503,7 +494,6 @@ def _clamp_int(val: Any, default: int, low: int, high: int) -> int:
 
 
 def web_fetch(url: str, max_chars: int = DEFAULT_MAX_CHARS) -> Dict[str, Any]:
-    """Fetch a web page with SSRF validation, HTML distillation, and injection sanitization."""
     raw_url = str(url or "").strip()
     if not raw_url:
         raise ToolError("URL is required.")
@@ -558,7 +548,6 @@ def _unwrap_ddg_url(href: str) -> str:
 def parse_duckduckgo_html(
     html_text: str, max_results: int = DEFAULT_MAX_RESULTS
 ) -> List[Tuple[str, str, str]]:
-    """Extract `(title, url, snippet)` tuples from DuckDuckGo HTML search page."""
     cleaned = str(html_text or "")
     for pat in _STRIP_BLOCK_PATTERNS:
         cleaned = pat.sub(" ", cleaned)
@@ -625,7 +614,6 @@ def _parse_custom_search_json(
 
 
 def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> Dict[str, Any]:
-    """Search the web and return sanitized citations (`web:1`, `web:2`, ...)."""
     clean_query = str(query or "").strip()
     if not clean_query:
         raise ToolError("Search query is required.")

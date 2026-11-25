@@ -46,9 +46,6 @@ export const onboardingCopy: NamespaceCopy = {
     "flow.recommend.reason.default": "추천",
     "flow.recommend.sizeReady": "준비됨",
     "flow.recommend.fallbackName": "추천 Brain",
-    // Every InstallStage needs an entry. `idle`/`install`/`done` had none, so
-    // the screen printed the raw key `flow.install.stage.idle` at the moment
-    // the user first lands on it.
     "flow.install.stage.idle": "아래 버튼을 누르면 준비를 시작합니다.",
     "flow.install.stage.install": "Brain 준비를 시작합니다.",
     "flow.install.stage.download": "모델 파일을 받는 중입니다.",
@@ -409,5 +406,4 @@ export const onboardingCopy: NamespaceCopy = {
   },
 };
 
-// Route-scoped: registered when the onboarding flow's lazy chunk loads.
 registerCopy(onboardingCopy);

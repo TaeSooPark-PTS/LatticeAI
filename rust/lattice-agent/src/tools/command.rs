@@ -1,22 +1,8 @@
-//! The command sandbox validator — `latticeai.tools.commands.run_command`.
-//!
-//! The agent can propose any command string. Between that string and the user's
-//! machine stand, in this order: a POSIX split, an executable **basename**
-//! allowlist, a ban on shell operators, `find`/`rg` flag denials, a working
-//! directory that must resolve inside the workspace, and an argument scan that
-//! refuses absolute paths, `..`, and anything whose resolved form leaves the
-//! workspace. The order is part of the contract — the goldens pin which rule
-//! fires for a string that breaks several — and so are the messages.
-//!
-//! Nothing here spawns anything. [`validate`] returns a verdict; [`crate::tools::exec`]
-//! decides separately whether the verdict is one of the few that may run.
-
 use std::path::{Component, Path, PathBuf};
 
 use crate::parse::pyshlex;
 use crate::tools::sandbox::{resolve_soft, ToolError, Workspace};
 
-/// Commands that are refused by name even though they exist.
 pub const BLOCKED_COMMANDS: [&str; 15] = [
     "chmod",
     "chown",
@@ -35,41 +21,28 @@ pub const BLOCKED_COMMANDS: [&str; 15] = [
     "wget",
 ];
 
-/// The only executables `run_command` will ever consider.
 pub const ALLOWED_COMMANDS: [&str; 9] = [
     "cat", "find", "git", "head", "ls", "pwd", "rg", "tail", "wc",
 ];
 
-/// Read-only git verbs, for the dedicated `git_*` tools. `run_command` itself
-/// refuses `git` outright and points at those tools.
 pub const ALLOWED_GIT_SUBCOMMANDS: [&str; 4] = ["diff", "log", "show", "status"];
 
-/// Substrings that mean a shell would do something the sandbox did not sanction.
-/// Scanned over the **raw** string, before tokens, so quoting cannot hide them.
 pub const SHELL_OPERATORS: [&str; 8] = ["|", "&&", "||", ";", ">", "<", "$(", "`"];
 
-/// `find(1)` flags that execute or delete.
 pub const BLOCKED_FIND_FLAGS: [&str; 8] = [
     "-delete", "-exec", "-execdir", "-fls", "-fprint", "-fprintf", "-ok", "-okdir",
 ];
 
-/// `rg` flags that run a preprocessor.
 pub const BLOCKED_RG_FLAGS: [&str; 2] = ["--pre", "--pre-glob"];
 
-/// A command that passed every rule: what to run, where, and with which args.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Validated {
-    /// The original string, echoed back the way Python echoes it.
     pub command: String,
-    /// The executable **basename** — never a path.
     pub executable: String,
     pub args: Vec<String>,
-    /// Absolute, inside the workspace.
     pub workdir: PathBuf,
 }
 
-/// `PurePosixPath(value).name`: the last component, ignoring `.` and empty
-/// segments, with `..` counting as an ordinary name.
 fn py_basename(value: &str) -> &str {
     let mut last = "";
     for segment in value.split('/') {
@@ -81,7 +54,6 @@ fn py_basename(value: &str) -> &str {
     last
 }
 
-/// `_argument_value`: for `--flag=value`, the value; otherwise the argument.
 fn argument_value(argument: &str) -> &str {
     if argument.starts_with('-') {
         if let Some((_, value)) = argument.split_once('=') {
@@ -91,12 +63,6 @@ fn argument_value(argument: &str) -> &str {
     argument
 }
 
-/// `Path(value).expanduser()`, fail-closed.
-///
-/// Python resolves `~` from `$HOME` and `~user` from the password database,
-/// raising `RuntimeError` when it cannot. Both outcomes end the same way for a
-/// sandbox — an absolute path, or a crash — so an unexpandable `~` is reported
-/// here as the absolute-path refusal rather than as an exception.
 fn expanduser(value: &str) -> Option<PathBuf> {
     if !value.starts_with('~') {
         return Some(PathBuf::from(value));
@@ -106,7 +72,7 @@ fn expanduser(value: &str) -> Option<PathBuf> {
         None => (value, ""),
     };
     if prefix != "~" {
-        return None; // ~user — refuse rather than guess a home directory.
+        return None;
     }
     let home = std::env::var_os("HOME")?;
     if home.is_empty() {
@@ -119,7 +85,6 @@ fn expanduser(value: &str) -> Option<PathBuf> {
     Some(path)
 }
 
-/// `_validate_command_paths`: traversal and symlink escapes hidden in arguments.
 fn validate_command_paths(
     workspace: &Workspace,
     args: &[String],
@@ -134,13 +99,10 @@ fn validate_command_paths(
                 || argument[2..].contains('\\')
                 || argument[2..].starts_with('~'))
         {
-            // Catch attached short-flag path arguments such as `rg -f/etc/passwd`.
             (true, &argument[2..])
         } else {
             (false, argument_value(argument))
         };
-        // Flags without a value, the empty string, and the one device every
-        // read-only command is allowed to name are not paths.
         if value.is_empty()
             || value == "/dev/null"
             || (!attached_flag_path && argument.starts_with('-') && !argument.contains('='))
@@ -167,10 +129,6 @@ fn validate_command_paths(
         }
 
         let candidate = workdir.join(&expanded);
-        // Anything that exists (a dangling symlink included) and anything
-        // shaped like a path is resolved and must land inside the workspace.
-        // Everything else can be a search pattern, a count or an expression,
-        // and is not treated as a path at all.
         let exists = std::fs::symlink_metadata(&candidate).is_ok();
         let path_shaped = exists || value.contains('/') || value.contains('\\');
         if path_shaped && !workspace.contains(&resolve_soft(&candidate)) {
@@ -182,8 +140,6 @@ fn validate_command_paths(
     Ok(())
 }
 
-/// Validate one command string. `Ok` means every rule passed — not that the
-/// command may be executed; see [`crate::tools::exec::is_natively_executable`].
 pub fn validate(
     workspace: &Workspace,
     command: &str,
@@ -392,8 +348,6 @@ mod tests {
             refuse(&workspace, "rg --pre-glob=*.py foo"),
             "rg flags are not allowed: --pre-glob=*.py"
         );
-        // The rule is exact-or-`=`; a flag that merely starts with the same
-        // letters is a different flag.
         assert!(validate(&workspace, "rg --pretty foo", None).is_ok());
         assert!(validate(&workspace, "find . -name -execute", None).is_ok());
     }
@@ -413,7 +367,6 @@ mod tests {
             refuse(&workspace, "cat notes/../../outside_secret.txt"),
             "Path traversal in command arguments is not allowed: notes/../../outside_secret.txt"
         );
-        // `/dev/null` is the one absolute path the read tools may name.
         assert!(validate(&workspace, "cat /dev/null", None).is_ok());
     }
 
@@ -447,7 +400,6 @@ mod tests {
             refuse(&workspace, "ls --color=../x"),
             "Path traversal in command arguments is not allowed: ../x"
         );
-        // A bare flag is not a path, whatever it looks like.
         assert!(validate(&workspace, "cat -", None).is_ok());
         assert!(validate(&workspace, "ls -la", None).is_ok());
     }
@@ -473,7 +425,6 @@ mod tests {
     #[test]
     fn a_value_that_is_not_a_path_is_not_checked_as_one() {
         let (_dir, workspace) = workspace();
-        // Nonexistent and not path-shaped: a search pattern, left alone.
         assert!(validate(&workspace, "cat missing.txt", None).is_ok());
         assert!(validate(&workspace, "rg TODO", None).is_ok());
     }

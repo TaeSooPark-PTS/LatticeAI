@@ -1,23 +1,3 @@
-//! `MemoryRecallMixin.recall` — one honestly comparable ranking over three tiers.
-//!
-//! Workspace memories and graph nodes are scored by the *same* lexical scorer
-//! (the fraction of query tokens present), which is what makes cross-tier
-//! ordering real rather than an artefact of per-tier constants. Vector
-//! neighbours are then blended in: an existing graph row takes
-//! `max(lexical, 0.4·lexical + 0.6·similarity)` and a new one
-//! `max(lexical, 0.6·similarity)`.
-//!
-//! Three details decide whether a port is faithful:
-//!
-//! * `if r.get("vector_score")` is Python truthiness — a similarity of exactly
-//!   `0.0` is falsy, so it would *not* add `"semantic"` to `evidence_kinds`.
-//!   Unreachable in practice because `similarity <= 0` is skipped earlier, and
-//!   reproduced anyway rather than "corrected".
-//! * the quality gate drops zero-score rows **only** when at least one row
-//!   scored, so it can never empty a recall.
-//! * `results.sort(key=score, reverse=True)` is stable: rows that tie keep the
-//!   order the tiers produced them in (workspace, then graph, then vector).
-
 use std::collections::{BTreeSet, HashMap};
 
 use lattice_auth::OrderedMap;
@@ -28,14 +8,12 @@ use serde_json::Value;
 use super::service::{text_or, MAX_RECALL_THUMBNAIL_CHARS};
 use super::wsos;
 
-/// One recall row, kept in Python's insertion order until it is rendered.
 type Row = OrderedMap;
 
 fn json(map: &OrderedMap) -> Value {
     serde_json::to_value(map).unwrap_or(Value::Null)
 }
 
-/// `q.lower().split()` — Python's whitespace split, empties dropped.
 fn query_tokens(query: &str) -> Vec<String> {
     query
         .to_lowercase()
@@ -44,7 +22,6 @@ fn query_tokens(query: &str) -> Vec<String> {
         .collect()
 }
 
-/// `_matched_terms(*texts)` — every query token present in the joined haystack.
 fn matched_terms(tokens: &[String], texts: &[&str]) -> Vec<String> {
     let haystack = texts.join(" ").to_lowercase();
     tokens
@@ -54,7 +31,6 @@ fn matched_terms(tokens: &[String], texts: &[&str]) -> Vec<String> {
         .collect()
 }
 
-/// `_lexical_score(matched)` — the fraction of query tokens present.
 fn lexical_score(tokens: &[String], matched: &[String]) -> f64 {
     if tokens.is_empty() {
         return 0.0;
@@ -62,7 +38,6 @@ fn lexical_score(tokens: &[String], matched: &[String]) -> f64 {
     lattice_core::pytext::round4(matched.len() as f64 / tokens.len() as f64)
 }
 
-/// `constants._visual_fields` — caption and inline thumbnail, when present.
 fn visual_fields(hit: &Value, row: &mut Row) {
     let Some(metadata) = hit.get("metadata").and_then(Value::as_object) else {
         return;
@@ -98,13 +73,11 @@ fn terms(matched: &[String]) -> Value {
     Value::Array(matched.iter().map(|t| Value::String(t.clone())).collect())
 }
 
-/// One tier read that failed, reported instead of swallowed.
 struct Failure {
     source: &'static str,
     detail: String,
 }
 
-/// `MemoryRecallMixin.recall`, over a connection the caller already holds.
 pub fn recall(
     conn: &Connection,
     state: &Value,
@@ -127,7 +100,6 @@ pub fn recall(
     )
 }
 
-/// [`recall`] with an optional precomputed semantic query vector or degradation note.
 #[allow(clippy::too_many_arguments)]
 pub fn recall_with_query_vector(
     conn: &Connection,
@@ -145,7 +117,6 @@ pub fn recall_with_query_vector(
     let mut results: Vec<Row> = Vec::new();
     let mut errors: Vec<Failure> = Vec::new();
 
-    // ── workspace tier ──────────────────────────────────────────────────
     let user = Some(user_email).filter(|value| !value.is_empty());
     for memory in wsos::search_memories(state, &q, user, limit, workspace_id) {
         let tags = wsos::tag_text(&memory);
@@ -178,7 +149,6 @@ pub fn recall_with_query_vector(
         results.push(row);
     }
 
-    // ── graph tier ──────────────────────────────────────────────────────
     let allowed: Option<BTreeSet<String>> =
         workspace_id.map(|workspace| [workspace.to_string()].into_iter().collect());
     if graph_enabled && !q.is_empty() {
@@ -234,7 +204,6 @@ pub fn recall_with_query_vector(
         }
     }
 
-    // ── vector tier (v9.3.0 hybrid recall) ──────────────────────────────
     let mut vector_used = false;
     if graph_enabled && !q.is_empty() {
         let model = lattice_core::LocalEmbeddingModel::from_env();
@@ -267,8 +236,6 @@ pub fn recall_with_query_vector(
                     .and_then(Value::as_array)
                     .cloned()
                     .unwrap_or_default();
-                // The vector index is global, so a scoped call filters the
-                // matches down to visible nodes before they influence anything.
                 if allowed.is_some() && !matches.is_empty() {
                     lattice_core::filter_scoped_nodes(
                         conn,
@@ -391,7 +358,6 @@ pub fn recall_with_query_vector(
         }
     }
 
-    // ── quality gate ────────────────────────────────────────────────────
     let candidates = results.len() as i64;
     let scored = |row: &Row| row.get("score").and_then(Value::as_f64).unwrap_or(0.0);
     if !tokens.is_empty() && results.iter().any(|row| scored(row) > 0.0) {
@@ -420,7 +386,6 @@ pub fn recall_with_query_vector(
         {
             evidence.push(Value::String("lexical".to_string()));
         }
-        // Python truthiness: 0.0 is falsy, so a zero similarity claims nothing.
         if row
             .get("vector_score")
             .and_then(Value::as_f64)
@@ -485,7 +450,6 @@ pub fn recall_with_query_vector(
     Ok(out)
 }
 
-/// `hit.get(a) or hit.get(b) or fallback` on string fields.
 fn first_nonempty(hit: &Value, keys: &[&str], fallback: &str) -> String {
     for key in keys {
         if let Some(text) = hit

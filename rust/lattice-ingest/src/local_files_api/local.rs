@@ -1,5 +1,3 @@
-//! `/local/{list,read,serve,write}` and `GET /api/local-agent/status`.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -454,8 +452,6 @@ fn is_sensitive_read_path(path: &std::path::Path) -> bool {
     false
 }
 
-/// Resolve existing ancestor via `canonicalize` so non-existent targets cannot
-/// bypass blocked prefix checks using `..` or symlinked parent directories.
 fn canonicalize_soft(path: &std::path::Path) -> PathBuf {
     if let Ok(c) = std::fs::canonicalize(path) {
         return c;

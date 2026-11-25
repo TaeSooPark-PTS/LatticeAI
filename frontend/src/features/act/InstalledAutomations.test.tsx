@@ -81,7 +81,6 @@ describe("InstalledAutomations", () => {
 
     renderWithClient(<InstalledAutomations language="ko" />);
     const runButton = await screen.findByRole("button", { name: /지금 한 번 실행/ });
-    // Before any dry run the real-run button is not offered.
     expect(screen.queryByRole("button", { name: /실제로 한 번 실행/ })).toBeNull();
 
     await userEvent.click(runButton);
@@ -101,7 +100,6 @@ describe("InstalledAutomations", () => {
   it("renders a sparse last execution without inventing a time or summary", async () => {
     mockOverview([
       {
-        // No id at all: the card still renders rather than crashing on the key.
         name: "무명 자동화",
         enabled: false,
         requires_user_enable: true,
@@ -112,7 +110,6 @@ describe("InstalledAutomations", () => {
     renderWithClient(<InstalledAutomations language="ko" />);
     const line = await screen.findByTestId("automation-last-execution");
     expect(line.textContent).toContain("실제");
-    // Absent status, finished_at and summary add nothing to the line.
     expect(line.textContent).not.toMatch(/undefined|—/);
     expect(screen.getByText("무명 자동화")).toBeTruthy();
   });
@@ -132,7 +129,6 @@ describe("InstalledAutomations", () => {
     expect(runButtons).toHaveLength(2);
     await userEvent.click(runButtons[0]!);
 
-    // The clicked card reports the dry run; its sibling keeps its label but is locked.
     await screen.findByRole("button", { name: /모의 실행 중/ });
     const idle = screen.getByRole("button", { name: /지금 한 번 실행/ });
     expect((idle as HTMLButtonElement).disabled).toBe(true);
@@ -197,8 +193,6 @@ describe("shortWhen", () => {
   });
 
   it("returns an empty string for a missing value", () => {
-    // Every render site guards on truthiness first, so this contract is only
-    // reachable directly — it keeps the helper safe for future callers.
     expect(shortWhen(undefined)).toBe("");
   });
 });

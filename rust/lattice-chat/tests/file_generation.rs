@@ -1,20 +1,3 @@
-//! `POST /chat` writes a file a model actually wrote (v11.9.0).
-//!
-//! The fixtures cannot cover this: `rust/fixtures/http/chat.json` was captured
-//! with **no model loaded**, so every branch that needs one is a gap the capture
-//! names. This suite is the proof instead — a scripted worker that answers
-//! `POST /worker/llm/stream` with replies chosen to be the ones a small local
-//! model really produces:
-//!
-//! * a clean document (what a good reply looks like);
-//! * prose wrapped around a fenced document (what a 2B usually does);
-//! * a document that stops mid-tag (what a token budget does);
-//! * "I'm sorry, I can't do that" (what a refusal does).
-//!
-//! Each one has a required outcome, and three of the four are about *honesty*
-//! rather than success: what the artifact claims, what the badge says, and the
-//! one case where the right answer is to write nothing at all.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -31,17 +14,12 @@ use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap, WorkspaceResolver};
 use lattice_chat::{router, ChatConfig, ChatState, ChatWorker};
 use serde_json::{json, Value};
 
-/// A reply the scripted worker hands out, in order.
 #[derive(Clone)]
 struct Script {
     replies: Arc<Mutex<Vec<String>>>,
     seen: Arc<Mutex<Vec<Value>>>,
     renders: Arc<Mutex<Vec<Value>>>,
-    /// Bytes `POST /worker/render/{kind}` answers with; `None` ⇒ 503, the shape
-    /// a worker without python-docx installed really answers.
     document: Arc<Mutex<Option<Vec<u8>>>>,
-    /// Held before every completion, so a stream's first frame can be checked
-    /// while the model is still "thinking".
     delay: Duration,
 }
 
@@ -70,8 +48,6 @@ impl Script {
         self
     }
 
-    /// The next scripted reply; an exhausted script answers with nothing, which
-    /// is what a worker with no model loaded does.
     fn next(&self) -> String {
         self.replies.lock().unwrap().pop().unwrap_or_default()
     }
@@ -89,7 +65,6 @@ impl Script {
     }
 }
 
-/// What the real seam answers with: `base64.b64encode(payload)`.
 fn encode(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
@@ -383,7 +358,6 @@ async fn a_plain_html_request_writes_the_page_the_model_wrote() {
         "{body}"
     );
 
-    // One ask, in document mode, carrying the HTML anchor as the system prompt.
     assert_eq!(install.script.asked(), 1, "a clean reply is not retried");
     let prompt = &install.script.prompts()[0];
     assert_eq!(prompt["mode"], "document");
@@ -432,8 +406,6 @@ async fn a_2b_reply_wrapped_in_prose_and_fences_is_unwrapped_not_repaired() {
 
 #[tokio::test]
 async fn a_truncated_page_is_repaired_and_the_badge_says_so() {
-    // Both attempts stop mid-tag — the shape a small model produces when the
-    // token budget runs out, twice.
     let install = Install::start(Script::new(&[TRUNCATED_PAGE, TRUNCATED_PAGE])).await;
     let (status, body) = install.chat(ask("HTML 파일 만들어줘")).await;
 
@@ -446,14 +418,12 @@ async fn a_truncated_page_is_repaired_and_the_badge_says_so() {
         body["artifacts"][0]["valid"], true,
         "a repaired document is structurally valid — that is what repair is for"
     );
-    // The badge the SPA renders (`agentPayloadFiles` reads `generation.repaired`).
     assert_eq!(body["generation"]["repaired"], true);
     let attempts = body["generation"]["attempts"].as_array().expect("attempts");
     assert_eq!(attempts.len(), 2, "one retry, and only one");
     assert_eq!(attempts[0]["outcome"], "repaired");
     assert_eq!(attempts[0]["path"], "generated_page.html");
 
-    // The retry names what was wrong with the first answer.
     assert_eq!(install.script.asked(), 2);
     let retry = install.script.prompts()[1]["context"]
         .as_str()
@@ -496,7 +466,6 @@ async fn the_retry_is_what_gets_written_when_the_first_answer_was_not_a_file() {
 
 #[tokio::test]
 async fn a_multi_file_project_writes_three_and_names_what_it_deferred() {
-    // The React manifest declares five files; this surface writes three.
     let package = "{\n  \"name\": \"todo-app\",\n  \"private\": true\n}";
     let entry = "import { createRoot } from \"react-dom/client\";\nimport App from \"./App.jsx\";\ncreateRoot(document.getElementById(\"root\")).render(<App />);";
     let install = Install::start(Script::new(&[package, CLEAN_PAGE, entry])).await;
@@ -532,9 +501,9 @@ async fn a_multi_file_project_writes_three_and_names_what_it_deferred() {
 #[tokio::test]
 async fn a_project_file_the_model_refuses_is_reported_not_hidden() {
     let install = Install::start(Script::new(&[
-        CLEAN_PAGE, // index.html
+        CLEAN_PAGE,
         "body { color: rebeccapurple; }",
-        REFUSAL, // app.js — twice, because the refusal is retried
+        REFUSAL,
         REFUSAL,
     ]))
     .await;
@@ -573,7 +542,6 @@ async fn the_inline_path_writes_the_users_bytes_and_reports_their_verdict() {
     );
     assert_eq!(install.script.asked(), 0, "the model was never consulted");
 
-    // …and content the validator would refuse is still the user's to write.
     let (status, body) = install
         .chat(ask("page.html 파일 만들어줘. 내용: 나중에 채울게요"))
         .await;
@@ -618,7 +586,6 @@ async fn a_docx_is_a_real_render_and_never_prose_under_a_docx_name() {
     assert_eq!(body["artifacts"][0]["previewable"], false);
     assert_eq!(body["artifacts"][0]["valid"], true);
     assert_eq!(body["artifacts"][0]["bytes"], bytes.len());
-    // The Brain still remembers the document's words, not its bytes.
     assert_eq!(body["brain_ingest"]["status"], "ok");
 }
 
@@ -686,9 +653,6 @@ async fn a_spreadsheet_names_the_agent_rather_than_guessing_at_rows() {
         "nothing was even attempted"
     );
 
-    // …and asking for it as a stream is still a real 400, not a 200 whose body
-    // holds an error frame: the format is refused from the filename, before
-    // there is any stream to put a frame in.
     let response = install
         .send(json!({"message": "deck.pptx 파일 만들어줘", "stream": true}))
         .await;
@@ -720,8 +684,6 @@ async fn a_streaming_generation_announces_the_file_before_the_model_answers() {
         .starts_with("text/event-stream"));
     assert_eq!(response.headers()["x-model"], "demo");
 
-    // The progress frame is live, not a summary written after the work: it
-    // arrives while the scripted model is still holding its answer.
     let first = tokio::time::timeout(Duration::from_millis(1_000), response.chunk())
         .await
         .expect("the progress frame must not wait for the model")
@@ -740,10 +702,6 @@ async fn a_streaming_generation_announces_the_file_before_the_model_answers() {
     assert!(rest.trim_end().ends_with("data: [DONE]"), "{rest}");
     assert_eq!(install.read("generated_page.html"), CLEAN_PAGE);
 
-    // Every frame in the whole stream carries a `chunk`, progress frames
-    // included. The VS Code extension's reader is `chunks.push(parsed.chunk)`
-    // and its caller does `accumulated += chunk`, so a frame without the key
-    // would print the literal "undefined" into that editor's answer.
     let stream = format!("{first}{rest}");
     let frames: Vec<&str> = stream
         .split("\n\n")

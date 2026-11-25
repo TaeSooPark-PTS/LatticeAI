@@ -1,18 +1,3 @@
-//! The PLAN → EXECUTE → VERIFY → ROLLBACK state machine, natively.
-//!
-//! A port of `latticeai.core.agent.{planning,execution,verification,recovery,
-//! runtime}`. What lives *here* is what all four phases need: the injected
-//! ports ([`LoopDeps`]), the step observer, the autonomy dial, the two disk
-//! reads the loop owns (the fail-closed existence check and the pre-write
-//! snapshot), and [`Runtime::run_to_completion`].
-//!
-//! The division of labour with the worker is the point of the whole design:
-//! **every decision is made here** — budgets, gates, change classes, verdict
-//! mapping, state transitions — and **every side effect happens there**, behind
-//! the three seam endpoints. The one exception is recovery, which reads and
-//! writes the workspace directly because a rollback that has to ask a possibly
-//! broken worker for permission is not a rollback.
-
 pub mod execution;
 pub mod fallback;
 pub mod gates;
@@ -40,26 +25,10 @@ use crate::tools::documents::document_output_target;
 use crate::tools::sandbox::Workspace;
 use crate::tools::{NativeTools, ToolConfig, ToolHost};
 
-/// Largest file a pre-write snapshot will hold in memory.
-///
-/// `ToolDispatchService._SNAPSHOT_MAX_BYTES` — 512 KiB, which is **not**
-/// [`crate::tools::sandbox::MAX_FILE_BYTES`] (512,000, the file-tool read cap). They
-/// differ by 288 bytes and the difference is load-bearing exactly once: a file
-/// between the two sizes is snapshotted by Python and would be refused by a
-/// port that reached for the more familiar constant.
 pub const SNAPSHOT_MAX_BYTES: u64 = 512 * 1024;
 
-/// `git checkout --` gets ten seconds, as `ToolDispatchService.rollback_file`.
 pub const GIT_ROLLBACK_TIMEOUT_SECS: u64 = 10;
 
-/// The prompts a host may supply. Empty means "use the built-in".
-///
-/// Until v11.9.0 empty meant *nothing*: `Prompts::default()` was three empty
-/// strings, no code path filled them, and every phase opened its context with a
-/// blank line. The loop's own decisions still do not read these — they steer
-/// the model — but a model that was never told the contract cannot hold it, and
-/// the compact profile was spending its whole correction budget on that.
-/// [`crate::prompts`] carries the defaults; a caller's string always wins.
 #[derive(Debug, Clone, Default)]
 pub struct Prompts {
     pub planner: String,
@@ -76,18 +45,14 @@ impl Prompts {
         }
     }
 
-    /// The planner prompt for this run.
     pub fn planner_prompt(&self) -> String {
         Self::or_default(&self.planner, crate::prompts::DEFAULT_PLANNER_PROMPT)
     }
 
-    /// The critic prompt for this run.
     pub fn critic_prompt(&self) -> String {
         Self::or_default(&self.critic, crate::prompts::DEFAULT_CRITIC_PROMPT)
     }
 
-    /// The executor prompt for this run: profile-shaped, naming this run's own
-    /// tools and whatever skills the request declared.
     pub fn executor_prompt(
         &self,
         profile: AgentProfile,
@@ -101,8 +66,6 @@ impl Prompts {
     }
 }
 
-/// One run's request, mirroring Python's `AgentRequest` plus the data the loop
-/// needs because it is not the process that owns the registry.
 #[derive(Debug, Clone)]
 pub struct RunRequest {
     pub message: String,
@@ -119,19 +82,9 @@ pub struct RunRequest {
     pub permission_mode: Option<String>,
     pub language_hint: String,
     pub project_id: Option<String>,
-    /// What `recent_chat_context` would have returned; the loop has no history
-    /// port, so the caller supplies it or the prompt says `(none)`.
     pub recent_conversation: Option<String>,
     pub project_context: String,
     pub self_model_summary: String,
-    /// Skills the host has installed, as briefs (v11.9.0). Rendered into the
-    /// executor prompt and never resolved here — see [`crate::prompts`].
-    ///
-    /// Since v12.0.0 a brief is also a *callable* menu row when the host wires
-    /// a [`crate::tools::ToolCatalog`]: the brief is what the model is told, the
-    /// catalog is what makes choosing it do something. A brief with no catalog
-    /// behind it is still only a suggestion, and the loop says so when a run
-    /// picks one.
     pub skills: Vec<crate::prompts::SkillBrief>,
 }
 
@@ -160,52 +113,26 @@ impl Default for RunRequest {
     }
 }
 
-/// The ports the state machine needs from the outside world.
 #[derive(Debug, Clone)]
 pub struct LoopDeps {
     pub worker: WorkerClient,
-    /// The native tool set (v11.6.0 §W4). Everything it `handles` is executed
-    /// here; everything else is still a `POST /agent/tool`.
     pub native: Arc<dyn ToolHost>,
-    /// The host's MCP surface and installed skills, as one catalog (v12.0.0).
-    ///
-    /// `None` is the standalone contract, exactly as it is for `hooks`: no MCP
-    /// surface and no skill registry in reach of this process, so the run's
-    /// catalog is its own tools and nothing is quietly missing from the menu.
-    /// See [`crate::tools::catalog`] for what each kind means and how a
-    /// prefixed name is routed.
     pub external: Option<Arc<dyn crate::tools::ToolCatalog>>,
-    /// Where a measured profile verdict is cached, when measuring is wanted
-    /// (v12.0.0).
-    ///
-    /// `None` means **do not probe** — the size prior decides, no completion is
-    /// spent and no file is written. That is the right default for
-    /// [`LoopDeps::new`], which every harness and every test builds from: a
-    /// constructor that silently added two LLM calls and a write under `$HOME`
-    /// would make the frozen trajectories depend on the developer's machine.
-    /// The wire turns it on ([`crate::surface::runbody::RunBody`]).
     pub probe: Option<crate::kernel::probe::ProbeConfig>,
-    /// Where a `strict` mutation is staged for review (v11.6.0 §P1c). The
-    /// default writes `workspace_os.json` directly; a host running the Review
-    /// Center **must** inject its own store — see [`crate::kernel::proposals`].
     pub proposals: Arc<dyn ProposalStore>,
     pub workspace: Workspace,
     pub policies: PolicyTable,
     pub file_create_actions: BTreeSet<String>,
     pub governed_tools: BTreeSet<String>,
     pub scoped_knowledge_tools: BTreeSet<String>,
-    /// Whether a change governor is wired at all (`deps.change_governor`).
     pub governor_enabled: bool,
-    /// `sorted(deps.tool_governance)` — the escalation hint names these.
     pub tool_names: Vec<String>,
     pub phase_budgets: PhaseBudgets,
     pub transcript_budget: TranscriptBudget,
-    /// An injected profile wins; `None` derives it from the executing model.
     pub agent_profile: Option<AgentProfile>,
     pub prompts: Prompts,
 }
 
-/// `FILE_CREATE_ACTIONS`.
 pub fn default_file_create_actions() -> BTreeSet<String> {
     [
         "create_docx",
@@ -221,7 +148,6 @@ pub fn default_file_create_actions() -> BTreeSet<String> {
     .collect()
 }
 
-/// `ChangeProposalService.governed_tools`.
 pub fn default_governed_tools() -> BTreeSet<String> {
     ["edit_file", "write_file"]
         .into_iter()
@@ -229,7 +155,6 @@ pub fn default_governed_tools() -> BTreeSet<String> {
         .collect()
 }
 
-/// `SCOPED_KNOWLEDGE_TOOLS`.
 pub fn default_scoped_knowledge_tools() -> BTreeSet<String> {
     [
         "knowledge_save",
@@ -245,17 +170,10 @@ pub fn default_scoped_knowledge_tools() -> BTreeSet<String> {
 }
 
 impl LoopDeps {
-    /// Production defaults around a worker and a workspace.
     pub fn new(worker: WorkerClient, workspace: Workspace) -> Self {
         Self::with_hook_sink(worker, workspace, None)
     }
 
-    /// [`LoopDeps::new`], with the `pre_tool` / `post_tool` lifecycle wired.
-    ///
-    /// `hooks` is the host's registry adapter
-    /// (`lattice_platform::governance::hooks::NativeHookSink`). `None` is the standalone
-    /// contract: no `hooks.json` in reach, so no user hook fires — which is
-    /// what a harness, a test and a host with no platform routes all want.
     pub fn with_hook_sink(
         worker: WorkerClient,
         workspace: Workspace,
@@ -287,27 +205,11 @@ impl LoopDeps {
     }
 }
 
-/// A step observer: pure telemetry, and never allowed to break the loop.
 pub type StepObserver = Box<dyn Fn(Value) + Send + Sync>;
 
-/// Drives the agent state machine over injected [`LoopDeps`].
 pub struct Runtime {
     pub deps: LoopDeps,
-    /// The profile this run settled on, once (v12.0.0).
-    ///
-    /// A probe costs two completions, so it is taken at most once per run and
-    /// remembered here. It is *not* on [`AgentRunContext`]: a resumed run
-    /// re-derives it, which is right — the verdict cache makes that free, and a
-    /// run paused across a model change must not execute under a dial measured
-    /// for the model it was planned with.
     resolved_profile: Option<AgentProfile>,
-    /// Audit events the loop raised, in order.
-    ///
-    /// Python writes these to the audit log through `deps.audit`. The seam
-    /// contract has three endpoints and none of them is an audit sink, so the
-    /// native loop *keeps* its audit trail and hands it back with the run
-    /// rather than dropping the events on the floor or inventing a fourth
-    /// endpoint. Named as a deviation, not presented as parity.
     pub audit: Vec<Value>,
     observer: Option<StepObserver>,
 }
@@ -333,38 +235,17 @@ impl Runtime {
         }
     }
 
-    /// Attach the live step observer (the SSE stream's).
     pub fn with_observer(mut self, observer: StepObserver) -> Self {
         self.observer = Some(observer);
         self
     }
 
-    /// The loop profile for the model actually executing this run, *derived*.
-    ///
-    /// The v11.9.0 answer: an injected dial, else the regex over the model id.
-    /// Still the whole answer when nothing can be measured, and still what the
-    /// unit suites assert against, because it is pure.
     pub fn profile(&self, model_id: Option<&str>) -> AgentProfile {
         self.resolved_profile
             .or(self.deps.agent_profile)
             .unwrap_or_else(|| profile_for_model(model_id))
     }
 
-    /// The loop profile for this run, **measured** where measuring is possible.
-    ///
-    /// The order is the policy, strongest claim first:
-    ///
-    /// 1. an injected [`LoopDeps::agent_profile`] — a caller that states the
-    ///    dial is never overruled by a measurement;
-    /// 2. `LATTICEAI_AGENT_PROFILE` — the operator's pin;
-    /// 3. this run's already-resolved answer, so a probe is paid once;
-    /// 4. [`crate::kernel::probe::measure`] — two short completions, cached on
-    ///    disk per model id and harness version;
-    /// 5. [`profile_for_model`] — the size prior, which is what "we could not
-    ///    measure" means.
-    ///
-    /// Recorded on the trace either way, because "which dial did this run use,
-    /// and why" is the first question any weak-model report has to answer.
     pub async fn resolve_profile(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -387,10 +268,6 @@ impl Runtime {
             }
             None => None,
         };
-        // Recorded **only when something was measured**. A run that fell back
-        // to the prior did exactly what every run before v12.0.0 did, and
-        // stamping an event on it would change every frozen trajectory to say
-        // that a decision had been made where none was.
         let profile = match &measured {
             Some(verdict) => {
                 let detail = verdict.to_detail();
@@ -405,19 +282,10 @@ impl Runtime {
         profile
     }
 
-    /// Pin the dial for the rest of this run.
-    ///
-    /// The one caller is [`execution::Runtime::demote_to_guided`], and it exists
-    /// so verification runs under the dial the executor actually finished in —
-    /// a run that fell back to `guided` must be reviewed with `guided`'s closed
-    /// question, not with a JSON verdict the same model already could not emit.
     pub(super) fn set_resolved_profile(&mut self, profile: AgentProfile) {
         self.resolved_profile = Some(profile);
     }
 
-    /// Autonomy dial for this run: a mode stamped on the context wins, so the
-    /// plan a user approved and every tool step in the same run are judged by
-    /// one dial even if the stored preference changes mid-run.
     pub fn resolve_permission_mode(
         &self,
         ctx: &AgentRunContext,
@@ -430,7 +298,6 @@ impl Runtime {
         normalize_mode(stamped.unwrap_or(""))
     }
 
-    /// `_emit_step`: fire the observer, dropping `None` details.
     pub fn emit_step(&self, phase: &str, event: &str, details: &[(&str, Value)]) {
         let Some(observer) = &self.observer else {
             return;
@@ -446,7 +313,6 @@ impl Runtime {
         observer(Value::Object(payload));
     }
 
-    /// Record one audit event.
     pub fn audit(&mut self, event: &str, details: &[(&str, Value)]) {
         let mut payload = Map::new();
         payload.insert("event".into(), json!(event));
@@ -456,7 +322,6 @@ impl Runtime {
         self.audit.push(Value::Object(payload));
     }
 
-    /// Project-session context for prompts, or `""` for a standalone run.
     pub fn project_block(&self, ctx: &AgentRunContext) -> String {
         let summary = ctx.project_context.trim();
         if summary.is_empty() {
@@ -466,11 +331,6 @@ impl Runtime {
         }
     }
 
-    /// Does this tool call's *real* target already exist?
-    ///
-    /// Never fails: governance must not be able to crash the loop, and an
-    /// unresolvable path degrades to "new file", which the remaining gates
-    /// still cover.
     pub fn governed_path_exists(&self, name: &str, path: &str) -> bool {
         let resolved = document_output_target(name, path).unwrap_or_else(|| path.to_string());
         let candidate = PathBuf::from(&resolved);
@@ -482,12 +342,6 @@ impl Runtime {
         candidate.exists()
     }
 
-    /// `run_to_completion`: EXECUTING → VERIFYING → ROLLBACK until terminal.
-    ///
-    /// The `Err` arm is the reasoner being unreachable, which Python expresses
-    /// as an exception escaping the loop. There is no honest way to continue a
-    /// reasoning loop without the reasoner, so the run does not invent a
-    /// terminal state for it — the caller answers with the failure.
     pub async fn run_to_completion(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -505,7 +359,6 @@ impl Runtime {
                 AgentState::Executing => self.execute(ctx, req).await?,
                 AgentState::Verifying => self.verify(ctx, req).await?,
                 AgentState::Rollback => self.rollback(ctx, req).await,
-                // Any other state here is a bug upstream, not a state to sit in.
                 _ => ctx.state = AgentState::Failed,
             }
         }
@@ -604,7 +457,7 @@ pub(crate) mod tests {
         let (_dir, ws) = workspace();
         let mut runtime = runtime(ws);
         let mut ctx = AgentRunContext::new();
-        ctx.state = AgentState::Planning; // not a drive-loop state
+        ctx.state = AgentState::Planning;
         runtime
             .run_to_completion(&mut ctx, &RunRequest::default())
             .await
@@ -619,7 +472,6 @@ pub(crate) mod tests {
         let mut runtime = runtime(ws);
         let mut ctx = AgentRunContext::new();
         ctx.trace = LoopTrace::pinned("t");
-        // A history that is already at the cap: the next turn must break.
         ctx.state_history = (0..200).map(|_| "EXECUTING".to_string()).collect();
         ctx.state = AgentState::Rollback;
         runtime

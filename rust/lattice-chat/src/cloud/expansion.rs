@@ -8,9 +8,6 @@ use crate::pyvalue::field;
 
 use super::adapter::CloudTurnResult;
 
-// ── expansion planning ──────────────────────────────────────────────────────
-
-/// `KGExpansionPlan`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ExpansionPlan {
     pub conversation_title: String,
@@ -21,7 +18,6 @@ pub struct ExpansionPlan {
 }
 
 impl ExpansionPlan {
-    /// `KGExpansionPlan.to_dict`.
     pub fn to_value(&self) -> Value {
         json!({
             "conversation_title": self.conversation_title,
@@ -33,14 +29,6 @@ impl ExpansionPlan {
     }
 }
 
-/// The turn node's id.
-///
-/// **Stated divergence.** Python builds it from
-/// `abs(hash((user_message, answer_text))) % 10**12`, and CPython's `str`
-/// hashing is salted per process (`PYTHONHASHSEED`), so the Python value is not
-/// reproducible even between two Python runs. Nothing can depend on it, so this
-/// uses a stable digest of the same two strings instead — same shape, same
-/// 12-digit width, and now actually deterministic.
 fn turn_id(user_message: &str, answer_text: &str) -> String {
     let mut hash: u64 = 1_469_598_103_934_665_603;
     for byte in user_message.bytes().chain([0u8]).chain(answer_text.bytes()) {
@@ -54,7 +42,6 @@ fn clipped(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
 }
 
-/// `plan_kg_expansion` — the conversation node plus its grounding edges.
 pub fn plan_kg_expansion(result: &CloudTurnResult) -> ExpansionPlan {
     let turn_id = turn_id(&result.user_message, &result.answer_text);
     let title = if result.user_message.is_empty() {
@@ -140,14 +127,12 @@ fn candidate_patterns() -> &'static Vec<(&'static str, Vec<Regex>)> {
     })
 }
 
-/// `_clean` — collapse whitespace, then clip.
 fn clean(text: &str, limit: usize) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let pattern = RE.get_or_init(|| Regex::new(r"\s+").expect("pattern compiles"));
     clipped(&pattern.replace_all(text.trim(), " "), limit)
 }
 
-/// `extract_candidates` — heuristic Concept / Decision / Task nodes.
 pub fn extract_candidates(answer: &str, limit: usize) -> Vec<Value> {
     let mut out: Vec<Value> = Vec::new();
     let mut seen: BTreeSet<String> = BTreeSet::new();
@@ -184,7 +169,6 @@ pub fn extract_candidates(answer: &str, limit: usize) -> Vec<Value> {
     out
 }
 
-/// `plan_kg_expansion_rich` — base plan plus the heuristic candidates.
 pub fn plan_kg_expansion_rich(result: &CloudTurnResult) -> ExpansionPlan {
     let mut plan = plan_kg_expansion(result);
     let candidates = extract_candidates(&result.answer_text, 8);
@@ -197,8 +181,6 @@ pub fn plan_kg_expansion_rich(result: &CloudTurnResult) -> ExpansionPlan {
     for (index, candidate) in candidates.iter().enumerate() {
         let node_id = format!("{turn_id}:cand:{index}");
         let mut node = candidate.as_object().cloned().unwrap_or_default();
-        // `{"id": node_id, **cand}` — the id goes first, then the candidate's
-        // own keys, and a candidate carrying an `id` would win. None does.
         let mut with_id = Map::new();
         with_id.insert("id".into(), json!(node_id));
         with_id.append(&mut node);
@@ -222,25 +204,10 @@ pub fn plan_kg_expansion_rich(result: &CloudTurnResult) -> ExpansionPlan {
     plan
 }
 
-/// Where cloud-derived knowledge waits for a human.
-///
-/// The Review Center queue is `lattice-platform`'s (WP-R7), so chat takes it as
-/// a sink. Unbound, the plan is reported as `staged` and nothing is written —
-/// which is the honest answer for an install with no Review Center.
 pub trait ReviewSink: Send + Sync {
-    /// Stage one `change_proposal`; return its id.
     fn create(&self, item: &Value) -> Result<String, String>;
 }
 
-/// `CloudResponseIngestor.ingest` — stage, and write only if allowed to.
-///
-/// **Stated gap.** Python's `auto_commit` branch calls `store.upsert_nodes`
-/// directly. That is a graph write, and plan §2 keeps the Python worker the
-/// single writer, so this port refuses it rather than opening a native write
-/// path: `upsert_nodes` is not in WP-I6's `GRAPH_MUTATION_OPS` whitelist yet.
-/// The default is `auto_commit = false`, so the shipped behaviour is unchanged;
-/// an install that turns it on gets `write_error` naming the missing seam op
-/// instead of a silent no-op.
 pub fn ingest_expansion(
     plan: &ExpansionPlan,
     review: Option<&dyn ReviewSink>,

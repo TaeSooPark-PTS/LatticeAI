@@ -1,12 +1,3 @@
-"""What a model *is*: where it runs, who made it, and how a ref is spelled.
-
-``parse_model_ref`` is the single place a model id becomes ``(provider,
-model)`` — everything downstream branches on ``provider == "local_mlx"``.
-``source_metadata_for_model`` is the plain-Korean provenance block the model
-picker shows, so "이 모델은 어디서 실행되나" has one answer per model rather
-than one per surface.
-"""
-
 from dataclasses import dataclass
 from typing import Any, Dict
 
@@ -16,8 +7,6 @@ from latticeai.models.model_providers import (
 )
 
 
-# Returns a display payload whose `source_display_order` value is a list,
-# so the value type is Any rather than str.
 def source_metadata_for_model(
     provider: str, model: Dict[str, Any], *, local_server: bool
 ) -> Dict[str, Any]:
@@ -51,12 +40,11 @@ def source_metadata_for_model(
 class CloudModel:
     provider: str
     model: str
-    client: Any  # AsyncOpenAI when the optional dependency is installed
+    client: Any
     cache_key: str
 
 
 def parse_model_ref(model_id: str) -> tuple[str, str]:
-    """Return (provider, model). Unprefixed refs stay local MLX."""
     if model_id.startswith("cloud:"):
         _, provider, model = model_id.split(":", 2)
         return provider, model
@@ -66,6 +54,4 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
             return provider, model
         if provider in {"local_mlx", "mlx"}:
             return "local_mlx", model
-    # No trailing ``local_mlx:`` case: such a ref contains a colon, so it was
-    # already answered by the branch above.
     return "local_mlx", model_id

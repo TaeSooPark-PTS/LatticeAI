@@ -1,33 +1,4 @@
 #!/usr/bin/env node
-/**
- * Post-capture evidence ↔ build binding gate.
- *
- * Failure mode
- * ------------
- * 1. `npm run release:evidence` writes screenshots (mtime T0).
- * 2. Someone runs `npm run build:assets` again (manifest mtime T1 > T0).
- * 3. The pre-capture guard only compares frontend/src mtime vs manifest mtime,
- *    so it still passes — while screenshots show an older UI than the build.
- *
- * Also: capture hits the visual mock server for API payloads. Changing the mock
- * after capture (e.g. taller Act panel → 1846px vs committed 1721px) left
- * asset-manifest.sha256 alone, so this gate used to stay green while
- * SCREENSHOT_INDEX.md described a UI the tree no longer produces.
- *
- * The mock server is an entry file plus the route modules it composes, and the
- * fingerprint covers all of them — see scripts/lib/mock_server_fingerprint.mjs,
- * shared with capture so the recorded and the checked digest cannot drift.
- *
- * Capture records asset-manifest.sha256 and mock-server.sha256 in
- * SCREENSHOT_INDEX.md. This script fails (exit 1) when either binding is
- * missing or does not match the live files. Wired into `npm run lint` so a
- * green lint cannot ship stale screenshots.
- *
- * Exit 0 bound, 1 stale/missing, 2 could not run.
- *
- * Escape hatch: LTCAI_SKIP_RELEASE_EVIDENCE_BOUND=1 (used only by
- * release:evidence while it intentionally wipes and rebinds evidence).
- */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";

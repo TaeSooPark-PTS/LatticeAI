@@ -1,12 +1,3 @@
-"""What this machine can run: the engine/model status payload.
-
-:func:`engine_status` is the single answer the Library screen renders — every
-engine (local, local-server, cloud), whether it is installed, whether its
-install is even supported here, and which catalogue models are already pulled.
-:func:`runtime_features` is the same idea for the application itself, and
-:func:`install_engine` is the one write this module owns.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

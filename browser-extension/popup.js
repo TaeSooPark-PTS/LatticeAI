@@ -1,30 +1,8 @@
-// Lattice AI browser extension — popup logic.
-//
-// Capture: sends the active tab's readable content to the LOCAL runtime
-// (http://127.0.0.1:<port>/api/browser/ingest-current-tab).
-// Recall (v9.9.7): asks the same `/chat` surface every other client uses and
-// renders the server's own grounding verdict.
-// Approvals (v9.9.7): shows how many agent runs are waiting, so a paused run
-// is never invisible from here.
-//
-// Nothing leaves the machine; there is no cloud endpoint anywhere in this
-// extension, and no verdict is computed locally — the badge only reports what
-// the server said.
 
 const DEFAULT_PORT = 4825;
 const REQUEST_TIMEOUT_MS = 30_000;
-// Recall runs a model; it is legitimately slower than an ingest round-trip.
 const RECALL_TIMEOUT_MS = 120_000;
 
-// ── copy ─────────────────────────────────────────────────────────────────
-//
-// The popup used to mix languages inside one window: the capture status was
-// English ("Added to Knowledge Graph"), the grounding badge and the approvals
-// line were Korean ("근거 있음", "승인 대기 중인 실행 N건"). Whoever was using
-// it read half of it in a language they had not chosen — the same problem the
-// web app solves with its own catalog, on a surface that had none.
-//
-// Plain object, no build step: this file ships as-is to the browser.
 
 const COPY = {
   ko: {
@@ -71,7 +49,6 @@ const COPY = {
 
 const DEFAULT_LANGUAGE = "ko";
 
-/** "en-GB" -> "en" when supported, else null. */
 function normalizeLanguage(value) {
   const tag = String(value || "").trim().toLowerCase().replace(/_/g, "-");
   if (!tag) return null;
@@ -79,15 +56,6 @@ function normalizeLanguage(value) {
   return Object.prototype.hasOwnProperty.call(COPY, base) ? base : null;
 }
 
-/**
- * The language this popup speaks.
- *
- * The browser's own UI language, which is the only signal available here: the
- * extension popup is a separate origin from the web app, so it cannot read the
- * app's `lattice.language`. `stored` is kept as the first-choice input for the
- * day a popup preference exists; today it is always null, and passing the
- * browser language alone is a complete answer.
- */
 function resolveLanguage(stored, uiLanguage) {
   return (
     normalizeLanguage(stored)
@@ -96,7 +64,6 @@ function resolveLanguage(stored, uiLanguage) {
   );
 }
 
-/** Extract server-configured language from `/api/features` or profile/settings payloads. */
 function extractServerLanguage(payload) {
   if (!payload || typeof payload !== "object") return null;
   if (typeof payload.language === "string") {
@@ -129,13 +96,6 @@ function normalizePort(value) {
     : DEFAULT_PORT;
 }
 
-/**
- * Render the server's `/chat` grounding verdict.
- *
- * Honest by construction: an absent or unrecognized verdict is "unknown",
- * never "grounded". The extension must not invent evidence the Brain did not
- * report.
- */
 function groundingView(payload, language = DEFAULT_LANGUAGE) {
   const grounding =
     payload && typeof payload === "object" && payload.grounding && typeof payload.grounding === "object"
@@ -167,7 +127,6 @@ function groundingView(payload, language = DEFAULT_LANGUAGE) {
   return { status: status || "unknown", kind: "unknown", text: t(language, "grounding.unknown") };
 }
 
-/** Pending-approval summary line, or "" when nothing is waiting. */
 function approvalsView(payload, language = DEFAULT_LANGUAGE) {
   const pending =
     payload && typeof payload === "object" && Array.isArray(payload.pending)
@@ -206,10 +165,6 @@ async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fe
   }
 }
 
-/**
- * Fetch and consume the response body under a single end-to-end timeout so
- * stalled body streaming cannot outlive the header deadline.
- */
 async function fetchJsonWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fetchImpl = fetch) {
   const { signal, cleanup } = buildTimeoutSignal(timeoutMs, options?.signal);
   try {
@@ -267,13 +222,11 @@ function initializePopup() {
     document.documentElement.lang = resolved;
   }
 
-  // Remember the last-used valid port and synced language preference.
   chrome.storage?.local.get(["latticePort", "latticeLanguage"], (result) => {
     portInput.value = String(normalizePort(result?.latticePort));
     if (result?.latticeLanguage) applyLanguage(result.latticeLanguage);
   });
 
-  /** Headers every local call carries, so the server answers in this language too. */
   function localHeaders(extra) {
     return { "X-Lattice-Language": language, ...(extra || {}) };
   }
@@ -302,7 +255,7 @@ function initializePopup() {
         {
           method: "POST",
           headers: localHeaders({ "Content-Type": "application/json" }),
-          credentials: "include", // reuse the local app session cookie if present
+          credentials: "include",
           body: JSON.stringify(payload),
         },
       );
@@ -324,7 +277,6 @@ function initializePopup() {
     }
   });
 
-  // ── Recall (v9.9.7) ───────────────────────────────────────────────────────
   const questionEl = document.getElementById("question");
   const askBtn = document.getElementById("ask");
   const answerEl = document.getElementById("answer");
@@ -362,8 +314,6 @@ function initializePopup() {
       setGrounding(groundingView(data, language));
     } catch (err) {
       if (answerEl) answerEl.textContent = "";
-      // A failed recall is not an ungrounded answer — say what actually
-      // happened instead of badging a verdict nobody issued.
       setStatus(
         t(language, "recall.failed", {
           message: err instanceof Error ? err.message : String(err),
@@ -375,7 +325,6 @@ function initializePopup() {
     }
   });
 
-  // ── Pending approvals & server language sync ──────────────────────────────
   const approvalsEl = document.getElementById("approvals");
   (async () => {
     const port = normalizePort(portInput?.value);
@@ -390,7 +339,6 @@ function initializePopup() {
         await saveStorage({ latticeLanguage: synced });
       }
     } catch (err) {
-      // Optional sync: popup keeps stored/browser language when runtime is offline.
       console.warn("Lattice AI extension: optional language sync skipped", err);
     }
     if (!approvalsEl) return;
@@ -401,7 +349,6 @@ function initializePopup() {
       );
       approvalsEl.textContent = approvalsView(approvalsData, language);
     } catch (err) {
-      // Non-fatal: an unreachable runtime is already reported by the capture path.
       console.warn("Lattice AI extension: approval count check failed", err);
     }
   })();
@@ -409,7 +356,6 @@ function initializePopup() {
 
 if (typeof document !== "undefined") initializePopup();
 
-// Node's built-in test runner loads these pure helpers without a browser DOM.
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     COPY,

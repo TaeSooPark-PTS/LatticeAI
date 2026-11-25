@@ -6,9 +6,6 @@ import { makeGraph, makeReadiness } from "@/test/brainFixtures";
 import type { MemoryFragment } from "./types";
 import { BrainHomeHero, BrainStatsBadge } from "./BrainHomeHero";
 
-// Same detached-ref harness as BrainComposer.test: `useRef` keeps its real
-// hook slot but returns a null-reading facade, making the badge's "ref already
-// gone" dismiss branch observable.
 const detachedRefs = vi.hoisted(() => ({ on: false }));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
@@ -19,9 +16,7 @@ vi.mock("react", async (importOriginal) => {
       get current() {
         return null;
       },
-      set current(_value) {
-        // A detached ref swallows writes.
-      },
+      set current(_value) {},
     };
   }) as typeof actual.useRef;
   return { ...actual, useRef };
@@ -97,7 +92,6 @@ describe("BrainHomeHero", () => {
     const { unmount } = renderHero({
       readiness: makeReadiness({ signals: { memoryCount: 0, conceptCount: 0, relationshipCount: 0, healthySources: 0 } }),
       memories: [],
-      // concepts > 0 via the graph fallback side of Math.max.
     });
     expect(screen.getByTestId("brain-hero-stats")).toBeTruthy();
     unmount();
@@ -181,7 +175,6 @@ describe("BrainStatsBadge", () => {
 
     fireEvent.pointerOver(root, { pointerType: "mouse" });
     expect(popover()).toBeTruthy();
-    // Re-entering keeps it open without resetting the opened-at stamp.
     fireEvent.pointerOver(root, { pointerType: "mouse" });
 
     fireEvent.pointerOut(root, { pointerType: "touch" });
@@ -239,7 +232,6 @@ describe("BrainStatsBadge", () => {
     renderBadge();
     fireEvent.click(badge());
     expect(popover()).toBeTruthy();
-    // Inside the badge — but the detached ref cannot vouch for that.
     fireEvent.pointerDown(badge());
     expect(popover()).toBeNull();
   });

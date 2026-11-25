@@ -1,30 +1,3 @@
-"""Server-side message catalog.
-
-Every string the API hands a person — an ``HTTPException`` detail, a status
-line, a refusal — used to be a literal at the raise site, and the literals were
-written in whichever language the author happened to be thinking in. The result
-was one API that answered ``"사용자를 찾을 수 없습니다."`` and, two files over,
-``"Knowledge Graph ingestion is disabled."``, so *every* user read half the
-product in a language they had not chosen.
-
-The rules here are the same three the frontend catalog follows:
-
-1. **One id per message.** The id is what code refers to; the wording is data.
-2. **Both languages or neither.** ``test_messages.py`` fails on a key present
-   in one language and missing from the other, so a new message cannot ship
-   half-translated.
-3. **The caller never picks the language.** It comes from the request, via
-   :func:`resolve_language`, so a message cannot be localized to whoever wrote
-   the endpoint.
-
-Usage::
-
-    from latticeai.core.messages import http_error, resolve_language
-
-    lang = resolve_language(request)
-    raise http_error(404, "auth.user_not_found", lang)
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional
@@ -44,14 +17,10 @@ __all__ = [
 DEFAULT_LANGUAGE = "ko"
 SUPPORTED_LANGUAGES = ("ko", "en")
 
-#: Explicit override the frontend sends. Preferred over ``Accept-Language``
-#: because the person picked this language *in the product*, whereas
-#: ``Accept-Language`` is whatever their browser was installed with.
 LANGUAGE_HEADER = "x-lattice-language"
 
 
 MESSAGES: Dict[str, Dict[str, str]] = {
-    # ── agent_seam ────────────────────────────────────────────────────────
     "agent_seam.disabled": {
         "ko": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다.",
         "en": "The worker seam is off. It opens only in a worker the host started itself.",
@@ -80,22 +49,18 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "실행할 도구 이름이 필요합니다.",
         "en": "A tool name to run is required.",
     },
-    # ── auth ────────────────────────────────────────────────────────
     "auth.user_not_found": {
         "ko": "사용자를 찾을 수 없습니다.",
         "en": "No such user.",
     },
-    # ── chat ────────────────────────────────────────────────────────
     "chat.model_not_loaded": {
         "ko": "'{model}' 모델이 아직 준비되지 않았습니다.",
         "en": "Model '{model}' is not loaded.",
     },
-    # ── common ────────────────────────────────────────────────────────
     "common.file_not_found": {
         "ko": "파일을 찾을 수 없습니다.",
         "en": "File not found.",
     },
-    # ── models ────────────────────────────────────────────────────────
     "models.download_consent_required": {
         "ko": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다.",
         "en": "Model downloads require explicit consent (allow_download=true).",
@@ -132,7 +97,6 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "모델 내려받기에 실패했습니다.",
         "en": "The model download failed.",
     },
-    # ── tools ────────────────────────────────────────────────────────
     "tools.path_outside_workspace": {
         "ko": "경로가 작업 공간 밖입니다.",
         "en": "That path is outside the workspace.",
@@ -141,7 +105,6 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "PDF를 그리지 못했습니다: {reason}",
         "en": "The PDF could not be rendered: {reason}",
     },
-    # ── worker_compute ────────────────────────────────────────────────────────
     "worker_compute.audio_too_large": {
         "ko": "오디오가 {size} bytes 입니다. 한도는 {limit} bytes 입니다.",
         "en": "The audio is {size} bytes; the limit is {limit} bytes.",
@@ -182,11 +145,6 @@ MESSAGES: Dict[str, Dict[str, str]] = {
 
 
 def resolve_language(request: Any, default: str = DEFAULT_LANGUAGE) -> str:
-    """Language for this request: the product's choice, then the browser's.
-
-    Never raises and never returns an unsupported language — an endpoint that
-    cannot resolve a language must still be able to answer.
-    """
     headers: Optional[Mapping[str, str]] = getattr(request, "headers", None)
     if headers is None:
         return default
@@ -195,10 +153,6 @@ def resolve_language(request: Any, default: str = DEFAULT_LANGUAGE) -> str:
     if explicit:
         return explicit
 
-    # `Accept-Language: en-GB,en;q=0.9,ko;q=0.8` — take the first tag we
-    # support, honouring the order the browser sent (which is the priority
-    # order) rather than re-sorting by q-value, since the two agree in every
-    # real header and disagreeing ones are malformed anyway.
     for part in (headers.get("accept-language") or "").split(","):
         candidate = _normalize(part.split(";", 1)[0])
         if candidate:
@@ -207,7 +161,6 @@ def resolve_language(request: Any, default: str = DEFAULT_LANGUAGE) -> str:
 
 
 def _normalize(value: Optional[str]) -> Optional[str]:
-    """``"en-GB"`` → ``"en"`` when supported, else None."""
     if not value:
         return None
     tag = value.strip().lower().replace("_", "-")
@@ -218,12 +171,6 @@ def _normalize(value: Optional[str]) -> Optional[str]:
 
 
 def translate(key: str, language: str = DEFAULT_LANGUAGE, **params: Any) -> str:
-    """Localized text for ``key``.
-
-    An unknown key returns the key itself rather than raising: a missing
-    message must not turn a 404 into a 500. The namespaced key is also
-    recognisable in a bug report, which a generic "an error occurred" is not.
-    """
     entry = MESSAGES.get(key)
     if entry is None:
         return key
@@ -241,11 +188,6 @@ def http_error(
     headers: Optional[Dict[str, str]] = None,
     **params: Any,
 ) -> HTTPException:
-    """An ``HTTPException`` whose detail is localized for this request.
-
-    Returned, not raised, so call sites keep reading ``raise http_error(...)``
-    and the traceback still points at the endpoint.
-    """
     return HTTPException(
         status_code=status_code,
         detail=translate(key, language, **params),

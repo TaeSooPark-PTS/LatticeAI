@@ -1,38 +1,3 @@
-//! The six conversation-history routes.
-//!
-//! Reads are `lattice_retrieval::history` — the same lanes `/rust/history*`
-//! already answers, proven against goldens — reshaped into the HTTP bodies
-//! `api/chat_history.py` returns. Writes (`DELETE /history`,
-//! `DELETE /history/conversations/{id}`) are native: `conversation_messages` is
-//! a **RUST_PLATFORM** table in WP-I1's ownership map, so Rust is its writer.
-//! The one write that is *not* native is the chat turn itself, which ends in a
-//! graph write and goes over WP-I6's seam.
-//!
-//! ## Scope
-//!
-//! `ChatService.history_scope` is three lines and every one of them matters:
-//!
-//! ```text
-//! scoped_user = user_email if require_auth else None
-//! allowed     = allowed_workspaces_for(scoped_user) if require_auth and scoped_user else None
-//! include_legacy_global = not require_auth
-//! ```
-//!
-//! So a single-user loopback install (authentication off) reads **everything,
-//! legacy rows included**, and a multi-user install reads one identity's rows
-//! and no unattributed ones. Getting this backwards is how one user's history
-//! ends up in another's prompt.
-//!
-//! ## Key order
-//!
-//! Bodies this module builds by hand use [`lattice_auth::OrderedMap`], so they
-//! are byte-identical to Python's dict order. History *items* come out of
-//! `lattice-retrieval` as `serde_json::Map`, which is a `BTreeMap` (the
-//! workspace deliberately does not enable `preserve_order`), so their keys are
-//! re-emitted in the store's declared column order here — the trailing keys a
-//! row picked up from `metadata_json` stay sorted, which is what `/rust/history`
-//! has always answered.
-
 use std::collections::BTreeSet;
 
 use axum::extract::{Path, RawQuery, State};
@@ -49,7 +14,6 @@ use serde_json::{json, Value};
 
 use crate::state::ChatState;
 
-/// The order `ConversationStore._row_to_item` inserts its keys in.
 const ITEM_KEY_ORDER: [&str; 9] = [
     "role",
     "content",
@@ -62,13 +26,10 @@ const ITEM_KEY_ORDER: [&str; 9] = [
     "organization_id",
 ];
 
-/// `ChatService.search_history`'s default group cap.
 const SEARCH_LIMIT: i64 = 30;
 
-/// `conversations.clear_all`'s ceiling on `keep_last`.
 const MAX_KEEP_LAST: i64 = 20;
 
-/// Re-emit one history item in the store's declared column order.
 fn ordered_item(item: &Value) -> Value {
     let Some(entries) = item.as_object() else {
         return item.clone();
@@ -84,8 +45,6 @@ fn ordered_item(item: &Value) -> Value {
             ordered.insert(key.clone(), value.clone());
         }
     }
-    // Serialize through OrderedMap so keys stay in insertion order. Going via
-    // `serde_json::Value` would sort them (`Map` is a BTreeMap).
     serde_json::from_str(&serde_json::to_string(&ordered).unwrap_or_else(|_| "null".into()))
         .unwrap_or_else(|_| item.clone())
 }
@@ -94,7 +53,6 @@ fn ordered_items(items: &[Value]) -> Vec<Value> {
     items.iter().map(ordered_item).collect()
 }
 
-/// `ChatService.history_scope` — who this caller may read.
 pub fn history_scope(state: &ChatState, current_user: &str) -> HistoryScope {
     let require_auth = state.auth.effective_require_auth();
     let scoped_user = if require_auth && !current_user.is_empty() {
@@ -112,13 +70,6 @@ pub fn history_scope(state: &ChatState, current_user: &str) -> HistoryScope {
     }
 }
 
-/// `_scope_sql` for the **write** side.
-///
-/// `lattice_retrieval::history::HistoryScope` builds the identical clause for
-/// its reads and keeps it private, so the delete statements build their own.
-/// Both are the same twenty lines of `conversations._scope_sql`; if one moves,
-/// the other has to, and a test below pins the branch that matters most (an
-/// empty allowed set with no legacy opt-in deletes **nothing**).
 fn scope_sql(scope: &HistoryScope) -> (String, Vec<String>) {
     let mut clauses: Vec<String> = Vec::new();
     let mut params: Vec<String> = Vec::new();
@@ -169,7 +120,6 @@ fn as_sql(params: &[String]) -> Vec<&dyn rusqlite::ToSql> {
         .collect()
 }
 
-/// `ConversationStore.clear_all`.
 pub fn clear_all(conn: &Connection, keep_last: i64, scope: &HistoryScope) -> Value {
     let keep_last = keep_last.clamp(0, MAX_KEEP_LAST);
     let total = count_rows(conn);
@@ -203,7 +153,6 @@ pub fn clear_all(conn: &Connection, keep_last: i64, scope: &HistoryScope) -> Val
     serde_json::to_value(body).unwrap_or(Value::Null)
 }
 
-/// `ConversationStore.clear_conversation`.
 pub fn clear_conversation(
     conn: &Connection,
     conversation_id: &str,
@@ -246,14 +195,8 @@ pub fn clear_conversation(
 }
 
 impl ChatState {
-    /// `_history_allowed_workspaces_for` — the readable set, or `None`.
     pub(crate) fn allowed_workspaces_for(&self, user_email: &str) -> Option<Vec<String>> {
         let resolver = self.workspace.as_ref()?;
-        // `readable_workspaces` has no place on `WorkspaceResolver`, whose two
-        // methods answer "may this scope be used?". The read scope for an
-        // unspecified request is the same question, so it is asked that way; a
-        // resolver that refuses answers with the empty set, which is Python's
-        // `except: return set()` branch.
         match resolver.resolve_read_scope(None, Some(user_email)) {
             Ok(Some(workspace)) => Some(vec![workspace]),
             Ok(None) => None,
@@ -261,12 +204,10 @@ impl ChatState {
         }
     }
 
-    /// Open the graph database read-only, when there is one.
     pub(crate) fn read_conn(&self) -> Option<Connection> {
         lattice_core::open_read_only(self.config.graph()?).ok()
     }
 
-    /// Open the graph database for writing, when there is one.
     pub(crate) fn write_conn(&self) -> Option<Connection> {
         lattice_core::db::open_read_write(self.config.graph()?).ok()
     }
@@ -281,7 +222,6 @@ fn language_of(headers: &HeaderMap) -> &'static str {
     )
 }
 
-/// One JSON body, rendered the way Starlette's `JSONResponse` renders it.
 pub(crate) fn json_body(status: StatusCode, value: &Value) -> Response {
     lattice_auth::response::json_response(
         status,
@@ -304,7 +244,6 @@ pub(crate) fn error_body(
     )
 }
 
-/// FastAPI's 422 for a missing required query parameter.
 fn missing_query(name: &str) -> Response {
     let mut entry = OrderedMap::new();
     entry.insert("type", json!("missing"));
@@ -319,7 +258,6 @@ fn missing_query(name: &str) -> Response {
     )
 }
 
-/// One query parameter's first value, percent-decoded.
 fn query_param(raw: Option<&str>, name: &str) -> Option<String> {
     let raw = raw?;
     raw.split('&')
@@ -328,7 +266,6 @@ fn query_param(raw: Option<&str>, name: &str) -> Option<String> {
         .map(|(_, value)| percent_decode(value))
 }
 
-/// `application/x-www-form-urlencoded` decoding, `+` included.
 fn percent_decode(raw: &str) -> String {
     let bytes = raw.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
@@ -363,14 +300,11 @@ fn percent_decode(raw: &str) -> String {
 
 fn read_all(state: &ChatState, scope: &HistoryScope) -> Vec<Value> {
     let Some(conn) = state.read_conn() else {
-        // `get_history` swallows its own failures and answers `[]`; a gateway
-        // with no Brain file is the same situation.
         return Vec::new();
     };
     read_history(&conn, None, None, scope).unwrap_or_default()
 }
 
-/// `GET /history`.
 pub async fn fetch_history(State(state): State<ChatState>, headers: HeaderMap) -> Response {
     let identity = match state.auth.require_user(&headers) {
         Ok(identity) => identity,
@@ -381,7 +315,6 @@ pub async fn fetch_history(State(state): State<ChatState>, headers: HeaderMap) -
     json_body(StatusCode::OK, &Value::Array(items))
 }
 
-/// `GET /history/conversations`.
 pub async fn fetch_conversations(State(state): State<ChatState>, headers: HeaderMap) -> Response {
     let identity = match state.auth.require_user(&headers) {
         Ok(identity) => identity,
@@ -392,7 +325,6 @@ pub async fn fetch_conversations(State(state): State<ChatState>, headers: Header
     json_body(StatusCode::OK, &Value::Array(grouped))
 }
 
-/// `GET /history/conversations/{conversation_id:path}`.
 pub async fn fetch_conversation(
     State(state): State<ChatState>,
     Path(conversation_id): Path<String>,
@@ -416,7 +348,6 @@ pub async fn fetch_conversation(
     )
 }
 
-/// `DELETE /history/conversations/{conversation_id:path}`.
 pub async fn delete_conversation(
     State(state): State<ChatState>,
     Path(conversation_id): Path<String>,
@@ -449,7 +380,6 @@ pub async fn delete_conversation(
     json_body(StatusCode::OK, &result)
 }
 
-/// `DELETE /history?keep_last=`.
 pub async fn delete_history(
     State(state): State<ChatState>,
     RawQuery(query): RawQuery,
@@ -459,7 +389,6 @@ pub async fn delete_history(
         Ok(identity) => identity,
         Err(refusal) => return refusal,
     };
-    // `keep_last: int = 0` — FastAPI's own 422 for a value it cannot coerce.
     let keep_last = match query_param(query.as_deref(), "keep_last") {
         Some(raw) => match raw.trim().parse::<i64>() {
             Ok(value) => value,
@@ -499,14 +428,11 @@ pub async fn delete_history(
     json_body(StatusCode::OK, &result)
 }
 
-/// `GET /history/search?q=`.
 pub async fn search(
     State(state): State<ChatState>,
     RawQuery(query): RawQuery,
     headers: HeaderMap,
 ) -> Response {
-    // `q: str` is required and has no default, so its absence is a 422 that
-    // never reaches the handler — and therefore never reaches `require_user`.
     let Some(needle) = query_param(query.as_deref(), "q") else {
         return missing_query("q");
     };
@@ -544,12 +470,10 @@ pub async fn search(
     )
 }
 
-/// `history_runtime.conversation_title`, re-exported for the pipeline.
 pub fn title_of(item: &Value) -> String {
     conversation_title(item)
 }
 
-/// The workspace set a scope names, as the retrieval engines want it.
 pub fn allowed_set(workspace_id: Option<&str>) -> Option<BTreeSet<String>> {
     workspace_id
         .filter(|id| !id.is_empty())
@@ -610,7 +534,6 @@ mod tests {
         assert_eq!(cleared["removed"], 2);
         assert_eq!(cleared["kept"], 2);
         let (_dir, conn) = store();
-        // 99 clamps to 20, which is more rows than exist: nothing goes.
         assert_eq!(clear_all(&conn, 99, &HistoryScope::owner())["removed"], 0);
         let (_dir, conn) = store();
         assert_eq!(clear_all(&conn, -5, &HistoryScope::owner())["removed"], 4);
@@ -661,7 +584,6 @@ mod tests {
         );
         assert_eq!(cleared["removed"], 1);
         let (_dir, conn) = store();
-        // started_at sweeps the unattributed rows from that instant on.
         let cleared = clear_conversation(&conn, "c1", Some("2026-01-01"), &HistoryScope::owner());
         assert_eq!(cleared["removed"], 3);
         let (_dir, conn) = store();

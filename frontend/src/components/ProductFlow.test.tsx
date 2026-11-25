@@ -7,12 +7,6 @@ import { fail, ok, renderPage, type RenderPageOptions } from "@/test/renderPage"
 import { brainStateForStep, pickInstallModel, ProductFlow } from "./ProductFlow";
 import { fallbackModel, type RecommendedModel } from "@/components/onboarding/recommendationModel";
 
-/**
- * The first-run ritual as one machine: wake → identify → recommend → install →
- * enter. These tests drive the real screens against a stubbed API, because the
- * step wiring — who advances, who skips, who completes the flow — lives here
- * and nowhere else.
- */
 
 const FLOW_COMPLETE_KEY = "lattice.productFlow.complete";
 
@@ -92,23 +86,19 @@ describe("ProductFlow", () => {
     await goToLogin();
     await signIn();
 
-    // The background analysis found a supported model.
     const hero = await screen.findByRole("heading", { level: 2, name: "Gemma 3 12B" });
     expect(hero).toBeTruthy();
 
     fireEvent.click(document.querySelector(".ritual-primary-model-button") as HTMLButtonElement);
     await screen.findByText(t("ko", "flow.install.title.ready"));
 
-    // Back returns to the recommendation without losing it.
     fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.back") }));
     await screen.findByRole("heading", { level: 2, name: "Gemma 3 12B" });
 
-    // The recommendation's own back returns to login.
     fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.recommend.back") }));
     await screen.findByRole("heading", { name: t("ko", "flow.login.title") });
     await signIn();
 
-    // Choose again, then decide to finish later — that completes the flow.
     fireEvent.click(document.querySelector(".ritual-primary-model-button") as HTMLButtonElement);
     await screen.findByText(t("ko", "flow.install.title.ready"));
     fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.later") }));
@@ -137,8 +127,6 @@ describe("ProductFlow", () => {
     fireEvent.click(document.querySelector(".ritual-primary-model-button") as HTMLButtonElement);
     await screen.findByText(t("ko", "flow.install.title.ready"));
 
-    // Freeze time only for the completion pause itself; findBy* polling above
-    // needs real timers.
     vi.useFakeTimers();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.startReady") }));
@@ -166,12 +154,10 @@ describe("ProductFlow", () => {
     await goToLogin();
     await signIn();
 
-    // Honest unavailability: no fabricated model, a retry as the primary act.
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("ko", "flow.recommend.unavailable.title"));
 
     fireEvent.click(screen.getByRole("button", { name: new RegExp(t("ko", "flow.recommend.unavailable.retry")) }));
-    // The probes rerun; this time they land.
     await screen.findByRole("heading", { level: 2, name: "Gemma 3 12B" });
     expect(models).toHaveBeenCalledTimes(2);
     expect(recommendations).toHaveBeenLastCalledWith("local_mlx");
@@ -189,8 +175,6 @@ describe("ProductFlow", () => {
     await act(async () => {
       releaseModels(ok({ recommended: [supportedRow], catalog: [], loaded: [] }));
     });
-    // Nothing to assert visually: the cancelled guard simply must not throw
-    // or update state on an unmounted tree.
     expect(models).toHaveBeenCalledTimes(1);
   });
 

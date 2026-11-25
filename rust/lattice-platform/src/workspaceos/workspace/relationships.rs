@@ -1,13 +1,3 @@
-//! Relationship explorer: what a node connects to, and the way between two.
-//!
-//! Port of `core/workspace_relationships.py`. Pure graph reading — it touches
-//! no state file and records no events.
-//!
-//! The one subtlety worth keeping: `graph(limit=…)` returns a *window*, and the
-//! node being explored may not be in it. Asking the store for that node's
-//! neighbours directly is the difference between answering "not connected" and
-//! answering "outside the page we happened to fetch".
-
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use serde_json::{json, Value};
@@ -15,7 +5,6 @@ use serde_json::{json, Value};
 use super::deps::GraphReads;
 use super::pyutil::listify;
 
-/// `shortest_path` — fewest hops, treating every edge as undirected.
 pub fn shortest_path(edges: &[Value], start: &str, target: Option<&str>) -> Vec<String> {
     let Some(target) = target.filter(|value| !value.is_empty()) else {
         return Vec::new();
@@ -51,10 +40,8 @@ pub fn shortest_path(edges: &[Value], start: &str, target: Option<&str>) -> Vec<
     Vec::new()
 }
 
-/// The window size `relationship_explorer` asks the graph for.
 pub const DEFAULT_LIMIT: usize = 500;
 
-/// `relationship_explorer(graph, node_id, target_id)`.
 pub fn explore(
     graph: Option<&dyn GraphReads>,
     node_id: &str,
@@ -62,8 +49,6 @@ pub fn explore(
     limit: usize,
 ) -> Value {
     let Some(graph) = graph else {
-        // No graph on this install: the answer has no `node` key at all, which
-        // is what Python's early return produces.
         return json!({
             "node_id": node_id,
             "inbound": [],
@@ -101,7 +86,6 @@ pub fn explore(
         .cloned()
         .collect();
 
-    // `dict.fromkeys` — first appearance wins, duplicates dropped.
     let mut related_ids: Vec<String> = Vec::new();
     for edge in inbound.iter().chain(outbound.iter()) {
         let other = if edge.get("to").and_then(Value::as_str) == Some(node_id) {
@@ -136,7 +120,6 @@ fn contains(nodes: &[Value], node_id: &str) -> bool {
         .any(|node| node.get("id").and_then(Value::as_str) == Some(node_id))
 }
 
-/// The **last** node with this id, matching `{node["id"]: node for …}`.
 fn find(nodes: &[Value], node_id: &str) -> Option<Value> {
     nodes
         .iter()
@@ -207,7 +190,6 @@ mod tests {
         assert_eq!(answer["node"], json!({"id": "a", "type": "Concept"}));
         assert_eq!(answer["inbound"].as_array().unwrap().len(), 2);
         assert_eq!(answer["outbound"].as_array().unwrap().len(), 1);
-        // `b` appears twice inbound but is listed once, and keeps its record.
         let related = answer["related_entities"].as_array().unwrap();
         assert_eq!(related.len(), 2);
         assert_eq!(related[0], json!({"id": "b"}));

@@ -1,25 +1,3 @@
-//! Port of the durable conversation-history reads
-//! (`lattice_brain/conversations.py` + `latticeai/runtime/history_runtime.py` +
-//! `latticeai/services/chat_service.py` + `latticeai/api/chat_helpers.py`).
-//!
-//! Conversations live in the same SQLite file as the graph, in a table the
-//! Python side owns; everything here is a `SELECT` and a re-shape.
-//!
-//! Three details decide the answers and are all easy to get subtly wrong:
-//!
-//! * `_scope_sql` treats a *legacy* row (NULL or empty user/workspace) as
-//!   visible whenever the compatibility opt-in is on — which is the **default**
-//!   here, the opposite of the graph layer's. An empty allowed set with the
-//!   opt-in off is the one case that produces `1=0`: a caller who may read
-//!   nothing gets nothing, not everything.
-//! * `_row_to_item` copies the optional columns only when they are *truthy*, so
-//!   an empty-string `source` disappears rather than arriving as `""`, and then
-//!   merges `metadata_json` **flat** over the item — a metadata key named
-//!   `role` would overwrite the role.
-//! * `search_history` returns the **last** `limit` groups in insertion order,
-//!   not the best or the most recent. That is what the product does today, so
-//!   it is what this returns.
-
 use std::collections::HashMap;
 
 use lattice_core::pytext::{clean_text, safe_loads, truncate_chars};
@@ -28,18 +6,13 @@ use lattice_core::CoreError;
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-/// The bucket ungrouped (pre-conversation-id) messages are gathered into.
 pub const LEGACY_CONVERSATION_ID: &str = "legacy-previous-history";
-/// Its fixed title. Not derived from content — these messages predate the idea
-/// of a conversation, so naming them after their first line would invent one.
 pub const LEGACY_CONVERSATION_TITLE: &str = "이전 대화 기록";
-/// The placeholder a conversation carries until a user message names it.
 pub const UNTITLED_CONVERSATION: &str = "새 대화";
 
 const MESSAGE_COLUMNS: &str = "conversation_id, role, content, user_email, user_nickname, \
                                source, timestamp, metadata_json, workspace_id, organization_id";
 
-/// The optional columns `_row_to_item` copies across only when truthy.
 const OPTIONAL_COLUMNS: [&str; 6] = [
     "user_email",
     "user_nickname",
@@ -49,21 +22,14 @@ const OPTIONAL_COLUMNS: [&str; 6] = [
     "organization_id",
 ];
 
-/// Who is asking, and how much legacy data they may see.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HistoryScope {
-    /// Restrict to one identity's messages.
     pub user_email: Option<String>,
-    /// `None` is no workspace filter at all; `Some(vec![])` is a caller who may
-    /// read no workspace.
     pub allowed_workspaces: Option<Vec<String>>,
-    /// Whether unattributed (NULL / empty) rows are visible. **Defaults to
-    /// true** in the Python original.
     pub include_legacy_global: bool,
 }
 
 impl HistoryScope {
-    /// The scope a loopback owner gets: everything, legacy rows included.
     pub fn owner() -> Self {
         Self {
             user_email: None,
@@ -72,7 +38,6 @@ impl HistoryScope {
         }
     }
 
-    /// `ConversationStore._scope_sql` — `(sql, params)`, empty when unscoped.
     fn to_sql(&self) -> (String, Vec<String>) {
         let mut clauses: Vec<String> = Vec::new();
         let mut params: Vec<String> = Vec::new();
@@ -91,8 +56,6 @@ impl HistoryScope {
             let allowed: Vec<&String> = allowed.iter().filter(|item| !item.is_empty()).collect();
             if !allowed.is_empty() {
                 let placeholders = vec!["?"; allowed.len()].join(",");
-                // NULL/blank is default/personal visibility. A named tenant
-                // stays strict unless the caller opted into the legacy pool.
                 let sees_null = self.include_legacy_global
                     || allowed
                         .iter()
@@ -109,8 +72,6 @@ impl HistoryScope {
             } else if self.include_legacy_global {
                 clauses.push("(workspace_id IS NULL OR workspace_id = '')".to_string());
             } else {
-                // A caller with no readable workspace and no legacy opt-in reads
-                // nothing — never "everything, because the filter was empty".
                 clauses.push("1=0".to_string());
             }
         }
@@ -118,7 +79,6 @@ impl HistoryScope {
     }
 }
 
-/// `ConversationStore._row_to_item`.
 fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
     let mut item = Map::new();
     for key in ["role", "content", "timestamp"] {
@@ -131,18 +91,12 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
         }
     }
     let metadata: Option<String> = row.get("metadata_json")?;
-    // Flat merge, and it wins: this is `item.update(extra)`.
     for (key, value) in safe_loads(metadata.as_deref()) {
         item.insert(key, value);
     }
     Ok(Value::Object(item))
 }
 
-/// `ConversationStore.history` — chronological items, unbounded by default.
-///
-/// `conversation_id` is three-valued: `None` reads every conversation, an empty
-/// string reads the rows that have none (`conversation_id IS NULL`), and a name
-/// reads that one.
 pub fn history(
     conn: &Connection,
     conversation_id: Option<&str>,
@@ -209,7 +163,6 @@ pub fn history(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// `history_runtime.conversation_title` — the first 48 characters, or a placeholder.
 pub fn conversation_title(item: &Value) -> String {
     let content = item
         .get("content")
@@ -230,7 +183,6 @@ fn text_of(item: &Value, key: &str) -> String {
         .to_string()
 }
 
-/// `history_runtime.group_history_conversations`.
 pub fn group_conversations(history: &[Value]) -> Vec<Value> {
     struct Group {
         id: String,
@@ -282,7 +234,6 @@ pub fn group_conversations(history: &[Value]) -> Vec<Value> {
             group.title = conversation_title(item);
         }
     }
-    // Stable, newest first, with a missing timestamp sorting as "".
     let mut grouped: Vec<Group> = order;
     grouped.sort_by(|a, b| {
         let key = |group: &Group| {
@@ -310,11 +261,6 @@ pub fn group_conversations(history: &[Value]) -> Vec<Value> {
         .collect()
 }
 
-/// `history_runtime.get_conversation_messages` — load everything, then filter.
-///
-/// Deliberately not pushed into SQL: the scoped read is what decides visibility,
-/// and filtering afterwards keeps one code path between "the whole history" and
-/// "this conversation" instead of two that can disagree.
 pub fn conversation_messages(history: &[Value], conversation_id: &str) -> Vec<Value> {
     history
         .iter()
@@ -330,7 +276,6 @@ pub fn conversation_messages(history: &[Value], conversation_id: &str) -> Vec<Va
         .collect()
 }
 
-/// `ChatService.search_history` — case-insensitive substring, grouped, last N.
 pub fn search_history(history: &[Value], query: &str, limit: i64) -> Vec<Value> {
     let needle = query.trim().to_lowercase();
     if needle.is_empty() {
@@ -344,9 +289,6 @@ pub fn search_history(history: &[Value], query: &str, limit: i64) -> Vec<Value> 
             continue;
         }
         let raw = text_of(item, "conversation_id");
-        // Note: "legacy", not LEGACY_CONVERSATION_ID. The two buckets are spelled
-        // differently in the product, and a port that unified them would change
-        // what the search results say.
         let conversation_id = if raw.is_empty() {
             "legacy".to_string()
         } else {
@@ -382,11 +324,6 @@ pub fn search_history(history: &[Value], query: &str, limit: i64) -> Vec<Value> 
         .collect()
 }
 
-/// `chat_helpers.pair_user_history` — one user's messages and the replies to them.
-///
-/// A bare `role == "assistant"` filter would leak every other user's replies
-/// into this user's prompt, so an assistant row is admitted only when it follows
-/// one of this user's messages and is not explicitly owned by someone else.
 pub fn pair_user_history(history: &[Value], user_email: &str) -> Vec<Value> {
     let mut paired = Vec::new();
     let mut include_next_assistant = false;
@@ -410,18 +347,12 @@ pub fn pair_user_history(history: &[Value], user_email: &str) -> Vec<Value> {
     paired
 }
 
-/// What `recent_chat_context` narrows the history down to.
 #[derive(Debug, Clone)]
 pub struct RecentChatOptions {
-    /// How many trailing messages to keep.
     pub limit: i64,
-    /// Keep assistant replies that say an image is missing.
     pub include_image_missing_replies: bool,
-    /// The identity whose exchange this is.
     pub user_email: Option<String>,
-    /// One conversation, or every one.
     pub conversation_id: Option<String>,
-    /// A workspace, where the sentinel `personal` means "no workspace".
     pub workspace_id: Option<String>,
 }
 
@@ -437,11 +368,6 @@ impl Default for RecentChatOptions {
     }
 }
 
-/// The scope `build_recent_chat_context` reads its history with.
-///
-/// An identified caller never sees legacy-global rows: they may belong to
-/// somebody else, and an authenticated model prompt is the last place to guess.
-/// An anonymous (single-user, loopback) caller reads everything.
 pub fn recent_chat_scope(user_email: Option<&str>, workspace_id: Option<&str>) -> HistoryScope {
     match user_email.filter(|value| !value.is_empty()) {
         Some(user_email) => HistoryScope {
@@ -453,7 +379,6 @@ pub fn recent_chat_scope(user_email: Option<&str>, workspace_id: Option<&str>) -
     }
 }
 
-/// `chat_helpers.build_recent_chat_context` — read, then format.
 pub fn recent_chat(conn: &Connection, options: &RecentChatOptions) -> Result<String, CoreError> {
     let scope = recent_chat_scope(
         options.user_email.as_deref(),
@@ -463,14 +388,6 @@ pub fn recent_chat(conn: &Connection, options: &RecentChatOptions) -> Result<Str
     Ok(recent_chat_context(&rows, options))
 }
 
-/// Where Python's `history[-limit:]` starts.
-///
-/// Not `len - limit`. `-0 == 0`, so a **zero** limit slices from the front and
-/// keeps the whole transcript rather than none of it, and a negative limit
-/// becomes a positive start that drops rows off the front. This looks like a
-/// bug on both sides and is neither: it is what the live `/chat` prompt builder
-/// does, so the port has to do it too or the two runtimes disagree exactly
-/// where a caller passes an unvalidated limit through.
 fn python_tail_start(len: usize, limit: i64) -> usize {
     if limit > 0 {
         len.saturating_sub(limit as usize)
@@ -479,12 +396,9 @@ fn python_tail_start(len: usize, limit: i64) -> usize {
     }
 }
 
-/// `chat_helpers.build_recent_chat_context`'s narrowing and formatting half.
 pub fn recent_chat_context(history: &[Value], options: &RecentChatOptions) -> String {
     let mut rows: Vec<Value> = history.to_vec();
     if let Some(workspace_id) = options.workspace_id.as_ref() {
-        // `str(item.get("workspace_id") or "personal")`: a row with no workspace
-        // belongs to the literal workspace named "personal".
         rows.retain(|item| {
             let raw = text_of(item, "workspace_id");
             let effective = if raw.is_empty() {

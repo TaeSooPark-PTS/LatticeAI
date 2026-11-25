@@ -132,7 +132,6 @@ fn durable_workflow_survives_approval_restart_replays_idempotent_steps_retries_a
     };
     assert_eq!(gather_executions.load(Ordering::SeqCst), 2);
 
-    // Simulate FULL APP RESTART: open a brand new store over the same directory!
     let restarted_store = DurableWorkflowStore::new(dir.path().join("workflows"));
     assert!(restarted_store
         .approve_step(
@@ -153,7 +152,6 @@ fn durable_workflow_survives_approval_restart_replays_idempotent_steps_retries_a
         )
         .expect("valid approval after restart");
 
-    // First attempt at `apply_patch` fails transiently (max_retries = 1), then retry succeeds!
     let fail_first = restarted_store
         .run_until_yield("wf_upgrade_1", 1_025.0, |_step| {
             Err("transient lock busy".into())
@@ -194,7 +192,6 @@ strict = true
             workflow_id: "wf_upgrade_1".into()
         }
     );
-    // Upstream completed steps NEVER re-executed across pause/restart/retry!
     assert_eq!(gather_executions.load(Ordering::SeqCst), 2);
 
     let final_rec = restarted_store
@@ -205,7 +202,6 @@ strict = true
     assert_eq!(prov["consulted_node_ids"], json!(["doc:arch", "doc:sec"]));
     assert_eq!(prov["generated_artifacts"], json!(["artifact:config_toml"]));
 
-    // Verify automatic file rollback when a multi-step mutating workflow terminally fails!
     let rb_spec = WorkflowSpec {
         workflow_id: "wf_rollback_test".into(),
         goal: "Mutate then fail verification".into(),

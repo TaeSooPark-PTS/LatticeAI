@@ -8,15 +8,6 @@ use crate::parse::pystr::py_str;
 use crate::seam::worker::{Completion, WorkerError};
 
 impl Runtime {
-    /// VERIFY, decomposed: one closed question, then one line of reason.
-    ///
-    /// Returns `None` when no verdict word came back at all, and the ordinary
-    /// JSON critic chain then runs — this is a *first* rung, never a
-    /// replacement. What it produces is an ordinary verdict map, so
-    /// [`Runtime::settle_verdict`]'s gates judge it exactly as they judge a
-    /// parsed object: a guided PASS over a run with no execution evidence is
-    /// still `NEEDS_REVIEW`, and a guided PASS that left a requested file
-    /// unwritten still is too.
     pub(in crate::kernel::agentloop) async fn guided_verdict(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -26,12 +17,6 @@ impl Runtime {
         let evidence = self.verdict_evidence(ctx);
         let context =
             crate::prompts::guided::verdict_block(&req.message, &evidence, &ctx.final_message);
-        // The menu turn's instrument, applied to the menu turn's twin: the
-        // answer's *position* is forced with a prefix, and a turn that came
-        // back with no verdict word is re-asked with room and no line stop
-        // rather than replayed identically at temperature zero. See
-        // [`crate::prompts::guided::VERDICT_ANSWER_PREFIX`] and
-        // [`MENU_RETRY_TOKENS`].
         let mut passed = None;
         for attempt in 0..2 {
             let (max_tokens, stop): (u32, &[&str]) = if attempt == 0 {
@@ -79,28 +64,7 @@ impl Runtime {
             .await?;
         ctx.trace.llm_call("verify", model_id);
         let reason = {
-            // The one place a control frame reached the *user* (v12.0.0). The
-            // reason is shown, and it is fed back to the executor as the next
-            // attempt's correction, so a raw `<|channel>thought` here was both
-            // the answer a live run displayed and the instruction it then tried
-            // to follow. Cleaned first; what survives is judged by the same
-            // empty/echo test as before, so a frame-only reply now falls to the
-            // stated default instead of being recorded as a reason.
             let line = parse_line(&clean_reply(&reason_reply));
-            // A weak model handed its own verdict in the context echoes it: the
-            // first live run's reasons were all the literal word `FAIL`. That
-            // is not a reason, and recording it as one would put it in front of
-            // the executor as a correction on the next attempt.
-            //
-            // **And so does a model that echoes the question** (v12.0.0). A
-            // live 2B answered this very turn with
-            // `이유를 다시 한 줄로 쓰세요. / Give the reason in one short line.`
-            // — our own words with one inserted — and the run showed that to
-            // the user as the critic's reason and fed it back as the next
-            // attempt's correction. The sentences this crate wrote are known
-            // ([`crate::prompts::guided::contains_owned_instruction`]); one
-            // coming back is not a reason, whatever a model did to it on the
-            // way.
             if line.is_empty()
                 || parse_verdict_word(&line).is_some()
                 || crate::prompts::guided::contains_owned_instruction(&line)
@@ -139,29 +103,11 @@ impl Runtime {
                 json!([verdict["reason"].clone()])
             },
         );
-        // Below the 0.9 a parsed object gets: a closed question is a weaker
-        // instrument than a verdict object, and saying so on the step is the
-        // honest record of how the answer was obtained.
         verdict.insert("confidence".into(), json!(0.6));
         verdict.insert("verdict_source".into(), json!("guided"));
         Ok(Some(verdict))
     }
 
-    /// The one thing the closed question is asked about: what actually ran.
-    ///
-    /// Deliberately not the transcript. A model asked "did this succeed?" over
-    /// four hundred lines of JSON answers about the JSON; asked over six lines
-    /// of `- write_file notes/hello.md: ok` it answers about the work.
-    ///
-    /// **But `ok` alone is not what happened** (v12.0.0). `- list_dir: ok` says
-    /// a call returned; it does not say what it returned, and a critic asked
-    /// whether the run reported a file count over that line has been given
-    /// nothing to answer with — three models, every attempt, said FAIL over a
-    /// `list_dir` that had returned two real entries. So each successful row
-    /// carries [`crate::kernel::transcript::result_digest`]: the one fact the
-    /// result actually established,
-    /// in a handful of characters. Still not the transcript, and still one line
-    /// per step.
     fn verdict_evidence(&self, ctx: &AgentRunContext) -> String {
         let rows: Vec<String> = ctx
             .transcript
@@ -206,11 +152,6 @@ impl Runtime {
         }
     }
 
-    /// Instructions from any skill this run has loaded, newest last.
-    ///
-    /// Read back out of the transcript rather than held in a field: a resumed
-    /// run restores its transcript, so the skill a user approved before the
-    /// pause is still in force after it.
     pub(super) fn skill_notes(&self, ctx: &AgentRunContext) -> String {
         let mut notes: Vec<String> = Vec::new();
         for step in &ctx.transcript {

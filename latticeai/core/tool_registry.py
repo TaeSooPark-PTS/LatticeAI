@@ -1,12 +1,3 @@
-"""Tool dispatch, governance, and catalog metadata.
-
-The registry is the single ownership point for tool names: one object exposes
-dispatch, policy lookup, prompt catalog text, MCP descriptions, and permission
-views. The actual tool functions still live in the top-level ``tools`` module
-to preserve the public API and keep this module free of filesystem side
-effects at import time.
-"""
-
 from __future__ import annotations
 
 __all__ = [
@@ -122,7 +113,6 @@ def _rc(
     capability: str = "",
     scope: str = "",
 ) -> ToolPolicy:
-    """Read operation that still requires explicit human consent."""
     policy = ToolPolicy(
         risk="read",
         destructive=False,
@@ -424,12 +414,6 @@ class ToolRegistry:
         return frozenset(self.handlers)
 
     def diagnostics(self) -> Dict[str, Any]:
-        """Return registry drift checks without executing any tool.
-
-        This is intentionally derived from the live registry instance, not from
-        duplicated constants, so admin/runtime surfaces can prove whether the
-        dispatch, governance, and catalog projections are still aligned.
-        """
 
         registered = set(self.registered_tools())
         governed = set(self.governance)
@@ -467,7 +451,6 @@ class ToolRegistry:
         }
 
     def manifest(self) -> Dict[str, Any]:
-        """Serializable tool registry contract for runtime/admin inspection."""
 
         tools = []
         for name in sorted(

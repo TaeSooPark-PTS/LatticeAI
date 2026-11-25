@@ -1,20 +1,3 @@
-//! The native `/rust/*` retrieval surface, as a mountable [`axum::Router`].
-//!
-//! This crate owns the routes as well as the engines, and hands back a router a
-//! host can mount wherever it likes — the gateway does not need to know how many
-//! endpoints there are, and this crate does not need to know what else is
-//! served. Three properties are deliberate and worth naming:
-//!
-//! * **Loopback trust.** Every plan resolves `allowed_workspaces = None`, the
-//!   branch the Python endpoints take for an owner on their own machine. The
-//!   router therefore belongs behind a listener bound to loopback and nowhere
-//!   else; it does not enforce that itself, because the crate that binds the
-//!   socket is the one that can.
-//! * **Read only.** The connection is `SQLITE_OPEN_READ_ONLY`; the schema
-//!   belongs to Python and nothing here may migrate, vacuum or write it.
-//! * **Blocking work off the reactor.** SQLite and the brute-force scan are
-//!   synchronous and can take milliseconds, so they run on `spawn_blocking`.
-
 pub mod params;
 pub mod plan;
 
@@ -32,25 +15,17 @@ use lattice_core::{parse_iso, CoreError};
 use params::{ParamError, RequestParams, MAX_BODY_BYTES};
 use plan::{Endpoint, Plan};
 
-/// Which brain the routes read.
 #[derive(Debug, Clone)]
 pub struct RetrievalState {
     db: PathBuf,
 }
 
 impl RetrievalState {
-    /// The knowledge graph these routes read.
     pub fn db(&self) -> &Path {
         &self.db
     }
 }
 
-/// The mountable router for every native retrieval route.
-///
-/// ```no_run
-/// let app = axum::Router::new().merge(lattice_retrieval::router("/tmp/graph.sqlite"));
-/// # let _ = app;
-/// ```
 pub fn router(db: impl Into<PathBuf>) -> Router {
     let state = Arc::new(RetrievalState { db: db.into() });
     let both = |endpoint: Endpoint| -> MethodRouter<Arc<RetrievalState>> {
@@ -84,8 +59,6 @@ pub fn router(db: impl Into<PathBuf>) -> Router {
             Endpoint::Conversations.path(),
             both(Endpoint::Conversations),
         )
-        // FastAPI declares this one `{conversation_id:path}`, so a conversation
-        // id containing a slash still resolves; the wildcard is that promise.
         .route(
             "/rust/history/conversations/{*conversation_id}",
             both(Endpoint::ConversationMessages),
@@ -105,7 +78,6 @@ pub fn router(db: impl Into<PathBuf>) -> Router {
         .with_state(state)
 }
 
-/// The conversation id carried in the path, if this route has one.
 fn path_conversation_id(uri_path: &str) -> Option<String> {
     let prefix = "/rust/history/conversations/";
     uri_path
@@ -136,7 +108,6 @@ async fn handle(
             return err.into_response();
         }
     }
-    // The path segment is authoritative: it is the URL the caller asked for.
     if endpoint == Endpoint::ConversationMessages {
         if let Some(conversation_id) = path_conversation_id(parts.uri.path()) {
             params.set(
@@ -161,12 +132,6 @@ async fn handle(
     }
 }
 
-/// 404 — there is no brain on this machine yet, and answering "no results"
-/// would be a lie about an empty index rather than a missing one.
-///
-/// Public because the host's own P1 search lanes answer the *same* question
-/// about the *same* store and must answer it identically; a second copy of this
-/// body was two error contracts one edit apart.
 pub fn brain_not_found(db: &Path) -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -180,9 +145,6 @@ pub fn brain_not_found(db: &Path) -> Response {
         .into_response()
 }
 
-/// Python's `ValueError` split into the two answers it actually carries: a seed
-/// that does not exist *for this caller* is a 404, and a missing argument is a
-/// 422 like every other bad parameter.
 fn engine_error(endpoint: Endpoint, err: CoreError) -> Response {
     let CoreError::InvalidRequest(message) = &err else {
         return retrieval_failed(endpoint, err.to_string());
@@ -200,7 +162,6 @@ fn engine_error(endpoint: Endpoint, err: CoreError) -> Response {
     ParamError::new("node_id", message.clone()).into_response()
 }
 
-/// 500 — the store exists but the engine could not read it.
 fn retrieval_failed(endpoint: Endpoint, detail: String) -> Response {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -213,12 +174,6 @@ fn retrieval_failed(endpoint: Endpoint, detail: String) -> Response {
         .into_response()
 }
 
-/// Now, as UTC epoch seconds matching offset-free UTC stamps (`lattice_brain.utils.now_iso()`).
-///
-/// Both Rust (`lattice-core::graph_write::clock`) and Python (`lattice_brain.utils`)
-/// emit offset-free UTC timestamps (`YYYY-MM-DDTHH:MM:SS`), eliminating host-timezone
-/// skew (such as UTC+9) while keeping pure-Rust cross-platform arithmetic identical
-/// across Unix and Windows.
 pub fn naive_local_now() -> f64 {
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -228,8 +183,6 @@ pub fn naive_local_now() -> f64 {
     naive_local_secs(utc_secs).unwrap_or(utc_secs as f64) + fraction
 }
 
-/// UTC epoch seconds parsed through the engine's own ISO parser so subtraction
-/// matches persisted offset-free UTC stamps.
 fn naive_local_secs(utc_secs: i64) -> Option<f64> {
     let iso = lattice_core::graph_write::clock::local_iso_for(utc_secs)?;
     parse_iso(Some(&iso))
@@ -363,8 +316,6 @@ mod tests {
         assert_eq!(body["context_quality"]["mode"], "hybrid");
         assert_eq!(body["trace"]["budget_approx_tokens"], 500);
         assert!(!body["sources"].as_array().unwrap().is_empty());
-        // This brain has no Self-Model rows, so nothing is injected even when
-        // the caller asks for it — an absent profile is an absent section.
         let (_, with_profile) = call(
             &db,
             Method::GET,
@@ -375,7 +326,6 @@ mod tests {
             with_profile["trace"]["sections"][0]["source"], "knowledge",
             "no profile means no self_model section"
         );
-        // A query the graph cannot answer at all is said plainly.
         let (_, nothing) = call(&db, Method::GET, "/rust/context/document?q=", "");
         assert_eq!(
             nothing["stats"],
@@ -404,7 +354,6 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["id"], "c1");
         assert_eq!(body["messages"].as_array().unwrap().len(), 1);
-        // The legacy bucket resolves through the same route.
         let (_, legacy) = call(
             &db,
             Method::GET,
@@ -412,7 +361,6 @@ mod tests {
             "",
         );
         assert_eq!(legacy["messages"].as_array().unwrap().len(), 1);
-        // The path wins over a body that says otherwise.
         let (_, pinned) = call(
             &db,
             Method::POST,

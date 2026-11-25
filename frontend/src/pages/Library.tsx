@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { Boxes } from "lucide-react";
 import { Tabs } from "@/components/primitives";
@@ -47,9 +45,6 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">{t(language, "library.title")}</h1>
         <p className="page-copy">{t(language, "library.body")}</p>
       </header>
-      {/* The one question this screen exists to answer, answered before the
-          tabs rather than six cards down the catalogue: which model is running
-          right now, and how do I change it. */}
       <ActiveModelCard />
       <Tabs tabs={visibleTabs} value={tab} onChange={(id) => selectTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}

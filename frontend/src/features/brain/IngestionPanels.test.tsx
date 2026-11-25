@@ -296,7 +296,6 @@ describe("BrainIngestionDock", () => {
     expect(folderButton.getAttribute("aria-expanded")).toBe("true");
     const popover = document.querySelector(".brain-ingestion-dock-popover")!;
     expect(folderButton.getAttribute("aria-controls")).toBe(popover.id);
-    // The two other source buttons do not claim the popover.
     expect(screen.getByRole("button", { name: "노트" }).getAttribute("aria-controls")).toBeNull();
     expect(screen.getByText("폴더 넣기")).toBeTruthy();
 

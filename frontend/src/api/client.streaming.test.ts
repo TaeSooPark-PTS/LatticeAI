@@ -3,10 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { latticeApi } from "./client";
 import { jsonResponse, resetDispatcher, sseResponse } from "@/test/apiClientHarness";
 
-/**
- * The streaming wrappers: what `streamChat` and `streamModelPrepare` make of
- * the frames on the wire, and what they hand back when the wire says no.
- */
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -193,8 +189,6 @@ describe("streamChat error and edge paths", () => {
   });
 
   it("treats an OK answer with no content-type header as a non-stream", async () => {
-    // A raw byte body keeps undici from inventing a content-type, so the
-    // header lookup really does come back null here.
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
       new Response(new TextEncoder().encode("raw"), { status: 200, statusText: "OK" }),
     ));
@@ -217,7 +211,6 @@ describe("streamChat error and edge paths", () => {
       'data: {"agent":{"status":"ok","final_state":"DONE"}}\n\n',
     ])));
 
-    // No [DONE] sentinel: the loop must end with the stream and still return.
     const result = await latticeApi.streamChat({ message: "hi" });
 
     expect(result.text).toBe("부분추가");
@@ -241,8 +234,6 @@ describe("streamModelPrepare error and edge paths", () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe(409);
     expect(result.error).toBe("내려받기가 필요해요");
-    // The structured detail is spread over the base shape, so its own status
-    // wins while the friendly message is preserved.
     expect(onError).toHaveBeenCalledWith({
       status: "needs_download",
       user_message: "내려받기가 필요해요",
@@ -321,7 +312,6 @@ describe("streamModelPrepare error and edge paths", () => {
       'event: error\ndata: {"user_message":"준비 실패"}\n\n',
     ])));
 
-    // No handlers at all: onError?./onProgress?./onDone?. must tolerate it.
     const result = await latticeApi.streamModelPrepare({ model: "m1" });
 
     expect(result.ok).toBe(false);

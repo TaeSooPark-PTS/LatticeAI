@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Release smoke checks for exact-version release artifacts.
-
-This complements ``validate_release_artifacts.py`` by opening the generated
-artifacts and proving the installable surfaces are coherent:
-
-- wheel installs/imports in a fresh environment via ``wheel_smoke.py``
-- npm tgz contains the package metadata, CLI bin, and static assets
-- static asset manifest points at files that exist on disk
-- Tauri DMG/app bundle exists, and can optionally be launched briefly
-"""
 
 from __future__ import annotations
 
@@ -61,7 +51,7 @@ def smoke_npm_tgz(version: str) -> None:
             raise SystemExit(f"{tgz.name} missing entries: {missing}")
         package_data = json.loads(
             archive.extractfile("package/package.json").read().decode("utf-8")
-        )  # type: ignore[union-attr]
+        )
         if package_data.get("version") != version:
             raise SystemExit(
                 f"{tgz.name} package.json version {package_data.get('version')!r} != {version!r}"

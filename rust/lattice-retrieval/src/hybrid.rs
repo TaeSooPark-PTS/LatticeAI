@@ -1,11 +1,3 @@
-//! Port of `KnowledgeGraphStore.hybrid_search` (`graph/retrieval/hybrid.py`).
-//!
-//! The pipeline is kept in one file for the same reason Python keeps it in one
-//! file: it is a single ranking algorithm, and splitting it would scatter the
-//! order of operations that *is* the behaviour. The order below matches the
-//! original step for step — policy, lanes, dedupe, normalize, fuse, decay, sort,
-//! rerank, cut — because every one of those steps can change a ranking.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_core::pytext::{parse_iso, recency_score, round6};
@@ -25,7 +17,6 @@ use crate::shape::{
 };
 use crate::vector::vector_search;
 
-/// Everything `hybrid_search` accepts beyond the query itself.
 #[derive(Debug, Clone)]
 pub struct HybridOptions {
     pub top_k: i64,
@@ -35,15 +26,8 @@ pub struct HybridOptions {
     pub lexical_limit: Option<i64>,
     pub vector_limit: Option<i64>,
     pub min_vector_score: f64,
-    /// The wall clock the recency decay reads, as naive seconds since the epoch.
-    ///
-    /// Python calls `datetime.now()` here. A parameter instead of a clock call
-    /// is what makes a golden file possible at all — and what lets a caller ask
-    /// "how would this have ranked yesterday?" without lying to the process.
     pub now_secs: f64,
-    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
-    /// Reason semantic query embedding degraded so hybrid degrades to `lexical_only`.
     pub semantic_degraded: Option<String>,
 }
 
@@ -79,16 +63,10 @@ struct Entry {
     age_decay: Option<f64>,
     score: f64,
     fusion: &'static str,
-    /// 1-based position in each channel that returned it — RRF's whole input.
-    /// Collected unconditionally because it costs a push; read only when the
-    /// `LATTICEAI_FUSION_RRF` gate is on.
     ranks: Vec<usize>,
-    /// How this row was reached when it was not a candidate at all: the seed,
-    /// the edge and the edge's own evidence. `None` for a normal hit.
     via: Option<Value>,
 }
 
-/// `embedder_fingerprint_status()["stale_embedder"]`, read straight from `graph_meta`.
 fn stale_embedder(conn: &Connection, model: &LocalEmbeddingModel) -> bool {
     let recorded: Option<String> = conn
         .query_row(
@@ -106,7 +84,6 @@ fn stale_embedder(conn: &Connection, model: &LocalEmbeddingModel) -> bool {
     model_id != model.model_id() || dim != model.dim() as i64
 }
 
-/// `KnowledgeGraphStore.hybrid_search`.
 pub fn hybrid_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -256,8 +233,6 @@ pub fn hybrid_search(
             }
         }
         Err(err) => {
-            // Degrade, never fail the search: a broken vector index costs the
-            // vector channel, not the answer.
             mode = "lexical_only";
             detail = Some(format!("vector index unavailable: {err}"));
         }
@@ -391,8 +366,6 @@ pub fn hybrid_search(
         entries[index].ranks.push(rank + 1);
     }
 
-    // Max-normalize cosine scores into [0, 1]. The comparisons are explicit
-    // because 0.0 is a valid score and `or`/truthiness would eat it.
     let mut max_vec = 0.0f64;
     for item in &vector_matches {
         if let Some(raw) = item.get("score").and_then(Value::as_f64) {
@@ -423,9 +396,6 @@ pub fn hybrid_search(
         }
     }
 
-    // Rank fusion, when the gate is on: the two channels' *positions* rather
-    // than their scores. `1/rank` and a normalized cosine are not on the same
-    // scale, so alpha-weighting them is arithmetic over two different units.
     let use_rrf = rrf_enabled() && mode != "lexical_only";
     let rrf = if use_rrf {
         let ranks: BTreeMap<String, Vec<usize>> = entries
@@ -462,7 +432,6 @@ pub fn hybrid_search(
             let multiplier = if parse_iso(stamp).is_some() {
                 0.5 + 0.5 * recency_score(stamp, options.now_secs, half_life)
             } else {
-                // Unknown age is not evidence of staleness — never dampen.
                 1.0
             };
             entry.age_decay = Some(round6(multiplier));
@@ -476,14 +445,9 @@ pub fn hybrid_search(
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.node_id.cmp(&b.node_id))
     });
-    // The identity rerank scores a wider window and then cuts to top_k; with no
-    // cross-encoder configured the order is preserved and the score copied.
     entries.truncate(((top_k * 2).max(top_k)) as usize);
     entries.truncate(top_k.max(1) as usize);
 
-    // One-hop expansion, when the gate is on. It runs *after* the cut, so a
-    // neighbour never displaces a real hit — it lands underneath them, at half
-    // its seed's score, carrying the edge it was reached by.
     let mut expansion = expansion_json();
     if expansion_enabled() && !entries.is_empty() {
         let seeds: Vec<String> = entries
@@ -551,9 +515,6 @@ pub fn hybrid_search(
             item.insert("score".into(), Value::from(entry.score));
             item.insert("rerank_score".into(), Value::from(entry.score));
             item.insert("rank".into(), Value::from(index + 1));
-            // Additive, and only ever present on a row expansion added: a hit
-            // that stands on its own has no "via" to report, and an empty one
-            // would read as a path that led nowhere.
             if let Some(via) = entry.via.as_ref() {
                 item.insert("via".into(), via.clone());
             }
@@ -634,21 +595,18 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let conn = Connection::open(dir.path().join("g.sqlite")).unwrap();
         let model = LocalEmbeddingModel::new(384);
-        // No graph_meta table at all → unknown, never "stale".
         assert!(!stale_embedder(&conn, &model));
         conn.execute_batch("CREATE TABLE graph_meta(key TEXT PRIMARY KEY, value TEXT)")
             .unwrap();
         assert!(!stale_embedder(&conn, &model));
         let insert =
             "INSERT OR REPLACE INTO graph_meta(key, value) VALUES ('embedder_fingerprint', ?)";
-        // A recorded fingerprint that matches is not stale.
         conn.execute(
             insert,
             [r#"{"model_id":"lattice-local-hash-v1:384","dim":384}"#],
         )
         .unwrap();
         assert!(!stale_embedder(&conn, &model));
-        // A different model, or a different width, is.
         conn.execute(insert, [r#"{"model_id":"other","dim":384}"#])
             .unwrap();
         assert!(stale_embedder(&conn, &model));
@@ -658,7 +616,6 @@ mod tests {
         )
         .unwrap();
         assert!(stale_embedder(&conn, &model));
-        // A corrupt or model-less record is honestly "unknown".
         conn.execute(insert, ["not json"]).unwrap();
         assert!(!stale_embedder(&conn, &model));
         conn.execute(insert, [r#"{"dim":384}"#]).unwrap();

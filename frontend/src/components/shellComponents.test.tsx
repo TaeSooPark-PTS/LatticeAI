@@ -1,11 +1,3 @@
-/**
- * Small components that carry disproportionate weight and had no test.
- *
- * `AdminAccessGate` is an access affordance: showing the console to someone in
- * basic mode, or hiding the promotion path, are both user-visible bugs.
- * `CoreServiceUnavailableBanner` is what tells a user the local service is down
- * rather than their Brain being empty.
- */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -59,10 +51,6 @@ describe("AdminAccessGate", () => {
   });
 
   it("locks the console behind a promotion for an out-of-contract mode", () => {
-    // The store validates what it reads from persistence, but the gate still
-    // guards against a value outside the three known modes (corrupted storage,
-    // a future mode this build predates): the console is locked behind an
-    // explicit promotion to admin rather than shown or silently dropped.
     useAppStore.setState({ mode: "expert" as unknown as WorkspaceMode });
     render(<AdminAccessGate language="en" />);
     const locked = screen.getAllByRole("button").find((b) => b.className.includes("is-locked"));
@@ -160,7 +148,6 @@ describe("CoreServiceUnavailableBanner", () => {
     const coreFn = vi.fn().mockResolvedValue({ ok: false, error: "still down" });
     const optionalFn = vi.fn().mockResolvedValue({ ok: true });
     await client.prefetchQuery({ queryKey: ["graph"], queryFn: coreFn });
-    // A query whose key starts with a falsy segment must not crash the predicate.
     await client.prefetchQuery({ queryKey: [""], queryFn: optionalFn });
 
     render(

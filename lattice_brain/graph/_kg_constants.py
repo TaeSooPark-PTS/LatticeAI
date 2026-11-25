@@ -1,18 +1,5 @@
-"""Static constants for the SQLite knowledge graph.
-
-Extracted verbatim from ``_kg_common`` so the grab-bag module keeps only logic.
-These are pure literals (projection/format versions, the local-ingestion file
-classification tables, and the OS exclusion lists). ``_kg_common`` re-exports
-every name here, so existing ``from ._kg_common import <CONST>`` sites are
-unaffected.
-"""
-
 from __future__ import annotations
 
-# Bump when the v2 projection layout changes (columns, normalization rules).
-# On init, a stale projection is dropped and rebuilt from the authoritative
-# legacy tables — safe because nodes_v2/edges_v2 only ever hold a derived view.
-# v4: summary nullable + verbatim (byte-faithful) projection of legacy values.
 _PROJECTION_VERSION = 4
 _KG_DB_FORMAT_VERSION = 4
 _KG_DB_FORMAT_KEY = "db_format_version"
@@ -28,10 +15,6 @@ LOCAL_CODE_EXTENSIONS = {
     ".tsx",
     ".jsx",
     ".html",
-    # v12.0.0: `.htm` sat beside `.html` in every other table (the chunker's
-    # prose list, the parser matrix) and was missing only here, so a folder of
-    # `.htm` pages was scanned past in silence. `.rs` was missing outright —
-    # this repository's own Rust half was invisible to its own folder ingest.
     ".htm",
     ".rs",
     ".go",

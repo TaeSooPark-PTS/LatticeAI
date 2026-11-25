@@ -126,10 +126,6 @@ test("a completed request clears its abort timer", async () => {
   assert.equal(signal.aborted, false);
 });
 
-// ── v9.9.7: recall + approval visibility ─────────────────────────────────────
-// The browser extension was capture-only. It now asks the same `/chat` surface
-// every other client uses and renders the server's own grounding verdict — it
-// never computes one locally, and never promotes an absent verdict.
 
 test("popup markup exposes the recall and approval surfaces", () => {
   assert.match(popupHtml, /id="question"/);
@@ -178,12 +174,6 @@ test("the extension still posts only to the local runtime", () => {
   assert.doesNotMatch(popupSource, /https?:\/\/(?!127\.0\.0\.1)/);
 });
 
-// ── the popup speaks one language at a time ─────────────────────────────
-//
-// It used to speak two: the capture status was English ("Added to Knowledge
-// Graph"), the grounding badge and the approvals line were Korean. Both were
-// on screen together, so whichever language you read, half the popup was in
-// the other one.
 
 test("every popup message exists in every language", () => {
   const languages = Object.keys(COPY);
@@ -208,7 +198,6 @@ test("no English entry contains Korean, and no Korean entry is untranslated Engl
     assert.ok(!hangul.test(value), `en.${key} still contains Korean: ${value}`);
   }
   for (const [key, value] of Object.entries(COPY.ko)) {
-    // Placeholder-only and symbol-only strings legitimately match in both.
     if (!/[A-Za-z]/.test(value)) continue;
     assert.notEqual(value, COPY.en[key], `ko.${key} is a copy of the English text`);
   }
@@ -245,8 +234,6 @@ test("the grounding badge speaks the popup's language", () => {
   const none = { grounding: { status: "unsupported", reason: "no sources" } };
   assert.match(groundingView(none, "en").text, /^Not grounded — no sources$/);
 
-  // An absent verdict is still "unknown", in whichever language — the badge
-  // must never upgrade silence into evidence.
   assert.equal(groundingView({}, "en").kind, "unknown");
   assert.equal(groundingView({}, "ko").kind, "unknown");
 });
@@ -259,8 +246,6 @@ test("the approvals line speaks the popup's language", () => {
 });
 
 test("popup.js carries no user-visible string outside the catalog", () => {
-  // A literal added at a call site is how the popup became bilingual the
-  // first time. Korean is the tell: the catalog is the only place it belongs.
   const body = popupSource.slice(popupSource.indexOf("function normalizePort"));
   const hangulLines = body
     .split("\n")
@@ -269,9 +254,6 @@ test("popup.js carries no user-visible string outside the catalog", () => {
 });
 
 test("every local request tells the server which language to answer in", () => {
-  // The server has its own message catalog now; without this header it falls
-  // back to Accept-Language, which is the browser's install language rather
-  // than the one this popup is showing.
   assert.match(popupSource, /X-Lattice-Language/);
   const localHeaderUses = popupSource.match(/localHeaders\(/g) || [];
   assert.ok(localHeaderUses.length >= 4, "some local call still sends bare headers");
@@ -354,7 +336,6 @@ test("fetchWithTimeout forwards caller AbortSignal and fetchJsonWithTimeout guar
   await assert.rejects(p, /caller-aborted/);
   assert.equal(seenSignal.aborted, true);
 
-  // Body read timeout while headers already arrived
   await assert.rejects(
     fetchJsonWithTimeout(
       "http://127.0.0.1:4825/chat",

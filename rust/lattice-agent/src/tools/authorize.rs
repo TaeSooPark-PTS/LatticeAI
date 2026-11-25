@@ -1,31 +1,8 @@
-//! `ToolDispatchService.check_role` — the one authorization the seam owned.
-//!
-//! `POST /agent/tool` runs two checks the loop's permission kernel does not:
-//! an **admin-only** gate over tools that reach outside the workspace or exec,
-//! and a **capability** gate over the scoped knowledge tools. Both read the
-//! caller's role, which is why they lived on the Python side — it is the
-//! process that holds `users.json`.
-//!
-//! Making a tool native moves the execution but must not drop the check, so it
-//! is ported here and takes the role as **input** (`ToolConfig::role`, wired by
-//! the gateway from the authenticated session). The default is Python's own
-//! default, `"user"`, so an unwired host is as restrictive as an unconfigured
-//! `ToolDispatchService`, never more permissive.
-
 use crate::kernel::policy::ToolPolicy;
 use crate::tools::sandbox::ToolError;
 
-/// `user` is the fallback role and shares `member`'s capabilities.
 const DEFAULT_ROLE: &str = "user";
 
-/// `normalize_role`: trimmed, lowercased, and anything unknown is `user`.
-///
-/// The table itself lives once, in [`lattice_auth::policy`] — this is the same
-/// `ROLE_CAPABILITIES` the admin console reads, not a second transcription of
-/// it. The one thing added here is the `trim`: a role read out of a header or a
-/// session field can arrive with whitespace, and ` Admin ` must not silently
-/// become `user`. Trimming first makes `lattice_auth::normalize_role` a no-op on
-/// the value, so the two agree on every input this one accepts.
 pub fn normalize_role(role: &str) -> String {
     let lowered = role.trim().to_lowercase();
     if lowered.is_empty() {
@@ -34,30 +11,14 @@ pub fn normalize_role(role: &str) -> String {
     lattice_auth::normalize_role(&lowered).to_string()
 }
 
-/// `role_has_capability`.
-///
-/// `user` is a row of its own in the shared table, byte-identical to `member` —
-/// which is how Python spells it too, and why the fold this function used to do
-/// by hand is no longer needed.
 pub fn role_has_capability(role: &str, capability: &str) -> bool {
     lattice_auth::role_has_capability(&normalize_role(role), capability)
 }
 
-/// `ToolRegistry.admin_only_tools`: derived from the policy, never listed.
-///
-/// `{name for name, policy in governance.items() if policy["sandbox"] ==
-/// "system" or policy["risk"] in {"exec", "destructive"}}` — a derivation, so a
-/// new exec tool is admin-only the moment it is registered rather than the
-/// moment somebody remembers to add it to a list.
 pub fn is_admin_only(policy: &ToolPolicy) -> bool {
     policy.sandbox() == "system" || matches!(policy.risk(), "exec" | "destructive")
 }
 
-/// The two role denials, in Python's order and with Python's messages.
-///
-/// `check_role` reads `policy_for(tool, {})` — the **registry** entry, not the
-/// argument-rewritten policy — so a blocked-prefix write is not turned into an
-/// admin-only tool by the rewrite. Callers pass `PolicyTable::get(tool)`.
 pub fn check_role(tool: &str, policy: &ToolPolicy, role: &str) -> Result<(), ToolError> {
     let admin_only = is_admin_only(policy);
     let capability = policy.capability.as_deref().unwrap_or("");
@@ -114,7 +75,6 @@ mod tests {
         assert!(!role_has_capability("user", "desktop:control"));
         assert!(!role_has_capability("viewer", "workspace:write"));
         assert!(role_has_capability("admin", "desktop:control"));
-        // `owner` holds the wildcard, so every capability answers true.
         assert!(role_has_capability("owner", "anything-at-all"));
     }
 
@@ -157,8 +117,6 @@ mod tests {
 
     #[test]
     fn admin_only_is_checked_before_the_capability() {
-        // `computer_screenshot` is both (system sandbox + desktop:control); the
-        // admin message is the one Python raises first.
         let both = policy("read", "system", Some("desktop:control"));
         assert_eq!(
             check_role("computer_status", &both, "viewer")

@@ -1,11 +1,3 @@
-//! Embedding Model Registry, Shadow Index Re-Indexing, Atomic Cutover & Instant Rollback (P1.4).
-//!
-//! Guarantees that vectors produced by incompatible embedding models (different
-//! `model_id`, `version`, `dimensions`, `normalization`, or `distance_metric`)
-//! are never compared in the same vector space, and enables resumable
-//! background shadow re-indexing with quality-gated atomic cutover and instant
-//! rollback preserving the previous generation.
-
 use std::collections::BTreeMap;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -27,7 +19,6 @@ fn encode_vector_f32(values: &[f32]) -> Vec<u8> {
     out
 }
 
-/// Lifecycle state of a registered embedding model or index generation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EmbeddingModelStatus {
@@ -57,7 +48,6 @@ impl EmbeddingModelStatus {
     }
 }
 
-/// Complete specification of a registered embedding model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EmbeddingModelSpec {
     pub model_id: String,
@@ -73,8 +63,6 @@ pub struct EmbeddingModelSpec {
 }
 
 impl EmbeddingModelSpec {
-    /// Two specs can share a vector space only when model, version, dim,
-    /// normalization, and distance metric all match strictly.
     pub fn is_space_compatible_with(&self, other: &Self) -> bool {
         self.model_id == other.model_id
             && self.version == other.version
@@ -107,7 +95,6 @@ impl EmbeddingModelSpec {
     }
 }
 
-/// Built-in production embedding model catalog entries.
 pub fn builtin_embedding_registry() -> Vec<EmbeddingModelSpec> {
     vec![
         EmbeddingModelSpec {
@@ -169,7 +156,6 @@ pub fn builtin_embedding_registry() -> Vec<EmbeddingModelSpec> {
     ]
 }
 
-/// Resumable shadow re-indexing job state.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ShadowReindexJob {
     pub generation_id: String,
@@ -187,7 +173,6 @@ pub struct ShadowReindexJob {
     pub updated_at: String,
 }
 
-/// Evaluation gate comparing shadow index readiness against active index.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ShadowEvaluationGate {
     pub generation_id: String,
@@ -198,7 +183,6 @@ pub struct ShadowEvaluationGate {
     pub rationale: String,
 }
 
-/// Result of an atomic shadow cutover or rollback.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CutoverReceipt {
     pub active_generation_id: String,
@@ -208,7 +192,6 @@ pub struct CutoverReceipt {
     pub active_model_version: String,
 }
 
-/// Ensure additive tables for the Embedding Model Registry & Shadow Index exist.
 pub fn ensure_embedding_registry_schema(conn: &Connection) -> Result<(), CoreError> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS embedding_model_registry (
@@ -260,7 +243,6 @@ pub fn ensure_embedding_registry_schema(conn: &Connection) -> Result<(), CoreErr
     Ok(())
 }
 
-/// Register or update an embedding model in the persistent SQLite registry.
 pub fn register_embedding_model(
     conn: &Connection,
     spec: &EmbeddingModelSpec,
@@ -300,7 +282,6 @@ pub fn register_embedding_model(
     Ok(())
 }
 
-/// List registered embedding models (seeding built-ins if the registry table is empty).
 pub fn list_embedding_models(conn: &Connection) -> Result<Vec<EmbeddingModelSpec>, CoreError> {
     ensure_embedding_registry_schema(conn)?;
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM embedding_model_registry", [], |r| {
@@ -340,7 +321,6 @@ pub fn list_embedding_models(conn: &Connection) -> Result<Vec<EmbeddingModelSpec
     Ok(rows)
 }
 
-/// Guard ensuring two models belong to the same compatible vector space before similarity search.
 pub fn assert_embedding_space_compatible(
     query_spec: &EmbeddingModelSpec,
     index_spec: &EmbeddingModelSpec,
@@ -363,7 +343,6 @@ pub fn assert_embedding_space_compatible(
     Ok(())
 }
 
-/// Start or resume a shadow re-indexing generation.
 pub fn start_shadow_reindex(
     conn: &Connection,
     generation_id: &str,
@@ -396,7 +375,6 @@ pub fn start_shadow_reindex(
         .ok_or_else(|| CoreError::InvalidRequest("shadow job missing after upsert".to_string()))
 }
 
-/// Write a resumable batch of vectors into `vector_embeddings_shadow` and advance the cursor atomically.
 pub fn write_shadow_batch(
     conn: &mut Connection,
     generation_id: &str,
@@ -459,7 +437,6 @@ pub fn write_shadow_batch(
         .ok_or_else(|| CoreError::InvalidRequest("shadow job missing".to_string()))
 }
 
-/// Evaluate shadow index readiness against coverage and recall thresholds before cutover.
 pub fn evaluate_shadow_generation(
     conn: &Connection,
     generation_id: &str,
@@ -527,8 +504,6 @@ pub fn evaluate_shadow_generation(
     })
 }
 
-/// Atomically swap a ready shadow generation into `vector_embeddings`, archiving
-/// the prior active vectors into `vector_embeddings_shadow` for instant rollback.
 pub fn cutover_shadow_generation(
     conn: &mut Connection,
     generation_id: &str,
@@ -556,7 +531,6 @@ pub fn cutover_shadow_generation(
         .clone()
         .unwrap_or_else(|| format!("gen-pre-{}", generation_id));
 
-    // Archive current active vectors into shadow storage under `backup_gen` for instant rollback.
     let active_count: i64 =
         tx.query_row("SELECT COUNT(*) FROM vector_embeddings", [], |r| r.get(0))?;
     if active_count > 0 {
@@ -583,7 +557,6 @@ pub fn cutover_shadow_generation(
         )?;
     }
 
-    // Swap shadow vectors into live `vector_embeddings`.
     tx.execute("DELETE FROM vector_embeddings", [])?;
     let swapped = tx.execute(
         "INSERT INTO vector_embeddings(
@@ -629,7 +602,6 @@ pub fn cutover_shadow_generation(
     })
 }
 
-/// Instantly roll back `vector_embeddings` to the previously archived generation.
 pub fn rollback_index_generation(conn: &mut Connection) -> Result<CutoverReceipt, CoreError> {
     let prev: String = conn
         .query_row(
@@ -644,7 +616,6 @@ pub fn rollback_index_generation(conn: &mut Connection) -> Result<CutoverReceipt
     cutover_shadow_generation(conn, &prev)
 }
 
-/// Load a shadow re-index job record by generation ID.
 pub fn load_shadow_job(
     conn: &Connection,
     generation_id: &str,
@@ -679,7 +650,6 @@ pub fn load_shadow_job(
     .map_err(Into::into)
 }
 
-/// List all vector index shadow/active/retired generations ordered newest-first.
 pub fn list_shadow_jobs(conn: &Connection) -> Result<Vec<ShadowReindexJob>, CoreError> {
     ensure_embedding_registry_schema(conn)?;
     let mut stmt = conn.prepare(
@@ -743,7 +713,6 @@ mod tests {
         assert!(assert_embedding_space_compatible(&bge, &e5).is_err());
         assert!(assert_embedding_space_compatible(&e5, &e5).is_ok());
 
-        // Seed active vector with legacy 4-dim test model.
         conn.execute(
             "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
              VALUES ('n1', 'Document', 'T', 'S', '{}', '{}', '2026-01-01', '2026-01-01')",
@@ -772,7 +741,6 @@ mod tests {
         let job = start_shadow_reindex(&conn, "gen-2", &new_spec, 1).unwrap();
         assert_eq!(job.processed_items, 0);
 
-        // Resumable batch write.
         let job = write_shadow_batch(
             &mut conn,
             "gen-2",
@@ -804,7 +772,6 @@ mod tests {
             .unwrap();
         assert_eq!(live_model, "new-semantic-v2");
 
-        // Instant rollback restores `old-model`.
         let rolled = rollback_index_generation(&mut conn).unwrap();
         assert_eq!(rolled.vectors_swapped, 1);
         let restored_model: String = conn

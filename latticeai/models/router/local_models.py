@@ -1,11 +1,3 @@
-"""Finding a locally downloaded model on disk.
-
-Three places a model may already be: an explicit path, this app's own
-``~/.ltcai/hf-models`` directory, or the shared Hugging Face cache. A directory
-only counts when it actually holds a config, weights and a tokenizer — a
-half-finished download must not be handed to the loader as if it were a model.
-"""
-
 import json
 import re
 from pathlib import Path
@@ -19,7 +11,6 @@ def hf_model_dir(repo_id: str) -> Path:
 
 
 def hf_cache_model_dir(repo_id: str) -> Optional[Path]:
-    """Return a usable Hugging Face cache snapshot for an already-downloaded model."""
     cache_root = (
         Path.home()
         / ".cache"

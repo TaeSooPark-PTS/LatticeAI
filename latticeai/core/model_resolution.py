@@ -1,21 +1,3 @@
-"""Lattice AI Model Resolution + Prepare State Machine.
-
-피드백 #1 (lattice_ai_model_recommend_download_load_issue.txt)
-피드백 #2 (lattice_ai_manual_model_select_auto_download_load_fix.txt)
-
-핵심 문제:
-- 추천 카드 ID, 다운로드 ID, 로드 ID, router cache key,
-  프론트가 current로 쓰는 ID가 단계마다 달라질 수 있음.
-- /models/load 와 /engines/prepare-model/stream 로직이 중복.
-- 다운로드 성공과 채팅 가능 상태가 다름.
-
-해결:
-1. ModelResolution: input_id → engine/resolved_model/download_id/load_id/expected_current.
-2. PrepareState: RESOLVING → ENGINE_CHECK → DOWNLOADING → SERVER_STARTING
-   → MODEL_LOADING → SMOKE_TEST → READY (또는 DEGRADED/FAILED).
-3. PrepareReport: 로드 직후 smoke test 결과까지 포함한 최종 응답 객체.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -24,9 +6,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
-
-
-# ── State enum ────────────────────────────────────────────────────────────────
 
 
 class PrepareState(str, Enum):
@@ -63,13 +42,8 @@ def _canonical_engine(engine: Optional[str]) -> Optional[str]:
     return e or None
 
 
-# ── ModelResolution dataclass ─────────────────────────────────────────────────
-
-
 @dataclass
 class ModelResolution:
-    """모든 단계가 공유하는 canonical model identity."""
-
     input_id: str
     engine: str
     provider: str
@@ -83,8 +57,6 @@ class ModelResolution:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
-    # ──────────────────────────────────────────────────────────────────────
-
     @classmethod
     def from_request(
         cls,
@@ -96,18 +68,12 @@ class ModelResolution:
         alias_resolver=None,
         engine_aliases: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> "ModelResolution":
-        """사용자가 클릭한 input_id + engine 힌트로부터 ModelResolution 생성.
-
-        - alias_resolver: 선택. (model_id, engine) -> resolved_model_id
-        - engine_aliases: 선택. {short_name: {engine: real_id}}
-        """
         raw = str(input_id or "").strip()
         if not raw:
             raise ValueError("모델 식별자가 비어 있습니다.")
 
         engine_hint = _canonical_engine(engine)
 
-        # provider prefix가 붙어 있으면 그것을 우선 사용
         provider: Optional[str] = None
         model_name = raw
         if ":" in raw:
@@ -122,7 +88,6 @@ class ModelResolution:
         if not provider:
             provider = engine_hint or "local_mlx"
 
-        # alias 테이블 (예: {"gemma-4-12b-it-4bit": {"local_mlx": "mlx-community/...", "ollama": "hf.co/..."}})
         resolved_model = model_name
         if engine_aliases:
             aliases = engine_aliases.get(model_name.lower())
@@ -131,7 +96,6 @@ class ModelResolution:
                 if mapped:
                     resolved_model = mapped
 
-        # 사용자가 외부에서 추가로 alias_resolver 제공 시 마지막에 한 번 더 정규화
         if alias_resolver:
             try:
                 maybe = alias_resolver(resolved_model, provider)
@@ -168,14 +132,10 @@ class ModelResolution:
             metadata={"engine_hint": engine_hint or ""},
         )
 
-    # ──────────────────────────────────────────────────────────────────────
-
     def update_after_load(self, *, actual_current: Optional[str]) -> None:
-        """LM Studio처럼 로드 후 instance_id가 부여되는 경우 동기화."""
         if not actual_current:
             return
         self.expected_current = actual_current
-        # provider:model 형태면 load_id 갱신
         if ":" in actual_current:
             head = actual_current.split("::", 1)[0]
             self.load_id = head
@@ -183,14 +143,9 @@ class ModelResolution:
                 self.resolved_model = head.split(":", 1)[1]
 
 
-# ── PrepareReport ─────────────────────────────────────────────────────────────
-
-
 @dataclass
 class PrepareReport:
-    """prepare_model_core / SSE 흐름이 모두 같은 형태로 돌려주는 결과."""
-
-    status: str  # "ok" | "degraded" | "failed"
+    status: str
     state: PrepareState
     resolution: ModelResolution
     current: Optional[str]
@@ -198,7 +153,7 @@ class PrepareReport:
     downloaded: bool = False
     loaded: bool = False
     ready_to_chat: bool = False
-    compatibility_status: str = "unknown"  # ok / degraded / failed / unknown
+    compatibility_status: str = "unknown"
     smoke_test: Optional[Dict[str, Any]] = None
     stage_logs: List[Dict[str, Any]] = field(default_factory=list)
     error: Optional[Dict[str, Any]] = None
@@ -214,9 +169,6 @@ class PrepareReport:
         )
         data["resolution"] = self.resolution.to_dict()
         return data
-
-
-# ── State machine helpers ─────────────────────────────────────────────────────
 
 
 def transition_log(

@@ -1,29 +1,10 @@
-//! Pragma parity: a Rust write connection must be configured exactly the way
-//! Python configures one, because both open the same file at the same time.
-//!
-//! The expected values are transcribed from these lines and hardcoded here on
-//! purpose — a test that read them back from the same constant would prove
-//! nothing:
-//!
-//! * `lattice_brain/storage/sqlite.py:49` — `conn.execute("PRAGMA journal_mode=WAL")`
-//! * `lattice_brain/storage/sqlite.py:50` — `conn.execute("PRAGMA foreign_keys=ON")`
-//! * `lattice_brain/storage/sqlite.py:47` — `sqlite3.connect(str(self.db_path))`,
-//!   whose `timeout` parameter defaults to 5.0 s and is handed to
-//!   `sqlite3_busy_timeout`, i.e. `PRAGMA busy_timeout = 5000`.
-//! * nothing sets `synchronous`, so it stays at SQLite's default of 2 (FULL).
-
 use std::path::PathBuf;
 
 use lattice_core::db::{open_read_only, open_read_write, Access, Pool, Store};
 
-/// `PRAGMA journal_mode` — `lattice_brain/storage/sqlite.py:49`.
 const PYTHON_JOURNAL_MODE: &str = "wal";
-/// `PRAGMA foreign_keys` — `lattice_brain/storage/sqlite.py:50`.
 const PYTHON_FOREIGN_KEYS: i64 = 1;
-/// `PRAGMA busy_timeout` — the `sqlite3.connect(timeout=5.0)` default applied
-/// at `lattice_brain/storage/sqlite.py:47`.
 const PYTHON_BUSY_TIMEOUT_MS: i64 = 5_000;
-/// `PRAGMA synchronous` — never set by Python, so SQLite's FULL.
 const PYTHON_SYNCHRONOUS: i64 = 2;
 
 fn scratch(name: &str) -> (tempfile::TempDir, PathBuf) {
@@ -92,8 +73,6 @@ fn the_read_lane_keeps_its_own_shorter_wait() {
 
 #[test]
 fn every_pooled_write_connection_gets_the_same_settings() {
-    // A pool that configured only its first connection would pass the single
-    // -handle test above and still hand out an unconfigured one under load.
     let (_dir, path) = scratch("graph.sqlite");
     let pool = Pool::open(&path, Access::Write, 3).expect("pool");
     let a = pool.checkout().expect("first");
@@ -108,7 +87,6 @@ fn every_pooled_write_connection_gets_the_same_settings() {
 
 #[test]
 fn foreign_keys_are_enforced_through_the_store_helpers() {
-    // The pragma value proved above is a number; this proves it is a rule.
     let (_dir, path) = scratch("graph.sqlite");
     let store = Store::open_with_sizes(&path, 1, 1).expect("store");
     store

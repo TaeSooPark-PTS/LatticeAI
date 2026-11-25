@@ -1,4 +1,4 @@
-/* ── Shared content pages ────────────────────────────────────────────── */
+
 
 .brain-shell-content > .space-y-5 {
   padding: clamp(2.5rem, 6vw, 4.5rem) 0 3rem;
@@ -125,9 +125,7 @@
   box-shadow: var(--elev-1);
 }
 
-/* The one panel on a screen that is waiting on the person. `.data-panel` sets
-   border-color here, in plain CSS, which outranks any Tailwind border utility
-   passed through `className` — so the emphasis has to live at this layer too. */
+
 .data-panel.is-attention {
   border-color: hsl(var(--warning) / 0.75);
   background: linear-gradient(135deg, hsl(var(--warning) / 0.1), hsl(var(--warning) / 0.03));
@@ -281,7 +279,7 @@
   outline-offset: 1px;
 }
 
-/* Calm onboarding: retain the warm Brain character without a grid dashboard. */
+
 .ritual-shell,
 .product-flow-shell {
   background: hsl(var(--background));
@@ -295,26 +293,12 @@
   width: min(100%, 54rem);
 }
 
-/* ── The Brain shrinks once it stops being the subject ────────────────────
-   Step one is an invitation, so the organism is the hero. Every step after it
-   asks the person to *do* something — name themselves, pick a model, watch a
-   progress list — and a 390px decoration above that work pushed all three
-   below the fold on a 1440x900 display. Same organism, two scales: it stays
-   the thing you recognise without being the thing you have to scroll past.
 
-   `--brain-scale` is the variable `.brain-organism` already multiplies into
-   its transform, so this rides the existing sizing instead of fighting it, and
-   the negative margins reclaim the whitespace the untransformed box still
-   reserves in flow. */
 .ritual-brain[data-scale="hero"] {
   margin: 0 auto 1.75rem;
 }
 
-/* A hero is only a hero while there is room for one. At 390px the organism
-   alone was half of a laptop viewport, and "Brain 지금 깨우기" — the single
-   button this screen exists to offer — sat ~200px below the fold, so the
-   first interaction the product asked for was a scroll. The organism yields
-   height before the invitation does. */
+
 @media (max-height: 900px) {
   .ritual-brain[data-scale="hero"] {
     margin-bottom: 0.5rem;
@@ -354,8 +338,7 @@
     padding-top: 0.35rem;
   }
 
-  /* The badge is pinned over the organism's lower edge, which reads as a
-     caption at 320px and as graffiti at 168px. Below, like the mark scale. */
+  
   .ritual-brain[data-scale="hero"] .ritual-edition {
     position: static;
     transform: none;
@@ -368,14 +351,7 @@
   }
 }
 
-/* One tier tighter, for the laptop that is not 900px tall.
-   Through 10.8.0 the welcome step measured 770px against a 747px viewport, so
-   the closing line — "평균 2분 안에 첫 대화 시작 · 로컬 우선 · 사용자가 제어",
-   the sentence that tells a first-time visitor what they are agreeing to — sat
-   8px under the fold and the very first screen of the product opened with a
-   scrollbar. Nothing is removed here; the whitespace between the pieces gives
-   up the ~25px, which is where it was hiding. `tests/visual/v3.home.spec.js`
-   pins the result at exactly this height. */
+
 @media (max-height: 820px) {
   .ritual-shell {
     padding-block: 0.6rem;
@@ -426,12 +402,10 @@
   --brain-mark-size: 104px;
   width: var(--brain-mark-size);
   height: var(--brain-mark-size);
-  /* Descendants are sized in % of the organism, so narrowing the box scales
-     the whole assembly — no transform, so no reserved-but-empty flow box. */
+  
 }
 
-/* At mark scale the badge is a caption under the organism, not a chip pinned
-   over its lower edge: at 104px the pinned chip covered a third of the face. */
+
 .ritual-brain[data-scale="mark"] .ritual-edition {
   position: static;
   transform: none;
@@ -439,10 +413,7 @@
   box-shadow: none;
 }
 
-/* The two grids the welcome step stacks — three value cards over three numbered
-   steps — read as one 6-cell block because they share a column count and a
-   card shape. The plan is the quieter of the two: it is a caption for the
-   button under it, so it loses its card entirely. */
+
 .ritual-wake-plan {
   gap: 0.5rem;
 }
@@ -493,12 +464,7 @@
   text-align: center;
 }
 
-/* ── The four stages are a rail, not a list ───────────────────────────────
-   Stacked, they were four short left-aligned rows inside a 966px card: about
-   a fifth of the card carrying content and the rest empty, with the whole
-   thing tall enough to push the buttons under it off screen. They are
-   sequential steps, so they read as a rail — which also says "four steps,
-   you are on the second" at a glance, which the stack never did. */
+
 .ritual-install {
   width: min(100%, 40rem);
   margin-inline: auto;
@@ -547,11 +513,7 @@
   letter-spacing: -0.025em;
 }
 
-/* ── Capture: one station, then the quieter second read ──────────────────
-   The three ways of adding material used to be three of four page-level tabs,
-   ranked equal with the indexer's status page. They are one card now — the
-   only loud thing on the screen — and everything that reports on material
-   already added sits in the two quiet columns beneath it. */
+
 
 .capture-station {
   border: 1px solid hsl(var(--primary) / 0.28);
@@ -579,8 +541,7 @@
   line-height: 1.6;
 }
 
-/* Toggle buttons, not a tablist: these choose the shape of one action rather
-   than switching between screens. */
+
 .capture-method-switch {
   display: flex;
   flex-wrap: wrap;
@@ -619,8 +580,7 @@
   padding: 0 1.15rem 1.15rem;
 }
 
-/* Each intake names itself in one line — the station header already said what
-   the card as a whole is for. */
+
 .capture-intake-lead {
   display: flex;
   align-items: flex-start;
@@ -652,9 +612,7 @@
   min-width: 0;
 }
 
-/* ── Memory: the map is a place you go into, not a third tab ─────────────
-   The entry is a full-width secondary target below the primary panel, and the
-   map itself opens with a back control where the tablist used to be. */
+
 
 .memory-map-entry {
   display: flex;
@@ -725,7 +683,7 @@
   font-weight: 600;
 }
 
-/* ── Library: which model is running, before anything else ────────────── */
+
 
 .library-active {
   display: flex;

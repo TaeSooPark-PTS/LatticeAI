@@ -1,17 +1,3 @@
-//! The shape of a new Workspace OS state document, and upgrades to old ones.
-//!
-//! Port of `latticeai/core/workspace_os_state.py`. Three pure functions:
-//! [`default_state`] describes a brand-new file, [`new_workspace_record`]
-//! builds one workspace entry, and [`migrate_workspaces`] upgrades a file
-//! written by an older version.
-//!
-//! `migrate_workspaces` is the one that has to be exactly right: it runs on
-//! **every** load, over state a shipped install already has on disk. It is
-//! non-destructive by construction — it rebuilds each entry from
-//! `new_workspace_record` and then puts back the timestamps and status the
-//! loaded record carried, so a field this version does not know about is the
-//! only thing that can be lost, and none exist.
-
 use serde_json::{json, Map, Value};
 
 use super::constants::{
@@ -20,7 +6,6 @@ use super::constants::{
 };
 use super::pyutil::{listify, now_iso};
 
-/// `{role: sorted(perms)}` — the role matrix as it is serialized.
 pub fn role_matrix() -> Value {
     let mut map = Map::new();
     for (role, grants) in ROLE_PERMISSIONS {
@@ -29,9 +14,6 @@ pub fn role_matrix() -> Value {
     Value::Object(map)
 }
 
-/// `new_workspace_record` — one workspace entry.
-///
-/// Returns `Err` for an unknown type, mirroring the `ValueError` Python raises.
 pub fn new_workspace_record(
     workspace_id: &str,
     name: &str,
@@ -72,9 +54,6 @@ pub fn new_workspace_record(
     }))
 }
 
-/// `migrate_workspaces` — non-destructive upgrade of legacy entries.
-///
-/// Mutates `state` in place, exactly as the Python original does.
 pub fn migrate_workspaces(state: &mut Value) {
     let loaded: Vec<(String, Value)> = match state.get("workspaces") {
         Some(Value::Object(map)) => map
@@ -113,7 +92,6 @@ pub fn migrate_workspaces(state: &mut Value) {
             Some(Value::Object(map)) if !map.is_empty() => Some(Value::Object(map.clone())),
             _ => Some(json!({})),
         };
-        // The type is one of the two literals above, so this cannot fail.
         let Ok(mut base) = new_workspace_record(
             &workspace_id,
             &name,
@@ -155,7 +133,6 @@ pub fn migrate_workspaces(state: &mut Value) {
     }
 }
 
-/// Python truthiness for the `record.get(key) or default` idiom.
 fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -167,7 +144,6 @@ fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `default_state` — a brand-new state document.
 pub fn default_state() -> Value {
     let now = now_iso();
     let mut flags = Map::new();
@@ -244,12 +220,6 @@ pub fn default_state() -> Value {
     })
 }
 
-/// `_member_role(ws, user_id)` — the role this identity holds, if any.
-///
-/// The two fallbacks are load-bearing and neither is an accident:
-/// a **personal** workspace always answers `owner`, and an **ownerless**
-/// organization workspace answers `owner` to an anonymous caller — which is how
-/// a no-auth local install keeps managing what it created.
 pub fn member_role<'a>(workspace: &'a Value, user_id: Option<&str>) -> Option<&'a str> {
     if workspace.get("type").and_then(Value::as_str) == Some("personal") {
         return Some("owner");
@@ -282,7 +252,6 @@ fn listify_members(workspace: &Value) -> &[Value] {
     }
 }
 
-/// The members list of a workspace record.
 pub fn members_of(workspace: &Value) -> Vec<Value> {
     listify(workspace.get("members"))
 }
@@ -361,7 +330,6 @@ mod tests {
         assert_eq!(upgraded["members"], json!([]));
         assert_eq!(upgraded["roles"], role_matrix());
         assert!(state["workspaces"]["personal"].is_object());
-        // The named active workspace no longer exists → back to Personal.
         assert_eq!(state["active_workspace"], json!("personal"));
     }
 

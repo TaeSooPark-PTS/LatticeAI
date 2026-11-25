@@ -35,7 +35,6 @@ const citedProof: MessageProof = {
   ],
 };
 
-// One conversation that exercises every per-message surface at once.
 function conversationMessages(): Message[] {
   return [
     userMessage("이거 기억해줘"),
@@ -235,7 +234,6 @@ describe("BrainConversation with messages", () => {
     expect(header.querySelector(".brain-model-pill")).toBeNull();
     expect(header.textContent).not.toContain("(62%)");
 
-    // Basic mode keeps the limited-context note but drops the technical reason.
     const note = screen.getByTestId("context-quality-note");
     expect(note.querySelector("small")).toBeNull();
   });
@@ -243,12 +241,10 @@ describe("BrainConversation with messages", () => {
   it("shows citations, grounding, files, loop repairs, run explanation and agent states", () => {
     const { container } = renderConversation({ messages: conversationMessages() });
 
-    // Inline citation markers only where citations exist.
     const bubbles = container.querySelectorAll(".brain-message-bubble");
     expect(bubbles[1]!.querySelector(".brain-inline-citations")).toBeTruthy();
     expect(bubbles[3]!.querySelector(".brain-inline-citations")).toBeNull();
 
-    // Grounding: supported with a reason tooltip, unsupported without one.
     const badges = screen.getAllByTestId("grounding-badge");
     expect(badges).toHaveLength(2);
     expect(badges[0]!.className).toContain("is-supported");
@@ -258,15 +254,12 @@ describe("BrainConversation with messages", () => {
     expect(badges[1]).not.toHaveAttribute("title");
     expect(badges[1]!.textContent).toBe(t("ko", "brain.grounding.none"));
 
-    // Context quality: the limited note renders its reason in advanced mode.
     const note = screen.getByTestId("context-quality-note");
     expect(note.textContent).toContain(t("ko", "brain.contextQuality.limited"));
     expect(note.querySelector("small")?.textContent).toContain("인덱스가 아직 작습니다");
 
-    // Created files card for the message that produced one.
     expect(container.textContent).toContain("report.md");
 
-    // Agent terminal states: FAILED and NEEDS_REVIEW look different.
     const states = screen.getAllByTestId("agent-state-note");
     expect(states).toHaveLength(2);
     expect(states[0]!.className).toContain("is-review");
@@ -274,7 +267,6 @@ describe("BrainConversation with messages", () => {
     expect(states[1]!.className).toContain("is-failed");
     expect(states[1]!.textContent).toBe(t("ko", "brain.agent.failed"));
 
-    // Loop repairs + run explanation notes surfaced for the first answer.
     expect(container.textContent).toContain("요청을 끝까지 수행했습니다");
   });
 
@@ -331,7 +323,6 @@ describe("BrainConversation with messages", () => {
   it("offers regenerate, save-task and follow-ups only on the latest answer", () => {
     const { props } = renderConversation({ messages: conversationMessages() });
 
-    // Three answers with content → three action rows; one regenerate/save.
     expect(screen.getAllByRole("button", { name: t("ko", "brain.message.copyAria") })).toHaveLength(3);
     const regenerate = screen.getAllByRole("button", { name: t("ko", "brain.message.regenerateAria") });
     expect(regenerate).toHaveLength(1);
@@ -405,7 +396,6 @@ describe("BrainConversation utility drawer", () => {
     const details = openDrawer(container);
     expect(props.onRequestDetails).toHaveBeenCalledTimes(1);
 
-    // Advanced surface: model pill, admin link and the deep panels.
     const tools = container.querySelector(".brain-utility-tools") as HTMLElement;
     expect(tools.querySelector(".brain-model-pill")?.textContent).toBe("test-model");
     expect(screen.getByLabelText(t("ko", "brain.modelDemo.aria"))).toBeTruthy();

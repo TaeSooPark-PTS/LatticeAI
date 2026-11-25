@@ -1,5 +1,3 @@
-"""Coverage for security redaction, rate limits, lifespan, and filesystem extras."""
-
 from __future__ import annotations
 
 import asyncio

@@ -1,14 +1,3 @@
-/**
- * The admin console had no test, which is a bad place for a blind spot: it is
- * the screen an operator reads to decide whether anything is wrong, so the
- * failure mode is not a broken layout but a *reassuring* one.
- *
- * The specific dishonesty this file guards is a green light over a degraded
- * service — `.ok` only means the request succeeded, and a server answering 200
- * with `status: "degraded"` was being summarised as ready. Alongside that: an
- * empty list must read as empty rather than as absent, and the log filters
- * must actually reach the request.
- */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -28,7 +17,6 @@ const down = <T,>(data: T) => ({
   error: "unavailable",
 });
 
-/** Every query the console fires, answered with an empty-but-valid payload. */
 function stubAdminApi(overrides: Partial<Record<string, unknown>> = {}) {
   const defaults: Record<string, unknown> = {
     adminSummary: live({}),
@@ -103,9 +91,6 @@ describe("the health statement", () => {
   });
 
   it("does not call a degraded service ready just because the request returned 200", async () => {
-    // The bug this locks down: `.ok` describes the HTTP call, not the service.
-    // A 200 carrying `status: "degraded"` was summarised as ready — a green
-    // light over a service that is telling you it is unwell.
     stubAdminApi({ adminSecurity: live({ status: "degraded" }) });
     renderConsole();
 
@@ -128,7 +113,6 @@ describe("lists distinguish empty from broken", () => {
     renderConsole();
 
     const main = await screen.findByRole("main");
-    // Something is said about the absence — a silent gap reads as a bug.
     await waitFor(() => expect(main.textContent?.trim().length).toBeGreaterThan(0));
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -206,7 +190,6 @@ describe("rebuilding the index", () => {
       .find((button) => /rebuild|reindex/i.test(button.textContent || ""))!;
     fireEvent.click(rebuildButton);
 
-    // While the server works, the control must say so and refuse a second run.
     expect(await screen.findByText("Rebuilding")).toBeTruthy();
     expect((screen.getByText("Rebuilding").closest("button") as HTMLButtonElement).disabled).toBe(true);
 
@@ -270,7 +253,6 @@ describe("roles, policies and security events render their rows", () => {
     renderConsole();
     expect(await screen.findByText(/admin · 2 Users/i)).toBeTruthy();
     expect(screen.getByText("read, write, exec, net")).toBeTruthy();
-    // A role the server left blank still reads as a role, with no caps.
     expect(screen.getByText(/role · 0 Users/i)).toBeTruthy();
     expect(screen.getByText("No caps")).toBeTruthy();
   });
@@ -354,7 +336,6 @@ describe("brain operations detail", () => {
       adminLogRetention: live({ retention_days: true, retained_events: Number.NaN, prune_candidates: false }),
     });
     renderConsole();
-    // Booleans print as text, and NaN is not a count — the copy falls back to 0.
     expect(await screen.findByText("true day retention")).toBeTruthy();
     expect(screen.getByText(/0 retained · false ready for export\/prune review/)).toBeTruthy();
   });

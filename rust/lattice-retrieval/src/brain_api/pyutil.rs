@@ -1,27 +1,6 @@
-//! The Python behaviours the Brain Intelligence scores are built out of.
-//!
-//! Four of them decide numbers a client renders, so each is reproduced rather
-//! than approximated:
-//!
-//! * **`round()` is banker's rounding.** `round(0.5)` is `0` and `round(2.5)`
-//!   is `2`. Every health dimension scores `round(ratio * 100)`, so a
-//!   half-away-from-zero rounder disagrees with Python on every exact tie.
-//! * **truthiness, not `is not None`.** `if score:` is false for `0`, `0.0`,
-//!   `""` and `[]`. `str(x or "")` therefore renders a `0` title as the empty
-//!   string, and the recommended-action rules skip a dimension whose count is
-//!   zero. Translating either to a null check changes the answer.
-//! * **`_parse_ts` reads a naive stamp as UTC.** The graph writes naive *local*
-//!   stamps; `datetime.fromisoformat(...).replace(tzinfo=utc)` reads them as
-//!   UTC anyway, which shifts every window by the machine's offset. That is the
-//!   product's behaviour and this port keeps it — [`local_epoch`] exists
-//!   separately for `synthesis._recent_window`, the one caller that does not.
-//! * **`\w+` is Unicode-aware.** `content_signature` tokenises Korean and
-//!   English from the same expression.
-
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Python's `round(x)` — round-half-to-**even**, on the exact double.
 pub fn py_round(value: f64) -> i64 {
     if !value.is_finite() {
         return 0;
@@ -29,12 +8,10 @@ pub fn py_round(value: f64) -> i64 {
     value.round_ties_even() as i64
 }
 
-/// `round(value, digits)` with CPython's semantics.
 pub fn round_to(value: f64, digits: usize) -> f64 {
     lattice_core::pytext::round_to(value, digits)
 }
 
-/// Python truthiness for the JSON values the graph and the state document hold.
 pub fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -46,7 +23,6 @@ pub fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `str(value)` for the JSON types this family sees.
 pub fn py_str(value: &Value) -> String {
     match value {
         Value::Null => "None".to_string(),
@@ -58,7 +34,6 @@ pub fn py_str(value: &Value) -> String {
     }
 }
 
-/// `repr(int)` / `repr(float)` — an integral float keeps its `.0`.
 fn py_number(number: &serde_json::Number) -> String {
     if number.is_i64() || number.is_u64() {
         return number.to_string();
@@ -70,7 +45,6 @@ fn py_number(number: &serde_json::Number) -> String {
     }
 }
 
-/// `str(value or "")` — the reading every title, type and content goes through.
 pub fn text_of(value: Option<&Value>) -> String {
     match value {
         Some(value) if truthy(value) => py_str(value),
@@ -78,22 +52,18 @@ pub fn text_of(value: Option<&Value>) -> String {
     }
 }
 
-/// `str(record.get(key) or "")` for an object field.
 pub fn field_text(record: &Value, key: &str) -> String {
     text_of(record.get(key))
 }
 
-/// `text[:n]` — n **characters**, the way Python slices.
 pub fn head(text: &str, n: usize) -> String {
     lattice_core::pytext::truncate_chars(text, n)
 }
 
-/// `_parse_ts` — an ISO stamp as epoch seconds, a naive one read as **UTC**.
 pub fn parse_ts(value: Option<&Value>) -> Option<f64> {
     parse_ts_str(&text_of(value))
 }
 
-/// The same, from text already in hand.
 pub fn parse_ts_str(raw: &str) -> Option<f64> {
     let text = lattice_core::pytext::strip(raw);
     if text.is_empty() {
@@ -105,10 +75,6 @@ pub fn parse_ts_str(raw: &str) -> Option<f64> {
     Some(base - offset)
 }
 
-/// Split a trailing `±HH[:MM]` designator off an ISO stamp.
-///
-/// The search starts past the date, whose own `-` separators would otherwise
-/// read as a negative offset.
 fn split_offset(text: &str) -> (String, f64) {
     let chars: Vec<char> = text.chars().collect();
     for index in (11..chars.len()).rev() {
@@ -149,8 +115,6 @@ fn offset_seconds(tail: &str) -> Option<f64> {
     Some(hours * 3600.0 + minutes * 60.0 + seconds)
 }
 
-/// `datetime.fromisoformat(stamp).astimezone().timestamp()` — the naive branch
-/// of `synthesis._recent_window`, which reads a bare stamp as **local** time.
 pub fn local_epoch(raw: &str) -> Option<f64> {
     let text = lattice_core::pytext::strip(raw);
     if text.is_empty() {
@@ -160,23 +124,15 @@ pub fn local_epoch(raw: &str) -> Option<f64> {
     let (naive, offset) = split_offset(&text);
     let base = lattice_core::parse_iso(Some(&naive))?;
     if naive.len() != text.len() {
-        // The stamp carried its own offset; `astimezone()` only re-labels it.
         return Some(base - offset);
     }
     Some(base - local_offset_at(base))
 }
 
-/// The UTC offset this machine was at, for a wall-clock reading of `naive`.
 fn local_offset_at(naive: f64) -> f64 {
     lattice_core::graph_write::clock::local_offset_for_naive_wall(naive)
 }
 
-/// `re.findall(r"\w+", text)`.
-///
-/// Rust's `char::is_alphanumeric` is `Alphabetic | Nd | Nl | No`; CPython's
-/// `\w` is `L* | Nd | Nl | No`. They differ only on Other_Alphabetic marks,
-/// which no title in this product carries — and using the character predicate
-/// avoids a regex engine on a hot path that runs once per node pair.
 pub fn word_tokens(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut current = String::new();
@@ -193,7 +149,6 @@ pub fn word_tokens(text: &str) -> Vec<String> {
     out
 }
 
-/// `" ".join(text.lower().split())` — Python's whitespace-run split.
 pub fn normalised_words(text: &str) -> String {
     text.split(lattice_core::pytext::is_py_space)
         .filter(|part| !part.is_empty())
@@ -201,8 +156,6 @@ pub fn normalised_words(text: &str) -> String {
         .join(" ")
 }
 
-/// A `Dict[str, int]` that keeps insertion order, because `sorted()` is stable
-/// and every ranking in this family breaks its ties on that order.
 #[derive(Debug, Clone, Default)]
 pub struct Counter {
     order: Vec<String>,
@@ -211,12 +164,10 @@ pub struct Counter {
 }
 
 impl Counter {
-    /// An empty counter.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// `counts[key] = counts.get(key, 0) + 1`.
     pub fn bump(&mut self, key: &str) {
         match self.index.get(key) {
             Some(at) => self.counts[*at] += 1,
@@ -228,12 +179,10 @@ impl Counter {
         }
     }
 
-    /// `counts.get(key, 0)`.
     pub fn get(&self, key: &str) -> i64 {
         self.index.get(key).map(|at| self.counts[*at]).unwrap_or(0)
     }
 
-    /// `.items()`, in insertion order.
     pub fn items(&self) -> Vec<(String, i64)> {
         self.order
             .iter()
@@ -242,22 +191,17 @@ impl Counter {
             .collect()
     }
 
-    /// `sorted(counts.items(), key=lambda kv: kv[1], reverse=True)` — stable,
-    /// so equal counts keep the order they were first seen in.
     pub fn ranked(&self) -> Vec<(String, i64)> {
         let mut items = self.items();
         items.sort_by_key(|item| std::cmp::Reverse(item.1));
         items
     }
 
-    /// Whether anything was counted at all (`if by_kind:`).
     pub fn is_empty(&self) -> bool {
         self.order.is_empty()
     }
 }
 
-/// `json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)` for the
-/// flat list `WorkspaceReviewItems.create_review_item` hashes an id out of.
 pub fn dumps_flat_list(items: &[Value]) -> String {
     let parts: Vec<String> = items
         .iter()

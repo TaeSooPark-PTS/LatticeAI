@@ -1,25 +1,8 @@
-//! The markdown strategy: heading sections, merged and windowed.
-//!
-//! `_markdown_section_spans` + `_merge_small_sections` + `_markdown_chunks`
-//! from `lattice_brain/graph/_kg_common/text.py`, over character offsets.
-//!
-//! The 200-character merge floor is why heading-dense documents do not shatter
-//! into confetti: a section under it is folded into the *next* one and keeps
-//! the heading path that was in effect where it started, so a chunk never
-//! claims a heading its first sentence did not live under.
-
 use super::{line_starts, make_chunk, plain_windows, Chunk};
 use crate::pystr::py_strip;
 
-/// `_MARKDOWN_MIN_SECTION_CHARS` — sections under this merge forward.
 pub const MARKDOWN_MIN_SECTION_CHARS: usize = 200;
 
-/// `^(#{1,6}) (.*)$` at one line start → `(level, raw title)`.
-///
-/// `#{1,6}` is greedy and every character in the run is a `#`, so backtracking
-/// can never find a space: the match exists iff the run is 1–6 long and the
-/// next character is a literal space. Seven hashes is not a heading, and
-/// neither is `#NoSpace`.
 fn heading_at(cleaned: &[char], start: usize) -> Option<(usize, String)> {
     let mut level = 0usize;
     while cleaned.get(start + level) == Some(&'#') {
@@ -36,7 +19,6 @@ fn heading_at(cleaned: &[char], start: usize) -> Option<(usize, String)> {
     Some((level, cleaned[body..end].iter().collect()))
 }
 
-/// `_markdown_section_spans` — `(start, end, heading_path)` for every section.
 fn markdown_section_spans(cleaned: &[char]) -> Vec<(usize, usize, Option<String>)> {
     let mut spans: Vec<(usize, usize, Option<String>)> = Vec::new();
     let mut stack: Vec<(usize, String)> = Vec::new();
@@ -59,8 +41,6 @@ fn markdown_section_spans(cleaned: &[char]) -> Vec<(usize, usize, Option<String>
             .map(|(_, title)| title.as_str())
             .collect::<Vec<_>>()
             .join(" > ");
-        // `" > ".join(...) or None`: a lone heading with an empty title joins
-        // to "", which Python treats as "no path known".
         prev_path = (!joined.is_empty()).then_some(joined);
     }
     if cleaned.len() > prev_start {
@@ -69,8 +49,6 @@ fn markdown_section_spans(cleaned: &[char]) -> Vec<(usize, usize, Option<String>
     spans
 }
 
-/// `_merge_small_sections` — forward merge, with a backward merge for a
-/// trailing runt.
 fn merge_small_sections(
     spans: Vec<(usize, usize, Option<String>)>,
     min_chars: usize,
@@ -80,7 +58,6 @@ fn merge_small_sections(
     for (start, end, path) in spans {
         pending = Some(match pending {
             None => (start, end, path),
-            // A merged section keeps the heading path in effect at its start.
             Some((open, _, open_path)) => (open, end, open_path),
         });
         let span = pending.as_ref().expect("just assigned");
@@ -100,7 +77,6 @@ fn merge_small_sections(
     merged
 }
 
-/// `_markdown_chunks`.
 pub(super) fn chunks(cleaned: &[char], size: usize, overlap: usize) -> Vec<Chunk> {
     let sections =
         merge_small_sections(markdown_section_spans(cleaned), MARKDOWN_MIN_SECTION_CHARS);
@@ -179,7 +155,6 @@ mod tests {
         assert_eq!(spans[0].2, None);
         assert_eq!(spans[1].2, Some("A".to_string()));
         assert_eq!(markdown_section_spans(&chars("# \nbody"))[0].2, None);
-        // Two empty titles still join to " > ", which is truthy.
         assert_eq!(
             markdown_section_spans(&chars("# \n## \nbody"))[1].2,
             Some(" > ".to_string())
@@ -198,7 +173,6 @@ mod tests {
         let merged = merge_small_sections(spans, MARKDOWN_MIN_SECTION_CHARS);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0], (0, 12 + big.len(), Some("first".to_string())));
-        // Nothing ever reached the floor: the pending span is emitted as is.
         let tiny = vec![(0usize, 3usize, None), (3, 6, Some("b".into()))];
         assert_eq!(
             merge_small_sections(tiny, MARKDOWN_MIN_SECTION_CHARS),

@@ -1,5 +1,3 @@
-"""Worker-only composition guards. Release-history assertions stay untouched."""
-
 import importlib
 import json
 from pathlib import Path
@@ -37,9 +35,6 @@ def test_version_metadata_matches_release():
 
 
 def test_markdown_current_release_references_match_release():
-    # Public release history starts at 13.0.0 (modern v13.x Living Synthesis
-    # era). Pre-v13 release notes were pruned from the active ledger and
-    # SECURITY.md supports the 13.x line.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release History", 1)[1]
     assert "13.0.0" in history
@@ -74,7 +69,6 @@ def test_worker_app_factory_is_importable_without_create_app():
 
 
 def test_the_ingestion_package_is_vocabulary_and_compute_only():
-    """No write door, and since v11.8.0 no capability probe either."""
     import lattice_brain.ingestion as ingestion
 
     assert hasattr(ingestion, "assess_extraction_quality")

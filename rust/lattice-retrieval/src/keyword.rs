@@ -1,11 +1,3 @@
-//! Port of `KnowledgeGraphStore.search` (`graph/retrieval/graph_view.py`).
-//!
-//! Three candidate sources feed one re-score: trigram FTS5, a LIKE scan when FTS
-//! matched nothing, and a topic-term top-up when the pool is still short. The
-//! re-score then runs over **all** of them, which is why the FTS bm25 order is
-//! discarded — `sorted(rows, key=id)` followed by a stable `sorted(..., reverse=True)`
-//! is the deterministic contract, and the two-pass shape is load-bearing.
-
 use std::collections::BTreeSet;
 
 use lattice_core::pytext::safe_loads;
@@ -19,7 +11,6 @@ use crate::concepts::topic_candidates;
 use crate::service::Scope;
 use crate::shape::{haystack, json_opt};
 
-/// Node types `search()` gives a +1 relevance boost. Fixed list, not a config.
 pub const TYPE_BOOST: [&str; 12] = [
     "Decision",
     "Task",
@@ -37,7 +28,6 @@ pub const TYPE_BOOST: [&str; 12] = [
 
 const NODE_COLUMNS_N: &str = "n.id, n.type, n.title, n.summary, n.metadata_json, n.updated_at";
 
-/// `projection.v2_schema._fts_match_ids` — ranked ids, `[]` on any failure.
 pub fn fts_match_ids(conn: &Connection, query: &str, limit: i64) -> Vec<String> {
     if query.chars().count() < 3 {
         return Vec::new();
@@ -104,7 +94,6 @@ fn as_match(row: &NodeRow) -> Map<String, Value> {
     item
 }
 
-/// `KnowledgeGraphStore.search(query, limit, allowed_workspaces=…)`.
 pub fn search(
     conn: &Connection,
     query: &str,
@@ -151,7 +140,6 @@ pub fn search(
             let mut params: Vec<SqlValue> = fts_ids.iter().cloned().map(SqlValue::Text).collect();
             params.extend(scope_parts.params.iter().cloned());
             let hydrated = query_nodes(conn, &sql, params)?;
-            // Preserve the FTS rank order the ids arrived in.
             rows = fts_ids
                 .iter()
                 .filter_map(|id| hydrated.iter().find(|row| &row.id == id).cloned())
@@ -205,8 +193,6 @@ pub fn search(
             params.extend(scope_parts.params.iter().cloned());
             params.push(SqlValue::Integer(limit * 3));
             let extra = query_nodes(conn, &sql, params)?;
-            // `by_id.setdefault` semantics: dedupe by id, existing rows win,
-            // new ones append in their own order.
             let mut merged: Vec<NodeRow> = Vec::new();
             let mut known: BTreeSet<String> = BTreeSet::new();
             for row in rows.into_iter().chain(extra) {
@@ -219,8 +205,6 @@ pub fn search(
     }
 
     let terms_for_score: BTreeSet<String> = topic_candidates(&query, 12).into_iter().collect();
-    // Pass one: id ASC. Pass two: score descending, stable — so equal relevance
-    // keeps the id order rather than whatever bm25 or SQLite happened to yield.
     rows.sort_by_key(|row| row.id.clone());
     rows.sort_by_key(|row| std::cmp::Reverse(score_key(row, &terms_for_score)));
 
@@ -273,16 +257,12 @@ mod tests {
             .iter()
             .map(|m| m["id"].as_str().unwrap())
             .collect();
-        // Same hits and timestamp; the Decision's type boost puts it first.
         assert_eq!(&ids[..2], &["a", "b"]);
         assert_eq!(out["query"], "ranking");
     }
 
     #[test]
     fn null_columns_format_as_python_none() {
-        // Python builds the re-score haystack with an f-string, so a NULL column
-        // contributes the four characters "None" — a term that happens to be
-        // "none" therefore scores a hit on an empty row. Reproduced, not fixed.
         let empty = NodeRow {
             id: "c".into(),
             node_type: Some("Concept".into()),
@@ -295,8 +275,6 @@ mod tests {
         let terms: BTreeSet<String> = ["None".to_string()].into_iter().collect();
         assert_eq!(score_key(&empty, &terms), (1, 0, String::new()));
 
-        // NULLs survive into the match as JSON nulls, and a corrupt metadata
-        // blob degrades to `{}` rather than dropping the row.
         let item = as_match(&empty);
         assert_eq!(item["title"], Value::Null);
         assert_eq!(item["summary"], Value::Null);
@@ -313,7 +291,6 @@ mod tests {
         assert_eq!(out["matches"].as_array().unwrap().len(), 1);
         let out = search(&conn, "ranking", 30, Some(&w1), true).unwrap();
         assert_eq!(out["matches"].as_array().unwrap().len(), 2);
-        // Node `b` has workspace_id NULL: personal sees it, a named tenant does not.
         let personal: BTreeSet<String> = [lattice_core::DEFAULT_WORKSPACE_ID.into()]
             .into_iter()
             .collect();
@@ -328,7 +305,6 @@ mod tests {
         let team: BTreeSet<String> = ["acme".into()].into_iter().collect();
         let out = search(&conn, "ranking", 30, Some(&team), false).unwrap();
         assert!(out["matches"].as_array().unwrap().is_empty());
-        // limit 0 means "the default 30", and the clamp caps at 100.
         assert!(
             !search(&conn, "ranking", 0, None, false).unwrap()["matches"]
                 .as_array()
@@ -352,7 +328,6 @@ mod tests {
     fn fts_is_skipped_below_three_characters_and_when_absent() {
         let (_dir, conn) = fixture();
         assert!(fts_match_ids(&conn, "ab", 10).is_empty());
-        // No node_fts table at all → the prepare fails → empty, never a panic.
         assert!(fts_match_ids(&conn, "ranking", 10).is_empty());
         conn.execute_batch(
             "CREATE VIRTUAL TABLE node_fts USING fts5(node_id UNINDEXED, title, tokenize='trigram');
@@ -360,7 +335,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(fts_match_ids(&conn, "ranking", 10), vec!["a".to_string()]);
-        // An internal quote is doubled, not injected.
         assert!(fts_match_ids(&conn, "say \"hi\" now", 10).is_empty());
     }
 

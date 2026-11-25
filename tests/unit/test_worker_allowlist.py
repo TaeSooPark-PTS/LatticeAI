@@ -1,16 +1,3 @@
-"""The gateway's proxy allowlist may not drift from the worker's route set.
-
-``rust/fixtures/worker_allowlist.json`` is what ``lattice-host`` compiles into
-the binary and forwards by. It is a *projection* of
-:func:`latticeai.runtime.build_phases.worker_profile.worker_route_keys`, and a
-projection nobody checks is a copy: add a route to the worker and forget the
-fixture, and the front door answers 404 for a live endpoint; delete one and the
-front door proxies a path that no longer exists.
-
-So this asserts the two are the same set, byte-for-byte on the paths, and that
-the file the generator would write today is the file that is committed.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,9 +13,9 @@ GENERATOR = REPO / "scripts" / "gen_worker_allowlist_fixture.py"
 
 sys.path.insert(0, str(REPO / "scripts"))
 
-from gen_worker_allowlist_fixture import axum_path, build  # noqa: E402
+from gen_worker_allowlist_fixture import axum_path, build
 
-from latticeai.runtime.build_phases.worker_profile import (  # noqa: E402
+from latticeai.runtime.build_phases.worker_profile import (
     worker_route_keys,
 )
 
@@ -56,7 +43,6 @@ def test_regenerating_reproduces_the_committed_bytes():
 
 
 def test_the_generator_is_deterministic(tmp_path):
-    """Two runs, same bytes — the drift gate is worthless otherwise."""
     runs = []
     for _ in range(2):
         result = subprocess.run(
@@ -72,8 +58,6 @@ def test_the_generator_is_deterministic(tmp_path):
 
 
 def test_greedy_converters_become_axum_wildcards(committed):
-    """``{id:path}`` matches slashes; ``:id`` does not. The front door must not
-    404 an id that the worker would have accepted."""
     for row in committed["routes"]:
         if ":path}" in row["path"]:
             name = row["path"].split("{", 1)[1].split(":path}", 1)[0]
@@ -96,8 +80,6 @@ def test_every_route_names_the_tuple_it_came_from(committed):
 
 
 def test_nothing_native_is_on_the_allowlist(committed):
-    """§W3b moved these writes into Rust. Proxying them would mean two writers
-    of one SQLite file — the invariant `lattice_core::db::tables` states."""
     paths = {row["path"] for row in committed["routes"]}
     for gone in (
         "/knowledge-graph/ingest",

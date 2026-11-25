@@ -1,24 +1,9 @@
-//! HTTP health probing.
-//!
-//! Replaces the desktop shell's TCP-connect probe: a socket that accepts a
-//! connection proves only that *something* is listening, not that the worker
-//! finished booting. The worker serves `GET /health` unauthenticated (see
-//! `latticeai/api/health.py`), so any 2xx is the honest signal.
-
 use std::fmt;
 use std::time::{Duration, Instant};
 
 use reqwest::Client;
 use serde_json::Value;
 
-/// Build the HTTP client used for health probes and for every non-proxy call
-/// the host makes to the worker (the jobs scheduler, the agent seam).
-///
-/// `no_proxy()` matters: a machine-wide `HTTP_PROXY` must never intercept
-/// loopback traffic to our own worker.
-///
-/// This client follows redirects, which is right for an API caller and *wrong*
-/// for a reverse proxy — see [`proxy_client`].
 pub fn http_client() -> Result<Client, reqwest::Error> {
     Client::builder()
         .no_proxy()
@@ -26,15 +11,6 @@ pub fn http_client() -> Result<Client, reqwest::Error> {
         .build()
 }
 
-/// Build the HTTP client the **reverse proxy** forwards with.
-///
-/// Identical to [`http_client`] but with redirect following switched off, and
-/// that difference is load-bearing. A client that follows a 3xx internally
-/// hands the caller only the *final* response, so every header the redirect
-/// itself carried is destroyed: the invite gate's `Set-Cookie` (which makes
-/// `GET /?code=…` a dead end through the gateway), the SSO login cookie, and
-/// the `Location: /app#/route` of all twelve legacy deep links. A proxy must
-/// pass a redirect through and let the browser decide.
 pub fn proxy_client() -> Result<Client, reqwest::Error> {
     Client::builder()
         .no_proxy()
@@ -43,25 +19,16 @@ pub fn proxy_client() -> Result<Client, reqwest::Error> {
         .build()
 }
 
-/// The health URL for a worker origin.
 pub fn health_url(origin: &str) -> String {
     format!("{}/health", origin.trim_end_matches('/'))
 }
 
-/// What one `GET /health` said.
-///
-/// The body is kept (when the worker answered 2xx with JSON) because `/health`
-/// is also where the worker states its access posture, and the gateway gates
-/// its native lanes on that — see [`crate::gateway::posture`].
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HealthReport {
-    /// The worker answered with a 2xx.
     pub healthy: bool,
-    /// The parsed body of a healthy answer, when it was JSON.
     pub body: Option<Value>,
 }
 
-/// One probe, keeping whatever the worker said about itself.
 pub async fn probe_health(client: &Client, origin: &str) -> HealthReport {
     let Ok(response) = client.get(health_url(origin)).send().await else {
         return HealthReport::default();
@@ -80,17 +47,13 @@ pub async fn probe_health(client: &Client, origin: &str) -> HealthReport {
     }
 }
 
-/// One probe. `true` iff the worker answered with a 2xx.
 pub async fn check_health(client: &Client, origin: &str) -> bool {
     probe_health(client, origin).await.healthy
 }
 
-/// The health gate never opened before the deadline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HealthTimeout {
-    /// Origin that was probed.
     pub origin: String,
-    /// How long we waited.
     pub waited: Duration,
 }
 
@@ -106,8 +69,6 @@ impl fmt::Display for HealthTimeout {
 
 impl std::error::Error for HealthTimeout {}
 
-/// Poll `GET {origin}/health` every `interval` until it answers 2xx or
-/// `deadline` elapses. Returns how long the gate took to open.
 pub async fn wait_for_health(
     client: &Client,
     origin: &str,
@@ -148,7 +109,6 @@ mod tests {
     #[tokio::test]
     async fn a_dead_origin_is_never_healthy() {
         let client = http_client().expect("client");
-        // Port 1 on loopback: reserved, nothing listens there.
         assert!(!check_health(&client, "http://127.0.0.1:1").await);
         let report = probe_health(&client, "http://127.0.0.1:1").await;
         assert_eq!(report, HealthReport::default());
@@ -157,8 +117,6 @@ mod tests {
 
     #[test]
     fn the_proxy_client_does_not_follow_redirects() {
-        // Both clients build; the difference is asserted end to end in
-        // `tests/gateway_proxy.rs` (a 308 must reach the caller intact).
         assert!(proxy_client().is_ok());
         assert!(http_client().is_ok());
     }

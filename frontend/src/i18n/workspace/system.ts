@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// System settings: account and workspace, permissions, the network
-// boundary, storage, backups, snapshots, and hardening.
 export const workspaceSystemCopy: NamespaceCopy = {
   ko: {
     "system.kicker": "설정",
@@ -19,7 +17,6 @@ export const workspaceSystemCopy: NamespaceCopy = {
     "system.tab.admin": "관리자",
     "system.permission.title": "혼자 해도 되는 일",
     "system.permission.hint": "Lattice가 어디까지 나에게 묻지 않고 처리할지 정합니다. 위험한 작업은 어떤 설정에서도 막혀 있어요.",
-    // Translated by id from the server catalog — see lib/permissionCopy.ts.
     "system.permission.mode.strict": "먼저 물어보기",
     "system.permission.mode.strict.summary": "읽는 일은 알아서 하고, 무언가를 쓰거나 실행하기 전에는 나에게 확인받습니다.",
     "system.permission.mode.trusted": "웬만하면 알아서",
@@ -131,8 +128,6 @@ export const workspaceSystemCopy: NamespaceCopy = {
     "system.account.changePassword": "비밀번호 변경",
     "system.account.requestDone": "계정 요청을 완료했습니다",
     "system.account.signInOptions": "로그인 옵션",
-    // The raw SSO config is a provider list, a discovery URL and a client id.
-    // In the plain view it only has to answer "how do I sign in here?".
     "system.account.signIn.localOnly": "이 컴퓨터의 계정으로만 로그인합니다",
     "system.account.signIn.localOnlyDetail": "회사 계정 연동은 켜져 있지 않아요. 위에서 만든 이메일과 비밀번호로 들어옵니다.",
     "system.account.signIn.sso": "회사 계정으로도 로그인할 수 있어요",

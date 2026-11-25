@@ -1,4 +1,4 @@
-/* Centered Living Brain Home Screen & Concentric Memory Rings */
+
 .brain-centered-home {
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
   margin-bottom: clamp(0.85rem, 1.8vw, 1.15rem);
 }
 
-/* 궤도 필드 — 링들이 브레인 주위를 도는 기울어진 궤도로 보인다 */
+
 .brain-orbit-field {
   position: absolute;
   inset: -14%;
@@ -72,7 +72,7 @@
   animation: ring-orbit-reverse 80s linear infinite;
 }
 
-/* 링 자전 — 궤도면(rotateX 74°)을 유지한 채 돈다 */
+
 @keyframes ring-orbit {
   from { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
   to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(360deg); }
@@ -83,7 +83,7 @@
   to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
 }
 
-/* 링 라벨은 이제 실제 버튼 — 각 기억 층을 바로 들여다보는 peek 트리거다 */
+
 .ring-label {
   position: absolute;
   z-index: 12;
@@ -136,7 +136,7 @@
 .ring-label-left { left: -12%; top: 50%; transform: translate(-50%, -50%); }
 .ring-label-right { right: -12%; top: 50%; transform: translate(50%, -50%); }
 
-/* 채워진 층만 빛난다 — 비어 있는 링은 은은하게 잠들어 있다 */
+
 .brain-concentric-ring.is-dormant {
   opacity: 0.35;
 }
@@ -307,7 +307,7 @@
   animation: pulse 2s infinite;
 }
 
-/* 완전 빈 상태(quiet + 기억 0) 전용 한 줄 안내 — 첫 행동을 바로 알려준다 */
+
 .brain-home-waking-hint {
   margin-top: 0.6rem;
   font-size: 0.86rem;
@@ -476,7 +476,7 @@
   font-size: 0.68rem;
 }
 
-/* "No model yet" notice: turn the refusal into a one-click path to Models. */
+
 .brain-model-missing {
   display: flex;
   align-items: center;

@@ -1,5 +1,3 @@
-"""OpenAPI specification, envelope, fragment, and SHA-256 index version sync."""
-
 from __future__ import annotations
 
 import hashlib
@@ -8,9 +6,6 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-# Committed OpenAPI fragments (`rust/fixtures/openapi/<family>.json`) plus
-# `_envelope.json` and `_index.json`. Serialized with `sort_keys=True, indent=2`
-# (`scripts/gen_openapi_fragments.py::canonical_json`).
 OPENAPI_FRAGMENTS: Tuple[str, ...] = (
     "admin",
     "auth",
@@ -42,7 +37,6 @@ REPO = DEFAULT_REPO
 
 
 def canonical_openapi_json(payload: object) -> str:
-    """Serialize OpenAPI JSON deterministically with sorted keys and 2-space indent."""
     return json.dumps(payload, sort_keys=True, indent=2) + "\n"
 
 
@@ -50,7 +44,6 @@ _canonical_openapi_json = canonical_openapi_json
 
 
 def apply_openapi_spec(text: str, version: str) -> Tuple[bool, str, str, bool]:
-    """Update ``info.version`` in ``frontend/openapi.json``."""
     data = json.loads(text)
     info = data.get("info") if isinstance(data.get("info"), dict) else None
     ok = info is not None and "version" in info
@@ -64,7 +57,6 @@ def apply_openapi_spec(text: str, version: str) -> Tuple[bool, str, str, bool]:
 
 
 def apply_openapi_envelope(text: str, version: str) -> Tuple[bool, str, str, bool]:
-    """Update ``spec_version`` and ``spec.info.version`` in ``_envelope.json``."""
     data = json.loads(text)
     spec_obj = data.get("spec") if isinstance(data.get("spec"), dict) else None
     info = (
@@ -86,7 +78,6 @@ def apply_openapi_envelope(text: str, version: str) -> Tuple[bool, str, str, boo
 
 
 def apply_openapi_fragment(text: str, version: str) -> Tuple[bool, str, str, bool]:
-    """Update ``spec_version`` in a family fragment file."""
     data = json.loads(text)
     ok = "spec_version" in data
     if not ok:
@@ -105,7 +96,6 @@ def apply_openapi_index(
     *,
     check: bool = False,
 ) -> Tuple[bool, str, str, bool]:
-    """Update ``spec_version`` and recompute SHA-256 digests in ``_index.json``."""
     data = json.loads(text)
     ok = "spec_version" in data
     if not ok:
@@ -134,7 +124,6 @@ def bump_openapi(
     check: bool = False,
     repo: Optional[Path] = None,
 ) -> int:
-    """Synchronize or verify all OpenAPI specification and fragment targets."""
     from scripts.bump_version.targets import is_valid_semver, resolve_repo, run_targets
 
     if not is_valid_semver(version):

@@ -1,21 +1,5 @@
-//! `ast.literal_eval`, restricted to the values an action object can hold.
-//!
-//! The last rung of `extract_action_details`'s tolerance chain. Weak local
-//! models routinely emit a **Python dict literal** instead of JSON — single
-//! quotes, `True`/`False`/`None`, a trailing comma — and Python recovers those
-//! deterministically without evaluating code. A port that stopped at JSON would
-//! silently fail every run those models drive.
-//!
-//! Deliberately a subset: dicts, lists, tuples, strings, numbers, `True`,
-//! `False`, `None`. Everything else (f-strings, comprehensions, operators,
-//! names, complex literals) is a parse failure here exactly as it is a
-//! `ValueError` there. The error *text* is never observed — Python raises with
-//! the JSON decoder's message, not this one — so this parser reports only
-//! success or failure.
-
 use serde_json::{Map, Number, Value};
 
-/// Parse one Python literal. `None` when the text is not one.
 pub fn literal_eval(text: &str) -> Option<Value> {
     let chars: Vec<char> = text.chars().collect();
     let mut parser = Parser { chars, at: 0 };
@@ -58,7 +42,6 @@ impl Parser {
         let letters: Vec<char> = word.chars().collect();
         if self.chars[self.at..].starts_with(&letters) {
             let after = self.chars.get(self.at + letters.len()).copied();
-            // `Nonesuch` is a name, not `None` followed by junk.
             if !matches!(after, Some(c) if c.is_alphanumeric() || c == '_') {
                 self.at += letters.len();
                 return true;
@@ -97,8 +80,6 @@ impl Parser {
                 return Some(Value::Object(map));
             }
             let key = self.value()?;
-            // JSON object keys are strings; Python's may be any hashable, so a
-            // non-string key is out of the subset rather than coerced.
             let key = match key {
                 Value::String(text) => text,
                 _ => return None,
@@ -121,7 +102,6 @@ impl Parser {
         }
     }
 
-    /// Lists and tuples share a body; both become a JSON array.
     fn sequence(&mut self, close: char) -> Option<Value> {
         self.at += 1;
         let mut items = Vec::new();
@@ -150,7 +130,6 @@ impl Parser {
             let character = self.peek()?;
             self.at += 1;
             if character == quote {
-                // Adjacent literals concatenate in Python: 'a' 'b' == 'ab'.
                 let mark = self.at;
                 self.skip_space();
                 if matches!(self.peek(), Some('\'') | Some('"')) {
@@ -180,7 +159,6 @@ impl Parser {
                 'x' => out.push(self.code_point(2)?),
                 'u' => out.push(self.code_point(4)?),
                 'U' => out.push(self.code_point(8)?),
-                // Python keeps an unrecognised escape verbatim, backslash and all.
                 other => {
                     out.push('\\');
                     out.push(other);
@@ -206,7 +184,6 @@ impl Parser {
         while let Some(character) = self.peek() {
             match character {
                 '0'..='9' => digits += 1,
-                // Python allows `1_000`; the separators are dropped below.
                 '_' => {}
                 '.' if !float => float = true,
                 'e' | 'E' => {
@@ -290,7 +267,6 @@ mod tests {
         assert_eq!(literal_eval(r"'a\nb'"), Some(json!("a\nb")));
         assert_eq!(literal_eval(r"'\x41B'"), Some(json!("AB")));
         assert_eq!(literal_eval(r"'it\'s'"), Some(json!("it's")));
-        // `\d` is not an escape: Python keeps both characters.
         assert_eq!(literal_eval(r"'\d'"), Some(json!(r"\d")));
         assert_eq!(literal_eval("'a' 'b'"), Some(json!("ab")));
     }

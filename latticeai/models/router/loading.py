@@ -1,23 +1,5 @@
-"""The optional backends, and everything that loads a model through them.
-
-Two things live here together, deliberately. First, the module-level runtime
-bindings — ``mx`` / ``vlm_load`` / ``lm_load`` / ``VLM_AVAILABLE`` /
-``LM_AVAILABLE`` / ``AsyncOpenAI`` / ``executor`` — which are guarded imports
-that ``ensure_mlx_runtime`` **rebinds** after an installer has run. Second,
-every method that reads them: ``load_model``, ``_load_cloud_model`` and
-``_release_memory``.
-
-They are one module because a rebindable global is only ever correct where it
-is defined: a sibling module that did ``from .loading import mx`` would hold
-the import-time value forever, and ``ensure_mlx_runtime`` would appear to do
-nothing. For the same reason a test standing in for a backend patches
-``latticeai.models.router.loading``, not the package.
-"""
-
 import os
 
-# Default Gemma 4 assistant drafting to MTP without overriding an operator's
-# explicit MLX runtime choice.
 os.environ.setdefault("MLX_VLM_DRAFT_KIND", "mtp")
 
 import asyncio
@@ -40,24 +22,21 @@ from .local_models import (
     _resolve_local_hf_model,
 )
 
-# Optional dependencies. Each is aliased on import and then re-exported as
-# `Any`, so "installed" and "absent" are the same declared type and every
-# call site keeps its historical name.
+_AsyncOpenAI: Any
 try:
     from openai import AsyncOpenAI as _AsyncOpenAI
 except ImportError:
-    _AsyncOpenAI = None  # type: ignore[assignment,misc]
+    _AsyncOpenAI = None
 AsyncOpenAI: Any = _AsyncOpenAI
 
 
-# 추론 전용 싱글 스레드 워커 (GPU 스트림 보호용)
 executor = ThreadPoolExecutor(max_workers=1)
 
 
 try:
     import mlx.core as _mx
 except (ImportError, OSError, RuntimeError) as e:
-    _mx = None  # type: ignore[assignment]
+    _mx = None
     print(f"⚠️ MLX core unavailable: {e}")
 mx: Any = _mx
 
@@ -68,7 +47,7 @@ try:
     VLM_AVAILABLE = True
     print("✅ MLX-VLM is ready for multimodal models.")
 except (ImportError, OSError, RuntimeError) as e:
-    _vlm_load = None  # type: ignore[assignment]
+    _vlm_load = None
     VLM_AVAILABLE = False
     print(f"⚠️ MLX-VLM unavailable: {e}")
 vlm_load: Any = _vlm_load
@@ -80,7 +59,7 @@ try:
     LM_AVAILABLE = True
     print("✅ MLX-LM is ready for text fallback models.")
 except (ImportError, OSError, RuntimeError) as e:
-    _lm_load = None  # type: ignore[assignment]
+    _lm_load = None
     LM_AVAILABLE = False
     print(f"⚠️ MLX-LM unavailable: {e}")
 lm_load: Any = _lm_load
@@ -127,7 +106,6 @@ def ensure_mlx_runtime() -> None:
 
 
 def _mlx_sampler(temperature: float):
-    """Build an MLX sampler callable for the given temperature."""
     try:
         from mlx_lm.sample_utils import make_sampler
     except (ImportError, AttributeError):
@@ -141,18 +119,6 @@ def _mlx_sampler(temperature: float):
 
 
 def _declares_vision(model_id: str) -> bool:
-    """Whether this checkpoint's own config says it is multimodal.
-
-    Read from ``config.json`` rather than decided from the model's *name*: a
-    list of known vision families is a list that is wrong about every model
-    published after it was written, and "which models work" is exactly the
-    question this product must not answer with a hardcoded roster.
-
-    The three markers are the ones every MLX-VLM architecture carries — a
-    nested ``vision_config``, a ``vision_tower``, or an ``image_token_index``
-    for the placeholder the processor substitutes. A config that carries none
-    of them describes a text model.
-    """
     import json as _json
     from pathlib import Path as _Path
 
@@ -186,29 +152,6 @@ def _declares_vision(model_id: str) -> bool:
 def _text_fallback_allowed(
     model_id: str, target_model_id: str, model_type: Optional[str]
 ) -> bool:
-    """Whether a failed multimodal load may be retried as a text load.
-
-    Every local model is routed to MLX-VLM first, because the recommended
-    defaults are multimodal. Until v12.0.0 the retry on the text path was
-    gated on the model *id* matching Gemma 4 — so a plain text model MLX-VLM
-    cannot open (a 0.5B Qwen, an AWQ checkpoint, any fine-tune with a text-only
-    architecture) failed to load at all, with MLX-LM sitting right there able
-    to open it. That is a roster deciding what runs, and the roster was one
-    family long. "Every small model works" cannot be true while loading is
-    gated on a name.
-
-    So the rule is now two rules, and the second is **additive**:
-
-    * the v11.9.0 Gemma 4 rule, unchanged — a Gemma 4 that is not the unified
-      (vision) architecture may always retry as text;
-    * and, new, **any model whose own ``config.json`` does not declare
-      vision.** Read from the checkpoint rather than decided from the name, so
-      a model published tomorrow is judged the same way as one published last
-      year.
-
-    A config that *does* declare vision is never silently downgraded: answering
-    an image request from a text-only load is worse than refusing it.
-    """
     if lm_load is None:
         return False
     if (model_type or "").strip().lower() == "gemma4_unified":
@@ -219,20 +162,6 @@ def _text_fallback_allowed(
 
 
 def apply_prefix(prefix: Optional[str], text: str) -> str:
-    """Guarantee ``text`` begins with ``prefix``, without doubling it.
-
-    The seam's contract for a forced prefix (v12.0.0) is one sentence: *the
-    reply starts with these characters*. How it got there differs by backend —
-    the local path really does prefill the prompt with them, so the model never
-    generated them and they have to be put back; a cloud provider handed an
-    assistant prefill message may echo them, may not, and may ignore the
-    message entirely. One normalisation covers all three, so the caller parses
-    one shape whichever answered.
-
-    Leading whitespace is dropped when the reply already carries the prefix:
-    a chat template that emits ``"\\n"`` before the continuation would otherwise
-    make ``startswith`` false for a reply that plainly does start with it.
-    """
     if not prefix:
         return text
     stripped = text.lstrip()
@@ -242,12 +171,6 @@ def apply_prefix(prefix: Optional[str], text: str) -> str:
 
 
 def apply_stop_strings(text: str, stop: Optional[List[str]]) -> str:
-    """Cut ``text`` at the earliest stop string, if any is present.
-
-    Shared by the buffered and streaming local paths so "where does this reply
-    end" has one answer. Empty stop strings are ignored: a caller that sends
-    ``""`` means "no stop", not "stop before the first character".
-    """
     if not stop:
         return text
     cut = min(
@@ -258,8 +181,6 @@ def apply_stop_strings(text: str, stop: Optional[List[str]]) -> str:
 
 
 class _LoadingMixin(_Core):
-    """Loading, unloading memory, and enumerating what could be loaded."""
-
     def _release_memory(self) -> None:
         gc.collect()
         if mx is not None and hasattr(mx, "clear_cache"):
@@ -325,11 +246,6 @@ class _LoadingMixin(_Core):
                 try:
                     model, tokenizer = lm_load(target_model_id)
                 except MODEL_RUNTIME_BOUNDARY_ERRORS:
-                    # The text path is a *fallback*: when it fails too, the
-                    # useful diagnosis is the first failure, from the loader
-                    # this model was routed to. Raising the second one would
-                    # tell an operator their multimodal model is not a text
-                    # model, which they knew.
                     raise vlm_error from None
                 loader_kind = "mlx_lm"
 
@@ -348,7 +264,6 @@ class _LoadingMixin(_Core):
             return model, tokenizer, draft_model, loader_kind
 
         try:
-            # Use the dedicated single-thread executor to ensure MLX GPU streams match during inference
             model, tokenizer, draft_model, loader_kind = await loop.run_in_executor(
                 executor, _load
             )
@@ -391,8 +306,6 @@ class _LoadingMixin(_Core):
             else None
         )
         base_url = base_url or config.get("base_url")
-        # base_url is passed only when configured: an explicit None is not
-        # the same as omitting the argument.
         client = (
             AsyncOpenAI(api_key=api_key, base_url=base_url)
             if base_url

@@ -5,11 +5,6 @@ import { useAppStore } from "@/store/appStore";
 
 export type RealtimeTransportState = "sse" | "polling";
 
-/**
- * Subscribes to `GET /realtime/stream?live=1` via `EventSource` for sub-second
- * feed and presence updates, falling back automatically to React Query polling
- * when `EventSource` is unavailable or disconnects.
- */
 export function useRealtimeStream(enabled = true) {
   const queryClient = useQueryClient();
   const workspaceId = useAppStore((state) => state.workspaceId);
@@ -69,9 +64,7 @@ export function useRealtimeStream(enabled = true) {
           if (parsed.area === "presence") {
             void queryClient.invalidateQueries({ queryKey: ["presence"] });
           }
-        } catch {
-          // Malformed frames are ignored; keepalive comments never reach onmessage.
-        }
+        } catch {}
       };
 
       source.onerror = () => {

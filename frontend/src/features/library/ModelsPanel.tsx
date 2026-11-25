@@ -76,22 +76,13 @@ export function ModelsPanel() {
                   lastResult={lastResult}
                   onReload={() => {
                     if (current) {
-                      // `current` (above) is only ever set by `catalog.find`, which now
-                      // requires a non-empty `id` (see its comment) — so `preferredId`
-                      // below is always truthy and the bare `currentId` fallback on the
-                      // next line can never fire. Kept as defense-in-depth.
-                      const preferredId = current.recommended_load_id || current.id;
-                      /* v8 ignore next -- unreachable: see comment above. */
-                      const loadId = String(preferredId || currentId);
+                      const loadId = String(current.recommended_load_id || current.id);
                       const engine = String(current.recommended_engine || current.engine || "local_mlx");
                       void prepareModel(loadId, engine, consent);
                     }
                   }}
                   onUnload={unloadCurrentModel}
                 />
-                {/* These six are a progress track, not choices. As bordered cards they
-                    looked tappable and invited clicks that do nothing, so they read as a
-                    connected sequence now: where setup has got to, at a glance. */}
                 <ol className="library-setup-track" aria-label={t(language, "library.steps.aria")}>
                   {[
                     [t(language, "library.step.environment"), true, Cpu],

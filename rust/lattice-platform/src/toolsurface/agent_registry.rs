@@ -1,8 +1,3 @@
-//! Agent registry family (v11.6.0, WP-R8).
-//!
-//! Port of `latticeai/api/agent_registry.py` + `latticeai/core/agent_registry.py`.
-//! State lives in `agent_registry.json`.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -257,7 +252,6 @@ async fn list_registry(
             *counts.entry(t.to_string()).or_insert(0) += 1;
         }
     }
-    // Preserve first-seen type order from all_agents
     let mut count_map = OrderedMap::new();
     for a in all_agents(&stored) {
         if let Some(t) = a.get("type").and_then(Value::as_str) {

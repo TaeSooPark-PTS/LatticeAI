@@ -1,24 +1,3 @@
-//! The proposal desk: the one writer of `review_items` in this crate.
-//!
-//! Port of `lattice_brain.synthesis.ProposalDesk` plus the two review-queue
-//! calls it wraps (`create` and `approve`). It lives beside `proposals.rs`
-//! rather than inside it because the Self-Model write path
-//! (`memory_api::self_model_write`) raises proposals through the same door —
-//! two desks over one document would be two id generators and two funnels.
-//!
-//! Three properties this module is responsible for:
-//!
-//! * **Atomic.** Every write is one [`wsos::mutate_state`] closure, so the
-//!   load and the save happen under the owner's lock. The earlier shape
-//!   (`load` → mutate → `save_state`) took the lock only for the write half,
-//!   which is exactly wide enough to lose a concurrent review action.
-//! * **Funnelled.** Every write records a `review_item_created` /
-//!   `review_item_updated` timeline event afterwards, the way the Review
-//!   Center's own writers do (`review_queue::store`), so a synthesis or
-//!   Self-Model proposal is visible to the same readers as a hand-raised one.
-//! * **Silent when nothing changed.** A refused create and an approve of an
-//!   item that is not there write nothing and record nothing.
-
 use std::collections::BTreeSet;
 
 use serde_json::{json, Value};
@@ -28,10 +7,8 @@ use crate::memory_api::wsos;
 
 use super::pyutil;
 
-/// `SYNTHESIS_REVIEW_SOURCE` — every proposal this crate raises carries it.
 pub const SYNTHESIS_SOURCE: &str = "kg_change_digest";
 
-/// `ProposalDesk.open_keys` — proposal keys still awaiting a decision (pending or snoozed).
 pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<String> {
     let doc = wsos::load(state.store(), state.data_dir());
     wsos::scoped(
@@ -65,7 +42,6 @@ pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<Str
     .collect()
 }
 
-/// Pending proposals this crate raised, scoped to one workspace.
 pub fn pending_synthesis(state: &Value, workspace_id: Option<&str>) -> Vec<Value> {
     wsos::scoped(
         state
@@ -88,14 +64,6 @@ pub fn pending_synthesis(state: &Value, workspace_id: Option<&str>) -> Vec<Value
     .collect()
 }
 
-/// `ProposalDesk.propose` → `review_queue.create` — one new review item.
-///
-/// The id is `review-<16 hex of sha256([title, source, kind, user, now])>`,
-/// with a numeric suffix when that collides; the uniqueness scan and the
-/// append happen inside one `mutate_state` closure, so two proposals raised
-/// concurrently cannot be handed the same id or erase one another.
-// Eight parameters because `ProposalDesk.propose` takes eight; a params struct
-// here would only rename the same eight at every call site.
 #[allow(clippy::too_many_arguments)]
 pub fn create_review(
     state: &BrainState,
@@ -183,11 +151,6 @@ pub fn create_review(
     Some(item)
 }
 
-/// `review_queue.approve` — mark one item approved, and say so on the timeline.
-///
-/// Returns the item's status afterwards (`""` when there was no such item, the
-/// way Python's `str(approved.get("status") or "")` reads an absent answer).
-/// An id nothing matches writes nothing and records nothing.
 pub fn approve_item(state: &BrainState, item_id: &str) -> String {
     let now = state.now();
     let mut approved: Option<Value> = None;
@@ -221,7 +184,6 @@ pub fn approve_item(state: &BrainState, item_id: &str) -> String {
     }
 }
 
-/// One review item by id, scoped — `review_queue.get`.
 pub fn load_review_item(
     state: &BrainState,
     item_id: &str,

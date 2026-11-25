@@ -1,13 +1,6 @@
-/* ── Full-canvas Brain home ──────────────────────────────────────────────
-   The first screen used a 56rem column inside a 72–76rem shell, so a 1440
-   desktop left almost half the viewport empty. This sheet (loaded after
-   responsive.css) reopens the shell and lays the three siblings — station,
-   deck, quiet — across the whole stage.
 
-   The Living Brain is the identity, not a badge: a large organism with slow
-   growth rings. The composer stays the primary action. */
 
-/* ── Growth: continuous accretion around the Brain ─────────────────────── */
+
 
 .brain-hero-organism {
   --brain-grow-dur: 7.4s;
@@ -77,8 +70,7 @@
   }
 }
 
-/* Brightness only — a transform on this wrapper (or the button) makes the
-   Living Brain's box wander, and Playwright then refuses to click it. */
+
 .brain-hero-orb {
   animation: brain-home-breathe var(--brain-grow-dur) ease-in-out infinite;
 }
@@ -116,7 +108,7 @@
   }
 }
 
-/* ── Reopen the shell so the home can use the viewport ─────────────────── */
+
 
 @media (min-width: 761px) {
   .brain-shell-content:has(.brain-chat-home-card.is-empty-home) {
@@ -133,8 +125,7 @@
     margin-inline: 0;
   }
 
-  /* In-flow dock at every desktop width: the overlay bar was a workaround
-     for a centred column, and it left the floor of the screen unused. */
+  
   .brain-centered-home > .brain-home-quiet {
     position: static;
     left: auto;
@@ -146,8 +137,7 @@
   }
 }
 
-/* Mid desktop / short windows: full width, still a column so the composer
-   and a larger Brain stay on one screen. */
+
 @media (min-width: 761px) {
   .brain-hero-organism {
     --aura-blur: 22px;
@@ -159,7 +149,7 @@
   }
 }
 
-/* ── Wide desktop: identity | writing desk | suggestions ──────────────── */
+
 
 @media (min-width: 1100px) and (min-height: 700px) {
   .brain-centered-home {
@@ -312,7 +302,7 @@
   }
 }
 
-/* The reference viewport (1440×920) and anything taller: a prouder Brain. */
+
 @media (min-width: 1100px) and (min-height: 820px) {
   .brain-hero-organism {
     --aura-blur: 38px;

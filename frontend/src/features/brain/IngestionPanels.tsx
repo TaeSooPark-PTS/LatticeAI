@@ -135,7 +135,6 @@ export function BrainIngestionDock({
   onConnectFolder: (path: string) => void;
   onIngestNote: (note: string) => void;
   onIngestWeb: (url: string) => void;
-  /** "inline" drops the section header so the actions can sit in a toolbar. */
   variant?: "panel" | "inline";
 }) {
   const [activeSource, setActiveSource] = React.useState<DockSource | null>(null);
@@ -283,7 +282,6 @@ const STAGE_HINT_KEY: Record<IngestionPipelineStage, string> = {
   error: "brain.ingest.stage.error",
 };
 
-// Progressive disclosure of the pipeline: collect -> parse -> embed -> memorize.
 function IngestionStageTrack({
   language,
   state,
@@ -324,9 +322,6 @@ function IngestionStageTrack({
             : t(language, STAGE_HINT_KEY[state.stage])}
       </small>
       {isComplete && hasEmergence ? (
-        // Knowledge-inflow micro animation: three jade motes drifting "into"
-        // the Brain. Purely decorative, hidden unless the user allows motion
-        // (visible only under prefers-reduced-motion: no-preference).
         <span className="lattice-inflow" aria-hidden="true">
           <i /><i /><i />
         </span>
@@ -336,8 +331,6 @@ function IngestionStageTrack({
   );
 }
 
-// Gentle heads-up when the backend flags a low extraction quality: the source
-// was saved, but parts of it may be missing or garbled.
 function ExtractionQualityNote({ language, state }: { language: Language; state: IngestionState }) {
   const extraction = state.extraction;
   if (!extraction || extraction.level !== "low") return null;
@@ -367,7 +360,6 @@ export function IngestionTimelineSection({
   language: Language;
   emergenceEvents: EmergenceEvent[];
 }) {
-  // Re-read the clock on each render of the parent so relative labels stay fresh-enough.
   const now = Date.now();
   return (
     <section

@@ -6,10 +6,6 @@ function dragCarriesFiles(event: DragEvent): boolean {
   return Array.from(types).includes("Files");
 }
 
-// Full-viewport drag-and-drop capture for the Brain home: any file dragged
-// anywhere over the window lights up a drop overlay, and dropping routes the
-// files into the existing upload/ingest flow. Non-file drags (text, links,
-// in-app element drags) are ignored entirely.
 export function useGlobalFileDrop(onFiles: (files: File[]) => void) {
   const [dragging, setDragging] = React.useState(false);
   const depthRef = React.useRef(0);
@@ -25,7 +21,6 @@ export function useGlobalFileDrop(onFiles: (files: File[]) => void) {
     };
     const onDragOver = (event: DragEvent) => {
       if (!dragCarriesFiles(event)) return;
-      // Without preventDefault the browser navigates to the dropped file.
       event.preventDefault();
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
     };

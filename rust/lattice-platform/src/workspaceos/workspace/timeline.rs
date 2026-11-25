@@ -1,27 +1,8 @@
-//! The Time Machine feed and the admin audit timeline.
-//!
-//! Port of `core/workspace_timeline.py`. Two readers over the same idea: one
-//! merges every workspace-scoped record into a single reverse-chronological
-//! feed, the other filters the *audit* log and labels each event with a
-//! category.
-//!
-//! Both sort descending by an ISO timestamp **string**, and Python's sort is
-//! stable, so records sharing a second keep their insertion order. Rust's
-//! `sort_by` is stable too, which is why the comparison is written as
-//! `right.cmp(left)` rather than sorting ascending and reversing — reversing
-//! would also reverse the ties, and the fixtures were captured from a run where
-//! several events share a second.
-
 use serde_json::{json, Map, Value};
 
 use super::pyutil::listify;
 use super::store::WorkspaceOsStore;
 
-/// `_audit_category` — the label the admin timeline groups by.
-///
-/// First match wins, in the order Python tests them; `admin_view_sensitive_raw`
-/// contains both `admin` and `sensitive`, and lands in `sensitive_data` because
-/// that test comes first.
 pub fn audit_category(event: &Value) -> &'static str {
     let raw = event
         .get("event_type")
@@ -46,24 +27,16 @@ pub fn audit_category(event: &Value) -> &'static str {
     }
 }
 
-/// The filters `GET /workspace/audit-timeline` accepts.
 #[derive(Debug, Default, Clone)]
 pub struct AuditFilter {
-    /// Substring of `user_email` (or `user`).
     pub user: Option<String>,
-    /// Substring of `event_type`.
     pub event_type: Option<String>,
-    /// Substring of the whole event, as Python's `str(event)` renders it.
     pub model: Option<String>,
-    /// Lower bound on `timestamp`.
     pub since: Option<String>,
-    /// Upper bound on `timestamp`.
     pub until: Option<String>,
-    /// How many events to answer with; clamped to `1..=1000`.
     pub limit: i64,
 }
 
-/// `filter_audit_timeline`.
 pub fn filter_audit_timeline(audit_events: &[Value], filter: &AuditFilter) -> Value {
     let since = lattice_core::parse_iso(filter.since.as_deref());
     let until = lattice_core::parse_iso(filter.until.as_deref());
@@ -129,7 +102,6 @@ pub fn filter_audit_timeline(audit_events: &[Value], filter: &AuditFilter) -> Va
     json!({"events": filtered, "total": total})
 }
 
-/// `timeline()` — every workspace-scoped record as one feed.
 pub fn timeline(
     store: &WorkspaceOsStore,
     audit_events: &[Value],
@@ -178,7 +150,6 @@ pub fn timeline(
     json!({"events": events})
 }
 
-/// `list_traces` — newest first, optionally filtered by conversation.
 pub fn list_traces(
     store: &WorkspaceOsStore,
     conversation_id: Option<&str>,
@@ -200,7 +171,6 @@ pub fn list_traces(
     json!({"traces": traces})
 }
 
-/// `sort(key=lambda item: item.get("timestamp") or "", reverse=True)`.
 fn sort_newest_first(events: &mut [Value]) {
     events.sort_by(|left, right| {
         let key = |item: &Value| {
@@ -213,12 +183,6 @@ fn sort_newest_first(events: &mut [Value]) {
     });
 }
 
-/// `str(dict)` — CPython's `repr`, which the `model` filter searches.
-///
-/// Only the `model` filter uses it, and only as a haystack for a lowercase
-/// substring test, but the haystack is what decides whether an event matches:
-/// `{'model': 'local:test'}` contains `local:test` with single quotes around
-/// it, and a JSON rendering would not put the quotes in the same places.
 fn py_repr(value: &Value) -> String {
     match value {
         Value::Null => "None".into(),
@@ -268,8 +232,6 @@ mod tests {
         assert_eq!(of("folder_approved"), "folder_approval");
         assert_eq!(of("permission_granted"), "folder_approval");
         assert_eq!(of("secret_seen"), "sensitive_data");
-        // `admin_view_sensitive_raw` matches both `sensitive` and `admin`;
-        // `sensitive` is tested first, so it wins.
         assert_eq!(of("admin_view_sensitive_raw"), "sensitive_data");
         assert_eq!(of("user_created"), "admin_action");
         assert_eq!(of("sso_configured"), "admin_action");
@@ -296,7 +258,6 @@ mod tests {
             },
         );
         assert_eq!(all["total"], json!(3));
-        // Newest first.
         assert_eq!(all["events"][0]["event_type"], json!("login"));
         assert_eq!(all["events"][0]["category"], json!("security_event"));
 
@@ -411,10 +372,8 @@ mod tests {
         assert_eq!(events[4]["area"], json!("snapshot"));
         assert_eq!(events[4]["payload"]["id"], json!("s1"));
 
-        // Scoped: the org run drops out, the audit events never do.
         let personal = timeline(&store, &audit, 100, Some("personal"));
         assert_eq!(personal["events"].as_array().unwrap().len(), 5);
-        // An event with no `event_type` falls back to "audit".
         let untyped = timeline(
             &store,
             &[json!({"timestamp": "2026-09-01T00:00:00"})],

@@ -1,7 +1,3 @@
-//! End-to-end test of the `lattice-host` binary itself: the front-door
-//! topology (gateway on the public port, worker behind it) and a clean
-//! shutdown on SIGTERM.
-
 mod common;
 
 use std::process::Stdio;
@@ -10,7 +6,6 @@ use std::time::Duration;
 use common::{client, json, FakeWorker};
 use tokio::process::Command;
 
-/// Grab a port, then release it — the binary binds it a moment later.
 fn free_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
     listener.local_addr().expect("addr").port()
@@ -21,11 +16,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     let worker = FakeWorker::start().await;
     let gateway_port = free_port();
 
-    // The binary creates its agent workspace *and its Brain* on start, so both
-    // are pointed at this suite's own directory. `LATTICEAI_DATA_DIR` is not
-    // optional here: without it the One Door state would bootstrap the schema
-    // of `~/.ltcai/knowledge_graph.sqlite` — the real store of whoever runs the
-    // tests.
     let scratch = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("binary_frontdoor");
     let agent_root = scratch.join("agent_workspace");
     let data_dir = scratch.join("data");
@@ -48,7 +38,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     let base = format!("http://127.0.0.1:{gateway_port}");
     let http = client();
 
-    // Wait for the front door to come up.
     let mut ready = false;
     for _ in 0..200 {
         if http
@@ -80,8 +69,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     );
     assert_eq!(body["worker"]["port"], worker.port());
 
-    // `GET /models` is on the worker allowlist — the MLX runtime lives in the
-    // interpreter holding the weights — so it crosses the hop.
     let proxied = http
         .get(format!("{base}/models"))
         .send()
@@ -90,9 +77,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     assert_eq!(proxied.status(), 200);
     assert_eq!(proxied.text().await.expect("body"), "worker saw /models");
 
-    // …and a path that is neither the gateway's nor the worker's is a 404 from
-    // here, not a request handed to a process that does not serve it. This is
-    // the v11.6.0 proxy flip: the fall-through is an allowlist now.
     let refused = http
         .get(format!("{base}/not-a-route"))
         .send()
@@ -114,8 +98,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
         "an off-allowlist path must never reach the worker"
     );
 
-    // The mounted namespaces are the binary's, not only the library's: the
-    // agent kernel answers from this process …
     let contract = json(
         http.get(format!("{base}/rust/agent/contract"))
             .send()
@@ -125,9 +107,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     .await;
     assert!(contract["modes"].is_object(), "{contract}");
 
-    // … and so does the jobs schedule, which with `--no-spawn` is honest about
-    // being manual only: a worker this process did not start is not its to
-    // drive on a timer.
     let jobs = json(
         http.get(format!("{base}/host/jobs"))
             .send()
@@ -147,7 +126,6 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
         "no timer means no drain"
     );
 
-    // SIGTERM must end the process, not wedge it.
     let pid = child.id().expect("pid");
     assert_eq!(
         lattice_host::supervisor::process::terminate(pid),

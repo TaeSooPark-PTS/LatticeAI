@@ -1,13 +1,3 @@
-//! Replay `rust/fixtures/http/chat.json` and prove the with-model SSE path.
-//!
-//! Fixture replay covers every branch the capture could reach without a loaded
-//! MLX model (WAVE2_COMMON rule 8). The token path has no fixtures: the
-//! `with_model_stream_passthrough_records_then_dones` test is the proof —
-//! FakeWorker SSE frames pass through, the turn chain runs natively
-//! (`/worker/chat/record-turn` requested **zero** times, rows written here
-//! user-then-assistant after tokens start, while `/worker/llm/stream` and
-//! `/worker/embed` still are), and the stream ends with `data: [DONE]`.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -114,12 +104,6 @@ fn seed_users(dir: &Path) {
     .expect("write users");
 }
 
-/// `ConversationStore._init_db`'s table, `message_hash` included.
-///
-/// The column list is not decoration: the native turn writer inserts the
-/// `INSERT OR IGNORE` dedup hash Python's store does, so a stub table without
-/// that column would silently accept nothing. This is the shape a real store —
-/// the one the fixtures were captured against — has.
 fn seed_schema(dir: &Path) {
     let conn = Connection::open(dir.join("knowledge_graph.sqlite")).expect("sqlite");
     conn.execute_batch(
@@ -135,12 +119,6 @@ fn seed_schema(dir: &Path) {
     .expect("schema");
 }
 
-/// Which seam paths the worker was actually asked for.
-///
-/// WP-W3a's proof obligation runs both ways: `/worker/chat/record-turn` must be
-/// requested **zero** times (the chain is native now) while `/worker/llm/stream`
-/// and `/worker/embed` must still be requested (token generation and the
-/// embedding provider did not move).
 #[derive(Clone, Default)]
 struct SeamLog {
     paths: Arc<Mutex<Vec<String>>>,
@@ -161,8 +139,6 @@ impl SeamLog {
     }
 }
 
-/// The stand-in for python-docx: a document whose bytes are derived from the
-/// text the seam was asked to typeset, and are *not* that text.
 fn rendered_document(request: &Value) -> String {
     format!(
         "DOCX::{}",
@@ -186,8 +162,6 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
-            // Still mounted, so "nobody called it" is an observation rather than
-            // a 404 that would have looked the same from the client side.
             "/worker/chat/record-turn",
             post({
                 let seams = seams.clone();
@@ -201,9 +175,6 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
-            // W2 §1. The stand-in provider is the deterministic hash embedder,
-            // which is what the shipped worker resolves to by default — so the
-            // reply here is the reply the real seam gives an untouched install.
             "/worker/embed",
             post({
                 let seams = seams.clone();
@@ -248,11 +219,6 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
-            // A tripwire, not a seam. v11.6.0 took this route off the worker,
-            // and until v11.7.0 chat still posted every generated file to it —
-            // invisibly, because a fake worker like this one answered. It is
-            // still mounted **and still answers 200** so that "nobody asked" is
-            // an observation rather than a 404 that would look the same.
             "/knowledge-graph/ingest",
             post({
                 let seams = seams.clone();
@@ -279,13 +245,6 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
-            // W2 §3's document builders. The capture predates chat ever calling
-            // them — v11.7.0 wrote prose under a `.docx` name instead — so this
-            // route is what makes the deviation in `replay` observable rather
-            // than a 404 that would look like a product failure. The bytes are
-            // UTF-8 on purpose: the Brain files a file node under the hash of
-            // what is on disk, and a test that cannot compute that hash cannot
-            // prove the document rather than the prose was ingested.
             "/worker/render/{kind}",
             post({
                 let seams = seams.clone();
@@ -385,10 +344,6 @@ impl Install {
             agent_root: agent.path().to_path_buf(),
             ..ChatConfig::default()
         };
-        // WP-W1's write engine, built the way the integrator builds it. This
-        // replay had no writer bound until v11.7.0, which is why the stranded
-        // `POST /knowledge-graph/ingest` looked healthy: the fake worker was
-        // the only thing answering, and it always said "ok".
         let store = Arc::new(lattice_core::db::Store::open(&graph_db).expect("store"));
         let graph = lattice_core::graph_write::GraphWriter::open(
             store,
@@ -425,20 +380,6 @@ impl Install {
         }
     }
 
-    /// The one recorded case this replay deliberately does **not** match.
-    ///
-    /// `file_intent_docx_artifact` captured Python writing 29 bytes of prose
-    /// into a file named `fixture-report.docx` and answering "만들었습니다".
-    /// Word opens that file and says it is corrupt — the capture is the record
-    /// of a real behaviour, and the behaviour was a lie. v11.9.0 renders a
-    /// `.docx` through `POST /worker/render/docx`, the same seam the agent's
-    /// `create_docx` uses, and writes the bytes the builder produced.
-    ///
-    /// The fixture file is frozen (`_`: "do not hand-edit — regenerate", and the
-    /// Python that generated it is deleted), so the divergence is stated here,
-    /// where it is checked, instead of being edited into the record of what
-    /// Python did. Everything the two agree on is still asserted below; what
-    /// changed is asserted as a change.
     fn assert_docx_deviation(&self, got: &Value) {
         let document = rendered_document(&json!({"body": "리트리벌 가중치 정리"}));
         assert_eq!(got["status"], "ok");
@@ -467,8 +408,6 @@ impl Install {
             1,
             "exactly one render, through the compute seam that owns python-docx"
         );
-        // The Brain files the node under the hash of what is on disk, so the
-        // id moved with the bytes; the text is still what makes it searchable.
         assert_eq!(
             got["brain_ingest"]["node_id"],
             json!(scoped_file_id(&document, Some("personal"))),
@@ -485,9 +424,6 @@ impl Install {
             return;
         }
         if name == "rate_limited_429" {
-            // Fill the chat bucket so this request is the 429. Retry-After
-            // depends on when the window opened during replay, so the
-            // fixture's "1s" is not pinned — only the 429 + prefix.
             while self
                 .auth
                 .enforce_rate_limit("owner@fixture.local", "chat")
@@ -597,10 +533,6 @@ async fn replay_chat_and_history_fixtures() {
         install.replay(&case).await;
     }
 
-    // The two `direct_write_file` fixtures pin `brain_ingest.node_id` as
-    // `file:<scoped hash of the content>`; the replay above already proved the
-    // reply matches. This proves *where the answer came from*: the Brain in
-    // this process, not a worker that would 404 in production.
     assert_eq!(
         install.seams.count("/knowledge-graph/ingest"),
         0,
@@ -627,8 +559,6 @@ async fn replay_chat_and_history_fixtures() {
     );
     let titles: Vec<&str> = documents.iter().map(|(_, title)| title.as_str()).collect();
     assert!(titles.contains(&"fixture-note.md"), "{documents:?}");
-    // The file's text, not just its name, is what the node carries — the
-    // native upload door's `extracted["content"]` contract.
     let summary: String = conn
         .query_row(
             "SELECT summary FROM nodes WHERE id = 'file:fce1110ff985bba9cad1f594'",
@@ -652,11 +582,6 @@ async fn replay_chat_and_history_fixtures() {
 
 #[tokio::test]
 async fn with_model_stream_passthrough_records_then_dones() {
-    // No fixture covers the loaded-model token path (capture note in chat.json).
-    // This FakeWorker proves frame passthrough, that the turn chain is native
-    // (zero `/worker/chat/record-turn` requests, rows written here instead, user
-    // then assistant), that the two seams that did **not** move are still used,
-    // and that the stream ends with `[DONE]`.
     let frames = vec![
         "data: {\"text\":\"Hel\"}\n\n".to_string(),
         "data: {\"text\":\"lo\"}\n\n".to_string(),
@@ -695,8 +620,6 @@ async fn with_model_stream_passthrough_records_then_dones() {
         agent_root: agent.path().to_path_buf(),
         ..ChatConfig::default()
     };
-    // WP-W1's write engine, built the way the integrator builds it: one store,
-    // one writer, bootstrapped before a route serves.
     let store = Arc::new(
         lattice_core::db::Store::open(&data.path().join("knowledge_graph.sqlite")).expect("store"),
     );
@@ -748,13 +671,11 @@ async fn with_model_stream_passthrough_records_then_dones() {
         body.trim_end().ends_with("data: [DONE]"),
         "stream must end with the sentinel: {body}"
     );
-    // The seam is retired: nobody asked the worker to record the turn.
     assert_eq!(
         seams.count("/worker/chat/record-turn"),
         0,
         "the history chain is native — chat must not call the record-turn seam"
     );
-    // …and the two calls that did not move were still made.
     assert_eq!(
         seams.count("/worker/llm/stream"),
         1,
@@ -770,7 +691,6 @@ async fn with_model_stream_passthrough_records_then_dones() {
         "extract is called once per ingested turn (user + assistant)"
     );
 
-    // The rows landed here instead, in order, with the store's own columns.
     struct StoredRow {
         role: String,
         content: String,
@@ -822,9 +742,6 @@ async fn with_model_stream_passthrough_records_then_dones() {
         "message_hash is a full sha256 hex digest"
     );
 
-    // The Brain grew: `ingest_message` wrote the Message/AIResponse pair and the
-    // Chat node that holds them, and the vector sync filed them under the model
-    // `/worker/embed` reported.
     let messages: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM nodes WHERE type IN ('Message', 'AIResponse')",
@@ -850,7 +767,6 @@ async fn with_model_stream_passthrough_records_then_dones() {
         .expect("provenance");
     assert_eq!(provenance, 2, "every ingest records where it came from");
 
-    // And the audit row R2's helper writes is on R2's file.
     let audit: Value = serde_json::from_str(
         &std::fs::read_to_string(data.path().join("audit_log.json")).expect("audit log"),
     )

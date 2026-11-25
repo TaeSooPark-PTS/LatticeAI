@@ -1,22 +1,3 @@
-// Repo-wide documentation status + link gate.
-//
-// Companion to scripts/check_current_release_docs.mjs (which pins the fixed set
-// of current-release files). This script widens coverage to every Markdown doc:
-//
-//   1. Every relative Markdown link under the root canonical docs and docs/**
-//      must resolve to a file inside the repo.
-//   2. Docs are classified by an explicit status badge:
-//        > **Status: canonical**   (or `> Status: canonical`)
-//        > **Status: reference**
-//        > **Status: historical**
-//      Canonical docs are asserted to track the current package version and
-//      carry no stale "Current release" marker. Reference/historical (and
-//      unbadged) docs are allowed to preserve their point-in-time versions, so
-//      snapshots do not have to be rewritten every release.
-//
-// It intentionally does not force a badge onto every doc; unbadged docs are
-// link-checked only. Add a `> **Status: ...**` badge when a doc should be held
-// to (or exempted from) the current-version assertion.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";

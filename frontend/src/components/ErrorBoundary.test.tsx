@@ -152,7 +152,6 @@ describe("ErrorBoundary", () => {
         <Boom />
       </ErrorBoundary>,
     );
-    // Still failed — only resetKey is allowed to clear the captured error.
     expect(screen.getByTestId("error-boundary-route")).toBeTruthy();
   });
 
@@ -180,7 +179,6 @@ describe("ErrorFallback", () => {
       />,
     );
     expect(screen.getByText("문제가 생겼어요")).toBeTruthy();
-    // Empty message still renders the details block; the pre is just empty.
     expect(screen.getByTestId("error-boundary-details").querySelector("pre")?.textContent).toBe("");
   });
 

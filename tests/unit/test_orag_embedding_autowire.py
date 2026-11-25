@@ -1,11 +1,3 @@
-"""Embedding auto-detection, adoption, and the honest surface (v12.0.0).
-
-Detection is filesystem-first and must never download, never fail a boot, and
-never claim more than it found. Adoption is a separate, explicit decision —
-these tests pin both halves, because the failure that matters is a machine
-silently switching the identity every stored vector is filed under.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -38,7 +30,6 @@ from latticeai.services.search_service import SearchService
 def _plant(
     root: Path, repo_id: str, *, weights: bool = True, config: bool = True
 ) -> None:
-    """Write a snapshot that looks exactly like a finished HF download."""
     snapshot = root / ("models--" + repo_id.replace("/", "--")) / "snapshots" / "abc123"
     snapshot.mkdir(parents=True, exist_ok=True)
     if config:
@@ -47,15 +38,11 @@ def _plant(
         (snapshot / "model.safetensors").write_bytes(b"\x00")
 
 
-# ── detection ────────────────────────────────────────────────────────────────
-
-
 def test_nothing_downloaded_is_a_finding_not_a_guess(tmp_path: Path) -> None:
     found = detect_local_mlx({"HF_HUB_CACHE": str(tmp_path)})
     assert not found.found
     assert found.source == "none"
     assert found.provider == ""
-    # Every candidate is still listed, so a UI can offer the download.
     assert found.candidates
     assert all(not candidate["downloaded"] for candidate in found.candidates)
 
@@ -72,7 +59,6 @@ def test_a_downloaded_model_is_detected_without_a_network_call(tmp_path: Path) -
 
 
 def test_a_half_finished_download_is_not_a_model(tmp_path: Path) -> None:
-    """A cache directory exists as soon as *anything* is fetched."""
     _plant(tmp_path, "mlx-community/multilingual-e5-small-mlx", weights=False)
     assert not detect_local_mlx({"HF_HUB_CACHE": str(tmp_path)}).found
     _plant(tmp_path, "mlx-community/multilingual-e5-base-mlx", config=False)
@@ -118,8 +104,6 @@ class _FakeResponse:
 
 
 class _FakeClient:
-    """Enough of `httpx.Client` for the one GET the Ollama probe makes."""
-
     def __init__(self, payload: Any, **_: Any):
         self._payload = payload
 
@@ -134,12 +118,11 @@ class _FakeClient:
 
 
 def _fake_httpx(monkeypatch: pytest.MonkeyPatch, payload: Any) -> None:
-    """Stand in for `httpx` at the import the probe performs."""
     import sys
     import types
 
     module = types.ModuleType("httpx")
-    module.Client = lambda **kwargs: _FakeClient(payload, **kwargs)  # type: ignore[attr-defined]
+    module.Client = lambda **kwargs: _FakeClient(payload, **kwargs)
     monkeypatch.setitem(sys.modules, "httpx", module)
 
 
@@ -179,9 +162,8 @@ def test_detect_falls_through_to_a_reachable_ollama(
 def test_a_downloaded_model_wins_before_any_ollama_probe(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The filesystem answer is free; the network probe is not, so it is last."""
 
-    def _explode(**_: Any) -> Detection:  # pragma: no cover - must not run
+    def _explode(**_: Any) -> Detection:
         raise AssertionError("a downloaded model must short-circuit the probe")
 
     monkeypatch.setattr(
@@ -227,9 +209,6 @@ def test_detect_falls_through_to_ollama_and_keeps_the_local_candidates(
     found = detect_embedder("hash", "", env, probe_ollama=True)
     assert not found.found
     assert found.candidates, "the local candidate list survives a failed Ollama probe"
-
-
-# ── adoption ─────────────────────────────────────────────────────────────────
 
 
 def test_only_auto_changes_the_resolution() -> None:
@@ -318,12 +297,7 @@ def test_a_named_profile_still_beats_auto() -> None:
     assert seen[0]["dim"] == 1024
 
 
-# ── the provider itself ──────────────────────────────────────────────────────
-
-
 class _Recorder(MLXEmbeddingProvider):
-    """An MLX provider with the model swapped out for a recorder."""
-
     def __init__(self, model: str):
         from latticeai.core.embedding_providers.base import _RemoteConfig
 
@@ -340,7 +314,6 @@ def test_an_e5_model_is_told_which_role_it_is_embedding_for() -> None:
     provider.embed_batch_for(["문장"], "query")
     provider.embed_batch_for(["문장"], "passage")
     assert provider.seen == ["query: 문장", "passage: 문장"]
-    # An unknown role is a passage — the safer half of the asymmetry.
     provider.seen.clear()
     provider.embed_batch_for(["문장"], "sideways")
     assert provider.seen == ["passage: 문장"]
@@ -370,9 +343,6 @@ def test_the_mlx_dim_guess_knows_the_new_local_models() -> None:
     assert _guess_dim("mlx-community/multilingual-e5-small-mlx", 999) == 384
     assert _guess_dim("mlx-community/multilingual-e5-large-mlx", 999) == 1024
     assert _guess_dim("mlx-community/snowflake-arctic-embed-l-v2.0-8bit", 999) == 1024
-
-
-# ── the honest surface ───────────────────────────────────────────────────────
 
 
 def test_the_status_route_says_whether_the_vectors_mean_anything() -> None:

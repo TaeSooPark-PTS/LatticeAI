@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { APP_VERSION, COPY, resolveAppVersion, t } from "./i18n";
-// Namespaces register on import. The app pulls them in per lazy route; the
-// parity check needs all of them, so import every one explicitly.
 import "./i18n/brain";
 import "./i18n/chronicle";
 import "./i18n/onboarding";
@@ -32,8 +30,6 @@ describe("resolveAppVersion", () => {
   });
 
   it("says 'dev' when the identifier does not exist at all", () => {
-    // The bare `__APP_VERSION__` reference throws a ReferenceError outside the
-    // bundle (plain tsc output, a REPL). That is the case the thunk exists for.
     expect(
       resolveAppVersion(() => {
         throw new ReferenceError("__APP_VERSION__ is not defined");
@@ -49,16 +45,11 @@ describe("resolveAppVersion", () => {
 
 describe("t() fallbacks", () => {
   it("uses defaultValue instead of printing the raw key", () => {
-    // The bug this locks down: `t()` accepted `values` and interpolated them,
-    // but never read `defaultValue`, so a caller that passed one still got the
-    // key rendered into the UI.
     expect(t("ko", "no.such.key.anywhere", { defaultValue: "준비 중입니다." })).toBe("준비 중입니다.");
     expect(t("en", "no.such.key.anywhere", { defaultValue: "Getting ready." })).toBe("Getting ready.");
   });
 
   it("never leaks defaultValue into the interpolated text", () => {
-    // It was spread into the replacement map, so any copy containing the token
-    // `{defaultValue}` would have had the fallback substituted into it.
     expect(t("ko", "flow.install.stage.load", { defaultValue: "SHOULD-NOT-APPEAR" })).not.toContain(
       "SHOULD-NOT-APPEAR",
     );
@@ -75,8 +66,6 @@ describe("t() fallbacks", () => {
   });
 
   it("has copy for every install stage the screen can be in", () => {
-    // InstallScreen builds the key from its stage union. A stage without copy
-    // renders `flow.install.stage.<stage>` to the person installing.
     const stages = ["idle", "install", "download", "validate", "load", "done", "error"];
     for (const stage of stages) {
       const key = `flow.install.stage.${stage}`;

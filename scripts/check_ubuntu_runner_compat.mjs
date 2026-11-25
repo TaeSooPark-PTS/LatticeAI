@@ -1,19 +1,4 @@
 #!/usr/bin/env node
-/**
- * Ubuntu 24.04 / 26.04 (t64 transition) Runner & Chromium System Library
- * Compatibility Checker and Diagnostic Tool (Risk #14.1).
- *
- * Ensures GitHub Actions Linux workflows (`ubuntu-latest`, `ubuntu-24.04`,
- * `ubuntu-26.04`) gracefully handle Debian/Ubuntu 64-bit time_t (`t64`) library
- * renames and verify required Chromium / Tauri shared libraries before visual or
- * E2E browser suites execute.
- *
- * Usage:
- *   node scripts/check_ubuntu_runner_compat.mjs                  # static workflow check
- *   node scripts/check_ubuntu_runner_compat.mjs --diagnostic     # static + host OS report
- *   node scripts/check_ubuntu_runner_compat.mjs --install-deps   # install t64-safe apt libs on Linux
- *   node scripts/check_ubuntu_runner_compat.mjs --verify-chromium # verify shared libs + Chromium ldd
- */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -25,10 +10,6 @@ const __filename = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), "..");
 const WORKFLOWS_DIR = path.join(ROOT, ".github", "workflows");
 
-/**
- * Ubuntu 24.04 / 26.04 (`t64`) package candidate groups and the shared library
- * sonames they provide for Playwright Chromium and Tauri desktop components.
- */
 export const UBUNTU_T64_LIBRARY_GROUPS = [
   {
     name: "ALSA audio (t64 transition)",
@@ -131,10 +112,6 @@ export function detectLinuxRelease() {
   };
 }
 
-/**
- * Audit all `.github/workflows/*.yml` files for Ubuntu 24.04 / 26.04 and
- * Chromium `t64` transition resilience.
- */
 export function checkWorkflows(workflowsDir = WORKFLOWS_DIR) {
   const errors = [];
   if (!existsSync(workflowsDir)) {
@@ -249,7 +226,6 @@ export function verifySharedLibraries() {
     }
   }
 
-  // Also check Playwright's Chromium executable if installed
   const missingBinaryLibs = [];
   const pwCheck = spawnSync(
     "node",

@@ -1,36 +1,18 @@
-//! The stored-password KDF, ported from `latticeai/core/security.py`.
-//!
-//! New hashes use a self-describing versioned format:
-//! `$scrypt$n=14,r=8,p=1${salt_hex}:{key_hex}` (scrypt with `n = 2^14 = 16384`,
-//! `r = 8`, `p = 1`, `dklen = 64`), allowing future parameter upgrades without
-//! invalidating existing credentials.
-//!
-//! Legacy hashes stored as `"{salt_hex}:{key_hex}"` (32 hex chars : 128 hex
-//! chars, produced by CPython's `hashlib.scrypt(password, salt=salt.encode(),
-//! n=16384, r=8, p=1)`) continue to verify seamlessly.
-
 use std::fmt;
 
 use scrypt::{scrypt, Params};
 
-/// `n = 2^14`, matching Python's `n=16384`.
 const LOG_N: u8 = 14;
 const R: u32 = 8;
 const P: u32 = 1;
 const DKLEN: usize = 64;
-/// `secrets.token_hex(16)` — 16 random bytes rendered as 32 hex characters.
 const SALT_BYTES: usize = 16;
-/// Versioned prefix carrying the scrypt cost parameters.
 pub const HASH_PREFIX: &str = "$scrypt$n=14,r=8,p=1$";
 
-/// Errors that can occur when deriving a password hash.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PasswordError {
-    /// OS entropy source failed.
     Rng(String),
-    /// Invalid scrypt cost parameters.
     Params(String),
-    /// scrypt derivation failed.
     Derive(String),
 }
 
@@ -46,8 +28,6 @@ impl fmt::Display for PasswordError {
 
 impl std::error::Error for PasswordError {}
 
-/// Derive the stored versioned form of a new password:
-/// `"$scrypt$n=14,r=8,p=1${salt_hex}:{key_hex}"`.
 pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     let mut salt = [0u8; SALT_BYTES];
     getrandom::fill(&mut salt).map_err(|e| PasswordError::Rng(e.to_string()))?;
@@ -56,7 +36,6 @@ pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     Ok(format!("{HASH_PREFIX}{salt_hex}:{}", hex(&key)))
 }
 
-/// Parse a versioned `$scrypt$n=<log_n>,r=<r>,p=<p>${salt}:{key}` digest.
 fn parse_versioned(hashed: &str) -> Option<(u8, u32, u32, &str, &str)> {
     let rest = hashed.strip_prefix("$scrypt$")?;
     let (param_str, body) = rest.split_once('$')?;
@@ -89,8 +68,6 @@ fn is_valid_salt_and_key(salt_hex: &str, key_hex: &str) -> bool {
         && key_hex.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// Whether `password` produces the stored digest (versioned or legacy).
-/// Any malformed stored value is a mismatch, never a panic.
 pub fn verify_password(password: &str, hashed: &str) -> bool {
     if hashed.starts_with("$scrypt$") {
         let Some((log_n, r, p, salt_hex, key_hex)) = parse_versioned(hashed) else {
@@ -115,12 +92,6 @@ pub fn verify_password(password: &str, hashed: &str) -> bool {
     constant_time_eq(derived.as_bytes(), key_hex.as_bytes())
 }
 
-/// Classify whether a stored password value is a scrypt digest rather than a
-/// legacy pre-hash plaintext.
-///
-/// Accepts both the versioned `$scrypt$n=...,r=...,p=...$<32 hex>:<128 hex>`
-/// format and the legacy `<32 hex>:<128 hex>` format, rejecting arbitrary
-/// plaintext strings that merely happen to contain a colon.
 pub fn stored_is_hashed(stored: &str) -> bool {
     if stored.starts_with("$scrypt$") {
         return parse_versioned(stored).is_some();
@@ -153,7 +124,6 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
-/// `secrets.compare_digest` over two hex strings.
 fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
         return false;
@@ -169,9 +139,6 @@ fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
 mod tests {
     use super::*;
 
-    /// Recorded from CPython:
-    /// `hashlib.scrypt(b"abcd1234", salt=b"0123456789abcdef0123456789abcdef",
-    ///                 n=16384, r=8, p=1).hex()`
     const KNOWN_SALT: &str = "0123456789abcdef0123456789abcdef";
 
     #[test]

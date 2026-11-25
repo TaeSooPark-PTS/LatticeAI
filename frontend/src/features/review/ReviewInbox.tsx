@@ -40,8 +40,6 @@ export function ReviewInbox() {
     hadRunBefore = false,
     reason?: string,
   ) => {
-    // change_proposal reject goes through the proposal surface so the
-    // rejection reason lands in the item's provenance (audit trail).
     const rejectProposal = () =>
       latticeApi.rejectProposal(item.id, reason || "") as unknown as Promise<ApiResult<ReviewItem>>;
     const call =
@@ -52,13 +50,8 @@ export function ReviewInbox() {
       () => latticeApi.runNowReviewItem(item.id);
     const result = await call();
     if (!result.ok) {
-      // A 409 on a change-proposal approval means the target file drifted
-      // since staging (base-changed guard): explain it and offer the
-      // "re-read & re-apply" rebase flow instead of a generic error.
       const isConflict =
         action === "approve" && item.source === "change_proposal" && result.status === 409;
-      // Friendly localized copy first; the raw backend detail stays available
-      // as demoted secondary text on the card.
       setRunFeedback((prev) => ({
         ...prev,
         [item.id]: isConflict
@@ -71,8 +64,6 @@ export function ReviewInbox() {
       }));
       return result;
     }
-    // The early return above already handled every !ok result, so from here
-    // the call is known to have succeeded.
     if (action === "run_now") {
       const payload = result.data.payload || {};
       const provenance = result.data.provenance || {};

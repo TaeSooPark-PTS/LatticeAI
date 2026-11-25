@@ -1,25 +1,3 @@
-//! Port of `latticeai/core/context_builder.py` — the document-generation
-//! context, assembled and budgeted.
-//!
-//! Same Brain, same quality contract as chat: an explicit token budget, the
-//! honest `context_quality` signal, and a trace in the assembler's shape. The
-//! *rendering* is different on purpose (a document prompt wants structured
-//! sections, a chat prompt wants terse lines); the contract is one.
-//!
-//! Four details decide whether this is a port or a rewrite:
-//!
-//! * **The profile is charged to the same budget**, including the blank line
-//!   that joins it to the knowledge. Injecting who the user is can therefore
-//!   never push the assembled context over the ceiling the caller asked for.
-//! * **The trim backs off to a section boundary** — but only when the boundary
-//!   is past a third of the cut, so a budget too small for even one section
-//!   keeps a truncated head rather than collapsing to nothing.
-//! * **Two "first non-empty" chains that look identical are not.** The rendered
-//!   `출처:` line consults `metadata.source`; the extracted source list does
-//!   not. Unifying them would change which sources a document cites.
-//! * **The empty answer reports the default budget**, not the caller's — the
-//!   early return never saw one.
-
 use std::collections::HashMap;
 
 use lattice_core::pytext::{clean_text, rstrip, strip, truncate_chars};
@@ -35,30 +13,21 @@ use crate::self_model::{summary_for_prompt, DEFAULT_SUMMARY_TOKENS};
 use crate::service::Scope;
 use crate::shape::{context_quality_signal, multimodal_signal, truthy};
 
-/// `DEFAULT_DOCUMENT_CONTEXT_BUDGET` — mirrors the chat assembler's default so
-/// neither path can silently outgrow the other on the same Brain.
 pub const DEFAULT_DOCUMENT_CONTEXT_BUDGET: i64 = 2000;
 
 const SELF_MODEL_SECTION_TITLE: &str = "사용자 프로필";
 const SELF_MODEL_TRACE_SOURCE: &str = "self_model";
 const SELF_MODEL_SECTION_HEADER: &str = "### 🙋 사용자 프로필\n\n";
 
-/// One document-generation context request.
 #[derive(Debug, Clone)]
 pub struct DocumentContextRequest {
     pub query: String,
-    /// How many hybrid document matches to seed with.
     pub max_results: i64,
-    /// Expansion rounds for the traversal around those seeds.
     pub max_hops: i64,
-    /// Approximate-token ceiling for the whole assembled block.
     pub budget: i64,
-    /// Whether the owner's profile rides along.
     pub include_self_model: bool,
-    /// Ceiling for the profile block alone, before the budget halves it.
     pub self_model_tokens: i64,
     pub scope: Scope,
-    /// The wall clock the recency term reads.
     pub now_secs: f64,
 }
 
@@ -77,14 +46,12 @@ impl Default for DocumentContextRequest {
     }
 }
 
-/// One rendered section: a fixed title and icon over the items that qualified.
 struct Section {
     title: &'static str,
     icon: &'static str,
     items: Vec<Value>,
 }
 
-/// `_clean` — collapse whitespace, strip, cut to 700 characters.
 fn clean(value: Option<&Value>) -> String {
     let text = match value {
         Some(value) if truthy(value) => py_text(Some(value)),
@@ -93,7 +60,6 @@ fn clean(value: Option<&Value>) -> String {
     truncate_chars(&clean_text(&text), 700)
 }
 
-/// `str(value or "")` — falsy becomes empty, *not* the string `None`.
 fn text_or_empty(value: Option<&Value>) -> String {
     match value {
         Some(value) if truthy(value) => py_text(Some(value)),
@@ -101,7 +67,6 @@ fn text_or_empty(value: Option<&Value>) -> String {
     }
 }
 
-/// `item.get(key, "")` — an absent key is empty, a present NULL is `None`.
 fn field(item: &Value, key: &str) -> String {
     match item.get(key) {
         None => String::new(),
@@ -109,7 +74,6 @@ fn field(item: &Value, key: &str) -> String {
     }
 }
 
-/// `str.rfind(needle)` over characters: the last start index, or `-1`.
 fn rfind_chars(haystack: &[char], needle: &str) -> i64 {
     let needle: Vec<char> = needle.chars().collect();
     let Some(last) = haystack.len().checked_sub(needle.len()) else {
@@ -122,16 +86,12 @@ fn rfind_chars(haystack: &[char], needle: &str) -> i64 {
         .unwrap_or(-1)
 }
 
-/// `_fit_to_budget` — trim to `budget` approximate tokens at a section boundary.
 fn fit_to_budget(context_md: &str, budget: i64) -> (String, bool) {
     if budget <= 0 || approx_tokens(context_md) as i64 <= budget {
         return (context_md.to_string(), false);
     }
     let limit = (budget * 4) as usize;
     let mut head: Vec<char> = context_md.chars().take(limit).collect();
-    // Python's `str.rfind` answers in characters and `-1` when absent, and the
-    // comparison against `limit // 3` is what keeps a tiny budget from cutting
-    // everything away.
     let boundary = rfind_chars(&head, "\n### ");
     if boundary > (limit / 3) as i64 {
         head.truncate(boundary as usize);
@@ -139,7 +99,6 @@ fn fit_to_budget(context_md: &str, budget: i64) -> (String, bool) {
     (rstrip(&head.iter().collect::<String>()), true)
 }
 
-/// `_self_model_budget` — never more than half the budget.
 fn self_model_budget(budget: i64, limit_tokens: i64) -> i64 {
     if budget <= 0 {
         return limit_tokens;
@@ -147,10 +106,7 @@ fn self_model_budget(budget: i64, limit_tokens: i64) -> i64 {
     limit_tokens.min(budget / 2)
 }
 
-/// `_self_model_block` — the rendered profile section, or `""`.
 fn self_model_block(conn: &Connection, request: &DocumentContextRequest) -> String {
-    // The header is charged to the same allowance as the summary, so the
-    // *rendered block* honours the ceiling rather than just its text.
     let allowance = self_model_budget(request.budget, request.self_model_tokens)
         - approx_tokens(SELF_MODEL_SECTION_HEADER) as i64;
     if !request.include_self_model || allowance <= 0 {
@@ -163,7 +119,6 @@ fn self_model_block(conn: &Connection, request: &DocumentContextRequest) -> Stri
     format!("{SELF_MODEL_SECTION_HEADER}{summary}")
 }
 
-/// `_with_self_model` — either part may be empty.
 fn with_self_model(block: &str, context_md: &str) -> String {
     [block, context_md]
         .iter()
@@ -173,7 +128,6 @@ fn with_self_model(block: &str, context_md: &str) -> String {
         .join("\n\n")
 }
 
-/// `_self_model_trace` — one extra trace section, only when a block was injected.
 fn self_model_trace(block: &str) -> Vec<Value> {
     if block.is_empty() {
         return Vec::new();
@@ -186,10 +140,6 @@ fn self_model_trace(block: &str) -> Vec<Value> {
     })]
 }
 
-/// `_empty_result` — a query this cannot answer, said plainly.
-///
-/// The trace reports `DEFAULT_DOCUMENT_CONTEXT_BUDGET` rather than the caller's
-/// budget: this return happens before the request is looked at.
 fn empty_result(query: &str) -> Value {
     serde_json::json!({
         "query": query,
@@ -207,7 +157,6 @@ fn empty_result(query: &str) -> Value {
     })
 }
 
-/// `retrieve_context_for_generation`.
 pub fn retrieve_context_for_generation(
     conn: &Connection,
     request: &DocumentContextRequest,
@@ -273,9 +222,6 @@ pub fn retrieve_context_for_generation(
     }))
 }
 
-/// The lexical fallback: the hybrid document search found nothing, so the signal
-/// says `lexical_only` — exactly what chat reports in the same situation, never
-/// a quiet downgrade.
 fn fallback_result(
     conn: &Connection,
     request: &DocumentContextRequest,
@@ -331,10 +277,6 @@ fn is_type(item: &Value, types: &[&str]) -> bool {
         .unwrap_or(false)
 }
 
-/// `_build_context_sections` — four sections in one fixed order.
-///
-/// The traversal's own nodes only ever reach the last one, and only the first
-/// eight of them: the graph is context around the answer, not the answer.
 fn build_context_sections(
     results: &[Value],
     hop_nodes: &[Value],
@@ -381,7 +323,6 @@ fn build_context_sections(
     sections
 }
 
-/// `_render_markdown`. Its `query` argument is unused in Python too.
 fn render_markdown(sections: &[Section]) -> String {
     let mut lines: Vec<String> = Vec::new();
     for section in sections {
@@ -434,10 +375,6 @@ fn render_markdown(sections: &[Section]) -> String {
     strip(&lines.join("\n"))
 }
 
-/// `_extract_sources` — one row per distinct source key, first title wins.
-///
-/// The chain is one link shorter than the rendered `출처:` line's: a document
-/// cites where it came *from*, and `metadata.source` is not that.
 fn extract_sources(results: &[Value]) -> Vec<Value> {
     let mut seen: Vec<String> = Vec::new();
     let mut sources: Vec<Value> = Vec::new();
@@ -463,8 +400,6 @@ fn extract_sources(results: &[Value]) -> Vec<Value> {
     sources
 }
 
-/// `format_sources_footnote` — the citation block appended to a generated
-/// document, ten entries at most.
 pub fn format_sources_footnote(sources: &[Value]) -> String {
     if sources.is_empty() {
         return String::new();
@@ -483,8 +418,6 @@ pub fn format_sources_footnote(sources: &[Value]) -> String {
 }
 
 fn section_trace(section: &Section) -> Value {
-    // The token count covers *every* item's summary; the provenance stops at
-    // eight. Not a typo on either side — reproduced.
     let joined: Vec<String> = section
         .items
         .iter()
@@ -519,19 +452,14 @@ mod tests {
         let text = "### A\n\nbody body body\n### B\n\ntail";
         let (kept, trimmed) = fit_to_budget(text, 1000);
         assert_eq!((kept.as_str(), trimmed), (text, false));
-        // budget*4 = 32 characters; the boundary at 23 is past 32//3 = 10.
         let (kept, trimmed) = fit_to_budget(text, 8);
         assert_eq!(kept, "### A\n\nbody body body");
         assert!(trimmed);
-        // A budget too small to reach any boundary keeps a truncated head.
         let (kept, trimmed) = fit_to_budget(text, 2);
         assert_eq!(kept, "### A\n\nb");
         assert!(trimmed);
-        // A boundary inside the first third is ignored for the same reason:
-        // backing off to it would throw away almost everything.
         let early = format!("x\n### B\n\n{}", "y".repeat(40));
         assert_eq!(fit_to_budget(&early, 8).0.chars().count(), 32);
-        // No boundary at all → the head stands, right-stripped.
         assert_eq!(fit_to_budget("aaaa bbbb  ", 1).0, "aaaa");
         assert_eq!(rfind_chars(&['a'], "\n### "), -1, "shorter than the needle");
         assert_eq!(
@@ -589,7 +517,6 @@ mod tests {
         let concepts = &sections[3].items;
         assert_eq!(concepts.len(), 2, "the Person is not a concept");
         assert_eq!(concepts[1]["id"], "c2");
-        // A section with nothing in it is left out entirely.
         assert_eq!(build_context_sections(&[], &[], &[]).len(), 0);
     }
 

@@ -1,20 +1,3 @@
-//! `/rust/agent/*` — the kernel as three routes.
-//!
-//! * `POST /rust/agent/preflight` — pure decision. A mode plus a list of tool
-//!   calls (and optionally a plan) in, one verdict per call out. Nothing is
-//!   executed, nothing is written; this route is safe to call for a plan the
-//!   user has not approved, which is the point of a preflight.
-//! * `POST /rust/agent/exec` — validate a command string, and run it **only**
-//!   when the kernel permits it *and* it is one of the read-only executables
-//!   [`crate::tools::exec::NATIVE_EXECUTABLES`] names. Everything else comes back as a
-//!   verdict with `executed: false`.
-//! * `GET /rust/agent/contract` — the serialised mode contract, byte-compatible
-//!   with Python's `mode_contract`.
-//!
-//! Policies are **input**. The registry lives in Python; a caller passes the
-//! real policy per call (or a table for the request), and the only fallback is
-//! the deliberately conservative default.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -39,7 +22,6 @@ use crate::tools::command::validate;
 use crate::tools::exec::{execute, is_natively_executable};
 use crate::tools::sandbox::{Workspace, MAX_COMMAND_SECONDS};
 
-/// What the host holds for these routes: one workspace, nothing else.
 #[derive(Debug)]
 pub struct AgentState {
     workspace: Workspace,
@@ -55,18 +37,11 @@ impl AgentState {
     }
 }
 
-/// Mount the kernel routes **and** the loop routes. Returns a `Router<()>` so
-/// any host can merge it.
-///
-/// The `config` argument arrived with the loop (v11.5.1): the orchestrator
-/// needs to know where its AI worker listens and where paused runs are stored,
-/// and neither is something this crate can discover for itself.
 pub fn router(workspace: Workspace, config: crate::surface::looproutes::LoopConfig) -> Router {
     kernel_router(workspace.clone())
         .merge(crate::surface::looproutes::loop_router(workspace, config))
 }
 
-/// Just the three decision routes, for callers that want no loop.
 pub fn kernel_router(workspace: Workspace) -> Router {
     Router::new()
         .route("/rust/agent/preflight", post(preflight))
@@ -75,7 +50,6 @@ pub fn kernel_router(workspace: Workspace) -> Router {
         .with_state(Arc::new(AgentState::new(workspace)))
 }
 
-// ── requests ─────────────────────────────────────────────────────────────────
 #[derive(Debug, Default, Deserialize)]
 struct PreflightRequest {
     #[serde(default)]
@@ -93,8 +67,6 @@ struct CallRequest {
     tool: String,
     #[serde(default)]
     args: Map<String, Value>,
-    /// The real policy for this call. Absent means "look it up in `policies`",
-    /// and an absent table means the conservative default.
     #[serde(default)]
     policy: Option<ToolPolicy>,
     #[serde(default)]
@@ -103,7 +75,6 @@ struct CallRequest {
     approved_by_human: bool,
     #[serde(default)]
     governor_allows_additive: bool,
-    /// Overrides the workspace lookup that decides additive vs mutation.
     #[serde(default)]
     target_exists: Option<bool>,
 }
@@ -134,7 +105,6 @@ struct ExecRequest {
     cwd: Option<String>,
     #[serde(default)]
     timeout: Option<u64>,
-    /// The `run_command` policy from the real registry, when the caller has it.
     #[serde(default)]
     policy: Option<ToolPolicy>,
 }
@@ -145,10 +115,6 @@ struct ContractQuery {
     mode: Option<String>,
 }
 
-/// The fallback used when a caller does not send `run_command`'s real policy:
-/// a workspace shell execution, gated everywhere but `bypass`. It is the
-/// conservative shape, not a copy of the registry — callers that have the
-/// registry should send it.
 fn run_command_fallback_policy() -> ToolPolicy {
     ToolPolicy {
         risk: "exec".into(),
@@ -159,7 +125,6 @@ fn run_command_fallback_policy() -> ToolPolicy {
     }
 }
 
-// ── handlers ─────────────────────────────────────────────────────────────────
 async fn preflight(State(state): State<Arc<AgentState>>, Json(body): Json<Value>) -> Response {
     let request: PreflightRequest = match serde_json::from_value(body) {
         Ok(request) => request,
@@ -196,9 +161,6 @@ async fn preflight(State(state): State<Arc<AgentState>>, Json(body): Json<Value>
     Json(payload).into_response()
 }
 
-/// One call's verdict. The order mirrors the kernel: breaker, then class, then
-/// autonomy — and the breaker is reported even when the call is blocked for
-/// another reason, because "which rule stopped this" is the useful answer.
 fn decide(
     workspace: &Workspace,
     mode: PermissionMode,
@@ -280,8 +242,6 @@ async fn exec_command(State(state): State<Arc<AgentState>>, Json(body): Json<Val
         return Json(payload).into_response();
     }
     if !is_natively_executable(&validated.executable) {
-        // Validated, permitted, and still not run: mutation and build/deploy
-        // belong to the worker. Saying so is the honest answer.
         payload["detail"] = json!(format!(
             "'{}' is validated but never executed natively",
             validated.executable
@@ -371,7 +331,6 @@ mod tests {
         let calls = body["calls"].as_array().expect("calls");
         assert_eq!(calls[0]["auto_approve"], json!(true));
         assert_eq!(calls[0]["block_reason"], Value::Null);
-        // The file exists in the workspace, so this is a mutation.
         assert_eq!(calls[0]["classification"]["change_class"], "mutation");
         assert_eq!(calls[0]["stage_proposal"], json!(false), "trusted applies");
         assert_eq!(
@@ -398,8 +357,6 @@ mod tests {
             calls[0]["block_reason"],
             "BLOCKED: destructive action is always blocked"
         );
-        // Unknown tools fall back to the table's default, which is gated —
-        // and bypass then allows it. Policy is data, so this is the caller's.
         assert_eq!(calls[1]["auto_approve"], json!(true));
     }
 
@@ -509,7 +466,6 @@ mod tests {
         .await;
         assert_eq!(body["mode"], "bypass");
         assert_eq!(body["requested"], "yolo");
-        // Unknown input never escalates.
         let body = body_of(
             contract(Query(ContractQuery {
                 mode: Some("nonsense".into()),
@@ -524,9 +480,6 @@ mod tests {
     fn the_router_mounts_the_kernel_and_the_loop_without_colliding() {
         let dir = tempfile::tempdir().expect("tempdir");
         let workspace = Workspace::new(dir.path().join("ws")).expect("workspace");
-        // Building it is the assertion: axum panics on a duplicate or malformed
-        // route at construction time, so a loop route that shadowed a kernel
-        // route would fail here.
         let mut config = crate::surface::looproutes::LoopConfig::new("http://127.0.0.1:1");
         config.runs_dir = dir.path().join("rust_agent_runs");
         let _router: Router = router(workspace.clone(), config);

@@ -98,7 +98,6 @@ fn a_pool_hands_back_what_it_lent() {
         let one: i64 = conn.query_row("SELECT 1", [], |r| r.get(0)).unwrap();
         assert_eq!(one, 1);
     }
-    // Same slot, twice, without growing the pool.
     let again = pool.checkout().unwrap();
     assert_eq!(
         again
@@ -183,7 +182,6 @@ fn replace_live(live: &Path, snapshot: &Path) {
     }
 }
 
-/// The admitted 11.9.0 restore gap: pooled fds keep the pre-swap inode.
 #[test]
 fn pooled_handles_keep_pre_restore_bytes_until_the_generation_bumps() {
     let dir = tempfile::tempdir().unwrap();
@@ -208,8 +206,6 @@ fn pooled_handles_keep_pre_restore_bytes_until_the_generation_bumps() {
     );
 }
 
-/// Production restore: close idle fds, swap (including WAL/SHM), bump.
-/// The same `Store` then sees the snapshot — no process restart.
 #[test]
 fn restore_swap_is_visible_on_the_same_store_without_a_restart() {
     let dir = tempfile::tempdir().unwrap();
@@ -262,8 +258,6 @@ fn the_config_follows_pythons_blank_string_rules() {
     assert_eq!(blank.static_dir(), None);
     assert_eq!(blank.worker_origin(), None);
 
-    // `_value` semantics: the static dir is not stripped, so whitespace is
-    // a path rather than "unset" — mirrored deliberately, not overlooked.
     let spaces = RuntimeConfig::resolve(None, Some("   "), None, Some(home));
     assert_eq!(spaces.static_dir(), Some(Path::new("   ")));
 }
@@ -285,7 +279,6 @@ fn config_builders_replace_what_the_environment_did_not_say() {
 
 #[test]
 fn from_env_matches_the_pure_resolver() {
-    // No env mutation: whatever this process has, both paths must agree.
     let live = RuntimeConfig::from_env();
     let expected = RuntimeConfig::resolve(
         std::env::var(DATA_DIR_ENV).ok().as_deref(),
@@ -311,9 +304,6 @@ fn the_ownership_map_is_self_consistent() {
     assert_eq!(seen.len(), count, "a table is listed twice");
 }
 
-/// v11.6.0 §W3b: the Brain's tables became Rust's, and the projections did
-/// not. The test kept its shape — it is still the one that says which half
-/// is which — and only the expected owner of the first half moved.
 #[test]
 fn the_brain_is_rust_writable_and_the_projections_are_not() {
     for table in [
@@ -344,10 +334,8 @@ fn the_brain_is_rust_writable_and_the_projections_are_not() {
     ] {
         assert!(tables::rust_may_write(platform), "{platform} is Rust's");
     }
-    // An unknown table is refused rather than assumed harmless.
     assert_eq!(tables::owner_of("something_new"), None);
     assert!(!tables::rust_may_write("something_new"));
-    // Everything but the three projections: one writer for one file.
     assert_eq!(tables::rust_owned().count(), TABLES.len() - 3);
 }
 

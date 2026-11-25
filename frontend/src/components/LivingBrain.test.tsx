@@ -5,13 +5,6 @@ import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { LivingBrain, triggerBrainRecall, type BrainState } from "./LivingBrain";
 
-/**
- * The Brain is the product's other participant, and its behaviours are wired
- * by hand: pulse timers, a recall event bus, pointer tilt through rAF, and a
- * reduced-motion gate. Each of those is driven here with the environment
- * pieces (rAF, matchMedia, timers) supplied per test so nothing depends on a
- * real compositor.
- */
 
 function organism() {
   return screen.getByTestId("living-brain") as HTMLButtonElement;
@@ -51,7 +44,6 @@ describe("LivingBrain", () => {
     expect(button.getAttribute("aria-busy")).toBe("false");
     expect(button.getAttribute("aria-label")).toBe(t("ko", "brain.living.open"));
     expect(screen.getByText(t("ko", "brain.living.state.idle"))).toBeTruthy();
-    // One quiet memory ripple, five thought particles at depth zero.
     expect(document.querySelectorAll(".memory-ripple")).toHaveLength(1);
     expect(document.querySelectorAll(".thought-particle")).toHaveLength(5);
     expect(document.querySelector(".thought-particle.resolving")).toBeNull();
@@ -92,7 +84,6 @@ describe("LivingBrain", () => {
     rerender(<LivingBrain showLabel={false} />);
     expect(document.querySelector(".brain-presence-label")).toBeNull();
 
-    // Trace size is a wordmark: never a label, even when asked for one.
     rerender(<LivingBrain size="trace" showLabel />);
     expect(document.querySelector(".brain-presence-label")).toBeNull();
     expect(document.querySelector(".brain-presence")?.className).toContain("trace");
@@ -114,13 +105,11 @@ describe("LivingBrain", () => {
     expect((document.querySelector(".brain-aura") as HTMLElement).style.boxShadow).toContain("var(--aura-blur");
     expect(screen.getByText(t("ko", "brain.living.depth", { depth: 3 }))).toBeTruthy();
 
-    // Full depth flips the invitation from "open" to "see the graph".
     rerender(<LivingBrain depth={5} />);
     expect(organism().getAttribute("aria-label")).toBe(t("ko", "brain.living.graph"));
     expect(document.querySelectorAll(".memory-ripple")).toHaveLength(4);
     expect(document.querySelectorAll(".thought-particle")).toHaveLength(12);
 
-    // Depth zero keeps the aura shadowless.
     rerender(<LivingBrain depth={0} />);
     expect((document.querySelector(".brain-aura") as HTMLElement).style.boxShadow).toBe("none");
   });
@@ -137,7 +126,6 @@ describe("LivingBrain", () => {
     expect(onPulse).toHaveBeenCalledTimes(1);
     expect(onInteract).toHaveBeenCalledTimes(1);
 
-    // A second click within the window clears and re-arms the pulse timer.
     fireEvent.click(button);
     act(() => {
       vi.advanceTimersByTime(1350);
@@ -171,7 +159,6 @@ describe("LivingBrain", () => {
   });
 
   it("does nothing when recall is triggered outside a window", () => {
-    // Server-side callers must be a no-op, not a crash.
     vi.stubGlobal("window", undefined);
     expect(() => triggerBrainRecall()).not.toThrow();
     vi.unstubAllGlobals();
@@ -222,18 +209,15 @@ describe("LivingBrain", () => {
 
       fireEvent.pointerMove(button, { pointerType: "mouse", clientX: 75, clientY: 25 });
       expect(frames).toHaveLength(1);
-      // A second move before the frame lands coalesces into the same frame.
       fireEvent.pointerMove(button, { pointerType: "mouse", clientX: 100, clientY: 0 });
       expect(frames).toHaveLength(1);
 
       act(() => {
         frames[0]!(0);
       });
-      // The latest pending position wins: nx=1 -> y=11deg, ny=-1 -> x=9deg.
       expect(button.style.getPropertyValue("--tilt-y")).toBe("11.00deg");
       expect(button.style.getPropertyValue("--tilt-x")).toBe("9.00deg");
 
-      // With the frame consumed, the next move schedules a fresh one.
       fireEvent.pointerMove(button, { pointerType: "mouse", clientX: 50, clientY: 50 });
       expect(frames).toHaveLength(2);
     });
@@ -250,7 +234,6 @@ describe("LivingBrain", () => {
       expect(button.style.getPropertyValue("--tilt-y")).toBe("0deg");
       expect(button.style.getPropertyValue("--tilt-x")).toBe("0deg");
 
-      // Leaving again with nothing pending cancels nothing.
       fireEvent.pointerLeave(button);
       expect(cancel).toHaveBeenCalledTimes(1);
       expect(frames).toHaveLength(1);
@@ -291,8 +274,6 @@ describe("LivingBrain", () => {
       expect(frames).toHaveLength(1);
 
       unmount();
-      // The stubbed cancel let the frame survive; firing it now must hit the
-      // unmounted-ref guard, not a crash.
       expect(() => frames[0]!(0)).not.toThrow();
       expect(button.style.getPropertyValue("--tilt-y")).toBe("");
     });
@@ -300,7 +281,6 @@ describe("LivingBrain", () => {
 
   describe("teardown races", () => {
     it("ignores a recall event that outlives the component", () => {
-      // Simulate a listener that could not be removed in time.
       vi.spyOn(window, "removeEventListener").mockImplementation(() => {});
       const { unmount } = render(<LivingBrain />);
       unmount();
@@ -316,7 +296,6 @@ describe("LivingBrain", () => {
       vi.spyOn(window, "clearTimeout").mockImplementation((() => {}) as typeof window.clearTimeout);
       const { unmount } = render(<LivingBrain />);
       fireEvent.click(organism());
-      // Unmount "clears" the timer, but our stub kept it alive on purpose.
       unmount();
       expect(() => {
         act(() => {

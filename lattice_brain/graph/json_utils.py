@@ -1,5 +1,3 @@
-"""JSON helpers shared by graph storage, projection, and retrieval modules."""
-
 from __future__ import annotations
 
 import json
@@ -12,7 +10,6 @@ def _json(data: Optional[Dict[str, Any]]) -> str:
 
 
 def _safe_loads(raw: Optional[str]) -> Dict[str, Any]:
-    """Tolerantly parse a metadata_json column — returns {} on corrupt rows."""
     if not raw:
         return {}
     try:

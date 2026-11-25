@@ -1,12 +1,3 @@
-//! Port of `_extract_concepts_rules` / `_topic_candidates`
-//! (`lattice_brain/graph/_kg_common/extraction.py`).
-//!
-//! `search()` re-scores every candidate row against `_topic_candidates(query, 12)`,
-//! so these rules sit directly under the keyword ranking and any drift here moves
-//! results. The LLM-first branch of `_extract_concepts` is deliberately **not**
-//! ported: it needs a bound router, produces a different answer per model, and
-//! the parity harness forces it off on the Python side for the same reason.
-
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
@@ -14,7 +5,6 @@ use fancy_regex::{escape, Regex};
 
 use crate::build_pattern as build;
 
-/// `lattice_brain.graph._kg_common.extraction._CONCEPT_STOP`.
 pub const CONCEPT_STOP: [&str; 109] = [
     "all",
     "also",
@@ -167,7 +157,6 @@ fn patterns() -> &'static Patterns {
     })
 }
 
-/// `re.findall` for a pattern whose only group is group 1.
 fn findall_group1(re: &Regex, text: &str) -> Vec<String> {
     re.captures_iter(text)
         .filter_map(|caps| caps.ok())
@@ -175,7 +164,6 @@ fn findall_group1(re: &Regex, text: &str) -> Vec<String> {
         .collect()
 }
 
-/// `re.findall` for a pattern with no groups (whole-match results).
 fn findall_whole(re: &Regex, text: &str) -> Vec<String> {
     re.find_iter(text)
         .filter_map(|m| m.ok())
@@ -183,7 +171,6 @@ fn findall_whole(re: &Regex, text: &str) -> Vec<String> {
         .collect()
 }
 
-/// An insertion-ordered `{lowercase key: original form}`, i.e. Python's `seen`.
 #[derive(Default)]
 struct SeenTerms {
     keys: HashSet<String>,
@@ -191,7 +178,6 @@ struct SeenTerms {
 }
 
 impl SeenTerms {
-    /// The `_add` closure: strip, lowercase, reject stop words / digits / len < 2.
     fn add(&mut self, term: &str) {
         let stripped = term.trim();
         let key = stripped.to_lowercase();
@@ -211,30 +197,24 @@ impl SeenTerms {
     }
 }
 
-/// `_extract_concepts_rules(text, limit)`.
 pub fn extract_concepts_rules(text: &str, limit: usize) -> Vec<String> {
     let p = patterns();
     let mut seen = SeenTerms::default();
 
-    // 1. Backtick-quoted terms, minus anything that looks like a code expression.
     for term in findall_group1(&p.backtick, text) {
         if !p.code_expr.is_match(&term).unwrap_or(false) {
             seen.add(&term);
         }
     }
-    // 2. Double-quoted terms.
     for term in findall_group1(&p.quoted, text) {
         seen.add(&term);
     }
-    // 3. Multi-word proper nouns, mixed-case head then ALL-CAPS head.
     for term in findall_group1(&p.proper_mixed, text) {
         seen.add(&term);
     }
     for term in findall_group1(&p.proper_caps, text) {
         seen.add(&term);
     }
-    // 4. Single capitalized proper nouns — kept when repeated, or when they are
-    //    not merely the first word of a sentence.
     let mut freq: Vec<(String, usize)> = Vec::new();
     for word in findall_group1(&p.single_caps, text) {
         match freq.iter_mut().find(|(known, _)| *known == word) {
@@ -253,7 +233,6 @@ pub fn extract_concepts_rules(text: &str, limit: usize) -> Vec<String> {
             seen.add(word);
         }
     }
-    // 5. Korean technical compounds, then terms sitting in front of a particle.
     for term in findall_whole(&p.ko_suffix, text) {
         seen.add(&term);
     }
@@ -265,7 +244,6 @@ pub fn extract_concepts_rules(text: &str, limit: usize) -> Vec<String> {
             seen.add(&term);
         }
     }
-    // 6. Hyphenated / versioned identifiers.
     for term in findall_group1(&p.hyphenated, text) {
         if term.chars().count() >= 4 {
             seen.add(&term);
@@ -283,11 +261,6 @@ pub fn extract_concepts_rules(text: &str, limit: usize) -> Vec<String> {
         .collect()
 }
 
-/// The de-duplication tail: drop a shorter term when *every* occurrence of it in
-/// the source is immediately followed by the suffix that forms a longer one.
-///
-/// The `keep` set is consulted while it is being mutated in Python, so the state
-/// is threaded through the loop here rather than computed up front.
 fn drop_never_standalone(values: &[String], text: &str) -> Vec<bool> {
     let lowers: Vec<Vec<char>> = values
         .iter()
@@ -329,7 +302,6 @@ fn drop_never_standalone(values: &[String], text: &str) -> Vec<bool> {
     keep
 }
 
-/// `_topic_candidates(text, limit)` — rules-based concepts, else bare tokens.
 pub fn topic_candidates(text: &str, limit: usize) -> Vec<String> {
     let candidates = extract_concepts_rules(text, limit);
     if !candidates.is_empty() {
@@ -386,24 +358,19 @@ mod tests {
 
     #[test]
     fn a_short_term_that_never_stands_alone_is_dropped() {
-        // "Lattice" only ever appears as "Lattice AI" → dropped.
         let got = extract_concepts_rules("Lattice AI ships. Lattice AI again.", 12);
         assert!(got.contains(&"Lattice AI".to_string()));
         assert!(!got.contains(&"Lattice".to_string()));
-        // "Claude" appears alone too → kept.
         let kept = extract_concepts_rules("Claude Sonnet and Claude alone.", 12);
         assert!(kept.contains(&"Claude".to_string()));
     }
 
     #[test]
     fn korean_compounds_and_particles() {
-        // 기능/에이전트 suffixes and the 은/가 particles, exactly as Python yields them.
         assert_eq!(
             extract_concepts_rules("검색기능은 에이전트가 담당합니다", 12),
             vec!["검색기능".to_string(), "에이전트".to_string()]
         );
-        // No particle, no suffix, every token two syllables → the rules find
-        // nothing and `_topic_candidates` falls through to bare tokens.
         assert!(extract_concepts_rules("회의 결정 사항", 12).is_empty());
         assert_eq!(
             topic_candidates("회의 결정 사항", 12),
@@ -420,10 +387,8 @@ mod tests {
 
     #[test]
     fn topic_candidates_fall_back_to_bare_tokens() {
-        // Nothing capitalized, nothing quoted → the fallback tokenizer runs.
         let got = topic_candidates("zzqq wumpus nonsense", 8);
         assert_eq!(got, vec!["zzqq", "wumpus", "nonsense"]);
-        // The limit is applied while scanning, not only at the end.
         assert_eq!(topic_candidates("zzqq wumpus nonsense", 2).len(), 2);
         assert!(topic_candidates("", 8).is_empty());
         assert!(topic_candidates("!!! 123", 8).is_empty());

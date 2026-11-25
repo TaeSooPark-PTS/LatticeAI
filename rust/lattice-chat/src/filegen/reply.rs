@@ -1,23 +1,3 @@
-//! What the reply says about the files a turn wrote.
-//!
-//! The payload is the **agent's** shape, not a second one: `status`, `steps`,
-//! `state_history`, `final_state`, `created_files`, `artifacts`,
-//! `routed_to_agent`, `action_route`, `brain_ingest`. Every client already
-//! parses it — the SPA joins `created_files` with `artifacts` by path
-//! (`agentPayloadFiles`), the VS Code extension reads `created_files`, and the
-//! bridges read `response`. Keeping the shape is what let this branch add real
-//! generation without a client change.
-//!
-//! Two keys carry the honesty this module exists for:
-//!
-//! * `artifacts[].valid` / `artifacts[].repaired` — the validator's verdict on
-//!   the bytes on disk and whether repair produced them. Both were literals
-//!   (`true` / `false`) until v11.9.0.
-//! * `generation.repaired` — the same fact where the SPA's badge reads it, plus
-//!   `generation.attempts`, one record per model attempt. Absent entirely when
-//!   the user typed the content: a reply that never generated anything must not
-//!   report a generation.
-
 use lattice_agent::kernel::state::AgentState;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
@@ -26,12 +6,6 @@ use crate::intents::previewable;
 
 use super::{Written, MAX_PROJECT_FILES};
 
-/// The agent-shaped payload every client already parses.
-///
-/// `authored` is what decides whether a `generation` key exists at all;
-/// `complete` is false when a file the user asked for could not be written, and
-/// turns the terminal state into `NEEDS_REVIEW` so a partial bundle never
-/// renders as a clean success.
 pub(super) fn payload(
     workspace: &std::path::Path,
     files: &[Written],
@@ -58,8 +32,6 @@ pub(super) fn payload(
     let final_state = if complete {
         AgentState::Done
     } else {
-        // A file the user asked for that never appeared must not render as
-        // a clean success; the SPA shows NEEDS_REVIEW as a warning.
         AgentState::NeedsReview
     };
     history.push(json!(final_state.as_str()));
@@ -99,8 +71,6 @@ pub(super) fn payload(
     payload.insert("created_files", json!(created));
     payload.insert("artifacts", json!(artifacts));
     if authored {
-        // Where the SPA's "자동 보정됨" badge reads from — the same key the
-        // agent loop's own direct-file fallback sets.
         payload.insert(
             "generation",
             json!({
@@ -123,7 +93,6 @@ pub(super) fn payload(
             payload.insert("brain_ingest", ingest);
         }
     } else {
-        // The bundle shape the SPA joins by path.
         let receipts: Vec<Value> = files
             .iter()
             .filter_map(|file| {
@@ -150,7 +119,6 @@ pub(super) fn file_name_of(path: &str) -> String {
         .to_string()
 }
 
-/// "…를 만들었습니다." — the sentence the fixtures pin, in the caller's language.
 pub(super) fn created_sentence(lang: &str, path: &str, renamed: bool) -> String {
     let mut answer = if lang == "en" {
         format!("Created {path}.")
@@ -167,7 +135,6 @@ pub(super) fn created_sentence(lang: &str, path: &str, renamed: bool) -> String 
     answer
 }
 
-/// The multi-file sentence: what was written, what was deferred, what failed.
 pub(super) fn project_sentence(
     lang: &str,
     written: &[Written],
@@ -186,9 +153,6 @@ pub(super) fn project_sentence(
         format!("{made} 파일을 만들었습니다.")
     };
     if !failed.is_empty() {
-        // Deliberately not "the model refused": the same list holds a file
-        // whose write failed, and a sentence that names the wrong cause is a
-        // worse answer than one that names only the fact.
         answer.push_str(&if lang == "en" {
             format!(" {} could not be written, so nothing was.", names(failed))
         } else {

@@ -1,8 +1,3 @@
-//! Host wiring for the cloud sinks (G1) and the agent loop (N1).
-//!
-//! The scripted worker never dials a real model API. `/agent/llm` returns
-//! canned JSON actions; file writes run natively in the agent workspace.
-
 mod common;
 
 use std::path::PathBuf;

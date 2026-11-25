@@ -1,15 +1,3 @@
-//! `/rust/agent/{run,resume,approvals}` over real HTTP.
-//!
-//! The trajectory suite proves the loop reaches the right states; this one
-//! proves the *protocol* around it: the terminal payload's shape, the pause
-//! contract (a token, a deadline, a plan summary, and nothing executed), and
-//! the four answers a resume can get — 200, 403, 404, 410.
-//!
-//! Fail-closed is the property under test. A plan that needs a human is
-//! persisted and parked; only a resume presenting the matching, unexpired token
-//! for the same user carries it into EXECUTING, and the pending run is consumed
-//! either way.
-
 mod common;
 
 use common::start_replay_worker;
@@ -66,7 +54,6 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
-/// A gateway-less mount of the three loop routes, in front of a fake worker.
 async fn harness(name: &str, completions: &[&str]) -> Harness {
     let dir = scratch(name);
     let workspace = lattice_agent::tools::sandbox::Workspace::new(dir.join("agent_workspace"))
@@ -85,9 +72,6 @@ async fn harness(name: &str, completions: &[&str]) -> Harness {
             worker_origin: server.origin.clone(),
             runs_dir: runs_dir.clone(),
             client: None,
-            // Scratch, never the ambient `$HOME/.ltcai`: these runs are not
-            // `strict`, but the default store must not be one flag away from
-            // the developer's own Review Center.
             proposals: Some(std::sync::Arc::new(
                 lattice_agent::kernel::proposals::JsonProposalStore::new(dir.join("data")),
             )),
@@ -162,7 +146,6 @@ async fn a_clean_run_answers_the_terminal_payload_python_answers() {
         .expect("workspace")
         .ends_with("agent_workspace"));
     assert!(payload["steps"].as_array().expect("steps").len() >= 4);
-    // The audit trail the seam has nowhere to write to comes back with the run.
     assert!(payload["audit"].is_array(), "{payload}");
 }
 
@@ -194,7 +177,6 @@ async fn a_run_that_needs_approval_pauses_without_executing_anything() {
     assert_eq!(run_id.len(), 22);
     assert_eq!(harness.worker.observed_calls().len(), 0, "nothing ran");
 
-    // The pause is durable and listable.
     let pending = harness.get("/rust/agent/approvals").await;
     assert_eq!(pending["pending"][0]["run_id"], run_id.as_str());
     assert_eq!(pending["pending"][0]["goal"], "the goal");
@@ -203,7 +185,6 @@ async fn a_run_that_needs_approval_pauses_without_executing_anything() {
         .await;
     assert_eq!(scoped["pending"], json!([]), "listing is per user");
 
-    // A wrong token is a 403 and does not consume the run.
     let refused = harness
         .post(
             "/rust/agent/resume",
@@ -214,7 +195,6 @@ async fn a_run_that_needs_approval_pauses_without_executing_anything() {
     assert_eq!(refused.status(), 403);
     assert!(harness.store().load(&run_id).is_some(), "still pending");
 
-    // Another user is a 403 even with the right token.
     let stolen = harness
         .post(
             "/rust/agent/resume",
@@ -224,7 +204,6 @@ async fn a_run_that_needs_approval_pauses_without_executing_anything() {
         .await;
     assert_eq!(stolen.status(), 403);
 
-    // Cancelling consumes it.
     let cancelled = json_of(
         harness
             .post(
@@ -287,16 +266,12 @@ async fn an_approved_resume_carries_the_paused_plan_into_execution() {
             .await,
     )
     .await;
-    // The edited plan is normalised and recorded, and the run continues from
-    // WAITING_APPROVAL rather than replanning.
     assert_eq!(
         finished["final_state"], "NEEDS_REVIEW",
         "a final with no tool ran"
     );
     let steps = finished["steps"].as_array().expect("steps");
     assert!(steps.iter().any(|step| step["edited_plan"] == json!(true)));
-    // The edited plan still holds the gated step, so the approval this resume
-    // carries is a *human* one — the same predicate the pause was computed from.
     assert!(steps
         .iter()
         .any(|step| step["decision"] == json!("human_approved")));
@@ -323,8 +298,6 @@ async fn an_expired_approval_is_a_410_with_a_replan_hint() {
             user: "owner@example.com",
             language_hint: "Korean",
             token: "the-token",
-            // Expired, but inside the retention window, which is the whole
-            // reason the record is still on disk.
             expires_epoch: lattice_agent::kernel::trace::epoch_now() - 60.0,
             expires_at: "2026-08-11T00:00:00+00:00",
             legacy_context: false,
@@ -348,7 +321,6 @@ async fn an_expired_approval_is_a_410_with_a_replan_hint() {
         harness.store().load("expired-run-id").is_none(),
         "swept on the way out"
     );
-    // An expired record never appears as pending.
     assert_eq!(
         harness.get("/rust/agent/approvals").await["pending"],
         json!([])
@@ -407,8 +379,6 @@ async fn a_streaming_run_emits_named_step_frames_then_the_terminal_payload() {
         "the historical terminator"
     );
 
-    // The two trailing frames carry the same payload the JSON route returns —
-    // a client that ignores named events still sees the classic shape.
     let trailer: Value = text
         .split("\n\n")
         .filter_map(|frame| frame.strip_prefix("data: "))
@@ -433,7 +403,6 @@ async fn a_run_without_a_message_or_a_reachable_worker_is_refused_honestly() {
         .await;
     assert_eq!(malformed.status(), 400);
 
-    // A resume with no run id is a 404, not a panic.
     let response = harness.post("/rust/agent/resume", json!({})).await;
     assert_eq!(response.status(), 404);
 }
@@ -446,8 +415,6 @@ async fn an_unreachable_worker_ends_the_run_as_a_bad_gateway() {
     let router = loop_router(
         workspace,
         LoopConfig {
-            // Nothing listens on port 1; the loop cannot reason without a
-            // reasoner and says so rather than inventing a terminal state.
             worker_origin: "http://127.0.0.1:1".into(),
             runs_dir: dir.join("rust_agent_runs"),
             client: None,

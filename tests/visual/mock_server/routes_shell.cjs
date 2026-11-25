@@ -1,10 +1,3 @@
-/**
- * Pages, redirects, static assets and the account surface — everything a
- * browser asks for before any product API.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const path = require("path");
 
 const { repoRoot, json, redirect, serveFile } = require("./http.cjs");
@@ -20,7 +13,6 @@ module.exports = function handleShell({ req, res, url, pathname }) {
   if (pathname === "/workflows") return redirect(res, "/app#/workflows");
   if (pathname === "/activity") return redirect(res, "/app#/activity");
   if (pathname === "/plugins/sdk") return redirect(res, "/app#/marketplace");
-  // v3 native Chat: POST /chat streams SSE; GET /chat still serves the legacy page.
   if (pathname === "/chat" && req.method === "POST") {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
     const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);

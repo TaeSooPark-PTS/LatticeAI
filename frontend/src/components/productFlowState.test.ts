@@ -17,8 +17,6 @@ describe("readProductFlowComplete", () => {
   });
 
   it("honours the legacy onboarding flag", () => {
-    // A user who finished onboarding on an older build has only this key.
-    // Ignoring it sent them back to the first-run wake screen every visit.
     localStorage.setItem("ltcai_onboarding_complete", "true");
     expect(readProductFlowComplete()).toBe(true);
   });

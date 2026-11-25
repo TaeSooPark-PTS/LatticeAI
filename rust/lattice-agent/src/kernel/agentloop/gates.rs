@@ -1,22 +1,3 @@
-//! The gates one executor step passes, in the order that decides it.
-//!
-//! Split out of [`super::execution`] because the order *is* the policy and it
-//! deserves to be readable in one screen:
-//!
-//! 1. [`Runtime::governor_review`] — change-class governance, native since
-//!    v11.6.0 §P1c ([`crate::kernel::proposals`]). Under a mode that does not stage
-//!    proposals the decision is made **before** the governor is consulted,
-//!    because reviewing persists a proposal as a side effect; reviewing first
-//!    and discarding the verdict would apply the change *and* leave an orphan
-//!    pending in the Review Center.
-//! 2. [`Runtime::blocked_by_gates`] — circuit breaker, then destructive policy,
-//!    then the fail-closed overwrite guard, then the approval gate. The first
-//!    three are **mode-invariant**: `bypass` skips the approval prompt, it never
-//!    removes an existence check or unlocks a breaker.
-//! 3. [`Runtime::dispatch_step`] — pre-write snapshot, then execution: the
-//!    native tool set for anything that mutates, the worker seam for the
-//!    compute-only handlers. Recorded on the transcript either way.
-
 use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
@@ -33,8 +14,6 @@ use crate::parse::pystr::{is_truthy, py_str};
 use crate::seam::worker::ToolOutcome;
 use crate::tools::{CallScope, NativeCall};
 
-/// `{k: v for k, v in args.items() if k != "content"}` — the decision is worth
-/// replaying into the transcript; the payload never is.
 fn without_content(args: &Map<String, Value>) -> Value {
     Value::Object(
         args.iter()
@@ -50,10 +29,6 @@ fn path_arg(args: &Map<String, Value>) -> Option<String> {
         .map(py_str)
 }
 
-/// One tool call as the gates see it: what the model asked for, why it says it
-/// asked, and the policy the registry gave that call. Bundled because all three
-/// gates take exactly this set and a seven-argument signature hides which
-/// argument is which at the call site.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Call<'a> {
     pub name: &'a str,
@@ -63,11 +38,6 @@ pub(super) struct Call<'a> {
 }
 
 impl Runtime {
-    /// Central change-class governance.
-    ///
-    /// Returns `(proposed, governor_allows_additive)`: `proposed` means the step
-    /// was staged and execution must be skipped; `allows_additive` lets an
-    /// additive create pass the classic approval gate.
     pub(super) async fn governor_review(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -90,7 +60,6 @@ impl Runtime {
                 return (false, false);
             }
             if policy.is_destructive() {
-                // Let the destructive gate downstream own the block + transcript.
                 return (false, false);
             }
             self.audit(
@@ -110,11 +79,6 @@ impl Runtime {
             return (false, true);
         }
 
-        // Staging is a blocking read (the base snapshot), a diff and a store
-        // write, so it runs off the reactor — as the retired seam did with
-        // `asyncio.to_thread`. The verdict is the whole answer; there is no
-        // "the governor could not be reached" any more, because the governor
-        // is this process.
         let workspace = self.deps.workspace.clone();
         let store = Arc::clone(&self.deps.proposals);
         let user_email = req.user_email.clone();
@@ -175,9 +139,6 @@ impl Runtime {
                 );
                 (true, false)
             }
-            // The change had to be reviewed and was not. Falling through to the
-            // gates here would leave the run's only record of that a blocked
-            // step with an unrelated reason, so it is its own error step.
             Verdict::Failed(detail) => {
                 let error = format!(
                     "PROPOSAL_FAILED: 변경 제안을 저장하지 못해 '{name}' 을(를) 실행하지 \
@@ -216,8 +177,6 @@ impl Runtime {
         }
     }
 
-    /// Destructive / circuit-breaker / fail-closed-overwrite / approval gates.
-    /// True when the step was blocked.
     pub(super) fn blocked_by_gates(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -235,7 +194,6 @@ impl Runtime {
         let risk = risk_level(policy);
         let source = req.source.clone().unwrap_or_else(|| "agent".into());
 
-        // Hard denials first, mode-invariant.
         let breaker = is_circuit_breaker(name, policy, args);
         let hard_deny = match (&breaker, policy.is_destructive()) {
             (Some(reason), _) => Some(format!("BLOCKED: {reason}")),
@@ -273,9 +231,6 @@ impl Runtime {
             return true;
         }
 
-        // Fail-closed overwrite guard — also mode-invariant. A call that
-        // rewrites existing content but cannot be staged as a reviewable
-        // proposal has no safe apply path in ANY mode.
         let exists = |candidate: &str| self.governed_path_exists(name, candidate);
         let overwrite = classify_tool_call(name, args, policy, &exists);
         if overwrite.fail_closed {
@@ -375,8 +330,6 @@ impl Runtime {
         true
     }
 
-    /// Pre-write snapshot + execution (native, or the worker seam), recorded on
-    /// the transcript either way.
     pub(super) async fn dispatch_step(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -390,19 +343,11 @@ impl Runtime {
             policy,
         } = call;
         let risk = risk_level(policy);
-        // ArtifactWritePipeline (`_dispatch_step`): the executor's `args.content`
-        // is untrusted model output, so the same extract → validate → repair
-        // guarantee as the direct chat path applies here and a weak model
-        // driving the JSON loop can never persist a fenced, chatty or truncated
-        // payload. Content that already validates is returned byte-for-byte, so
-        // only a rewrite is recorded — an untouched write carries no
-        // `content_sanitize` key at all, exactly as Python's does not.
         let mut cleaned_args: Option<Map<String, Value>> = None;
         let mut sanitize_meta: Option<Value> = None;
         if name == "write_file" {
             if let Some(content) = args.get("content").and_then(Value::as_str) {
                 let target = path_arg(args).unwrap_or_default();
-                // `str(ctx.plan.get("goal") or thoughts or name)`.
                 let request = ctx
                     .plan
                     .get("goal")
@@ -433,8 +378,6 @@ impl Runtime {
                 }
             }
         }
-        // Everything below reads the rewritten arguments, so the transcript
-        // records the bytes that were actually written.
         let args: &Map<String, Value> = cleaned_args.as_ref().unwrap_or(args);
         let step_index = 1 + ctx
             .transcript
@@ -450,8 +393,6 @@ impl Runtime {
 
         if self.deps.file_create_actions.contains(name) {
             if let Some(path) = path_arg(args) {
-                // The first capture per path is the true pre-run state; later
-                // writes to the same path must not overwrite it.
                 let already = ctx
                     .rollback_log
                     .iter()
@@ -468,9 +409,6 @@ impl Runtime {
             }
         }
 
-        // Native first: a mutating tool is executed here, in this process, with
-        // the same workspace the snapshot above just read. Everything else is
-        // still one `POST /agent/tool` to the compute worker.
         let outcome = if self.deps.native.handles(name) {
             let scope = CallScope {
                 user_email: req.user_email.clone(),
@@ -481,8 +419,6 @@ impl Runtime {
                 .execute(NativeCall {
                     tool: name,
                     args,
-                    // `check_role` reads the *registry* policy, not the
-                    // argument-rewritten one — see `NativeCall::policy`.
                     policy: self.deps.policies.get(name),
                     scope: &scope,
                 })
@@ -503,10 +439,6 @@ impl Runtime {
                     "args": Value::Object(args.clone()),
                     "risk": risk, "governance": policy, "result": result,
                 });
-                // A worker handler that sanitizes reports it in its result; the
-                // flag is hoisted onto the step so the critic's artifact
-                // checklist sees it either way. The loop's own pass above wins,
-                // because it is the pass that produced the bytes on disk.
                 if let Some(meta) = result.get("content_sanitize") {
                     step["content_sanitize"] = meta.clone();
                 }
@@ -547,7 +479,6 @@ impl Runtime {
         }
     }
 
-    /// `ToolDispatchService.snapshot_file`, natively.
     pub(super) fn snapshot_file(&self, path: &str) -> Value {
         let Ok(target) = self.deps.workspace.resolve(path) else {
             return json!({
@@ -565,8 +496,6 @@ impl Runtime {
             return json!({"existed": true, "content": null, "too_large": true});
         }
         match std::fs::read(&target) {
-            // `errors="replace"`: an unreadable byte is a replacement character,
-            // not a refused snapshot.
             Ok(bytes) => json!({
                 "existed": true,
                 "content": String::from_utf8_lossy(&bytes),
@@ -579,8 +508,6 @@ impl Runtime {
         }
     }
 
-    /// `ToolDispatchService.restore_snapshot`: rewrite prior content, or delete
-    /// a file the run created (`content = None`).
     pub(super) fn restore_snapshot(&self, path: &str, content: Option<&str>) -> Value {
         let Ok(target) = self.deps.workspace.resolve(path) else {
             return json!({"path": path, "ok": false, "error": "path escapes the agent workspace"});
@@ -588,7 +515,6 @@ impl Runtime {
         let outcome = match content {
             None => match std::fs::remove_file(&target) {
                 Ok(()) => Ok("deleted"),
-                // `missing_ok=True`: an absent file is a successful deletion.
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok("deleted"),
                 Err(error) => Err(error),
             },
@@ -620,7 +546,6 @@ mod tests {
         .to_string()
     }
 
-    /// One scripted write, run through the loop, with what landed on disk.
     async fn wrote(path: &str, content: &str) -> (String, AgentRunContext, Value) {
         let mut harness = harness(&[&write_action(path, content), FINAL]).await;
         harness.request.permission_mode = Some("trusted".into());
@@ -695,8 +620,6 @@ mod tests {
 
     #[tokio::test]
     async fn clean_content_is_written_verbatim_and_carries_no_sanitize_key() {
-        // Python's FG-06b: an untouched write records nothing, so a UI that
-        // badges `content_sanitize` badges only the writes that needed it.
         let clean = "<!DOCTYPE html><html><head><title>t</title></head><body>ok</body></html>";
         let (on_disk, ctx, summary) = wrote("page.html", clean).await;
         assert_eq!(on_disk, clean);
@@ -708,9 +631,6 @@ mod tests {
 
     #[tokio::test]
     async fn only_write_file_content_is_sanitized() {
-        // Python sanitized `write_file` and nothing else: an `edit_file`
-        // replacement is a diff against a file the user already has, not a
-        // model's idea of a whole document.
         let mut harness = harness(&[
             &write_action("note.md", "# Title\n\nBody.\n"),
             &json!({"thoughts": "editing", "action": "edit_file",

@@ -1,5 +1,3 @@
-//! `KnowledgeGraphStore.index_status()` — the expensive half of GET /api/index/status.
-
 use std::collections::BTreeMap;
 
 use lattice_auth::OrderedMap;
@@ -13,7 +11,6 @@ use super::{
     DEFAULT_VECTOR_INDEX, HONEST_FALLBACK, SQLITE_VEC_REASON, TARGET_REBUILD_MS, VECTOR_INDEX_ENV,
 };
 
-/// One embeddable item, as `_iter_vector_source_items` yields it.
 #[derive(Debug, Clone)]
 pub(crate) struct SourceItem {
     pub(crate) item_id: String,
@@ -23,7 +20,6 @@ pub(crate) struct SourceItem {
     pub(crate) metadata: serde_json::Map<String, Value>,
 }
 
-/// `_vector_text_for_node` — title, summary and the eight metadata fields.
 pub(crate) fn vector_text_for_node(
     title: &str,
     summary: &str,
@@ -49,7 +45,6 @@ pub(crate) fn vector_text_for_node(
     clean_text(&format!("{title}\n{summary}\n{}", parts.join(" ")))
 }
 
-/// Python's `str(value)` for the handful of scalars metadata carries.
 pub(crate) fn py_str(value: &Value) -> String {
     match value {
         Value::String(text) => text.clone(),
@@ -60,7 +55,6 @@ pub(crate) fn py_str(value: &Value) -> String {
     }
 }
 
-/// Python truthiness for a JSON value.
 pub(crate) fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -72,7 +66,6 @@ pub(crate) fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `_sha256_text` — lowercase hex sha256 of the UTF-8 encoding.
 pub(crate) fn sha256_text(text: &str) -> String {
     let digest = Sha256::digest(text.as_bytes());
     let mut out = String::with_capacity(digest.len() * 2);
@@ -82,11 +75,6 @@ pub(crate) fn sha256_text(text: &str) -> String {
     out
 }
 
-/// `_iter_vector_source_items(conn)` — nodes then chunks, in its two orders.
-///
-/// Both queries read the **raw** `nodes` / `chunks` tables, not the v2 views:
-/// the vector index is built from the legacy projection and status must walk
-/// the same rows the builder walked.
 pub(crate) fn source_items(conn: &Connection) -> Result<Vec<SourceItem>, CoreError> {
     let mut items = Vec::new();
 
@@ -156,14 +144,12 @@ pub(crate) fn source_items(conn: &Connection) -> Result<Vec<SourceItem>, CoreErr
     Ok(items)
 }
 
-/// One row of `vector_embeddings`, as status compares against it.
 struct VectorRow {
     text_hash: String,
     embedding_dim: i64,
     embedding_model: String,
 }
 
-/// `_VectorStatusMixin.index_status()`.
 pub fn index_status(conn: &Connection) -> Result<Value, CoreError> {
     let model = LocalEmbeddingModel::from_env();
     let explicit_contract: Option<lattice_core::embedding_contract::EmbeddingIndexContract> = conn
@@ -355,7 +341,6 @@ fn ordered(pairs: Vec<(String, i64)>) -> Value {
     serde_json::to_value(map).unwrap_or(Value::Null)
 }
 
-/// One backlog sample, with metadata narrowed to the four keys Python keeps.
 fn backlog_sample(item: &SourceItem, reason: &str) -> Value {
     const KEPT: [&str; 4] = [
         "node_type",
@@ -381,8 +366,6 @@ fn backlog_sample(item: &SourceItem, reason: &str) -> Value {
     serde_json::to_value(sample).unwrap_or(Value::Null)
 }
 
-/// `vector_index_operations`, newest five, plus each one's status for the
-/// latency budget.
 type Operation = (String, Value);
 
 fn recent_operations(conn: &Connection) -> Result<Vec<Operation>, CoreError> {
@@ -392,10 +375,6 @@ fn recent_operations(conn: &Connection) -> Result<Vec<Operation>, CoreError> {
          FROM vector_index_operations ORDER BY requested_at DESC, id DESC LIMIT 5",
     ) {
         Ok(statement) => statement,
-        // A Brain that has never rebuilt has no table; Python's read would
-        // raise and `index_status` would 500, but the table is created with the
-        // schema, so an absent one means a store this port should not pretend
-        // to know about. Report no history rather than fail the whole read.
         Err(_) => return Ok(Vec::new()),
     };
     let rows = statement.query_map([], |row| {
@@ -427,7 +406,6 @@ fn sql_value(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Value> {
     Ok(lattice_core::read::sql_json(row.get_ref(index)?))
 }
 
-/// `latency_budget` — the newest **completed** operation, or four nulls.
 fn latency_budget(operations: &[Operation]) -> Value {
     let mut budget = OrderedMap::new();
     budget.insert("target_rebuild_ms", json!(TARGET_REBUILD_MS));
@@ -461,7 +439,6 @@ fn latency_budget(operations: &[Operation]) -> Value {
     serde_json::to_value(budget).unwrap_or(Value::Null)
 }
 
-/// `embedder_fingerprint_status()` — current, recorded, and whether they differ.
 fn embedder_status(conn: &Connection, model_id: &str, dim: i64) -> Value {
     let mut current = OrderedMap::new();
     current.insert("model_id", json!(model_id));
@@ -506,7 +483,6 @@ fn embedder_status(conn: &Connection, model_id: &str, dim: i64) -> Value {
     serde_json::to_value(status).unwrap_or(Value::Null)
 }
 
-/// The `storage` block, including this runtime's honest capability report.
 fn storage_block(conn: &Connection, model_id: &str, dim: i64) -> Value {
     let db_path = conn.path().map(str::to_string).unwrap_or_default();
 
@@ -549,7 +525,6 @@ fn storage_block(conn: &Connection, model_id: &str, dim: i64) -> Value {
     serde_json::to_value(storage).unwrap_or(Value::Null)
 }
 
-/// Whether the trigram FTS5 keyword index exists in this store.
 fn fts_enabled(conn: &Connection) -> bool {
     conn.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='node_fts'",
@@ -560,11 +535,6 @@ fn fts_enabled(conn: &Connection) -> bool {
     .unwrap_or(false)
 }
 
-/// `resolve_vector_index()` — the backend choice and any honest substitution.
-///
-/// `hnsw` is a Python optional extra (`hnswlib`), so the gateway can never
-/// honour it; the substitution is reported the same way Python reports it on a
-/// machine without the package installed.
 pub(crate) fn vector_index_selection() -> Value {
     let requested_raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
     let requested = requested_raw.trim().to_ascii_lowercase();

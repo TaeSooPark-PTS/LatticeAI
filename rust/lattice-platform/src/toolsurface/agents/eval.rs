@@ -1,5 +1,3 @@
-//! `/agent/eval` — static skill-schema cases, no model required.
-
 use std::path::{Path, PathBuf};
 
 use axum::extract::State;

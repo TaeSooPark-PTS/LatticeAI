@@ -12,7 +12,6 @@ const memories: MemoryFragment[] = [
   { id: "m2", title: "회의 메모", kind: "Note", tags: [], agentGenerated: false },
 ];
 
-/** A minimal server-rendered switchboard, so the 기능 drawer has content. */
 const FEATURES = {
   note: "모두 지금 바로 적용됩니다.",
   features: [
@@ -106,8 +105,6 @@ describe("BrainHomeDock rail", () => {
   it("keeps the drawer open when a double tap races the first open", async () => {
     renderDock();
     const button = rail("conversations");
-    // Two taps land before the first re-render: the second must not undo the
-    // first. Native clicks inside one act share the pre-open handler closure.
     act(() => {
       button.click();
       button.click();
@@ -124,8 +121,6 @@ describe("BrainHomeDock rail", () => {
     fireEvent.click(rail("map"));
     await waitFor(() => expect(props.onRequestDetails).toHaveBeenCalledTimes(2));
 
-    // 기능 reads /api/features and nothing else: pulling the whole proof
-    // bundle for it would be work nobody asked for.
     fireEvent.click(rail("features"));
     await screen.findByTestId("feature-row-allow_multimodal");
     expect(props.onRequestDetails).toHaveBeenCalledTimes(2);
@@ -157,7 +152,6 @@ describe("BrainHomeDock drawer", () => {
 
     fireEvent.click(statsTab);
     await waitFor(() => expect(statsTab).toHaveAttribute("aria-pressed", "true"));
-    // Stats content: the brief panel plus the deep panels in advanced mode.
     expect(screen.getByLabelText(t("ko", "brain.brief.aria"))).toBeTruthy();
     expect(screen.getByLabelText(t("ko", "brain.modelDemo.aria"))).toBeTruthy();
     expect(screen.getByLabelText(t("ko", "brain.aria.overview"))).toBeTruthy();
@@ -181,7 +175,6 @@ describe("BrainHomeDock drawer", () => {
     expect(screen.getByLabelText(t("ko", "brain.brief.aria"))).toBeTruthy();
     expect(screen.queryByLabelText(t("ko", "brain.modelDemo.aria"))).toBeNull();
     expect(screen.queryByLabelText(t("ko", "brain.aria.overview"))).toBeNull();
-    // Basic mode also hides the brief's evidence strip.
     expect(document.querySelector(".brain-brief-evidence")).toBeNull();
   });
 
@@ -215,7 +208,6 @@ describe("BrainHomeDock drawer", () => {
     fireEvent.click(rail("map"));
     const aside = await screen.findByTestId("brain-home-drawer");
 
-    // Open a memory-ring peek inside the map tab.
     const ringLabel = document.querySelector(".ring-label") as HTMLButtonElement;
     fireEvent.click(ringLabel);
     expect(document.getElementById("brain-ring-peek")).toBeTruthy();

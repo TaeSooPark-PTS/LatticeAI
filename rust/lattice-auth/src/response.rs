@@ -1,29 +1,10 @@
-//! How a body becomes the exact HTTP response Starlette would have sent.
-//!
-//! Two shapes, and the difference between them is load-bearing:
-//!
-//! * `JSONResponse` (every route and every `HTTPException`) renders with
-//!   `separators=(",", ":")` and declares `content-type: application/json` with
-//!   **no** charset — Starlette only appends one for `text/*`;
-//! * the CSRF middleware writes its own ASGI response and states
-//!   `application/json; charset=utf-8`.
-//!
-//! Clients read `detail` off these bodies (`frontend/src/api/base.ts`), so the
-//! shape is a contract, not a detail.
-
 use axum::body::Body;
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::Response;
 
-/// Starlette's `JSONResponse` media type.
 pub const JSON_MEDIA_TYPE: &str = "application/json";
-/// The media type the CSRF guard writes by hand.
 pub const JSON_MEDIA_TYPE_UTF8: &str = "application/json; charset=utf-8";
 
-/// One JSON response, body verbatim, with an optional extra header.
-///
-/// `extra` carries the two headers this crate ever adds: `Set-Cookie` on the
-/// login/logout pair and `Retry-After` on a rate-limit refusal.
 pub fn json_response(
     status: StatusCode,
     body: &str,
@@ -32,7 +13,6 @@ pub fn json_response(
     build(status, body, JSON_MEDIA_TYPE, extra)
 }
 
-/// One JSON response that states `charset=utf-8`, as the CSRF guard does.
 pub fn json_response_utf8(status: StatusCode, body: &str) -> Response {
     build(status, body, JSON_MEDIA_TYPE_UTF8, None)
 }
@@ -51,8 +31,6 @@ fn build(
     }
     builder
         .body(Body::from(body.to_owned()))
-        // The only way this fails is an invalid header name/value, and every
-        // one of them is a constant in this crate.
         .unwrap_or_else(|_| Response::new(Body::from(body.to_owned())))
 }
 

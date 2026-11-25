@@ -1,11 +1,3 @@
-//! Glue types that bind chat's optional sinks to `lattice-platform`.
-//!
-//! Chat never names the Review Center or the audit file: it takes
-//! [`lattice_chat::ReviewSink`] / [`lattice_chat::EgressAudit`] /
-//! [`lattice_chat::AuditSink`]. This module is the one place the host
-//! implements those traits over the platform APIs that already own the
-//! documents.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -15,13 +7,11 @@ use lattice_chat::{AuditSink, EgressAudit, ReviewSink};
 use lattice_platform::adminops::admin::{append_audit_event, audit_log_path};
 use serde_json::{json, Value};
 
-/// Stage a cloud KG expansion through the Review Center's own store.
 pub struct PlatformReview {
     store: Arc<dyn ProposalStore>,
 }
 
 impl PlatformReview {
-    /// Bind the product's [`lattice_platform::governance::review_queue::GovernanceState`].
     pub fn new(store: Arc<dyn ProposalStore>) -> Self {
         Self { store }
     }
@@ -77,13 +67,11 @@ impl ReviewSink for PlatformReview {
     }
 }
 
-/// Append a cloud-egress record to `audit_log.json`.
 pub struct PlatformEgress {
     path: PathBuf,
 }
 
 impl PlatformEgress {
-    /// Point at the audit file under `data_dir`.
     pub fn new(data_dir: impl Into<PathBuf>) -> Self {
         Self {
             path: audit_log_path(&data_dir.into()),
@@ -102,13 +90,11 @@ impl EgressAudit for PlatformEgress {
     }
 }
 
-/// The same audit file, for chat's named events (`chat_message`, …).
 pub struct PlatformAudit {
     path: PathBuf,
 }
 
 impl PlatformAudit {
-    /// Point at the audit file under `data_dir`.
     pub fn new(data_dir: impl Into<PathBuf>) -> Self {
         Self {
             path: audit_log_path(&data_dir.into()),
@@ -123,14 +109,11 @@ impl AuditSink for PlatformAudit {
     }
 }
 
-/// Persists `lattice-auth` login, password-migration, tenant-denial, SSO, and
-/// SCIM security events into the shared `audit_log.json`.
 pub struct PlatformAuthAudit {
     path: PathBuf,
 }
 
 impl PlatformAuthAudit {
-    /// Point at the audit file under `data_dir`.
     pub fn new(data_dir: impl Into<PathBuf>) -> Self {
         Self {
             path: audit_log_path(&data_dir.into()),

@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "14.1.1",
+  "version": "14.1.2",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -23,7 +23,8 @@
     "frontend:openapi:check": "node scripts/check_openapi_drift.mjs",
     "build:assets": "vite build && node scripts/build_frontend_assets.mjs",
     "build:python": "node scripts/run_python.mjs -m build",
-    "lint": "npm run lint:python && npm run lint:visual && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:i18n-namespaces && npm run check:bundle && npm run check:server-i18n && node scripts/check_release_evidence_bound.mjs && npm run check:max-file-lines",
+    "lint": "npm run lint:python && npm run lint:visual && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:i18n-namespaces && npm run check:bundle && npm run check:server-i18n && node scripts/check_release_evidence_bound.mjs && npm run check:max-file-lines && npm run check:no-comments",
+    "check:no-comments": "node scripts/check_no_comments.mjs",
     "lint:visual": "for f in tests/visual/*.js tests/visual/*.cjs tests/visual/mock_server/*.cjs; do node --check \"$f\" || exit 1; done && echo 'visual syntax ok'",
     "check:max-file-lines": "node scripts/check_max_file_lines.mjs",
     "check:release-evidence-bound": "node scripts/check_release_evidence_bound.mjs",

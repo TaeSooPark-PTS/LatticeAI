@@ -1,22 +1,3 @@
-//! The polling mtime-snapshot watcher from `latticeai/services/folder_watch.py`.
-//!
-//! Deliberately **not** an OS watcher. The Python service explains why and this
-//! port inherits the reason: polling is deterministic, portable and testable —
-//! [`WatchScanner::scan_once`] is a pure function of (previous snapshot, disk)
-//! that a test can drive without a timer, and the timer in [`poll_watch`] is a
-//! thin wrapper around it rather than the thing under test.
-//!
-//! A snapshot is `{relative posix path: (round(mtime, 3), size)}` over exactly
-//! the files [`crate::filters`] admits. Diffing two snapshots gives new /
-//! changed / removed. Removed files are **counted, never acted on**: deleting a
-//! node is destructive and stays behind an explicit user flow.
-//!
-//! What happens to the diff is not this module's business. Detection stops
-//! here; [`crate::worker::NoteIngestor`] writes the content into the Brain
-//! through this process's own `GraphWriter`. Until v11.7.0 that hand-off was a
-//! `POST` to the Python worker, which had stopped serving the route — so the
-//! scanner kept reporting healthy scans while nothing was being remembered.
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -30,25 +11,16 @@ use crate::filters::{
 };
 use crate::pystr::{py_suffix, round3};
 
-/// `MAX_FILES_PER_SCAN` — the per-scan delegation cap (thrash guard).
 pub const MAX_FILES_PER_SCAN: usize = 200;
-/// `WATCH_INTERVAL_ENV`.
 pub const WATCH_INTERVAL_ENV: &str = "LATTICEAI_FOLDER_WATCH_INTERVAL";
-/// `DEFAULT_WATCH_INTERVAL_SECONDS`.
 pub const DEFAULT_WATCH_INTERVAL_SECONDS: f64 = 30.0;
-/// The floor Python applies with `max(1.0, value)`.
 pub const MIN_WATCH_INTERVAL_SECONDS: f64 = 1.0;
 
-/// What a scan admits: the folder-ingest filters, with the same defaults.
 #[derive(Debug, Clone)]
 pub struct WatchConfig {
-    /// Descend into subdirectories (`recursive` on the stored watch).
     pub recursive: bool,
-    /// Lower-cased extension allow-list, `.` included.
     pub extensions: std::collections::BTreeSet<String>,
-    /// Directory names pruned before `.latticeignore` is consulted.
     pub skip_dirs: std::collections::BTreeSet<String>,
-    /// Per-file size cap, in bytes.
     pub max_file_bytes: u64,
 }
 
@@ -63,64 +35,39 @@ impl Default for WatchConfig {
     }
 }
 
-/// One file the filters admitted.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScannedFile {
-    /// Root-relative posix path — the snapshot key.
     pub relative_path: String,
-    /// Absolute path on disk.
     pub path: PathBuf,
-    /// Lower-cased extension, `.` included.
     pub extension: String,
-    /// Size in bytes.
     pub size: u64,
-    /// `round(st_mtime, 3)`.
     pub mtime: f64,
 }
 
-/// The stamp a snapshot stores per file: `[round(mtime, 3), size]` in Python.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FileStamp {
-    /// `round(st_mtime, 3)`.
     pub mtime: f64,
-    /// Size in bytes.
     pub size: u64,
 }
 
-/// `{relative posix path: stamp}`.
 pub type Snapshot = BTreeMap<String, FileStamp>;
 
-/// What changed between two snapshots.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct ScanDiff {
-    /// Files present now and absent before (Python's `new`), in walk order.
     #[serde(rename = "new")]
     pub added: Vec<String>,
-    /// Files whose `(mtime, size)` stamp moved, in walk order.
     pub changed: Vec<String>,
-    /// Files gone since the last scan. The watch bridge prunes matching
-    /// graph nodes; this field is the list the prune door is handed.
-    /// Sorted, because a removal has no walk order to inherit.
     pub removed: Vec<String>,
-    /// `added + changed` in walk order, capped at [`MAX_FILES_PER_SCAN`]: the
-    /// files this scan would hand to the worker.
     pub pending: Vec<String>,
-    /// True when the cap bit and some changes were left for the next scan.
     pub truncated: bool,
 }
 
 impl ScanDiff {
-    /// True when nothing moved — the cheap "skip the work" signal.
     pub fn is_empty(&self) -> bool {
         self.added.is_empty() && self.changed.is_empty() && self.removed.is_empty()
     }
 }
 
-/// Polling scanner for one watched folder.
-///
-/// Holds the previous snapshot, which is the only state a scan needs. Build it,
-/// [`WatchScanner::take_baseline`] at opt-in time (so enabling a watch never
-/// re-ingests a folder that was already ingested), then [`WatchScanner::scan_once`].
 #[derive(Debug, Clone)]
 pub struct WatchScanner {
     root: PathBuf,
@@ -129,8 +76,6 @@ pub struct WatchScanner {
 }
 
 impl WatchScanner {
-    /// A scanner over `root` with no baseline yet — the first scan reports
-    /// every admitted file as new.
     pub fn new(root: impl Into<PathBuf>, config: WatchConfig) -> Self {
         Self {
             root: root.into(),
@@ -139,7 +84,6 @@ impl WatchScanner {
         }
     }
 
-    /// A scanner resuming from a stored snapshot.
     pub fn with_snapshot(
         root: impl Into<PathBuf>,
         config: WatchConfig,
@@ -152,33 +96,23 @@ impl WatchScanner {
         }
     }
 
-    /// The folder being watched.
     pub fn root(&self) -> &Path {
         &self.root
     }
 
-    /// The snapshot the next scan will diff against.
     pub fn snapshot(&self) -> &Snapshot {
         &self.snapshot
     }
 
-    /// Walk the folder without touching the stored snapshot — the dry run.
     pub fn walk(&self) -> std::io::Result<Vec<ScannedFile>> {
         walk_folder(&self.root, &self.config)
     }
 
-    /// Record the current state as the baseline and report how many files it
-    /// covers. This is `enable()`: consent, not ingestion.
     pub fn take_baseline(&mut self) -> std::io::Result<usize> {
         self.snapshot = snapshot_of(&self.walk()?);
         Ok(self.snapshot.len())
     }
 
-    /// One scan: diff against the stored snapshot, then adopt the new one.
-    ///
-    /// The snapshot is adopted even when the caller ignores the diff, exactly
-    /// as `_record_scan` does — a scan that reported a change must not report
-    /// it again forever if the delegation failed.
     pub fn scan_once(&mut self) -> std::io::Result<ScanDiff> {
         let files = self.walk()?;
         let current = snapshot_of(&files);
@@ -213,7 +147,6 @@ impl WatchScanner {
     }
 }
 
-/// `{relative path: stamp}` for a walk result.
 pub fn snapshot_of(files: &[ScannedFile]) -> Snapshot {
     files
         .iter()
@@ -229,11 +162,6 @@ pub fn snapshot_of(files: &[ScannedFile]) -> Snapshot {
         .collect()
 }
 
-/// `FolderWatchService._snapshot`'s walk: os.walk order, folder-ingest filters.
-///
-/// Order matters because the per-scan cap slices it: files of a directory come
-/// before its subdirectories, and names are sorted within each level, which is
-/// exactly what `os.walk` with `sorted(dirnames)` / `sorted(filenames)` yields.
 pub fn walk_folder(root: &Path, config: &WatchConfig) -> std::io::Result<Vec<ScannedFile>> {
     if !root.is_dir() {
         return Err(std::io::Error::new(
@@ -255,8 +183,6 @@ fn walk_into(
     patterns: &[String],
     out: &mut Vec<ScannedFile>,
 ) {
-    // An unreadable subdirectory is skipped, exactly as `os.walk`'s default
-    // `onerror=None` skips it. The root itself was checked by the caller.
     let Ok(entries) = fs::read_dir(current) else {
         return;
     };
@@ -267,8 +193,6 @@ fn walk_into(
         let Ok(kind) = entry.file_type() else {
             continue;
         };
-        // `os.walk` classifies by the *resolved* type but never descends into a
-        // symlinked directory (`followlinks=False`), so its contents are unseen.
         let is_dir = if kind.is_symlink() {
             fs::metadata(entry.path())
                 .map(|meta| meta.is_dir())
@@ -279,7 +203,6 @@ fn walk_into(
         if is_dir {
             dirs.push((name, kind.is_symlink()));
         } else if kind.is_symlink() {
-            // P0.4: never ingest symlinked files escaping the watched root.
             let candidate = entry.path();
             let root_canon = fs::canonicalize(root).ok();
             let target_canon = fs::canonicalize(&candidate).ok();
@@ -355,9 +278,6 @@ fn mtime_seconds(metadata: &fs::Metadata) -> f64 {
     }
 }
 
-/// `_default_interval()` — `LATTICEAI_FOLDER_WATCH_INTERVAL` seconds, floored
-/// at one second, defaulting to thirty. A nonsense value is the default, never
-/// an error.
 pub fn interval_from_env() -> Duration {
     let seconds = std::env::var(WATCH_INTERVAL_ENV)
         .ok()
@@ -367,21 +287,12 @@ pub fn interval_from_env() -> Duration {
     Duration::from_secs_f64(seconds.max(MIN_WATCH_INTERVAL_SECONDS))
 }
 
-/// What a finished poll loop did.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub struct PollReport {
-    /// Scans that completed.
     pub scans: u64,
-    /// Scans that failed (the folder went away, say) — one bad scan must never
-    /// kill the poller, so these are counted and stepped over.
     pub failures: u64,
 }
 
-/// Poll `scanner` every `interval` until `stop` carries `true`.
-///
-/// Mirrors `_poll_loop`: it **waits first**, so starting a poller never
-/// triggers an immediate scan of a folder whose baseline was just taken. A
-/// dropped stop-sender also ends the loop, because nobody is left to stop it.
 pub async fn poll_watch<H, F>(
     mut scanner: WatchScanner,
     interval: Duration,
@@ -422,8 +333,6 @@ mod tests {
 
     #[test]
     fn the_interval_floors_at_one_second_and_ignores_nonsense() {
-        // Read through a helper rather than the process env: these tests run in
-        // parallel and `set_var` is a process-wide side effect.
         fn resolve(raw: Option<&str>) -> Duration {
             let seconds = raw
                 .and_then(|raw| raw.trim().parse::<f64>().ok())
@@ -437,7 +346,6 @@ mod tests {
         assert_eq!(resolve(Some(" 5 ")), Duration::from_secs(5));
         assert_eq!(resolve(Some("0.1")), Duration::from_secs(1));
         assert_eq!(resolve(Some("-9")), Duration::from_secs(1));
-        // The real reader agrees with the helper for an unset variable.
         assert!(interval_from_env() >= Duration::from_secs(1));
     }
 

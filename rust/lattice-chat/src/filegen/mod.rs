@@ -1,45 +1,3 @@
-//! Model-authored file generation on `POST /chat` (v11.9.0).
-//!
-//! Before this module, "HTML 파일 만들어줘" in plain chat was a deliberate
-//! **400**: the branch could only write content the user had typed inline
-//! (`내용: …`), and everything else was refused with `chat.file_generation_failed`
-//! and the comment "model-driven generation is the un-fixtured path". A person
-//! with a 2B model loaded and a perfectly ordinary request got an error.
-//!
-//! What that comment was protecting is real, and it is kept: a weak model's
-//! reply is not a file, and the difference between the two is not something a
-//! chat surface may guess at. So the generation this module adds is the one the
-//! agent path already trusts, reached from here rather than reimplemented —
-//! [`lattice_agent::content::sanitize`] validates, unwraps and repairs, and this module
-//! adds only the parts that are chat's own: the anchored prompts
-//! ([`prompts`]), the single corrective retry ([`author`]), the refusal to write
-//! a scaffold nobody wrote, and real Office/PDF bytes instead of prose under a
-//! `.docx` name ([`office`]).
-//!
-//! ## What the reply says, and why it can be trusted
-//!
-//! | key | before | now |
-//! |---|---|---|
-//! | `artifacts[].valid` | hard-coded `true` | the validator's verdict on the bytes on disk |
-//! | `artifacts[].repaired` | hard-coded `false` | whether deterministic repair produced them |
-//! | `generation.repaired` | absent | the same fact, where the SPA's "자동 보정됨" badge reads it |
-//! | `generation.attempts` | absent | one record per model attempt: outcome and the validator's reason |
-//!
-//! The badge is `agentPayloadFiles`' `Boolean(agent.generation?.repaired)`
-//! (`frontend/src/features/brain/brainData.ts`), which is where the **agent**
-//! path's repairs surface too — so a repaired file from chat and a repaired file
-//! from the agent now render identically, which is the whole point of not
-//! having a second pipeline.
-//!
-//! ## Order of operations, and where the response is committed
-//!
-//! The never-overwrite dedup ([`crate::intents::next_available_path`]) runs
-//! **before** anything is streamed, so a name collision is still a 409 and not
-//! an error frame inside a 200. Everything after it — the model call, the
-//! sanitize pass, the write, the Brain ingest — runs inside the stream task when
-//! `stream: true`, so the `file_generation` progress frame reaches the client
-//! before the model is asked rather than after the work is finished.
-
 pub mod author;
 pub mod office;
 pub mod prompts;
@@ -66,22 +24,12 @@ use crate::stream::{frame_channel, FrameSink};
 use author::author_file;
 use reply::{created_sentence, file_name_of, project_sentence};
 
-/// How many files one multi-file request writes in a single turn.
-///
-/// A recognised project manifest can name five (the React one does). Writing
-/// five files means five model calls in a row, which on a local 2B is minutes
-/// of silence, and it means five files the user has not seen yet. Three is what
-/// this surface does per turn; the rest are named in the reply and are one
-/// follow-up away.
 pub const MAX_PROJECT_FILES: usize = 3;
 
-/// The `type` of the progress frame a generating stream emits.
 pub const PROGRESS_FRAME: &str = "file_generation";
 
-/// The model label a file-action stream carries when no model was consulted.
 const TOOL_MODEL: &str = "tool";
 
-/// One file-writing turn, owned so it can move into a stream task.
 struct Turn {
     state: ChatState,
     req: ChatRequest,
@@ -91,28 +39,18 @@ struct Turn {
     workspace: Option<String>,
 }
 
-/// Content ready to be written, and everything the artifact must say about it.
 struct Produced {
-    /// The text the Brain remembers — and, for a document, what it was built
-    /// from. Never the binary.
     text: String,
-    /// The bytes that land on disk.
     bytes: Vec<u8>,
     valid: bool,
     repaired: bool,
-    /// One record per model attempt; empty when the user typed the content.
     attempts: Vec<Value>,
-    /// `write_file`, `create_docx`, `create_pdf` — what actually happened.
     action: &'static str,
-    /// The model authored this, rather than the user typing it inline.
     authored: bool,
 }
 
-/// One file on disk, as the reply describes it.
 struct Written {
-    /// The path asked for (post-dedup), which is what the step's args show.
     requested: String,
-    /// The path the workspace resolved to, which is what the client opens.
     path: String,
     filename: String,
     bytes: usize,
@@ -122,32 +60,21 @@ struct Written {
     ingest: Option<Value>,
 }
 
-/// Why nothing was written.
 enum Refusal {
-    /// The model never produced a document. `chat.file_generation_failed`,
-    /// with the attempts attached so the reply says what was tried.
     Generation(Vec<Value>),
-    /// A refusal this surface composes itself: an Office format it will not
-    /// fake, or a render that failed.
     Named {
         error: &'static str,
         detail: String,
         action: &'static str,
     },
-    /// The write itself failed (permissions, an escaping path).
     Write(String),
 }
 
-/// What a turn ended as.
 enum Outcome {
     Written { answer: String, payload: Value },
     Refused(Refusal),
 }
 
-/// `POST /chat`'s direct file action for one named file.
-///
-/// `target` is the path the request named or the inference produced;
-/// `model_id` is the loaded model, absent when none is.
 pub(crate) async fn file_action(
     state: &ChatState,
     req: &ChatRequest,
@@ -157,11 +84,6 @@ pub(crate) async fn file_action(
     workspace_id: Option<&str>,
     target: &str,
 ) -> Response {
-    // A format this surface will not fake is knowable from the name alone, so
-    // it is refused first and refused as a real 4xx — better than an error
-    // frame inside a 200, and better than picking a free filename for a file
-    // that is never going to exist. Only a refusal that needs the worker (a
-    // render that failed) has to happen inside the stream.
     if office::classify(target) == office::Target::Unsupported {
         return named_refusal(
             "office_format_unsupported",
@@ -169,8 +91,6 @@ pub(crate) async fn file_action(
             "use_agent",
         );
     }
-    // Never overwrite: this runs before a stream is opened, so a collision is
-    // still an honest 409 rather than an error frame inside a 200.
     let deduped = match next_available_path(&state.config.agent_root, target) {
         Ok(path) => path,
         Err(name) => {
@@ -201,7 +121,6 @@ pub(crate) async fn file_action(
     respond(outcome, headers)
 }
 
-/// `POST /chat`'s multi-file branch: a recognised project manifest.
 pub(crate) async fn project_action(
     state: &ChatState,
     req: &ChatRequest,
@@ -256,12 +175,10 @@ impl Turn {
         }
     }
 
-    /// The `X-Model` header and the stream's model label.
     fn model_label(&self) -> String {
         self.model.clone().unwrap_or_else(|| TOOL_MODEL.to_string())
     }
 
-    /// One file: the user's own bytes, or the model's.
     async fn single(
         &self,
         deduped: &str,
@@ -297,9 +214,6 @@ impl Turn {
         Outcome::Written { answer, payload }
     }
 
-    /// Up to [`MAX_PROJECT_FILES`] files, one after another. Never in parallel:
-    /// one local model serves them all, so two at once is two half-speed
-    /// generations and twice the memory.
     async fn project(&self, manifest: &Value, progress: Option<&FrameSink>) -> Outcome {
         let paths = manifest_paths(manifest);
         let briefs = file_briefs(manifest);
@@ -354,8 +268,6 @@ impl Turn {
         Outcome::Written { answer, payload }
     }
 
-    /// The bytes for one file: inline content kept as typed, or model output
-    /// put through the write-side pipeline, then a real render for a document.
     async fn produce(
         &self,
         target: &str,
@@ -365,9 +277,6 @@ impl Turn {
     ) -> Result<Produced, Refusal> {
         let kind = office::classify(target);
         if kind == office::Target::Unsupported {
-            // A spreadsheet or a deck built out of one block of prose would be a
-            // guess about what the rows or the slides were; the agent takes them
-            // as data instead.
             return Err(Refusal::Named {
                 error: "office_format_unsupported",
                 detail: office::unsupported(self.lang, target),
@@ -376,9 +285,6 @@ impl Turn {
         }
 
         let (text, mut valid, repaired, attempts, authored) = match inline {
-            // The user's words are the user's: they are written exactly as
-            // typed. What changes in v11.9.0 is that the artifact stops
-            // *claiming* they are valid and reports the validator's verdict.
             Some(content) => {
                 let (ok, _reason) = validate_file_content(&content, target);
                 (content, ok, false, Vec::new(), false)
@@ -386,8 +292,6 @@ impl Turn {
             None => {
                 announce(progress, target, "generating").await;
                 let Some(model) = self.model.as_deref() else {
-                    // Unreachable: the caller refuses with `no_model_loaded`
-                    // before it gets here. Honest failure rather than a panic.
                     return Err(Refusal::Generation(Vec::new()));
                 };
                 match author_file(
@@ -428,9 +332,6 @@ impl Turn {
                         } else {
                             "create_docx"
                         };
-                        // The bytes are the builder's own document, so the
-                        // artifact's verdict is about the render, not about the
-                        // prose the render was typeset from.
                         valid = true;
                         bytes
                     }
@@ -443,9 +344,6 @@ impl Turn {
                     }
                 }
             }
-            // Unreachable — refused above — but written as a branch rather than
-            // an `unwrap`: an extension added to the table without a decision
-            // here writes its text, which is the old behaviour, not a panic.
             office::Target::Text | office::Target::Unsupported => text.as_bytes().to_vec(),
         };
 
@@ -460,7 +358,6 @@ impl Turn {
         })
     }
 
-    /// Write the bytes and remember the file, exactly as the inline path did.
     async fn write_one(&self, deduped: &str, produced: &Produced) -> Result<Written, Refusal> {
         let (path, bytes) =
             crate::intents::write_bytes(&self.state.config.agent_root, deduped, &produced.bytes)
@@ -487,8 +384,6 @@ impl Turn {
         })
     }
 
-    /// The two sides of the exchange the bridges mirror, as the branch has
-    /// always announced them.
     fn announce_answer(&self, answer: &str) {
         self.state
             .notify("user", &self.req.message, self.req.source.as_deref());
@@ -497,19 +392,6 @@ impl Turn {
     }
 }
 
-/// `{"type": "file_generation", "path": …, "status": …, "chunk": ""}` — the
-/// progress frame.
-///
-/// `generating` is sent before the model is asked, `written` after the bytes are
-/// on disk, `failed` when nothing was written.
-///
-/// **The empty `chunk` is load-bearing**, and it is the one thing about this
-/// frame that is not obvious. The SPA reads `data.chunk || data.text || ""` and
-/// would ignore a frame without it — but the VS Code extension's reader is
-/// `chunks.push(parsed.chunk)` (`vscode-extension/client.ts`), and its consumer
-/// then does `accumulated += chunk`. A frame with no `chunk` key would put the
-/// literal string "undefined" in the middle of that editor's answer. An empty
-/// string appends nothing in every client that reads one.
 async fn announce(progress: Option<&FrameSink>, path: &str, status: &str) {
     let Some(sink) = progress else { return };
     let mut payload = OrderedMap::new();
@@ -524,7 +406,6 @@ async fn announce(progress: Option<&FrameSink>, path: &str, status: &str) {
         .await;
 }
 
-/// The JSON answer, for `stream: false`.
 fn respond(outcome: Outcome, headers: &HeaderMap) -> Response {
     match outcome {
         Outcome::Written { payload, .. } => json_body(StatusCode::OK, &payload),
@@ -542,11 +423,6 @@ fn respond(outcome: Outcome, headers: &HeaderMap) -> Response {
     }
 }
 
-/// A refusal this surface words itself, in the shape `no_model_response` uses.
-///
-/// `error` / `detail` / `message` / `action` are the four keys the SPA's error
-/// path already reads (`payload?.error || payload?.detail`), and `action` names
-/// what to do instead — `use_agent`, beside `load_model`'s precedent.
 fn named_refusal(error: &str, detail: &str, action: &str) -> Response {
     let mut body = OrderedMap::new();
     body.insert("error", json!(error));
@@ -559,12 +435,6 @@ fn named_refusal(error: &str, detail: &str, action: &str) -> Response {
     )
 }
 
-/// `chat.file_generation_failed`, with what was tried attached.
-///
-/// The message is the catalog's, unchanged — a client that matched on it before
-/// still matches. `attempts` is additive: it is the difference between "the file
-/// content could not be generated" and knowing the model was asked twice and
-/// refused twice.
 fn generation_failed_body(headers: &HeaderMap, attempts: &[Value]) -> Response {
     if attempts.is_empty() {
         return error_body(400, "chat.file_generation_failed", headers, &[]);
@@ -581,24 +451,13 @@ fn generation_failed_body(headers: &HeaderMap, attempts: &[Value]) -> Response {
     )
 }
 
-/// The catalog's "the file content could not be generated", in one place so the
-/// JSON body and the stream's error frame cannot drift apart.
 fn generation_failed_text(lang: &str) -> String {
     lattice_core::messages::text("chat.file_generation_failed", lang, &[])
 }
 
-/// The frames a streaming turn ends with.
-///
-/// A refusal here is not an HTTP status: the 200 and its `text/event-stream`
-/// header were sent when the stream opened, before the model was asked. So the
-/// refusal is a frame — carrying the same wording the JSON body would have
-/// carried, in the same language — followed by the sentinel every client waits
-/// for. A stream that just stopped would leave the SPA spinning.
 async fn turn_frames(sink: &FrameSink, outcome: Outcome, model: &str, lang: &str) {
     match outcome {
         Outcome::Written { answer, payload } => {
-            // One send of the shared builder, so a streamed file action is the
-            // same three frames whether or not a model wrote the file.
             let _ = sink
                 .send(agent_payload_stream(&answer, &payload, model))
                 .await;
@@ -623,7 +482,6 @@ async fn turn_frames(sink: &FrameSink, outcome: Outcome, model: &str, lang: &str
     }
 }
 
-/// Attach the file each attempt was for, so a bundle's trail stays readable.
 fn tag_attempts(attempts: Vec<Value>, target: &str) -> Vec<Value> {
     attempts
         .into_iter()
@@ -636,7 +494,6 @@ fn tag_attempts(attempts: Vec<Value>, target: &str) -> Vec<Value> {
         .collect()
 }
 
-/// path → the manifest's line about that file.
 fn file_briefs(manifest: &Value) -> BTreeMap<String, String> {
     let mut briefs = BTreeMap::new();
     for file in manifest

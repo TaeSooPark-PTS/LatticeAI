@@ -1,32 +1,3 @@
-//! The worker's access posture, and the guard the native lanes sit behind.
-//!
-//! Everything under `/rust/*` (and `/host/status`, `/host/jobs`) is answered by
-//! this process out of the store directly. Those handlers resolve
-//! `allowed_workspaces = None` and carry no credential — they are Python's
-//! `trusted_local_owner` branch, spelled natively. Python computes that branch
-//! as
-//!
-//! ```text
-//! trusted_local_owner = not require_auth and not externally_reachable
-//! ```
-//!
-//! (`latticeai/runtime/access_runtime.py`), and until 11.5.2 the gateway
-//! mirrored only the *loopback bind* half of it: with
-//! `LATTICEAI_REQUIRE_AUTH=true` the worker answered 401 while the gateway
-//! happily served the whole knowledge graph next to it. This module closes that
-//! by asking the worker what its posture is (it states it in `GET /health`) and
-//! refusing the native lanes unless the answer is "open".
-//!
-//! **Fail closed.** A worker that cannot be reached, answers no posture, or is
-//! too old to state one leaves the posture [`Posture::Unknown`], and unknown
-//! refuses exactly like closed. Guessing "probably open" is the one option that
-//! turns a missing fact into an unauthenticated read of someone's brain.
-//!
-//! `/host/health` stays open on purpose: it is liveness, it is what the desktop
-//! shell and the smoke tests poll, and it is where a person reads *why* the
-//! worker is not up. It carries the supervisor snapshot and nothing from the
-//! store.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -40,36 +11,22 @@ use serde_json::Value;
 use super::GatewayState;
 use crate::supervisor::HealthReport;
 
-/// How long an observed posture is reused before the worker is asked again.
-///
-/// Matched to the supervisor's liveness poll: the posture can only change when
-/// the worker restarts with a different environment, and a restart is already
-/// several seconds of unavailability.
 pub const POSTURE_TTL: Duration = Duration::from_secs(5);
 
-/// The error a refused native request carries.
 pub const REFUSED_ERROR: &str = "native_lane_requires_open_posture";
 
-/// What the worker says about who may talk to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Posture {
-    /// `trusted_local_owner`: no authentication required and not reachable off
-    /// this machine. The native lanes may answer.
     Open,
-    /// The worker requires authentication, or is reachable off this machine, or
-    /// both. The native lanes carry no credential, so they refuse.
     Closed,
-    /// The worker has not said. Treated as closed.
     Unknown,
 }
 
 impl Posture {
-    /// Whether the native lanes may answer.
     pub fn is_open(self) -> bool {
         matches!(self, Posture::Open)
     }
 
-    /// The wire spelling, used in the refusal body.
     pub fn as_str(self) -> &'static str {
         match self {
             Posture::Open => "open",
@@ -78,12 +35,6 @@ impl Posture {
         }
     }
 
-    /// Read the posture out of a `/health` payload.
-    ///
-    /// Both facts must be present and boolean. A payload that states only one
-    /// of them (or states them as something other than a boolean) is a payload
-    /// this gateway does not understand, and an unreadable posture is
-    /// [`Posture::Unknown`], never a default.
     pub fn from_health(body: &Value) -> Self {
         let Some(access) = body.get("access") else {
             return Posture::Unknown;
@@ -101,7 +52,6 @@ impl Posture {
         }
     }
 
-    /// Read the posture out of one health probe.
     pub fn from_report(report: &HealthReport) -> Self {
         match (report.healthy, &report.body) {
             (true, Some(body)) => Posture::from_health(body),
@@ -110,11 +60,6 @@ impl Posture {
     }
 }
 
-/// The 401 a refused native request gets.
-///
-/// Machine-readable on purpose: `/rust/agent/run` used to die *mid-loop* with a
-/// 502 when the seam behind it answered 401, and "the front door refused before
-/// starting, and here is the reason" is a different and much better failure.
 pub fn refuse(posture: Posture, path: &str) -> Response {
     let detail = match posture {
         Posture::Closed => {
@@ -139,7 +84,6 @@ pub fn refuse(posture: Posture, path: &str) -> Response {
         .into_response()
 }
 
-/// Middleware: let the request through only while the worker's posture is open.
 pub async fn require_open_posture(
     State(state): State<Arc<GatewayState>>,
     request: Request,

@@ -1,16 +1,3 @@
-//! Query-time semantic embedding resolution over `POST /worker/embed`.
-//!
-//! When the Brain's persisted [`EmbeddingIndexContract`] (or stored vector
-//! table) names a semantic provider rather than `lattice-local-hash-v1`, query
-//! vectors must be embedded through the worker compute seam (`kind = "query"`)
-//! so retrieval scores cosine similarity in the same vector space as ingest.
-//!
-//! Hash-indexed stores (`lattice-local-hash-v1` or empty stores) bypass the
-//! seam completely — zero HTTP hops and byte-identical deterministic parity.
-//! When a semantic contract is active and `/worker/embed` times out (>1500 ms
-//! default) or errors, resolution returns a structured `degraded_reason` so
-//! hybrid/chat/recall callers fall back cleanly to lexical/BM25F + graph.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,35 +13,23 @@ use crate::bm25::QueryVectorOverride;
 use crate::policy::{resolve_policy, rewrite_query};
 use crate::vector_alignment::inspect_stored_embedding_models;
 
-/// Default upper bound on query-time `/worker/embed` calls before degrading to lexical.
 pub const DEFAULT_QUERY_EMBED_TIMEOUT_MS: u64 = 1_500;
-/// Environment override for query-time `/worker/embed` timeout (milliseconds).
 pub const QUERY_EMBED_TIMEOUT_ENV: &str = "LATTICEAI_QUERY_EMBED_TIMEOUT_MS";
 const EMBED_PATH: &str = "/worker/embed";
 
-/// Result of inspecting the store's embedding contract and (if semantic) embedding the query.
 #[derive(Debug, Clone, Default)]
 pub struct QueryEmbedResolution {
-    /// Active non-hash semantic contract detected in the store, if any.
     pub semantic_contract: Option<EmbeddingIndexContract>,
-    /// Query vector produced by `/worker/embed` (`kind = "query"`), when available.
     pub query_vector: Option<QueryVectorOverride>,
-    /// Reason query embedding degraded when `semantic_contract.is_some()` and `query_vector.is_none()`.
     pub degraded_reason: Option<String>,
 }
 
 impl QueryEmbedResolution {
-    /// True when the store uses a semantic contract and query embedding degraded.
     pub fn is_semantic_degraded(&self) -> bool {
         self.semantic_contract.is_some() && self.query_vector.is_none()
     }
 }
 
-/// Inspect `graph_meta` (`embedding_index_contract`) and `vector_embeddings` to
-/// determine whether query-time semantic embedding via `/worker/embed` is needed.
-///
-/// Returns `None` for empty stores and `lattice-local-hash-v1` stores so the
-/// synchronous in-process hash embedder runs with zero network overhead.
 pub fn active_semantic_contract(conn: &Connection) -> Option<EmbeddingIndexContract> {
     if let Some(contract) = GraphWriter::read_index_contract(conn) {
         if contract.is_semantic() && !contract.model_id.is_empty() && contract.dimension > 0 {
@@ -73,8 +48,6 @@ pub fn active_semantic_contract(conn: &Connection) -> Option<EmbeddingIndexContr
     ))
 }
 
-/// Effective query text used by `service_hybrid_search` / `hybrid_search` when
-/// policy rewriting applies (`has_pinned_weights == false`).
 pub fn effective_hybrid_query(query: &str, has_pinned_weights: bool) -> String {
     let trimmed = query.trim();
     if trimmed.is_empty() || has_pinned_weights {
@@ -88,7 +61,6 @@ pub fn effective_hybrid_query(query: &str, has_pinned_weights: bool) -> String {
     }
 }
 
-/// Effective query text used by `hybrid_bm25_vector_graph_search`.
 pub fn effective_graphrag_query(query: &str) -> String {
     let cleaned = clean_text(query);
     let (rewritten, _) = rewrite_query(&cleaned);
@@ -156,8 +128,6 @@ fn parse_query_embed_payload(payload: &Value) -> Result<QueryVectorOverride, Str
     })
 }
 
-/// Resolve a semantic query vector via `POST /worker/embed` (`kind = "query"`)
-/// for an already-inspected [`EmbeddingIndexContract`].
 pub async fn resolve_query_embedding_with_contract(
     contract: Option<EmbeddingIndexContract>,
     seam: Option<&WorkerSeamClient>,
@@ -211,8 +181,6 @@ pub async fn resolve_query_embedding_with_contract(
     }
 }
 
-/// Resolve a semantic query vector via `POST /worker/embed` (`kind = "query"`)
-/// whenever `store` carries a non-hash semantic index contract.
 pub async fn resolve_query_embedding(
     store: &Arc<Store>,
     seam: Option<&WorkerSeamClient>,

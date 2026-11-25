@@ -1,19 +1,3 @@
-"""The embedder report behind ``GET /api/embeddings/status``.
-
-``SearchService`` was v3's retrieval orchestrator: keyword, vector, graph and
-hybrid search, the fusion weights, the image-space query channel, the index
-rebuild. ``lattice-retrieval`` owns all of it now, and the worker keeps the one
-question that is a fact about *this* process — which embedding provider
-resolved, at what width, and whether it is the one that was asked for.
-
-The v11.6.0 boundary, stated because the payload used to blur it: this reports
-the **embedder**, not the index. ``embeddings_status`` called
-``graph.index_status()`` to fill an ``index`` block; the worker no longer opens
-that store, and index completeness is a native jobs route. The key stays in the
-response, empty, because a client that reads it should see "this answer has
-nothing to say about the index" rather than a missing field.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,11 +6,6 @@ from typing import Any, Dict, Mapping, Optional
 
 @dataclass
 class SearchService:
-    """The resolved embedder, shaped for the Models → Embeddings view."""
-
-    #: A ``ResolvedEmbedder`` — the same object ``phase_brain`` hands the
-    #: compute seams, so what this reports and what ``POST /worker/embed``
-    #: produces can never disagree.
     embedder: Any = None
 
     def embeddings_status(
@@ -35,12 +14,6 @@ class SearchService:
         resolved: Optional[Mapping[str, Any]] = None,
         refresh: bool = False,
     ) -> Dict[str, Any]:
-        """Report the active embedding provider for the Models → Embeddings UI.
-
-        ``state`` is one of ``production`` | ``fallback`` | ``unavailable`` so
-        the UI never shows a down provider as live. ``refresh`` re-probes the
-        provider rather than reading the health recorded at resolution time.
-        """
         resolved = dict(resolved or {})
         provider = getattr(self.embedder, "provider", None)
 
@@ -57,7 +30,7 @@ class SearchService:
                 AttributeError,
             ):
                 meta = {}
-        else:  # legacy LocalEmbeddingModel
+        else:
             meta = {
                 "provider": "hash",
                 "model": getattr(provider, "model_id", "lattice-local-hash-v1"),
@@ -77,7 +50,7 @@ class SearchService:
                 TypeError,
                 KeyError,
                 AttributeError,
-            ) as exc:  # pragma: no cover - defensive
+            ) as exc:
                 health = {"status": "unavailable", "detail": str(exc)}
 
         fell_back = bool(resolved.get("fell_back"))
@@ -99,17 +72,10 @@ class SearchService:
             "state": state,
             "fell_back": fell_back,
             "health": health,
-            # v12.0.0, additive: is what this worker embeds with *semantic*, and
-            # if not, is a real embedder already sitting on the disk? The hash
-            # fallback is honest about being a fallback but said nothing about
-            # what it could have been, so nobody ever switched.
             "semantic": grade != "fallback",
             "detected": dict(resolved.get("detected") or {}),
             "identity": f"{meta.get('model_id')}:{meta.get('dim')}",
             "detail": resolved.get("detail", ""),
-            # Index completeness is native (lattice-jobs). Present and empty:
-            # a reader learns this answer does not speak for the index, which
-            # a missing key would not tell them.
             "last_indexed_at": None,
             "index": {},
             "available_providers": list(resolved.get("available_providers") or []),

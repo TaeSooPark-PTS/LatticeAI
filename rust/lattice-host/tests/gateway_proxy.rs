@@ -1,5 +1,3 @@
-//! Gateway integration tests against a pure-Rust fake worker.
-
 mod common;
 
 use std::sync::Arc;
@@ -27,7 +25,6 @@ async fn host_health_reports_host_liveness_and_worker_health() {
     assert_eq!(body["status"], "degraded");
     assert_eq!(body["worker_healthy"], false);
 
-    // The gate flips as soon as the worker starts answering 2xx.
     worker.set_healthy(true);
     let body = json(
         client()
@@ -93,8 +90,6 @@ async fn the_host_namespace_is_never_proxied() {
 #[tokio::test]
 async fn the_native_search_namespace_is_answered_here_not_proxied() {
     let worker = FakeWorker::start().await;
-    // Pinned at a store that does not exist, so the answer depends on the
-    // router rather than on whatever brain the developer happens to have.
     let dir = tempfile::tempdir().expect("tempdir");
     let gateway = TestGateway::start_with_db(
         Arc::new(FixedProvider::new(worker.origin(), worker.port())),
@@ -102,7 +97,6 @@ async fn the_native_search_namespace_is_answered_here_not_proxied() {
     )
     .await;
 
-    // An unknown path under the namespace names the lanes that do exist …
     let response = client()
         .get(gateway.url("/rust/search/telepathy"))
         .send()
@@ -111,7 +105,6 @@ async fn the_native_search_namespace_is_answered_here_not_proxied() {
     assert_eq!(response.status(), 404);
     assert_eq!(json(response).await["error"], "unknown_search_route");
 
-    // … and a real lane is served natively (here: honestly, "no brain yet").
     for lane in ["hybrid", "keyword", "vector"] {
         let response = client()
             .get(gateway.url(&format!("/rust/search/{lane}")))
@@ -207,12 +200,6 @@ async fn post_bodies_are_forwarded_and_responses_echoed() {
     worker.shutdown();
 }
 
-/// The invite gate, and every other credential a redirect carries.
-///
-/// Before 11.5.2 the proxy's client followed the 3xx itself and answered with
-/// the *final* response, so `Set-Cookie` and `Location` were both destroyed:
-/// `GET /?code=…` came back as the "no invite" page and the gate was a hard
-/// dead end through the front door.
 #[tokio::test]
 async fn a_redirect_reaches_the_caller_with_its_cookie_and_location_intact() {
     let worker = FakeWorker::start().await;
@@ -246,10 +233,6 @@ async fn a_redirect_reaches_the_caller_with_its_cookie_and_location_intact() {
     worker.shutdown();
 }
 
-/// Starlette answers `/app` and `/static` with an *absolute* redirect built
-/// from the Host it saw — which, after this hop replaced it, is the worker's
-/// private port. Handed to the browser unchanged it would route around the
-/// front door.
 #[tokio::test]
 async fn an_absolute_location_naming_the_worker_is_rewritten_to_the_front_door() {
     let worker = FakeWorker::start().await;
@@ -277,7 +260,6 @@ async fn an_absolute_location_naming_the_worker_is_rewritten_to_the_front_door()
         "the internal port must not leak into a browser redirect: {location}"
     );
 
-    // …and a redirect that names somewhere else entirely is left alone.
     let response = client_no_redirect()
         .get(gateway.url("/redirect-external"))
         .send()
@@ -296,8 +278,6 @@ async fn an_absolute_location_naming_the_worker_is_rewritten_to_the_front_door()
     worker.shutdown();
 }
 
-/// The worker's only way to know the front door's name: `Host` is hop-by-hop
-/// and is replaced with the worker's own authority on the way out.
 #[tokio::test]
 async fn proxied_requests_state_who_asked_and_where() {
     let worker = FakeWorker::start().await;
@@ -305,8 +285,6 @@ async fn proxied_requests_state_who_asked_and_where() {
 
     let response = client()
         .get(gateway.url("/api/notes"))
-        // A caller's own claim must not be believed — the gateway states what
-        // it observed.
         .header("x-forwarded-for", "203.0.113.9")
         .header("x-forwarded-host", "evil.example")
         .send()
@@ -394,8 +372,6 @@ async fn sse_events_stream_through_before_the_response_ends() {
         Some("text/event-stream")
     );
 
-    // Read the first chunk only; the worker holds the stream open for another
-    // 400 ms afterwards, so receiving it early proves nothing buffered it.
     let mut response = response;
     let first = response
         .chunk()
@@ -428,9 +404,7 @@ async fn large_bodies_are_streamed_chunked_instead_of_buffered() {
     let worker = FakeWorker::start().await;
     let gateway = harness(&worker).await;
 
-    // Over the buffering threshold, so the proxy must forward it as an
-    // unknown-length stream rather than holding it in memory.
-    let payload = "ㄱ".repeat(600_000); // ~1.8 MiB of UTF-8
+    let payload = "ㄱ".repeat(600_000);
     assert!(payload.len() > 1024 * 1024);
     let response = client()
         .post(gateway.url("/echo"))

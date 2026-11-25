@@ -5,12 +5,6 @@ import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-/**
- * The one control a reader who cannot read the current UI still has to be able
- * to find. It has to announce which language is on (`aria-pressed`) — the
- * active style is the only other signal, and it is invisible to a screen
- * reader — and it has to survive being rendered in either of its two shapes.
- */
 
 beforeEach(() => {
   useAppStore.setState({ language: "ko" });
@@ -44,9 +38,6 @@ describe("LanguageSwitcher", () => {
 
   it("keeps the same controls in the roomy and the compact shape", () => {
     const { container, rerender } = render(<LanguageSwitcher />);
-    // The topbar renders the compact copy and the onboarding screens the full
-    // one; only the class differs, so the two must not drift into different
-    // controls.
     expect(container.firstElementChild?.className).toBe("language-switcher");
     expect(screen.getAllByRole("button")).toHaveLength(2);
 

@@ -1,5 +1,3 @@
-"""Shared Brain Core utility helpers."""
-
 from __future__ import annotations
 
 import hashlib
@@ -18,25 +16,16 @@ def parse_iso(value: Optional[str]) -> Optional[datetime]:
 
 
 def local_now() -> datetime:
-    """Return offset-free UTC wall-clock time matching Rust's ``SystemClock``.
-
-    Persisted rows across Brain Core and ``lattice-core`` store offset-free
-    ``YYYY-MM-DDTHH:MM:SS`` strings. Emitting naive UTC on both sides preserves
-    lexicographical compatibility with existing rows while eliminating host
-    timezone skew (such as a 9-hour offset on UTC+9 machines).
-    """
 
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def now_iso(*, timespec: str = "seconds") -> str:
-    """Return one consistently formatted offset-free UTC timestamp."""
 
     return local_now().isoformat(timespec=timespec)
 
 
 def utc_now_iso(*, timespec: str = "auto") -> str:
-    """Return an offset-aware UTC timestamp."""
 
     return datetime.now(timezone.utc).isoformat(timespec=timespec)
 

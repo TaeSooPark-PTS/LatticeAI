@@ -22,8 +22,6 @@ fn semantic_vectors_store_actual_contract_and_detect_reindex_without_hash_fallba
     let dir = tempfile::tempdir().expect("tempdir");
     let (store, writer) = open_writer(dir.path());
 
-    // Writer defaults to LocalEmbeddingModel (lattice-local-hash-v1:384), yet
-    // real provider vectors from EmbeddingGemma 2 (dim 4 here) must land intact.
     let doc_vec = SuppliedVector {
         model_id: "huggingface:google/embeddinggemma-2:768".into(),
         dim: 4,
@@ -110,7 +108,6 @@ fn semantic_vectors_store_actual_contract_and_detect_reindex_without_hash_fallba
         })
         .unwrap();
 
-    // Switching to another semantic provider/dimension triggers reindex_required.
     let mlx_vec = SuppliedVector {
         model_id: "mlx:mlx-community/all-MiniLM-L6-v2".into(),
         dim: 3,
@@ -138,7 +135,7 @@ fn supplied_vector_dimension_mismatch_fails_closed() {
     let bad_vec = SuppliedVector {
         model_id: "openai:text-embedding-3-small".into(),
         dim: 4,
-        values: vec![0.1, 0.2], // declared dim=4, values len=2
+        values: vec![0.1, 0.2],
     };
     let err = writer
         .ingest_content(&IngestContentRequest {
@@ -151,7 +148,6 @@ fn supplied_vector_dimension_mismatch_fails_closed() {
         .expect_err("dimension mismatch must error");
     assert!(err.to_string().contains("dimension mismatch"));
 
-    // EmbeddingIndexContract::validate_vector also rejects non-finite values.
     let contract =
         EmbeddingIndexContract::from_semantic("openai", "openai:text-embedding-3-small", 3);
     assert!(contract.validate_vector(&[0.1, f64::NAN, 0.3]).is_err());
@@ -317,7 +313,6 @@ fn knowledge_lifecycle_states_metadata_and_edges_round_trip() {
         ])
         .expect("nodes");
 
-    // 1. Pending verification -> verified Active with authority & approver.
     let pending = writer
         .set_node_lifecycle(
             "policy:v2",
@@ -343,7 +338,6 @@ fn knowledge_lifecycle_states_metadata_and_edges_round_trip() {
     assert_eq!(verified.authority.as_deref(), Some("Security Council"));
     assert!(verified.version >= 2);
 
-    // 2. Mark v1 superseded by v2 via curation method -> updates lifecycle + SUPERSEDES edge.
     let sup = writer
         .mark_superseded("policy:v1", "policy:v2")
         .expect("supersede");
@@ -356,7 +350,6 @@ fn knowledge_lifecycle_states_metadata_and_edges_round_trip() {
     assert_eq!(v1_lc.superseded_by.as_deref(), Some("policy:v2"));
     assert!(v1_lc.deprecated_at.is_some());
 
-    // 3. Mark disputed -> sets both sides disputed + CONFLICTS_WITH edge.
     let disputed = writer
         .mark_disputed(
             "policy:v2",
@@ -373,7 +366,6 @@ fn knowledge_lifecycle_states_metadata_and_edges_round_trip() {
         .expect("present");
     assert_eq!(alt_lc.state, KnowledgeLifecycleState::Disputed);
 
-    // 4. Explicit Deprecated transition with deprecated_at + read_lifecycle_from_metadata helper.
     writer
         .set_node_lifecycle(
             "policy:alt",

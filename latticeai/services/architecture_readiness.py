@@ -1,17 +1,3 @@
-"""Machine-checkable architecture readiness gates for release work.
-
-The current release keeps the major architecture priorities under an explicit
-release contract. Agent permission gates, ToolRegistry, central Config, the
-worker-only composition root, and the compute-side Knowledge Graph helpers
-must remain discoverable, ordered, and backed by tests.
-
-v11.6.0 retargeted every symbol probe at the worker-only tree: the product
-HTTP surface, the Python agent loop, the graph writer and the orchestration
-runtimes now live in Rust. Assertions were not deleted — their paths and
-symbols now name the modules that still own those concerns in Python, or the
-worker seam that is the Python half of a native owner.
-"""
-
 from __future__ import annotations
 
 import importlib
@@ -19,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-ARCHITECTURE_VERSION_TARGET = "14.1.1"
+ARCHITECTURE_VERSION_TARGET = "14.1.2"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -41,9 +27,6 @@ class ArchitectureGate:
 
 
 def _symbol_exists(dotted: str) -> bool:
-    """Verify a dotted path like 'pkg.mod.Class' actually imports and has the attr.
-    Non-symbol evidence (with space/* or docs) treated as non-blocking here.
-    """
     if not dotted or " " in dotted or "*" in dotted or "::" in dotted:
         return True
     try:
@@ -65,11 +48,6 @@ def _symbol_exists(dotted: str) -> bool:
 
 
 def _package_sources(root: Path, relative_package: str) -> List[str]:
-    """Every ``*.py`` in a package, as repo-relative paths.
-
-    Returns the missing marker path when the package is absent, so a gate that
-    scans a package fails the same way it would for a deleted single file.
-    """
     directory = root / relative_package
     sources = sorted(directory.glob("*.py")) if directory.is_dir() else []
     if not sources:
@@ -89,12 +67,6 @@ def _forbidden_patterns(
 
 
 def legacy_shim_report(root: Path | None = None) -> Dict[str, Any]:
-    """Sunset report for the root shim layer.
-
-    ``latticeai.core.legacy_compatibility`` was deleted with the product
-    server. The remaining fact this gate still has to prove is: no root
-    ``*.py`` is left, including ``server.py``.
-    """
     if root is None:
         root = Path(__file__).resolve().parents[2]
     lingering = sorted(path.name for path in root.glob("*.py"))
@@ -132,10 +104,6 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         "latticeai/app_factory.py",
         ["build_runtime_namespace(locals", "dict(locals())"],
     )
-    # v11.3.0: model_runtime.py became a package. The ambient-state patterns
-    # below could reappear in any of its submodules, so every file in the
-    # package is scanned — checking only __init__.py would leave the gate
-    # blind one directory down.
     model_runtime_forbidden = [
         finding
         for relative_path in _package_sources(root, "latticeai/services/model_runtime")
@@ -166,10 +134,6 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             ["from fastapi import HTTPException", "raise HTTPException"],
         )
     )
-    # The Python agent loop package is gone, and 11.8.0 removed the last of its
-    # gate tables (``core/agent_permission.py``) once the Rust goldens froze.
-    # The compatibility alias is scanned on the one Python file that still
-    # talks about permission mode: the worker seam the native loop calls.
     agent_alias_forbidden = _forbidden_patterns(
         root,
         "latticeai/api/agent_worker_seam.py",
@@ -279,9 +243,6 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             title="Legacy shim sunset plan",
             status="complete" if shim_report["status"] == "managed" else "incomplete",
             evidence=[
-                # The standalone `check_legacy_debt.mjs` scanner retired once
-                # the shim layer hit zero; `legacy_shim_report` *is* the check
-                # now, and its status is what this gate reads.
                 "latticeai.services.architecture_readiness.legacy_shim_report",
                 "tests/unit/test_legacy_root_shims.py",
             ],

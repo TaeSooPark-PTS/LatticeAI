@@ -1,5 +1,3 @@
-"""Multilingual documentation and release version markers inspection/sync helper."""
-
 from __future__ import annotations
 
 import re
@@ -47,7 +45,6 @@ _SEMVER_CAP = r"(\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.]+)?)"
 
 
 def _replace_artifacts_for_version(text: str, old_ver: str, new_ver: str) -> str:
-    """Replace exact current-version artifact names while leaving historical refs intact."""
     if not old_ver or old_ver == new_ver:
         return text
     esc = re.escape(old_ver)
@@ -123,7 +120,6 @@ def _update_readme_marker(text: str, version: str) -> Tuple[bool, str, str, bool
     pattern = rf"(The current release is \*\*){_SEMVER_CAP}(\s+[—-]\s+[^*]+\*\*)"
     m = re.search(pattern, text)
     if not m:
-        # Fallback to `Current release: **X.Y.Z` if formatted with banner style
         alt = rf"(Current release:\s+\*\*){_SEMVER_CAP}(\s*[—-]?[^*]*\*\*)"
         m = re.search(alt, text)
         if not m:
@@ -164,8 +160,6 @@ def _update_readme_marker(text: str, version: str) -> Tuple[bool, str, str, bool
 
 
 def _update_release_marker(text: str, version: str) -> Tuple[bool, str, str, bool]:
-    # Match the top release heading only (`## vX.Y.Z — ...` or `## vX.Y.Z`)
-    # and scope updates to the top block so historical release notes stay untouched.
     m = re.search(rf"(?m)^## v{_SEMVER_CAP}\b", text)
     if not m:
         return False, "", text, False
@@ -219,11 +213,6 @@ def inspect_or_update_marker_file(
     text: str,
     version: str,
 ) -> Tuple[bool, str, str, bool]:
-    """Inspect and update the active release version marker in a documentation file.
-
-    Returns ``(ok, current_version, updated_text, changed)``.
-    Historical changelog/release sections are preserved unmodified.
-    """
     if rel in CURRENT_RELEASE_BANNER_FILES:
         return _update_banner_marker(rel, text, version)
     if rel == "README.md":
@@ -272,7 +261,6 @@ def bump_markers(
     repo: Optional[Path] = None,
     files: Optional[Sequence[str]] = None,
 ) -> int:
-    """Inspect or synchronize documentation & release version markers."""
     from scripts.bump_version.targets import is_valid_semver, resolve_repo
 
     if not is_valid_semver(version):

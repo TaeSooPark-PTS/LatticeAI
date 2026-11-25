@@ -1,5 +1,3 @@
-//! Replay browser validation / private-host / auth branches.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -50,7 +48,6 @@ async fn boot(data: &Path) -> (String, String) {
         .sessions()
         .create("user:owner", Some("owner@lattice.test"));
 
-    // A tiny FakeWorker so the 503 branch is not the only one we can hit.
     let worker = spawn_fake_worker().await;
     let seam = WorkerSeamClient::new(&worker).unwrap();
     let runtime = RuntimeConfig::resolve(

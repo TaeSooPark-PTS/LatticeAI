@@ -2,7 +2,7 @@
 
 # LatticeAI 프로젝트 AGENTS.md
 
-현재 릴리스: **14.1.1 — Living Synthesis**.
+현재 릴리스: **14.1.2 — Living Synthesis**.
 
 이 파일은 릴리스 문서 게이트(`scripts/check_current_release_docs.mjs`)의 일부입니다. 위 현재 릴리스 표기는 버전 상향(version bump)과 동일한 커밋에서 반드시 함께 업데이트되어야 하며, 이를 통해 릴리스 이후 `AGENTS.md`가 뒤처지는 현상을 방지합니다.
 
@@ -310,6 +310,7 @@ grep -R "ltcai-[0-9]\+\.[0-9]\+\.[0-9]\+\.vsix" -n README.md RELEASE.md docs/*.m
 - 대규모 리팩터링 후 빌드 생략
 - 릴리스/버전 작업 후 오래된 현재 릴리스 문서 방치
 - 안전하지 않은 `dist/*` 배포 명령어 문서화
+- 소스 코드에 어떤 종류의 주석도 작성하지 마세요(인라인 주석, 블록 주석, 독스트링, JSDoc, `# noqa`, `# type: ignore`, `// @ts-expect-error`, `// eslint-disable` 등 린터/타입 체커 억제 지시문 포함). 항상 근본 원인이 되는 코드를 직접 수정하세요 (`npm run check:no-comments`로 강제됨).
 
 ---
 

@@ -6,17 +6,8 @@ import { navigateHash } from "@/features/brain/navigation";
 import { t, type Language } from "@/i18n";
 import { fmtNumber } from "@/lib/utils";
 
-/** How many rows a group shows before it says how many more there are. */
 const VISIBLE = 8;
 
-/**
- * Where each kind of card hands off. These are the hashes the shell already
- * publishes (`routes.ts`), not new ones: memory search for material, the
- * knowledge map for ideas and for facts that changed, the conversation home for
- * talk. Inventing a query string here would have produced links that resolve to
- * the right screen and then ignore what they carry — nothing in this app reads
- * one yet.
- */
 const OPEN_MEMORY = "/hybrid-search";
 const OPEN_MAP = "/knowledge-graph";
 const OPEN_CONVERSATIONS = "/brain";
@@ -29,15 +20,6 @@ type StoryItem = {
   openLabel: string;
 };
 
-/**
- * One day, told as four plain groups.
- *
- * Everything here is a re-reading of stored rows — no summary is generated and
- * no model is called — so the copy stays descriptive. Machine tokens
- * (`web_url`, `fact_superseded`) are translated through explicit tables rather
- * than printed: a reader in basic mode should never meet the storage layer's
- * vocabulary.
- */
 export function DayStory({
   day,
   loading,
@@ -120,8 +102,6 @@ function StoryGroup({
   language: Language;
 }) {
   const shown = items.slice(0, VISIBLE);
-  // `count` is the day's true total; `items` is what the server sent (capped at
-  // 200) and `shown` is what fits. The remainder is stated rather than dropped.
   const remaining = Math.max(count - shown.length, 0);
   return (
     <article className="chronicle-group" data-testid="chronicle-group">
@@ -181,8 +161,6 @@ function entityItems(day: ChronicleDay, language: Language): StoryItem[] {
 function conversationItems(day: ChronicleDay, language: Language): StoryItem[] {
   const openLabel = t(language, "chronicle.open.conversation");
   return day.groups.conversations.map((conversation, position) => ({
-    // Loose messages collapse into one card whose id is the empty string, so the
-    // list position is what keeps React keys unique on such a day.
     key: conversation.conversation_id || `loose-${position}`,
     title: conversation.preview || t(language, "chronicle.conversation.untitled"),
     meta: t(language, "chronicle.conversation.messages", { count: fmtNumber(conversation.messages) }),
@@ -202,13 +180,6 @@ function changeItems(day: ChronicleDay, language: Language): StoryItem[] {
   }));
 }
 
-/**
- * Storage words for where a source came from, said the way a person would.
- *
- * Written out as a table of literal keys rather than composed from the token:
- * `tests/unit/test_layout_rebuild_i18n_orphans.py` reads the source for the key
- * string, and a template would make every entry here look like dead copy.
- */
 const SOURCE_TYPE_KEYS: Record<string, string> = {
   upload: "chronicle.sourceType.upload",
   note: "chronicle.sourceType.note",
@@ -222,18 +193,12 @@ export function sourceTypeLabel(sourceType: string, language: Language): string 
   return t(language, SOURCE_TYPE_KEYS[sourceType] || "chronicle.sourceType.other");
 }
 
-/**
- * Node classes ("Concept", "Document") are schema words. The shell already
- * carries a translation for the ones this product uses, so reuse it rather than
- * keeping a second table that would drift.
- */
 export function entityTypeLabel(type: string, language: Language): string {
   const key = `ui.entity.${type}`;
   const label = t(language, key);
   return label === key ? t(language, "chronicle.entityType.other") : label;
 }
 
-/** The four `changes.kind` tokens, plus an honest fallback for a fifth. */
 const CHANGE_KIND_KEYS: Record<string, string> = {
   fact_superseded: "chronicle.change.fact_superseded",
   fact_retired: "chronicle.change.fact_retired",

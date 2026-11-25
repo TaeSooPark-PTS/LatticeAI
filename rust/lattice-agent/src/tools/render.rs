@@ -1,30 +1,9 @@
-//! `create_docx` / `create_xlsx` / `create_pptx` / `create_pdf` — the split.
-//!
-//! These four are the plan's "render flip": the builders need python-docx,
-//! openpyxl, python-pptx and reportlab, so the **compute** stays in the worker
-//! and only the **write** moves. The worker answers bytes
-//! (`POST /worker/render/{kind}`, WP-W2) and this side does what the Python
-//! handler did after `document.save(path)`: resolve the target through the
-//! creator's own output directory, write it, and report the size on disk.
-//!
-//! The counts in the result (`rows`, `slides`) are the ones Python derived from
-//! the *arguments* — `len(rows)` and `1 + len(slides)`, the title slide being
-//! the one the builder adds. W2 §3 reports the same numbers beside the bytes, so
-//! the seam's answer is preferred and the argument-derived count is the fallback
-//! for a builder that sends none: two ways to be right, never two answers.
-//!
-//! One reconciliation with W2 lives here: its request models type `title`,
-//! `body`, `sheet_name` and `filename` as `str`, while the handlers accepted
-//! whatever the model produced and stringified it themselves. `_body_to_str`
-//! and the `or`-defaults therefore run on this side, before the call.
-
 use serde_json::{json, Map, Value};
 
 use crate::seam::worker::WorkerClient;
 use crate::tools::args;
 use crate::tools::sandbox::{ToolError, Workspace};
 
-/// tool → (render kind, default filename).
 const CREATORS: [(&str, &str, &str); 4] = [
     ("create_docx", "docx", "document.docx"),
     ("create_pdf", "pdf", "document.pdf"),
@@ -32,34 +11,24 @@ const CREATORS: [(&str, &str, &str); 4] = [
     ("create_xlsx", "xlsx", "spreadsheet.xlsx"),
 ];
 
-/// Whether `tool` is one of the four document creators.
 pub fn is_creator(tool: &str) -> bool {
     CREATORS.iter().any(|(name, _, _)| *name == tool)
 }
 
-/// `rows` / `slides` may arrive as a JSON **string**; `_h_create_xlsx` and
-/// `_h_create_pptx` parse it before the builder sees it.
 fn listed(args: &Map<String, Value>, key: &str) -> Result<Vec<Value>, ToolError> {
     let raw = match args.get(key) {
         None => return Ok(Vec::new()),
-        Some(Value::String(text)) => serde_json::from_str::<Value>(text).map_err(|error| {
-            // `json.loads` raises `JSONDecodeError`, which the seam does not
-            // catch — a 500. Named as a deviation: an error step instead.
-            ToolError::tool(format!("{key} is not valid JSON: {error}"))
-        })?,
+        Some(Value::String(text)) => serde_json::from_str::<Value>(text)
+            .map_err(|error| ToolError::tool(format!("{key} is not valid JSON: {error}")))?,
         Some(other) => other.clone(),
     };
     match raw {
         Value::Array(items) => Ok(items),
-        // `slides or []` tolerates a falsy value; `rows` is validated by the
-        // builder ("Rows must be a list of lists.") and re-checked below.
         Value::Null => Ok(Vec::new()),
         other => Ok(vec![other]),
     }
 }
 
-/// `_body_to_str`: a list becomes its items joined by a blank line, anything
-/// else is `str(body or "")`.
 fn body_to_str(body: Option<&Value>) -> String {
     match body {
         Some(Value::Array(items)) => items
@@ -72,7 +41,6 @@ fn body_to_str(body: Option<&Value>) -> String {
     }
 }
 
-/// Build one document: compute in the worker, write here.
 pub async fn create_document(
     worker: &WorkerClient,
     workspace: &Workspace,
@@ -84,16 +52,8 @@ pub async fn create_document(
             "'{tool}' has no document output target."
         )));
     };
-    // `a.get("filename", default)`, then `_safe_filename(name or "artifact…")`:
-    // an absent key is the handler default and a *present* falsy one is the
-    // creator's own `artifact.<ext>` fallback, which `safe_filename` applies.
     let filename = args::defaulted_str(arguments, "filename", default_name);
 
-    // W2's request models type `title`, `body`, `sheet_name` and `filename` as
-    // `str`, while the Python handlers accepted whatever the model produced and
-    // stringified it themselves (`_body_to_str`, `str(title)`, `sheet_name or
-    // "Sheet1"`). The coercion moves here, so a list body still becomes a
-    // document instead of a 422 from a stricter schema.
     let mut request = Map::new();
     request.insert("filename".into(), json!(filename));
     let mut extra: Option<(&str, usize)> = None;
@@ -112,9 +72,6 @@ pub async fn create_document(
         }
         "pptx" => {
             let slides = listed(arguments, "slides")?;
-            // The builder always adds a title slide, so the deck is one longer
-            // than the caller's list — that is what `len(presentation.slides)`
-            // counted.
             extra = Some(("slides", slides.len() + 1));
             request.insert("slides".into(), Value::Array(slides));
             request.insert(
@@ -131,8 +88,6 @@ pub async fn create_document(
         }
     }
 
-    // The target is resolved before the call: a filename that escapes the
-    // workspace must not cost a document render first.
     let relative = crate::tools::documents::document_output_target(tool, &filename)
         .ok_or_else(|| ToolError::tool(format!("'{tool}' has no document output target.")))?;
     let _precheck = workspace.resolve(&relative)?;
@@ -142,16 +97,12 @@ pub async fn create_document(
         .await
         .map_err(ToolError::tool)?;
 
-    // Re-validate containment immediately at write time via handle-relative
-    // descriptor open (closes the async render TOCTOU window).
     let target = workspace.resolve(&relative)?;
     let written = crate::tools::safe_io::safe_write_bytes(workspace, &target, &rendered.content)?;
 
     let mut result = Map::new();
     result.insert("path".into(), json!(workspace.relative(&target)));
     if let Some((key, derived)) = extra {
-        // W2 §3 reports the count at the top level; a nested `meta` is honoured
-        // too, and the argument-derived count stands when neither is present.
         let reported = rendered
             .report
             .get(key)
@@ -330,8 +281,6 @@ mod tests {
             &WorkerClient::new(&server.origin),
             &workspace,
             "create_docx",
-            // A *list* body is what `_body_to_str` existed for, and W2's model
-            // types the field `str` — the join has to happen on this side.
             &args(json!({"title": 7, "body": ["one", "two"]})),
         )
         .await
@@ -397,7 +346,6 @@ mod tests {
     }
 }
 
-/// A one-route fake worker, shared by this module's tests.
 #[cfg(test)]
 pub(crate) mod tests_support {
     use std::sync::{Arc, Mutex};
@@ -424,7 +372,6 @@ pub(crate) mod tests_support {
         }
     }
 
-    /// Start a server that answers every `/worker/render/*` with `body`.
     pub(crate) async fn render_server(body: Value) -> RenderServer {
         let seen: Arc<Mutex<Vec<Value>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&seen);

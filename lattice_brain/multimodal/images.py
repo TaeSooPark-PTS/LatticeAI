@@ -1,12 +1,3 @@
-"""A picture as a first-class memory: what can be observed about one file.
-
-:func:`extract_image_facts` observes one file — size, OCR, caption, vector, each
-with its own status — and answers with :class:`ImageFacts`. Turning those facts
-into an ``Image`` node with its chunks, concepts and source link was the other
-half of this module; ``lattice-core``'s graph write engine owns it since
-v11.6.0, and this side never learned what a node was anyway.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -14,11 +5,6 @@ import io
 import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
-
-try:
-    from PIL.Image import DecompressionBombError as _DecompressionBombError
-except ImportError:  # pragma: no cover - Pillow is optional for lattice_brain imports
-    _DecompressionBombError = ValueError  # type: ignore[assignment,misc]
 
 from ..quiet import quiet
 from .common import (
@@ -29,29 +15,29 @@ from .common import (
 )
 from .ports import MultimodalPorts
 
+_DecompressionBombError: type[Exception]
+try:
+    from PIL.Image import DecompressionBombError as _DecompressionBombError
+except ImportError:
+    _DecompressionBombError = ValueError
+
 
 @dataclass
 class ImageFacts:
-    """Everything observed about one image, and the status of each attempt."""
-
     path: str
     width: Optional[int] = None
     height: Optional[int] = None
     image_format: Optional[str] = None
     mode: Optional[str] = None
-    #: ``ok`` | ``empty`` | ``unavailable`` | ``failed`` | ``skipped``
     ocr_status: str = "skipped"
     ocr_text: str = ""
     ocr_detail: str = ""
-    #: ``ok`` | ``unavailable``
     caption_status: str = "unavailable"
     caption: Optional[str] = None
-    #: ``ok`` | ``unavailable`` | ``failed``
     embedding_status: str = "unavailable"
     embedding: Optional[List[float]] = None
     embedding_detail: str = ""
     thumbnail: Optional[str] = None
-    #: Set when the file could not be opened as an image at all.
     error: str = ""
 
     @property
@@ -59,12 +45,10 @@ class ImageFacts:
         return not self.error
 
     def index_text(self) -> str:
-        """The text a search engine can actually match this image on."""
         parts = [part for part in (self.caption, self.ocr_text) if part]
         return "\n".join(parts).strip()[:MAX_INDEX_TEXT_CHARS]
 
     def as_metadata(self) -> Dict[str, Any]:
-        """Flat, JSON-safe view stored on the graph node."""
         payload: Dict[str, Any] = {
             "modality": MODALITY_IMAGE,
             "width": self.width,
@@ -92,20 +76,12 @@ class ImageFacts:
 
 
 def _open_image(path: str) -> Any:
-    """Pillow's ``Image.open`` behind a guarded import."""
-    from PIL import Image  # local import: keeps the module importable without it
+    from PIL import Image
 
     return Image.open(str(path))
 
 
 def _thumbnail_data_uri(image: Any, edge: int = THUMBNAIL_EDGE) -> Optional[str]:
-    """A tiny inline PNG the Evidence panel can render with no new route.
-
-    Serving the original file would mean either a new static route over the
-    user's disk or reusing ``/local/serve``, which exists precisely to make
-    every read pass an explicit approval. A 96px data URI on the node dodges
-    both: it is already inside the graph the user is looking at.
-    """
     try:
         small = image.copy()
         small.thumbnail((edge, edge))
@@ -123,9 +99,8 @@ def _thumbnail_data_uri(image: Any, edge: int = THUMBNAIL_EDGE) -> Optional[str]
 
 
 def _run_ocr(image: Any) -> Dict[str, str]:
-    """OCR through ``pytesseract`` when it is installed, honestly otherwise."""
     try:
-        import pytesseract  # optional local binary + wrapper
+        import pytesseract
     except (ImportError, OSError, RuntimeError) as exc:
         return {"status": "unavailable", "text": "", "detail": str(exc)}
     try:
@@ -151,12 +126,6 @@ def extract_image_facts(
     ocr: bool = True,
     thumbnail: bool = True,
 ) -> ImageFacts:
-    """Observe one image: size, OCR, caption, vector — each with its status.
-
-    Never raises. An unreadable file returns ``ImageFacts(error=...)`` so the
-    caller can record "we saw this file and could not read it" instead of
-    losing the memory entirely.
-    """
     ports = ports or MultimodalPorts()
     facts = ImageFacts(path=str(path))
     try:
@@ -198,7 +167,6 @@ def extract_image_facts(
 def _safe_caption(
     captioner: Callable[[str], Optional[str]], path: str
 ) -> Optional[str]:
-    """Ask the VLM; a failure means *no caption*, never an invented one."""
     try:
         caption = captioner(path)
     except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
@@ -232,21 +200,12 @@ def _apply_vision_embedding(
     facts.embedding_status = "ok"
 
 
-# ── extraction quality for pictures ──────────────────────────────────────────
 def image_quality_score(facts: ImageFacts) -> Dict[str, Any]:
-    """``{"score": float, "reasons": [...]}`` for an image memory.
-
-    Deliberately *not* a judgement about the photograph: it scores how much of
-    this image the Brain can actually retrieve later. Pixels alone are worth
-    little to a text query, OCR text is worth the most, a caption is worth a
-    lot, and a vector is worth something even without either.
-    """
     if not facts.readable:
         return {"score": 0.0, "reasons": ["image_unreadable"]}
     reasons: List[str] = []
-    score = 0.15  # we know it is an image and how big it is
+    score = 0.15
     if facts.ocr_text:
-        # 400+ characters of recognized text is a page, not a label.
         score += 0.45 * min(1.0, len(facts.ocr_text) / 400.0)
         reasons.append("ocr_text")
     elif facts.ocr_status == "unavailable":

@@ -1,5 +1,3 @@
-"""Modular version synchronization CLI package for Lattice AI."""
-
 from __future__ import annotations
 
 from scripts.bump_version.cargo import (

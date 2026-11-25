@@ -1,13 +1,3 @@
-//! Multi-hop reasoning path, bridge concept, and epistemic conflict synthesis
-//! over a scoped Knowledge Graph neighborhood (`v13.1.0`).
-//!
-//! When a user inspects a node in `/app` (`GET /api/graph/node` with
-//! `include_neighbors=true&include_reasoning=true`), this module derives
-//! deterministic 1-hop and 2-hop reasoning chains, intermediate bridge
-//! concepts, and neighborhood contradictions/supersessions directly from the
-//! already-scoped `traverse` neighborhood — zero extra SQL queries and the
-//! exact same `reasoning_paths` + `synthesis` JSON shape used by GraphRAG.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_core::round6;
@@ -49,8 +39,6 @@ fn clamped_weight(edge: &Value) -> f64 {
         .clamp(0.05, 1.0)
 }
 
-/// Synthesize multi-hop reasoning chains, bridge concepts, and conflict edges
-/// centered on `seed_id` from a `graph_reads::traverse` neighborhood payload.
 pub fn synthesize_neighborhood(seed_id: &str, neighborhood: &Value) -> Value {
     let seed = seed_id.trim();
     let nodes = neighborhood
@@ -292,7 +280,6 @@ mod tests {
         let result = synthesize_neighborhood("n1", &neighborhood);
         let paths = result["reasoning_paths"].as_array().expect("paths");
         assert_eq!(paths.len(), 3);
-        // Contradiction/supersede path sorts first so epistemic conflicts are never buried.
         assert_eq!(paths[0]["target_id"], "n4");
         assert_eq!(paths[0]["is_contradiction"], true);
 

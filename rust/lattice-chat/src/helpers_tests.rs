@@ -5,7 +5,6 @@ fn language_detection_counts_characters() {
     assert_eq!(detect_language("무엇을 기억하고 있나요?"), "ko");
     assert_eq!(detect_language("what do you remember?"), "en");
     assert_eq!(detect_language(""), "en");
-    // 1 Hangul character in 19 is 5.2 %, over the threshold.
     assert_eq!(detect_language("aaaaaaaaaaaaaaaaaa가"), "ko");
     assert_eq!(detect_language("aaaaaaaaaaaaaaaaaaaa가"), "en");
     assert_eq!(

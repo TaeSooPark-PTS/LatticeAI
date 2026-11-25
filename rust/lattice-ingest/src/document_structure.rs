@@ -1,16 +1,3 @@
-//! Document structure & multimodal ingestion (PDF/DOCX/PPTX/XLSX, semantic tables,
-//! captions, page locators, and optional local OCR / vision descriptions).
-//!
-//! Addresses Review Sections 4.2 #3 and 15 (P1 — 증분 수집 및 멀티모달):
-//! 1. Preserves heading hierarchy, pages, slides, sheets, captions, and embedded images
-//!    as first-class [`StructureChild`] and [`NodeSpec`]/[`EdgeSpec`] records.
-//! 2. Preserves tabular data (`tables` JSON arrays as well as Markdown pipe tables and
-//!    CSV/TSV grids) as header-anchored row/column semantic chunks rather than flattening
-//!    cells into unstructured whitespace.
-//! 3. Connects optional local OCR / vision providers (`OcrVisionProvider`) so scanned
-//!    pages and images contribute `ImageText` nodes linked to their parent document/page
-//!    with explicit `page_number`, `caption`, and `ocr_confidence` metadata.
-
 use lattice_core::db::CoreError;
 use lattice_core::graph_write::pyaux::sha256_text;
 use lattice_core::graph_write::types::{ChunkPiece, EdgeSpec, NodeSpec, StructureChild};
@@ -24,10 +11,8 @@ use crate::document_structure_parsers::{
 };
 use crate::sections;
 
-/// Maximum rows grouped into a single semantic table chunk before repeating headers.
 pub const MAX_ROWS_PER_TABLE_CHUNK: usize = 12;
 
-/// One OCR or vision-model observation extracted from a scanned page or embedded image.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct OcrVisionObservation {
     pub image_key: String,
@@ -38,7 +23,6 @@ pub struct OcrVisionObservation {
     pub model_or_engine: String,
 }
 
-/// Optional local OCR / vision port for scanned PDFs and image assets.
 pub trait OcrVisionProvider: Send + Sync {
     fn engine_id(&self) -> &str;
     fn describe_or_ocr(
@@ -49,23 +33,15 @@ pub trait OcrVisionProvider: Send + Sync {
     ) -> Option<OcrVisionObservation>;
 }
 
-/// Extracted structural & multimodal representation for one document.
 #[derive(Debug, Clone, Default)]
 pub struct DocumentStructurePlan {
-    /// Summary dictionary persisted under `metadata.structure`.
     pub structure: Map<String, Value>,
-    /// Native `Slide` / `Page` / `Sheet` / `Image` child specs for `GraphWriter::ingest_file`.
     pub structure_nodes: Vec<StructureChild>,
-    /// Extracted heading titles preserved even when file extension uses `plain` chunking (e.g. PDF/DOCX).
     pub headings: Vec<String>,
-    /// Semantic row/column-preserving table chunks (`strategy = "table_structured"`).
     pub table_chunks: Vec<ChunkPiece>,
-    /// Multimodal OCR / caption observations to materialize as `ImageText` graph nodes.
     pub multimodal_observations: Vec<OcrVisionObservation>,
 }
 
-/// Parse structured parser output + inline Markdown/CSV tables + page/caption markers
-/// into a [`DocumentStructurePlan`].
 pub fn extract_document_structure(
     filename: &str,
     mime_type: &str,
@@ -76,7 +52,6 @@ pub fn extract_document_structure(
     let mut plan = DocumentStructurePlan::default();
     let lower_name = filename.to_lowercase();
 
-    // 1. Pages (from parser `pages` array OR `[Page N]` / `\x0c` form-feed markers in PDF text).
     let mut page_count = 0usize;
     if let Some(pages) = extracted.get("pages").and_then(Value::as_array) {
         for (idx, page) in pages.iter().enumerate() {
@@ -103,7 +78,6 @@ pub fn extract_document_structure(
             });
             page_count += 1;
 
-            // Scanned PDF page with empty text -> invoke optional local OCR provider!
             if preview.is_empty() {
                 if let Some(provider) = ocr_provider {
                     let mut img_req = Map::new();
@@ -130,7 +104,6 @@ pub fn extract_document_structure(
         }
     }
 
-    // 2. Slides (PPTX / presentation `slides` array).
     let mut slide_count = 0usize;
     if let Some(slides) = extracted.get("slides").and_then(Value::as_array) {
         for (idx, slide) in slides.iter().enumerate() {
@@ -170,7 +143,6 @@ pub fn extract_document_structure(
         }
     }
 
-    // 3. Sheets & structured tables (XLSX `sheets` / `tables` + Markdown pipe tables + CSV).
     let mut sheet_count = 0usize;
     let mut table_count = 0usize;
 
@@ -230,7 +202,6 @@ pub fn extract_document_structure(
         }
     }
 
-    // Also parse inline Markdown pipe tables (`| Col A | Col B |`) from `text`!
     for (idx, md_table) in extract_markdown_tables(text).into_iter().enumerate() {
         let label = md_table
             .caption
@@ -249,7 +220,6 @@ pub fn extract_document_structure(
         }
     }
 
-    // 4. Embedded images, figure captions, and OCR / vision descriptions!
     let mut image_count = 0usize;
     if let Some(images) = extracted.get("images").and_then(Value::as_array) {
         for (idx, img) in images.iter().enumerate() {
@@ -325,7 +295,6 @@ pub fn extract_document_structure(
         }
     }
 
-    // Markdown image syntax `![alt caption](path.png)` also contributes captions & image nodes!
     for (idx, (alt, target)) in extract_markdown_images(text).into_iter().enumerate() {
         let img_key = sha256_text(&format!("{filename}:md_img:{idx}:{target}"));
         let mut payload = Map::new();
@@ -373,7 +342,6 @@ pub fn extract_document_structure(
     plan
 }
 
-/// Materialize section hierarchy + `ImageText` OCR/caption nodes onto a persisted Document.
 pub fn persist_structure_and_multimodal_overlay(
     writer: &GraphWriter,
     document_id: &str,
@@ -385,7 +353,6 @@ pub fn persist_structure_and_multimodal_overlay(
 ) -> Result<usize, CoreError> {
     let mut written_nodes = 0usize;
 
-    // 1. Heading outline (`Section` tree + `part_of` + `has_chunk`, with PDF/DOCX heading fallback).
     let section_overlay =
         sections::build_overlay(chunks, chunk_ids, document_id, owner, workspace_id);
     if !section_overlay.is_empty() {
@@ -426,8 +393,6 @@ pub fn persist_structure_and_multimodal_overlay(
         writer.upsert_edges(&sec_edges)?;
     }
 
-    // 2. Multimodal `ImageText` nodes (tagged with `source_node = document_id` so
-    //    `delete_document_tree` cascades cleanly!).
     if !plan.multimodal_observations.is_empty() {
         let mut mm_nodes = Vec::new();
         let mut mm_edges = Vec::new();

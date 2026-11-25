@@ -1,5 +1,3 @@
-//! The thirteen `search.py` routes (minus KEEP_WORKER embeddings/rebuild).
-
 use axum::body::Bytes;
 use axum::extract::{RawQuery, State};
 use axum::http::HeaderMap;
@@ -23,9 +21,6 @@ use crate::service::{
 };
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions, DEFAULT_HYBRID_WEIGHTS};
 
-// ── the router ──────────────────────────────────────────────────────────────
-
-/// `create_search_router(...)` — thirteen routes, same paths, same verbs.
 pub fn router(state: Arc<RetrievalApiState>) -> Router {
     Router::new()
         .route("/api/search/hybrid", get(hybrid_get).post(hybrid_post))
@@ -42,7 +37,6 @@ pub fn router(state: Arc<RetrievalApiState>) -> Router {
         .with_state(state)
 }
 
-/// `SearchRequest` — the base every POST body extends.
 pub(crate) const SEARCH_REQUEST: &[FieldSpec] = &[
     required("query", Kind::Str(1)),
     optional("limit", Kind::Int),
@@ -91,7 +85,6 @@ pub(crate) const RELATIONSHIP_REQUEST: &[FieldSpec] = &[
     optional("limit", Kind::Int),
 ];
 
-/// One blocking engine call on the store, with the guard already run.
 async fn run<T, F>(state: &RetrievalApiState, work: F) -> Result<T, Response>
 where
     T: Send + 'static,
@@ -100,8 +93,6 @@ where
     let store = state.require_graph()?;
     store.read(work).await.map_err(engine_error)
 }
-
-// ── /api/search/hybrid ──────────────────────────────────────────────────────
 
 async fn hybrid_get(
     State(state): State<Arc<RetrievalApiState>>,
@@ -171,10 +162,6 @@ async fn hybrid_post(
         )
         .await;
     }
-    // `weights=req.weights or DEFAULT_HYBRID_WEIGHTS`: the POST form *always*
-    // pins the weights, so it never consults the retrieval policy and its
-    // `query_class` is always null. The GET form passes no weights and does.
-    // Reproduced, not repaired — the two verbs answer differently today.
     let weights = pinned_weights(model.get("weights"));
     hybrid(
         &state,
@@ -253,7 +240,6 @@ async fn hybrid_graphrag(
     ok(&report)
 }
 
-/// `req.weights or DEFAULT_HYBRID_WEIGHTS` — an empty map is falsy in Python.
 pub(crate) fn pinned_weights(supplied: Option<&Value>) -> Map<String, Value> {
     match supplied.and_then(Value::as_object) {
         Some(object) if !object.is_empty() => object.clone(),
@@ -305,8 +291,6 @@ async fn hybrid(
         Ok(value) => value,
         Err(refusal) => return refusal,
     };
-    // `_image_channel` returns None unless the caller asked, which is what
-    // keeps an untouched response byte-identical to 11.1.0's.
     if image_fusion {
         if let Some(object) = report.as_object_mut() {
             object.insert(
@@ -318,12 +302,6 @@ async fn hybrid(
     ok(&report)
 }
 
-/// The `image_fusion` block, for a runtime with no shared-space vision model.
-///
-/// Native retrieval has no text→image port at all, so the honest answer is
-/// always the "could not run" one, and *which* reason it gives still follows
-/// the gate: off (the default) reports the gate, on reports the missing model.
-/// Nothing here ever claims `applied: true`.
 pub(crate) fn image_report() -> Value {
     let enabled = matches!(
         std::env::var(TEXT_IMAGE_FUSION_ENV)
@@ -349,8 +327,6 @@ pub(crate) fn image_report() -> Value {
     );
     serde_json::to_value(report).unwrap_or(Value::Null)
 }
-
-// ── /api/search/keyword ─────────────────────────────────────────────────────
 
 async fn keyword_get(
     State(state): State<Arc<RetrievalApiState>>,
@@ -401,8 +377,6 @@ async fn keyword(state: &RetrievalApiState, scope: Scope, query: String, limit: 
         Err(refusal) => refusal,
     }
 }
-
-// ── /api/search/vector ──────────────────────────────────────────────────────
 
 async fn vector_get(
     State(state): State<Arc<RetrievalApiState>>,
@@ -489,8 +463,6 @@ async fn vector(
     }
 }
 
-// ── /api/search/graph ───────────────────────────────────────────────────────
-
 async fn graph_search_post(
     State(state): State<Arc<RetrievalApiState>>,
     headers: HeaderMap,
@@ -516,8 +488,6 @@ async fn graph_search_post(
     }
 }
 
-// ── /api/search/image-query ─────────────────────────────────────────────────
-
 async fn image_query(State(state): State<Arc<RetrievalApiState>>, headers: HeaderMap) -> Response {
     if let Err(refusal) = state.auth.require_user(&headers) {
         return refusal;
@@ -535,10 +505,6 @@ async fn image_query(State(state): State<Arc<RetrievalApiState>>, headers: Heade
     gate.insert("flag", json!(TEXT_IMAGE_FUSION_ENV));
     gate.insert("enabled", json!(enabled));
     gate.insert("default", json!(false));
-    // `FeatureGate.source()`: "env" once the variable carries a word the gate
-    // recognises, "default" otherwise. Python answers "resolver" here because
-    // the feature-toggle service binds one; that service is WP-R2's, and this
-    // module reports what it can actually see rather than claiming a resolver.
     gate.insert("source", json!(if enabled { "env" } else { "default" }));
     gate.insert("detail", json!(IMAGE_FUSION_GATE_DETAIL));
 
@@ -548,8 +514,6 @@ async fn image_query(State(state): State<Arc<RetrievalApiState>>, headers: Heade
     payload.insert("detail", json!(IMAGE_FUSION_UNAVAILABLE));
     ok(&serde_json::to_value(payload).unwrap_or(Value::Null))
 }
-
-// ── /api/graph ──────────────────────────────────────────────────────────────
 
 async fn graph_view(
     State(state): State<Arc<RetrievalApiState>>,
@@ -575,8 +539,6 @@ async fn graph_view(
         Err(refusal) => refusal,
     }
 }
-
-// ── /api/graph/node ─────────────────────────────────────────────────────────
 
 async fn node_get(
     State(state): State<Arc<RetrievalApiState>>,
@@ -687,8 +649,6 @@ async fn node(
         Err(refusal) => refusal,
     }
 }
-
-// ── /api/graph/relationship ─────────────────────────────────────────────────
 
 async fn relationship_get(
     State(state): State<Arc<RetrievalApiState>>,

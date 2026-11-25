@@ -1,11 +1,3 @@
-//! Untrusted Content & Prompt Injection Guard (P0.4).
-//!
-//! Treats retrieved RAG passages, local file reads, web fetches, and MCP tool
-//! outputs as **untrusted data**, stripping model control tokens, flagging
-//! multilingual (English + Korean) instruction-override attempts, and wrapping
-//! payloads in explicit data-only delimiters so retrieved content cannot
-//! escalate tool privileges.
-
 use serde::{Deserialize, Serialize};
 
 const CONTROL_TOKENS: &[&str] = &[
@@ -38,7 +30,6 @@ const INJECTION_PATTERNS: &[&str] = &[
     "관리자 권한으로 실행",
 ];
 
-/// Outcome of sanitizing an untrusted external or retrieved payload.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UntrustedGuardResult {
     pub framed_text: String,
@@ -47,7 +38,6 @@ pub struct UntrustedGuardResult {
     pub privilege_downgrade_recommended: bool,
 }
 
-/// Sanitize untrusted retrieved/file/MCP content and wrap it in data-only XML fencing.
 pub fn guard_untrusted_content(source_label: &str, raw: &str) -> UntrustedGuardResult {
     let mut cleaned = raw.to_string();
     let mut stripped = 0usize;

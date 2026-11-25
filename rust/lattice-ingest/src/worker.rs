@@ -1,43 +1,3 @@
-//! Where a watched note lands: the native write engine, in this process.
-//!
-//! Until v11.7.0 this module was the *delegation* seam — it posted
-//! `type="note"` to `POST {origin}/knowledge-graph/ingest` and let the Python
-//! worker be the single writer. That contract expired with v11.6.0: the worker
-//! stopped serving product routes, `/knowledge-graph/ingest` left
-//! `rust/fixtures/worker_allowlist.json`, and every note this crate detected
-//! was posted into a 404. The watcher reported success because the *scan* had
-//! succeeded; nothing reached the Brain.
-//!
-//! So the delegation is gone and the write is native, through the same
-//! `GraphWriter` door the gateway's own `POST /knowledge-graph/ingest` handler
-//! uses for a note (`lattice_retrieval::knowledge_graph_api::ingest`), with the
-//! same enrichment chain the garden and browser doors use:
-//!
-//! 1. `POST /worker/extract` (W5) for concepts / triples / semantic items — the
-//!    one part that is genuinely model compute and still belongs to the worker;
-//!    it runs **alongside** the embed call, not in front of it;
-//! 2. **one** `POST /worker/embed` (W2) whose `texts` is the document vector
-//!    followed by every retrieval chunk — the reply's `(model_id, dim)` is the
-//!    authority on which index those rows are filed under;
-//! 3. [`GraphWriter::ingest_content`] with `source_type="note"`, then
-//!    [`GraphWriter::write_vectors_with`] carrying the same supplied vectors
-//!    so the native hash model is not asked to re-derive them. The incremental
-//!    sync still runs **only** when the seam's embedder is the one this process
-//!    would write with. `record_ingestion` then stamps provenance like every
-//!    other source.
-//!
-//! Steps 1 and 2 and the chunking go through [`crate::local_files_api::enrich`],
-//! which is the one place the upload, browser and watch doors talk to those
-//! seams — so a note the watcher finds is chunked, embedded and degraded exactly
-//! like the same file dropped on `POST /upload/document`.
-//!
-//! Every seam call is best-effort: an unreachable worker costs the note its
-//! concepts and its provider vectors, not its place in the Brain. That is a
-//! strict improvement on the seam it replaces, which lost the note entirely.
-//!
-//! [`crate::local_files_api::ingest`] is the production caller: the vault-watch
-//! poller hands it every file a scan reported as new or changed.
-
 use std::path::Path;
 use std::time::Duration;
 
@@ -52,33 +12,16 @@ use serde_json::{json, Map, Value};
 
 use crate::local_files_api::enrich::{self, SeamEmbedBatch, SeamEmbedOutcome};
 
-/// `IngestionPipeline(pipeline_name=…)` — the name the provenance row carries.
 pub const PIPELINE_NAME: &str = "unified-ingestion";
-/// The `source_type` a watched note is filed under, as `_ingest_text` files it.
 pub const NOTE_SOURCE_TYPE: &str = "note";
-/// How long one enrichment call may take before the note lands without it.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
-/// How many folder / watch files may parse+embed+write at once.
-///
-/// Writes still serialize on the single SQLite writer; the overlap is the
-/// parse / extract / embed seam, which is what made a folder of PDFs feel
-/// single-threaded. Stamp-skip stays free because it never enters the pool.
 pub const INGEST_INFLIGHT: usize = 4;
 
-/// Why a note did not reach the Brain.
-///
-/// There is deliberately no transport variant any more: the write happens in
-/// this process, so "the worker was unreachable" is no longer a way to lose a
-/// note. It is a way to lose the note's *concepts*, which is not a failure.
 #[derive(Debug)]
 pub enum NoteIngestError {
-    /// The note carried no text — Python's `_ingest_text` raises on this too.
     Empty,
-    /// The write engine refused (`CoreError`).
     Write(String),
-    /// The blocking write task did not finish.
     Task(String),
-    /// A seam client could not be built from the origin it was given.
     Client(String),
 }
 
@@ -104,26 +47,15 @@ impl std::fmt::Display for NoteIngestError {
 
 impl std::error::Error for NoteIngestError {}
 
-/// One note to hand to the worker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteSubmission {
-    /// Human title — the filename, for a watched file.
     pub title: String,
-    /// The extracted text.
     pub content: String,
-    /// Where it came from, echoed into the node metadata.
     pub source: Option<String>,
-    /// Extra provenance merged into the item metadata.
     pub metadata: Map<String, Value>,
 }
 
 impl NoteSubmission {
-    /// A note for one file a watch detected.
-    ///
-    /// The metadata carries what the Python watcher carries — the root-relative
-    /// path, the `folder_watch` marker and the watch id — plus the absolute
-    /// path and the fact that a Rust scanner found it, so the provenance says
-    /// who noticed rather than implying the worker did.
     pub fn from_watched_file(
         root: &Path,
         relative_path: &str,
@@ -151,13 +83,6 @@ impl NoteSubmission {
         }
     }
 
-    /// The exact write request — a pure function, so a test can pin what the
-    /// Brain is asked for without opening a database.
-    ///
-    /// `node_type` is `Document` and `source_type` is `note`, which is what the
-    /// retired route produced for `type="note"`: the request body went to
-    /// `IngestionItem(source_type="note", …)`, `_ingest_text` routed it to
-    /// `ingest_source`, and that door's default node type is `Document`.
     pub fn content_request(
         &self,
         owner: Option<&str>,
@@ -178,11 +103,6 @@ impl NoteSubmission {
         }
     }
 
-    /// `title\ncontent`, the text the extract and embed seams are asked about.
-    ///
-    /// The same join the garden and gateway note doors use, so a note captured
-    /// by the watcher and the same note pasted into the Brain produce the same
-    /// concepts rather than two subtly different subgraphs.
     pub fn enrichment_text(&self) -> String {
         if self.title.is_empty() {
             self.content.clone()
@@ -192,42 +112,22 @@ impl NoteSubmission {
     }
 }
 
-/// What one native note ingest produced.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NoteReceipt {
-    /// The `Document` node the note became.
     pub node_id: String,
-    /// Retrieval chunks written beside it.
     pub chunk_count: usize,
-    /// Whether that node already existed — a re-scan of an unchanged note.
     pub duplicate: bool,
-    /// The provenance row, when one was recorded.
     pub provenance_id: Option<String>,
-    /// Whether the vector index was synced for this node.
     pub indexed: bool,
-    /// `Section` nodes written for this document's own outline (v12.0.0).
-    /// Zero is honest in both directions — a document with no headings, or an
-    /// overlay the writer refused — which is why it is reported at all.
     pub sections: usize,
-    /// Granular lifecycle/enrichment status (`complete`, `partial`, `reindex_required`, ...).
     pub ingest_status: IngestStatus,
-    /// Whether vectors came from a semantic provider, hash fallback, or none.
     pub embedding_mode: String,
-    /// True only when real semantic embeddings landed.
     pub semantic: bool,
-    /// Reasons ingestion degraded (e.g. `extract_seam_unavailable`, `embed_seam_unavailable`).
     pub degraded_reasons: Vec<String>,
-    /// Active/supplied embedding index contract, if known.
     pub contract: Option<EmbeddingIndexContract>,
 }
 
 impl NoteReceipt {
-    /// The receipt as a caller reports it.
-    ///
-    /// A `serde_json::Map` rather than an `OrderedMap`, for the same reason
-    /// [`lattice_core::graph_write::ingest::IngestOutcome::to_json`] is one:
-    /// this is a value a caller embeds, not an HTTP body it renders, and
-    /// `Value::Object` re-sorts an ordered map the moment it is converted.
     pub fn to_json(&self) -> Value {
         let mut obj = Map::new();
         obj.insert("status".into(), json!("ok"));
@@ -250,11 +150,6 @@ impl NoteReceipt {
     }
 }
 
-/// The native note door a watch hands its detected files to.
-///
-/// Holds the one `GraphWriter` the process writes with (cloning it shares the
-/// `Arc<Store>`, so two handles are still one writer) and, optionally, the
-/// compute seam. Without the seam the note still lands — see the module docs.
 #[derive(Debug, Clone)]
 pub struct NoteIngestor {
     graph: GraphWriter,
@@ -262,22 +157,15 @@ pub struct NoteIngestor {
 }
 
 impl NoteIngestor {
-    /// An ingestor with no enrichment seam: notes land, concepts do not.
     pub fn new(graph: GraphWriter) -> Self {
         Self { graph, seam: None }
     }
 
-    /// Bind an existing seam client (the gateway's, sharing its pool).
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         self.seam = Some(seam);
         self
     }
 
-    /// Bind a seam built from a worker origin, capped at [`DEFAULT_TIMEOUT`].
-    ///
-    /// `no_proxy` matters for the same reason it does in the host: a
-    /// machine-wide `HTTP_PROXY` must never intercept loopback traffic to our
-    /// own worker. [`WorkerSeamClient::new`] sets it.
     pub fn with_worker_origin(self, origin: impl AsRef<str>) -> Result<Self, NoteIngestError> {
         let seam = WorkerSeamClient::new(origin)
             .map_err(|error| NoteIngestError::Client(error.to_string()))?
@@ -285,17 +173,14 @@ impl NoteIngestor {
         Ok(self.with_seam(seam))
     }
 
-    /// The writer this ingestor grows.
     pub fn graph(&self) -> &GraphWriter {
         &self.graph
     }
 
-    /// The enrichment seam, when one is bound.
     pub fn seam(&self) -> Option<&WorkerSeamClient> {
         self.seam.as_ref()
     }
 
-    /// Write one note into the Brain, enrichment included where it is reachable.
     pub async fn ingest_note(
         &self,
         note: &NoteSubmission,
@@ -308,9 +193,6 @@ impl NoteIngestor {
         let enrichment = note.enrichment_text();
         let mime = enrich::mime_hint(&note.title).unwrap_or_default();
         let chunks = enrich::chunk_pieces_for(&note.content, &note.title, &mime);
-        // One embed body: document text, then every chunk. Two HTTP round-trips
-        // against a single-executor worker was the ingest-time tax the drain
-        // path had already stopped paying.
         let mut embed_texts = Vec::with_capacity(chunks.len() + 1);
         embed_texts.push(enrichment.clone());
         embed_texts.extend(chunks.iter().map(|piece| piece.text.clone()));
@@ -334,17 +216,10 @@ impl NoteIngestor {
         let mut metadata = note.metadata.clone();
         let owner = request.owner.clone();
         let workspace_id = request.workspace_id.clone();
-        // The chunker's own `heading_path` per piece, kept because `request`
-        // is about to move into the write task and the outline is derived from
-        // it *after* the writer has answered with the chunk ids.
         let outline_chunks = request.chunks.clone();
         let written = tokio::task::spawn_blocking(move || {
             let prior_contract = graph.current_index_contract().ok().flatten();
             let outcome = graph.ingest_content(&request)?;
-            // The document's own outline as graph structure (v12.0.0). Written
-            // after the content so the sections can point at real chunk rows,
-            // and best-effort: an overlay that fails costs the note its
-            // outline, never its place in the Brain.
             let overlay = crate::sections::build_overlay(
                 &outline_chunks,
                 &outcome.chunk_ids,
@@ -352,9 +227,6 @@ impl NoteIngestor {
                 request.owner.as_deref(),
                 request.workspace_id.as_deref(),
             );
-            // The count is reported on the receipt rather than discarded: a
-            // silent `let _ =` here is how an outline that never landed looks
-            // exactly like a document that has no headings.
             let sections = if overlay.is_empty() {
                 0
             } else {
@@ -401,8 +273,6 @@ impl NoteIngestor {
                 active_contract,
             );
             telemetry.apply_to_metadata(&mut metadata);
-            // Provenance must never turn an already-persisted note into a
-            // failure: the node is in the Brain either way.
             let provenance = graph
                 .record_ingestion(&IngestionRecord {
                     node_id: outcome.node_id.clone(),
@@ -445,12 +315,6 @@ impl NoteIngestor {
     }
 }
 
-/// Split the single embed reply into the document vector and the chunk batch.
-///
-/// Index 0 is the document. The rest are chunks in the same order
-/// [`enrich::chunk_pieces_for`] produced them. Real semantic provider batches
-/// are preserved with their own `model_id` and dimension rather than filtered
-/// against the local hash embedder.
 fn split_note_embed(
     outcome: &SeamEmbedOutcome,
     chunk_count: usize,
@@ -485,7 +349,6 @@ fn split_note_embed(
     (document, chunk_batch)
 }
 
-/// `(item_id, vector)` pairs `write_vectors_with` should file without hashing.
 fn supplied_for_note(
     node_id: &str,
     embedding: Option<&SuppliedVector>,

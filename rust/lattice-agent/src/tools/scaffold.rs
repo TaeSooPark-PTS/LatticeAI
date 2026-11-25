@@ -1,12 +1,3 @@
-//! `create_web_project` — the one tool that writes a whole tree.
-//!
-//! The seven files are byte copies of `latticeai.tools.filesystem`'s literals,
-//! and the order they are written in is the order Python's dict yields, because
-//! `created_files` records it and the critic reads that list. `package.json` is
-//! built from a struct rather than a string so the one interpolated value (the
-//! project name) cannot break the JSON, and serialised with `to_string_pretty`,
-//! which is `json.dumps(..., ensure_ascii=False, indent=2)` byte for byte.
-
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
@@ -14,7 +5,6 @@ use crate::parse::pystr::is_truthy;
 use crate::tools::files::io_error;
 use crate::tools::sandbox::{resolve_soft, ToolError, Workspace};
 
-/// `package.json`, in Python's key order.
 #[derive(Debug, Serialize)]
 struct PackageJson {
     name: String,
@@ -129,7 +119,6 @@ body { margin: 0; background: #f6f7fb; color: #111; }
 button { padding: 10px 14px; border-radius: 10px; border: 1px solid #d6d6d6; background: #fff; cursor: pointer; }
 "##;
 
-/// `Path(path).name.replace(" ", "-").lower() or "vite-react-app"`.
 fn package_name(path: &str) -> String {
     let name = crate::kernel::transcript::path_name(path)
         .replace(' ', "-")
@@ -141,16 +130,12 @@ fn package_name(path: &str) -> String {
     }
 }
 
-/// `str((a.get(key, default)) or "").strip().lower()` — two layers of default:
-/// the handler's (an **absent** key is `react`/`vite`) and the tool's (a
-/// *present* falsy value becomes `""`, which matches nothing and is refused).
 fn selector(args: &Map<String, Value>, key: &str, handler_default: &str) -> String {
     crate::tools::args::defaulted_str(args, key, handler_default)
         .trim()
         .to_lowercase()
 }
 
-/// `create_web_project(path, framework="react", template="vite")`.
 pub fn create_web_project(
     workspace: &Workspace,
     args: &Map<String, Value>,
@@ -162,9 +147,6 @@ pub fn create_web_project(
             "Only React + Vite template is currently supported.",
         ));
     }
-    // `if not path` — Python tests the raw value, so any falsy one (absent,
-    // empty, null) is the same refusal, and a truthy non-string is the stated
-    // type deviation rather than a `PurePath / int` crash.
     let path = match args.get("path").filter(|value| is_truthy(value)) {
         None => String::new(),
         Some(Value::String(text)) => text.clone(),
@@ -319,8 +301,6 @@ mod tests {
 
     #[test]
     fn the_defaults_are_react_and_vite() {
-        // The handler passes `a.get("framework", "react")`, so an absent key is
-        // supported and a *present* wrong one is not.
         let (_dir, workspace) = workspace();
         assert!(create_web_project(&workspace, &args(json!({"path": "a"}))).is_ok());
         assert_eq!(package_name("a/b c"), "b-c");

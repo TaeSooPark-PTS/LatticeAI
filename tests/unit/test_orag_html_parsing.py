@@ -1,12 +1,3 @@
-"""`.html` reaches the graph as what the page says (v12.0.0).
-
-Before this, an HTML file was classified as *code* and read verbatim, so the
-chunks were markup and the concepts were attribute names. These tests pin the
-three things that made it useless — script bodies, tags, and lost structure —
-and the one thing that makes it better than plain stripping: the page's own
-headings survive, so an extracted fact can name the section it came from.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,8 +37,6 @@ def test_entities_are_decoded_once() -> None:
 
 
 def test_headings_survive_as_markdown_so_sections_still_work() -> None:
-    """`<title>` and `<h1>` are both level 1, so they are siblings — as in
-    markdown, where a document cannot have a section above its top section."""
     text = html_to_text(PAGE)
     paths = [path for _, _, path in heading_spans(text)]
     assert paths == ["Lattice AI 안내", "지식그래프", "지식그래프 > 구성 요소"]
@@ -81,11 +70,6 @@ def test_inline_markup_does_not_break_a_sentence_apart() -> None:
 
 
 def test_markup_nested_inside_a_dropped_element_is_dropped_whole() -> None:
-    """`<template>` is parsed as real markup, so its tags must be skipped too.
-
-    (A `<script>` body is CDATA — the parser never reports tags inside it —
-    which is why this uses the element that *does* nest.)
-    """
     text = html_to_text(
         "<p>kept</p><template><p>hidden</p><b>also hidden</b></template><p>after</p>"
     )
@@ -96,7 +80,7 @@ def test_markup_nested_inside_a_dropped_element_is_dropped_whole() -> None:
 def test_malformed_markup_yields_what_was_recoverable() -> None:
     assert "hello" in html_to_text("<p>hello<div><span>unclosed")
     assert html_to_text("") == ""
-    assert html_to_text(None) == ""  # type: ignore[arg-type]
+    assert html_to_text(None) == ""
 
 
 @pytest.mark.parametrize("suffix", [".html", ".htm"])

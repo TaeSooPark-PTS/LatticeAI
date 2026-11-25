@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Act: goals, suggestions, recipes, workflows, triggers, hooks, agent
-// roles, run status, and the approval queue.
 export const workspaceActCopy: NamespaceCopy = {
   ko: {
     "act.kicker": "작업",
@@ -77,8 +75,6 @@ export const workspaceActCopy: NamespaceCopy = {
     "act.panel.combinedRuns": "최근 실행 기록",
     "act.approval.defaultAction": "권한 요청",
     "act.approval.requestedBy": "요청자",
-    // Keyed on the `action` enum from latticeai/api/permissions.py, plus
-    // `delete`, which flows through pending requests without a mapped label.
     "act.approval.action.list": "폴더 목록 보기",
     "act.approval.action.read": "파일 읽기",
     "act.approval.action.write": "파일 쓰기",
@@ -158,10 +154,6 @@ export const workspaceActCopy: NamespaceCopy = {
     "act.action.resumeDenied": "거부 후 재개",
     "act.status.unknown": "알 수 없음",
     "act.status.draft": "초안",
-    // The server's run states are enum tokens (`ok`, `retried_ok`,
-    // `awaiting_approval`). They used to be printed straight onto the badge,
-    // so the run list read as a log file. Anything not listed here falls back
-    // to "알 수 없음" rather than leaking a new token.
     "act.runStatus.ok": "완료",
     "act.runStatus.succeeded": "완료",
     "act.runStatus.completed": "완료",

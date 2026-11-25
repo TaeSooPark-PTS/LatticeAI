@@ -179,8 +179,8 @@
   }
 }
 
-/* ── Onboarding: hardware visualization + time estimates + next-action CTA ── */
-/* Track: 첫 실행 온보딩 (additive, scoped to ritual onboarding screens). */
+
+
 
 .ritual-fact--visual .ritual-fact-head {
   display: flex;
@@ -296,10 +296,7 @@
   white-space: nowrap;
 }
 
-/* ── Brain Home ingestion progressive disclosure + emergence timeline ──
-   Track: ingestion CTA clarity + collect→parse→embed→memorize disclosure.
-   Token-native (--memory, --brain-core); additive, scoped to .brain-ingest-*
-   and .brain-emergence-* selectors. */
+
 .brain-ingest-tile {
   position: relative;
 }
@@ -402,7 +399,7 @@
   color: hsl(var(--danger, 0 64% 56%));
 }
 
-/* Low-extraction-quality heads-up: informative, not alarming. */
+
 .brain-ingest-quality-note {
   margin-top: 0.35rem;
   border: 1px solid hsl(var(--warning) / 0.32);
@@ -427,7 +424,7 @@
   line-height: 1.35;
 }
 
-/* Vector freshness: soft chip while indexing catches up. */
+
 .brain-freshness-chip {
   display: inline-flex;
   align-items: center;
@@ -449,7 +446,7 @@
   color: hsl(var(--brain-core));
 }
 
-/* Honest answer signaling: limited graph-backed context. */
+
 .brain-context-quality-note {
   display: flex;
   flex-direction: column;
@@ -468,7 +465,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Background ingestion jobs: progress, failures, resume. */
+
 .brain-jobs-panel {
   margin-top: 0.6rem;
   border: 1px solid hsl(var(--border));

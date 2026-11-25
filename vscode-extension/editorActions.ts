@@ -1,11 +1,3 @@
-/**
- * Everything that writes into the editor itself.
- *
- * The diff flow keeps the proposed text in an in-memory virtual document
- * (`ltcai-diff:`) so VS Code's own diff viewer can show it before a single byte
- * of the user's file changes — the provider and the map it reads are one unit
- * and stay in one module.
- */
 import * as vscode from "vscode";
 import { client } from "./extensionState";
 
@@ -68,7 +60,6 @@ export async function diffEditSelection(
   const lang = editor.document.languageId;
   const selectedText = editor.document.getText(selection);
 
-  // Write proposed edit to a temp virtual document for diff view
   const proposedUri = originalUri.with({ scheme: "ltcai-diff", path: originalUri.path + ".proposed" });
   const originalFull = editor.document.getText();
   const proposedFull = originalFull.slice(0, editor.document.offsetAt(selection.start))

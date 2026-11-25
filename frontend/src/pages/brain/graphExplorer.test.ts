@@ -1,14 +1,3 @@
-/**
- * The knowledge-graph explorer is the one screen that renders the Brain's own
- * shape, and all of its logic lives in these two pure functions. It was at 4%
- * coverage — the map could quietly start dropping edges, mis-grouping node
- * types, or showing raw Markdown as labels, and nothing would fail.
- *
- * `parseGraph` normalises whatever the graph API returned (the field names vary
- * by node source: `from`/`source`, `title`/`label`/`name`, …).
- * `buildExplorerModel` turns that into what Cytoscape draws, applying search,
- * group filters, an importance floor, collapsed clusters and a node cap.
- */
 
 import { describe, expect, it } from "vitest";
 
@@ -99,7 +88,6 @@ describe("parseGraph", () => {
     const parsed = parseGraph({ nodes: [{ id: longId }] }, "en");
     const { label } = parsed.nodes[0]!;
     expect(label).not.toBe("");
-    // Shortened for the canvas, but still recognisably the same node.
     expect(label.length).toBeLessThan(longId.length);
     expect(longId.startsWith(label.slice(0, 8))).toBe(true);
   });
@@ -229,7 +217,6 @@ describe("buildExplorerModel", () => {
   });
 
   it("lets a search override the importance floor", () => {
-    // "lonely" is below any sensible floor; searching for it must still find it.
     const result = model(graph, { search: "lonely", minImportance: 0.9 });
     expect(result.visibleNodes.map((node) => node.id)).toEqual(["lonely"]);
   });
@@ -246,7 +233,6 @@ describe("buildExplorerModel", () => {
     const result = model(graph, { maxNodes: 2 });
     expect(result.visibleNodes).toHaveLength(2);
     expect(result.hiddenByFilters).toBe(2);
-    // The cap keeps the most important nodes, not an arbitrary two.
     expect(result.visibleNodes[0]!.id).toBe("hub");
   });
 
@@ -269,8 +255,6 @@ describe("buildExplorerModel", () => {
     const result = model(graph, { collapsedGroups: new Set(["knowledge"]) });
     const edges = result.elements.filter((element) => element.data.source);
     expect(edges.some((edge) => edge.data.source === "group:knowledge")).toBe(true);
-    // hub→leaf is entirely inside the cluster, so it collapses to nothing
-    // rather than becoming a self-loop.
     expect(edges.every((edge) => edge.data.source !== edge.data.target)).toBe(true);
   });
 
@@ -331,8 +315,6 @@ describe("parseGraph payload variants", () => {
   });
 
   it("accepts an envelope whose nodes come as a record rather than a list", () => {
-    // The unwrap must trigger for this shape too; a record of nodes then reads
-    // as an empty list rather than crashing.
     const parsed = parseGraph({ data: { nodes: { a: { id: "a" } } } }, "en");
     expect(parsed.nodes).toEqual([]);
   });
@@ -444,17 +426,11 @@ describe("buildExplorerModel hand-built graphs", () => {
     };
     const result = model(graph);
     const element = result.elements.find((item) => item.data.id === "x");
-    // The last definition ("other") supplies colour and grouping.
     expect(element?.data.color).toBe(graphGroupColor("other"));
     expect(element?.data.group).toBe("other");
   });
 
   it("drops an edge whose duplicate-id endpoint resolves to a group that never collapsed", () => {
-    // Two nodes share the id "dup" in different groups. The low-importance
-    // twin ("people", listed first) falls outside the node cap, the
-    // high-importance twin ("knowledge") is collapsed into a cluster. The edge
-    // lookup finds the first twin, whose group has no cluster — the edge must
-    // vanish rather than point at a cluster that is not on the canvas.
     const graph: ParsedGraph = {
       nodes: [
         gnode({ id: "dup", group: "people", importance: 0.1 }),

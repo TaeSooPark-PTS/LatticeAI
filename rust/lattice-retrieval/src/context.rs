@@ -1,22 +1,3 @@
-//! Port of `lattice_brain/context.py` — the budgeted, provenance-carrying
-//! context assembly (Phase 3b of `docs/v11.5.0_RUST_COMPLETE_PLAN.md`).
-//!
-//! Five sections in one fixed order — memories, artifacts, knowledge, notes,
-//! recent — because the order *is* the priority: what survives a tight budget is
-//! whatever came first. Sections whose content is blank are dropped before the
-//! budget runs, so an unconfigured seam contributes nothing rather than an empty
-//! heading, and every section records why it is in the prompt.
-//!
-//! `approx_tokens` is `(len + 3) / 4` on **characters**. It is not a tokenizer
-//! and the field name says so; what matters here is that Rust and Python agree
-//! on the same wrong number, because the budget is spent in that currency.
-//!
-//! The truncation is where a port drifts. Python cuts `content[:remaining * 4]`
-//! and then measures the *cut* content when charging the budget — so a section
-//! trimmed to fit costs exactly what fits, and the next section sees whatever is
-//! left. Cutting on bytes instead of characters would also split a Korean
-//! syllable down the middle; `truncate_chars` is what keeps that honest.
-
 use std::collections::BTreeSet;
 
 use lattice_core::pytext::truncate_chars;
@@ -29,8 +10,6 @@ use crate::service::Scope;
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 use crate::shape::truthy;
 
-/// Scope the knowledge seam the way chat/memory/command do: a named workspace
-/// is a membership filter, and `"personal"` also matches NULL/blank rows.
 fn knowledge_scope(workspace_id: Option<&str>) -> Scope {
     match workspace_id.filter(|id| !id.is_empty()) {
         Some(id) => Scope {
@@ -41,12 +20,10 @@ fn knowledge_scope(workspace_id: Option<&str>) -> Scope {
     }
 }
 
-/// `context.approx_tokens` — the documented chars/4 approximation.
 pub fn approx_tokens(text: &str) -> usize {
     text.chars().count().div_ceil(4)
 }
 
-/// One assembled section, before and after the budget has had its say.
 #[derive(Debug, Clone)]
 struct Section {
     name: &'static str,
@@ -72,7 +49,6 @@ impl Section {
     }
 }
 
-/// What `recent_chat` should be asked for, when it is asked at all.
 #[derive(Debug, Clone, Default)]
 pub struct RecentRequest {
     pub limit: Option<i64>,
@@ -82,36 +58,22 @@ pub struct RecentRequest {
     pub workspace_id: Option<String>,
 }
 
-/// One context assembly. Every seam is optional, and an absent seam is an
-/// absent section — honest absence, never a fabricated one.
 #[derive(Debug, Clone, Default)]
 pub struct ContextRequest {
     pub query: String,
-    /// Token budget; anything below 1 clamps to 1.
     pub budget: i64,
     pub memory_limit: i64,
     pub knowledge_limit: i64,
-    /// A memory-recall payload (`{"results": [...]}`), or `None` for no seam.
     pub memories: Option<Value>,
-    /// An artifact ledger slice, or `None` for no seam.
     pub artifacts: Option<Value>,
-    /// Whether the knowledge section runs the native service hybrid.
     pub knowledge: bool,
-    /// Garden-note context, or `None` for no seam.
     pub notes: Option<String>,
-    /// Recent-conversation seam configuration, or `None` for no seam.
     pub recent: Option<RecentRequest>,
-    /// Identity/scope of the assembly itself. These do **not** steer the native
-    /// seams (a loopback owner is trusted); they are what the recent section
-    /// records as its provenance, exactly as `assemble()`'s own arguments do.
     pub user_email: Option<String>,
     pub conversation_id: Option<String>,
     pub workspace_id: Option<String>,
-    /// The wall clock the knowledge search's recency decay reads.
     pub now_secs: f64,
-    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
-    /// Reason semantic query embedding degraded, if any.
     pub semantic_degraded: Option<String>,
 }
 
@@ -123,7 +85,6 @@ fn string_of(value: Option<&Value>) -> String {
     }
 }
 
-/// `_memories_section` — workspace memories only, capped at `memory_limit`.
 fn memories_section(payload: &Value, limit: i64) -> Section {
     let results: Vec<&Value> = payload
         .get("results")
@@ -170,7 +131,6 @@ fn string_of_ref(value: &Value) -> String {
     string_of(Some(value))
 }
 
-/// `_artifacts_section` — files this conversation produced, ten at most.
 fn artifacts_section(payload: &Value) -> Section {
     let rows: Vec<&Value> = payload
         .as_array()
@@ -211,7 +171,6 @@ fn artifacts_section(payload: &Value) -> Section {
     }
 }
 
-/// `_knowledge_section` — the product's own search, cut to `knowledge_limit`.
 fn knowledge_section(payload: &Value, limit: i64) -> Section {
     let empty: Vec<Value> = Vec::new();
     let matches = payload
@@ -258,7 +217,6 @@ fn knowledge_section(payload: &Value, limit: i64) -> Section {
     }
 }
 
-/// `ContextAssembler._apply_budget` — trim from the end until it fits.
 fn apply_budget(sections: &mut [Section], budget: i64) {
     let budget = budget.max(1) as usize;
     let mut used = 0usize;
@@ -273,12 +231,10 @@ fn apply_budget(sections: &mut [Section], budget: i64) {
             section.content = truncate_chars(&section.content, remaining * 4);
             section.truncated = true;
         }
-        // Re-measured after the cut, so a trimmed section costs what it kept.
         used += section.approx_tokens();
     }
 }
 
-/// `AssembledContext.text` — named blocks, blank ones left out.
 fn assembled_text(sections: &[Section]) -> String {
     sections
         .iter()
@@ -288,13 +244,6 @@ fn assembled_text(sections: &[Section]) -> String {
         .join("\n\n")
 }
 
-/// `ContextAssembler.assemble` over the native seams.
-///
-/// The knowledge seam is the service-layer hybrid search and the recent seam is
-/// the durable history reader — the same engines the rest of this crate ports,
-/// wired in rather than mocked. `memories` / `artifacts` / `notes` arrive as
-/// data because their producers (the memory service, the artifact ledger, the
-/// garden) live in the Python worker and are not part of this phase.
 pub fn assemble_context(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -356,8 +305,6 @@ pub fn assemble_context(
         });
     }
 
-    // Blank sections leave before the budget is spent, so an empty seam never
-    // costs a later section its place.
     sections.retain(|section| !section.content.trim().is_empty());
     apply_budget(&mut sections, request.budget);
 
@@ -398,7 +345,6 @@ mod tests {
         assert_eq!(approx_tokens("a"), 1);
         assert_eq!(approx_tokens("abcd"), 1);
         assert_eq!(approx_tokens("abcde"), 2);
-        // Characters, not bytes: three Korean syllables are nine UTF-8 bytes.
         assert_eq!(approx_tokens("회의록"), 1);
     }
 
@@ -501,7 +447,6 @@ mod tests {
         assert_eq!(built.provenance[2]["id"], Value::Null);
         assert_eq!(built.provenance[0]["sources"], json!(["keyword"]));
         assert_eq!(knowledge_section(&payload, 1).content, "- Title: Body");
-        // A long body is cut at 400 characters.
         let long = json!({"matches": [{"id": "x", "summary": "가".repeat(500)}]});
         assert_eq!(
             knowledge_section(&long, 5).content.chars().count(),

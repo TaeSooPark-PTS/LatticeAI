@@ -50,8 +50,6 @@ describe("readEventStream", () => {
     ]);
 
     expect(frames[0]).toMatchObject({ data: {}, malformed: false });
-    // Well-formed JSON that is not an object: usable by nobody, but not a
-    // decoding failure either.
     expect(frames[1]).toMatchObject({ data: null, malformed: false });
     expect(frames[2]!.raw).toBe("[DONE]");
   });
@@ -177,7 +175,6 @@ describe("readEventStream teardown", () => {
     }
 
     expect(cancelled).toBe(true);
-    // Give the swallowed rejection a microtask to surface if it ever leaks.
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 

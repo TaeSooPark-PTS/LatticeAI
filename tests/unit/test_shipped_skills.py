@@ -1,15 +1,3 @@
-"""Shipped skill packages are well-formed and governed (v9.9.7).
-
-Review follow-up: "플러그인/스킬 마켓의 실제 순환 — 설치 → 바로 가치가 보이는
-1~2개 킬러 스킬 패키지". Two shipped skills (`meeting_notes`, `weekly_review`)
-turn material a user already has into an artifact they already wanted.
-
-This guards the contract every skill must satisfy, so a new skill cannot ship
-half-formed: the four package files exist, `action` names a **registered** tool
-(an eval against a non-existent tool would fail at run time), the risk profile
-is internally consistent, and every eval declares a pass criterion.
-"""
-
 from __future__ import annotations
 
 import json
@@ -44,8 +32,6 @@ def test_new_skill_ships_the_whole_package(name):
 
 @pytest.mark.parametrize("name", NEW_SKILLS)
 def test_new_skill_is_discoverable_with_a_description(name):
-    # The registry reads the `description:` line out of SKILL.md; without it
-    # the skill lists with an empty description and nobody can tell what it does.
     text = (SKILLS_DIR / name / "SKILL.md").read_text(encoding="utf-8")
     description = [
         line.split(":", 1)[1].strip()
@@ -73,7 +59,6 @@ def test_new_skill_evals_are_runnable(name):
         assert case.get("id")
         assert isinstance(case.get("input"), dict)
         assert case.get("pass_criteria")
-    # A skill that only ever succeeds proves nothing about its guard rails.
     assert any("false" in str(case["pass_criteria"]) for case in evals)
 
 
@@ -83,8 +68,6 @@ def test_new_skill_risk_profile_is_internally_consistent(name):
     assert risk["destructive"] is False
     assert risk["shell"] is False
     assert risk["network"] is False
-    # A write skill must declare a recovery path — silent unrecoverable writes
-    # are exactly what the rollback contract exists to prevent.
     assert risk["risk"] == "write"
     assert risk["rollback"] in {"git", "snapshot"}
     assert risk["sandbox"] == "workspace"
@@ -102,7 +85,6 @@ def test_every_shipped_skill_keeps_the_package_contract():
 def test_the_new_skills_are_actually_new():
     names = {skill.name for skill in _skill_dirs()}
     assert set(NEW_SKILLS) <= names
-    # The pre-existing catalogue is untouched.
     assert {
         "code_review",
         "data_analysis",

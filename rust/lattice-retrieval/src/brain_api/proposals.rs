@@ -1,5 +1,3 @@
-//! Synthesis and contradiction proposals. Review items are Workspace OS state.
-
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -23,7 +21,6 @@ const EDGE_SIMILARITY: f64 = 0.35;
 const MAX_PROPOSALS: usize = 5;
 const COMMON_TOKEN_RATIO: f64 = 0.4;
 
-/// `BrainIntelligenceService.synthesize`.
 pub async fn synthesize(
     state: &BrainState,
     user_email: &str,
@@ -108,7 +105,6 @@ pub async fn synthesize(
     out
 }
 
-/// `BrainIntelligenceService.propose_contradictions`.
 pub async fn propose_contradictions(
     state: &BrainState,
     user_email: &str,
@@ -257,7 +253,6 @@ fn order_by_age(
     }
 }
 
-/// `BrainIntelligenceService.resolve_contradiction`.
 pub async fn resolve_contradiction(
     state: &BrainState,
     item_id: &str,
@@ -299,10 +294,6 @@ pub async fn resolve_contradiction(
             format!("review item {item_id} carries no memory pair to resolve"),
         ));
     }
-    // Python's order, and it matters: `review_queue.approve` must return
-    // before a single column is stamped, so a queue that refuses leaves the
-    // graph untouched. The status it answers with is the one reported
-    // (`str(approved.get("status") or "")`), not a hard-coded "approved".
     let moment = state.now();
     let status = approve_item(state, item_id);
     let args = serde_json::json!({
@@ -311,9 +302,6 @@ pub async fn resolve_contradiction(
         "resolution": resolution,
         "at": moment,
     });
-    // Native since v11.7.0 (`GraphWriter::stamp_node_validity`). It used to be
-    // a `POST /worker/graph/mutate` the worker stopped serving in v11.6.0, so
-    // every resolution silently reported `stamps: []`.
     let stamps = match state.mutate("stamp_contradiction", args).await {
         Ok(value) => value,
         Err(_) => Value::Array(Vec::new()),
@@ -328,7 +316,6 @@ pub async fn resolve_contradiction(
     Ok(out)
 }
 
-/// `BrainIntelligenceService.proactive_brief`.
 pub async fn proactive_brief(
     state: &BrainState,
     _user_email: &str,
@@ -414,8 +401,6 @@ pub async fn proactive_brief(
     section
 }
 
-/// `now_utc` is UTC epoch seconds; the headline prints a 7-day count, which is
-/// a threshold. See `BrainState::with_utc_clock`.
 fn brief_section(
     sample: &sampling::Sample,
     counts: &Value,
@@ -424,8 +409,6 @@ fn brief_section(
     now_utc: f64,
 ) -> OrderedMap {
     let recent = recent_window(&sample.nodes, now_utc);
-    // The four digest kinds are what the *lines* report. The headline's
-    // "검토할 거리" is every pending review item (including self_model_fact).
     let headline = format!(
         "최근 7일 동안 새 기억 {}건이 쌓였고, Brain이 검토할 거리 {review_total}건을 찾았습니다.",
         recent

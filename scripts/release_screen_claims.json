@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.1.2": {
+    "_why": [
+      "Living Synthesis (14.1.2) strips all human-written comments, docstrings,",
+      "JSDoc, and suppression directives across every tracked source language,",
+      "resolves all surfaced lint/type-check/Clippy issues in source code,",
+      "and adds a permanent no-comments CI gate (scripts/check_no_comments.mjs).",
+      "",
+      "No visual screen layout was redesigned in 14.1.2; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.1.1": {
     "_why": [
       "Living Synthesis (14.1.1) eliminates all remaining engineering technical",

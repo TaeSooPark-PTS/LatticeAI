@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Validate release artifacts for a single, explicit version.
-
-The release workflow must never upload ``dist/*`` with a glob: that bundles
-*every* historical build and risks shipping a stale version. This validator is
-the guard rail. It checks that exactly the expected 1.1.0-style artifacts exist
-for the requested version, that no version string is mismatched, and (best
-effort) that the VSIX actually contains the compiled extension entrypoint.
-
-Usage:
-    python scripts/validate_release_artifacts.py 1.1.0
-    python scripts/validate_release_artifacts.py 1.1.0 --require-vsix
-    python scripts/validate_release_artifacts.py 1.1.0 --require-dmg
-    python scripts/validate_release_artifacts.py 1.1.0 --dist dist --json
-
-Exit code is non-zero on any failure so CI can fail fast.
-"""
 
 from __future__ import annotations
 
@@ -47,7 +31,6 @@ def _expected_names(version: str) -> Dict[str, str]:
 
 
 def _vsix_has_entrypoint(path: Path) -> bool:
-    """True if the VSIX contains the compiled extension entrypoint."""
     try:
         with zipfile.ZipFile(path) as zf:
             names = zf.namelist()
@@ -76,7 +59,6 @@ def _vsix_version(path: Path) -> Optional[str]:
 
 
 def _forbidden_archive_entries(path: Path) -> List[str]:
-    """Return machine-local bot/agent paths accidentally shipped in an archive."""
     names: List[str] = []
     try:
         if zipfile.is_zipfile(path):
@@ -86,8 +68,6 @@ def _forbidden_archive_entries(path: Path) -> List[str]:
             with tarfile.open(path, "r:*") as archive:
                 names = archive.getnames()
     except (OSError, tarfile.TarError, zipfile.BadZipFile):
-        # Archive integrity is validated by the package-specific smoke checks;
-        # this helper is narrowly responsible for preventing personal files.
         return []
 
     return sorted(
@@ -135,7 +115,6 @@ def validate(
 
     expected = _expected_names(version)
 
-    # Required Python artifacts.
     for key in ("wheel", "sdist"):
         artifact = dist_dir / expected[key]
         if artifact.is_file():
@@ -144,7 +123,6 @@ def validate(
         else:
             errors.append(f"missing {key}: {artifact.name}")
 
-    # VSIX: required only when asked, but validate contents when present.
     vsix = dist_dir / expected["vsix"]
     if vsix.is_file():
         found["vsix"] = str(vsix)
@@ -161,7 +139,6 @@ def validate(
     elif require_vsix:
         errors.append(f"missing vsix: {vsix.name}")
 
-    # npm pack tarball lives at repo root, not dist/.
     tgz = dist_dir.parent / f"ltcai-{version}.tgz"
     if tgz.is_file():
         found["tgz"] = str(tgz)
@@ -183,12 +160,8 @@ def validate(
     elif require_dmg:
         errors.append(f"missing dmg: {dmg}")
 
-    # Guard against stale-version mixing: warn loudly about other-version builds
-    # so a `dist/*` glob upload is obviously unsafe.
     other_versions = set()
     for item in dist_dir.glob("ltcai-*"):
-        # Capture just the semver core (e.g. 1.1.0), not packaging suffixes
-        # like -py3-none-any.whl / .tar.gz / .vsix.
         m = re.match(r"ltcai-(\d+\.\d+\.\d+)(?:[-.]|$)", item.name)
         if m and m.group(1) != version:
             other_versions.add(m.group(1))

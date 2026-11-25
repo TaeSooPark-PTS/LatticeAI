@@ -1,9 +1,3 @@
-//! Real filesystem security test suite (P0.4):
-//! - Path traversal & symlink escapes
-//! - Live symlink-swap TOCTOU refusal via fd-relative `O_NOFOLLOW`
-//! - Attached short-flag command path escape (`rg -f/etc/passwd`)
-//! - Multilingual prompt-injection untrusted-data framing
-
 use lattice_agent::content::untrusted::guard_untrusted_content;
 use lattice_agent::tools::command;
 use lattice_agent::tools::files;
@@ -19,10 +13,8 @@ fn rejects_path_traversal_and_attached_short_flag_escapes() {
     assert!(ws.resolve("../secret.txt").is_err());
     assert!(ws.resolve("/etc/passwd").is_err());
 
-    // Attached short-flag path escape must be rejected.
     assert!(command::validate(&ws, "rg -f/etc/passwd foo", None).is_err());
     assert!(command::validate(&ws, "rg -f../outside.txt foo", None).is_err());
-    // Normal short flags without path remain allowed.
     assert!(command::validate(&ws, "rg -n foo", None).is_ok());
 }
 
@@ -38,7 +30,6 @@ fn rejects_symlink_escape_and_toctou_swap_inside_workspace() {
     let ws_root = outer.path().join("workspace");
     let ws = Workspace::new(&ws_root).expect("ws");
 
-    // 1. Symlink file inside workspace pointing outside must be rejected.
     let escape_link = ws.root().join("escape.txt");
     symlink(&secret, &escape_link).expect("symlink");
     assert!(ws.resolve("escape.txt").is_err());
@@ -49,15 +40,12 @@ fn rejects_symlink_escape_and_toctou_swap_inside_workspace() {
         "TOP_SECRET_VALUE"
     );
 
-    // 2. Simulated TOCTOU: resolve legitimate path first, then swap directory with symlink
-    // before safe_io writes -> O_NOFOLLOW must refuse the write atomically!
     let sub = ws.root().join("notes");
     std::fs::create_dir_all(&sub).expect("mkdir notes");
     let resolved_before_swap = ws.resolve("notes/report.md").expect("resolved");
     let outside_dir = outer.path().join("outside_dir");
     std::fs::create_dir_all(&outside_dir).expect("mkdir outside");
 
-    // Attacker swaps `notes` dir -> symlink to `outside_dir` after resolve()!
     std::fs::remove_dir(&sub).expect("rmdir");
     symlink(&outside_dir, &sub).expect("swap symlink");
 
@@ -73,7 +61,6 @@ fn rejects_symlink_escape_and_toctou_swap_inside_workspace() {
     );
     assert!(!outside_dir.join("report.md").exists());
 
-    // 3. todo_write cannot escape via symlinked `.lattice` dir.
     let dot_lattice = ws.root().join(".lattice");
     symlink(&outside_dir, &dot_lattice).expect("symlink .lattice");
     let mut args = Map::new();

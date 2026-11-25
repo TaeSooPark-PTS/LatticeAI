@@ -1,45 +1,3 @@
-//! The production [`HookSink`]: user hooks fire for native tools.
-//!
-//! v11.6.0 ported the `pre_tool` → execute → `post_tool` lifecycle into
-//! `lattice-agent` ([`lattice_agent::tools::HookSink`]) and left it unwired,
-//! because the registry that owns `hooks.json` lives here and this crate is
-//! *above* that one in the dependency graph (`lattice-platform` →
-//! `lattice-agent`, never the other way). This module is the adapter that
-//! closes it: a [`HooksStore`] on one side, the loop's trait on the other, and
-//! the host handing one to the other at construction.
-//!
-//! ## What it mirrors (`lattice_brain.runtime.hooks`)
-//!
-//! * `dispatch_tool` — `pre_tool` fires with `{tool, args_keys, source}` for
-//!   the event `tool.<name>`, and a blocking hook is Python's `PermissionError`,
-//!   which the seam answers as `{"error": str(exc)}`. `post_tool` fires on
-//!   **both** outcomes, carrying `detail` only on the error path.
-//! * `run_hooks` — every *enabled* hook of the kind, in registry order, one
-//!   recorded run each, and a `pre_*` block short-circuits the rest
-//!   (fail-closed gate semantics).
-//! * `_run_command` — the user hook's `command` is `shlex.split` (CPython's
-//!   lexer, [`lattice_agent::parse::pyshlex`]), run as a subprocess with the context
-//!   JSON on stdin and in `LATTICE_HOOK_CONTEXT`, under a **replaced**
-//!   environment of eleven variables. Exit 0 is `ok`; a non-zero exit or a
-//!   timeout *blocks* a `pre_*` hook and is merely recorded for any other kind.
-//! * `_record_run` — the same thirteen-key record `POST /api/hooks/run` writes,
-//!   into the same `hooks_runs.json`, so `GET /api/hooks/runs` shows a hook that
-//!   fired for a native tool exactly as it shows one fired from the UI.
-//!
-//! ## What it deliberately does not do
-//!
-//! Platform built-ins (`managed: "platform"`, `source: "builtin"`) are **not**
-//! run here. In Python each bound its owning subsystem's behaviour, and all
-//! three that touch tools are decisions this process has already made before a
-//! tool is dispatched: `builtin:tool-permission-gate` blocks only on a `deny`
-//! policy, which no entry in the governance table carries; the sensitive-data
-//! guard classifies and never blocks; the `brain-event-triggers` `post_tool`
-//! runner fires only for `tool.kg_ingest.*`, which no registered handler
-//! produces. Recording them as "advisory" runs would put a line in the run log
-//! for work that did not happen. The permission kernel, the role check and the
-//! sandbox are where those three answers actually come from, and they run
-//! whether or not a hook is registered.
-
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -50,21 +8,12 @@ use serde_json::{json, Value};
 use super::HooksStore;
 use crate::governance::review_queue::now_iso;
 
-/// `HooksRegistry(command_timeout=20.0)`.
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(20);
 
-/// `str(exc)[:500]` — every `detail` Python records is capped here.
 const DETAIL_CHARS: usize = 500;
 
-/// `proc.stdout[:4000]`.
 const OUTPUT_CHARS: usize = 4000;
 
-/// The environment a command hook inherits — `_run_command`'s allowlist.
-///
-/// Provider keys, database credentials, session secrets and arbitrary
-/// `PYTHON*`/`NODE*` injection variables from the server process must never
-/// reach a child. What is left is the minimum for executable lookup,
-/// home-relative tools, locale handling, temporary files and Windows startup.
 const ALLOWED_ENV: [&str; 11] = [
     "PATH",
     "HOME",
@@ -79,13 +28,10 @@ const ALLOWED_ENV: [&str; 11] = [
     "PATHEXT",
 ];
 
-/// The lifecycle, over the registry that owns `hooks.json`.
 #[derive(Clone)]
 pub struct NativeHookSink {
     hooks: HooksStore,
-    /// `dispatch_tool(source=…)` — `"agent"` for the loop.
     source: String,
-    /// `HooksRegistry(command_timeout=…)`, a parameter there and here.
     timeout: Duration,
 }
 
@@ -99,7 +45,6 @@ impl std::fmt::Debug for NativeHookSink {
 }
 
 impl NativeHookSink {
-    /// A sink over `hooks`, attributing every run to `source`.
     pub fn new(hooks: HooksStore, source: impl Into<String>) -> Self {
         Self {
             hooks,
@@ -108,13 +53,11 @@ impl NativeHookSink {
         }
     }
 
-    /// A shorter ceiling than the twenty seconds Python defaults to.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
-    /// `run_hooks(kind, context)` — returns the block reason, when one blocks.
     fn dispatch(
         &self,
         kind: &str,
@@ -136,7 +79,6 @@ impl NativeHookSink {
         });
         let context_json = context.to_string();
         for hook in self.hooks.enabled_of_kind(kind) {
-            // User-registered hooks only — see the module header.
             if hook.get("source").and_then(Value::as_str) != Some("user") {
                 continue;
             }
@@ -160,7 +102,6 @@ impl NativeHookSink {
                 "target_kind": kind,
             }));
             if outcome.blocked {
-                // `context.block(res.detail or f"{hook['id']} blocked {event}")`.
                 return Some(if outcome.detail.is_empty() {
                     format!("{hook_id} blocked {event}")
                 } else {
@@ -194,12 +135,10 @@ impl HookSink for NativeHookSink {
         if status == "error" {
             payload["detail"] = json!(detail);
         }
-        // A `post_tool` hook cannot block: `_run_command` only gates `pre_*`.
         let _ = self.dispatch("post_tool", tool, payload, scope);
     }
 }
 
-/// `HookResult`'s four decided fields.
 struct Outcome {
     status: &'static str,
     detail: String,
@@ -227,7 +166,6 @@ impl Outcome {
     }
 }
 
-/// `_run_one(hook, context)` — a command runs, anything else is advisory.
 fn run_one(
     hook: &Value,
     kind: &str,
@@ -242,13 +180,11 @@ fn run_one(
         .trim()
         .to_string();
     if command.is_empty() {
-        // No bound runner and no command → listed and ordered only.
         return Outcome::advisory();
     }
     run_command(&command, kind, hook_id, context_json, timeout)
 }
 
-/// `_run_command(hook, context)`.
 fn run_command(
     command: &str,
     kind: &str,
@@ -268,7 +204,6 @@ fn run_command(
             blocked: false,
         };
     };
-    // A `pre_*` hook gates the pending action; every other kind only reports.
     let is_gate = kind.starts_with("pre_");
 
     let mut child = match Command::new(program)
@@ -290,9 +225,6 @@ fn run_command(
         Err(error) => return Outcome::error(error.to_string()),
     };
 
-    // stdin and the two pipes are drained on their own threads: a child that
-    // writes more than a pipe buffer before reading its input would otherwise
-    // deadlock against a parent that is waiting for it to exit.
     if let Some(mut stdin) = child.stdin.take() {
         let payload = context_json.to_string();
         std::thread::spawn(move || {
@@ -358,7 +290,6 @@ fn run_command(
     }
 }
 
-/// Read a pipe to the end on its own thread, decoded the way `text=True` does.
 fn drain<R: Read + Send + 'static>(mut pipe: R) -> std::thread::JoinHandle<String> {
     std::thread::spawn(move || {
         let mut buffer = Vec::new();
@@ -367,7 +298,6 @@ fn drain<R: Read + Send + 'static>(mut pipe: R) -> std::thread::JoinHandle<Strin
     })
 }
 
-/// `context.event`, read back off the JSON the child is handed.
 fn hook_event(context_json: &str, fallback: &str) -> String {
     serde_json::from_str::<Value>(context_json)
         .ok()
@@ -380,7 +310,6 @@ fn hook_event(context_json: &str, fallback: &str) -> String {
         .unwrap_or_else(|| fallback.to_string())
 }
 
-/// `text[:limit]` — characters, as every Python slice in the original.
 fn truncate(text: &str, limit: usize) -> String {
     match text.char_indices().nth(limit) {
         Some((offset, _)) => text[..offset].to_string(),
@@ -397,8 +326,6 @@ mod tests {
     use lattice_agent::tools::{NativeCall, NativeTools, ToolConfig, ToolHost};
     use std::sync::Arc;
 
-    /// A registry, a workspace and a host wired to the sink — the production
-    /// shape, over a scratch directory (never the developer's `~/.ltcai`).
     struct Wired {
         _dir: tempfile::TempDir,
         hooks: HooksStore,
@@ -476,9 +403,6 @@ mod tests {
         ));
 
         let runs = runs(&wired);
-        // Newest first: the seeded `brain-event-triggers` post_tool hook, then
-        // the registered pre_tool one. No built-in rows: this build does not
-        // run them for a native tool and does not claim it did.
         assert_eq!(runs.len(), 2, "{runs:#?}");
         assert_eq!(
             runs[0]["hook_id"],
@@ -522,8 +446,6 @@ mod tests {
         );
 
         let runs = runs(&wired);
-        // One row: the gate blocked, so nothing after it ran — not the rest of
-        // the `pre_tool` chain and not `post_tool`.
         assert_eq!(runs.len(), 1, "{runs:#?}");
         assert_eq!(runs[0]["status"], json!("blocked"));
         assert_eq!(runs[0]["blocked"], json!(true));
@@ -624,7 +546,6 @@ echo \"kind=$LATTICE_HOOK_KIND event=$LATTICE_HOOK_EVENT id=$LATTICE_HOOK_ID\"\n
             .unwrap_or_default()
             .to_string();
         std::env::remove_var("LATTICEAI_SECRET_TOKEN");
-        // The payload Python sends: the argument *names*, never their values.
         assert!(output.contains("\"tool\":\"write_file\""), "{output}");
         assert!(
             output.contains("\"args_keys\":[\"path\",\"content\"]")

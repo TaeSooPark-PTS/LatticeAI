@@ -245,11 +245,7 @@
   margin-bottom: 0.8rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DIGITAL BRAIN EXPERIENCE — Complete Immersive Redesign
-   The Brain is the product. Everything else is discovered depth.
-   Warm, private, alive, human.
-   ═══════════════════════════════════════════════════════════════ */
+
 
 html, body, #root {
   height: 100%;
@@ -260,7 +256,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* The entire post-onboarding experience is a living room with the Brain */
+
 .brain-space {
   min-height: 100vh;
   min-height: 100dvh;
@@ -280,7 +276,7 @@ body {
   padding: 0.9rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
-/* ── 단순한 셸 — 톱바에는 메뉴 버튼과 브랜드만, 나머지는 서랍으로 ────────── */
+
 .brain-topbar {
   position: sticky;
   top: 0.65rem;
@@ -476,7 +472,7 @@ body {
   color: hsl(var(--faint, var(--fg-muted)));
 }
 
-/* 서랍 안에서는 워크스페이스/동기화 위젯이 가로로 꽉 차게 */
+
 .brain-sidebar-foot .workspace-profile-switcher,
 .brain-sidebar-foot .workspace-profile-trigger,
 .brain-sidebar-foot .vscode-sync-status,
@@ -502,7 +498,7 @@ body {
   font-weight: 700;
 }
 
-/* Subtle living field behind everything */
+
 .brain-field {
   position: fixed;
   inset: 0;
@@ -514,7 +510,7 @@ body {
   transition: opacity 1200ms ease;
 }
 
-/* The living presence — large, primary, always visible, reactive */
+
 .brain-presence {
   position: relative;
   z-index: 2;
@@ -531,8 +527,8 @@ body {
   padding-bottom: 1.25rem;
 }
 
-/* The actual living visual object */
-/* ── 입체 브레인 — 원근 틸트 + 볼륨 셰이딩. 스티커가 아니라 오브다. ────── */
+
+
 .brain-organism {
   position: relative;
   width: clamp(220px, 28vw, 320px);

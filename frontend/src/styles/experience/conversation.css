@@ -1,4 +1,4 @@
-/* ── Conversation-first home ─────────────────────────────────────────── */
+
 
 .brain-home,
 .brain-conversation,
@@ -332,8 +332,7 @@
   border-radius: 10px;
 }
 
-/* The home's insight shelf left this sheet in 10.10.0 — its panels live in the
-   dock drawer now (see experience/home-dock.css). */
+
 
 .brain-home-proactive-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));

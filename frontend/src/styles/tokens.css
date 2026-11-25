@@ -1,15 +1,9 @@
 :root {
   color-scheme: dark;
-  /* React SPA token source. Values are HSL triples consumed as
-   * hsl(var(--token)); static/legacy pages use static/css/tokens.css. */
-  /* ── 먹빛 밤 (ink night) ──────────────────────────────────────────────
-   * 인터페이스는 차분한 먹(잉크 네이비)과 옥빛(jade), 브레인만 따뜻한
-   * 금빛으로 살아 있다. 라이트 테마와 같은 악센트 DNA를 공유한다.
-   * 토큰은 항상 hsl(var(--token)) 로 소비한다 — 값은 HSL 트리플.
-   * 11.7.0: 표면 사다리 · 고도 · 그라데이션 · 테두리 · 타입 스케일을
-   * 한 어휘로 모은다. 글래스는 쓰지 않는다. */
+  
+  
 
-  /* surfaces — canvas → resting → raised → overlay */
+  
   --bg: 92 6% 8%;
   --bg-elevated: 100 6% 11%;
   --background: 92 6% 8%;
@@ -17,13 +11,13 @@
   --surface-raised: 100 6% 14%;
   --surface-sunken: 92 6% 7%;
   --surface-overlay: 100 7% 13%;
-  --surface-glass: 100 6% 12%; /* opaque on purpose — no glass */
+  --surface-glass: 100 6% 12%; 
   --card: 100 6% 12%;
   --card-foreground: 43 28% 93%;
   --muted: 96 6% 17%;
   --input: 90 6% 24%;
 
-  /* text — 따뜻한 종이색 텍스트가 두 테마를 잇는다 */
+  
   --fg: 43 26% 94%;
   --fg-muted: 46 8% 66%;
   --fg-faint: 46 6% 50%;
@@ -31,7 +25,7 @@
   --foreground: 43 26% 94%;
   --muted-foreground: 46 8% 66%;
 
-  /* interactive — 옥빛(jade) */
+  
   --primary: 163 38% 52%;
   --primary-foreground: 100 8% 9%;
   --secondary: 96 6% 18%;
@@ -42,13 +36,13 @@
   --border-subtle: 90 6% 16%;
   --border-strong: 90 8% 28%;
 
-  /* the living Brain — 금빛 시그니처 */
+  
   --brain-core: 36 60% 56%;
   --brain-halo: 40 54% 72%;
   --brain-shade: 92 10% 6%;
   --brain-sheen: 40 55% 96%;
 
-  /* knowledge domains */
+  
   --memory: 168 48% 58%;
   --knowledge: 205 55% 66%;
   --connection: 278 44% 72%;
@@ -57,7 +51,7 @@
   --act: 30 66% 62%;
   --library: 195 45% 62%;
 
-  /* status */
+  
   --success: 158 48% 54%;
   --warning: 38 76% 60%;
   --danger: 8 70% 64%;
@@ -66,11 +60,11 @@
   --warning-ink: 38 72% 68%;
   --danger-ink: 8 72% 70%;
 
-  /* shadow ink — compose as hsl(var(--shadow-ink) / α) */
+  
   --shadow-ink: 92 12% 3%;
   --scrim: 92 12% 3% / 0.42;
 
-  /* elevation — four steps + inset + focus. Theme-aware via --shadow-ink. */
+  
   --elev-0: none;
   --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.22), 0 4px 14px hsl(var(--shadow-ink) / 0.18);
   --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.2), 0 16px 36px hsl(var(--shadow-ink) / 0.28);
@@ -80,7 +74,7 @@
   --elev-ring: 0 0 0 3px hsl(var(--primary) / 0.2);
   --elev-focus: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 0 4px hsl(var(--primary) / 0.16);
 
-  /* gradients — full background values, not HSL triples */
+  
   --grad-field: radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 56%);
   --grad-surface: linear-gradient(180deg, hsl(var(--surface-raised)) 0%, hsl(var(--surface)) 100%);
   --grad-hero: radial-gradient(ellipse at 50% 8%, hsl(var(--brain-core) / 0.11) 0%, hsl(var(--primary) / 0.05) 44%, transparent 72%);
@@ -89,13 +83,13 @@
   --grad-cta: linear-gradient(180deg, color-mix(in srgb, hsl(var(--primary)) 86%, white), hsl(var(--primary)));
   --grad-jade-wash: linear-gradient(135deg, hsl(var(--primary) / 0.1), transparent 58%);
 
-  /* layout & reading measure tokens (R2) */
+  
   --lt-measure-text: 68ch;
   --lt-measure-form: 30rem;
   --lt-measure-page: 70rem;
   --lt-measure-full: none;
 
-  /* vertical rhythm */
+  
   --lt-space-1: 4px;
   --lt-space-2: 8px;
   --lt-space-3: 12px;
@@ -105,12 +99,12 @@
   --lt-space-7: 48px;
   --lt-space-8: 64px;
 
-  /* section gaps */
+  
   --lt-gap-tight: var(--lt-space-3);
   --lt-gap-block: var(--lt-space-5);
   --lt-gap-section: var(--lt-space-7);
 
-  /* typography scale */
+  
   --lt-type-display: 2.25rem;
   --lt-type-hero: 1.75rem;
   --lt-type-title: 1.25rem;
@@ -126,7 +120,7 @@
   --lt-tracking-tight: -0.018em;
   --lt-tracking-wide: 0.04em;
 
-  /* radius */
+  
   --lt-radius-xs: 4px;
   --lt-radius-sm: 6px;
   --lt-radius-md: 8px;
@@ -138,14 +132,14 @@
   --radius-md: var(--lt-radius-lg);
   --radius-lg: var(--lt-radius-xl);
 
-  /* motion */
+  
   --lt-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --lt-dur-1: 90ms;
   --lt-dur-2: 160ms;
   --lt-dur-3: 240ms;
   --lt-dur-4: 420ms;
 
-  /* stacking */
+  
   --lt-z-base: 1;
   --lt-z-sticky: 20;
   --lt-z-header: 40;
@@ -155,11 +149,9 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  /* ── 한지 낮 (paper day) ──────────────────────────────────────────────
-   * 따뜻한 종이 바탕 위의 먹 글씨, 짙은 옥빛 악센트. 눈부심 없이
-   * 높은 대비를 유지해 모든 연령대가 읽기 편하다. */
+  
 
-  /* surfaces */
+  
   --bg: 42 28% 94%;
   --bg-elevated: 40 70% 98%;
   --background: 42 28% 94%;
@@ -173,7 +165,7 @@
   --muted: 42 22% 91%;
   --input: 41 16% 76%;
 
-  /* text — 먹 */
+  
   --fg: 40 10% 12%;
   --fg-muted: 41 8% 38%;
   --fg-faint: 41 6% 50%;
@@ -181,7 +173,7 @@
   --foreground: 40 10% 12%;
   --muted-foreground: 41 8% 38%;
 
-  /* interactive — 짙은 옥빛 */
+  
   --primary: 167 46% 27%;
   --primary-foreground: 40 40% 98%;
   --secondary: 43 20% 91%;
@@ -192,13 +184,13 @@
   --border-subtle: 41 16% 90%;
   --border-strong: 41 16% 74%;
 
-  /* the living Brain — 금빛 시그니처 */
+  
   --brain-core: 36 59% 47%;
   --brain-halo: 38 57% 62%;
   --brain-shade: 35 22% 28%;
   --brain-sheen: 40 80% 99%;
 
-  /* knowledge domains */
+  
   --memory: 172 48% 32%;
   --knowledge: 210 56% 40%;
   --connection: 276 40% 48%;
@@ -207,7 +199,7 @@
   --act: 28 72% 40%;
   --library: 198 48% 36%;
 
-  /* status */
+  
   --success: 158 54% 28%;
   --warning: 34 82% 32%;
   --danger: 8 64% 42%;

@@ -1,4 +1,4 @@
-/* Brain first screen */
+
 .brain-first-screen {
   display: grid;
   grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr);

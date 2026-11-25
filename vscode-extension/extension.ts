@@ -1,13 +1,3 @@
-/**
- * Extension entry point.
- *
- * Everything this file does is start-up: build the client, put the two status
- * bar items on screen, register the commands, and park the sync poller. The
- * command bodies live in `commands.ts`, the surfaces they drive in
- * `agentSurface.ts` / `approvals.ts` / `editorActions.ts`, and the state they
- * share in `extensionState.ts`. `activate` and `deactivate` stay here because
- * `package.json` points `main` at this module.
- */
 import * as vscode from "vscode";
 import { LatticeAIClient } from "./client";
 import { registerCommands } from "./commands";
@@ -53,7 +43,6 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // ── Status Bar ───────────────────────────────────────────────────────────
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   setStatusBar(statusBar);
   statusBar.command = "ltcai.loadModel";
@@ -69,7 +58,6 @@ export async function activate(context: vscode.ExtensionContext) {
   syncStatusBar.show();
   context.subscriptions.push(syncStatusBar);
 
-  // ── Auto-load model ──────────────────────────────────────────────────────
   const defaultModel = (config.get<string>("defaultModel") ?? "").trim();
   if (config.get<boolean>("autoLoadModel") && defaultModel) {
     void loadModelSilently(defaultModel).catch((err) => {
@@ -80,7 +68,6 @@ export async function activate(context: vscode.ExtensionContext) {
     updateStatusBar(null);
   }
 
-  // ── Commands ─────────────────────────────────────────────────────────────
   registerCommands(context);
 
   let syncInFlight = false;

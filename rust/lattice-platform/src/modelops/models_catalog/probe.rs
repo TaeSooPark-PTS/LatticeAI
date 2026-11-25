@@ -1,5 +1,3 @@
-//! Host probe + worker catalog merge used by recommendations and setup.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
@@ -16,7 +14,6 @@ use sysinfo::{
     os_version,
 };
 
-/// What a native host probe can say without asking the worker.
 #[derive(Debug, Clone)]
 pub struct HostProbe {
     pub os: String,
@@ -52,7 +49,6 @@ impl HostProbe {
     }
 }
 
-/// Worker answers used by recommendations and the setup probes.
 #[derive(Debug, Clone)]
 pub struct WorkerCatalog {
     pub reachable: bool,
@@ -61,8 +57,6 @@ pub struct WorkerCatalog {
     pub sysinfo: Value,
 }
 
-/// RAM / chip / disk from this process. `data_dir` is the volume whose free
-/// space we report; `None` uses the current directory.
 pub fn probe_host(data_dir: Option<&Path>) -> HostProbe {
     let ram_bytes = read_ram_bytes();
     let ram_gb = ram_bytes.map(|b| b / (1024 * 1024 * 1024)).unwrap_or(0);
@@ -90,7 +84,6 @@ pub fn probe_host(data_dir: Option<&Path>) -> HostProbe {
     }
 }
 
-/// `GET /models` + `GET /worker/sysinfo`. Either miss is named, never faked.
 pub async fn fetch_worker_catalog(worker: Option<&WorkerSeamClient>) -> WorkerCatalog {
     let Some(worker) = worker else {
         return WorkerCatalog {
@@ -135,7 +128,6 @@ pub async fn fetch_worker_catalog(worker: Option<&WorkerSeamClient>) -> WorkerCa
 
 pub use super::embedding::recommend_embedding_for_host;
 
-/// Build the `/models/recommendations` body from a probe + worker payload.
 pub fn recommend_from_catalog(
     probe: &HostProbe,
     engine: &str,
@@ -391,7 +383,6 @@ pub(crate) struct CatalogHint {
     pub(crate) display_priority: i64,
 }
 
-/// Display priority / RAM floors the worker `to_legacy_dict` omits.
 const CATALOG_HINTS: &[(&str, CatalogHint)] = &[
     (
         "mlx-community/LFM2.5-2.6B-4bit",

@@ -1,14 +1,9 @@
 import { create } from "zustand";
 import type { Message } from "./types";
 
-// The visible conversation must survive route changes: BrainHome unmounts
-// whenever the user visits Capture/Library/System, so keeping messages in
-// component state silently wiped the chat the Brain claims to remember.
 type ConversationSessionState = {
   messages: Message[];
   conversationId: string | null;
-  // Per-conversation override: when the dial allows cloud, the person can
-  // keep this turn on the machine. Reset with the conversation, not the route.
   preferLocalOnly: boolean;
   setMessages: (updater: Message[] | ((prev: Message[]) => Message[])) => void;
   setConversationId: (conversationId: string | null) => void;

@@ -1,10 +1,3 @@
-//! Shared crate-internal HTTP JSON reply, FastAPI 422 validation envelope,
-//! localized message detail, and UTC ISO-8601 clock helpers.
-//!
-//! Extracted out of `workspaceos::project_sessions` so sibling domains
-//! (`knowledge/`, `toolsurface/`, etc.) never reach sideways into
-//! `workspaceos::project_sessions` just to format a JSON response or timestamp.
-
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_auth::response::json_response;

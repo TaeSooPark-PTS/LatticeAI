@@ -11,13 +11,6 @@ import { useBrainIngestion } from "./hooks/useBrainIngestion";
 import { useBrainProof } from "./hooks/useBrainProof";
 import { BrainHome } from "./BrainHome";
 
-/**
- * BrainHome's own logic — the visible-state ladder, the drop overlay, depth
- * routing and conversation reset — sits above four hooks that each need a
- * server conversation to reach their interesting states. The hooks have their
- * own suites; here they are mocked so every rung of the ladder is a plain
- * input instead of a scripted stream.
- */
 vi.mock("./hooks/useBrainChat");
 vi.mock("./hooks/useBrainHistory");
 vi.mock("./hooks/useBrainIngestion");
@@ -238,7 +231,6 @@ describe("BrainHome global file drop", () => {
     expect(screen.queryByTestId("brain-drop-overlay")).toBeNull();
 
     await waitFor(() => expect(api.ingestion.uploadDocument).toHaveBeenCalledTimes(5));
-    // File objects compare structurally equal, so assert order by name.
     const uploaded = vi.mocked(api.ingestion.uploadDocument).mock.calls.map((call) => (call[0] as File).name);
     expect(uploaded).toEqual(["f0.txt", "f1.txt", "f2.txt", "f3.txt", "f4.txt"]);
   });

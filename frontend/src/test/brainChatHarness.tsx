@@ -5,15 +5,6 @@ import { vi } from "vitest";
 
 import { useBrainChat } from "@/features/brain/hooks/useBrainChat";
 
-/**
- * One rendering of `useBrainChat` with every collaborator recorded.
- *
- * The hook reports to the surrounding page through callbacks — the organism's
- * state, the memory notice, the ingestion lifecycle — so a test can only see
- * what it did by keeping those calls. `setup()` is that recorder, shared by
- * every `useBrainChat.*.test.tsx` file so the three of them agree on what a
- * default run looks like.
- */
 
 export function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({

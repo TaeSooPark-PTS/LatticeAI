@@ -1,21 +1,3 @@
-//! Models catalog / recommendations / leftover health-adjacent surfaces.
-//!
-//! Port of the **non-MLX** half of `latticeai/api/models.py` plus the stacked
-//! `/mode` + `/runtime_features` handler and `GET /engines` from
-//! `latticeai/api/health.py`.
-//!
-//! Not claimed (KEEP_WORKER / in-process MLX runtime):
-//! `GET /models`, `POST /models/load`, `DELETE /models/unload/{model_id}`,
-//! `POST /engines/prepare-model`, `POST /engines/prepare-model/stream`.
-//!
-//! Three more used to be listed here and are now gone from the product
-//! entirely (v11.8.0): `POST /models/switch/{model_id}`,
-//! `DELETE /models/unload-all` and `POST /engines/pull-model` had no caller in
-//! any surface — this crate, the SPA client, either extension, or the Tauri
-//! shell — so they were deleted from the worker rather than ported here. What
-//! the product actually sends is `/models/load` (which switches) and
-//! `/engines/prepare-model` (which downloads on consent, then loads).
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -43,7 +25,6 @@ pub use probe::{
     recommend_from_catalog, HostProbe, WorkerCatalog,
 };
 
-/// Routes this family mounts. KEEP_WORKER paths are deliberately absent.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/engines"),
     ("POST", "/engines/install"),
@@ -55,7 +36,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/setup/set-api-key"),
 ];
 
-/// Cloud providers `OPENAI_COMPATIBLE_PROVIDERS` recognises (declaration order).
 const OPENAI_COMPATIBLE_PROVIDERS: &[&str] = &[
     "openai",
     "openrouter",
@@ -69,17 +49,13 @@ const OPENAI_COMPATIBLE_PROVIDERS: &[&str] = &[
     "llamacpp",
 ];
 
-/// How long a cloud-verify answer is considered fresh (Python constant).
 pub const CLOUD_VERIFY_TTL_SECONDS: u64 = 300;
 
-/// What the family needs to serve catalog / leftover status routes.
 #[derive(Clone)]
 pub struct ModelsCatalogState {
     auth: Arc<AuthState>,
     data_dir: PathBuf,
-    /// `LATTICEAI_REQUIRE_AUTH` as the health router sees it.
     require_auth: bool,
-    /// Process mode (`local` / `public`) for `/mode`.
     app_mode: String,
     host: String,
     port: u16,
@@ -88,15 +64,11 @@ pub struct ModelsCatalogState {
     enable_graph: bool,
     enable_telegram: bool,
     invite_gate_enabled: bool,
-    /// Optional override for `/models/compat-profiles` (tests pin `[]`).
     compat_profiles: Arc<Vec<Value>>,
-    /// Worker seam — `GET /models` + `GET /worker/sysinfo`. Absent is honest
-    /// degradation, not a fabricated catalog.
     worker: Option<WorkerSeamClient>,
 }
 
 impl ModelsCatalogState {
-    /// Build from an auth handle and the install's data dir.
     pub fn new(auth: Arc<AuthState>, data_dir: impl Into<PathBuf>) -> Self {
         let require_auth = auth.effective_require_auth();
         Self {
@@ -116,13 +88,11 @@ impl ModelsCatalogState {
         }
     }
 
-    /// Point catalog / recommendation reads at this worker.
     pub fn with_worker(mut self, worker: WorkerSeamClient) -> Self {
         self.worker = Some(worker);
         self
     }
 
-    /// Override the runtime-features snapshot (tests / integrator).
     pub fn with_runtime(
         mut self,
         app_mode: impl Into<String>,
@@ -136,7 +106,6 @@ impl ModelsCatalogState {
     }
 }
 
-/// Router factory.
 pub fn router(state: ModelsCatalogState) -> Router {
     Router::new()
         .route("/models/compat-profiles", get(compat_profiles))
@@ -173,9 +142,6 @@ fn require_user(state: &ModelsCatalogState, headers: &HeaderMap) -> Result<Ident
 }
 
 fn require_admin(state: &ModelsCatalogState, headers: &HeaderMap) -> Result<Identity, Response> {
-    // `_authorize_model_admin`: require_user first, then require_admin when
-    // REQUIRE_AUTH is on. require_admin already 401s an anonymous caller on a
-    // require-auth install (it never falls through to the local owner).
     let _ = require_user(state, headers)?;
     if state.require_auth {
         state.auth.require_admin(headers)
@@ -185,7 +151,6 @@ fn require_admin(state: &ModelsCatalogState, headers: &HeaderMap) -> Result<Iden
 }
 
 fn require_sensitive(state: &ModelsCatalogState, headers: &HeaderMap) -> Result<(), Response> {
-    // health.py `_require_sensitive_status_access`.
     if state.require_auth && state.auth.get_current_user(headers).is_none() {
         return Err(detail_error(
             StatusCode::UNAUTHORIZED,
@@ -194,8 +159,6 @@ fn require_sensitive(state: &ModelsCatalogState, headers: &HeaderMap) -> Result<
     }
     Ok(())
 }
-
-// ── GET /models/compat-profiles ──────────────────────────────────────────────
 
 async fn compat_profiles(
     State(state): State<ModelsCatalogState>,
@@ -206,8 +169,6 @@ async fn compat_profiles(
     body.insert("profiles", json!(state.compat_profiles.as_slice()));
     Ok(ok(&body))
 }
-
-// ── GET /models/recommendations ──────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 struct RecQuery {
@@ -339,8 +300,6 @@ fn persist_user_api_key(data_dir: &Path, email: &str, provider: &str, key: &str)
     }
 }
 
-// ── GET /mode + GET /runtime_features (one handler, two mounts) ──────────────
-
 async fn runtime_features(
     State(state): State<ModelsCatalogState>,
     headers: HeaderMap,
@@ -403,8 +362,6 @@ fn runtime_features_body(state: &ModelsCatalogState) -> OrderedMap {
     body
 }
 
-// ── GET /engines ─────────────────────────────────────────────────────────────
-
 async fn list_engines(
     State(state): State<ModelsCatalogState>,
     headers: HeaderMap,
@@ -415,8 +372,6 @@ async fn list_engines(
     body.insert("current", Value::Null);
     Ok(ok(&body))
 }
-
-// ── POST /engines/install ────────────────────────────────────────────────────
 
 async fn engines_install(
     State(state): State<ModelsCatalogState>,
@@ -436,8 +391,6 @@ async fn engines_install(
     Ok(ok(&out))
 }
 
-// ── POST /engines/verify-cloud ───────────────────────────────────────────────
-
 async fn engines_verify_cloud(
     State(state): State<ModelsCatalogState>,
     headers: HeaderMap,
@@ -451,7 +404,6 @@ async fn engines_verify_cloud(
     Ok(ok(&out))
 }
 
-/// Known KEEP_WORKER model/engine paths this router must never claim.
 pub fn keep_worker_paths() -> &'static [(&'static str, &'static str)] {
     &[
         ("GET", "/models"),
@@ -480,8 +432,6 @@ mod tests {
         assert!(!MOUNTED.iter().any(|(_, p)| p.contains("unload")));
     }
 
-    /// v11.8.0 deleted these from the worker for having no caller. This crate
-    /// did not inherit them: a route nothing called is not a porting backlog.
     #[test]
     fn the_routes_v11_8_0_deleted_were_not_picked_up_here() {
         for gone in [

@@ -1,18 +1,3 @@
-//! v11.7.0 §F-G — the fourth unlocked `workspace_os.json` writer, closed.
-//!
-//! `lattice-agent`'s `JsonProposalStore` was the last writer that appended to
-//! `workspace_os.json` without taking the document owner's lock — and worse
-//! than "another lock": it wrote the JSON file only, while
-//! `WorkspaceOsStore::load_state` reads the `workspace_os_state` SQLite row
-//! first and rewrites the file from it. A proposal staged that way, in a
-//! process that also runs the Review Center, was invisible and then gone.
-//!
-//! The fix is the inversion `HookSink` and `wsos::StateWriter` already use:
-//! `lattice-agent` declares `DocumentWriter`, the owner implements it, and the
-//! host installs it once. Installing is process-wide, which is why this lives
-//! in its own test binary — a writer installed inside the shared harness would
-//! redirect every other test's staging into it.
-
 use std::sync::Arc;
 
 use lattice_agent::kernel::proposals::{
@@ -21,8 +6,6 @@ use lattice_agent::kernel::proposals::{
 use lattice_platform::workspaceos::workspace::WorkspaceOsStore;
 use serde_json::{json, Value};
 
-/// The host's `SharedStateWriter`, in miniature: the platform store answering
-/// the agent crate's port.
 struct Owner(Arc<WorkspaceOsStore>);
 
 impl DocumentWriter for Owner {
@@ -59,10 +42,6 @@ fn a_staged_proposal_and_a_workspace_write_cannot_erase_one_another() {
         "a second install must not swap the document under a run mid-stage"
     );
 
-    // 30 proposals staged through the agent's store while 30 memories are
-    // appended through the platform's, from two threads over one directory.
-    // Before the port these interleaved as read-modify-write over two
-    // different locks *and two different media*, so a whole batch could vanish.
     const N: usize = 30;
     let staging = {
         let data_dir = data.path().to_path_buf();
@@ -128,9 +107,6 @@ fn a_staged_proposal_and_a_workspace_write_cannot_erase_one_another() {
         "two proposals were handed the same id"
     );
 
-    // The write landed where the owner keeps it: the `workspace_os_state`
-    // SQLite row `load_state` reads *before* the JSON file. The standalone
-    // store wrote the file alone, so a fresh handle saw none of this.
     let reopened = WorkspaceOsStore::open(data.path()).load_state();
     assert_eq!(
         reopened["review_items"].as_array().map(Vec::len),

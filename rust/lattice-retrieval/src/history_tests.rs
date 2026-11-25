@@ -95,7 +95,6 @@ fn the_scope_sql_covers_every_branch() {
         0,
         "1=0 — a caller who may read nothing reads nothing"
     );
-    // Blank entries are stripped before the IN list, so [\"\"] is an empty set.
     assert_eq!(
         scoped(HistoryScope {
             allowed_workspaces: Some(vec![String::new()]),
@@ -103,7 +102,6 @@ fn the_scope_sql_covers_every_branch() {
         }),
         0
     );
-    // NULL/blank workspace_id is personal visibility.
     assert_eq!(
         scoped(HistoryScope {
             allowed_workspaces: Some(vec![lattice_core::DEFAULT_WORKSPACE_ID.into()]),
@@ -179,7 +177,6 @@ fn grouping_names_upgrades_and_orders_conversations() {
     ];
     let groups = group_conversations(&history);
     assert_eq!(groups.len(), 2);
-    // The legacy bucket is newest, and keeps its fixed name.
     assert_eq!(groups[0]["id"], LEGACY_CONVERSATION_ID);
     assert_eq!(groups[0]["title"], LEGACY_CONVERSATION_TITLE);
     assert_eq!(groups[0]["message_count"], 2);
@@ -242,7 +239,6 @@ fn search_is_case_insensitive_and_keeps_the_last_groups() {
     assert_eq!(all[0]["conversation_id"], "c0");
     assert_eq!(all[0]["title"], "Ranking");
     assert_eq!(all[0]["messages"].as_array().unwrap().len(), 1);
-    // The LAST groups in insertion order, which is what the product returns.
     let tail = search_history(&history, "ranking", 2);
     assert_eq!(tail.len(), 2);
     assert_eq!(tail[0]["conversation_id"], "c2");
@@ -306,9 +302,6 @@ fn recent_chat_context_labels_and_trims() {
         },
     );
     assert_eq!(conversation, "user: three");
-    // `history[-0:]` is `history[0:]`: a zero limit keeps everything.
-    // 11.5.2 found this with a golden; the port had answered "" and no
-    // test on either side had ever asked.
     assert_eq!(
         recent_chat_context(
             &history,
@@ -319,8 +312,6 @@ fn recent_chat_context_labels_and_trims() {
         ),
         "user (web): one\nassistant: two\nuser: three"
     );
-    // `history[-(-2):]` is `history[2:]` — a negative limit drops rows
-    // off the *front*.
     assert_eq!(
         recent_chat_context(
             &history,

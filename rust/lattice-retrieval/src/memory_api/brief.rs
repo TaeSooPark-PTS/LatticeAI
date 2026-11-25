@@ -1,18 +1,3 @@
-//! Brain Proof and Brain Brief — the home screen's evidence and its briefing.
-//!
-//! Both are backend-owned on purpose. The proof has to show the stores the
-//! Brain can *actually* recall from, and the model-continuity claim has to be
-//! independent of whichever LLM happens to be loaded — a UI-derived version of
-//! either would be an assertion rather than a proof. `capability` is therefore
-//! always true (the design is model-independent) while `proven` stays false
-//! until there is durable evidence on disk.
-//!
-//! Everything the brief adds on top is a *descriptor list*, not copy: labels
-//! are i18n keys the frontend resolves, so the wording stays in the frontend
-//! and the ordering — which is a product judgement about priority — stays here.
-//! `sorted(..., reverse=True)[:4]` is stable in Python and `sort_by` is stable
-//! in Rust, so ties keep the order they were appended in.
-
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -34,7 +19,6 @@ fn count_of(sources: &Value, id: &str) -> i64 {
         .unwrap_or(0)
 }
 
-/// `MemoryProofMixin._latest_recall_query` — the first thing worth recalling.
 pub fn latest_recall_query(
     snapshot: &Snapshot,
     user_email: &str,
@@ -46,9 +30,6 @@ pub fn latest_recall_query(
             return lattice_core::truncate_chars(&content, 96);
         }
     }
-    // Deliberately the *unscoped* conversation list, as Python has it: the
-    // per-message filter below is the scoping, and it is not the same filter
-    // `_scoped_conversations` applies (it keeps conversations, not messages).
     let target = workspace_id.unwrap_or(super::wsos::DEFAULT_WORKSPACE_ID);
     for conversation in &snapshot.conversations {
         let Some(messages) = conversation.get("messages").and_then(Value::as_array) else {
@@ -81,7 +62,6 @@ pub fn latest_recall_query(
     String::new()
 }
 
-/// `MemoryProofMixin.brain_proof`, given an already-computed manager report.
 pub fn brain_proof(
     manager: &OrderedMap,
     recall: &OrderedMap,
@@ -191,7 +171,6 @@ pub fn brain_proof(
     out
 }
 
-/// One recall row reduced to what the Evidence panel renders.
 fn proof_item(item: &Value) -> Value {
     let mut row = OrderedMap::new();
     row.insert("id", item.get("id").cloned().unwrap_or(Value::Null));
@@ -228,9 +207,6 @@ fn proof_item(item: &Value) -> Value {
     json(&row)
 }
 
-/// `MemoryBriefMixin.brain_brief`.
-// Eight parameters because the Python mixin method takes eight; the signature
-// is the port's contract and a params struct would only rename them.
 #[allow(clippy::too_many_arguments)]
 pub fn brain_brief(
     snapshot: &Snapshot,
@@ -385,8 +361,6 @@ pub fn brain_brief(
     out
 }
 
-/// `_brain_brief_focus` — a real recalled row, a real memory, a real
-/// conversation or a real graph count, in that order, and an empty Brain says so.
 fn focus(
     snapshot: &Snapshot,
     user_email: &str,

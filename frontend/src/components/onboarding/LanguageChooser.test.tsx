@@ -5,11 +5,6 @@ import { LANGUAGE_LABELS, t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { LanguageChooser } from "./LanguageChooser";
 
-/**
- * The first control a new person can reach: the onboarding language toggle.
- * It must show both languages, mark the active one, and actually switch the
- * store (and its persisted copy) when pressed.
- */
 
 beforeEach(() => {
   useAppStore.setState({ language: "ko" });
@@ -34,7 +29,6 @@ describe("LanguageChooser", () => {
     fireEvent.click(screen.getByRole("button", { name: LANGUAGE_LABELS.en }));
     expect(useAppStore.getState().language).toBe("en");
     expect(localStorage.getItem("lattice.language")).toBe("en");
-    // Now the labels re-render with English active.
     expect(
       screen.getByRole("button", { name: LANGUAGE_LABELS.en }).getAttribute("aria-pressed"),
     ).toBe("true");

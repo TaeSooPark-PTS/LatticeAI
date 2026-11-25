@@ -1,16 +1,3 @@
-//! The polling watcher, over real directories.
-//!
-//! Every test builds its own `tempfile::TempDir`, so nothing here depends on
-//! the developer's home, the repository layout or what a previous test left
-//! behind. Detection is asserted through the diff rather than through timing:
-//! `scan_once` is synchronous and pure with respect to (snapshot, disk), and
-//! the one test that does involve the timer waits on a channel, never on a
-//! sleep long enough to "probably" be enough.
-//!
-//! Where a stamp needs to change without a real clock moving, the *stored*
-//! snapshot is edited instead of the file's mtime — a filesystem whose
-//! timestamp granularity is coarser than a test is a flake, not a finding.
-
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
@@ -33,7 +20,6 @@ fn scanner(root: &Path) -> WatchScanner {
     WatchScanner::new(root, WatchConfig::default())
 }
 
-/// A scanner whose baseline is the folder as it stands right now.
 fn baselined(root: &Path) -> WatchScanner {
     let mut scanner = scanner(root);
     scanner.take_baseline().expect("baseline");
@@ -90,7 +76,6 @@ fn a_new_file_a_changed_file_and_a_removed_file_are_each_reported_once() {
         "pending follows walk order, which is sorted within a directory"
     );
 
-    // The snapshot is adopted, so the same change is never reported twice.
     assert_eq!(scanner.scan_once().expect("scan"), ScanDiff::default());
 }
 
@@ -102,8 +87,6 @@ fn a_removed_file_is_counted_and_nothing_else_happens_to_it() {
     fs::remove_file(dir.path().join("gone.md")).expect("remove");
     let diff = scanner.scan_once().expect("scan");
     assert_eq!(diff.removed, vec!["gone.md".to_string()]);
-    // A removal is never queued for delegation — deleting a node is a
-    // destructive act that stays behind an explicit user flow.
     assert!(diff.pending.is_empty());
     assert!(!scanner.snapshot().contains_key("gone.md"));
 }
@@ -114,8 +97,6 @@ fn an_mtime_only_change_is_a_change() {
     write(dir.path(), "note.md", "same size");
     let settled = baselined(dir.path());
     let stamp = settled.snapshot()["note.md"];
-    // Rewind the stored mtime rather than touching the file: a filesystem with
-    // coarse timestamps would otherwise make this test a coin flip.
     let mut rewound = settled.snapshot().clone();
     rewound.insert(
         "note.md".to_string(),
@@ -128,7 +109,6 @@ fn an_mtime_only_change_is_a_change() {
     let diff = scanner.scan_once().expect("scan");
     assert_eq!(diff.changed, vec!["note.md".to_string()]);
     assert_eq!(diff.pending, vec!["note.md".to_string()]);
-    // Adopting the real stamp settles it again — the size never moved.
     assert_eq!(scanner.snapshot()["note.md"].size, stamp.size);
     assert_eq!(scanner.scan_once().expect("scan"), ScanDiff::default());
 }
@@ -188,8 +168,6 @@ fn latticeignore_prunes_files_and_directories_and_never_ingests_itself() {
             .into_iter()
             .collect()
     );
-    // `.log` is not in the allow-list either, so prove the pattern bites on a
-    // file that *would* otherwise be admitted.
     let dir = tempfile::tempdir().expect("tempdir");
     write(dir.path(), LATTICEIGNORE_FILENAME, "*.md\n");
     write(dir.path(), "note.md", "x");
@@ -215,8 +193,6 @@ fn a_file_over_the_size_cap_is_refused() {
         tracked(&scanner),
         ["small.md".to_string()].into_iter().collect()
     );
-    // A file that grows past the cap disappears from the snapshot, which the
-    // diff reports as a removal rather than pretending it is still watched.
     write(dir.path(), "small.md", &"y".repeat(2048));
     let diff = scanner.scan_once().expect("scan");
     assert_eq!(diff.removed, vec!["small.md".to_string()]);
@@ -278,7 +254,6 @@ fn the_per_scan_cap_truncates_the_pending_list_but_not_the_counts() {
     assert_eq!(diff.pending.len(), MAX_FILES_PER_SCAN);
     assert!(diff.truncated);
     assert_eq!(diff.pending[0], "note-0000.md");
-    // Just under the cap, nothing is truncated.
     let dir = tempfile::tempdir().expect("tempdir");
     for index in 0..MAX_FILES_PER_SCAN {
         write(dir.path(), &format!("note-{index:04}.md"), "x");
@@ -300,9 +275,7 @@ fn a_missing_or_replaced_folder_is_an_error_not_an_empty_scan() {
         .scan_once()
         .expect_err("a vanished folder must fail loudly");
     assert!(error.to_string().contains("folder unavailable"));
-    // The snapshot survives the failure, so the watch resumes where it was.
     assert_eq!(scanner.snapshot().len(), 1);
-    // A file where a directory used to be is the same refusal.
     fs::write(&root, "not a folder").expect("write");
     assert!(scanner.scan_once().is_err());
 }
@@ -359,8 +332,6 @@ async fn the_poll_loop_reports_a_change_and_then_stops() {
     ));
 
     write(dir.path(), "arrived.md", "hello");
-    // Wait on the channel, not on a sleep: the assertion is "a scan saw it",
-    // not "two hundred milliseconds probably passed".
     let diff = loop {
         let received = tokio::time::timeout(Duration::from_secs(10), seen_rx.recv())
             .await

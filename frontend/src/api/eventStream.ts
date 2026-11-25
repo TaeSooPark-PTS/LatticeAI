@@ -1,25 +1,8 @@
-/**
- * One shared `text/event-stream` reader for every streaming endpoint.
- *
- * Each streaming call used to decode frames and call `JSON.parse` inline with
- * no guard, so a single truncated or non-JSON frame threw out of the read loop
- * and discarded the rest of an answer that was already half-rendered. Parsing
- * lives here instead: a frame that cannot be decoded is reported as
- * `malformed` and the stream keeps going.
- */
 
-/** One decoded frame of a `text/event-stream` body. */
 export type SseFrame = {
-  /** `event:` name. Unnamed frames report `"message"`, like `EventSource`. */
   event: string;
-  /** Trimmed `data:` payload, verbatim — sentinels such as `[DONE]` survive. */
   raw: string;
-  /**
-   * `raw` decoded as a JSON object: `{}` for an empty payload, and `null` when
-   * the payload is not a JSON *object* (a sentinel, an array, or unparseable).
-   */
   data: Record<string, unknown> | null;
-  /** `raw` was non-empty and `JSON.parse` threw. Callers skip and count these. */
   malformed: boolean;
 };
 
@@ -35,15 +18,10 @@ function decodeFrame(part: string): SseFrame | null {
     const isObject = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
     return { event, raw, data: isObject ? parsed as Record<string, unknown> : null, malformed: false };
   } catch {
-    // Per-frame, deliberately: one bad frame must not cost the whole answer.
     return { event, raw, data: null, malformed: true };
   }
 }
 
-/**
- * Yields frames as they arrive. Breaking out of the loop (for example on a
- * `[DONE]` sentinel) cancels the body instead of leaving the connection open.
- */
 export async function* readEventStream(
   body: ReadableStream<Uint8Array>,
 ): AsyncGenerator<SseFrame, void, void> {
@@ -62,8 +40,6 @@ export async function* readEventStream(
         if (frame) yield frame;
       }
     }
-    // A body that ends without the trailing blank line still carries a frame;
-    // dropping it silently loses the same content a parse throw used to.
     const tail = buffer + decoder.decode();
     if (tail.trim()) {
       const frame = decodeFrame(tail);
@@ -72,8 +48,6 @@ export async function* readEventStream(
   } finally {
     try {
       void reader.cancel().catch(() => undefined);
-    } catch {
-      // Already released by a completed read; nothing left to close.
-    }
+    } catch {}
   }
 }

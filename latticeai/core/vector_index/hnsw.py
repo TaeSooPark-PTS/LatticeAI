@@ -1,19 +1,3 @@
-"""Approximate nearest-neighbour index with incremental append.
-
-``hnswlib`` is optional (``pip install hnswlib``; the published
-``ltcai[hnsw]`` extra was retired in 11.6.0 when the write path moved to
-Rust). When the compiled module is missing the import is caught here and
-reported as a reason string; search then returns no ANN hits rather than
-pretending.
-
-Policy, also stated on :meth:`HnswIndex.add_items`:
-
-* **Append** new ids onto the live graph (``resize_index`` + ``add_items``).
-* **Full rebuild** on provider/dim/space change, on any deletion when the
-  graph was loaded from a sidecar without source vectors, or when deletes
-  exceed :data:`DELETE_REBUILD_RATIO` of the current size.
-"""
-
 from __future__ import annotations
 
 import json
@@ -24,7 +8,6 @@ HNSW_BACKEND = "hnsw"
 HNSWLIB_MODULE = "hnswlib"
 HNSW_SUFFIX = ".hnsw"
 HNSW_META_SUFFIX = ".hnsw.meta.json"
-#: Rebuild instead of tombstoning once this fraction of the graph would go.
 DELETE_REBUILD_RATIO = 0.10
 
 IndexItem = Tuple[str, Sequence[float], Mapping[str, Any]]
@@ -32,10 +15,9 @@ ScoredId = Tuple[str, float]
 
 
 def load_hnswlib() -> Tuple[Optional[Any], Optional[str]]:
-    """Import ``hnswlib`` or explain why it is unavailable (never raises)."""
     try:
-        import hnswlib  # noqa: PLC0415 — guarded, optional, import-on-demand
-    except Exception as exc:  # noqa: BLE001 — any import failure is "no ANN"
+        import hnswlib
+    except (ImportError, OSError, RuntimeError) as exc:
         return None, (
             f"{HNSWLIB_MODULE} is not available ({exc}); install it with "
             "`pip install hnswlib` to use the approximate index"
@@ -44,13 +26,11 @@ def load_hnswlib() -> Tuple[Optional[Any], Optional[str]]:
 
 
 def hnswlib_available() -> bool:
-    """True when the optional ANN engine can actually be imported."""
     module, _ = load_hnswlib()
     return module is not None
 
 
 def sidecar_paths(db_path: Any) -> Tuple[Path, Path]:
-    """``(index file, meta file)`` for a brain database path."""
     base = Path(db_path)
     return (
         base.with_suffix(HNSW_SUFFIX),
@@ -59,8 +39,6 @@ def sidecar_paths(db_path: Any) -> Tuple[Path, Path]:
 
 
 class HnswIndex:
-    """Small-M HNSW graph over the brain's embeddings."""
-
     def __init__(
         self,
         *,
@@ -109,7 +87,6 @@ class HnswIndex:
 
     @property
     def loaded_from_sidecar(self) -> bool:
-        """True when the graph came off disk instead of being rebuilt."""
         return self._loaded
 
     @property
@@ -122,17 +99,14 @@ class HnswIndex:
 
     @property
     def labels(self) -> List[str]:
-        """Live label order — the sidecar's identity, loaded or rebuilt."""
         return list(self._labels)
 
     @property
     def stamp(self) -> Optional[str]:
-        """Store metadata stamp persisted with the sidecar."""
         return self._stamp
 
     @property
     def indexed_at(self) -> Dict[str, str]:
-        """Per-item indexed_at timestamps for mutation detection."""
         return dict(self._indexed_at)
 
     def _identity_matches(self, dim: int, space: str, model_id: str) -> bool:
@@ -170,7 +144,6 @@ class HnswIndex:
         self._dirty = True
 
     def rebuild(self, items: Iterable[IndexItem]) -> None:
-        """Replace the held set and mark the graph for a full rebuild."""
         self._vectors.clear()
         self._metadata.clear()
         self._labels.clear()
@@ -188,19 +161,6 @@ class HnswIndex:
         space: Optional[str] = None,
         model_id: Optional[str] = None,
     ) -> str:
-        """Append new vectors, or rebuild when the policy says so.
-
-        Returns ``"append"`` or ``"rebuild"`` so a bench can time the two
-        doors without guessing.
-
-        Full rebuild when the embedder identity changed, when any currently
-        indexed id is missing from a *full* incoming snapshot (a deletion),
-        or when deletes would exceed :data:`DELETE_REBUILD_RATIO`. A sidecar
-        that was loaded without source vectors still **appends**: the
-        caller passes only the new ids (COUNT+delta) and ``_append_live``
-        extends the graph. A disjoint incoming set is that delta, not a
-        wipe.
-        """
         incoming: Dict[str, IndexItem] = {}
         for item_id, vector, metadata in items:
             incoming[str(item_id)] = (str(item_id), vector, metadata)
@@ -220,8 +180,6 @@ class HnswIndex:
             incoming_ids = set(incoming)
             overlap = current & incoming_ids
             deleted = current - incoming_ids
-            # Delta-only: the caller passed new ids, none of the live labels.
-            # A full snapshot that dropped ids is a deletion and must rebuild.
             delta_only = bool(incoming_ids) and not overlap
             if deleted and not delta_only:
                 self.rebuild(incoming.values())
@@ -243,15 +201,11 @@ class HnswIndex:
         incoming_ids = set(incoming)
         deleted = current - incoming_ids
         overlap = current & incoming_ids
-        # Same discriminant as the loaded path: a disjoint incoming set is
-        # COUNT+delta, not a snapshot that deleted every live id.
         if deleted and not (bool(incoming_ids) and not overlap):
             ratio = len(deleted) / max(1, len(current))
             if ratio >= DELETE_REBUILD_RATIO or not current:
                 self.rebuild(incoming.values())
                 return "rebuild"
-            # Sparse deletes: drop the gone ids and rebuild so we never
-            # leave a tombstoned hole the sidecar cannot describe.
             self.rebuild(incoming.values())
             return "rebuild"
 
@@ -277,7 +231,6 @@ class HnswIndex:
         return graph
 
     def _append_live(self, new_ids: Sequence[str]) -> None:
-        """``hnswlib`` ``resize_index`` + ``add_items`` for ``new_ids`` only."""
         module = self._module
         graph = self._ann
         if module is None or graph is None:
@@ -287,7 +240,7 @@ class HnswIndex:
         needed = start + len(new_ids)
         try:
             current_max = int(graph.get_max_elements())
-        except Exception:  # noqa: BLE001 — some builds expose no getter
+        except (RuntimeError, ValueError, TypeError, AttributeError):
             current_max = start
         if needed > current_max:
             graph.resize_index(max(needed, current_max * 2 if current_max else needed))
@@ -299,7 +252,6 @@ class HnswIndex:
         self._dirty = False
 
     def _ensure_graph(self) -> Any:
-        """Build the graph if the held vectors changed (None when disabled)."""
         module = self._module
         if module is None:
             return None
@@ -363,7 +315,6 @@ class HnswIndex:
         stamp: Optional[str] = None,
         indexed_at: Optional[Mapping[str, str]] = None,
     ) -> bool:
-        """Write the graph + label map beside the brain database."""
         graph = self._ensure_graph()
         if graph is None or not self._labels:
             return False
@@ -390,7 +341,14 @@ class HnswIndex:
                 json.dumps(payload, ensure_ascii=False),
                 encoding="utf-8",
             )
-        except Exception:  # noqa: BLE001 — persistence is best-effort
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+            json.JSONDecodeError,
+        ):
             return False
         return True
 
@@ -402,13 +360,6 @@ class HnswIndex:
         strict: bool = True,
         stamp: Optional[str] = None,
     ) -> bool:
-        """Adopt a sidecar graph when it matches this embedder identity.
-
-        ``strict`` (the default) also requires the stored fingerprint — size
-        included — so a grown store does not search a stale graph. Relaxed
-        load keeps dim/model and leaves COUNT+delta to append the missing
-        ids rather than dumping the whole table.
-        """
         module = self._module
         if module is None:
             return False
@@ -430,16 +381,28 @@ class HnswIndex:
                 if isinstance(raw_ts, dict)
                 else {}
             )
-        except Exception:  # noqa: BLE001 — absent/corrupt sidecar = rebuild
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+            json.JSONDecodeError,
+        ):
             return False
         if not (matches and labels):
             return False
         try:
             graph = module.Index(space=self._space, dim=self._dim)
-            # Headroom so an in-process append does not have to rebuild
-            # just because load_index pinned max_elements to the old size.
             graph.load_index(str(index_path), max_elements=max(len(labels) + 64, 1))
-        except Exception:  # noqa: BLE001 — corrupt binary = rebuild
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+            json.JSONDecodeError,
+        ):
             return False
         self._ann = graph
         self._labels = labels

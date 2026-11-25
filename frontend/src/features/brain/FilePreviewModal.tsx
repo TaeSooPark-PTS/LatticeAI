@@ -7,8 +7,6 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 import { MessageBody } from "./MessageMarkdown";
 import type { MessageFile } from "./types";
 
-// Mirrors the backend PREVIEWABLE_EXTENSIONS contract (core/file_generation)
-// as a client-side fallback for responses that predate the artifacts[] meta.
 const PREVIEWABLE_FALLBACK = new Set([
   "html", "htm", "md", "markdown", "txt", "json", "css", "js",
   "csv", "py", "yaml", "yml", "xml", "sql", "sh",
@@ -34,9 +32,6 @@ export function previewKind(filename: string): PreviewKind {
   return "text";
 }
 
-// Sandboxed HTML preview: `sandbox=""` (no allow-same-origin, no allow-scripts)
-// plus an injected restrictive CSP so even non-script vectors (remote images,
-// external styles, form posts) cannot leave the preview frame.
 const PREVIEW_CSP_META =
   '<meta http-equiv="Content-Security-Policy" ' +
   "content=\"default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:;\">";
@@ -56,9 +51,6 @@ export function prettyJson(content: string): string {
   }
 }
 
-// Inline preview for chat file cards: HTML in a sandboxed iframe, md/txt/json
-// rendered in a modal. Keeps the download action, traps focus, closes on
-// Escape and backdrop click.
 export function FilePreviewModal({
   language,
   file,
@@ -88,10 +80,6 @@ export function FilePreviewModal({
   }, [file.path]);
 
   async function download() {
-    /* v8 ignore next -- unreachable: the only trigger is this modal's single
-       download button, which is itself disabled by the same `downloading`
-       flag in the same render. Kept as defense-in-depth. */
-    if (downloading) return;
     setDownloading(true);
     await latticeApi.downloadWorkspaceFile(file.path, file.filename);
     setDownloading(false);

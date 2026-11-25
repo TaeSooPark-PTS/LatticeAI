@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 import { latticeApi } from "@/api/client";
 import { PendingProposalsPanel } from "./PendingProposalsPanel";
 
-/** Stub the proposal list; every field is optional so the gaps can be tested. */
 function mockProposals(items: Array<Record<string, unknown>>) {
   return vi.spyOn(latticeApi, "proposals").mockResolvedValue({
     ok: true, status: 200, source: "api", data: { count: items.length, items },
@@ -51,8 +50,6 @@ describe("PendingProposalsPanel", () => {
         ],
       },
     } as never);
-    // Approval goes through the review-queue surface so a base-changed
-    // conflict comes back as a real 409 (see the conflict test below).
     const approveSpy = vi.spyOn(latticeApi, "approveReviewItem").mockResolvedValue({
       ok: true, status: 200, source: "api", data: { id: "rp-1", status: "approved" },
     } as never);
@@ -133,7 +130,6 @@ describe("PendingProposalsPanel", () => {
     await openPanel();
     await screen.findByText("a.md");
     await userEvent.click(screen.getByRole("button", { name: /승인하고 적용/ }));
-    // No rebase offer — the file did not drift, the write simply failed.
     await waitFor(() => expect(latticeApi.approveReviewItem).toHaveBeenCalled());
     expect(screen.queryByTestId("proposal-conflict-note")).toBeNull();
   });
@@ -166,7 +162,6 @@ describe("PendingProposalsPanel", () => {
     renderPanel();
     await openPanel();
     await screen.findByRole("alert");
-    // A failed load must not masquerade as "nothing pending".
     expect(screen.queryByText("대기 중인 변경 제안이 없습니다")).toBeNull();
     expect(screen.getByText("connection refused")).toBeTruthy();
 

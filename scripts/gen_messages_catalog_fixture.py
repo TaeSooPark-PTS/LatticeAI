@@ -1,23 +1,4 @@
 #!/usr/bin/env python3
-"""Dump the Python server-message catalog for the Rust parity test (WP-I3).
-
-``lattice-core::messages`` is a port of :mod:`latticeai.core.messages`. A port
-is only worth having if something keeps proving the two still agree, so this
-script is the Python half of that proof: it imports the live catalog and writes
-every id rendered in both languages (with representative interpolation args
-where a template takes them) plus a ``resolve_language`` vector table that
-walks every branch of the Python function.
-
-The Rust side loads ``rust/fixtures/messages_catalog.json`` and asserts
-byte-identical ``text`` / ``http_error`` bodies and matching language
-resolution. Determinism is the constraint: keys are sorted, interpolation
-args are a stable subset of :data:`REPRESENTATIVE_ARGS`, and running the
-script twice must produce the same bytes.
-
-Usage::
-
-    .venv/bin/python scripts/gen_messages_catalog_fixture.py
-"""
 
 from __future__ import annotations
 
@@ -31,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from latticeai.core.messages import (  # noqa: E402
+from latticeai.core.messages import (
     DEFAULT_LANGUAGE,
     LANGUAGE_HEADER,
     MESSAGES,
@@ -43,12 +24,8 @@ from latticeai.core.messages import (  # noqa: E402
 FIXTURE_PATH = REPO_ROOT / "rust" / "fixtures" / "messages_catalog.json"
 SCHEMA = "messages-catalog-parity/v1"
 
-#: ``{name}`` in a catalog string — the same substitution ``translate`` does.
 _PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
-#: One value per placeholder the catalog currently uses. Values are strings
-#: because ``translate`` runs ``str(value)`` before replacing; dumping the
-#: already-stringified form keeps the fixture language-neutral.
 REPRESENTATIVE_ARGS: Dict[str, str] = {
     "allowed": "user, assistant",
     "arg": "label",
@@ -76,14 +53,12 @@ REPRESENTATIVE_ARGS: Dict[str, str] = {
 
 
 class _Request:
-    """Minimal stand-in: ``resolve_language`` only ever reads ``.headers``."""
-
     def __init__(self, headers: Optional[Mapping[str, str]]) -> None:
         self.headers = headers
 
 
 class _Bare:
-    """No ``headers`` attribute — the ``getattr(..., None)`` branch."""
+    pass
 
 
 def _placeholders(*texts: str) -> List[str]:
@@ -149,18 +124,9 @@ def _resolve_row(
 
 
 def _resolve_vectors() -> List[Dict[str, Any]]:
-    """Every branch of ``resolve_language`` / ``_normalize``.
-
-    Names are stable ids, not prose: the Rust test reports the id on mismatch.
-    Expected values come from the live Python function, never from a restated
-    table, so a Python behaviour change fails the next generate-and-compare.
-    """
     cases = [
-        # getattr(request, "headers", None) is None → default
         _resolve_row("bare_request", bare=True),
-        # empty mapping is observationally the same as missing headers
         _resolve_row("empty_headers"),
-        # explicit product header
         _resolve_row("explicit_ko", x_lattice_language="ko"),
         _resolve_row("explicit_en", x_lattice_language="en"),
         _resolve_row("explicit_en_uppercase", x_lattice_language="EN"),
@@ -178,7 +144,6 @@ def _resolve_vectors() -> List[Dict[str, Any]]:
             x_lattice_language="ko",
             accept_language="en",
         ),
-        # explicit that _normalize rejects falls through to Accept-Language
         _resolve_row(
             "explicit_unsupported_falls_through",
             x_lattice_language="fr",
@@ -198,7 +163,6 @@ def _resolve_vectors() -> List[Dict[str, Any]]:
             x_lattice_language="  ",
             accept_language="en",
         ),
-        # explicit does not split on ';', so this is not a language tag
         _resolve_row(
             "explicit_qvalue_not_stripped",
             x_lattice_language="en;q=1",
@@ -214,7 +178,6 @@ def _resolve_vectors() -> List[Dict[str, Any]]:
             x_lattice_language="english",
             accept_language="ko",
         ),
-        # Accept-Language: first supported tag in send order, q-values ignored
         _resolve_row(
             "accept_en_gb_then_ko",
             accept_language="en-GB,en;q=0.9,ko;q=0.8",
@@ -234,7 +197,6 @@ def _resolve_vectors() -> List[Dict[str, Any]]:
         _resolve_row("accept_padded_en", accept_language="  en  "),
         _resolve_row("accept_de_fr_ko", accept_language="de,fr,ko"),
         _resolve_row("accept_de_fr_defaults", accept_language="de,fr"),
-        # q-value disagrees with send order — send order wins
         _resolve_row(
             "accept_order_not_qvalue",
             accept_language="ko;q=0.1,en;q=0.9",

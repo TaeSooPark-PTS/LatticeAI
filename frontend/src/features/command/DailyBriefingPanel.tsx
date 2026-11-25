@@ -23,11 +23,6 @@ function section(data: Record<string, unknown>, key: string): Record<string, unk
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-/**
- * Open every shell around the panel and bring it into view. Exported so the
- * null-root guard is testable; behavior is unchanged — the effect below calls
- * this with exactly the ref it always read.
- */
 export function revealBriefingPanel(root: HTMLElement | null) {
   if (!root) return;
   root.closest("details")?.setAttribute("open", "");
@@ -39,9 +34,6 @@ export function DailyBriefingPanel({
   variant = "drawer",
 }: {
   language: Language;
-  // "drawer" keeps the historical lazy behavior inside collapsed shelves;
-  // "home" starts expanded and fetches immediately so the empty-state home
-  // shows the briefing without any click.
   variant?: "drawer" | "home";
 }) {
   const [expanded, setExpanded] = React.useState(variant === "home");
@@ -52,8 +44,6 @@ export function DailyBriefingPanel({
     enabled: expanded,
   });
 
-  // The command palette can ask for the briefing from anywhere; expand this
-  // panel, open any collapsed ancestor drawer, and bring it into view.
   React.useEffect(() => {
     const onOpen = () => {
       setExpanded(true);
@@ -64,8 +54,6 @@ export function DailyBriefingPanel({
   }, []);
 
   const data = (briefingQ.data?.data || {}) as Record<string, unknown>;
-  // Friendly degrade: a failed fetch or an empty briefing becomes one calm
-  // sentence — never raw errors, never a grid of dashes.
   const briefingEmpty =
     Boolean(briefingQ.data) &&
     (!briefingQ.data!.ok || Object.keys((data.sections || {}) as Record<string, unknown>).length === 0);

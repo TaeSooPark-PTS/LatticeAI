@@ -1,19 +1,3 @@
-//! v11.7.0 §F-A — one writer, correct refusals, one timeline event per change.
-//!
-//! Four disclosed gaps meet here, so they are tested together against one
-//! running install:
-//!
-//! * `workspace_os.json` has a single storage authority, so a Review Center
-//!   write and a Workspace OS write can no longer erase one another.
-//! * An offset-aware `snooze` succeeds instead of answering 500 after it has
-//!   already written, and an unreadable `until` is refused before it is stored.
-//! * Rejecting an already-rejected proposal is a 409, not a 500.
-//! * Every route that changes a review item records exactly one
-//!   `review_item_created` / `review_item_updated` event — and every route that
-//!   changes nothing records none.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod review_queue_harness;
 
@@ -29,10 +13,8 @@ use lattice_platform::workspaceos::workspace::WorkspaceOsStore;
 use review_queue_harness::Install;
 use serde_json::{json, Value};
 
-/// A far-future offset-aware stamp — the literal the fixture snoozes with.
 const AWARE_FUTURE: &str = "2099-01-01T00:00:00+00:00";
 
-/// Every review event on the timeline, oldest first.
 fn review_events(install: &Install) -> Vec<Value> {
     install.gov.store().load_state()["timeline"]
         .as_array()
@@ -43,7 +25,6 @@ fn review_events(install: &Install) -> Vec<Value> {
         .collect()
 }
 
-/// The review events recorded since `mark`.
 fn events_since(install: &Install, mark: usize) -> Vec<Value> {
     review_events(install).split_off(mark)
 }
@@ -75,7 +56,6 @@ fn assert_shape(event: &Value, event_type: &str, item_id: &str, action: &str, st
 #[tokio::test]
 async fn creating_a_review_item_records_one_created_event_whichever_door_it_came_through() {
     let install = Install::start().await;
-    // The seven items the harness seeds over HTTP are already on the timeline.
     let seeded = review_events(&install);
     assert_eq!(seeded.len(), 7, "one per seeded item");
     assert!(seeded.iter().all(
@@ -105,8 +85,6 @@ async fn creating_a_review_item_records_one_created_event_whichever_door_it_came
     );
     assert_eq!(event["payload"]["source"], json!("chat_followup"));
 
-    // The agent loop stages through the same store, so it lands on the same
-    // timeline rather than appearing from nowhere.
     let mark = review_events(&install).len();
     let staged = ProposalStore::create(
         &install.gov,
@@ -131,8 +109,6 @@ async fn creating_a_review_item_records_one_created_event_whichever_door_it_came
     );
 }
 
-/// One status route to exercise:
-/// `(method, path, body, item id, expected action, expected status)`.
 type StatusCase<'a> = (&'a str, String, Option<Value>, &'a str, &'a str, &'a str);
 
 #[tokio::test]
@@ -219,7 +195,6 @@ async fn every_status_route_records_exactly_one_updated_event() {
         );
     }
 
-    // bulk/dismiss over one still-pending item, to cover the last route.
     let answer = install
         .issue(
             "POST",
@@ -255,8 +230,6 @@ async fn a_route_that_changes_nothing_records_nothing() {
     let item = install.bind("$review_item");
     let snooze = install.bind("$review_snooze");
 
-    // run_now reads, guards and answers — it never writes, so there is nothing
-    // to record. Both of its branches are covered here.
     let mark = review_events(&install).len();
     let no_workflow = install
         .issue(
@@ -268,7 +241,6 @@ async fn a_route_that_changes_nothing_records_nothing() {
         .await;
     assert_eq!(no_workflow.status, 409, "{}", no_workflow.body);
 
-    // A missing item, a conflicting transition, and a bulk action over both.
     let missing = install
         .issue(
             "POST",
@@ -311,7 +283,6 @@ async fn a_route_that_changes_nothing_records_nothing() {
         events_since(&install, mark_after_approve).is_empty(),
         "refusals must not reach the timeline"
     );
-    // Exactly one event across the whole test: the approve that landed.
     assert_eq!(events_since(&install, mark).len(), 1);
 }
 
@@ -322,12 +293,9 @@ async fn an_offset_aware_snooze_is_accepted_and_read_back_correctly() {
 
     for (until, effective) in [
         (AWARE_FUTURE, "snoozed"),
-        // Already past, in UTC and in a non-zero offset that also resolves to
-        // the past — both read as pending again without touching the store.
         ("2020-01-01T00:00:00+00:00", "pending"),
         ("2020-01-01T00:00:00-05:00", "pending"),
         ("2020-01-01T00:00:00Z", "pending"),
-        // Naive, as Python's own writes are.
         ("2099-01-01T00:00:00", "snoozed"),
     ] {
         let answer = install
@@ -344,7 +312,6 @@ async fn an_offset_aware_snooze_is_accepted_and_read_back_correctly() {
         assert_eq!(body["snoozed_until"], json!(until), "{until}");
         assert_eq!(body["effective_status"], json!(effective), "{until}");
 
-        // …and the same answer on the read path, which is where the 500 was.
         let fetched = install
             .issue(
                 "GET",
@@ -357,8 +324,6 @@ async fn an_offset_aware_snooze_is_accepted_and_read_back_correctly() {
         let fetched: Value = serde_json::from_str(&fetched.body).expect("body");
         assert_eq!(fetched["effective_status"], json!(effective), "{until}");
 
-        // Unsnooze only when the item is still snoozed; an expired snooze is
-        // already pending and `snooze` accepts both statuses.
         if effective == "snoozed" {
             let back = install
                 .issue(
@@ -372,8 +337,6 @@ async fn an_offset_aware_snooze_is_accepted_and_read_back_correctly() {
         }
     }
 
-    // An unreadable stamp is refused *before* it is written, so it can never
-    // be read back: 422, and the stored item is untouched.
     let before = install
         .issue(
             "GET",
@@ -443,7 +406,6 @@ async fn rejecting_an_already_rejected_proposal_is_a_conflict_not_a_crash() {
         body,
         json!({"detail": "cannot 'dismiss' a review item in status 'dismissed'"})
     );
-    // The sibling review route answers the same thing, which is the point.
     let sibling = install
         .issue(
             "POST",
@@ -457,12 +419,6 @@ async fn rejecting_an_already_rejected_proposal_is_a_conflict_not_a_crash() {
     assert!(events_since(&install, mark).is_empty());
 }
 
-/// The regression the single-writer change exists for.
-///
-/// Before it, `GovernanceState` held a full in-memory copy of the document and
-/// wrote it back wholesale, while `WorkspaceOsStore` reloaded per mutation.
-/// Interleave the two and whichever saved last erased the other's work. Now
-/// both hold the same handle, so both changes survive every interleaving.
 #[test]
 fn interleaved_review_and_workspace_writes_both_survive() {
     const ROUNDS: usize = 40;
@@ -539,7 +495,6 @@ fn interleaved_review_and_workspace_writes_both_survive() {
         ROUNDS,
         "a review write was erased by a workspace write"
     );
-    // Each staged proposal also recorded its event, under the same lock.
     let created = state["timeline"]
         .as_array()
         .expect("timeline")
@@ -548,7 +503,6 @@ fn interleaved_review_and_workspace_writes_both_survive() {
         .count();
     assert_eq!(created, ROUNDS);
 
-    // The document on disk is the same document, not a fragment of it.
     let on_disk: Value =
         serde_json::from_str(&std::fs::read_to_string(gov.state_path()).expect("read"))
             .expect("json");
@@ -556,20 +510,11 @@ fn interleaved_review_and_workspace_writes_both_survive() {
     assert_eq!(on_disk["version"], json!(env!("CARGO_PKG_VERSION")));
 }
 
-/// The second half of the single-writer story: the marketplace / plugins /
-/// designer view of the same document.
-///
-/// Those families used to hold their own `workspace_os.json` reader-writer —
-/// no shared lock, their own formatting — so a plugin toggle rewrote the whole
-/// document from a snapshot taken before the Review Center's last write. Both
-/// now reach the one store through `WorkspaceOsStore::shared`, and neither can
-/// erase the other however the two interleave.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_plugin_toggle_and_a_review_write_cannot_erase_one_another() {
     const ROUNDS: usize = 30;
 
     let install = Install::start().await;
-    // Naming the same directory anywhere in the process yields the same store.
     assert!(
         Arc::ptr_eq(
             install.gov.store(),
@@ -649,7 +594,6 @@ async fn a_plugin_toggle_and_a_review_write_cannot_erase_one_another() {
     for index in 0..ROUNDS {
         assert_eq!(registry[&format!("plugin-{index}")]["enabled"], json!(true));
     }
-    // Every review write also recorded its event under the same lock.
     assert_eq!(review_events(&install).len(), seeded + ROUNDS);
     served.abort();
 }

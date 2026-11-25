@@ -29,9 +29,6 @@ export function PendingProposalsPanel({ language }: { language: Language }) {
       qc.invalidateQueries({ queryKey: ["reviewItems"] }),
     ]);
   };
-  // Conflict-aware approval: the review-queue approve surface answers 409
-  // with a rebase hint when the target file changed since staging (9.9.0);
-  // those items get an inline explanation + "re-read & re-apply" recovery.
   const [conflictIds, setConflictIds] = React.useState<Record<string, boolean>>({});
   const approve = useMutation({
     mutationFn: (id: string) => latticeApi.approveReviewItem(id),
@@ -58,8 +55,6 @@ export function PendingProposalsPanel({ language }: { language: Language }) {
   const data = (proposalsQ.data?.data || {}) as Record<string, unknown>;
   const items = asArray<ProposalItem>(data.items);
   const busy = approve.isPending || reject.isPending;
-  // A failed fetch must not masquerade as "no proposals": surface a distinct,
-  // friendly error state with a retry.
   const loadFailed = proposalsQ.isError || (proposalsQ.data ? !proposalsQ.data.ok : false);
 
   return (

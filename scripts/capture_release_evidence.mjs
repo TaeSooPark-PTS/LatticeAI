@@ -14,11 +14,6 @@ const repoRoot = process.cwd();
 const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 const port = Number(process.env.LTCAI_RELEASE_EVIDENCE_PORT || 4936);
 const baseURL = `http://127.0.0.1:${port}`;
-// Defaults to the published directory for this version, but can be redirected.
-// This script starts by deleting `root` outright, so anything that wants a
-// preview capture — a reviewer checking whether the UI actually moved before
-// the version is bumped — would otherwise have to overwrite the screenshots of
-// an already-released version to get one.
 const root =
   process.env.LTCAI_RELEASE_EVIDENCE_DIR ||
   path.join(repoRoot, "output", "release", `v${version}`);
@@ -40,30 +35,11 @@ function assetManifestFingerprint() {
   };
 }
 
-// The mock API surface is the entry file plus the route modules it composes;
-// the fingerprint covers all of them. Shared with
-// scripts/check_release_evidence_bound.mjs so the digest recorded here and the
-// digest verified there are computed by exactly one piece of code.
 
-/**
- * Refuse to overwrite published release screenshots for an already-tagged version.
- *
- * Failure mode this catches: package.json is still 10.6.3, tag v10.6.3 exists
- * (the shipped release), and capture writes into output/release/v10.6.3/,
- * silently replacing the public screenshots of a released version with WIP UI.
- * Preview captures must use LTCAI_RELEASE_EVIDENCE_DIR (any path other than the
- * default published dir). To land new evidence under output/release/, bump the
- * package version first so the tag name no longer collides.
- *
- * Guard runs *before* wiping `root`, so a tagged release is never deleted by
- * an unbumped recapture.
- */
 function assertNotOverwritingTaggedRelease() {
   const defaultRoot = path.join(repoRoot, "output", "release", `v${version}`);
   const writingToPublished = path.resolve(root) === path.resolve(defaultRoot);
   if (!writingToPublished) {
-    // Explicit LTCAI_RELEASE_EVIDENCE_DIR redirect (preview) — allowed even
-    // when the version tag already exists.
     return;
   }
 
@@ -91,24 +67,9 @@ function assertNotOverwritingTaggedRelease() {
   process.exit(1);
 }
 
-/**
- * Refuse to capture when the release lint gate is red.
- *
- * Failure mode this catches: lint is failing (e.g. ruff F841) but
- * capture still runs and writes 13 screenshots + SCREENSHOT_INDEX.md
- * bound to the asset manifest — evidence that looks green while the
- * first CI stage would already have stopped. Capture is not proof that
- * the tree is releasable; lint must pass first.
- *
- * Guard runs *before* wiping `root`, so a red lint never deletes the
- * last good evidence directory.
- */
 function assertLintClean() {
   console.log("release evidence: running npm run lint before capture…");
   try {
-    // Skip the evidence↔build binding gate during intentional recapture:
-    // this run is about to wipe and rebind SCREENSHOT_INDEX.md. Day-to-day
-    // `npm run lint` still hard-fails when screenshots are stale.
     execFileSync("npm", ["run", "lint"], {
       cwd: repoRoot,
       stdio: "inherit",
@@ -125,18 +86,6 @@ function assertLintClean() {
   }
 }
 
-/**
- * Refuse to capture when static/app is older than frontend/src.
- *
- * Failure mode this catches: someone edits frontend/src, skips
- * `npm run build:assets`, then runs release:evidence. Screenshots look
- * "fresh" (new mtimes) but still show the previous build. That shipped
- * stale evidence in 10.6.3 (asset mtime later than screenshot mtime by
- * 42–50s). Warn-and-continue is useless — exit 1 so CI and humans stop.
- *
- * Guard runs *before* wiping `root`, so a stale build never deletes the
- * last good evidence directory.
- */
 function assertBuiltAssetsFresh() {
   const srcRoot = path.join(repoRoot, "frontend", "src");
   if (!fs.existsSync(manifestPath)) {
@@ -184,29 +133,12 @@ function assertBuiltAssetsFresh() {
   }
 }
 
-/**
- * Detect evidence that was captured against a *previous* asset build.
- *
- * Failure mode: capture runs (screenshots mtime T0), then someone rebuilds
- * assets (manifest mtime T1 > T0). The pre-guard only compares src vs
- * manifest, so it still passes — but screenshots no longer show the build
- * that will ship. Recording the manifest sha256 in SCREENSHOT_INDEX.md at
- * capture time, then refusing to trust a mismatched index, closes that hole.
- *
- * Day-to-day gate: `scripts/check_release_evidence_bound.mjs` (in npm run
- * lint) hard-fails on sha mismatch. This pre-capture check is different —
- * when someone deliberately runs release:evidence after build:assets, the
- * existing index is *expected* to be stale; we continue, wipe, and rebind.
- * Set LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND=1 to refuse wipe-and-rebind
- * (useful in CI that should never recapture from a dirty tree).
- */
 function assertExistingEvidenceStillBoundToBuild() {
   const indexPath = path.join(root, "SCREENSHOT_INDEX.md");
   if (!fs.existsSync(indexPath)) return;
   const index = fs.readFileSync(indexPath, "utf8");
   const match = index.match(/asset-manifest\.sha256:\s*`?([0-9a-f]{64})`?/i);
   if (!match) {
-    // Older captures predate binding — this run will rebind after wipe.
     console.warn(
       "release evidence: existing SCREENSHOT_INDEX.md has no asset-manifest.sha256 binding.\n" +
         "  Recapture will record the current build fingerprint.",
@@ -242,8 +174,6 @@ assertLintClean();
 assertBuiltAssetsFresh();
 assertExistingEvidenceStillBoundToBuild();
 
-// A release capture must be reproducible and must never retain partial videos
-// from an interrupted prior run.
 fs.rmSync(root, { recursive: true, force: true });
 fs.mkdirSync(screenshots, { recursive: true });
 fs.mkdirSync(videos, { recursive: true });
@@ -272,18 +202,6 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(screenshots, name), fullPage: true });
 }
 
-// The README's hero GIF is this session's screen recording, and 26 of its 79
-// frames were the route-level Suspense fallback ("Brain 작업공간을 여는 중...",
-// App.tsx PageLoader): every screen visited below is a separate lazy chunk, so a
-// cold headless capture pays that chunk's parse cost on first visit and records
-// an empty shell instead of the product. A third of the walkthrough published in
-// the README was therefore a loading screen. Preloading the route chunks once,
-// while the Brain home is already on screen, makes the recording show the
-// screens a person came to see rather than the loader between them.
-//
-// The asset base is read from the module script the page already loaded instead
-// of being hardcoded, so moving the static mount cannot quietly turn this into a
-// no-op — and resolving zero chunks throws rather than shipping a blank GIF.
 async function preloadRouteChunks(page) {
   const chunks = [
     ...new Set(fs.readFileSync(manifestPath, "utf8").match(/assets\/[A-Za-z0-9_-]+\.js/g) ?? []),
@@ -336,12 +254,6 @@ async function main() {
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
 
-  // These frames are the ones the README publishes, so they have to show the
-  // product a new person actually lands in. The app's own default is `basic`
-  // (frontend/src/store/appStore.ts) — capturing in `advanced` meant every
-  // published screenshot showed raw payload panels, storage engines and hook
-  // logs that no first-run user is ever shown. The admin console is captured
-  // by route below and does not depend on this setting.
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("lattice.releaseEvidence.cleared")) {
       localStorage.removeItem("lattice.productFlow.complete");
@@ -404,10 +316,6 @@ async function main() {
   await page.locator("h1.page-title", { hasText: "Lattice를 내 방식에 맞게 설정하세요." }).waitFor();
   await shot(page, "08-system.png");
 
-  // Captured in `basic`, the Brain page's knowledge-flow strip stays collapsed,
-  // so this slot published a second copy of 04. The runs list carries what
-  // actually changed instead: runs named the way their author named them, and
-  // statuses spoken aloud rather than shown as `awaiting_approval`.
   await page.goto(`${baseURL}/app#/runs`, { waitUntil: "networkidle" });
   await page.locator("h1.page-title").waitFor();
   await page.getByText("내 승인 기다리는 중").first().waitFor();
@@ -417,11 +325,6 @@ async function main() {
   await page.waitForTimeout(250);
   await shot(page, "10-admin-console.png");
 
-  // The three named steps a file walks on its way into memory. 10.6.0 moved
-  // this out of a tab of its own and into Capture's second row, where it is now
-  // always on screen — so `#/pipeline` renders the same page as `#/capture`,
-  // and a full-page shot here came out byte-identical to 06. The README prints
-  // the two as different tiles, so frame the card this tile is actually about.
   await page.goto(`${baseURL}/app#/pipeline`, { waitUntil: "networkidle" });
   const journeyList = page.getByRole("list", { name: "자료가 기억이 되는 3단계" });
   await journeyList.waitFor();
@@ -440,11 +343,6 @@ async function main() {
   }
   await shot(page, "12-review-center.png");
 
-  // 연대기 (11.3.0). Waiting on the title alone would publish the loading or
-  // empty frame, which is precisely what this screen must never be caught in:
-  // "오늘부터 기록이 쌓입니다" is a true state and a useless screenshot. Wait for
-  // the drawn curve and a populated grid, both of which only exist once the
-  // overview read has landed.
   await page.goto(`${baseURL}/app#/chronicle`, { waitUntil: "networkidle" });
   await page.locator("h1.page-title", { hasText: "두뇌가 자라온 시간" }).waitFor();
   await page.locator(".chronicle-growth-area[d^='M']").waitFor();
@@ -462,11 +360,6 @@ async function main() {
   if (fs.existsSync(webmTarget)) fs.unlinkSync(webmTarget);
   if (fs.existsSync(gifTarget)) fs.unlinkSync(gifTarget);
   fs.renameSync(recorded, webmTarget);
-  // ffmpeg's default GIF palette is a fixed 256-colour cube, which turned the
-  // app's ivory background into a dithered yellow and its greens into olive —
-  // this GIF is the first thing on the README, so it was publishing a product
-  // that does not exist. Generating the palette from the clip itself keeps the
-  // real colours.
   execFileSync("ffmpeg", [
     "-y",
     "-i", webmTarget,
@@ -485,10 +378,6 @@ async function main() {
   if (!mockFp) {
     throw new Error(`${MOCK_SERVER_ENTRY} missing after capture — cannot bind evidence`);
   }
-  // Post-capture binding: if a later build:assets changes the manifest hash,
-  // or any mock-server file changes the capture payloads,
-  // check_release_evidence_bound.mjs will refuse to trust these screenshots
-  // without a recapture.
   const index = `# v${version} Release Evidence
 
 Captured from the built React/Vite app served by the release visual API on ${new Date().toISOString()}.
@@ -534,8 +423,6 @@ screenshots even when their mtimes look fresh.
 `;
   fs.writeFileSync(path.join(root, "SCREENSHOT_INDEX.md"), index);
 
-  // Post-hoc: re-hash the manifest *now* and refuse if it drifted mid-run
-  // (e.g. a parallel build:assets while Playwright was shooting).
   const after = assetManifestFingerprint();
   if (!after || after.sha256 !== fingerprint.sha256) {
     console.error(

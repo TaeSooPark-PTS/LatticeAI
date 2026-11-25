@@ -1,7 +1,3 @@
-//! Local template marketplace (v11.6.0, WP-R8).
-//!
-//! Port of `latticeai/api/marketplace.py` + `latticeai/core/marketplace.py`.
-
 use std::path::Path;
 use std::sync::Arc;
 

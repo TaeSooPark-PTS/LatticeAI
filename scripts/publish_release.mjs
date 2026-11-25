@@ -1,19 +1,4 @@
 #!/usr/bin/env node
-// One-command publish for a built release: npm, PyPI, VS Code Marketplace, OpenVSX.
-//
-//   node scripts/publish_release.mjs           # publish every target not yet at this version
-//   node scripts/publish_release.mjs --dry-run # report what would happen, publish nothing
-//
-// Run it from anywhere — the script cd's to the repo root itself. It publishes the
-// artifacts `npm run release:artifacts` already built and never rebuilds them.
-// Each registry is checked first, so re-running after a partial failure only
-// retries what is actually missing.
-//
-// Credentials (never passed as argv — argv leaks into shell history and npm logs):
-//   npm          — `npm login` session;每 publish마다 브라우저 2FA 승인이 뜬다.
-//   PyPI         — ~/.pypirc, TWINE_USERNAME/TWINE_PASSWORD, or interactive prompt.
-//   Marketplace  — VSCE_PAT environment variable.
-//   OpenVSX      — OVSX_PAT environment variable.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -88,14 +73,14 @@ const targets = [
   {
     name: "npm",
     artifacts: [TGZ],
-    credsMissing: () => null, // npm prompts its own browser 2FA
+    credsMissing: () => null,
     publish: () => run("npm", ["publish", TGZ]),
     note: "브라우저 2FA 승인 창이 뜨면 승인해야 완료됩니다.",
   },
   {
     name: "pypi",
     artifacts: [SDIST, WHEEL],
-    credsMissing: () => null, // twine falls back to ~/.pypirc or an interactive prompt
+    credsMissing: () => null,
     publish: () =>
       run("node", [
         "scripts/run_python.mjs",

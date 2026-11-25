@@ -1,19 +1,3 @@
-//! Bind the product `POST /agent` surface to the real loop.
-//!
-//! `lattice-platform::agents` still mounts a stub that always answers
-//! "No model loaded" (and never sets `model_loaded`). The working loop is
-//! `lattice-agent`'s `loop_router`, mounted at `/rust/agent/{run,resume,
-//! approvals}`. This layer:
-//!
-//! 1. Rewrites `/agent`, `/agent/resume`, `GET /agent/approvals` onto those
-//!    native paths so a client written against the product contract reaches
-//!    the loop.
-//! 2. Injects the real tool-governance table and `tool_names` when the body
-//!    did not carry them, so the loop's default prompts name the full set
-//!    rather than the five-tool core catalog.
-//! 3. Overwrites `user_role` from the session, same rule as
-//!    [`super::identity::inject_user_role`].
-
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -38,33 +22,24 @@ use super::isolation::{
 };
 use super::onedoor::OneDoorState;
 
-/// Paths this layer rewrites onto the loop router.
 const REWRITES: &[(&str, &str, &str)] = &[
     ("POST", "/agent", "/rust/agent/run"),
     ("POST", "/agent/resume", "/rust/agent/resume"),
     ("GET", "/agent/approvals", "/rust/agent/approvals"),
 ];
 
-/// Native paths handled directly by the loop router when isolated.
 const NATIVE_LOOP_PATHS: &[(&str, &str)] = &[
     ("POST", "/rust/agent/run"),
     ("POST", "/rust/agent/resume"),
     ("GET", "/rust/agent/approvals"),
 ];
 
-/// Bodies that receive the policy table (the run, not resume/approvals).
 const POLICY_PATHS: &[&str] = &["/agent", "/rust/agent/run"];
 
-/// What the layer needs: identity, the table it injects, and the real loop.
 #[derive(Clone)]
 pub struct AgentBindState {
-    /// Process-wide sessions.
     pub auth: Arc<AuthState>,
-    /// The product tool-governance table, built once at boot.
     pub policies: Arc<PolicyTable>,
-    /// The loop router at `/rust/agent/{run,resume,approvals}` for the base root.
-    ///
-    /// Called directly for `/agent` so the platform stub never answers.
     pub loop_router: Router,
     base_root: PathBuf,
     data_dir: PathBuf,
@@ -74,7 +49,6 @@ pub struct AgentBindState {
 }
 
 impl AgentBindState {
-    /// Bind identity, the product policy table, and a loop over `workspace`.
     pub fn new(auth: Arc<AuthState>, workspace: Workspace, config: LoopConfig) -> Self {
         let base_root = workspace.root().to_path_buf();
         Self {
@@ -89,8 +63,6 @@ impl AgentBindState {
         }
     }
 
-    /// Bind full product state so per-user/per-workspace isolation and
-    /// [`WorkspaceResolver`] authorization apply to every agent run.
     pub fn from_product(product: &OneDoorState) -> Self {
         Self {
             auth: Arc::clone(&product.auth),
@@ -122,8 +94,6 @@ impl AgentBindState {
     }
 }
 
-/// Rewrite `/agent` onto the loop, enforce per-user/workspace isolation, and
-/// inject verified identity + policies.
 pub async fn bind_agent_run(
     State(bind): State<AgentBindState>,
     request: Request,
@@ -294,7 +264,6 @@ fn with_verified_scope_and_policies(
         Value::String(scope.identity.role.clone()),
     );
     if scope.identity.email.is_empty() {
-        // Prevent unauthenticated loopback callers from spoofing another user's email.
         object.remove("user_email");
     } else {
         object.insert(
@@ -365,7 +334,6 @@ fn tool_names_missing(object: &Map<String, Value>) -> bool {
     }
 }
 
-/// Every name `lattice_platform::toolsurface::tools::governance_for` knows.
 const GOVERNED_TOOLS: &[&str] = &[
     "list_dir",
     "workspace_tree",
@@ -419,7 +387,6 @@ const GOVERNED_TOOLS: &[&str] = &[
     "computer_ui_inspect",
 ];
 
-/// Build the product policy table from platform governance.
 pub fn product_policy_table() -> PolicyTable {
     let mut tools = BTreeMap::new();
     for name in GOVERNED_TOOLS {

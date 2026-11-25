@@ -1,24 +1,3 @@
-"""The OpenAPI contract survives Python's shrinkage — proved here (v11.6.0 §I5).
-
-``frontend/openapi.json`` stays the single committed contract while most of the
-surface it describes moves to Rust. That only works if three things hold, and
-each is a test below:
-
-1. **Bijection.** ``scripts/openapi_route_families.json`` names a family for
-   every operation in the committed spec, exactly once, with no entries for
-   routes that do not exist. A missed route would be a route nobody ports.
-2. **Byte-exactness.** ``scripts/compose_openapi.py`` reassembles the committed
-   fragments into the committed bytes — compared as bytes, not as parsed JSON,
-   so a re-ordered key or an ``int`` that became a ``float`` fails here.
-3. **Freshness.** Regenerating the fragments from the current spec produces the
-   committed files unchanged, so the fixtures the Rust crates are pinned to
-   cannot quietly fall behind the contract.
-
-The scripts are imported by path (``scripts`` is not a package) the way the
-parity-contract tests import their generators, so all the logic under test
-lives in the scripts themselves rather than being restated here.
-"""
-
 from __future__ import annotations
 
 import copy
@@ -43,8 +22,6 @@ def _load(name: str, filename: str):
 generator = _load("gen_openapi_fragments", "gen_openapi_fragments.py")
 composer = _load("compose_openapi", "compose_openapi.py")
 
-#: The work-package families of docs/v11.6.0_ONE_DOOR_PLAN.md. Spelled out so a
-#: renamed or invented family fails a test rather than reshaping the pipeline.
 EXPECTED_FAMILIES = {
     "auth",
     "static_ui",
@@ -77,11 +54,6 @@ def rendered(spec, mapping) -> dict:
     return generator.render_all(spec, mapping)
 
 
-# --------------------------------------------------------------------------
-# 1. the map is a bijection with the committed contract
-# --------------------------------------------------------------------------
-
-
 def test_every_committed_operation_has_exactly_one_family(spec, mapping):
     keys = [key for key, _, _ in generator.spec_operations(spec)]
     assert len(keys) == len(set(keys)), "the same operation twice in the spec"
@@ -105,7 +77,6 @@ def test_family_names_are_the_plan_work_packages(mapping):
 
 
 def test_family_is_derived_from_the_module_unless_overridden(mapping):
-    """Every assignment is explainable: module default, or a named override."""
     for key, entry in mapping["operations"].items():
         override = mapping["overrides"].get(key)
         expected = (
@@ -129,10 +100,6 @@ def test_family_is_derived_from_the_module_unless_overridden(mapping):
     )
 
 
-#: The eight operations v11.8.0 deleted end-to-end. Each had no caller — no
-#: frontend fetch, no extension call, no Rust proxy target — so the handler, the
-#: contract entry and the route→family row left together. Named here because a
-#: route that quietly comes back is a route nothing asked for.
 DELETED_IN_11_8_0 = (
     "GET /api/embeddings/providers",
     "GET /tools/pdf_pages",
@@ -146,8 +113,6 @@ DELETED_IN_11_8_0 = (
 
 
 def test_the_worker_surface_is_the_keep_worker_set(mapping):
-    """worker_keep: scout's KEEP_WORKER set and the graph single writer, less
-    the eight caller-less routes v11.8.0 deleted."""
     worker = {
         key
         for key, entry in mapping["operations"].items()
@@ -173,7 +138,6 @@ def test_the_worker_surface_is_the_keep_worker_set(mapping):
 
 
 def test_the_routes_deleted_in_11_8_0_left_the_whole_contract(spec, mapping):
-    """Deleting a handler is only half of it — the contract must shrink too."""
     committed = {key for key, _, _ in generator.spec_operations(spec)}
     for key in DELETED_IN_11_8_0:
         assert key not in committed, f"{key} still has a public contract entry"
@@ -185,11 +149,6 @@ def test_the_routes_deleted_in_11_8_0_left_the_whole_contract(spec, mapping):
     assert "PullModelRequest" not in spec["components"]["schemas"], (
         "the pull-model body schema outlived its only operation"
     )
-
-
-# --------------------------------------------------------------------------
-# 2. composition reproduces the committed bytes
-# --------------------------------------------------------------------------
 
 
 def test_committed_fragments_compose_into_the_committed_spec():
@@ -229,13 +188,7 @@ def test_generator_cli_writes_the_committed_tree(tmp_path, capsys):
         )
 
 
-# --------------------------------------------------------------------------
-# 3. the fragments are self-contained and self-describing
-# --------------------------------------------------------------------------
-
-
 def test_each_fragment_carries_its_own_schema_closure(spec):
-    """A crate reading one fragment sees every schema its routes reference."""
     for path in sorted(generator.FRAGMENT_DIR.glob("*.json")):
         if path.name.startswith("_"):
             continue
@@ -271,11 +224,6 @@ def test_fragments_record_committed_source_order(spec):
 
 
 def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
-    """``{name:path}`` matches slashes; the schema flattens it to ``{name}``.
-
-    A port that reads only the schema mounts a plain capture and 404s on every
-    id with a ``/`` in it, so the converter list travels with the fragment.
-    """
     greedy = mapping["greedy_path_params"]
     assert set(greedy) <= set(mapping["operations"])
     assert len(greedy) == 13
@@ -311,11 +259,6 @@ def test_index_totals_and_hashes_describe_the_files_on_disk():
     assert envelope["spec"]["info"] == generator.load_spec()["info"]
 
 
-# --------------------------------------------------------------------------
-# 4. the failure modes actually fail
-# --------------------------------------------------------------------------
-
-
 @pytest.fixture()
 def fragment_copy(tmp_path) -> Path:
     directory = tmp_path / "openapi"
@@ -347,7 +290,6 @@ def test_an_extra_operation_is_reported_as_extra(fragment_copy, capsys):
 
 
 def test_a_gutted_fragment_names_what_the_composition_lost(fragment_copy, capsys):
-    """The report is readable at scale: counts, a capped list, and the schemas."""
     fragment = generator.load_json(fragment_copy / "mcp_market.json")
     fragment["paths"] = {}
     fragment["components"]["schemas"] = {}
@@ -382,7 +324,6 @@ def test_two_families_cannot_claim_the_same_operation(fragment_copy):
 
 
 def test_a_shared_schema_must_be_the_same_schema_everywhere(fragment_copy):
-    """Shared schemas are duplicated into every fragment; the copies must agree."""
     fragment = generator.load_json(fragment_copy / "auth.json")
     elsewhere = generator.load_json(fragment_copy / "admin.json")["components"][
         "schemas"
@@ -429,16 +370,10 @@ def test_check_mode_names_missing_stale_and_unexpected_files(
 
 
 def test_an_unmapped_route_fails_loudly(spec, mapping):
-    """The map is hand-maintained; a new Python route must be filed, not guessed."""
     thinned = copy.deepcopy(mapping)
     thinned["operations"].pop("GET /health")
     with pytest.raises(KeyError, match="GET /health"):
         generator.render_all(spec, thinned)
-
-
-# --------------------------------------------------------------------------
-# 5. the P1 cutover precondition: the worker app ⊆ worker_keep
-# --------------------------------------------------------------------------
 
 
 def _worker_spec_from_fragment(subset: int | None = None) -> dict:
@@ -462,7 +397,6 @@ def test_worker_spec_subset_passes(tmp_path, capsys):
 
 
 def test_internal_worker_seams_are_exempt_from_the_subset_check(tmp_path, capsys):
-    """WP-I6's loopback seams are gateway-only surface: no public contract, no failure."""
     worker_spec = _worker_spec_from_fragment()
     for path in composer.INTERNAL_WORKER_PATHS:
         worker_spec["paths"][path] = {"post": {"responses": {}}}
@@ -491,12 +425,6 @@ def test_internal_worker_seams_are_exempt_from_the_subset_check(tmp_path, capsys
 
 
 def test_the_exemption_list_is_exactly_the_worker_profile_seams():
-    """One list in the composer, one in the worker profile — kept the same set.
-
-    A seam added to the profile but not here fails the subset check at cutover;
-    a path listed only here is an exemption for a route nothing serves. Reading
-    the profile rather than restating it means neither can happen quietly.
-    """
     from latticeai.runtime.build_phases.worker_profile import worker_route_keys
 
     served = {
@@ -506,7 +434,6 @@ def test_the_exemption_list_is_exactly_the_worker_profile_seams():
 
 
 def test_an_unlisted_worker_seam_still_fails(tmp_path, capsys):
-    """The exemption is a named list, not a ``/worker/`` prefix rule."""
     worker_spec = _worker_spec_from_fragment()
     worker_spec["paths"]["/worker/undeclared-seam"] = {"post": {"responses": {}}}
     worker = tmp_path / "worker.json"
@@ -527,10 +454,6 @@ def test_a_worker_route_without_a_contract_fails(tmp_path, capsys):
 
 
 def test_a_worker_spec_from_a_different_version_fails(tmp_path, capsys):
-    # Derived, never a literal: this test named "11.6.0" until 11.6.0 shipped,
-    # at which point the "different" version was the current one and the case
-    # asserted the opposite of its name. The mismatch is now a fact about the
-    # committed envelope rather than a number someone has to remember to bump.
     worker_spec = _worker_spec_from_fragment()
     current = worker_spec["info"]["version"]
     major, _, _ = current.partition(".")

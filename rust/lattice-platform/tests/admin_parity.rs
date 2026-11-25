@@ -1,14 +1,3 @@
-//! The admin-console families, replayed against the Python oracle: `admin.py`,
-//! `funnel_metrics.py`, `features.py`, `setup.py` and `security_dashboard.py`,
-//! plus the OpenAPI contract the admin router composes (WP-I5) and unit cover
-//! for the native `audit_log.json` append helper.
-//!
-//! Seven test binaries collapsed into one. Each family keeps its own
-//! `replay_<family>_case` helper — they differ in what they seed and stub —
-//! and every test function is the one it was.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 #[path = "admin_support/mod.rs"]
 mod admin_support;
@@ -27,8 +16,6 @@ use lattice_platform::workspaceos::features::{router as features_router, Feature
 use serde_json::{json, Map, Value};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-
-// ── the OpenAPI contract ───────────────────────────────────────────────────
 
 #[test]
 fn mounted_routes_match_the_committed_contract() {
@@ -60,8 +47,6 @@ fn mounted_routes_match_the_committed_contract() {
         );
     }
 }
-
-// ── admin.py ───────────────────────────────────────────────────────────────
 
 fn graph_stats() -> serde_json::Value {
     json!({
@@ -134,12 +119,6 @@ async fn replay_admin_case(case: &serde_json::Value, require_auth: bool) {
     let hardening_auth = auth.config().require_auth;
     let mut state = AdminState::new(auth, dir.path());
     state.graph_stats = std::sync::Arc::new(|| Ok(graph_stats()));
-    // `/admin/product-hardening` probes PATH for `python3` and `docker`. The
-    // Python oracle recorded both as `true` on a laptop that had them, so the
-    // default probe fails the fixture on any machine that does not — a
-    // property of the runner, not of the handler. Same function, same
-    // document; only the probe is stubbed, so everything else in the envelope
-    // is still compared against what the product builds.
     state.hardening = Some(std::sync::Arc::new(move || {
         default_product_hardening_probed(
             &hardening_dir,
@@ -165,8 +144,6 @@ async fn replay_admin_case(case: &serde_json::Value, require_auth: bool) {
     handle.abort();
     assert_case(&name, case, &answer);
 }
-
-// ── funnel_metrics.py ──────────────────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]
 async fn funnel_fixtures_replay() {
@@ -211,8 +188,6 @@ async fn replay_funnel_case(case: &serde_json::Value) {
     assert_case(&name, case, &answer);
 }
 
-// ── features.py ────────────────────────────────────────────────────────────
-
 #[tokio::test(flavor = "multi_thread")]
 async fn features_fixtures_replay() {
     std::env::set_var("LATTICEAI_VECTOR_INDEX", "brute");
@@ -256,8 +231,6 @@ async fn replay_features_case(case: &serde_json::Value) {
     handle.abort();
     assert_case(&name, case, &answer);
 }
-
-// ── setup.py ───────────────────────────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]
 async fn setup_fixtures_replay() {
@@ -311,12 +284,8 @@ async fn replay_setup_case(case: &serde_json::Value) {
     assert_case(&name, case, &answer);
 }
 
-// ── security_dashboard.py ──────────────────────────────────────────────────
-
-/// Minimal ZIP magic so `@binary.leading_magic = 504b0304` matches.
 const MOCK_XLSX: &[u8] = b"PK\x03\x04mock-xlsx";
 
-/// What the stand-in worker was asked for, so a test can prove the hop.
 #[derive(Clone, Default)]
 struct SeamLog {
     calls: Arc<Mutex<Vec<(String, Value)>>>,
@@ -335,10 +304,6 @@ impl SeamLog {
     }
 }
 
-/// A worker that mounts the surviving render seam **and** the retired product
-/// route, so "the export posted to `/tools/create_xlsx`" is a recorded fact
-/// rather than a silent 404 (`WorkerSeamClient` would report the refusal, but
-/// the point of the tripwire is that the request is never made at all).
 async fn mock_xlsx_worker() -> (WorkerSeamClient, tokio::task::JoinHandle<()>, SeamLog) {
     let log = SeamLog::default();
     let render_log = log.clone();
@@ -438,8 +403,6 @@ async fn replay_security_case(case: &serde_json::Value, worker: WorkerSeamClient
     )
     .await;
     handle.abort();
-    // Events listing is capture-session-shaped (event_id assignment +
-    // invitation symbols). Pin status; the other security cases keep bodies.
     if matches!(
         case["name"].as_str().unwrap_or(""),
         "security_events"
@@ -460,13 +423,6 @@ async fn replay_security_case(case: &serde_json::Value, worker: WorkerSeamClient
     assert_case(&name, case, &answer);
 }
 
-/// The xlsx export travels the render seam, and the retired product route is
-/// never asked.
-///
-/// Before v11.7.0 this posted to `/tools/create_xlsx` — a route *this* process
-/// mounts, which the worker stopped serving in v11.6.0 — so every
-/// `format=xlsx` export answered 502 on a live install while the fixture
-/// replay stayed green against a stand-in that still mounted it.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_xlsx_export_goes_through_the_render_seam() {
     let (worker, worker_handle, log) = mock_xlsx_worker().await;
@@ -531,8 +487,6 @@ async fn the_xlsx_export_goes_through_the_render_seam() {
     );
 }
 
-/// A seam that cannot build the workbook is a 502 about the seam, not a 500
-/// about the request — and nothing half-written reaches the browser.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_refusing_render_seam_degrades_to_a_gateway_error() {
     let app = axum::Router::new().route(
@@ -580,8 +534,6 @@ async fn a_refusing_render_seam_degrades_to_a_gateway_error() {
     );
 }
 
-// ── the native `audit_log.json` append helper ──
-
 #[test]
 fn append_writes_event_id_timestamp_and_contract() {
     let dir = tempfile::tempdir().unwrap();
@@ -597,7 +549,6 @@ fn append_writes_event_id_timestamp_and_contract() {
     assert_eq!(ev["event_type"], "user_update");
     assert!(ev["timestamp"].as_str().unwrap().contains('T'));
     assert_eq!(ev["user_email"], "owner@lattice.test");
-    // secret-shaped values are redacted before persist
     assert_eq!(ev["token"], "[REDACTED_SECRET]");
     assert_eq!(ev["contract"]["family"], "agent-run-contract/v1");
     assert_eq!(ev["contract"]["kind"], "audit_event");

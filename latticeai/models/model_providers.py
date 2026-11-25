@@ -1,11 +1,3 @@
-"""Cloud LLM provider catalog — static data split out of the router.
-
-Pure config dicts (OpenAI-compatible providers, per-provider model
-catalog, model→source family map). router.py re-exports these, so
-``from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS`` and the
-model_runtime re-export chain are unaffected.
-"""
-
 from __future__ import annotations
 
 OPENAI_COMPATIBLE_PROVIDERS = {
@@ -32,9 +24,6 @@ OPENAI_COMPATIBLE_PROVIDERS = {
     "xai": {
         "env_key": "XAI_API_KEY",
         "base_url": "https://api.x.ai/v1",
-        # ``grok-beta`` was xAI's 2024 preview id and has been decommissioned;
-        # a request naming it now 404s at the provider. ``grok-4.6`` is the
-        # current flagship on api.x.ai and matches the Rust cloud adapter.
         "default_model": "grok-4.6",
     },
     "ollama": {
@@ -152,11 +141,6 @@ PROVIDER_MODEL_CATALOG = {
         },
     ],
     "xai": [
-        # One current generation only, per MODEL_POLICY's "do not keep old
-        # same-family generations" rule. The retired preview ids
-        # (grok-beta / grok-vision-beta) are not carried as fallbacks: a model
-        # the provider no longer serves is not compatibility, it is a 404 the
-        # user has to discover for themselves.
         {"id": "grok-4.6", "name": "Grok 4.6", "family": "Grok"},
     ],
 }

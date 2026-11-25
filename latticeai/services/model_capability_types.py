@@ -1,5 +1,3 @@
-"""Dataclasses and lifecycle constants for the Model Capability Registry."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,54 +16,37 @@ class HardwareProfile:
 @dataclass(frozen=True)
 class VerificationStatus:
     hf_exists: bool = False
-    hf_last_checked: Optional[str] = None  # ISO
+    hf_last_checked: Optional[str] = None
     has_config: bool = False
     has_tokenizer: bool = False
-    has_weights_hint: bool = False  # safetensors or gguf siblings seen in meta
+    has_weights_hint: bool = False
     pipeline_tag: Optional[str] = None
     likes: Optional[int] = None
     license: Optional[str] = None
     notes: str = ""
-    verified_by: str = "hf-api-light"  # or "local-load-test"
+    verified_by: str = "hf-api-light"
 
 
-# ── Lifecycle vocabulary ──────────────────────────────────────────────────────
-#: Current generation: offered for download, listed in the catalog, recommended.
 RECOMMENDED = "recommended"
-#: Superseded but still loadable: recognised only, never offered or recommended.
 LEGACY = "legacy"
 
 
 @dataclass(frozen=True)
 class ModelCapability:
-    """Rich capability entry. id is the canonical key used in ENGINE_MODEL_CATALOG."""
-
     id: str
-    hf_repo_id: str  # clean HF path for download (e.g. mlx-community/xxx or Qwen/yyy)
+    hf_repo_id: str
     name: str
     family: str
     tag: str
-    size: str  # display string "7.6GB", "pull required"
-    modality: str = "multimodal"  # multimodal | vision | text | audio etc.
-    #: HF ``config.json`` ``model_type`` — the string mlx-lm / mlx-vlm dispatches
-    #: on. Pinned from the Hub API so the verifier can judge loadability
-    #: statically, without downloading or importing anything.
+    size: str
+    modality: str = "multimodal"
     architecture: str = ""
-    #: Measured sum of the repo's sibling file sizes, in GB (10^9 bytes).
-    #: ``None`` for tool-managed engines that pull on demand.
     download_size_gb: Optional[float] = None
-    #: RECOMMENDED (offered + recommended) or LEGACY (recognised only).
     lifecycle: str = RECOMMENDED
-    quantization: Optional[str] = None  # "4bit", "Q4_K_M", "GGUF-Q4"
-    provider_hints: List[str] = field(
-        default_factory=lambda: ["local_mlx"]
-    )  # which engines this id primarily maps to
-    download_strategy: str = (
-        "hf_hub"  # hf_hub | ollama_pull | lmstudio_app | gguf_manual
-    )
-    load_strategy: str = (
-        "mlx_vlm"  # mlx_vlm | ollama | vllm | lmstudio | llamacpp_server
-    )
+    quantization: Optional[str] = None
+    provider_hints: List[str] = field(default_factory=lambda: ["local_mlx"])
+    download_strategy: str = "hf_hub"
+    load_strategy: str = "mlx_vlm"
     hardware: HardwareProfile = field(default_factory=HardwareProfile)
     license: str = "apache-2.0"
     safety_notes: str = (
@@ -77,9 +58,7 @@ class ModelCapability:
     internet_requirement: str = (
         "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
     )
-    # Verification
     verification: VerificationStatus = field(default_factory=VerificationStatus)
-    # UI / rec hints
     recommended_default: bool = False
     display_priority: int = 100
     category: str = "chat"
@@ -87,7 +66,6 @@ class ModelCapability:
     dimensions: Optional[int] = None
 
     def to_legacy_dict(self) -> Dict[str, Any]:
-        """Exact shape expected by older ENGINE_MODEL_CATALOG consumers + extra 5.2 fields."""
         base = {
             "id": self.id,
             "name": self.name,
@@ -116,7 +94,6 @@ class ModelCapability:
                 "internet_requirement",
                 "model_name",
             ],
-            # 5.2+ rich fields (non-breaking; frontend + backend read if present)
             "hf_repo_id": self.hf_repo_id,
             "quantization": self.quantization,
             "download_strategy": self.download_strategy,

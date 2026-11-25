@@ -1,5 +1,3 @@
-//! `ingest_file` — the upload door, with its content-addressed sidecar.
-
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -13,7 +11,6 @@ use super::super::GraphWriter;
 use super::{extension_of, IngestOutcome};
 
 impl GraphWriter {
-    /// `ingest_document` — the upload door, with its content-addressed sidecar.
     pub fn ingest_file(&self, request: &IngestFileRequest) -> Result<IngestOutcome, CoreError> {
         let data = std::fs::read(&request.path).map_err(|err| {
             CoreError::Io(format!(
@@ -115,8 +112,6 @@ impl GraphWriter {
         extracted_without_content.remove("content");
         metadata.insert("extracted".into(), Value::Object(extracted_without_content));
         metadata.insert("structure".into(), Value::Object(request.structure.clone()));
-        // Stamp never-leaves at ingestion: a user who indexes a project folder
-        // should not have to remember that it contains a `.env`.
         stamp_sensitivity(&mut metadata, &source_uri);
 
         let mut chunk_ids: Vec<String> = Vec::new();

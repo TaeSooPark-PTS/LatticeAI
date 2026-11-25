@@ -93,7 +93,6 @@ describe("InlineStagedProposals & Chat Insight Promotion", () => {
     expect(screen.getByText("Adjust timeout")).toBeTruthy();
     expect(screen.getByText("Fallback title item")).toBeTruthy();
 
-    // Non-ok responses keep quiet; ok responses surface confirmation status.
     await userEvent.click(screen.getByTestId("inline-proposal-approve-p1"));
     await waitFor(() => expect(approve).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("status")).toBeNull();
@@ -141,14 +140,11 @@ describe("InlineStagedProposals & Chat Insight Promotion", () => {
       },
     );
 
-    // pendingChatPrompt was consumed into the composer textarea and cleared from store.
     await waitFor(() => expect(useAppStore.getState().pendingChatPrompt).toBeNull());
     expect((screen.getByLabelText("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요") as HTMLTextAreaElement).value).toBe("그래프 연결 맥락 정리해줘");
 
-    // Inline staged proposals rendered automatically for the proposed step.
     expect(await screen.findByTestId("inline-proposal-prop-9")).toBeTruthy();
 
-    // One-click Save-to-Brain promotes the assistant answer via ingestNote.
     const saveBtn = screen.getByTestId("message-save-brain") as HTMLButtonElement;
     expect(saveBtn.textContent).toContain("Brain에 기억하기");
     await userEvent.click(saveBtn);

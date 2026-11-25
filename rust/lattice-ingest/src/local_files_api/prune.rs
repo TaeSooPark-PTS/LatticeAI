@@ -1,13 +1,3 @@
-//! Consent prune of folder-ingest orphans: deleted files' graph, not the disk.
-//!
-//! Folder ingest *counts* vanished files and leaves their nodes. The watch
-//! poller calls this door with ``confirm=true`` so a vanished watched file
-//! leaves the graph. The HTTP prune route is still the explicit consent
-//! path for a one-shot folder. Only `delete_document_tree` (both-direction
-//! edges); `GraphWriter::delete_node` is the 11.7 trap and is never used.
-//! `GraphWriter::delete_node` is the 11.7 trap — it leaves `PART_OF` dangling
-//! — and is never used here.
-
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -21,7 +11,6 @@ use crate::fingerprint;
 use crate::hashes::sha256_text;
 use crate::watch::{walk_folder, WatchConfig};
 
-/// What a prune would (or did) remove.
 #[derive(Debug, Clone, Default)]
 pub struct PrunePlan {
     pub files: Vec<String>,
@@ -42,8 +31,6 @@ impl PrunePlan {
     }
 }
 
-/// Source files under `root` that provenance still records and the walk no
-/// longer sees.
 pub fn deleted_files(store: &Store, root: &Path) -> Vec<String> {
     let present: HashSet<String> = match walk_folder(root, &WatchConfig::default()) {
         Ok(files) => files
@@ -55,7 +42,6 @@ pub fn deleted_files(store: &Store, root: &Path) -> Vec<String> {
     fingerprint::missing_under_root(store, root, &present)
 }
 
-/// Node ids provenance attached to these source URIs.
 pub fn node_ids_for_files(conn: &Connection, files: &[String]) -> Vec<String> {
     let mut ids = Vec::new();
     let mut seen = HashSet::new();
@@ -105,7 +91,6 @@ fn count_in(conn: &Connection, sql: &str, ids: &[String]) -> i64 {
         .unwrap_or(0)
 }
 
-/// Count the subgraph `delete_document_tree` would remove for these nodes.
 pub fn preview_subgraph(conn: &Connection, roots: &[String]) -> PrunePlan {
     let mut remove: Vec<String> = Vec::new();
     let mut seen = HashSet::new();
@@ -164,7 +149,6 @@ pub fn preview_subgraph(conn: &Connection, roots: &[String]) -> PrunePlan {
     }
 }
 
-/// Plan (and optionally apply) a prune of deleted files under `root`.
 pub fn prune_deleted(graph: &GraphWriter, root: &Path, confirm: bool) -> Result<Value, String> {
     let store = graph.store();
     let files = deleted_files(store, root);
@@ -248,7 +232,6 @@ pub fn prune_deleted(graph: &GraphWriter, root: &Path, confirm: bool) -> Result<
     }))
 }
 
-/// After a confirmed prune: no edge may point at a missing node.
 pub fn dangling_edge_count(conn: &Connection) -> i64 {
     conn.query_row(
         "SELECT COUNT(*) FROM edges e \
@@ -260,7 +243,6 @@ pub fn dangling_edge_count(conn: &Connection) -> i64 {
     .unwrap_or(0)
 }
 
-/// Nudge the HNSW sidecar so new vectors from this ingest are learned.
 pub async fn refresh_sidecar(
     seam: Option<&lattice_core::worker::WorkerSeamClient>,
     graph: Option<&GraphWriter>,

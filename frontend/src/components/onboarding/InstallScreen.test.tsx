@@ -6,12 +6,6 @@ import { ok, renderPage, type RenderPageOptions } from "@/test/renderPage";
 import { InstallScreen, percentForStage } from "./InstallScreen";
 import { fallbackModel, type RecommendedModel } from "./recommendationModel";
 
-/**
- * The install step drives a real SSE prepare stream. These tests fake the
- * stream at the API boundary and check the honest parts: stages map to plain
- * words, percentages never invent progress, errors keep their recovery
- * guidance but lose their jargon, and the buttons freeze while work runs.
- */
 
 function model(overrides: Partial<RecommendedModel> = {}): RecommendedModel {
   return {
@@ -60,12 +54,10 @@ describe("InstallScreen", () => {
     renderInstall(model());
     expect(screen.getByText(t("ko", "flow.install.title"))).toBeTruthy();
     expect(screen.getByText(t("ko", "flow.install.stage.idle"))).toBeTruthy();
-    // Four stages, none active or done yet.
     expect(stageItems()).toHaveLength(4);
     for (const item of stageItems()) {
       expect(item.className).not.toMatch(/is-active|is-done|is-error/);
     }
-    // Expected time folds in the download estimate.
     expect(
       screen.getByText(t("ko", "flow.install.expected", {
         download: t("ko", "flow.recommend.minutes", { count: 25 }),
@@ -91,7 +83,6 @@ describe("InstallScreen", () => {
   it("admits an unknown download time instead of estimating one", () => {
     renderInstall(model({ estimatedDownloadMinutes: null }));
     expect(screen.getByText(t("ko", "flow.install.expected.unknown", { response: 5 }))).toBeTruthy();
-    // Unknown size means the timeline cannot promise a duration either.
     expect(screen.getAllByText(t("ko", "flow.install.timelineQuick")).length).toBeGreaterThanOrEqual(2);
   });
 
@@ -108,7 +99,7 @@ describe("InstallScreen", () => {
 
   it("walks the stages to done and enters the product after a breath", async () => {
     const prepare = vi.fn(async (_body: Record<string, unknown>, handlers: Handlers) => {
-      handlers.onProgress?.({}); // a frame with no stage still counts as installing
+      handlers.onProgress?.({});
       handlers.onProgress?.({
         stage: "download_weights",
         percent: 42,
@@ -134,11 +125,9 @@ describe("InstallScreen", () => {
       fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.start") }));
     });
 
-    // The screen ends in the done state with the enter button showing.
     expect(screen.getByText(t("ko", "flow.install.stage.done"))).toBeTruthy();
     expect(document.querySelector(".ritual-bar-fill")?.className).toContain("progress-100");
     for (const item of stageItems()) expect(item.className).toContain("is-done");
-    // An empty engine falls back to the local default.
     expect(prepare.mock.calls[0]![0]).toMatchObject({ engine: "local_mlx", allow_download: true });
 
     await act(async () => {
@@ -161,7 +150,6 @@ describe("InstallScreen", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.start") }));
     });
-    // Busy: every button is frozen while work runs.
     expect(screen.getByRole("button", { name: t("ko", "flow.install.busy") })).toBeTruthy();
     expect((screen.getByRole("button", { name: t("ko", "flow.install.back") }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: t("ko", "flow.install.later") }) as HTMLButtonElement).disabled).toBe(true);
@@ -182,13 +170,9 @@ describe("InstallScreen", () => {
     expect(screen.getByTestId("install-speed").textContent).toContain("12.4 MB/s");
     expect(screen.getByTestId("install-eta").textContent).toContain("ETA 18s");
     expect(screen.getByTestId("install-fallback-notice").textContent).toContain("mlx-community/embeddinggemma-2-4bit");
-    // Percent fell back to the stage default (55) because the event named
-    // none; the bar class rounds to the nearest ten.
     expect(document.querySelector(".ritual-bar-fill")?.className).toContain("progress-60");
-    // The raw line shows because it differs from the friendly stage text.
     expect(screen.getByText("custom raw words")).toBeTruthy();
 
-    // A raw message identical to the friendly text is not repeated.
     await act(async () => {
       handlers.onProgress?.({ stage: "download_weights", user_message: t("ko", "flow.install.stage.download") });
     });
@@ -226,7 +210,6 @@ describe("InstallScreen", () => {
     });
 
     const alert = screen.getByRole("alert");
-    // The final message comes from the result payload, de-jargoned in the active language.
     expect(alert.textContent).toContain(`the ${t("ko", "flow.install.error.localSupport")} pull was interrupted`);
     expect(alert.textContent).toContain(t("ko", "flow.install.retry"));
     for (const item of stageItems()) expect(item.className).toContain("is-error");
@@ -296,7 +279,6 @@ describe("InstallScreen", () => {
     expect(percentForStage("load")).toBe(82);
     expect(percentForStage("validate")).toBe(94);
     expect(percentForStage("done")).toBe(100);
-    // The stream mapper never emits idle/error, but the fallback must stay sane.
     expect(percentForStage("idle")).toBe(8);
     expect(percentForStage("error")).toBe(8);
   });

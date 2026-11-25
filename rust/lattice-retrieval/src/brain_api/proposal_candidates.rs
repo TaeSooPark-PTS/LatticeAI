@@ -1,5 +1,3 @@
-//! Concept-cluster and unlinked-pair candidate discovery for synthesis proposals.
-
 use std::collections::BTreeSet;
 
 use serde_json::Value;

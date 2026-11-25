@@ -1,15 +1,3 @@
-//! `infer_file_target` / `infer_project_manifest` — what the user asked for.
-//!
-//! A 1:1 port of `latticeai.core.file_generation.inference`. `normalize_plan`
-//! is built on these two, so a drift here silently changes which files a run
-//! writes: the manifest decides the file set for a recognised multi-file
-//! project, and the single-target inference is what an empty plan falls back to.
-//!
-//! `fancy_regex` rather than `regex` for the same reason `lattice-retrieval`
-//! uses it: the originals lean on ASCII lookbehind/lookahead (`(?<![a-z0-9])js
-//! (?![a-z0-9])`) because `\b` fails against Korean particles — Hangul is a word
-//! character in both engines, so `js로` would not match `\bjs\b` in either.
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
@@ -31,7 +19,6 @@ fn create_verb() -> &'static Regex {
     )
 }
 
-/// Explicit type keyword → default filename. Ordered: first match wins.
 const TYPE_KEYWORDS: [(&str, &str); 11] = [
     (
         r"\bhtml\b|웹\s*페이지|웹페이지|홈페이지|landing\s*page|web\s*page",
@@ -67,7 +54,6 @@ fn type_keywords() -> &'static Vec<(Regex, &'static str)> {
     })
 }
 
-/// Infer a filename for creation requests that name a type but no path.
 pub fn infer_file_target(message: &str) -> Option<String> {
     let text = message.trim();
     if text.is_empty() || !hit(create_verb(), text) {
@@ -112,14 +98,6 @@ fn explicit_filename() -> &'static Regex {
     )
 }
 
-/// A path token with its directories, **without** a trailing `\b`.
-///
-/// [`explicit_filename`] ends in `\b`, which is exactly right for "did the user
-/// manage paths themselves" and exactly wrong for reading the path back out:
-/// Hangul is a word character, so `summary.md로` has no boundary after `md` and
-/// the match never happens. The lookahead here rejects a longer *ASCII* word
-/// (`hello.mdx`) and lets the Korean particle that follows a real path through,
-/// which is the case this function exists for.
 fn output_path_token() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     compile(
@@ -128,13 +106,6 @@ fn output_path_token() -> &'static Regex {
     )
 }
 
-/// The Korean particles that mark what follows a path as its **destination**.
-///
-/// `로` / `으로` / `에` / `에다(가)`, optionally after one noun the request put
-/// between the name and the particle (`notes/hello.md 파일로`). The negative
-/// lookahead is what keeps `에서` and `로부터` — which mark an *input* — out:
-/// a particle followed by another Hangul syllable is the start of a different
-/// word, not the postposition this is looking for.
 fn korean_destination() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     compile(
@@ -143,28 +114,11 @@ fn korean_destination() -> &'static Regex {
     )
 }
 
-/// The English prepositions that mark the path after them as a destination.
 fn english_destination() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     compile(&RE, r"(?i)(?:^|[^A-Za-z0-9])(?:to|into|as|in)\s+$")
 }
 
-/// The files a request names as **its own outputs**.
-///
-/// [`infer_project_manifest`] deliberately refuses to infer anything once the
-/// message names a filename ("the user manages paths"), which left
-/// [`crate::kernel::transcript::requirement_coverage`] with an empty declared
-/// list — and therefore a vacuously complete one — for every request of the
-/// shape `notes/summary.md로 저장해줘`. That is precisely the shape a small
-/// model fails on, so the one gate that would have caught the failure was
-/// unreachable exactly where it was needed.
-///
-/// This reads the same fact the other way round: a filename the user attached a
-/// *destination* marker to is a file the run was asked to produce. Nothing else
-/// counts — `README.md 첫 문단을 요약해` names a file the run only reads, and
-/// declaring that one an output would turn an honest DONE into a false
-/// NEEDS_REVIEW. When no marker is present nothing is declared, which is the
-/// behaviour every caller had before.
 pub fn requested_output_paths(message: &str) -> Vec<String> {
     let text = message.trim();
     if text.is_empty() || !hit(create_verb(), text) {
@@ -274,7 +228,6 @@ fn python_package_manifest(text: &str) -> Value {
             }
         })
         .collect();
-    // `re.match(r"[a-z_]", module)` — the first character decides.
     if !module
         .chars()
         .next()
@@ -304,7 +257,6 @@ fn python_package_manifest(text: &str) -> Value {
     })
 }
 
-/// Infer a multi-file project manifest from a creation request.
 pub fn infer_project_manifest(message: &str) -> Option<Value> {
     let text = message.trim();
     if text.is_empty() || !hit(create_verb(), text) {
@@ -364,7 +316,6 @@ Do not inline styles or behavior scripts.",
     Some(json!({"name": name, "kind": "web", "files": files}))
 }
 
-/// The declared paths of a manifest, in order.
 pub fn manifest_paths(manifest: &Value) -> Vec<String> {
     manifest["files"]
         .as_array()
@@ -407,15 +358,10 @@ mod tests {
 
     #[test]
     fn word_boundaries_fail_against_korean_particles_in_both_engines() {
-        // `\bhtml\b` does not match `html과`: Hangul is a word character, so
-        // there is no boundary after `html` — in Python's `re` and here alike.
-        // The next table row (`css`) is what answers. Cross-checked against the
-        // Python original, which also returns `styles.css`.
         assert_eq!(
             infer_file_target("html과 css 만들어줘").as_deref(),
             Some("styles.css")
         );
-        // With a boundary present the table order does apply.
         assert_eq!(
             infer_file_target("html and css 만들어줘").as_deref(),
             Some("generated_page.html")
@@ -431,9 +377,7 @@ mod tests {
             manifest_paths(&manifest),
             vec!["index.html", "style.css", "app.js"]
         );
-        // The Korean particle case the ASCII lookarounds exist for.
         assert!(infer_project_manifest("웹페이지 js로 만들어줘").is_some());
-        // html alone is a single-file request and stays on the old path.
         assert_eq!(infer_project_manifest("html 파일 만들어줘"), None);
     }
 
@@ -496,7 +440,6 @@ mod tests {
 
     #[test]
     fn a_destination_marker_is_what_makes_a_named_file_an_output() {
-        // The three shapes the acceptance matrix actually sends.
         assert_eq!(
             requested_output_paths("인사말을 notes/hello.md 파일로 저장해줘"),
             vec!["notes/hello.md".to_string()]
@@ -507,13 +450,11 @@ mod tests {
             ),
             vec!["notes/review_note.md".to_string()]
         );
-        // The one that names two files: only the destination is an output.
         assert_eq!(
             requested_output_paths("README.md 첫 문단을 요약해 notes/summary.md로 저장해줘"),
             vec!["notes/summary.md".to_string()],
             "README.md is read, not written — declaring it would be a false NEEDS_REVIEW"
         );
-        // English destinations.
         assert_eq!(
             requested_output_paths("summarise it and save to notes/summary.md"),
             vec!["notes/summary.md".to_string()]
@@ -526,8 +467,6 @@ mod tests {
 
     #[test]
     fn an_input_particle_never_declares_an_output() {
-        // `에서` / `로부터` mark a source. The particle lookahead is the only
-        // thing standing between those and a wrong missing-file verdict.
         assert_eq!(
             requested_output_paths("README.md에서 첫 문단을 읽어서 요약을 저장해줘"),
             Vec::<String>::new()
@@ -536,19 +475,15 @@ mod tests {
             requested_output_paths("config.json로부터 값을 읽어서 만들어줘"),
             Vec::<String>::new()
         );
-        // No creation verb at all: nothing is declared, whatever is named.
         assert_eq!(
             requested_output_paths("notes/hello.md에 뭐가 들어있어?"),
             Vec::<String>::new()
         );
-        // A named file with no marker stays undeclared — the conservative half
-        // of the rule, and what keeps the frozen coverage goldens byte-equal.
         assert_eq!(
             requested_output_paths("index.html 소개 페이지 만들어줘"),
             Vec::<String>::new()
         );
         assert_eq!(requested_output_paths(""), Vec::<String>::new());
-        // A longer ASCII word is not a path: `hello.mdx` is not `hello.md`.
         assert_eq!(
             requested_output_paths("hello.mdx로 저장해줘"),
             Vec::<String>::new()

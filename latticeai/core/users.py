@@ -1,5 +1,3 @@
-"""User identity store and v4 UUID migration helpers."""
-
 from __future__ import annotations
 
 import json

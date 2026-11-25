@@ -1,6 +1,3 @@
-//! Native web research tools (`web_fetch`, `web_search`) with SSRF protection,
-//! HTML distillation, and indirect prompt-injection sanitization.
-
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 
@@ -9,25 +6,18 @@ use serde_json::{json, Map, Value};
 use crate::tools::args;
 use crate::tools::sandbox::ToolError;
 
-/// Maximum response body read from a web endpoint (2 MiB).
 pub const MAX_WEB_BODY_BYTES: usize = 2 * 1024 * 1024;
 
-/// Default character budget for `web_fetch` content excerpts.
 pub const DEFAULT_MAX_CHARS: usize = 4_000;
-/// Minimum allowed `max_chars`.
 pub const MIN_MAX_CHARS: usize = 200;
-/// Maximum allowed `max_chars`.
 pub const MAX_MAX_CHARS: usize = 12_000;
 
-/// Default and clamping bounds for `web_search` result counts.
 pub const DEFAULT_MAX_RESULTS: usize = 5;
 pub const MIN_MAX_RESULTS: usize = 1;
 pub const MAX_MAX_RESULTS: usize = 10;
 
-/// Maximum HTTP redirects followed by `web_fetch` / `web_search`.
 pub const MAX_REDIRECTS: usize = 5;
 
-/// Per-request timeout for web operations.
 const WEB_TIMEOUT: Duration = Duration::from_secs(12);
 
 mod html;
@@ -254,13 +244,11 @@ fn classify_ipv6(ip: Ipv6Addr, allow_loopback: bool) -> Result<bool, ToolError> 
         )));
     }
     let seg0 = ip.segments()[0];
-    // Unique local fc00::/7
     if (seg0 & 0xfe00) == 0xfc00 {
         return Err(ToolError::tool(format!(
             "Blocked unique-local private IPv6 address: {ip}"
         )));
     }
-    // Link-local fe80::/10
     if (seg0 & 0xffc0) == 0xfe80 {
         return Err(ToolError::tool(format!(
             "Blocked link-local IPv6 address: {ip}"
@@ -269,12 +257,10 @@ fn classify_ipv6(ip: Ipv6Addr, allow_loopback: bool) -> Result<bool, ToolError> 
     Ok(false)
 }
 
-/// Validate a web URL against SSRF, cloud metadata, private network, and offline policy rules.
 pub fn validate_web_url(raw: &str) -> Result<String, ToolError> {
     let parsed = parse_http_url(raw)?;
     let host = parsed.host.as_str();
 
-    // Unconditionally block cloud metadata endpoints regardless of any flag.
     if is_cloud_metadata_host(host) {
         return Err(ToolError::tool(format!(
             "Blocked cloud metadata endpoint: {host}"
@@ -461,8 +447,6 @@ fn is_html_content(content_type: &str, body: &str) -> bool {
                 .starts_with("<html"))
 }
 
-/// `web_fetch(url, max_chars=4000)` — guarded HTTP fetch with HTML distillation and
-/// untrusted prompt-injection sanitization.
 pub async fn web_fetch(args: &Map<String, Value>) -> Result<Value, ToolError> {
     let raw_url = args::required_str(args, "url")?;
     let url = raw_url.trim().to_string();
@@ -511,7 +495,6 @@ pub async fn web_fetch(args: &Map<String, Value>) -> Result<Value, ToolError> {
     }))
 }
 
-/// `web_search(query, max_results=5)` — web search returning sanitized citations.
 pub async fn web_search(args: &Map<String, Value>) -> Result<Value, ToolError> {
     let raw_query = args::required_str(args, "query")?;
     let query = raw_query.trim().to_string();

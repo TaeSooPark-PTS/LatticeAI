@@ -1,47 +1,3 @@
-//! The static / SPA-serving family, native (v11.6.0, WP-I4).
-//!
-//! Port of `latticeai/api/static_routes.py` plus the two `StaticFiles` mounts
-//! assembled in `latticeai/runtime/web_runtime.py`. This is the first thing a
-//! browser touches and the last thing anyone thinks about: nothing here is
-//! interesting until it is missing, and then nothing else works.
-//!
-//! The contract is almost entirely **headers**, which is why it was captured
-//! rather than reasoned about. `scripts/gen_static_fixtures.py` drives the real
-//! Python router with a `TestClient` and writes
-//! `rust/fixtures/http/static_ui.json`; the tests in
-//! `tests/static_ui_parity.rs` replay every case against this module. What that
-//! pinned:
-//!
-//! * `GET /app` returns the SPA shell with the no-store trio
-//!   (`Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`,
-//!   `Expires: 0`) **and** [`PRODUCTION_CSP`]. The shell is a plain file — vite
-//!   output, no templating, no injected values — so serving it is a read, not a
-//!   render. Its assets are hashed and are served by the mounts below, which is
-//!   why only the shell is no-store.
-//! * `/manifest.json` is `application/manifest+json`, `/sw.js` carries
-//!   `Service-Worker-Allowed: /` (without it the worker's scope is `/` only by
-//!   accident), and `/favicon.ico` falls back to `icons/favicon-32.png`.
-//! * Every miss is FastAPI's `{"detail":"Not Found"}`, including inside the
-//!   mounts, and every wrong method is `{"detail":"Method Not Allowed"}`. These
-//!   are JSON, not the plain text a bare file server sends.
-//! * `HEAD` is **not** a free synonym for `GET` here: only `/favicon.ico`
-//!   declares it. The rest answer 405, because the Python routes are
-//!   `@router.get`.
-//!
-//! ## What is deliberately *not* here
-//!
-//! * **No SPA path fallback.** The client router is hash-based
-//!   (`/app#/knowledge-graph`), so a deep link never reaches the server as a
-//!   path. Python has no `/app/{path}` route and neither does this; adding one
-//!   would invent a surface the product does not have.
-//! * **`GET /status`** stays with the models family — it reports the loaded
-//!   model, which is worker state, not a file.
-//! * **The GPU half of `/local/sysinfo`.** CPU and RAM are sampled here; the
-//!   unified-memory numbers come from MLX, which lives in the Python worker, so
-//!   they are asked for over the seam ([`GpuSource`]). A static-files module
-//!   importing an ML runtime was the Python original's one wart; this port does
-//!   not inherit it.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -53,11 +9,6 @@ use axum::routing::{get, MethodRouter};
 use axum::Router;
 use tower_http::services::ServeDir;
 
-/// The Content-Security-Policy every HTML page this family serves carries.
-///
-/// Verbatim from `static_routes.PRODUCTION_CSP`, including the deliberate
-/// absence of `ws:` — the live surfaces are server-sent events read with
-/// `fetch`, which `connect-src` already covers.
 pub const PRODUCTION_CSP: &str = "default-src 'self'; \
 script-src 'self'; \
 style-src 'self' 'unsafe-inline'; \
@@ -70,14 +21,10 @@ base-uri 'none'; \
 form-action 'self'; \
 frame-ancestors 'none'";
 
-/// Name of the invite-gate cookie.
 pub const INVITE_COOKIE_NAME: &str = "lattice_invite";
 
-/// How long an issued invite claim is good for — one week.
 pub const INVITE_COOKIE_TTL_SECONDS: i64 = 60 * 60 * 24 * 7;
 
-/// The wall shown to a visitor without an invitation. Byte-for-byte the Python
-/// literal, trailing whitespace and all: it is asserted by digest.
 pub const INVITE_DENIED_HTML: &str = r#"
             <body style="background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
                 <div style="background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
@@ -89,45 +36,27 @@ pub const INVITE_DENIED_HTML: &str = r#"
             </body>
         "#;
 
-/// Where the SPA shell lives under the static root.
 pub(crate) const SHELL_RELATIVE: [&str; 2] = ["app", "index.html"];
 
-/// Host load at or below this is `roomy`.
 pub const SYSINFO_READINESS_ROOMY_MAX: f64 = 55.0;
-/// Host load above `roomy` and at or below this is `tight`; above it, `low`.
 pub const SYSINFO_READINESS_TIGHT_MAX: f64 = 80.0;
 
-/// The worker seam that answers with this machine's GPU memory (WP-I6).
 pub const WORKER_SYSINFO_PATH: &str = "/worker/sysinfo";
 
-/// How long the host probe waits for `top` / `vm_stat`, as Python waits.
 pub const PROBE_TIMEOUT: Duration = Duration::from_secs(4);
 
-/// How long the GPU seam may take. Short on purpose: this route is polled by the
-/// System screen *and* during first-run analysis, i.e. while an answer is
-/// streaming, and a slow worker must cost a missing GPU number rather than a
-/// stalled panel.
 pub const GPU_SEAM_TIMEOUT: Duration = Duration::from_secs(4);
 
-// ── configuration ──────────────────────────────────────────────────────────
-
-/// What the static family needs to know about this install.
 #[derive(Debug, Clone)]
 pub struct StaticUiConfig {
-    /// The `static/` root — vite output plus the hand-kept assets beside it.
     pub static_dir: PathBuf,
-    /// Whether the invite gate is armed (`LATTICEAI_INVITE_GATE_ENABLED`).
     pub invite_gate_enabled: bool,
-    /// The invitation code, if the operator set one.
     pub invite_code: String,
-    /// The HMAC key the invite cookie is signed with.
     pub invite_cookie_secret: String,
-    /// Whether issued cookies carry `Secure` — true on a public/non-loopback bind.
     pub secure_cookies: bool,
 }
 
 impl StaticUiConfig {
-    /// A config for `static_dir` with the gate disarmed — the product default.
     pub fn new(static_dir: impl Into<PathBuf>) -> Self {
         Self {
             static_dir: static_dir.into(),
@@ -138,14 +67,6 @@ impl StaticUiConfig {
         }
     }
 
-    /// [`Self::new`] plus the three `LATTICEAI_INVITE_*` variables.
-    ///
-    /// The *persisted* per-install secret (`security_runtime._resolve_invite_gate_secrets`
-    /// writes one into the data dir when the operator supplies none) is not read
-    /// here: that file belongs to the security runtime, and a static-file module
-    /// inventing a credential is exactly the kind of second source of truth this
-    /// release exists to remove. A host with the gate armed and no secret in the
-    /// environment must pass one in.
     pub fn from_env(static_dir: impl Into<PathBuf>) -> Self {
         let flag = std::env::var("LATTICEAI_INVITE_GATE_ENABLED").unwrap_or_default();
         Self {
@@ -159,19 +80,6 @@ impl StaticUiConfig {
     }
 }
 
-/// Resolve the `static/` root the way Python's `Config.from_env` does.
-///
-/// ```text
-/// first = LATTICEAI_STATIC_DIR  or  {base_dir}/static
-/// if first exists → first
-/// else if {install_prefix}/static exists → that   # Python: sys.prefix/static
-/// else → first   # missing build output stays a 404, not a silent `.`
-/// ```
-///
-/// Setting `LATTICEAI_STATIC_DIR` *replaces* the checkout path; a missing
-/// override does not fall through to `{base_dir}/static`, only to the
-/// packaged prefix. This module does not re-read the environment: the host
-/// already did (`RuntimeConfig::from_env`). Pass what it found.
 pub fn resolve_static_dir(
     explicit: Option<&Path>,
     base_dir: &Path,
@@ -192,11 +100,6 @@ pub fn resolve_static_dir(
     first
 }
 
-/// `latticeai/core/config.py::_bool` — the truthy set, lowercased and trimmed.
-///
-/// Python falls back to the *default* for anything it does not recognise, and
-/// the gate's default is off, so an unreadable value leaves the gate down here
-/// too. That is the same answer, reached the same way — not a shortcut.
 fn parse_bool(raw: &str) -> bool {
     matches!(
         raw.trim().to_ascii_lowercase().as_str(),
@@ -204,10 +107,8 @@ fn parse_bool(raw: &str) -> bool {
     )
 }
 
-/// Shared state behind the page handlers.
 #[derive(Debug)]
 pub struct StaticUiState {
-    /// The configuration these handlers answer from.
     pub config: StaticUiConfig,
 }
 
@@ -227,16 +128,6 @@ pub use sysinfo::{
     WorkerGpuSource,
 };
 
-// ── the router ─────────────────────────────────────────────────────────────
-
-/// Every static/UI route: the SPA shell, the two public assets, the two file
-/// routes, and the mounts.
-///
-/// Mount order matters, and not in the usual way: these are *exact* paths, so
-/// they cannot shadow each other, but `/static` and `/icons` are prefix mounts
-/// and must be merged into a host **before** any catch-all proxy fallthrough —
-/// otherwise a missing asset is forwarded to the Python worker, which answers
-/// its own 404 and hides the fact that the build output is not there.
 pub fn router(config: StaticUiConfig) -> Router {
     let static_dir = config.static_dir.clone();
     let state = Arc::new(StaticUiState { config });
@@ -256,8 +147,6 @@ pub fn router(config: StaticUiConfig) -> Router {
     pages.merge(assets_router(&static_dir))
 }
 
-/// A `@router.get`-shaped route: GET answers, HEAD and everything else are 405
-/// with `Allow: GET`, which is what FastAPI does for a GET-only path.
 pub(crate) fn get_only<H, T, S>(handler: H) -> MethodRouter<S>
 where
     H: axum::handler::Handler<T, S>,
@@ -269,11 +158,6 @@ where
         .fallback(|| async { method_not_allowed("GET") })
 }
 
-/// The `/static` and `/icons` mounts, with their responses bent to Starlette's.
-///
-/// `ServeDir` is close but not identical: it answers an empty-bodied 404/405 and
-/// guesses content types from its own table. Both are corrected here so a
-/// browser — and the fixture — cannot tell which runtime served the file.
 fn assets_router(static_dir: &Path) -> Router {
     let files = ServeDir::new(static_dir).append_index_html_on_directories(false);
     let icons = ServeDir::new(static_dir.join("icons")).append_index_html_on_directories(false);
@@ -287,11 +171,7 @@ async fn starlette_shaped_assets(request: axum::extract::Request, next: Next) ->
     let path = request.uri().path().to_owned();
     let response = next.run(request).await;
     match response.status() {
-        // Starlette's `StaticFiles` raises `HTTPException(404)`, which FastAPI's
-        // handler renders as JSON — the same body as any other missing route.
         StatusCode::NOT_FOUND => json_detail(StatusCode::NOT_FOUND, "Not Found"),
-        // Note the absence of `Allow`: the mount is not a route, so FastAPI has
-        // no method list to advertise for it.
         StatusCode::METHOD_NOT_ALLOWED => {
             json_detail(StatusCode::METHOD_NOT_ALLOWED, "Method Not Allowed")
         }
@@ -402,8 +282,6 @@ mod tests {
             gpu_mem_pct: 15.6,
         };
         assert_eq!(gpu_from_worker_payload(&shipped), Some(expected));
-        // No MLX: I6 still answers 200 with zeros and a reason. Those zeros
-        // are the reading, not a missing seam.
         let absent = json!({
             "mlx_available": false,
             "gpu_mem_gb": 0.0,
@@ -419,7 +297,6 @@ mod tests {
             })
         );
         assert_eq!(gpu_from_worker_payload(&json!({"cpu_pct": 1.0})), None);
-        // Nested guesses from before I6 shipped are not a contract.
         assert_eq!(
             gpu_from_worker_payload(&json!({"gpu": {"mem_gb": 2.5, "mem_pct": 15.6}})),
             None
@@ -451,8 +328,6 @@ mod tests {
             resolve_static_dir(None, &root.join("missing"), Some(&root.join("prefix"))),
             root.join("prefix/static")
         );
-        // An override replaces the checkout path; a miss falls to the prefix
-        // only — Python never walks back to `{base_dir}/static`.
         assert_eq!(
             resolve_static_dir(
                 Some(&root.join("gone")),
@@ -461,7 +336,6 @@ mod tests {
             ),
             root.join("prefix/static")
         );
-        // Nothing on disk: keep the operator's path so the 404 is honest.
         assert_eq!(
             resolve_static_dir(
                 Some(&root.join("gone")),

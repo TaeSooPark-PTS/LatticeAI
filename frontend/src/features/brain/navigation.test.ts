@@ -14,9 +14,6 @@ describe("navigation helpers", () => {
   });
 
   it("focusComposer is a no-op when no composer is mounted", () => {
-    // The optional chain is the guard: helpers fired from panels that outlive
-    // the composer (e.g. the brief's "ask" action on a non-home route) must
-    // not throw.
     expect(document.querySelector(".brain-composer textarea")).toBeNull();
     expect(() => focusComposer()).not.toThrow();
   });

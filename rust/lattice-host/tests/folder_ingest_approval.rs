@@ -1,10 +1,3 @@
-//! N7: a folder-ingest token is redeemable at `/permissions/approve`.
-//!
-//! Folder ingest mints in `LocalApprovals`. The Act inbox / VS Code retry
-//! path redeems at `/permissions/approve/{token}`. Those used to be two
-//! tables, so the approve call 404'd and the retry 403'd. This process
-//! holds one table.
-
 mod common;
 
 use std::path::PathBuf;
@@ -72,8 +65,6 @@ async fn product_gateway(name: &str) -> (TestGateway, PathBuf, PathBuf) {
         .with_pinned_posture(Posture::Open)
         .with_product(Arc::new(product));
     let gateway = TestGateway::start_with_state(state).await;
-    // The worker task is detached when `FakeWorker` drops; the accept loop
-    // stays up for the gateway's health probe.
     drop(worker);
     (gateway, scratch, folder)
 }

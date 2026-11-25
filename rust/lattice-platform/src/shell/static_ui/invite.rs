@@ -19,7 +19,6 @@ pub fn invite_authorized(config: &StaticUiConfig, headers: &HeaderMap) -> bool {
     )
 }
 
-/// `Set-Cookie` for a freshly signed claim, in Starlette's attribute order.
 pub(crate) fn issue_invite_cookie(config: &StaticUiConfig) -> Option<HeaderValue> {
     let nonce = token_urlsafe(24)?;
     let value = sign_invite_cookie(
@@ -36,22 +35,12 @@ pub(crate) fn issue_invite_cookie(config: &StaticUiConfig) -> Option<HeaderValue
     HeaderValue::from_str(&cookie).ok()
 }
 
-/// `_sign_invite_cookie` — `v1.<expiry>.<nonce>.<hmac-sha256 hex>`.
-///
-/// The signed payload is `<expiry>.<nonce>`, so neither half can be moved
-/// between cookies, and the nonce means two claims issued in the same second
-/// are still different strings.
 pub fn sign_invite_cookie(secret: &str, expires_at: i64, nonce: &str) -> String {
     let payload = format!("{expires_at}.{nonce}");
     let signature = hmac_sha256_hex(secret.as_bytes(), payload.as_bytes());
     format!("v1.{payload}.{signature}")
 }
 
-/// `_verify_invite_cookie` — version, expiry and signature, trusting no claim.
-///
-/// Deliberately branch-for-branch with Python, including that expiry is
-/// *exclusive* (`expires_at <= now` is dead) and that a malformed value is a
-/// refusal rather than an error.
 pub fn verify_invite_cookie(value: Option<&str>, secret: &str, now: i64) -> bool {
     let value = match value {
         Some(value) if !value.is_empty() => value,
@@ -60,9 +49,6 @@ pub fn verify_invite_cookie(value: Option<&str>, secret: &str, now: i64) -> bool
     if secret.is_empty() {
         return false;
     }
-    // `value.split(".", 3)` in Python: four fields, the last of which may itself
-    // contain dots. A nonce is base64url and cannot, but the parser is the
-    // contract, not the alphabet.
     let mut parts = value.splitn(4, '.');
     let (version, raw_expiry, nonce, supplied) =
         match (parts.next(), parts.next(), parts.next(), parts.next()) {
@@ -85,7 +71,6 @@ pub fn verify_invite_cookie(value: Option<&str>, secret: &str, now: i64) -> bool
     constant_time_eq(supplied.as_bytes(), expected.as_bytes())
 }
 
-/// HMAC-SHA256, hex — `hmac.new(secret, payload, hashlib.sha256).hexdigest()`.
 fn hmac_sha256_hex(key: &[u8], message: &[u8]) -> String {
     const BLOCK: usize = 64;
     let mut padded = [0u8; BLOCK];
@@ -111,7 +96,6 @@ fn hmac_sha256_hex(key: &[u8], message: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// `secrets.compare_digest` — length-revealing, content-blind.
 pub(crate) fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
         return false;
@@ -122,18 +106,12 @@ pub(crate) fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
         == 0
 }
 
-/// `secrets.token_urlsafe(bytes)` — random bytes, base64url, unpadded.
 pub(crate) fn token_urlsafe(bytes: usize) -> Option<String> {
     let mut buffer = vec![0u8; bytes];
     getrandom::fill(&mut buffer).ok()?;
     Some(URL_SAFE_NO_PAD.encode(&buffer))
 }
 
-/// Starlette's lenient cookie split: last value wins, quotes stripped, a pair
-/// without `=` counts as a nameless cookie rather than ending the parse.
-///
-/// A stricter parser would fail *open* here — the invite gate would stop seeing
-/// a claim that a browser is quite happy to send alongside a malformed one.
 pub fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     let mut found = None;
     for header in headers.get_all(header::COOKIE).iter() {
@@ -162,10 +140,6 @@ fn unquote(value: &str) -> String {
     }
 }
 
-/// The first value for `key` in a raw query string, percent-decoded.
-///
-/// Starlette's `QueryParams.get` returns the first occurrence; FastAPI hands
-/// that to the handler decoded.
 pub(crate) fn first_query_value(query: &str, key: &str) -> Option<String> {
     query.split('&').find_map(|pair| {
         let (name, value) = pair.split_once('=')?;
@@ -173,7 +147,6 @@ pub(crate) fn first_query_value(query: &str, key: &str) -> Option<String> {
     })
 }
 
-/// Form-decoding as a query string carries it: `+` is a space, `%XX` is a byte.
 fn percent_decode(raw: &str) -> String {
     let bytes = raw.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());

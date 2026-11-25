@@ -1,24 +1,3 @@
-//! The read half of `lattice_brain/self_model.py` — what the Brain knows about
-//! its owner, rendered for injection into a prompt.
-//!
-//! Only the read is ported: extraction proposes, the user writes, and both of
-//! those live in the Python worker. What a document-generation context needs is
-//! `summary_for_prompt`, and that is three rules —
-//!
-//! * membership is the **id prefix**, not a node type, so a `Decision` the user
-//!   happened to save is never mistaken for a decision *about* the user;
-//! * the rows come from the legacy `nodes` table (the v4 write door maintains it
-//!   as the projection of `nodes_v2`), so the answer is the same in both read
-//!   modes — this is the one reader in the crate that does **not** go through
-//!   `read_tables`;
-//! * scoping is the Self-Model's own: a fact with no workspace is personal and
-//!   stays visible to every caller, which is *not* the graph layer's
-//!   legacy-global opt-in.
-//!
-//! An unreadable profile injects nothing. `summary_for_prompt` is the seam a
-//! prompt is assembled through, and prompt assembly may not fail because a
-//! profile could not be read.
-
 use std::collections::BTreeSet;
 
 use lattice_core::pytext::safe_loads;
@@ -27,24 +6,13 @@ use rusqlite::Connection;
 use crate::context::approx_tokens;
 use crate::docgen::py_text;
 
-/// `self_model.DEFAULT_SUMMARY_TOKENS` — small on purpose; the profile rides
-/// along on every prompt and must never crowd out the question's own knowledge.
 pub const DEFAULT_SUMMARY_TOKENS: i64 = 200;
 
-/// Node-id prefix; membership in the Self-Model is a fact about identity.
 pub const SELF_ID_PREFIX: &str = "self:";
-/// The root every fact hangs off, and the one `self:` id the read excludes.
 pub const SELF_ROOT_ID: &str = "self:root";
 
-/// `KIND_ORDER` — who the person is, what they like, what they repeat, what they
-/// settled, who is around them. The render order *is* this order.
 pub const KIND_ORDER: [&str; 5] = ["trait", "preference", "habit", "decision", "relationship"];
 
-/// `KIND_LABELS` — the plain Korean the injected block speaks.
-///
-/// Also the label a Self-Model proposal's summary names
-/// (`memory_api::self_model_write`), so the wording a person approves and the
-/// wording the prompt carries come from one table.
 pub fn kind_label(kind: &str) -> &'static str {
     match kind {
         "trait" => "나",
@@ -58,7 +26,6 @@ pub fn kind_label(kind: &str) -> &'static str {
 
 const SUMMARY_HEADER: &str = "사용자에 대해 확인된 사실:";
 
-/// One fact, reduced to what the summary renders and scopes by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Fact {
     kind: &'static str,
@@ -66,9 +33,6 @@ struct Fact {
     workspace_id: String,
 }
 
-/// `_read_facts` — every `self:` row but the root, ordered and scoped.
-///
-/// A read failure yields no facts rather than an error: see the module docs.
 fn read_facts(conn: &Connection, allowed: Option<&BTreeSet<String>>) -> Vec<Fact> {
     let Ok(mut statement) = conn.prepare(
         "SELECT id, type, title, summary, metadata_json, updated_at \
@@ -86,8 +50,6 @@ fn read_facts(conn: &Connection, allowed: Option<&BTreeSet<String>>) -> Vec<Fact
     };
     let mut facts: Vec<Fact> = Vec::new();
     for (title, metadata) in rows.flatten() {
-        // `str(metadata.get("self_model_kind") or "")`: anything that is not one
-        // of the five known kinds is not a Self-Model fact at all.
         let raw = metadata
             .get("self_model_kind")
             .filter(|value| crate::shape::truthy(value))
@@ -107,8 +69,6 @@ fn read_facts(conn: &Connection, allowed: Option<&BTreeSet<String>>) -> Vec<Fact
         });
     }
     if let Some(allowed) = allowed {
-        // `_allowed_set` drops falsy workspace ids from the caller's set, and a
-        // fact with no workspace of its own is personal-global.
         let allowed: BTreeSet<&str> = allowed
             .iter()
             .filter(|scope| !scope.is_empty())
@@ -127,11 +87,6 @@ fn read_facts(conn: &Connection, allowed: Option<&BTreeSet<String>>) -> Vec<Fact
     facts
 }
 
-/// `summary_for_prompt` — the injected profile block, or `""`.
-///
-/// Lines are added only while the *whole* block stays inside `limit_tokens`, and
-/// the first line that would not fit stops the render — later kinds are not
-/// tried in its place, because the order is the priority.
 pub fn summary_for_prompt(
     conn: &Connection,
     limit_tokens: i64,
@@ -166,7 +121,6 @@ pub fn summary_for_prompt(
     render(&lines)
 }
 
-/// `list_self_model`'s membership test, exposed for callers that hold an id.
 pub fn is_self_model_id(node_id: &str) -> bool {
     node_id.starts_with(SELF_ID_PREFIX) && node_id != SELF_ROOT_ID
 }
@@ -202,8 +156,6 @@ mod tests {
             summary_for_prompt(&conn, 200, None),
             "사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 습관: 회의록을 정리한다\n- 결정: 문서는 한국어로"
         );
-        // The root is excluded by id, and a row with no recognised kind is not
-        // a fact — neither of them reaches the block.
         assert!(!summary_for_prompt(&conn, 200, None).contains("root"));
         assert!(!summary_for_prompt(&conn, 200, None).contains("kind가 없다"));
     }
@@ -213,15 +165,12 @@ mod tests {
         let (_dir, conn) = profile();
         assert_eq!(summary_for_prompt(&conn, 0, None), "");
         assert_eq!(summary_for_prompt(&conn, -5, None), "");
-        // Header plus the first line costs 8 tokens; the second would cost 12,
-        // so the block stops there rather than skipping ahead to a shorter one.
         let one = summary_for_prompt(&conn, 8, None);
         assert_eq!(one, "사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자");
         assert_eq!(
             summary_for_prompt(&conn, 14, None),
             "사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 습관: 회의록을 정리한다"
         );
-        // Too small even for one line → nothing at all, not a bare header.
         assert_eq!(summary_for_prompt(&conn, 7, None), "");
     }
 
@@ -236,7 +185,6 @@ mod tests {
         );
         assert!(scoped.contains("문서는 한국어로"));
         assert!(!scoped.contains("회의록을 정리한다"), "w2 is not readable");
-        // A caller who may read nothing still sees the personal facts.
         let none: BTreeSet<String> = BTreeSet::new();
         let empty = summary_for_prompt(&conn, 200, Some(&none));
         assert!(empty.contains("검색 품질 담당자"));

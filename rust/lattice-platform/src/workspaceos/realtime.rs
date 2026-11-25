@@ -1,8 +1,3 @@
-//! Realtime presence / feed / SSE — native port of `latticeai/api/realtime.py`.
-//!
-//! `/activity` is a STATIC page shell owned by `ui_redirects` (I4) and is
-//! deliberately not remounted here.
-
 use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -23,7 +18,6 @@ use tokio::sync::{broadcast, mpsc};
 
 use crate::workspaceos::project_sessions::{detail, json_ok, now_iso_utc, parse_json_object};
 
-/// Native mounts. `/activity` lives with the UI redirects.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/realtime/stream"),
     ("GET", "/realtime/feed"),
@@ -35,7 +29,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
 const REALTIME_VERSION: &str = "2.2.0";
 const FEED_LIMIT: usize = 200;
 
-/// Router state.
 #[derive(Clone)]
 pub struct RealtimeState {
     pub auth: Arc<AuthState>,
@@ -51,7 +44,6 @@ impl RealtimeState {
     }
 }
 
-/// Build the realtime router (no `/activity`).
 pub fn router(state: RealtimeState) -> Router {
     Router::new()
         .route("/realtime/stream", get(realtime_stream))
@@ -370,7 +362,6 @@ fn token8() -> String {
     base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, buf)
 }
 
-/// In-process bus. Same shape as `latticeai.core.realtime.RealtimeBus`.
 pub struct RealtimeBus {
     feed: Mutex<Vec<OrderedMap>>,
     presence: Mutex<HashMap<String, OrderedMap>>,

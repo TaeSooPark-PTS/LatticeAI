@@ -1,10 +1,3 @@
-"""Worker compute resilience middleware: timeouts, fault isolation, and idempotent retries.
-
-Installed on the stateless Python compute worker so a stalled parser/embedder
-cannot wedge the loopback worker and retried ``/worker/*`` requests carrying
-``X-Lattice-Idempotency-Key`` deduplicate cleanly across transient hiccups.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -27,8 +20,6 @@ DEFAULT_COMPUTE_TIMEOUT_S = 60.0
 DEFAULT_CACHE_MAX_ENTRIES = 512
 DEFAULT_CACHE_TTL_S = 300.0
 
-#: Streaming endpoints manage their own lifetime and must never be buffered or
-#: cut off by the unary compute timeout.
 STREAMING_WORKER_PATHS = frozenset(
     {
         "/worker/llm/stream",
@@ -38,7 +29,6 @@ STREAMING_WORKER_PATHS = frozenset(
 
 
 def resolve_compute_timeout_s() -> float:
-    """Read ``LATTICEAI_WORKER_COMPUTE_TIMEOUT_S`` with a safe positive floor."""
     raw = os.environ.get("LATTICEAI_WORKER_COMPUTE_TIMEOUT_S", "").strip()
     if not raw:
         return DEFAULT_COMPUTE_TIMEOUT_S
@@ -59,8 +49,6 @@ class CachedComputeResponse:
 
 
 class WorkerIdempotencyStore:
-    """Bounded in-memory idempotency cache and in-flight coalescer for ``/worker/*``."""
-
     def __init__(
         self,
         *,
@@ -94,7 +82,6 @@ class WorkerIdempotencyStore:
         *,
         now: Optional[float] = None,
     ) -> Tuple[Optional[CachedComputeResponse], bool]:
-        """Return ``(cached_entry, conflict)``."""
         ts = time.monotonic() if now is None else now
         self._evict_expired(ts)
         cached = self._entries.get(scope_key)
@@ -108,7 +95,6 @@ class WorkerIdempotencyStore:
     def get_inflight(
         self, scope_key: Tuple[str, str, str], body_sha256: str
     ) -> Tuple[Optional[asyncio.Future[CachedComputeResponse]], bool]:
-        """Return ``(inflight_future, conflict)`` if an identical call is running."""
         existing = self._inflight.get(scope_key)
         if existing is None:
             return None, False
@@ -148,7 +134,6 @@ class WorkerIdempotencyStore:
         inflight = self._inflight.pop(scope_key, None)
         if inflight is not None and not inflight[1].done():
             inflight[1].set_exception(exc)
-            # Prevent "Future exception was never retrieved" when nobody awaited.
             inflight[1].exception()
 
 
@@ -174,7 +159,6 @@ def install_worker_compute_resilience(
     *,
     store: Optional[WorkerIdempotencyStore] = None,
 ) -> WorkerIdempotencyStore:
-    """Attach timeout isolation and idempotency deduplication to ``app``."""
     existing = getattr(app.state, "worker_idempotency_store", None)
     if existing is not None and store is None:
         return existing
@@ -183,7 +167,7 @@ def install_worker_compute_resilience(
     app.state.worker_idempotency_store = idem_store
 
     @app.middleware("http")
-    async def _worker_compute_resilience(request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def _worker_compute_resilience(request: Request, call_next):
         if not _eligible_compute_request(request):
             return await call_next(request)
 
@@ -338,8 +322,6 @@ def install_worker_compute_resilience(
                 },
             )
         except BaseException as exc:
-            # CancelledError (client disconnect / task cancel) inherits from BaseException
-            # in Python 3.8+; always release the inflight slot so retries never wedge.
             idem_store.finish_inflight_error(scope_key, exc)
             raise
 

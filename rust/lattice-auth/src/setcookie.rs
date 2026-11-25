@@ -1,41 +1,17 @@
-//! `Set-Cookie` exactly as Starlette renders it.
-//!
-//! `Response.set_cookie` builds a `http.cookies.SimpleCookie` and takes its
-//! `OutputString()`, which emits `key=value` and then every set attribute in
-//! **alphabetical** order, skipping the ones left empty. That is why the
-//! rendered header reads `HttpOnly; Max-Age; Path; SameSite; Secure` and not
-//! the order the keyword arguments were written in — and why `delete_cookie`,
-//! which passes `expires=0`, puts an `expires=` first and carries a *live*
-//! HTTP date computed at send time.
-//!
-//! The logout cookie has to match the login cookie's flags or the browser
-//! keeps the old one, so both are rendered here from one function.
-
 use crate::clock::Clock;
 
-/// `http.cookies._LegalChars` — a value made only of these is not quoted.
 const LEGAL_CHARS: &str =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'*+-.^_`|~:";
 
-/// The attributes `set_cookie` / `delete_cookie` ever set here.
 #[derive(Debug, Clone)]
 pub struct CookieSpec<'a> {
-    /// Cookie name.
     pub name: &'a str,
-    /// Cookie value; the empty string renders as `""`.
     pub value: &'a str,
-    /// `Max-Age`, always set by both callers.
     pub max_age: i64,
-    /// Whether to emit the `expires=` attribute (deletion only).
     pub expires_now: bool,
-    /// `Secure`, from `secure_cookies`.
     pub secure: bool,
 }
 
-/// Render one `Set-Cookie` header value.
-///
-/// `path="/"`, `httponly=True` and `samesite="lax"` are constants at both call
-/// sites in `api/auth.py`, so they are constants here.
 pub fn render(spec: &CookieSpec<'_>, clock: &Clock) -> String {
     let mut parts = vec![format!("{}={}", spec.name, quote(spec.value))];
     if spec.expires_now {
@@ -51,7 +27,6 @@ pub fn render(spec: &CookieSpec<'_>, clock: &Clock) -> String {
     parts.join("; ")
 }
 
-/// The login cookie: the issued token, `Max-Age = session_ttl`.
 pub fn session_cookie(token: &str, max_age: i64, secure: bool, clock: &Clock) -> String {
     render(
         &CookieSpec {
@@ -65,7 +40,6 @@ pub fn session_cookie(token: &str, max_age: i64, secure: bool, clock: &Clock) ->
     )
 }
 
-/// The logout cookie: empty value, `Max-Age=0`, and a live `expires`.
 pub fn delete_session_cookie(secure: bool, clock: &Clock) -> String {
     render(
         &CookieSpec {
@@ -79,7 +53,6 @@ pub fn delete_session_cookie(secure: bool, clock: &Clock) -> String {
     )
 }
 
-/// `http.cookies._quote`.
 fn quote(value: &str) -> String {
     if !value.is_empty() && value.chars().all(|c| LEGAL_CHARS.contains(c)) {
         return value.to_string();
@@ -100,13 +73,11 @@ const MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-/// `http.cookies._getdate(future=0)`: `"Wdy, DD Mon YYYY HH:MM:SS GMT"`.
 pub fn http_date(epoch_seconds: f64) -> String {
     let total = epoch_seconds.floor() as i64;
     let days = total.div_euclid(86_400);
     let seconds = total.rem_euclid(86_400);
     let (year, month, day) = civil_from_days(days);
-    // 1970-01-01 was a Thursday, index 3 in a Monday-first table.
     let weekday = (days.rem_euclid(7) + 3) % 7;
     format!(
         "{}, {:02} {} {:04} {:02}:{:02}:{:02} GMT",
@@ -120,7 +91,6 @@ pub fn http_date(epoch_seconds: f64) -> String {
     )
 }
 
-/// Howard Hinnant's `civil_from_days`, the standard days→(y, m, d) algorithm.
 fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -172,7 +142,6 @@ mod tests {
 
     #[test]
     fn http_dates_match_python_for_known_instants() {
-        // `time.strftime` over `time.gmtime(t)` for each of these.
         assert_eq!(http_date(0.0), "Thu, 01 Jan 1970 00:00:00 GMT");
         assert_eq!(http_date(1_000_000_000.0), "Sun, 09 Sep 2001 01:46:40 GMT");
         assert_eq!(http_date(1_755_000_000.5), "Tue, 12 Aug 2025 12:00:00 GMT");

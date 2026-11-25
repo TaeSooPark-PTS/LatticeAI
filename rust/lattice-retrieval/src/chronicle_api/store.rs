@@ -1,23 +1,3 @@
-//! The six reads `ChronicleService` makes, verbatim, over the read-only lane.
-//!
-//! Every statement below is copied from `latticeai/services/chronicle.py` —
-//! same columns, same aliases, same `ORDER BY`, same bound `:workspace`
-//! predicate. Two behaviours of the Python original are contracts rather than
-//! details and are reproduced here:
-//!
-//! * **`_rows` swallows `sqlite3.Error`.** A Brain that was never built has no
-//!   `nodes_v2`; a graph-disabled install has no graph at all. Either way the
-//!   chronicle answers an honest empty timeline instead of a 500, so each lane
-//!   maps a failed statement to no rows.
-//! * **`as_of` and `access_stats` do not.** They are read through the store's
-//!   own API (`lattice_brain.graph.retrieval_reads`), which lets a sqlite error
-//!   out — so those two return `Err` and the route renders a 500.
-//!
-//! Cells are carried as `serde_json::Value` rather than `String` because the
-//! handler emits several of them unchanged (`title`, `label`, `source_type`,
-//! `captured_at`): Python hands Starlette whatever sqlite stored, and a port
-//! that insisted on `TEXT` would 500 where Python answers 200.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_core::CoreError;
@@ -25,10 +5,6 @@ use rusqlite::types::{Value as SqlValue, ValueRef};
 use rusqlite::{Connection, Row, ToSql};
 use serde_json::Value;
 
-/// `_SOURCES_SQL`.
-///
-/// `:workspace = 'personal'` also matches NULL/blank `workspace_id` — the
-/// default visibility. A named workspace stays a strict equality.
 pub const SOURCES_SQL: &str = "
     SELECT id,
            node_id,
@@ -41,7 +17,6 @@ pub const SOURCES_SQL: &str = "
     ORDER BY at ASC, id ASC
 ";
 
-/// `_ENTITIES_SQL`.
 pub const ENTITIES_SQL: &str = "
     SELECT id,
            label,
@@ -54,7 +29,6 @@ pub const ENTITIES_SQL: &str = "
     ORDER BY at ASC, id ASC
 ";
 
-/// `_CONNECTIONS_SQL`.
 pub const CONNECTIONS_SQL: &str = "
     SELECT e.id AS id,
            COALESCE(MIN(o.observed_at), e.created_at) AS at
@@ -72,7 +46,6 @@ pub const CONNECTIONS_SQL: &str = "
     ORDER BY at ASC, e.id ASC
 ";
 
-/// `_MESSAGES_SQL`.
 pub const MESSAGES_SQL: &str = "
     SELECT COALESCE(conversation_id, '') AS conversation_id,
            role,
@@ -86,7 +59,6 @@ pub const MESSAGES_SQL: &str = "
     ORDER BY id ASC
 ";
 
-/// `_CHANGED_NODES_SQL`.
 pub const CHANGED_NODES_SQL: &str = "
     SELECT id,
            label,
@@ -99,7 +71,6 @@ pub const CHANGED_NODES_SQL: &str = "
     ORDER BY at ASC, id ASC
 ";
 
-/// `_CHANGED_EDGES_SQL`.
 pub const CHANGED_EDGES_SQL: &str = "
     SELECT e.id AS id,
            e.source AS node_id,
@@ -118,111 +89,70 @@ pub const CHANGED_EDGES_SQL: &str = "
     ORDER BY at ASC, e.id ASC
 ";
 
-/// `lattice_brain.graph.schema.TEMPORAL_PREDICATE_SQL`.
 pub const TEMPORAL_PREDICATE_SQL: &str =
     "COALESCE(valid_from, created_at) <= ? AND (valid_to IS NULL OR valid_to > ?)";
 
-/// One `ingestion_provenance` row.
 #[derive(Clone, Debug)]
 pub struct SourceRow {
-    /// `id`.
     pub id: Value,
-    /// `node_id`.
     pub node_id: Value,
-    /// `COALESCE(title, '')`.
     pub title: Value,
-    /// `source_type`.
     pub source_type: Value,
-    /// `COALESCE(captured_at, created_at)`.
     pub at: Value,
 }
 
-/// One `nodes_v2` row that counts as something the Brain learned.
 #[derive(Clone, Debug)]
 pub struct EntityRow {
-    /// `id`.
     pub id: Value,
-    /// `label`.
     pub label: Value,
-    /// `COALESCE(NULLIF(legacy_type, ''), type)`.
     pub kind: Value,
-    /// `created_at`.
     pub at: Value,
 }
 
-/// A row the chronicle only dates — the connections lane.
 #[derive(Clone, Debug)]
 pub struct AtRow {
-    /// The instant the row is filed under.
     pub at: Value,
 }
 
-/// One `conversation_messages` row.
 #[derive(Clone, Debug)]
 pub struct MessageRow {
-    /// `COALESCE(conversation_id, '')`.
     pub conversation_id: Value,
-    /// `role`.
     pub role: Value,
-    /// `content`.
     pub content: Value,
-    /// `timestamp`.
     pub at: Value,
 }
 
-/// One superseded or retired fact.
 #[derive(Clone, Debug)]
 pub struct ChangedNodeRow {
-    /// `id`.
     pub id: Value,
-    /// `label`.
     pub label: Value,
-    /// `superseded_by`.
     pub superseded_by: Value,
-    /// `COALESCE(valid_to, updated_at)`.
     pub at: Value,
 }
 
-/// One relationship that stopped being true.
 #[derive(Clone, Debug)]
 pub struct ChangedEdgeRow {
-    /// `e.source`.
     pub node_id: Value,
-    /// `s.label`.
     pub source_label: Value,
-    /// `t.label`.
     pub target_label: Value,
-    /// `e.superseded_by`.
     pub superseded_by: Value,
-    /// `e.valid_to`.
     pub at: Value,
 }
 
-/// One node in an `as_of` slice, as far as the chronicle reads it.
 #[derive(Clone, Debug)]
 pub struct AsOfNode {
-    /// `id`.
     pub id: Value,
-    /// `label AS title`.
     pub title: Value,
-    /// `COALESCE(legacy_type, type)`.
     pub kind: Value,
 }
 
-/// `store.as_of()`'s answer, minus the fields the chronicle never reads.
 #[derive(Clone, Debug, Default)]
 pub struct AsOfWindow {
-    /// The node slice, capped by the caller's limit.
     pub nodes: Vec<AsOfNode>,
-    /// `node_count` — the length of the slice, not the table.
     pub node_count: i64,
-    /// `edge_count` — edges with both endpoints inside the slice.
     pub edge_count: i64,
 }
 
-// ── the lanes ───────────────────────────────────────────────────────────────
-
-/// `ChronicleService._sources`.
 pub fn sources(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<SourceRow> {
     scoped_rows(conn, graph, SOURCES_SQL, workspace, |row| {
         Ok(SourceRow {
@@ -235,7 +165,6 @@ pub fn sources(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<S
     })
 }
 
-/// `ChronicleService._entities`.
 pub fn entities(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<EntityRow> {
     scoped_rows(conn, graph, ENTITIES_SQL, workspace, |row| {
         Ok(EntityRow {
@@ -247,14 +176,12 @@ pub fn entities(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<
     })
 }
 
-/// `ChronicleService._connections`.
 pub fn connections(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<AtRow> {
     scoped_rows(conn, graph, CONNECTIONS_SQL, workspace, |row| {
         Ok(AtRow { at: cell(row, 1)? })
     })
 }
 
-/// `ChronicleService._changed_nodes`.
 pub fn changed_nodes(
     conn: &Connection,
     graph: bool,
@@ -270,7 +197,6 @@ pub fn changed_nodes(
     })
 }
 
-/// `ChronicleService._changed_edges`.
 pub fn changed_edges(
     conn: &Connection,
     graph: bool,
@@ -287,13 +213,7 @@ pub fn changed_edges(
     })
 }
 
-/// `ChronicleService._messages`.
-///
-/// The conversation table lives in the same file as the graph, and it is read
-/// whether or not the graph is enabled — `_conversation_db` never consults
-/// `_enable_graph`, which is why a graph-disabled Brain still has a chronicle.
 pub fn messages(conn: &Connection, user_email: &str, workspace: Option<&str>) -> Vec<MessageRow> {
-    // "An empty email is nobody, not a user whose address is ''."
     let user = lattice_core::pytext::strip(user_email);
     let user: Option<String> = (!user.is_empty()).then_some(user);
     let params: [(&str, &dyn ToSql); 2] = [(":workspace", &workspace), (":user", &user)];
@@ -314,7 +234,6 @@ fn scoped_rows<T>(
     workspace: Option<&str>,
     map: impl Fn(&Row<'_>) -> rusqlite::Result<T>,
 ) -> Vec<T> {
-    // `_graph_db` is `None` when the graph is off, and `_rows(None, ...)` is [].
     if !graph {
         return Vec::new();
     }
@@ -328,7 +247,6 @@ fn read<T>(
     params: &[(&str, &dyn ToSql)],
     map: impl Fn(&Row<'_>) -> rusqlite::Result<T>,
 ) -> Vec<T> {
-    // `except sqlite3.Error: return []` — the whole statement, not row by row.
     let collect = || -> rusqlite::Result<Vec<T>> {
         let mut stmt = conn.prepare(sql)?;
         let mut rows = stmt.query(params)?;
@@ -341,14 +259,6 @@ fn read<T>(
     collect().unwrap_or_default()
 }
 
-// ── the two reads that are allowed to fail loudly ───────────────────────────
-
-/// `_workspace_scope_sql(graph_scope_kwargs(workspace_id))`, folded into one.
-///
-/// `None` is the unscoped single-user read (legacy rows included); a named
-/// workspace reads only that workspace. An *empty* name is a caller who may
-/// read nothing, and answers a predicate that matches nothing rather than
-/// silently widening to everything.
 fn scope_sql(workspace: Option<&str>) -> Option<(String, Vec<String>)> {
     let workspace = workspace?;
     if workspace.is_empty() {
@@ -366,7 +276,6 @@ fn scope_sql(workspace: Option<&str>) -> Option<(String, Vec<String>)> {
     ))
 }
 
-/// `KnowledgeGraphStore.as_of`, reading only what the chronicle asks for.
 pub fn as_of(
     conn: &Connection,
     stamp: &str,
@@ -409,10 +318,6 @@ pub fn as_of(
     })
 }
 
-/// Edges valid at `stamp` whose endpoints are both inside the node slice.
-///
-/// Python materialises the rows and takes `len()`; only the count is read, and
-/// the `ORDER BY` it carries cannot change one.
 fn edge_count(conn: &Connection, stamp: &str, nodes: &[AsOfNode]) -> Result<i64, CoreError> {
     let visible: Vec<String> = {
         let mut ids: Vec<String> = nodes.iter().map(|node| py_str(&node.id)).collect();
@@ -442,12 +347,6 @@ fn edge_count(conn: &Connection, stamp: &str, nodes: &[AsOfNode]) -> Result<i64,
     Ok(count)
 }
 
-/// `ChronicleService._importance` over `KnowledgeGraphStore.access_stats`.
-///
-/// `float(row["importance_score"] or 0.0)` and `.get("accesses") or 0.0` are
-/// both truthiness checks, so a stored `0` and a stored `NULL` are the same
-/// answer — which is why this returns `0.0` for either rather than an absent
-/// key that a caller might treat as "unknown".
 pub fn importance(
     conn: &Connection,
     node_ids: &[String],
@@ -455,7 +354,6 @@ pub fn importance(
     if node_ids.is_empty() {
         return Ok(BTreeMap::new());
     }
-    // `sorted({str(node_id) for node_id in node_ids if node_id})`.
     let ids: BTreeSet<&String> = node_ids.iter().filter(|id| !id.is_empty()).collect();
     if ids.is_empty() {
         return Ok(BTreeMap::new());
@@ -475,9 +373,6 @@ pub fn importance(
     Ok(out)
 }
 
-// ── Python's readings of one sqlite cell ────────────────────────────────────
-
-/// One cell as `sqlite3.Row` would hand it to a route.
 fn cell(row: &Row<'_>, index: usize) -> rusqlite::Result<Value> {
     Ok(match row.get_ref(index)? {
         ValueRef::Null => Value::Null,
@@ -489,7 +384,6 @@ fn cell(row: &Row<'_>, index: usize) -> rusqlite::Result<Value> {
     })
 }
 
-/// `str(value)`.
 pub fn py_str(value: &Value) -> String {
     match value {
         Value::Null => "None".to_string(),
@@ -500,7 +394,6 @@ pub fn py_str(value: &Value) -> String {
     }
 }
 
-/// `str(value or "")` — the reading `_moment` and `_preview` both start from.
 pub fn py_str_or_empty(value: &Value) -> String {
     if py_truthy(value) {
         py_str(value)
@@ -509,7 +402,6 @@ pub fn py_str_or_empty(value: &Value) -> String {
     }
 }
 
-/// Python truthiness: `0`, `0.0`, `""`, `None` and `False` are all false.
 pub fn py_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -521,7 +413,6 @@ pub fn py_truthy(value: &Value) -> bool {
     }
 }
 
-/// `float(value or 0.0)`, with Python's `ValueError` flattened to `0.0`.
 fn py_float(value: &Value) -> f64 {
     if !py_truthy(value) {
         return 0.0;
@@ -563,8 +454,6 @@ mod tests {
         .expect("schema");
         assert_eq!(entities(&conn, true, Some("personal")).len(), 1);
         assert!(entities(&conn, false, Some("personal")).is_empty());
-        // A workspace the row does not belong to excludes it, and so does the
-        // empty scope — which is the "may read nothing" predicate.
         assert!(entities(&conn, true, Some("other")).is_empty());
         assert_eq!(entities(&conn, true, None).len(), 1);
     }
@@ -634,12 +523,9 @@ mod tests {
         let window = as_of(&conn, "2026-03-01T00:00:00", 2_000, Some("personal")).expect("slice");
         assert_eq!(window.node_count, 2);
         assert_eq!(window.edge_count, 1);
-        // `valid_to` is exclusive: at the instant `b` was retired it is gone,
-        // and the edge that needed it goes with it.
         let later = as_of(&conn, "2026-06-01T00:00:00", 2_000, Some("personal")).expect("slice");
         assert_eq!(later.node_count, 1);
         assert_eq!(later.edge_count, 0);
-        // Unscoped reads the other workspace too; a scope excludes it.
         assert_eq!(
             as_of(&conn, "2026-03-01T00:00:00", 2_000, None)
                 .expect("slice")
@@ -652,7 +538,6 @@ mod tests {
                 .node_count,
             0
         );
-        // A limit clamps into `[1, 2000]` rather than re-expanding to a default.
         assert_eq!(
             as_of(&conn, "2026-03-01T00:00:00", 0, Some("personal"))
                 .expect("slice")
@@ -662,8 +547,6 @@ mod tests {
 
         let scores = importance(&conn, &["a".into(), "b".into(), "".into()]).expect("scores");
         assert_eq!(scores.get("a"), Some(&2.5));
-        // A stored 0 is falsy in `float(x or 0.0)` and reads as 0.0, exactly
-        // like the NULL two rows down.
         assert_eq!(scores.get("b"), Some(&0.0));
         assert!(importance(&conn, &[]).expect("empty").is_empty());
         assert!(importance(&conn, &["".into()]).expect("blank").is_empty());

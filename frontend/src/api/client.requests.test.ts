@@ -18,16 +18,6 @@ afterEach(() => {
 
 afterEach(resetDispatcher);
 
-/**
- * The rest of `latticeApi`: the request each method actually sends, and what a
- * caller is handed when the local service does not answer.
- *
- * These two properties are what the whole UI leans on. Every page renders from
- * `res.data` unconditionally — `data.matches.map(...)`, `data.nodes.length` —
- * so a failed request that returned `undefined`, or `{}` where a list was
- * declared, is a white screen rather than an empty state. The declared shape is
- * the contract, and it has to survive a 500, a network drop and a timeout.
- */
 
 describe("what the client sends", () => {
   it("puts list-shaped query parameters on the URL, not in a body", async () => {
@@ -43,8 +33,6 @@ describe("what the client sends", () => {
   });
 
   it("percent-encodes an id that would otherwise change the path", async () => {
-    // Proposal ids come from the server and are not guaranteed to be
-    // path-safe; an unescaped "/" would silently address a different route.
     const calls = recordFetch(() => jsonResponse({}));
 
     await latticeApi.approveProposal("item/42 with space");
@@ -70,7 +58,6 @@ describe("what the caller is handed when the service does not answer", () => {
     expect(res.ok).toBe(false);
     expect(res.status).toBe(500);
     expect(res.source).toBe("unavailable");
-    // Not `undefined`, and not `{}` — the page maps over these.
     expect(res.data).toEqual({ nodes: [], edges: [] });
     expect(res.error).toBeTruthy();
   });
@@ -108,8 +95,6 @@ describe("what the caller is handed when the service does not answer", () => {
 
 describe("hybridSearch", () => {
   it("normalises a `results` payload to the `matches` the UI reads", async () => {
-    // The endpoint has answered under both names across versions; the UI only
-    // knows `matches`, so a `results` payload rendered as "nothing found".
     recordFetch(() => jsonResponse({ results: [{ id: "n1" }] }));
 
     const res = await latticeApi.hybridSearch("workspace");
@@ -147,9 +132,6 @@ describe("hybridSearch", () => {
 
 describe("desktopBackendStatus", () => {
   it("says plainly that it is a desktop-only reading, outside the desktop shell", async () => {
-    // A browser tab has no Tauri bridge. Reporting "unavailable" with a reason
-    // is the honest answer; returning a fabricated ok would put a green dot on
-    // a backend nobody asked.
     const res = await latticeApi.desktopBackendStatus();
 
     expect(res.ok).toBe(false);
@@ -171,12 +153,6 @@ describe("desktopBackendStatus", () => {
   });
 });
 
-/**
- * Every remaining wrapper, table-driven: the method, path, query and body each
- * one puts on the wire. A wrapper is one line of glue, but a typo in that line
- * is a feature that silently reads the wrong endpoint — and nothing else in the
- * suite would ever notice.
- */
 
 type EndpointCase = {
   name: keyof typeof latticeApi;
@@ -234,7 +210,6 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "commandBriefing", invoke: () => api.commandBriefing(), method: "GET", path: "/api/command/briefing" },
   { name: "features", invoke: () => api.features(), method: "GET", path: "/api/features" },
   { name: "setFeature", invoke: () => api.setFeature("vector_backend", "quantized"), method: "POST", path: "/api/features/vector_backend", body: { value: "quantized" } },
-  // The id rides in the path, so it is encoded — a feature id is server data.
   { name: "setFeature", invoke: () => api.setFeature("a/b", true), method: "POST", path: "/api/features/a%2Fb", body: { value: true } },
   { name: "permissionMode", invoke: () => api.permissionMode(), method: "GET", path: "/api/permission-mode" },
   { name: "setPermissionMode", invoke: () => api.setPermissionMode("trusted"), method: "POST", path: "/api/permission-mode", body: { mode: "trusted", acknowledge_risk: false } },
@@ -393,8 +368,6 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "adminHealthSummary", invoke: () => api.adminHealthSummary(), method: "GET", path: "/admin/health-summary" },
   { name: "chronicleOverview", invoke: () => api.chronicleOverview(), method: "GET", path: "/api/chronicle/overview" },
   { name: "chronicleDay", invoke: () => api.chronicleDay("2026-06-06"), method: "GET", path: "/api/chronicle/day/2026-06-06" },
-  // The day is a path segment, so it is escaped on the way out: a value
-  // carrying a slash must not be able to address a different route.
   { name: "chronicleDay", invoke: () => api.chronicleDay("../overview"), method: "GET", path: "/api/chronicle/day/..%2Foverview" },
   { name: "chronicleAsOf", invoke: () => api.chronicleAsOf("2026-06-06T23:59:59"), method: "GET", path: "/api/chronicle/as-of", query: { ts: "2026-06-06T23:59:59" } },
   { name: "selfModel", invoke: () => api.selfModel(), method: "GET", path: "/api/memory/self-model" },
@@ -408,8 +381,6 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "indexDrain", invoke: () => api.indexDrain(), method: "POST", path: "/api/index/drain", body: { limit: 50 } },
 ];
 
-// Wrappers whose behavior is not "one request, one envelope": each has its own
-// describe below (or above, for the SSE pair) instead of a table row.
 const SPECIAL_CASES = new Set([
   "selectFolder",
   "desktopBackendStatus",
@@ -545,8 +516,6 @@ describe("the 10 second request budget", () => {
 
 describe("the chronicle reads", () => {
   it("hands back an empty history rather than undefined when the read fails", async () => {
-    // Every panel on the screen maps over these lists unconditionally, so a
-    // failed read has to be an empty chronicle, not a missing one.
     failFetchWith(new TypeError("Failed to fetch"));
 
     const overview = await latticeApi.chronicleOverview();

@@ -1,5 +1,3 @@
-//! Workspace OS, onboarding, traces, indexing, snapshots, memories.
-
 use axum::body::Bytes;
 use axum::extract::{Path, Query, RawQuery, State};
 use axum::http::{HeaderMap, StatusCode};

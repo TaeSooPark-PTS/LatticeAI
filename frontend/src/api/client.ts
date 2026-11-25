@@ -80,7 +80,6 @@ type ReviewItemOperation =
   | operations["snooze_item_automation_reviews__item_id__snooze_post"]
   | operations["unsnooze_item_automation_reviews__item_id__unsnooze_post"];
 
-/** One selectable autonomy mode, as described by `/api/permission-mode/catalog`. */
 export type PermissionModeOption = {
   id: string;
   label: string;
@@ -93,7 +92,6 @@ export type PermissionModeOption = {
   warning_ko?: string;
 };
 
-/** Active dial plus the catalog the selector renders. */
 export type PermissionModeState = {
   mode: string;
   label: string;
@@ -110,25 +108,13 @@ export type PermissionModeState = {
   catalog: PermissionModeOption[];
 };
 
-/** One option of a `choice` feature, as described by `/api/features`. */
 export type FeatureChoice = {
   id: string;
   label: string;
-  /** False when the option's optional dependency is not installed here. */
   available: boolean;
-  /** Why it is unavailable — already localized, already actionable. */
   detail: string | null;
 };
 
-/**
- * One row of the feature switchboard.
- *
- * Everything renderable is server-supplied (10.1.1): the panel never holds a
- * feature list, a label, or a default of its own, so a feature added to
- * `latticeai/services/feature_toggles.CATALOG` appears here with no client
- * change at all. `source` is the honest part — `env` means an environment
- * variable is answering and nobody has touched the switch.
- */
 export type FeatureToggle = {
   id: string;
   kind: "toggle" | "choice" | string;
@@ -141,14 +127,12 @@ export type FeatureToggle = {
   live: boolean;
   restart_required: boolean;
   caution: string | null;
-  /** Set when this switch only matters while another one is on. */
   parent: string | null;
   choices: FeatureChoice[];
 };
 
 export type FeatureCatalog = { features: FeatureToggle[]; note: string };
 
-/** One selectable network boundary, as described by `/api/network-boundary`. */
 export type NetworkBoundaryOption = {
   id: string;
   label: string;
@@ -161,7 +145,6 @@ export type NetworkBoundaryOption = {
   warning_ko?: string;
 };
 
-/** What the hybrid path is allowed to do once the boundary permits cloud. */
 export type HybridPolicy = {
   blocked_node_types: string[];
   blocked_metadata_flags: string[];
@@ -177,7 +160,6 @@ export type CloudTokenBudget = {
   [key: string]: unknown;
 };
 
-/** Active boundary plus the catalog the selector renders (`/ui-state`). */
 export type NetworkBoundaryState = {
   mode: string;
   label: string;
@@ -190,11 +172,6 @@ export type NetworkBoundaryState = {
   catalog: NetworkBoundaryOption[];
 };
 
-/**
- * Exactly what would leave the machine for one message — shown *before*
- * anything is sent. `would_block` is the token guard's verdict, so the panel
- * can say "this turn would be refused" rather than discovering it mid-stream.
- */
 export type CloudContextPreview = {
   mode: string;
   allows_cloud: boolean;
@@ -397,9 +374,6 @@ export const latticeApi = {
   runAutomationNow: (workflowId: string, dryRun = true) =>
     post("/api/automation/run-now", { workflow_id: workflowId, dry_run: dryRun }, {}),
   commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
-  // Permission mode dial (v9.9.8). ``catalog`` carries the localized selector
-  // copy so the UI never hardcodes mode labels; ``requires_ack`` marks the mode
-  // the server refuses to set without an explicit risk acknowledgement.
   permissionMode: () => get<PermissionModeState>("/api/permission-mode", {
     mode: "strict", label: "Strict", label_ko: "엄격", risk: "low",
     requires_ack: false, proposal_first: true, workspace_writes_auto: false,
@@ -411,10 +385,6 @@ export const latticeApi = {
     post<PermissionModeState>("/api/permission-mode", {
       mode, acknowledge_risk: acknowledgeRisk,
     }, {} as PermissionModeState),
-  // Network boundary dial (v10.1.0). Separate from the autonomy dial above:
-  // this one answers "may knowledge leave this machine", not "may this tool
-  // run". The fallback is the safe mode, so a failed read never renders the
-  // panel as if cloud were already permitted.
   networkBoundary: () => get<NetworkBoundaryState>("/api/network-boundary/ui-state", {
     mode: "local_only", label: "Local only", label_ko: "로컬만",
     allows_cloud: false, requires_ack: false, warning_ko: null,
@@ -424,19 +394,12 @@ export const latticeApi = {
     post<{ mode: string }>("/api/network-boundary", {
       mode, acknowledge_risk: acknowledgeRisk,
     }, { mode: "local_only" }),
-  // Marking one memory as never-leaving. The cloud filter has always looked
-  // for this flag; before 10.2.0 nothing could set it, so the guard could not
-  // fire. Ingestion stamps secret-bearing paths; this covers content a path
-  // cannot reveal.
   setNodeSensitivity: (nodeId: string, localOnly: boolean, reason?: string) =>
     post<{ ok: boolean; node_id: string; local_only: boolean }>(
       "/api/network-boundary/node-sensitivity",
       { node_id: nodeId, local_only: localOnly, reason },
       { ok: false, node_id: nodeId, local_only: localOnly },
     ),
-  // The opt-in switchboard (v11.2.0). The empty fallback matters: a failed read
-  // must render "nothing to show" rather than a panel of switches that look off
-  // — a person would flip one and it would already have been on.
   features: () => get<FeatureCatalog>("/api/features", { features: [], note: "" }),
   setFeature: (featureId: string, value: boolean | string) =>
     post<FeatureToggle>(
@@ -452,7 +415,6 @@ export const latticeApi = {
       titles: [], types: [], token_estimate: 0, quality: "", compact_preview: "",
       token_budget: {}, would_block: null,
     }),
-  // Dual credential path (API key / local CLI OAuth). 404 → not configured.
   cloudStatus,
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
   proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
@@ -472,8 +434,6 @@ export const latticeApi = {
   brainResolveContradiction: (itemId: string, resolution: "keep_old" | "replace" | "keep_both_temporal") =>
     post<Record<string, unknown>>("/api/brain/contradictions/resolve", { item_id: itemId, resolution }, {}),
   indexDrain: (limit = 50) => post<Record<string, unknown>>("/api/index/drain", { limit }, { status: "ok", processed: 0 }),
-  // Knowledge garden overview (v9.9.7): recent / contradictions / stale /
-  // frequent in one read-only call.
   brainGarden: (limit = 8) => get<Record<string, unknown>>(
     "/api/brain/garden",
     { available: false, beds: {} },
@@ -487,22 +447,13 @@ export const latticeApi = {
   deleteConversation: (id: string) => del(`/history/conversations/${encodeURIComponent(id)}`, {}),
   streamChat,
   resumeAgentApproval,
-  // Pending paused approvals for the current user (GET /agent/approvals is
-  // not in the generated OpenAPI spec yet; the plain path-based wrapper keeps
-  // the same ApiResult contract until the next regeneration).
   agentApprovals: () => get<{ pending: Array<Record<string, unknown>> }>("/agent/approvals", { pending: [] }),
-  // Evidence → action (v9.9.6): the citations an answer actually used become
-  // ready-to-send, evidence-scoped follow-up prompts. Composition only — the
-  // prompt still runs through the normal chat path.
   evidenceActions: (question: string, sourceIds: string[], language: string) =>
     post<EvidenceActionsPayload>(
       "/api/evidence/actions",
       { question, source_ids: sourceIds, language },
       { sources: [], missing: [], actions: [], reason: "" },
     ),
-  // One graph node with its stored text/summary + provenance metadata, for
-  // the citation "원문 보기" modal. Neighbors are skipped — this is a read of
-  // one chunk, not an exploration.
   graphNode: (nodeId: string) => get<Record<string, unknown>>(
     "/api/graph/node",
     { node: {} },
@@ -513,8 +464,6 @@ export const latticeApi = {
     { node: {}, neighborhood: { nodes: [], edges: [] }, reasoning: { reasoning_paths: [], synthesis: {} } },
     { node_id: nodeId, include_neighbors: true, include_reasoning: true, depth, limit },
   ),
-  // Folder watch-mode health (opt-in poller): stored watches + last scan
-  // results, so the home can show whether connected folders actually flow.
   ingestionWatchStatus: () => get<Record<string, unknown>>(
     "/api/ingestion/watch",
     { enabled_count: 0, polling: false, interval_seconds: 0, watches: [] },
@@ -534,8 +483,6 @@ export const latticeApi = {
   uploadDocument,
   documents: (limit = 200) => get("/knowledge-graph/documents", { documents: [] }, { limit }),
   localSources: () => get("/knowledge-graph/local/sources", { sources: [], watch: { available: false, active: {} } }),
-  // Per-folder memory state (v9.9.7): indexing coverage, failures with their
-  // stored reasons, and a single explicitly-global vector freshness figure.
   localFolderHealth: () => get<Record<string, unknown>>(
     "/knowledge-graph/local/health",
     { folders: [], count: 0 },

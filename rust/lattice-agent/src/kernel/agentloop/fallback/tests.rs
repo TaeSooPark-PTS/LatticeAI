@@ -5,8 +5,6 @@ const FINAL: &str = r#"{"action": "final", "message": "done"}"#;
 
 #[tokio::test]
 async fn the_compact_fallback_writes_the_planned_files_without_json() {
-    // Four *different* prose replies: the budget is spent the ordinary way,
-    // with no repeat escalation — that path has its own test below.
     let mut harness = harness(&[
         "prose one",
         "prose two",
@@ -42,9 +40,6 @@ async fn the_compact_fallback_writes_the_planned_files_without_json() {
 
 #[tokio::test]
 async fn a_repeated_reply_buys_exactly_one_extra_attempt() {
-    // The same rejected reply four times, then a valid action. Under the
-    // ported budget the run stopped at the fourth and never saw the fifth;
-    // the repeat escalation buys one more turn, and the run finishes.
     let mut harness = harness(&["prose", "prose", "prose", "prose", FINAL]).await;
     harness.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     let mut ctx = harness.context();
@@ -68,7 +63,6 @@ async fn a_repeated_reply_buys_exactly_one_extra_attempt() {
         3,
         "the first sighting is not a repeat"
     );
-    // The correction says so, and only once.
     let repeated_hints = ctx
         .corrections
         .iter()
@@ -79,9 +73,6 @@ async fn a_repeated_reply_buys_exactly_one_extra_attempt() {
 
 #[tokio::test]
 async fn the_extra_attempt_is_bought_once_and_never_again() {
-    // Nine identical replies against a budget of four. Without a ceiling
-    // the escalation would renew itself forever; with one, the run stops
-    // after five and falls through to the direct path.
     let mut harness = harness(&["prose"; 9]).await;
     harness.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     let mut ctx = harness.context();
@@ -136,9 +127,6 @@ async fn a_fenced_file_in_a_chat_reply_becomes_the_write_the_plan_asked_for() {
 
 #[tokio::test]
 async fn the_fence_rescue_refuses_where_it_would_have_to_guess() {
-    // No pending plan path: the fence may be an example, a snippet, an
-    // apology in disguise. There is nothing to write it to, so nothing is
-    // written — the reply is an ordinary parse failure.
     let reply = "Something like:\n\n```html\n<!doctype html>\n<html></html>\n```";
     let mut harness = harness(&[reply, reply, reply, FINAL]).await;
     let mut ctx = harness.context();
@@ -153,10 +141,6 @@ async fn the_fence_rescue_refuses_where_it_would_have_to_guess() {
 
 #[tokio::test]
 async fn a_tagged_fence_is_written_to_the_file_of_its_own_kind() {
-    // The plan wants a page and a stylesheet, in that order, and the model
-    // answers with the stylesheet. Taking "the first pending path" would
-    // put CSS into index.html, where the sanitize pass would then repair it
-    // into an HTML scaffold and the stylesheet would be gone.
     let reply = "스타일은 이렇습니다:\n\n```css\nbody { color: red; }\n```";
     let mut harness = harness(&[reply, FINAL]).await;
     harness.request.permission_mode = Some("trusted".into());
@@ -231,9 +215,6 @@ async fn a_plan_path_already_written_is_not_rescued_over() {
 
 #[tokio::test]
 async fn the_direct_path_regenerates_once_and_writes_the_better_candidate() {
-    // Attempt one is an apology (tier 0), attempt two is a real document
-    // that is merely unfinished (tier 2). Longest-wins would have written
-    // the apology; the salvage score writes the document.
     let apology = "I'm sorry, but I can't create that file for you.";
     let document = "<!doctype html>\n<html><body><h1>Hi</h1></body>";
     let mut harness = harness(&[
@@ -262,8 +243,6 @@ async fn the_direct_path_regenerates_once_and_writes_the_better_candidate() {
     let written = std::fs::read_to_string(harness.root.join("index.html")).expect("file");
     assert!(written.contains("<h1>Hi</h1>"), "{written}");
     assert!(!written.contains("I'm sorry"), "{written}");
-    // The unfinished document was repaired rather than regenerated again —
-    // the retry budget is one, and the transcript says what happened.
     let step = ctx.transcript.last().expect("step");
     assert_eq!(step["direct_path"], true);
     assert_eq!(step["generation"], json!({"repaired": true}));
@@ -277,9 +256,6 @@ async fn the_direct_path_regenerates_once_and_writes_the_better_candidate() {
 
 #[tokio::test]
 async fn content_the_sanitize_pass_can_extract_costs_no_regeneration() {
-    // A fenced document does not validate as-is, but `sanitize_write_content`
-    // recovers it without repairing — so there is nothing to regenerate,
-    // and asking again would be a second opinion about a settled question.
     let fenced = "```html\n<!doctype html>\n<html><body><h1>Hi</h1></body></html>\n```";
     let mut harness = harness(&[fenced]).await;
     harness.request.permission_mode = Some("trusted".into());
@@ -310,10 +286,6 @@ async fn content_the_sanitize_pass_can_extract_costs_no_regeneration() {
 
 #[tokio::test]
 async fn a_repeated_direct_path_reply_buys_one_more_generation_and_names_it() {
-    // Two identical rejected answers, then a real document. Without the
-    // escalation the run would write the first apology; with it, the third
-    // call — the only one whose prompt says "you already sent this" — is
-    // the one that lands.
     let apology = "I'm sorry, I can't help with that.";
     let document = "<!doctype html>\n<html><body><h1>Hi</h1></body></html>\n";
     let mut harness = harness(&[apology, apology, document]).await;
@@ -356,7 +328,6 @@ async fn a_repeated_direct_path_reply_buys_one_more_generation_and_names_it() {
         repairs.contains(&json!(["direct_path_repeated"])),
         "the repetition is named in the trace, not just in the prompt: {repairs:?}"
     );
-    // And the prompt that bought the extra call says so.
     let asks = harness.worker.calls.lock().expect("lock").clone();
     let third = asks
         .iter()
@@ -374,8 +345,6 @@ async fn a_repeated_direct_path_reply_buys_one_more_generation_and_names_it() {
 
 #[tokio::test]
 async fn the_standard_profile_never_spends_a_regeneration() {
-    // `regeneration_retries` is zero there, so the first answer is written
-    // whatever it looks like — no behaviour change for a capable model.
     let mut harness = harness(&["not a valid html document at all"]).await;
     harness.request.permission_mode = Some("trusted".into());
     let mut ctx = harness.context();
@@ -419,12 +388,6 @@ async fn the_fallback_writes_nothing_when_the_plan_names_nothing() {
     assert_eq!(ctx.final_message, "");
 }
 
-// ── the plan path ────────────────────────────────────────────────────────
-/// The live gemma_e2b:S2 shape. The plan says *read the file, then write a
-/// summary of it*; the model never lands a parseable turn; the file half
-/// alone reached the write with no README in sight and the live run wrote
-/// its own reasoning trace ending "README content not provided". The read
-/// is a step the plan already declared, so the fallback runs it.
 #[tokio::test]
 async fn the_direct_path_runs_the_plans_read_before_it_writes() {
     let mut harness = harness(&[
@@ -464,8 +427,6 @@ async fn the_direct_path_runs_the_plans_read_before_it_writes() {
         .expect("the plan's read really ran");
     assert_eq!(read["direct_plan"], json!(true), "and says who ran it");
     assert!(read.get("result").is_some());
-    // The write turn was shown what the read returned, so the summary is of
-    // the file rather than of the model's memory of it.
     let asks = harness.worker.calls.lock().expect("lock").clone();
     let content_turn = asks
         .iter()
@@ -485,10 +446,6 @@ async fn the_direct_path_runs_the_plans_read_before_it_writes() {
     );
 }
 
-/// The live gemma_e2b:S3/S5 shape: a plan of one **non-write** step. The
-/// file half has nothing to write, so before v12.0.0 these runs ended with
-/// `created_files: []` and no tool ever dispatched — the plan named the
-/// exact call and nobody made it.
 #[tokio::test]
 async fn a_plan_that_names_no_file_runs_its_own_step_instead_of_nothing() {
     let mut harness = harness(&["prose one", "prose two", "prose three", "prose four"]).await;
@@ -542,9 +499,6 @@ async fn a_plan_that_names_no_file_runs_its_own_step_instead_of_nothing() {
     assert_eq!(ctx.state, AgentState::Verifying);
 }
 
-/// A planner may name anything. Only a row the run actually offers may be
-/// dispatched without a model having chosen it — the live 2B's `plan` and
-/// `build_project` inventions must stay refusals, not become harness calls.
 #[tokio::test]
 async fn the_plan_path_never_dispatches_a_name_the_run_has_no_row_for() {
     let mut harness = harness(&["prose one", "prose two", "prose three", "prose four"]).await;
@@ -570,8 +524,6 @@ async fn the_plan_path_never_dispatches_a_name_the_run_has_no_row_for() {
     assert_eq!(ctx.final_message, "", "and nothing was claimed");
 }
 
-/// A step that already worked is not re-run, and `standard` never reaches
-/// this path at all.
 #[tokio::test]
 async fn the_plan_path_skips_what_worked_and_never_runs_under_standard() {
     for (profile, expected) in [
@@ -609,17 +561,8 @@ async fn the_plan_path_skips_what_worked_and_never_runs_under_standard() {
     }
 }
 
-/// `LOOP_DETECTED` halts a run and then calls straight into the rescue.
-/// The rescue must not be the halted step again.
-///
-/// The `gemma_e2b:S5` cell: `mcp.grep` with the planner's `search_term` and
-/// no `pattern`, twelve dispatches an attempt, thirty-six across the cell —
-/// fail, halt, replay, fail, halt, replay. Two outcomes here, and both are
-/// the rule: a call the catalog can **repair** is a different call and runs;
-/// a call it cannot is dropped and the halt stands.
 #[tokio::test]
 async fn the_rescue_repairs_the_step_that_failed_or_respects_the_halt() {
-    // 1. Repairable: the value is in the plan under the planner's own name.
     let mut repaired = harness(&["prose one", "prose two", "prose three", "prose four"]).await;
     repaired.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     repaired.runtime.deps.tool_names = vec!["grep".into(), "write_file".into()];
@@ -656,8 +599,6 @@ async fn the_rescue_repairs_the_step_that_failed_or_respects_the_halt() {
         "the plan's own value, read under the name the tool takes"
     );
 
-    // 2. Unrepairable: nothing in the plan is a pattern, so the failed
-    //    signature is all the rescue would have to send. It sends nothing.
     let mut bare = harness(&["prose one", "prose two", "prose three", "prose four"]).await;
     bare.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     bare.runtime.deps.tool_names = vec!["grep".into(), "write_file".into()];
@@ -686,8 +627,6 @@ async fn the_rescue_repairs_the_step_that_failed_or_respects_the_halt() {
         bare.tool_calls()
     );
 
-    // 3. And a step that failed with the arguments it would be re-sent with
-    //    is dropped even when nothing needed repairing.
     let mut again = harness(&["prose one", "prose two", "prose three", "prose four"]).await;
     again.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     again.runtime.deps.tool_names = vec!["read_file".into(), "write_file".into()];
@@ -727,8 +666,6 @@ async fn parse_failures_burn_the_budget_and_escalate_the_hint() {
         .await
         .expect("execute");
 
-    // standard profile: budget 3 → three parse_error steps, then the loop
-    // breaks without reaching the fourth (valid) completion.
     assert_eq!(ctx.transcript.len(), 3);
     let raws: Vec<&str> = ctx
         .transcript
@@ -748,7 +685,6 @@ async fn parse_failures_burn_the_budget_and_escalate_the_hint() {
         AgentState::Verifying,
         "the run still gets verified"
     );
-    // Two corrections: the plain hint, then the escalated one naming tools.
     assert_eq!(ctx.corrections.len(), 2);
     assert!(py_str(&ctx.corrections[0]).starts_with("Your last reply was not"));
     assert!(py_str(&ctx.corrections[1]).contains("read_file, write_file, final"));

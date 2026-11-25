@@ -1,26 +1,4 @@
 #!/usr/bin/env python3
-"""Installed-wheel smoke test.
-
-Builds the wheel, installs it into a *fresh* venv, and verifies — from a
-non-repo working directory — that every module the wheel ships actually
-imports and that the FastAPI app boots and answers ``/health``. This kills the
-class of "works only with ``pip install -e .`` from the repo root" failures
-(e.g. the v3.x wheels that omitted the root ``setup.py`` wizard module while
-``latticeai.server_app`` imported it).
-
-v11.6.0: the app it boots is the AI-Worker (``create_worker_app``), because
-that is the only application this package builds — the product server is the
-``lattice-host`` binary.
-
-Usage:
-    python scripts/wheel_smoke.py                 # build + install + import + /health
-    python scripts/wheel_smoke.py --wheel dist/ltcai-X.Y.Z-py3-none-any.whl
-    python scripts/wheel_smoke.py --skip-health   # imports only
-
-The build step prefers ``python -m build --wheel`` and falls back to
-``pip wheel . --no-deps`` when the ``build`` package is unavailable.
-Exit code is non-zero on any failure so CI can gate on it.
-"""
 
 from __future__ import annotations
 
@@ -34,10 +12,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Every importable module the wheel ships. v11.6.0 (WP-P1) reduced the package
-# to the AI-Worker: the product application, the graph store, the agent loop,
-# the telegram bridge and the setup wizard are `lattice-host`'s now, so the
-# names below are the compute surface plus the two entrypoints a bundle starts.
 WHEEL_MODULES = [
     "lattice_brain",
     "lattice_brain.embeddings",
@@ -61,10 +35,6 @@ WHEEL_MODULES = [
     "latticeai.tools.knowledge",
 ]
 
-# Root shims removed in 9.9.1, plus the product modules WP-P1 deleted: the
-# wheel must NOT ship any of them. ``server`` and ``latticeai.server_app`` are
-# on this list for the same reason the shims are — a bundle that still imports
-# them is a bundle running an application that no longer exists.
 REMOVED_ROOT_MODULES = [
     "server",
     "latticeai.server_app",
@@ -125,14 +95,14 @@ def run(cmd: list[str], **kwargs) -> None:
 
 
 def build_wheel(out_dir: Path) -> Path:
-    try:
-        import build  # noqa: F401 — probe only
+    import importlib.util
 
+    if importlib.util.find_spec("build") is not None:
         run(
             [sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir)],
             cwd=REPO_ROOT,
         )
-    except ImportError:
+    else:
         print(
             "'build' package unavailable; falling back to pip wheel --no-deps",
             flush=True,
@@ -184,11 +154,8 @@ def main() -> int:
 
         run([str(python), "-m", "pip", "install", "--quiet", str(wheel)])
 
-        # A cwd that is NOT the repo: imports must resolve from site-packages,
-        # never from checkout-relative files.
         work_dir = tmp_path / "non-repo-cwd"
         work_dir.mkdir()
-        # Sandbox all user-data writes so the smoke test never touches ~/.ltcai.
         env = {
             **os.environ,
             "HOME": str(tmp_path / "home"),

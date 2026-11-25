@@ -1,5 +1,3 @@
-"""Computer-use tools: screenshots and native desktop control."""
-
 from __future__ import annotations
 
 import base64
@@ -22,7 +20,6 @@ _BRIDGE_TIMEOUT_SECONDS = 5
 
 
 def _bridge_url() -> Optional[str]:
-    """Read and validate LATTICEAI_COMPUTER_BRIDGE_URL (loopback only, fail-closed)."""
     raw = (
         str(_os_environ.get("LATTICEAI_COMPUTER_BRIDGE_URL") or "").strip().rstrip("/")
     )
@@ -103,7 +100,6 @@ def _bridge_post_act(base: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def computer_ui_inspect(app: Optional[str] = None) -> Dict[str, Any]:
-    """Inspect active desktop UI and accessibility element tree."""
     clean_app = str(app or "").strip()
     base = _bridge_url()
     if base is not None:
@@ -169,10 +165,7 @@ def computer_ui_inspect(app: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
-# ── Computer Use ──────────────────────────────────────────────────────────────
 _CU_AVAILABLE = False
-# Optional dependency: None until _init_computer_use() imports it, and the
-# _CU_AVAILABLE flag is what every call site checks.
 _pyautogui: Any = None
 
 
@@ -181,7 +174,7 @@ def _init_computer_use():
     try:
         import pyautogui as _pag
 
-        _pag.FAILSAFE = True  # 마우스를 좌상단 코너로 이동하면 중단
+        _pag.FAILSAFE = True
         _pag.PAUSE = 0.25
         _pyautogui = _pag
         _CU_AVAILABLE = True
@@ -201,7 +194,6 @@ _init_computer_use()
 
 
 def computer_screenshot() -> Dict[str, Any]:
-    """현재 화면 전체를 캡처하여 base64 PNG로 반환합니다."""
     base = _bridge_url()
     if base is not None:
         data = _bridge_get_json(f"{base}/ui/screenshot", timeout=10)
@@ -228,7 +220,6 @@ def computer_screenshot() -> Dict[str, Any]:
             if r.returncode != 0:
                 raise ToolError(f"screencapture 실패: {r.stderr.decode()}")
         elif _CU_AVAILABLE:
-            # Windows / Linux: use pyautogui screenshot
             screenshot = _pyautogui.screenshot()
             screenshot.save(tmp)
         else:
@@ -257,7 +248,6 @@ def computer_screenshot() -> Dict[str, Any]:
 def computer_click(
     x: int, y: int, button: str = "left", double: bool = False
 ) -> Dict[str, Any]:
-    """화면 좌표 (x, y)를 클릭합니다."""
     base = _bridge_url()
     if base is not None:
         x_int, y_int = int(x), int(y)
@@ -286,7 +276,6 @@ def computer_click(
 
 
 def computer_type(text: str, interval: float = 0.04) -> Dict[str, Any]:
-    """현재 포커스된 위치에 텍스트를 입력합니다."""
     base = _bridge_url()
     if base is not None:
         raw_text = str(text)
@@ -313,7 +302,6 @@ def computer_type(text: str, interval: float = 0.04) -> Dict[str, Any]:
 
 
 def computer_key(key: str) -> Dict[str, Any]:
-    """키보드 키를 누릅니다. 예: 'return', 'escape', 'command+c', 'tab'"""
     base = _bridge_url()
     if base is not None:
         return _bridge_post_act(base, {"action": "key", "key": str(key)})
@@ -330,7 +318,6 @@ def computer_key(key: str) -> Dict[str, Any]:
 def computer_scroll(
     x: int, y: int, direction: str = "down", clicks: int = 3
 ) -> Dict[str, Any]:
-    """화면 좌표에서 스크롤합니다."""
     base = _bridge_url()
     if base is not None:
         return _bridge_post_act(
@@ -359,7 +346,6 @@ def computer_scroll(
 
 
 def computer_move(x: int, y: int) -> Dict[str, Any]:
-    """마우스를 좌표로 이동합니다 (클릭 없음)."""
     base = _bridge_url()
     if base is not None:
         return _bridge_post_act(base, {"action": "move", "x": int(x), "y": int(y)})
@@ -370,7 +356,6 @@ def computer_move(x: int, y: int) -> Dict[str, Any]:
 
 
 def computer_drag(x1: int, y1: int, x2: int, y2: int) -> Dict[str, Any]:
-    """(x1,y1)에서 (x2,y2)로 드래그합니다."""
     base = _bridge_url()
     if base is not None:
         return _bridge_post_act(
@@ -389,7 +374,6 @@ def computer_drag(x1: int, y1: int, x2: int, y2: int) -> Dict[str, Any]:
 
 
 def computer_status() -> Dict[str, Any]:
-    """Computer Use 기능 사용 가능 여부를 확인합니다."""
     if not _CU_AVAILABLE:
         return {"available": False, "reason": "pyautogui not installed"}
     w, h = _pyautogui.size()
@@ -405,14 +389,6 @@ def vision_analyze(
     image_b64: str,
     prompt: str = "Describe this image in detail. What do you see? Be concise and factual.",
 ) -> Dict[str, Any]:
-    """Analyze an image using the loaded multimodal VLM (if current model supports vision).
-
-    Designed to pair perfectly with computer_screenshot() output (screenshot_b64).
-    Returns structured data that the agent runtime / chat can feed directly to
-    model_router.generate(..., image_data=image_b64) when a VLM is active.
-    Fits existing computer-use loop, KG ingestion, and agent tools without breaking
-    non-VLM paths (graceful fallback in calling code).
-    """
     if not image_b64 or not isinstance(image_b64, str) or len(image_b64) < 20:
         raise ToolError("Valid image_b64 (base64 image) required")
     prompt = (prompt or "Describe this image.").strip()[:2000]

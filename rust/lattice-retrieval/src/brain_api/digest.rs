@@ -1,20 +1,3 @@
-//! `GET /api/brain/insights` and `GET /api/brain/garden`.
-//!
-//! Two read-only views over the same graph slice. `insights` is the proactive
-//! digest — recent growth, trending types, stale knowledge, orphans, and
-//! questions grounded in real node titles. `garden_overview` is the same
-//! knowledge arranged as four beds a gardener tends, because "how healthy is my
-//! knowledge?" in aggregate is not a question anyone acts on.
-//!
-//! Three orderings are load-bearing and all rest on `sorted()` being **stable**:
-//! trending types keep the order their type was first seen in when counts tie,
-//! and the recent/stale beds keep sample order when two nodes carry the same
-//! `updated_at`. `sort_by` is stable in Rust too; `sort_unstable_by` is not, and
-//! would reorder every tie.
-//!
-//! Honest when empty: an unavailable graph produces empty beds and
-//! `available: false`, never invented plants.
-
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -24,17 +7,11 @@ use super::pyutil;
 use super::sampling::{self, Sample, RECENT_DAYS, STALE_DAYS};
 use super::{consistency, proactive};
 
-/// `BrainIntelligenceService.insights`.
 pub async fn insights(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let sample = sampling::graph_sample(state, workspace_id).await;
     build_insights(&sample, &state.now(), state.now_utc())
 }
 
-/// The pure digest, so the windows can be tested without a store.
-///
-/// `now_utc` is UTC epoch seconds, injected: both windows below are thresholds,
-/// and the 7-day one is the tightest in the crate. See
-/// `BrainState::with_utc_clock`.
 pub fn build_insights(sample: &Sample, generated_at: &str, now_utc: f64) -> OrderedMap {
     let now = now_utc;
     let recent_cutoff = now - (RECENT_DAYS * 86_400) as f64;
@@ -111,7 +88,6 @@ pub fn build_insights(sample: &Sample, generated_at: &str, now_utc: f64) -> Orde
     out
 }
 
-/// Nodes no edge in the slice names, by the connectivity reading.
 fn orphan_nodes(sample: &Sample) -> Vec<&Value> {
     let mut connected: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for edge in &sample.edges {
@@ -145,7 +121,6 @@ fn json_of(map: &OrderedMap) -> Value {
     serde_json::to_value(map).unwrap_or(Value::Null)
 }
 
-/// `BrainIntelligenceService.garden_overview` — the knowledge garden in four beds.
 pub async fn garden_overview(
     state: &BrainState,
     user_email: &str,
@@ -162,10 +137,6 @@ pub async fn garden_overview(
     build_garden(&sample, &items, limit, &state.now(), state.now_utc())
 }
 
-/// The pure four beds.
-///
-/// `now_utc` is UTC epoch seconds; the `recent` and `stale` beds are the same
-/// two thresholds `build_insights` uses. See `BrainState::with_utc_clock`.
 pub fn build_garden(
     sample: &Sample,
     contradictions: &[Value],
@@ -173,7 +144,6 @@ pub fn build_garden(
     generated_at: &str,
     now_utc: f64,
 ) -> OrderedMap {
-    // An explicit 0 clamps to 1 — `limit or 8` would silently re-expand it.
     let limit = limit.clamp(1, 50).max(1) as usize;
     let now = now_utc;
     let recent_cutoff = now - (RECENT_DAYS * 86_400) as f64;
@@ -182,7 +152,6 @@ pub fn build_garden(
     let mut recent: Vec<&Value> = Vec::new();
     let mut stale: Vec<&Value> = Vec::new();
     for node in &sample.nodes {
-        // Chunks are retrieval plumbing, not knowledge a gardener tends.
         if pyutil::field_text(node, "type") == "Chunk" {
             continue;
         }
@@ -196,12 +165,9 @@ pub fn build_garden(
         }
     }
     let key = |node: &&Value| pyutil::field_text(node, "updated_at");
-    // Both are stable sorts, so nodes with equal stamps keep the order the
-    // sample walked them in — which is what Python's `sorted` guarantees too.
     recent.sort_by_key(|node| std::cmp::Reverse(key(node)));
     stale.sort_by_key(|node| key(node));
 
-    // "Frequent" is degree, not a guess: how many relations point at a node.
     let mut degree = pyutil::Counter::new();
     for edge in &sample.edges {
         for field in ["source", "target"] {
@@ -263,7 +229,6 @@ pub fn build_garden(
     out
 }
 
-/// `GET /api/brain/duplicates` — duplicate graph nodes, read only.
 pub async fn graph_duplicates(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
@@ -294,7 +259,6 @@ fn duplicates_unavailable(now: &str) -> OrderedMap {
     out
 }
 
-/// `GET /api/brain/importance` — importance and decay, read only.
 pub async fn importance_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
@@ -318,8 +282,6 @@ fn importance_unavailable(now: &str) -> OrderedMap {
     out
 }
 
-/// `GET /api/brain/quality-report` — duplicates, contradictions, stale nodes,
-/// edge quality, and what the Brain would tidy away.
 pub async fn quality_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
@@ -332,8 +294,6 @@ pub async fn quality_report(state: &BrainState, workspace_id: Option<&str>) -> O
     let mut result = proactive::quality_report(&sample, &now, state.now_utc());
     result.insert("available", Value::Bool(true));
 
-    // v11.1.0: decay is part of quality, and "the Brain is tidying up" is a
-    // state the user is entitled to see rather than a background surprise.
     let importance = importance_report(state, workspace_id).await;
     let candidates = importance
         .get("candidates")
@@ -487,7 +447,6 @@ mod tests {
         assert_eq!(frequent[0]["degree"], 2);
         assert_eq!(garden.get("available"), Some(&Value::Bool(true)));
         assert_eq!(garden.get("stale_threshold_days"), Some(&Value::from(45)));
-        // Newest first in `recent`, oldest first in `stale`.
         let recent = beds["recent"]["items"].as_array().expect("items");
         assert_eq!(recent[0]["id"], "a");
     }

@@ -1,27 +1,3 @@
-"""Phase 7 of the AI-Worker build: the compute routers.
-
-The tail of the build order — everything that mounts a router on the finished
-application. WP-P1 replaced two phases (``platform_features`` and
-``interaction``, ~34 product routers between them) with this one, because the
-worker mounts four things:
-
-* ``/health`` — the posture the supervisor gates on;
-* the MLX model lifecycle (``/models*``, ``/engines/prepare-model*``);
-* the embedder report (``GET /api/embeddings/status``);
-* the Rust loop's seam (``POST /agent/llm``, ``POST /agent/tool``).
-
-It mounted three more until v11.8.0 — the ``/tools/*`` document parser, the
-multi-modal capability probe and the voice capability probe. Every one of them
-had no caller in the tree, so the routers, their modules and the construction
-that fed them are gone rather than kept "in case".
-
-The ``/worker/*`` seams are not here: they are mounted by
-:func:`~latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
-which runs after this phase and is the module that owns the worker contract.
-
-Every heavy import lives *inside* a phase, never at module scope.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -30,7 +6,6 @@ from latticeai.runtime.runtime_context import RuntimeContext
 
 
 def phase_features(ctx: RuntimeContext) -> None:
-    """Mount the worker's compute routers on the application object."""
     ctx.enter("features")
 
     from latticeai.api.agent_worker_seam import create_agent_worker_seam_router
@@ -111,19 +86,11 @@ def phase_features(ctx: RuntimeContext) -> None:
         )
     )
 
-    # AI-Worker seam (v11.5.1, plan §Y1): the calls the Rust agent loop makes
-    # back into Python once orchestration lives in ``lattice-agent``. The tool
-    # route stays behind ``LATTICEAI_AGENT_TOOL_SEAM=1``, which only
-    # lattice-host injects into a worker it started.
     app.include_router(
         create_agent_worker_seam_router(
             model_router=ctx.model_router,
             dispatch_service=DEFAULT_TOOL_DISPATCH_SERVICE,
             execute_tool=execute_tool,
-            # No registry: the hooks platform (persistence, ordering, the
-            # built-in runners that bound to the audit log) is native platform
-            # state now, and ``dispatch_tool(None, …)`` is a transparent
-            # pass-through rather than a pretend lifecycle.
             hooks=None,
             require_user=ctx.require_user,
             enforce_rate_limit=ctx.enforce_rate_limit,

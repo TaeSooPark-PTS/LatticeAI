@@ -1,23 +1,3 @@
-//! Snapshots, the Time Machine view, the export zip, and the diff.
-//!
-//! Port of `core/workspace_snapshots.py`. A snapshot is an immutable JSON
-//! document under `<data_dir>/workspace_snapshots/`, plus a small metadata row
-//! in the state document that the listing reads. Nothing here ever mutates the
-//! live graph.
-//!
-//! ## One finding, reproduced rather than fixed
-//!
-//! `restore_snapshot` calls `graph.import_graph(...)`, and the graph store has
-//! no such method — it has `import_graph_data`. The `except Exception` around
-//! the call swallows the `AttributeError`, so **restore has never imported
-//! anything**: it records a timeline event and answers `{"restored": true}`.
-//! The captured fixture confirms it (the happy response has no `imported` key).
-//!
-//! This port reproduces that contract exactly. Wiring it to the real seam op
-//! would turn a no-op into a live merge of an old snapshot into the current
-//! graph — a data-affecting change with no fixture behind it and no request for
-//! it. It is reported in the wiring note instead.
-
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -28,10 +8,8 @@ use super::deps::GraphReads;
 use super::pyutil::{json_hash, json_hash_prefix, listify, now_iso, safe_slug};
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// How many nodes/edges a snapshot captures from the live graph.
 pub const SNAPSHOT_GRAPH_LIMIT: usize = 2_000;
 
-/// `create_snapshot`.
 pub fn create_snapshot(
     store: &WorkspaceOsStore,
     name: &str,
@@ -79,7 +57,6 @@ pub fn create_snapshot(
         "indexed_folders": indexed_folders,
         "models": models,
     });
-    // The id is a hash of the body *before* the id is in it.
     let snapshot_id = format!(
         "snapshot-{}-{}",
         compact_stamp(),
@@ -120,12 +97,10 @@ pub fn create_snapshot(
     Ok(json!({"snapshot": meta}))
 }
 
-/// `datetime.now().strftime("%Y%m%d%H%M%S")`, derived from the one clock.
 fn compact_stamp() -> String {
     now_iso().chars().filter(char::is_ascii_digit).collect()
 }
 
-/// `list_snapshots` — newest first.
 pub fn list_snapshots(store: &WorkspaceOsStore, workspace_id: Option<&str>) -> Value {
     let state = store.load_state();
     let mut snapshots = WorkspaceOsStore::scoped(listify(state.get("snapshots")), workspace_id);
@@ -133,14 +108,11 @@ pub fn list_snapshots(store: &WorkspaceOsStore, workspace_id: Option<&str>) -> V
     json!({"snapshots": snapshots})
 }
 
-/// `get_snapshot` — the document on disk, by slug and then by recorded path.
 pub fn get_snapshot(store: &WorkspaceOsStore, snapshot_id: &str) -> Result<Value, StoreError> {
     let mut path: PathBuf = store
         .snapshots_dir()
         .join(format!("{}.json", safe_slug(snapshot_id)));
     if !path.exists() {
-        // A snapshot whose id does not survive slugging is still findable: the
-        // metadata row recorded the absolute path it was written to.
         if let Some(recorded) = listify(store.load_state().get("snapshots"))
             .into_iter()
             .find(|item| item.get("id").and_then(Value::as_str) == Some(snapshot_id))
@@ -157,7 +129,6 @@ pub fn get_snapshot(store: &WorkspaceOsStore, snapshot_id: &str) -> Result<Value
     serde_json::from_str(&text).map_err(|error| StoreError::Value(error.to_string()))
 }
 
-/// `snapshot_view(snapshot_id, area)` — the three named areas, else the whole.
 pub fn snapshot_view(
     store: &WorkspaceOsStore,
     snapshot_id: &str,
@@ -193,7 +164,6 @@ fn object_or_empty(value: Option<&Value>) -> Value {
     }
 }
 
-/// The six members `export_snapshot` writes into the zip, in Python's order.
 const EXPORT_MEMBERS: [(&str, &str); 6] = [
     ("snapshot.json", ""),
     ("graph.json", "graph"),
@@ -203,7 +173,6 @@ const EXPORT_MEMBERS: [(&str, &str); 6] = [
     ("models.json", "models"),
 ];
 
-/// `export_snapshot` — a deflate zip of the snapshot and its five slices.
 pub fn export_snapshot(store: &WorkspaceOsStore, snapshot_id: &str) -> Result<Value, StoreError> {
     let snapshot = get_snapshot(store, snapshot_id)?;
     let export_path = store
@@ -259,13 +228,11 @@ fn default_for(key: &str) -> Value {
     }
 }
 
-/// `restore_snapshot` — records the restore; see the module note.
 pub fn restore_snapshot(
     store: &WorkspaceOsStore,
     snapshot_id: &str,
     workspace_id: Option<&str>,
 ) -> Result<Value, StoreError> {
-    // The load is not decorative: an unknown id must still answer 404.
     get_snapshot(store, snapshot_id)?;
     store.record_timeline_event(
         "snapshot",
@@ -276,7 +243,6 @@ pub fn restore_snapshot(
     Ok(json!({"restored": true, "snapshot_id": snapshot_id}))
 }
 
-/// `compare_snapshots` — an additive/removed/changed diff of two snapshots.
 pub fn compare_snapshots(
     store: &WorkspaceOsStore,
     before_id: &str,
@@ -595,8 +561,6 @@ mod tests {
             .as_str()
             .unwrap()
             .to_string();
-        // Rewrite the two documents directly: the diff is over their contents,
-        // and building them by hand is what makes the expectations legible.
         let write = |id: &str, graph: Value| {
             let path = store.snapshots_dir().join(format!("{id}.json"));
             let mut document: Value =

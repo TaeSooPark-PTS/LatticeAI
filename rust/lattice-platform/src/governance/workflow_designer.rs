@@ -1,12 +1,3 @@
-//! Workflow designer — port of `latticeai/api/workflow_designer.py`.
-//!
-//! Definitions and runs live in `workspace_os.json` (the same file
-//! `WorkspaceOSStore` writes). This module owns only the `workflows` /
-//! `workflow_runs` arrays; every other key is left untouched so R1's workspace
-//! document stays the document of record.
-//!
-//! `GET /workflows` is a STATIC page shell (WP-I4) and is not mounted here.
-
 use std::path::Path;
 use std::sync::Arc;
 
@@ -40,7 +31,6 @@ use handlers::{
 use store::WorkflowStore;
 use time::json_hash;
 
-/// Routes this family mounts. `GET /workflows` is I4's.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/workflows/api/automation/recipes"),
     ("POST", "/workflows/api/automation/recipes/:recipe_id"),
@@ -81,12 +71,10 @@ const TERMINAL_STATUSES: &[&str] = &[
     "rejected",
 ];
 
-/// Optional graph ingest. Production wires the worker seam; tests stub an id.
 pub trait GraphSink: Send + Sync {
     fn ingest_workflow(&self, name: &str, workflow_id: &str) -> Option<String>;
 }
 
-/// What the family needs to serve the designer.
 #[derive(Clone)]
 pub struct WorkflowDesignerState {
     auth: Arc<AuthState>,
@@ -97,7 +85,6 @@ pub struct WorkflowDesignerState {
 }
 
 impl WorkflowDesignerState {
-    /// Point the designer at `data_dir/workspace_os.json`.
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         let path = data_dir.as_ref().join(state_files::WORKSPACE_OS);
         Self {
@@ -109,19 +96,16 @@ impl WorkflowDesignerState {
         }
     }
 
-    /// Attach a graph sink so creates can stamp `graph_node_id`.
     pub fn with_graph(mut self, graph: Arc<dyn GraphSink>) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// On-disk path this instance reads and writes.
     pub fn path(&self) -> &Path {
         &self.store.path
     }
 }
 
-/// A graph sink that mints a stable local id without touching the KG.
 pub struct LocalGraphSink;
 
 impl GraphSink for LocalGraphSink {
@@ -133,7 +117,6 @@ impl GraphSink for LocalGraphSink {
     }
 }
 
-/// Router factory.
 pub fn router(state: WorkflowDesignerState) -> Router {
     Router::new()
         .route(

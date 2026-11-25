@@ -1,13 +1,8 @@
-//! `extraction.py` — recover the intended payload from a model reply.
-
 use crate::parse::pyjson;
 use crate::parse::pystr::char_len;
 
 use super::text::{chat_line, ext_of, fence, find_ci, matched, rfind_ci, think_block, think_open};
 
-// ── extraction (`extraction.py`) ────────────────────────────────────────────
-
-/// `_EXT_FENCE_LANGS` — the fence languages that identify a payload.
 fn fence_langs(ext: &str) -> &'static [&'static str] {
     match ext {
         ".html" | ".htm" => &["html", "htm", "xhtml"],
@@ -32,14 +27,11 @@ fn fence_langs(ext: &str) -> &'static [&'static str] {
     }
 }
 
-/// `extract_file_content(raw, target_path)`.
 pub fn extract_file_content(raw: &str, target_path: &str) -> String {
     let text = raw.trim();
     if text.is_empty() {
         return String::new();
     }
-    // Gemma-4 / gpt-oss wrap the document in `<|channel>thought` frames.
-    // Drop those before think/fence extraction so a framed JS reply validates.
     let text = match crate::parse::channel::strip_channel_frames(text) {
         Some(stripped) if !stripped.is_empty() => stripped,
         _ => text.to_string(),
@@ -48,8 +40,6 @@ pub fn extract_file_content(raw: &str, target_path: &str) -> String {
     let text = think_open().replace_all(&text, "").trim().to_string();
 
     let ext = ext_of(target_path);
-    // An odd number of fences means the last block never closed; Python closes
-    // it so the payload inside is still recoverable.
     let padded = if text.matches("```").count() % 2 == 1 {
         format!("{text}\n```")
     } else {
@@ -83,8 +73,6 @@ pub fn extract_file_content(raw: &str, target_path: &str) -> String {
         } else {
             matching
         };
-        // `max(candidates, key=len)` keeps the **first** longest on a tie, and
-        // `len` counts characters.
         candidates
             .into_iter()
             .fold(None::<&str>, |best, candidate| match best {
@@ -106,7 +94,6 @@ pub fn extract_file_content(raw: &str, target_path: &str) -> String {
     content.trim().to_string()
 }
 
-/// `_strip_chat_lines(text)`.
 fn strip_chat_lines(text: &str) -> String {
     let lines: Vec<&str> = text.split('\n').collect();
     let (mut start, mut end) = (0usize, lines.len());
@@ -125,11 +112,8 @@ fn strip_chat_lines(text: &str) -> String {
     }
 }
 
-/// `_slice_html_document(content)`.
 pub(super) fn slice_html_document(content: &str) -> String {
     let mut out = content.to_string();
-    // Prefer the last complete document. A thought preamble often *mentions*
-    // `<!doctype html>` before the real payload starts.
     if let Some(end) = rfind_ci(&out, "</html>") {
         let close = end + "</html>".len();
         let head = &out[..close];
@@ -146,7 +130,6 @@ pub(super) fn slice_html_document(content: &str) -> String {
     out
 }
 
-/// `_slice_json_document(content)` — the largest parseable value inside.
 pub(super) fn slice_json_document(content: &str) -> Option<String> {
     let mut candidates: Vec<&str> = vec![content];
     for (opener, closer) in [('{', '}'), ('[', ']')] {

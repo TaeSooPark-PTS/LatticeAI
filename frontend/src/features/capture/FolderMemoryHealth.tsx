@@ -5,13 +5,6 @@ import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { asArray, isRecord } from "@/lib/utils";
 
-// Per-folder memory state (v9.9.7). "Connected" is not the same as
-// "remembered": a folder can be linked and still half-indexed, or silently
-// failing on a parser. This card answers the three questions a user actually
-// has — how much of this folder is in my Brain, what failed, and why.
-//
-// Vector freshness is shown once, labelled global, because the vector index is
-// global. A per-folder freshness number would be invented.
 
 export type FolderHealth = {
   id: string;
@@ -21,7 +14,6 @@ export type FolderHealth = {
   total: number;
   indexed: number;
   failed: number;
-  /** null when nothing is known yet — never rendered as 0%. */
   coverage: number | null;
   errors: Array<{ path: string; detail: string }>;
   deleted: number;

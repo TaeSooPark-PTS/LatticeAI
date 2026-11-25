@@ -1,15 +1,3 @@
-//! Bounded in-memory rate limiters with a unified HTTP 429 contract.
-//!
-//! * [`RateLimiter::check_ip`] is the sliding window guarding `/login`
-//!   (10 per 300s) and `/register` (5 per 3600s), keyed on `(ip, action)`.
-//! * [`RateLimiter::enforce`] is the per-user token bucket guarding seam and
-//!   upload routes, keyed on `"{email}:{bucket}"`.
-//!
-//! Both maps are strictly capped (`MAX_ENTRIES`) with expired-first and
-//! oldest-entry eviction to prevent memory exhaustion under distributed spray
-//! attacks, recover safely from lock poison, and emit a consistent 429 response
-//! carrying `Retry-After` and `"error": "rate_limited"`.
-
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -20,12 +8,9 @@ use serde_json::json;
 use crate::clock::Clock;
 use crate::response::json_response;
 
-/// Maximum tracked sliding-window or token-bucket entries per map.
 pub const MAX_ENTRIES: usize = 10_000;
-/// Idle age (seconds) after which a full token bucket may be pruned on cap.
 const BUCKET_IDLE_PRUNE_SECS: f64 = 3600.0;
 
-/// `_RATE_LIMITS`: `(capacity, refill per second)` per bucket.
 fn bucket_limits(bucket_key: &str) -> (i64, f64) {
     match bucket_key {
         "chat" => (30, 0.5),
@@ -35,9 +20,7 @@ fn bucket_limits(bucket_key: &str) -> (i64, f64) {
     }
 }
 
-/// `check_ip_rate_limit`'s limits for the two auth routes that call it.
 pub const LOGIN_LIMIT: (usize, f64) = (10, 300.0);
-/// Registration is the slower of the two windows.
 pub const REGISTER_LIMIT: (usize, f64) = (5, 3600.0);
 
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +35,6 @@ struct WindowEntry {
     window_secs: f64,
 }
 
-/// Both limiters, sharing one clock.
 #[derive(Debug)]
 pub struct RateLimiter {
     clock: Clock,
@@ -62,12 +44,10 @@ pub struct RateLimiter {
 }
 
 impl RateLimiter {
-    /// A limiter with no history and the default capacity cap.
     pub fn new(clock: Clock) -> Self {
         Self::with_capacity(clock, MAX_ENTRIES)
     }
 
-    /// A limiter with an explicit per-map capacity cap (primarily for tests).
     pub fn with_capacity(clock: Clock, max_entries: usize) -> Self {
         Self {
             clock,
@@ -77,7 +57,6 @@ impl RateLimiter {
         }
     }
 
-    /// `check_ip_rate_limit(ip, action, max_calls, window_secs)`.
     pub fn check_ip(
         &self,
         ip: &str,
@@ -109,12 +88,10 @@ impl RateLimiter {
             return Err(ip_rate_limited(action, retry_after));
         }
         if !guard.contains_key(&key) && guard.len() >= self.max_entries {
-            // 1. Prune expired windows first.
             guard.retain(|_, entry| {
                 let entry_cutoff = now - entry.window_secs;
                 entry.stamps.iter().any(|stamp| *stamp > entry_cutoff)
             });
-            // 2. If still at capacity, evict the entry with the oldest last hit.
             if guard.len() >= self.max_entries {
                 if let Some(oldest_key) = guard
                     .iter()
@@ -141,7 +118,6 @@ impl RateLimiter {
         Ok(())
     }
 
-    /// `enforce_rate_limit(email, bucket_key, enabled=...)`.
     pub fn enforce(&self, email: &str, bucket_key: &str, enabled: bool) -> Result<(), Response> {
         if !enabled || email.is_empty() {
             return Ok(());
@@ -187,7 +163,6 @@ impl RateLimiter {
     }
 }
 
-/// Unified 429 response for the sliding window limiter (`Retry-After` + `error: "rate_limited"`).
 pub fn ip_rate_limited(action: &str, retry_after: i64) -> Response {
     let retry_after = retry_after.max(1);
     let detail = format!("Rate limit exceeded for {action}. Retry after {retry_after}s.");
@@ -201,7 +176,6 @@ pub fn ip_rate_limited(action: &str, retry_after: i64) -> Response {
     )
 }
 
-/// Unified 429 response for the token bucket limiter (`Retry-After` + `error: "rate_limited"`).
 pub fn bucket_rate_limited(bucket_key: &str, retry_after: i64) -> Response {
     let retry_after = retry_after.max(1);
     let detail = format!("Rate limit exceeded for {bucket_key}. Retry after {retry_after}s.");
@@ -230,11 +204,9 @@ mod tests {
         assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(refused.headers().get(header::RETRY_AFTER).unwrap(), "300");
 
-        // A different key has its own window.
         assert!(limiter.check_ip("1.2.3.5", "login", 10, 300.0).is_ok());
         assert!(limiter.check_ip("1.2.3.4", "register", 5, 3600.0).is_ok());
 
-        // Old calls fall out of the window.
         clock.advance(301.0);
         assert!(limiter.check_ip("1.2.3.4", "login", 10, 300.0).is_ok());
     }
@@ -248,7 +220,6 @@ mod tests {
         }
         assert!(limiter.check_ip("1.2.3.4", "login", 2, 300.0).is_err());
         clock.advance(1.0);
-        // Still two stamps inside the window, so still refused.
         let refused = limiter.check_ip("1.2.3.4", "login", 2, 300.0).unwrap_err();
         assert_eq!(refused.headers().get(header::RETRY_AFTER).unwrap(), "299");
     }
@@ -264,7 +235,6 @@ mod tests {
         assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(refused.headers().get(header::RETRY_AFTER).unwrap(), "10");
 
-        // Refill at 0.1/s: ten seconds buys exactly one call back.
         clock.advance(10.0);
         assert!(limiter.enforce("a@b.com", "agent", true).is_ok());
     }

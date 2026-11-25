@@ -1,5 +1,3 @@
-//! Ingestion jobs, folder/obsidian/interop, and folder-watch routes.
-
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -165,9 +163,6 @@ pub(super) async fn folder(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
-    // `require_user`, not `require_local_user`: the trusted local owner is
-    // the owner identity on a no-auth loopback install, same as every other
-    // product route. A named session still wins when one is present.
     let user = match state.require_user(&headers) {
         Ok(user) => user,
         Err(refusal) => return refusal,
@@ -450,7 +445,6 @@ pub(super) async fn watch_enable(
         &user,
         model.get("workspace_id").and_then(Value::as_str),
     );
-    // The declaration is persisted and its baseline taken; start delivering.
     ensure_poller(&state);
     ok(&enabled)
 }
@@ -479,7 +473,6 @@ pub(super) async fn watch_disable(
     }
 }
 
-/// `POST /upload/document` — parse via the worker, write via GraphWriter.
 pub(super) async fn upload_document(
     State(state): State<Arc<LocalFilesState>>,
     headers: HeaderMap,

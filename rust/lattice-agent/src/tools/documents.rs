@@ -1,13 +1,3 @@
-//! `document_output_target` — where a document creator actually writes.
-//!
-//! A port of `latticeai.tools.documents`' target table, needed by exactly one
-//! caller: the fail-closed overwrite guard. The creators sanitise the caller's
-//! `filename` into their own output directory, so an "does the target already
-//! exist?" check against the raw argument inspects a path nothing ever writes
-//! and the guard silently never fires. That was the bug the Python version
-//! exists to prevent, and a port without it would reintroduce it.
-
-/// Tool name → (output directory, enforced suffix).
 const DOCUMENT_TOOL_TARGETS: [(&str, &str, &str); 4] = [
     ("create_docx", "generated_documents", ".docx"),
     ("create_pdf", "generated_pdfs", ".pdf"),
@@ -15,8 +5,6 @@ const DOCUMENT_TOOL_TARGETS: [(&str, &str, &str); 4] = [
     ("create_xlsx", "generated_spreadsheets", ".xlsx"),
 ];
 
-/// `_safe_filename`: basename, enforced suffix, and every other character
-/// replaced by `_`.
 fn safe_filename(name: &str, suffix: &str) -> String {
     let fallback = format!("artifact{suffix}");
     let source = if name.is_empty() { &fallback } else { name };
@@ -45,8 +33,6 @@ fn safe_filename(name: &str, suffix: &str) -> String {
     }
 }
 
-/// The workspace-relative path `tool_name` will write `filename` to, or `None`
-/// for tools that write wherever the caller points them.
 pub fn document_output_target(tool_name: &str, filename: &str) -> Option<String> {
     DOCUMENT_TOOL_TARGETS
         .iter()

@@ -1,5 +1,3 @@
-"""Regression tests for v14.0.0 Python security & reliability hardening."""
-
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +20,6 @@ def test_configure_trusted_proxies_warns_on_invalid_entries(
         count = security.configure_trusted_proxies("127.0.0.1,not-a-cidr,10.0.0.0/8")
     assert count == 2
     assert any("not-a-cidr" in rec.getMessage() for rec in caplog.records)
-    # Restore empty allowlist so other tests are unaffected.
     security.configure_trusted_proxies("")
 
 

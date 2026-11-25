@@ -1,9 +1,3 @@
-/**
- * Signing out (or switching workspace) must not leave the previous scope's
- * data reachable. `clearScopedClientState` is the one synchronous boundary
- * that drops it all, so this test asserts both halves: the React Query cache
- * is emptied, and the in-memory conversation is reset.
- */
 
 import { describe, expect, it } from "vitest";
 
@@ -28,8 +22,6 @@ describe("clearScopedClientState", () => {
   });
 
   it("ships a client that keeps data briefly and retries once", () => {
-    // These defaults are the app's contract with every screen: a short stale
-    // window, no refetch storm on window focus, and exactly one retry.
     const defaults = queryClient.getDefaultOptions().queries;
     expect(defaults?.staleTime).toBe(15_000);
     expect(defaults?.refetchOnWindowFocus).toBe(false);

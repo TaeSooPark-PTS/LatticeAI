@@ -1,12 +1,3 @@
-//! Replay knowledge-graph + search records from `knowledge_search.json`, and
-//! the three `memory_brain.json` families that share the brain harness:
-//! `memory`, `garden` and `evidence_actions`.
-//!
-//! Four test binaries collapsed into one; three of them were a single
-//! `replay_family` call around the same `common::brain` install.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod common;
 
@@ -188,7 +179,6 @@ async fn search_and_kg_replay_auth_and_validation_branches() {
         for case in cases(&root, family) {
             let name = case["name"].as_str().unwrap();
             let expected = case["status"].as_u64().unwrap() as u16;
-            // KEEP_WORKER / page shells / ingest (worker door) are not ours.
             if matches!(
                 name,
                 "embeddings_status"
@@ -204,7 +194,6 @@ async fn search_and_kg_replay_auth_and_validation_branches() {
             ) {
                 continue;
             }
-            // Auth/validation branches must match status exactly.
             let auth_or_validation = expected == 401
                 || expected == 403
                 || expected == 422
@@ -213,16 +202,10 @@ async fn search_and_kg_replay_auth_and_validation_branches() {
                 || name.ends_with("_validation")
                 || name.ends_with("_auth_denied")
                 || name.ends_with("_admin_denied");
-            // This harness only mints the owner session; admin-denied
-            // records were captured with a member cookie rewritten to
-            // `@session`. Skip rather than 200-as-owner.
             if name.ends_with("_admin_denied") {
                 continue;
             }
             if !auth_or_validation {
-                // Happy-path search/node/curate bodies need the capture
-                // sandbox + GraphWriter. A stub store 404s/503s; pin no 5xx
-                // other than the known "graph write not wired" 503.
                 let (status, body) = issue(&origin, case, &token).await;
                 assert!(
                     status == 200 || status == expected || status == 404 || status == 503,
@@ -239,17 +222,10 @@ async fn search_and_kg_replay_auth_and_validation_branches() {
     assert!(checked > 10, "replayed {checked} cases");
 }
 
-// ── memory_brain.json: the families that share the brain harness ──
-
 #[tokio::test]
 async fn memory_replays_the_python_oracle() {
     let install = common::brain::Install::start().await;
     install.replay_family("memory").await;
-    // Every Self-Model write and the vector rebuild are native since v11.7.0.
-    // Until then they posted to `POST /worker/graph/mutate`, which the Python
-    // worker stopped serving in v11.6.0 — so on a live install the four
-    // Self-Model routes answered 404 while this replay stayed green against a
-    // stand-in that still mounted it. The stand-in is now a tripwire.
     assert_eq!(
         common::brain::seed::GRAPH_MUTATE_CALLS.load(std::sync::atomic::Ordering::SeqCst),
         0,

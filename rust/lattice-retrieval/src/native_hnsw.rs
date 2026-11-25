@@ -1,9 +1,3 @@
-//! Native pure-Rust HNSW / navigable small-world ANN sidecar with incremental
-//! insert & tombstone updates, eliminating the mandatory Python `hnswlib` hop.
-//!
-//! Also inspects `.hnsw.meta.json` on disk when present so sidecar freshness
-//! and model/dimension alignment can be validated without an IPC round-trip.
-
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::path::Path;
@@ -16,7 +10,6 @@ const MAX_NEIGHBORS: usize = 24;
 const EF_CONSTRUCTION: usize = 64;
 const TOMBSTONE_REBUILD_RATIO: f64 = 0.20;
 
-/// Parsed `.hnsw.meta.json` sidecar metadata when present alongside SQLite.
 #[derive(Debug, Clone)]
 pub struct SidecarMeta {
     pub embedding_model: String,
@@ -25,7 +18,6 @@ pub struct SidecarMeta {
     pub deleted_count: usize,
 }
 
-/// Inspect `<db>.hnsw.meta.json` directly from disk without calling Python.
 pub fn read_sidecar_meta(db_path: &Path) -> Option<SidecarMeta> {
     let meta_path = db_path.with_extension("hnsw.meta.json");
     let raw = std::fs::read_to_string(meta_path).ok()?;
@@ -50,8 +42,6 @@ pub fn read_sidecar_meta(db_path: &Path) -> Option<SidecarMeta> {
     })
 }
 
-/// Validate on-disk `.hnsw.meta.json` alignment when present; absent disk meta is valid
-/// because `NativeHnswGraph` synchronizes directly from `vector_embeddings`.
 pub fn check_disk_sidecar_alignment(
     db_path: &Path,
     model_id: &str,
@@ -120,7 +110,6 @@ struct GraphNode {
     deleted: bool,
 }
 
-/// Pure-Rust navigable small-world graph supporting incremental insert & tombstone delete.
 pub struct NativeHnswGraph {
     dim: usize,
     nodes: Vec<GraphNode>,
@@ -369,7 +358,6 @@ fn cache() -> &'static Mutex<HashMap<String, NativeHnswGraph>> {
     NATIVE_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Synchronize (incrementally or via full rebuild) and query the in-process Rust HNSW graph.
 pub fn query_native_hnsw(
     conn: &Connection,
     model_id: &str,
@@ -402,7 +390,6 @@ pub fn query_native_hnsw(
         let ids = graph.query(query_vector, k);
         Ok((ids, active))
     } else {
-        // In-memory SQLite database: build an ephemeral graph for this connection.
         let mut graph = NativeHnswGraph::new(dim);
         sync_graph_with_conn(conn, model_id, dim, &mut graph)?;
         let active = graph.active_len();
@@ -507,7 +494,6 @@ mod tests {
         assert_eq!(hits[0], "a");
         assert!(hits.contains(&"c".to_string()));
 
-        // Incremental delete of 'a'
         let present: HashSet<String> = ["b".to_string(), "c".to_string()].into_iter().collect();
         g.remove_missing(&present);
         let hits2 = g.query(&[1.0, 0.0, 0.0, 0.0], 2);

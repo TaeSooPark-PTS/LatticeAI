@@ -123,14 +123,6 @@ export function normalizeWebUrl(value: string) {
 
 export type JourneyState = "done" | "working" | "waiting";
 
-/**
- * What a person can actually see of their own material.
- *
- * The two counts and the three states below are read tolerantly from whichever
- * shape the server sends: `/api/index/status` reports per-stage pipelines, and
- * older/simpler builds report a flat `{ pending, total }`. Neither is shown as
- * a number the reader cannot check — every count says what it counted.
- */
 export function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
   const statusData = isRecord(pipelineStatus) ? pipelineStatus : {};
   const indexData = isRecord(index) ? index : {};

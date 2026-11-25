@@ -1,21 +1,11 @@
-//! The regex table and the string search every stage shares.
-//!
-//! Split out of [`super`] so the ported patterns sit together: each one is a
-//! transcription of a `re.compile` in `latticeai.core.file_generation`, with
-//! Python's flags spelled out inline.
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
-
-// ── regex table (Python's, with Python's flags) ─────────────────────────────
 
 fn compiled(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pattern).expect("ported pattern must compile"))
 }
 
-/// `re.search`, with a backtracking failure read as "no match" — the
-/// conservative answer for every caller here.
 pub(super) fn matched(re: &Regex, text: &str) -> bool {
     re.is_match(text).unwrap_or(false)
 }
@@ -97,14 +87,6 @@ pub(super) fn block_tag(tag: &str) -> Regex {
     Regex::new(&format!(r"<{tag}(?:\s[^>]*)?>")).expect("ported pattern must compile")
 }
 
-// ── ASCII-insensitive search ────────────────────────────────────────────────
-//
-// Python searches `content.lower()` and indexes the *original* with the offset
-// it found. That is only sound while `str.lower()` preserves length, which it
-// does not for a handful of code points (`İ`). Searching the original
-// case-insensitively is the same answer for every ASCII needle and cannot
-// desynchronise the index, so it is what this port does.
-
 pub(super) fn find_ci(haystack: &str, needle: &str) -> Option<usize> {
     let (hay, pin) = (haystack.as_bytes(), needle.as_bytes());
     if pin.is_empty() || hay.len() < pin.len() {
@@ -132,7 +114,6 @@ pub(super) fn starts_with_ci(haystack: &str, needle: &str) -> bool {
     hay.len() >= pin.len() && hay[..pin.len()].eq_ignore_ascii_case(pin)
 }
 
-/// `_ext(path)` — the last suffix, lowercased, or `""`.
 pub fn ext_of(path: &str) -> String {
     match path.rfind('.') {
         Some(dot) => path[dot..].to_lowercase(),

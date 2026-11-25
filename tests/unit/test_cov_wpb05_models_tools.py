@@ -1,13 +1,3 @@
-"""wpb05 — model loading and the workspace tools: the untaken directions.
-
-The MLX loader, the Ollama pull reader and the model-preparation SSE loop are
-all driven through their module seams (``monkeypatch.setattr`` on the module's
-own names), never against a real GPU, a real ``ollama`` binary or a real
-subprocess — so the arcs behave the same on the ubuntu coverage leg as they do
-on Apple Silicon. The remaining tool test runs entirely inside ``tmp_path``
-with ``AGENT_ROOT`` rebound to it.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -19,16 +9,7 @@ from typing import Any, Dict, List
 
 from latticeai.core.model_resolution import ModelResolution
 from latticeai.models import router as router_mod
-
-# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
-# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
-# the load path reaches through them are read in the submodule that defines
-# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
-# rebound on the package ``__init__`` would leave those reads untouched.
 from latticeai.models.router import loading as router_loading
-
-# ``hf_model_dir`` reads the root from its own module globals, so after the
-# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
 from latticeai.models.router import local_models as router_local_models
 from latticeai.services import model_engines, model_loading
 from latticeai.tools import filesystem as filesystem_mod
@@ -54,9 +35,6 @@ class _TemplateTokenizer:
         return "PROMPT"
 
 
-# ── models/router ────────────────────────────────────────────────────────────
-
-
 def test_touching_the_registry_with_nothing_loaded_records_no_timestamp():
     router = router_mod.LLMRouter()
 
@@ -68,13 +46,6 @@ def test_touching_the_registry_with_nothing_loaded_records_no_timestamp():
 def test_a_draft_model_is_skipped_when_the_text_loader_vanishes_mid_load(
     monkeypatch, tmp_path: Path
 ):
-    """Defensive arm of the assistant loader.
-
-    The Gemma 4 recovery path reaches the draft step through ``mlx_lm``. If the
-    MLX runtime is re-bound while the target is loading, ``lm_load`` is gone by
-    the time the assistant would load — the stack must come back without a
-    draft rather than calling ``None``.
-    """
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
     monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: None)
@@ -84,9 +55,6 @@ def test_a_draft_model_is_skipped_when_the_text_loader_vanishes_mid_load(
 
     def fake_lm_load(model_id: str):
         loaded.append(model_id)
-        # The runtime is torn down behind us, exactly as a concurrent
-        # ``ensure_mlx_runtime`` rebind would leave it — which means the
-        # binding in ``.loading``, the only one the load path reads.
         router_loading.lm_load = None
         return object(), _TemplateTokenizer()
 
@@ -107,12 +75,7 @@ def test_a_draft_model_is_skipped_when_the_text_loader_vanishes_mid_load(
     assert router._cache[cache_key][3] == "mlx_lm"
 
 
-# ── services/model_engines ───────────────────────────────────────────────────
-
-
 class _PullProcess:
-    """``ollama pull`` without ollama: a scripted stdout and an exit code."""
-
     def __init__(self, lines: List[str], *, returncode: int = 0) -> None:
         self.stdout = iter(lines)
         self._returncode = returncode
@@ -120,12 +83,11 @@ class _PullProcess:
     def wait(self) -> int:
         return self._returncode
 
-    def kill(self) -> None:  # only used by the timeout path
+    def kill(self) -> None:
         return None
 
 
 def test_a_percentage_line_is_parsed_even_with_nobody_listening(monkeypatch):
-    """Progress is still tracked without a listener — the emit is what is skipped."""
     monkeypatch.setattr(model_engines, "local_binary", lambda name: "/bin/ollama")
     popen_calls: List[Any] = []
 
@@ -153,12 +115,7 @@ def test_a_percentage_line_is_parsed_even_with_nobody_listening(monkeypatch):
     assert popen_calls == [["/bin/ollama", "pull", "qwen3:8b"]]
 
 
-# ── services/model_loading ───────────────────────────────────────────────────
-
-
 class _NoisyQueue(stdlib_queue.Queue):
-    """Delivers one frame the SSE loop does not understand, then behaves."""
-
     def __init__(self) -> None:
         super().__init__()
         self._noise_pending = True
@@ -200,7 +157,6 @@ def _stream_deps(**overrides: Any) -> Dict[str, Any]:
 def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(
     monkeypatch,
 ):
-    """The SSE loop keeps draining until it sees the frame it is waiting for."""
 
     async def _load_model(model_id, adapter_path, **kwargs):
         return f"loaded {model_id}"
@@ -231,9 +187,6 @@ def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(
 
     assert any("event: done" in frame for frame in frames)
     assert not any("wpb05-unknown" in frame for frame in frames)
-
-
-# ── tools/filesystem ─────────────────────────────────────────────────────────
 
 
 def test_search_reads_a_whole_file_before_moving_on_when_nothing_matches(

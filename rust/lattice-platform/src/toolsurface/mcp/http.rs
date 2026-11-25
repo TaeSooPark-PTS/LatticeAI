@@ -1,5 +1,3 @@
-//! Shared HTTP / time helpers used by sibling R8 modules.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::{HeaderMap, StatusCode};
@@ -7,8 +5,6 @@ use axum::response::Response;
 use lattice_auth::{AuthState, Identity, OrderedMap};
 use lattice_core::messages;
 use serde_json::{json, Value};
-
-// ── shared HTTP / time / store (used by sibling R8 modules) ────────────────
 
 pub(crate) fn now_iso_seconds() -> String {
     let secs = SystemTime::now()
@@ -39,7 +35,6 @@ pub(crate) fn now_iso_full() -> String {
     )
 }
 
-/// Civil time from a unix timestamp, local-offset-free (UTC numbers).
 fn chrono_naive(secs: u64) -> (i32, u32, u32, u32, u32, u32) {
     let z = secs as i64;
     let days = z.div_euclid(86_400);
@@ -52,7 +47,6 @@ fn chrono_naive(secs: u64) -> (i32, u32, u32, u32, u32, u32) {
 }
 
 fn civil_from_days(z: i64) -> (i32, u32, u32) {
-    // Howard Hinnant civil_from_days
     let z = z + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = (z - era * 146_097) as u64;
@@ -121,7 +115,6 @@ pub(crate) fn missing_fields(input: &Value, fields: &[&str]) -> Response {
                 .collect(),
         ));
     }
-    // Preserve insertion order of each entry: serialize via OrderedMap list.
     let rendered: Vec<String> = fields
         .iter()
         .map(|field| {

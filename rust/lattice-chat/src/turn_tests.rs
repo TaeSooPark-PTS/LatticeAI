@@ -41,7 +41,6 @@ fn the_item_keeps_pythons_key_order_and_drops_empty_attribution() {
 #[test]
 fn the_message_hash_is_pythons_six_field_digest() {
     let item = build_item("user", "hi", "2026-08-14T12:00:00", &meta());
-    // sha256("user|hi|2026-08-14T12:00:00|owner@example.com|c1|web")
     let expected: String = {
         let basis = "user|hi|2026-08-14T12:00:00|owner@example.com|c1|web";
         Sha256::digest(basis.as_bytes())
@@ -50,7 +49,6 @@ fn the_message_hash_is_pythons_six_field_digest() {
             .collect()
     };
     assert_eq!(message_hash(&item), expected);
-    // A missing key hashes as an empty field, not as "null".
     let bare = json!({"role": "user", "content": "hi", "timestamp": "t"});
     assert_eq!(
         message_hash(&bare),
@@ -59,7 +57,6 @@ fn the_message_hash_is_pythons_six_field_digest() {
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>()
     );
-    // A non-string field stringifies rather than vanishing.
     assert_ne!(
         message_hash(&json!({"role": 1, "content": "hi", "timestamp": "t"})),
         message_hash(&bare)
@@ -112,8 +109,6 @@ fn a_turn_stores_and_reads_back_through_the_same_columns() {
     let conn = Connection::open(dir.path().join("g.sqlite")).unwrap();
     let item = build_item("user", "hi", "2026-08-14T12:00:00", &meta());
     store_item(&conn, &item).unwrap();
-    // Idempotent: the same turn twice is one row (`INSERT OR IGNORE` on the
-    // message hash), which is what makes a retry safe.
     store_item(&conn, &item).unwrap();
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM conversation_messages", [], |row| {
@@ -236,7 +231,6 @@ fn the_timestamps_are_iso_and_the_utc_one_says_so() {
     let utc = utc_now_iso();
     assert!(utc.ends_with("+00:00"), "{utc}");
     assert_eq!(civil_iso(0), "1970-01-01T00:00:00");
-    // `datetime.fromtimestamp(1_786_000_000, timezone.utc).isoformat()`.
     assert_eq!(civil_iso(1_786_000_000), "2026-08-06T07:06:40");
     assert_eq!(civil_iso(-86_400), "1969-12-31T00:00:00");
 }

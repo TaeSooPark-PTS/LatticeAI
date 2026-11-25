@@ -1,17 +1,3 @@
-//! `LoopTrace` — the machine-readable side channel of one run.
-//!
-//! A 1:1 port of `latticeai.core.agent_trace.LoopTrace`. The transcript mixes
-//! model output, tool results and control decisions into one list; this is the
-//! typed stream you can actually count, and `summary` is what the API response
-//! and the weak-model harness read.
-//!
-//! One deliberate difference, recorded because it is observable: the `at` stamp
-//! is **UTC** with an explicit `+00:00` offset, where Python stamps the
-//! configured local zone. It is telemetry — no gate, verdict or transcript
-//! comparison reads it, and the parity goldens strip it — so the port takes the
-//! stamp it can produce without a timezone dependency rather than an
-//! approximation of a local one.
-
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -21,17 +7,14 @@ use crate::parse::pystr::char_slice;
 
 const MAX_EVENTS: usize = 500;
 
-/// Typed event stream + summary counters for one agent run.
 #[derive(Debug, Clone, Default)]
 pub struct LoopTrace {
     pub events: Vec<Value>,
     pub truncated: u64,
-    /// Fixed stamp for tests and fixtures; `None` reads the wall clock.
     pinned: Option<String>,
 }
 
 impl LoopTrace {
-    /// A trace whose every event carries `stamp`, for deterministic output.
     pub fn pinned(stamp: impl Into<String>) -> Self {
         Self {
             pinned: Some(stamp.into()),
@@ -43,8 +26,6 @@ impl LoopTrace {
         self.pinned.clone().unwrap_or_else(utc_iso_now)
     }
 
-    /// `record`: append one event unless the cap is reached, in which case the
-    /// *count* of what was dropped is kept instead of the event.
     pub fn record(&mut self, phase: &str, kind: &str, details: &[(&str, Value)]) {
         if self.events.len() >= MAX_EVENTS {
             self.truncated += 1;
@@ -55,8 +36,6 @@ impl LoopTrace {
         event.insert("kind".into(), json!(kind));
         event.insert("at".into(), json!(self.now()));
         for (key, value) in details {
-            // Python drops `None` details rather than recording a null.
-            // P0.4: redact inline secrets and PII from recorded trace details.
             if !value.is_null() {
                 let safe = lattice_core::redact_pii_and_secrets_value(value);
                 event.insert((*key).into(), safe);
@@ -65,7 +44,6 @@ impl LoopTrace {
         self.events.push(Value::Object(event));
     }
 
-    /// Export a reproducible, PII/secret-redacted trace bundle (P3.2).
     pub fn export_redacted_bundle(&self, run_id: &str, workspace_id: &str) -> Value {
         json!({
             "schema_version": "lattice.agent.trace.v1",
@@ -130,7 +108,6 @@ impl LoopTrace {
         self.record(phase, "retry", &[("attempt", json!(attempt))]);
     }
 
-    /// The counters the API response and the eval harness consume.
     pub fn summary(&self) -> Value {
         let mut counts: BTreeMap<String, u64> = BTreeMap::new();
         let mut tool_outcomes: BTreeMap<String, u64> = BTreeMap::new();
@@ -180,7 +157,6 @@ impl LoopTrace {
     }
 }
 
-/// `datetime.now(UTC).isoformat()` without a calendar dependency.
 fn utc_iso_now() -> String {
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -189,7 +165,6 @@ fn utc_iso_now() -> String {
     format!("{stamp}.{:06}+00:00", since_epoch.subsec_micros())
 }
 
-/// Now, in UTC seconds since the epoch.
 pub fn epoch_now() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -197,8 +172,6 @@ pub fn epoch_now() -> f64 {
         .as_secs_f64()
 }
 
-/// `isoformat(timespec="seconds")` for a UTC epoch second, **without** the
-/// offset — callers append the one they mean.
 pub fn utc_iso_seconds(epoch_secs: i64) -> String {
     let (year, month, day) = civil_from_days(epoch_secs.div_euclid(86_400));
     let time_of_day = epoch_secs.rem_euclid(86_400);
@@ -210,7 +183,6 @@ pub fn utc_iso_seconds(epoch_secs: i64) -> String {
     )
 }
 
-/// Howard Hinnant's `civil_from_days`: days since 1970-01-01 → `(y, m, d)`.
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let shifted = days + 719_468;
     let era = shifted.div_euclid(146_097);

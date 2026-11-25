@@ -1,19 +1,3 @@
-//! Vector-index writes — port of `lattice_brain/graph/retrieval_vector/`.
-//!
-//! Two entry points and one fingerprint:
-//!
-//! * [`GraphWriter::write_vectors`] is `index_node_incremental` — embed one
-//!   node and its chunks after an ingest, and **never raise**: the graph write
-//!   already landed, so a failure here downgrades the result to backlog that a
-//!   later rebuild picks up;
-//! * [`GraphWriter::rebuild_vector_index`] is the full/incremental rebuild,
-//!   bracketed by a `vector_index_operations` row so the work is visible while
-//!   it runs and afterwards;
-//! * the embedder fingerprint in `graph_meta` records *which* embedder built
-//!   the index. `vector_search` filters on the current model and dimension, so
-//!   swapping the embedder silently yields zero vector rows; the fingerprint is
-//!   what turns that into the honest `stale_embedder` signal instead.
-
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -25,7 +9,6 @@ use super::pyaux::{json_of, py_float_repr, sha256_text};
 use super::types::{RebuildRequest, VectorItem};
 use super::GraphWriter;
 
-/// What `rebuild_vector_index` returns.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RebuildOutcome {
     pub status: String,
@@ -40,7 +23,6 @@ pub struct RebuildOutcome {
 }
 
 impl RebuildOutcome {
-    /// The body Python returns, key for key.
     pub fn to_json(&self) -> Value {
         json!({
             "status": self.status,
@@ -56,7 +38,6 @@ impl RebuildOutcome {
     }
 }
 
-/// What `index_node_incremental` returns.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IncrementalOutcome {
     pub node_id: String,
@@ -73,8 +54,6 @@ pub struct IncrementalOutcome {
 }
 
 impl IncrementalOutcome {
-    /// The body Python returns; `detail` / `duration_ms` / `embedding_model`
-    /// appear only on the branches that set them.
     pub fn to_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("node_id".into(), json!(self.node_id));
@@ -94,7 +73,6 @@ impl IncrementalOutcome {
         Value::Object(map)
     }
 
-    /// Extended status JSON including contract, semantic mode, and reindex signal.
     pub fn to_status_json(&self) -> Value {
         let mut value = self.to_json();
         if let Some(map) = value.as_object_mut() {
@@ -127,20 +105,10 @@ struct PreparedVectorItem {
 }
 
 impl GraphWriter {
-    /// `index_node_incremental` — embed one node and its chunks.
-    ///
-    /// Never returns `Err`: an embedding or storage failure is reported as
-    /// `status: "failed"` so an ingest caller degrades instead of losing a
-    /// write that already landed.
     pub fn write_vectors(&self, node_id: &str) -> IncrementalOutcome {
         self.write_vectors_with(node_id, &[])
     }
 
-    /// [`Self::write_vectors`], filing caller-supplied vectors for matching
-    /// `item_id`s instead of re-deriving them with the native hash model.
-    ///
-    /// Items the caller did not name still hash. An empty slice is the default
-    /// door, so the parity goldens stay byte-identical.
     pub fn write_vectors_with(
         &self,
         node_id: &str,
@@ -250,12 +218,6 @@ impl GraphWriter {
         node_id: &str,
         supplied: &[(String, super::types::SuppliedVector)],
     ) -> Result<Option<WriteVectorsResult>, CoreError> {
-        // Collect + embed *outside* the write txn. Hashing a 50 KB passage
-        // inside BEGIN IMMEDIATE held the only SQLite writer for the whole
-        // embed; `write_vectors_with` already accepted precomputed vectors,
-        // so the default door now prepares them the same way. Goldens stay
-        // identical: FrozenClock pins duration_ms at 0 and the filed bytes
-        // are encode(embed(text)) either way.
         let supplied_contract = self.resolve_supplied_contract(supplied)?;
         let items = self
             .store
@@ -321,7 +283,6 @@ impl GraphWriter {
                     reindex_required = Self::has_conflicting_vectors(txn, contract)?;
                 }
             } else if indexed > 0 && self.embedder_fingerprint(txn)?.is_none() {
-                // Default parity path: preserve exact `graph_meta` keys.
                 self.write_embedder_fingerprint(txn)?;
             }
             Ok(Some(WriteVectorsResult {
@@ -445,13 +406,6 @@ impl GraphWriter {
             .collect()
     }
 
-    /// `rebuild_vector_index` — rebuild the derived index without touching
-    /// graph content.
-    ///
-    /// Embed happens *outside* the write txn, the same way
-    /// [`Self::write_vectors_with`] already does. Holding BEGIN IMMEDIATE
-    /// while hashing every changed passage was the remaining writer stall
-    /// on a full rebuild.
     pub fn rebuild_vector_index(
         &self,
         request: &RebuildRequest,
@@ -560,8 +514,6 @@ impl GraphWriter {
                     op_id,
                 ],
             )?;
-            // A successful rebuild (re)establishes which embedder built the
-            // index — the only path that may flip a recorded fingerprint.
             self.write_embedder_fingerprint(txn)?;
             Ok(RebuildOutcome {
                 status: "completed".into(),
@@ -578,9 +530,6 @@ impl GraphWriter {
         match outcome {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
-                // Python records the failure on its own connection and re-raises;
-                // the row is the point — a rebuild that died must not look like
-                // one that never ran.
                 let duration_ms = self.elapsed_ms(started);
                 let mut metadata = Map::new();
                 metadata.insert("duration_ms".into(), json!(duration_ms));
@@ -612,9 +561,6 @@ impl GraphWriter {
         }
     }
 
-    /// `_vector_text_hashes` — `item_id → text_hash` for rows *this* embedder
-    /// wrote. Rows from another embedder are left out, so they compare as
-    /// missing and get re-embedded, which is what an embedder swap requires.
     fn vector_text_hashes(
         &self,
         conn: &rusqlite::Connection,
@@ -630,7 +576,6 @@ impl GraphWriter {
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
 
-    /// `_iter_vector_source_items` — the graph's embeddable text.
     fn iter_vector_source_items(
         &self,
         conn: &rusqlite::Connection,
@@ -708,7 +653,6 @@ impl GraphWriter {
         Ok(items)
     }
 
-    /// `round((perf_counter() - started) * 1000, 2)`.
     fn elapsed_ms(&self, started: f64) -> f64 {
         round_to((self.clock.perf_counter() - started) * 1000.0, 2)
     }

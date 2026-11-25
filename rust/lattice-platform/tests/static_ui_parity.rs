@@ -1,47 +1,3 @@
-//! The static / UI surface, against the recorded Python contract (WP-I4/I6):
-//! capture-replay for the static family, the legacy page redirects, and
-//! `/local/sysinfo`.
-//!
-//! ## Capture-replay parity for the static/UI family
-//!
-//! Every case in `rust/fixtures/http/static_ui.json` was recorded against the
-//! live Python router; every case is replayed here against the Rust one, over
-//! real HTTP, with the same static tree and the same invite posture. A
-//! difference in status, in any pinned header, or in one byte of the body fails.
-//!
-//! The replay is split by install rather than by route, because the install *is*
-//! the branch: "the build output is missing" and "the gate is armed" are not
-//! variations on a request, they are different machines.
-//!
-//! ## The legacy page redirects
-//!
-//! Three things are proven, and the third is the one that rots silently:
-//!
-//! 1. every route in [`lattice_platform::shell::ui_redirects::REDIRECTS`] answers 308
-//!    to the SPA hash route, over real HTTP, with the query where Python puts it;
-//! 2. the table *is* the Python map — same paths, same fragments, same
-//!    `require_user` flags — asserted against `redirects.routes` in the fixture;
-//! 3. a path that only one of the two routers claims cannot be added twice: the
-//!    static router and this one are merged in the same host, and axum panics on
-//!    a duplicate, so the merge itself is a test.
-//!
-//! ## `/local/sysinfo` — the half this machine can answer, and the half it asks for
-//!
-//! The Python route reads CPU and RAM out of `top` and `vm_stat` and the GPU out
-//! of MLX. Only the last of those is Python-shaped, so the port keeps the
-//! parsing (proven here against recorded `top` / `vm_stat` output, so it runs on
-//! a Linux CI box that has neither) and delegates the GPU to the worker seam
-//! (`GET /worker/sysinfo`, WP-I6), proven here against a fake worker.
-//!
-//! The readiness bucket is the reason any of this is a contract rather than a
-//! number: basic-mode System copy says "roomy" / "tight" / "low" and must not
-//! re-derive that from percentages on the client.
-//!
-//! Three test binaries collapsed into one; all three recompiled the same
-//! harness to stand up the same install.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod static_ui_harness;
 
@@ -59,8 +15,6 @@ use lattice_platform::shell::ui_redirects::{
 };
 use serde_json::Value;
 use static_ui_harness::{cases_for, fixture, sha256, Install};
-
-// ── the static family, install by install ──
 
 #[tokio::test]
 async fn the_default_install_answers_as_python_answered() {
@@ -92,8 +46,6 @@ async fn a_reachable_invitation_only_install_marks_its_cookie_secure() {
     install.replay_all("gate_on_secure").await;
 }
 
-/// The wall is a literal in two languages' source files; only a digest can say
-/// they are the same wall.
 #[test]
 fn the_invitation_wall_is_byte_identical() {
     let recorded = cases_for("gate_on")
@@ -111,7 +63,6 @@ fn the_invitation_wall_is_byte_identical() {
     );
 }
 
-/// The CSP is one long string that nobody reads and every browser enforces.
 #[test]
 fn the_production_csp_is_the_recorded_one() {
     let recorded = cases_for("gate_off")
@@ -126,10 +77,6 @@ fn the_production_csp_is_the_recorded_one() {
     );
 }
 
-/// A cookie Python signed, verified by Rust — the point of the exercise. If the
-/// two HMACs ever disagree, every browser holding a live invitation is locked
-/// out at the moment of the cutover, which is not something to discover in
-/// production.
 #[test]
 fn python_signed_cookies_verify_here_and_vice_versa() {
     let invite = &fixture()["invite"];
@@ -147,7 +94,6 @@ fn python_signed_cookies_verify_here_and_vice_versa() {
     );
 }
 
-/// Every accept/reject the Python verifier makes, made again here.
 #[test]
 fn the_invite_verifier_agrees_branch_for_branch() {
     let invite = &fixture()["invite"];
@@ -172,11 +118,6 @@ fn the_invite_verifier_agrees_branch_for_branch() {
     );
 }
 
-/// The content-type table, against what Starlette actually served.
-///
-/// Two extensions are machine-dependent in Python — CPython's `mimetypes` also
-/// reads the system's `mime.types` — so they are asserted against the choice the
-/// port documents rather than against the recording.
 #[test]
 fn the_content_type_table_matches_the_recording() {
     let mut machine_dependent = 0;
@@ -202,8 +143,6 @@ fn the_content_type_table_matches_the_recording() {
     );
 }
 
-/// The tree the goldens were recorded against is the tree they are replayed
-/// against — a fixture that carries its own inputs cannot drift from them.
 #[test]
 fn the_recorded_tree_carries_its_own_digests() {
     use base64::engine::general_purpose::STANDARD as BASE64;
@@ -231,8 +170,6 @@ fn the_recorded_tree_carries_its_own_digests() {
     }
 }
 
-/// Nothing in the recording is left unreplayed: a case added to the fixture and
-/// not to a suite would otherwise pass by being ignored.
 #[test]
 fn every_recorded_case_belongs_to_a_replayed_install() {
     let replayed = [
@@ -263,10 +200,6 @@ fn every_recorded_case_belongs_to_a_replayed_install() {
     );
 }
 
-// ── the legacy page redirects ──
-
-/// The fixture's table, minus `/account` — that one is invite-gated and is
-/// served by `static_ui`, which is where its cases live.
 fn recorded_routes() -> Vec<(&'static str, &'static str, bool)> {
     fixture()["redirects"]["routes"]
         .as_array()
@@ -372,16 +305,11 @@ async fn these_are_get_routes_and_say_so() {
             response.headers()["content-type"].to_str().expect("ascii"),
             "application/json"
         );
-        // `POST /chat` is the SSE stream in the product. This 405 is only what
-        // *this* router says about a path it serves the page redirect for; the
-        // chat crate mounts the POST and the two merge without colliding.
     }
 }
 
 #[test]
 fn the_halves_add_up_to_the_whole() {
-    // Building all three is the collision check; counting them is the coverage
-    // check — a route in neither half would be served by `router` alone.
     let _ = router();
     let _ = public_router();
     let _ = authenticated_router();
@@ -418,9 +346,6 @@ fn the_helper_drops_an_empty_query_and_keeps_a_real_one() {
     );
 }
 
-// ── /local/sysinfo ──
-
-/// A GPU that answers whatever the test wants, without a worker in the way.
 struct StubGpu(Option<GpuReading>);
 
 impl GpuSource for StubGpu {
@@ -452,8 +377,6 @@ fn the_recorded_probes_parse_to_the_recorded_numbers() {
             expected["ram_pct"].as_f64().expect("ram"),
             "{name}: ram"
         );
-        // The recording was made with MLX hidden, so its GPU is zero — which is
-        // exactly the state this port is in before the seam answers.
         assert_eq!(
             host_capacity_readiness(cpu, ram, 0.0),
             expected["readiness"].as_str().expect("readiness"),
@@ -511,8 +434,6 @@ fn the_thresholds_are_the_recorded_ones() {
     }
 }
 
-/// A CPU line the parser must not half-read: Python's regex takes the number
-/// before `% user` and then the *next* one before `% sys`.
 #[test]
 fn the_cpu_parser_reads_the_pair_or_nothing() {
     assert_eq!(
@@ -521,8 +442,6 @@ fn the_cpu_parser_reads_the_pair_or_nothing() {
     );
     assert_eq!(parse_cpu_percent("CPU usage: nothing numeric here"), None);
     assert_eq!(parse_cpu_percent("no such line"), None);
-    // Two samples in one capture: the last one wins, as the Python loop's
-    // assignment does.
     assert_eq!(
         parse_cpu_percent("CPU usage: 1.00% user, 1.00% sys\nCPU usage: 2.00% user, 3.00% sys"),
         Some(5.0)
@@ -591,8 +510,6 @@ async fn the_route_answers_the_recorded_shape() {
     let ram = object["ram_pct"].as_f64().expect("ram");
     let gpu = object["gpu_mem_pct"].as_f64().expect("gpu");
     if object.contains_key("error") {
-        // A box without `top` / `vm_stat` — a Linux CI runner. Python reports
-        // zeros beside the message and never reaches the GPU, and so does this.
         assert_eq!((cpu, ram, gpu), (0.0, 0.0, 0.0));
         assert_eq!(object["gpu_mem_gb"].as_f64(), Some(0.0));
         assert_eq!(object["readiness"], "roomy");
@@ -617,8 +534,6 @@ async fn a_machine_with_no_gpu_to_ask_reports_zero_rather_than_failing() {
     assert_eq!(payload["gpu_mem_pct"].as_f64(), Some(0.0));
 }
 
-/// The seam itself: one GET to `/worker/sysinfo`, and a refusal to invent
-/// numbers when the worker cannot supply them.
 #[tokio::test]
 async fn the_gpu_comes_from_the_worker_seam() {
     let calls = Arc::new(AtomicUsize::new(0));
@@ -657,7 +572,6 @@ async fn the_gpu_comes_from_the_worker_seam() {
     );
     assert_eq!(calls.load(Ordering::SeqCst), 1, "one call, one reading");
 
-    // A worker that does not answer the seam is "cannot say", not "idle GPU".
     let silent = WorkerGpuSource::new(format!("{origin}/nowhere")).expect("seam client");
     assert_eq!(silent.read().await, None);
 }

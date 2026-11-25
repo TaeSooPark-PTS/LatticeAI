@@ -1,27 +1,8 @@
-//! The folder-ingest filter chain, in the order Python applies it.
-//!
-//! `lattice_brain/ingestion/folders.py:155-212` fixes that order, and
-//! `latticeai/services/folder_watch.py:425-458` reuses it so watch mode can
-//! never admit something a manual folder ingest would have refused:
-//!
-//! 1. hard skip-list directories (`.git`, `node_modules`, `target`, …);
-//! 2. hidden entries (any name starting with `.`) — the watch snapshot has no
-//!    `include_hidden` escape hatch, so this one is unconditional there;
-//! 3. root `.latticeignore` globs (a trailing `/` restricts to directories);
-//! 4. the extension allow-list;
-//! 5. the per-file size cap.
-//!
-//! `.latticeignore` matching is `fnmatch`, not gitignore: `*` matches `/` too,
-//! and each pattern is tried against both the root-relative posix path and the
-//! bare basename. That is a real difference from a `.gitignore` a user might
-//! expect, and it is the Python behaviour, so it is the behaviour here.
-
 use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::pystr::decode_utf8_ignore;
 
-/// `FOLDER_DEFAULT_SKIP_DIRS` — pruned regardless of `.latticeignore`.
 pub const DEFAULT_SKIP_DIRS: [&str; 16] = [
     ".git",
     "node_modules",
@@ -41,7 +22,6 @@ pub const DEFAULT_SKIP_DIRS: [&str; 16] = [
     ".vscode",
 ];
 
-/// `FOLDER_TEXT_EXTENSIONS`.
 pub const TEXT_EXTENSIONS: [&str; 10] = [
     ".txt",
     ".md",
@@ -54,26 +34,14 @@ pub const TEXT_EXTENSIONS: [&str; 10] = [
     ".toml",
     ".ini",
 ];
-/// `FOLDER_CODE_EXTENSIONS`.
 pub const CODE_EXTENSIONS: [&str; 21] = [
     ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".htm", ".css", ".go", ".rs", ".java", ".c",
     ".h", ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt", ".sh", ".sql",
 ];
-/// `FOLDER_DOCUMENT_EXTENSIONS` — extracted by the worker, never read inline.
-///
-/// v12.0.0 added the three Office formats. `/worker/parse` has read `.docx`,
-/// `.xlsx` and `.pptx` since long before this, and the upload door has always
-/// accepted them — but folder ingest walked straight past them, so the one
-/// path a user actually points at a directory of work could not see their
-/// documents. Reading them inline is not an option (they are ZIP containers),
-/// which is exactly what this list means: the worker extracts, we do not count.
 pub const DOCUMENT_EXTENSIONS: [&str; 4] = [".pdf", ".docx", ".xlsx", ".pptx"];
-/// `DEFAULT_MAX_FILE_BYTES`.
 pub const DEFAULT_MAX_FILE_BYTES: u64 = 4_000_000;
-/// `LATTICEIGNORE_FILENAME`.
 pub const LATTICEIGNORE_FILENAME: &str = ".latticeignore";
 
-/// `DEFAULT_FOLDER_EXTENSIONS` — text ∪ code ∪ document.
 pub fn default_folder_extensions() -> BTreeSet<String> {
     TEXT_EXTENSIONS
         .iter()
@@ -83,7 +51,6 @@ pub fn default_folder_extensions() -> BTreeSet<String> {
         .collect()
 }
 
-/// `FOLDER_DEFAULT_SKIP_DIRS` as an owned set.
 pub fn default_skip_dirs() -> BTreeSet<String> {
     DEFAULT_SKIP_DIRS
         .iter()
@@ -91,15 +58,10 @@ pub fn default_skip_dirs() -> BTreeSet<String> {
         .collect()
 }
 
-/// True when a document extension routes through the worker's PDF door.
 pub fn is_document_extension(extension: &str) -> bool {
     DOCUMENT_EXTENSIONS.contains(&extension)
 }
 
-/// `_load_latticeignore(root)` — glob patterns from `root/.latticeignore`.
-///
-/// Blank lines and `#` comments are dropped; a missing or unreadable file is
-/// simply "no patterns", never an error.
 pub fn load_latticeignore(root: &Path) -> Vec<String> {
     let Ok(bytes) = std::fs::read(root.join(LATTICEIGNORE_FILENAME)) else {
         return Vec::new();
@@ -112,7 +74,6 @@ pub fn load_latticeignore(root: &Path) -> Vec<String> {
         .collect()
 }
 
-/// `_matches_ignore(rel_posix, name, is_dir=…, patterns=…)`.
 pub fn matches_ignore(rel_posix: &str, name: &str, is_dir: bool, patterns: &[String]) -> bool {
     for raw in patterns {
         let mut pattern = raw.as_str();
@@ -133,13 +94,6 @@ pub fn matches_ignore(rel_posix: &str, name: &str, is_dir: bool, patterns: &[Str
     false
 }
 
-/// `fnmatch.fnmatch(name, pattern)` on a case-sensitive filesystem.
-///
-/// The supported syntax is what `fnmatch.translate` produces: `*` (any run,
-/// **including** `/`), `?` (any one character), `[seq]` / `[!seq]` character
-/// classes with `a-z` ranges, and an unmatched `[` as a literal. Everything
-/// else is a literal. `normcase` is the identity on posix, which is what the
-/// product runs on; a Windows host would additionally fold case.
 pub fn fnmatch(name: &str, pattern: &str) -> bool {
     let name: Vec<char> = name.chars().collect();
     let pattern: Vec<char> = pattern.chars().collect();
@@ -176,7 +130,6 @@ pub fn fnmatch(name: &str, pattern: &str) -> bool {
     pattern[p..].iter().all(|c| *c == '*')
 }
 
-/// Match one non-`*` pattern element → (next pattern index, did it match).
 fn match_element(pattern: &[char], at: usize, candidate: char) -> (usize, bool) {
     match pattern[at] {
         '?' => (at + 1, true),
@@ -185,14 +138,12 @@ fn match_element(pattern: &[char], at: usize, candidate: char) -> (usize, bool) 
                 let (negated, items) = class_items(&pattern[at + 1..close]);
                 (close + 1, class_contains(items, candidate) != negated)
             }
-            // `fnmatch.translate` emits an unmatched `[` as a literal.
             None => (at + 1, candidate == '['),
         },
         literal => (at + 1, literal == candidate),
     }
 }
 
-/// Index of the `]` closing the class opened at `at`, following `translate`.
 fn class_span(pattern: &[char], at: usize) -> Option<usize> {
     let mut index = at + 1;
     if pattern.get(index) == Some(&'!') {
@@ -217,7 +168,6 @@ fn class_items(body: &[char]) -> (bool, &[char]) {
 fn class_contains(items: &[char], candidate: char) -> bool {
     let mut index = 0usize;
     while index < items.len() {
-        // `a-z` is a range; a `-` first or last is a literal.
         if index + 2 < items.len() && items[index + 1] == '-' {
             if items[index] <= candidate && candidate <= items[index + 2] {
                 return true;
@@ -279,7 +229,6 @@ mod tests {
         assert!(fnmatch("ax.log", "a[!0-9].log"));
         assert!(fnmatch("a-.log", "a[-x].log"));
         assert!(fnmatch("a].log", "a[]].log"));
-        // An unmatched `[` is a literal.
         assert!(fnmatch("a[b", "a[b"));
         assert!(fnmatch("한글.md", "한*.md"));
     }
@@ -291,14 +240,12 @@ mod tests {
         assert!(!matches_ignore("build", "build", false, &patterns));
         assert!(matches_ignore("logs/app.log", "app.log", false, &patterns));
         assert!(!matches_ignore("logs/app.txt", "app.txt", false, &patterns));
-        // Patterns match the basename too, not only the relative path.
         assert!(matches_ignore(
             "deep/nested/app.log",
             "app.log",
             false,
             &patterns
         ));
-        // A pattern that is only slashes is dropped rather than matching all.
         assert!(!matches_ignore("x", "x", true, &["/".to_string()]));
         assert!(!matches_ignore("x", "x", true, &[]));
     }

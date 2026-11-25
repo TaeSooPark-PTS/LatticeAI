@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Authentic Real-Model vs. Fixture RAG Evaluation Runner (P0.1 / v13.9.0).
-
-Strictly separates deterministic fixture runs from real local (omlx/Ollama/llama.cpp)
-and cloud LLM inference, records full provenance metadata, enforces a claim-level
-grounding & citation verification gate that penalizes unsupported/hallucinated claims
-and fabricated citations, and explicitly marks unconfigured targets as `skipped` or
-`unavailable`.
-"""
 
 from __future__ import annotations
 
@@ -111,11 +103,6 @@ def score_grounded_answer(
     *,
     expect_abstain: bool = False,
 ) -> dict[str, Any]:
-    """Verify generated claims and citations against retrieved passages.
-
-    Penalizes unsupported/hallucinated claims and fabricated citations so a
-    hallucinated response can never score 100% on `claim_support_rate`.
-    """
     valid_doc_ids = {str(p["doc_id"]) for p in passages}
     evidence_text = "\n".join(
         f"{p.get('title', '')} {p.get('text', '')} {p.get('doc_id', '')}"

@@ -6,11 +6,6 @@ import { t, type Language } from "@/i18n";
 import { FilePreviewModal, isPreviewableFile } from "./FilePreviewModal";
 import type { MessageFile } from "./types";
 
-// Renders assistant text with fenced code blocks as readable code cards.
-// Every code block gets copy + save-as-real-file actions so "show me code"
-// answers can always become an actual file on disk with one click.
-// Plain segments render lightweight Markdown (headings, bold, lists, links)
-// so answers stop showing raw ** and * markers to the user.
 export function MessageBody({ language, content }: { language: Language; content: string }) {
   const segments = React.useMemo(() => splitCodeSegments(content), [content]);
   return (
@@ -87,9 +82,6 @@ function parseMarkdownBlocks(text: string): MarkdownBlock[] {
   return blocks;
 }
 
-// Inline markdown: **bold**, `code`, and [label](https://...) links only.
-// Italic is intentionally skipped — single asterisks are too ambiguous in
-// model output to risk mangling ordinary text.
 function renderInlineMarkdown(text: string): React.ReactNode[] {
   const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g;
   const nodes: React.ReactNode[] = [];
@@ -103,20 +95,12 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
     } else if (token.startsWith("`")) {
       nodes.push(<code key={key++}>{token.slice(1, -1)}</code>);
     } else {
-      const link = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(token);
-      /* v8 ignore else -- unreachable: `token` only reaches this branch by
-         having already matched the link alternative of `pattern` above,
-         whose character classes are identical to this anchored re-check
-         (verified by fuzzing), so it always matches too. */
-      if (link) {
-        nodes.push(
-          <a key={key++} href={link[2]} target="_blank" rel="noreferrer noopener">
-            {link[1]}
-          </a>,
-        );
-      } else {
-        nodes.push(token);
-      }
+      const link = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(token)!;
+      nodes.push(
+        <a key={key++} href={link[2]} target="_blank" rel="noreferrer noopener">
+          {link[1]}
+        </a>,
+      );
     }
     cursor = match.index + token.length;
   }
@@ -216,10 +200,6 @@ function CodeBlock({ language, code, lang }: { language: Language; code: string;
   }
 
   async function saveAsFile() {
-    /* v8 ignore next -- unreachable: the only trigger is this block's own
-       save button, which is itself disabled while saveState is "saving" in
-       the same render. Kept as defense-in-depth. */
-    if (saveState === "saving") return;
     setSaveState("saving");
     setSaveError("");
     const name = suggestedFileName(lang);
@@ -263,18 +243,11 @@ function CodeBlock({ language, code, lang }: { language: Language; code: string;
 }
 
 function formatFileSize(bytes: number): string {
-  /* v8 ignore next -- unreachable: the sole call site already guards with
-     `file.bytes ? formatFileSize(file.bytes) : null`, so this only ever runs
-     with a truthy value. Kept as defense-in-depth for future callers. */
-  if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// "Brain remembered" chip: only rendered when the payload actually reported
-// an ingest verdict for this file (ok/pending/failed). Absent → unknown →
-// nothing, so the memory promise is never oversold.
 function BrainIngestChip({
   language,
   ingest,
@@ -300,8 +273,6 @@ function BrainIngestChip({
   );
 }
 
-// Friendly confirmation card for files the assistant actually created,
-// with a one-click download so non-technical users can find their file.
 export function CreatedFilesCard({
   language,
   files,

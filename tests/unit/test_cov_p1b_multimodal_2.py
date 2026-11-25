@@ -1,11 +1,3 @@
-"""P1b coverage — multimodal facts, ingestion DTOs, quiet, extraction leftovers.
-
-Drives the remaining Brain Core compute doors with real tiny files (PNG via
-Pillow, sidecar `.srt` / `.vtt`, a few bytes of text) and mocked ffmpeg /
-pytesseract / LLM-router seams. No product code is patched except public
-callables those modules already expose as test seams.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -65,9 +57,6 @@ def loop_running(request):
     return request.param
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
-
 def _write_png(
     path: Path, *, size=(8, 8), colour=(200, 40, 40), mode: str = "RGB"
 ) -> Path:
@@ -112,8 +101,6 @@ def test_runtime_package_lazy_exports():
     assert callable(runtime_pkg.dispatch_tool)
     with pytest.raises(AttributeError):
         _ = runtime_pkg.not_a_runtime_export
-    # A second lookup hits the now-bound module attribute, still via __getattr__
-    # only for unknown names.
     with pytest.raises(AttributeError):
         runtime_pkg.__getattr__("still_missing")
 
@@ -195,7 +182,6 @@ def test_llm_extract_concepts_parses_and_rejects(monkeypatch, loop_running):
     assert _llm_extract_concepts("x") is None
 
     _install_router(monkeypatch, _FakeRouter("not-json", fail=None), loop_running=False)
-    # valid string but not JSON
     monkeypatch.setattr(
         kg_extraction, "get_llm_router", lambda: _FakeRouter("not-json")
     )
@@ -314,19 +300,16 @@ def test_extract_concepts_rules_covers_reject_keep_and_dedup():
     assert "a-b" not in lowered
     assert "mlx-vlm" in lowered
     assert any("lattice" in c.lower() for c in concepts)
-    # "Lattice" should be dropped when it never appears without " AI".
     assert "lattice" not in lowered
     assert "python" in lowered
     assert "claude" in lowered
     assert "hello" not in lowered
     assert any("그래프" in c or "rag" in c.lower() for c in concepts)
 
-    # Prefix that is *not* followed by space/hyphen must stay ("Lat" vs "Lattice AI").
     mixed = _extract_concepts_rules("Lat and Lattice AI both appear independently.")
     lowered_mixed = {c.lower() for c in mixed}
     assert "lattice ai" in lowered_mixed
 
-    # Shorter term kept when it also appears alone.
     both = _extract_concepts_rules("Claude ships Claude Sonnet and Claude too.")
     lowered_both = {c.lower() for c in both}
     assert "claude" in lowered_both
@@ -358,7 +341,6 @@ def test_extract_triples_rules_guards_dedup_limit_and_enumeration():
     assert verb
     assert verb[0]["evidence"] == "verb"
 
-    # Same undirected pair + edge is dropped the second time.
     dup = _extract_triples_rules(
         "Alpha uses Bravo today. Bravo uses Alpha tomorrow as well.",
         ["Alpha", "Bravo"],
@@ -378,7 +360,6 @@ def test_extract_triples_rules_guards_dedup_limit_and_enumeration():
     enumerated = _extract_triples_rules(listed, names)
     assert enumerated == []
 
-    # A verb-backed sentence with many concepts is *not* dropped.
     used = _extract_triples_rules(
         "Alpha uses Bravo Charlie Delta Echo Foxtrot today.",
         names + ["Foxtrot"],
@@ -416,7 +397,6 @@ def test_semantic_items_and_topic_candidates():
     assert len(topics) <= 4
 
     fallback = _topic_candidates("the and for with xyzabc defghi 참고", limit=3)
-    # Rule extractor finds nothing useful; token fallback still yields xyzabc.
     assert any(token.lower() in {"xyzabc", "defghi"} for token in fallback)
 
     empty = _topic_candidates("the and for with this that from into", limit=4)

@@ -1,71 +1,3 @@
-"""The v11.6.0 pure-compute seams: data in, data out, nothing stored.
-
-Plan §설계 결정 2 (revised) hands **every write** to Rust — platform state and
-the knowledge graph both. What is left for Python is the part Rust cannot do
-without shipping a model runtime and half of PyPI: turning text into vectors,
-turning a document into text, turning a spec into document bytes, and turning
-audio into a transcript.
-
-A ninth seam, ``POST /worker/multimodal/describe``, was here until v11.8.0. It
-wrapped :func:`lattice_brain.multimodal.extract_image_facts` for a native image
-ingest that was never built, so nothing in the tree ever called it — not
-``lattice-ingest``, not the gateway. The Brain Core functions behind it are
-untouched; what went is the door nobody opened.
-
-``worker_seams.py`` holds the *state* seams (``/worker/chat/record-turn``,
-``/worker/graph/mutate``) that Wave 2 codes against and Wave 2.5 §W3 retires.
-This module is the opposite half and is deliberately a separate file: nothing
-here opens a database, writes a file, or reaches a store. Each handler is a
-function of its request body, so a caller can retry it, cache it, or run two of
-them at once without asking who else is writing.
-
-The nine seams, and what each was extracted from:
-
-``POST /worker/embed``
-    ``EmbeddingProvider.embed_batch`` on the *resolved* provider — the same
-    object ``phase_brain`` hands the graph store, so a vector produced here is
-    the vector Python would have written. ``kind="passage"`` applies the
-    50,000-character clamp ``write_master._upsert_vector_item`` applies before
-    embedding; ``kind="query"`` does not, matching ``retrieval_vector.search``.
-
-``POST /worker/parse``
-    :func:`latticeai.tools.documents.read_document` over the posted bytes. The
-    parser matrix (pdfplumber / python-docx / openpyxl / python-pptx / plain
-    text) is unchanged; only the file it reads is a temporary one this seam
-    writes and deletes.
-
-``POST /worker/render/{docx,xlsx,pptx,pdf}``
-    The *building* half of ``tools.documents.create_*`` — same libraries, same
-    layout decisions — with ``save(path)`` replaced by ``save(BytesIO)``. Rust
-    places the file, sanitises the name and resolves the target; this seam
-    never learns where and answers with bytes only.
-
-``POST /worker/asr``
-    ``VoiceCaptureService._transcribe``'s contract without the ingest: the same
-    injected transcriber port, the same container whitelist and size ceiling,
-    and the same refusal to call an empty transcript "text".
-
-``POST /worker/extract``
-    :func:`~lattice_brain.graph._kg_common.extraction._extract_concepts` (LLM-first),
-    :func:`~lattice_brain.graph._kg_common.extraction._extract_triples` and
-    :func:`~lattice_brain.graph._kg_common.extraction._semantic_items` — the
-    structures ``ingest_message`` / ``ingest_document`` / ``ingest_source``
-    consume, already classified. Rust writes the Concept/Task/Decision subgraph;
-    this seam never opens a store.
-
-``POST /worker/vector/query``
-    Approximate nearest-neighbour over the ``.hnsw`` sidecar next to the
-    brain database. The one compute seam that *reads* the store (row count
-    + embeddings, never a write) so it can refresh the sidecar and say
-    ``index: "none"`` when there is nothing to serve.
-
-Gating is the seam gate the rest of the worker uses — ``LATTICEAI_AGENT_TOOL_SEAM``
-read per request through :func:`latticeai.api.agent_worker_seam._seam_open`,
-then ``require_user`` and the ``agent_seam`` rate bucket. Off ⇒ 404. Mounted
-only by :func:`latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
-so ``create_app`` and the committed OpenAPI contract are untouched.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -100,39 +32,17 @@ from latticeai.tools.documents import read_document
 
 logger = logging.getLogger(__name__)
 
-#: What an embedding is *for*. The two differ in one thing only, and that thing
-#: is real: the write path clamps to 50,000 characters before embedding
-#: (``write_master._upsert_vector_item``) while the query path does not
-#: (``retrieval_vector.search``). Naming it keeps Rust from having to know.
 EMBED_KINDS: Tuple[str, ...] = ("query", "passage")
 
-#: Which ingest door the caller is standing in. ``message`` is
-#: ``ingest_message`` (concept limit 12); ``document`` is ``ingest_document``
-#: / ``ingest_source`` (limit 15). The text itself is whatever that door
-#: composed — the message body, or ``filename\\n{text}`` / ``title\\n{text}``.
 EXTRACT_KINDS: Tuple[str, ...] = ("message", "document")
 EXTRACT_LIMITS: Dict[str, int] = {"message": 12, "document": 15}
 
-#: The clamp ``write_master`` applies. Copied as a constant rather than
-#: imported: it is a literal at that call site, and importing a literal out of a
-#: write-side module would tie this compute seam to a module W1 is replacing.
 PASSAGE_MAX_CHARS = 50_000
 
-#: Upper bound on ``texts`` for one ``POST /worker/embed``. Ingest already
-#: batches; a caller that dumps a whole vault into one request is a bug, not
-#: a use case. 256 sits in the 128–256 band G-RAG-A recommended. Additive:
-#: the request/response shape is unchanged.
 EMBED_MAX_BATCH = 256
 
-#: The CJK-capable fonts ``create_pdf`` looks for, as a module attribute so a
-#: test can point the probe at a font that exists (and at one that does not)
-#: instead of asserting whatever the host machine happens to have installed.
 CJK_FONT_CANDIDATES: List[str] = list(_CJK_FONT_CANDIDATES)
 
-#: Messages this module owns. Registered into the one shared catalog with
-#: ``setdefault`` — the same pattern ``worker_seams.py`` uses — so the entries
-#: can be lifted into ``latticeai/core/messages.py`` verbatim later and this
-#: registration becomes a no-op rather than an overwrite.
 WORKER_COMPUTE_MESSAGES: Dict[str, Dict[str, str]] = {
     "worker_compute.embedder_unavailable": {
         "ko": "임베딩 공급자가 연결되어 있지 않습니다.",
@@ -182,22 +92,10 @@ WORKER_COMPUTE_MESSAGES: Dict[str, Dict[str, str]] = {
 
 
 def pointer_tools_available() -> bool:
-    """Whether this interpreter can import ``pyautogui``.
-
-    Cheap and side-effect free: ``find_spec`` does not load the module, so a
-    headless worker without a display is not punished for answering the
-    question. The platform computer-use status route reads this through
-    ``GET /worker/sysinfo`` rather than guessing from its own process.
-    """
     return importlib.util.find_spec("pyautogui") is not None
 
 
 def sysinfo_payload_extras() -> Dict[str, Any]:
-    """Additive fields for ``GET /worker/sysinfo``.
-
-    Existing GPU keys stay owned by ``worker_seams.probe_gpu_memory``. This
-    dict is merged in; it must never reuse those names.
-    """
     return {
         "capabilities": {"pointer_tools": pointer_tools_available()},
         "python_version": "{}.{}.{}".format(*sys.version_info[:3]),
@@ -205,7 +103,6 @@ def sysinfo_payload_extras() -> Dict[str, Any]:
 
 
 def register_worker_compute_messages() -> None:
-    """Publish this module's messages into the one shared catalog."""
     for key, entry in WORKER_COMPUTE_MESSAGES.items():
         MESSAGES.setdefault(key, entry)
 
@@ -213,20 +110,9 @@ def register_worker_compute_messages() -> None:
 register_worker_compute_messages()
 
 
-# ── shared helpers ──────────────────────────────────────────────────────────
-
-
 @contextlib.contextmanager
 def _temp_payload(data: bytes, suffix: str) -> Iterator[str]:
-    """The posted bytes as a real file, deleted whatever happens next.
-
-    Every parser and model port in this file takes a *path*: pdfplumber, PIL and
-    a local transcriber all open files, and rewriting them to take buffers would
-    be a much larger change than this seam is. So the bytes become a file for
-    the duration of one call and nothing survives it — which is what "owns zero
-    state" has to mean in practice.
-    """
-    handle = tempfile.NamedTemporaryFile(  # noqa: SIM115 — closed below, path reused
+    handle = tempfile.NamedTemporaryFile(
         prefix="ltcai-worker-", suffix=suffix, delete=False
     )
     try:
@@ -241,13 +127,6 @@ def _temp_payload(data: bytes, suffix: str) -> Iterator[str]:
 
 
 def _suffix_for(filename: Optional[str], mime: Optional[str], default: str) -> str:
-    """The extension to give the temp file: filename first, then MIME, then a default.
-
-    The filename wins because it is what the user actually named the thing; a
-    MIME type is what some client claimed about it. Neither is trusted for
-    *content* — the parsers and PIL sniff that themselves — so this only has to
-    be good enough to route.
-    """
     suffix = Path(str(filename or "")).suffix.lower()
     if not suffix:
         subtype = str(mime or "").split("/")[-1].split(";")[0].strip().lower()
@@ -256,7 +135,6 @@ def _suffix_for(filename: Optional[str], mime: Optional[str], default: str) -> s
 
 
 def _callable_identity(fn: Any) -> str:
-    """A name for an injected port, so the receipt says *which* model answered."""
     module = str(getattr(fn, "__module__", "") or "")
     name = str(getattr(fn, "__qualname__", "") or type(fn).__name__)
     return f"{module}.{name}" if module else name
@@ -280,15 +158,6 @@ from .worker_compute_render import (
 
 
 def build_extract_reply(text: str, kind: str) -> Dict[str, Any]:
-    """The structures ``ingest_message`` / ``ingest_document`` / ``ingest_source`` consume.
-
-    Concepts are already classified (``_classify_node_type``), triples carry the
-    evidence class the edge metadata keeps, and semantic items keep the raw
-    dict the node stores. This is the golden generator's ``_concepts`` /
-    ``_triples`` / ``_semantic`` over the same functions the Python write path
-    calls — a test asserts equality against those call sites, not against a
-    second implementation.
-    """
     from lattice_brain.graph._kg_common import (
         _classify_node_type,
         _extract_concepts,
@@ -337,20 +206,17 @@ class _WorkerComputeDeps:
 
 
 def _require_seam(request: Request) -> None:
-    """404 unless the host opened the seam for this worker."""
     if not seam_open():
         raise http_error(404, "agent_seam.disabled", resolve_language(request))
 
 
 def _admit(deps: _WorkerComputeDeps, request: Request) -> str:
-    """Authenticate and charge this call against the per-step budget."""
     current_user = deps.require_user(request)
     deps.enforce_rate_limit(current_user, SEAM_RATE_BUCKET)
     return str(current_user or "")
 
 
 def _decode_b64_payload(payload: str, language: str) -> bytes:
-    """Base64 in, bytes out — a malformed body is 422, never a 500."""
     try:
         return base64.b64decode(str(payload or ""), validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -365,20 +231,9 @@ async def _render_document_payload(
     language: str,
     **extra: Any,
 ) -> Dict[str, Any]:
-    """Build one document off the event loop and hand back its bytes.
-
-    The reply is the bytes and what they cost, and nothing about *where*
-    they go: ``lattice-agent``'s ``documents::document_output_target`` runs
-    its own ``safe_filename`` and ``Workspace::resolve`` over the request's
-    ``filename`` **before** it calls here, and writes to the target it
-    resolved. A second sanitisation on this side produced a name no caller
-    ever read — two spellings of one rule, one of them invisible.
-    """
     try:
         payload = await asyncio.to_thread(builder)
     except ToolError as exc:
-        # The library is not installed here. That is a property of the
-        # install, not of the request, so it is 503 and not 500.
         raise http_error(
             503,
             "worker_compute.render_unavailable",
@@ -386,7 +241,7 @@ async def _render_document_payload(
             kind=kind,
             reason=str(exc),
         ) from exc
-    except Exception as exc:  # noqa: BLE001 — reported with the kind, not swallowed
+    except Exception as exc:
         logger.warning("worker render %s failed: %s", kind, exc)
         raise http_error(
             500,
@@ -434,13 +289,6 @@ def _register_embed_and_parse_routes(
 ) -> None:
     @router.post("/worker/embed")
     async def worker_embed(req: EmbedRequest, request: Request):
-        """Vectors for these texts, from the provider this worker resolved.
-
-        ``dim`` and ``model_id`` are read *after* the call because a network
-        provider locks its index identity to the width the model actually
-        returned — reading them first would report the guess, and Rust files
-        every vector under whatever this says.
-        """
         _require_seam(request)
         _admit(deps, request)
         language = resolve_language(request)
@@ -485,8 +333,6 @@ def _register_embed_and_parse_routes(
             "query_mode": contract["query_mode"],
             "index_version": contract["index_version"],
             "kind": kind,
-            # Additive (v12.0.0): `fallback` means these vectors are feature
-            # hashes, not meaning. A caller that stores them can say so.
             "grade": grade,
             "semantic": contract["semantic"],
             "contract": contract,
@@ -496,13 +342,6 @@ def _register_embed_and_parse_routes(
 
     @router.post("/worker/parse")
     async def worker_parse(req: ParseRequest, request: Request):
-        """The parser matrix over posted bytes: text, counts, preview.
-
-        The ``path`` key ``read_document`` reports is dropped: it named a
-        temporary file that no longer exists by the time this answers, and
-        echoing it would hand Rust a path it must not act on. ``filename`` — the
-        one the caller named — takes its place.
-        """
         _require_seam(request)
         _admit(deps, request)
         language = resolve_language(request)
@@ -523,7 +362,6 @@ def _register_embed_and_parse_routes(
 def _register_render_routes(router: APIRouter, deps: _WorkerComputeDeps) -> None:
     @router.post("/worker/render/docx")
     async def worker_render_docx(req: RenderDocxRequest, request: Request):
-        """A Word document's bytes. Rust decides where it lands."""
         _require_seam(request)
         _admit(deps, request)
         return await _render_document_payload(
@@ -534,7 +372,6 @@ def _register_render_routes(router: APIRouter, deps: _WorkerComputeDeps) -> None
 
     @router.post("/worker/render/xlsx")
     async def worker_render_xlsx(req: RenderXlsxRequest, request: Request):
-        """A workbook's bytes, with the row count ``create_xlsx`` reported."""
         _require_seam(request)
         _admit(deps, request)
         return await _render_document_payload(
@@ -546,7 +383,6 @@ def _register_render_routes(router: APIRouter, deps: _WorkerComputeDeps) -> None
 
     @router.post("/worker/render/pptx")
     async def worker_render_pptx(req: RenderPptxRequest, request: Request):
-        """A deck's bytes. ``slides`` counts the title slide, as ``create_pptx`` did."""
         _require_seam(request)
         _admit(deps, request)
         return await _render_document_payload(
@@ -558,7 +394,6 @@ def _register_render_routes(router: APIRouter, deps: _WorkerComputeDeps) -> None
 
     @router.post("/worker/render/pdf")
     async def worker_render_pdf(req: RenderPdfRequest, request: Request):
-        """A PDF's bytes, CJK font and all."""
         _require_seam(request)
         _admit(deps, request)
         return await _render_document_payload(
@@ -573,14 +408,6 @@ def _register_media_and_extract_routes(
 ) -> None:
     @router.post("/worker/asr")
     async def worker_asr(req: AsrRequest, request: Request):
-        """Transcribe one recording — and never claim a transcript it did not get.
-
-        ``status`` is the state machine ``VoiceCaptureService.capture`` records
-        on the node: ``ok`` when there are words, ``unavailable`` when this
-        machine has no transcriber or the transcriber returned nothing, and
-        ``failed`` when it broke. All three are 200: "we could not hear it" is
-        an answer about the audio, not an error about the request.
-        """
         _require_seam(request)
         _admit(deps, request)
         language = resolve_language(request)
@@ -614,7 +441,7 @@ def _register_media_and_extract_routes(
         with _temp_payload(data, suffix) as tmp_path:
             try:
                 raw = await asyncio.to_thread(deps.transcriber, tmp_path)
-            except Exception as exc:  # noqa: BLE001 — a broken transcriber is a state
+            except (OSError, RuntimeError, ValueError, TypeError) as exc:
                 logger.warning("worker asr failed: %s", exc)
                 return {
                     "text": "",
@@ -625,8 +452,6 @@ def _register_media_and_extract_routes(
                 }
         text = str(raw or "").strip()
         if not text:
-            # An empty transcript is not text: reporting it as one would put an
-            # empty note in the Brain and call it a memory.
             return {
                 "text": "",
                 "segments": None,
@@ -636,8 +461,6 @@ def _register_media_and_extract_routes(
             }
         return {
             "text": text,
-            # The port's contract is ``(path) -> str``. There are no timings to
-            # report, and inventing an empty list would read as "no speech".
             "segments": None,
             "provider": provider,
             "status": "ok",
@@ -646,13 +469,6 @@ def _register_media_and_extract_routes(
 
     @router.post("/worker/extract")
     async def worker_extract(req: ExtractRequest, request: Request):
-        """Concepts, triples and Task/Decision items for this text.
-
-        The reply is field-for-field what ``GraphWriter``'s ingest doors take
-        as ``concepts`` / ``triples`` / ``semantic``. Classification and the
-        evidence class happen here because they are compute over the text, not
-        a write.
-        """
         _require_seam(request)
         _admit(deps, request)
         language = resolve_language(request)
@@ -669,7 +485,6 @@ def _register_media_and_extract_routes(
 
     @router.post("/worker/vector/query")
     async def worker_vector_query(req: VectorQueryRequest, request: Request):
-        """Top-k ids from the HNSW sidecar, or ``index: "none"`` honestly."""
         _require_seam(request)
         _admit(deps, request)
         language = resolve_language(request)
@@ -696,14 +511,6 @@ def create_worker_compute_router(
     enforce_rate_limit: Callable[[str, str], None],
     db_path: Any = None,
 ) -> APIRouter:
-    """The nine compute seams, wired to what this worker actually resolved.
-
-    ``embedder`` is the :class:`~latticeai.core.embedding_providers.text.ResolvedEmbedder`
-    ``phase_brain`` built (``None`` ⇒ 503, because a worker with no embedder is
-    a configuration rather than a crash). ``transcriber`` is the injected port
-    the voice path holds; absent, ``/worker/asr`` reports the absence instead of
-    inventing a transcript.
-    """
     deps = _WorkerComputeDeps(
         embedder=embedder,
         transcriber=transcriber,

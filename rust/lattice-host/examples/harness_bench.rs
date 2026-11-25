@@ -1,6 +1,3 @@
-//! Empirical CLI harness runner for benchmarking `lattice_agent::kernel::agentloop::Runtime`
-//! in `standard` (uncalibrated baseline) vs `adaptive` (Universal Adaptive Harness) modes.
-
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -240,7 +237,6 @@ async fn main() {
         runtime.approve(&mut ctx, &req, false);
     }
 
-    // Clear planning_model override once initialized if unused, keep req intact.
     req.max_steps = args.max_steps;
     if let Err(err) = runtime.run_to_completion(&mut ctx, &req).await {
         eprintln!("harness_bench run_to_completion failed: {err}");

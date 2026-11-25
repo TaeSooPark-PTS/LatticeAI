@@ -1,10 +1,3 @@
-"""T2 acceptance gate: ``create_worker_app`` factory + side-effect-free imports.
-
-Importing ``latticeai.worker_app`` or ``latticeai.app_factory`` must perform
-**no** construction. The factory produces a serving worker app whose writes
-stay in the sandbox.
-"""
-
 from __future__ import annotations
 
 import json
@@ -56,7 +49,6 @@ def _run_in_sandbox(code: str, tmp_path: Path) -> dict:
 
 
 def test_importing_worker_app_and_factory_has_no_side_effects(tmp_path: Path):
-    """Import must not init MLX, build singletons, or create any file."""
     code = """
 import json, os, sys
 
@@ -88,7 +80,6 @@ print(json.dumps({{"created": created, "forbidden": forbidden}}))
 
 
 def test_create_worker_app_builds_working_app_inside_sandbox(tmp_path: Path):
-    """The factory produces a serving worker, and all writes stay in the sandbox."""
     code = """
 import json, os
 
@@ -116,7 +107,6 @@ print(json.dumps({
 
 
 def test_worker_app_does_not_serve_product_admin_routes(tmp_path: Path):
-    """The product admin surface is native; a worker must 404 it."""
     code = """
 import json
 
@@ -139,7 +129,6 @@ print(json.dumps({
 
 
 def test_build_context_exposes_the_worker_runtime(tmp_path: Path):
-    """The typed context is the migration target; there is no AppRuntime."""
     code = """
 import json
 

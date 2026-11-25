@@ -1,5 +1,3 @@
-//! Transactional workspace-scoped and global integrity repair planner & executor.
-
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -31,7 +29,6 @@ fn action_id_for(kind: IntegrityIssueKind) -> &'static str {
     }
 }
 
-/// Build a dry-run repair plan with blast-radius summary from an [`IntegrityReport`].
 pub fn plan_integrity_repair(report: &IntegrityReport, options: &RepairOptions) -> RepairPlan {
     let mut actions = Vec::new();
     let mut blast = RepairBlastRadius::default();
@@ -50,8 +47,6 @@ pub fn plan_integrity_repair(report: &IntegrityReport, options: &RepairOptions) 
         let will_execute = match finding.safety {
             RepairSafety::SafeAuto => true,
             RepairSafety::RequiresApproval => {
-                // Cross-workspace edge severing touches another workspace and
-                // requires explicit global/admin repair authorization.
                 if is_scoped && finding.kind == IntegrityIssueKind::CrossWorkspaceLeak {
                     false
                 } else {
@@ -127,11 +122,6 @@ pub fn plan_integrity_repair(report: &IntegrityReport, options: &RepairOptions) 
     }
 }
 
-/// Execute planned integrity repairs transactionally, creating a pre-repair backup when requested.
-///
-/// When `options.workspace_id` is `Some(ws)`, both inspection and every SQL mutation
-/// are strictly restricted to rows owned by `ws`; cross-workspace mutations are refused
-/// unless `workspace_id` is `None` (global admin repair).
 pub fn execute_integrity_repair(
     conn: &mut Connection,
     options: &RepairOptions,
@@ -373,7 +363,6 @@ pub fn execute_integrity_repair(
             }
             IntegrityIssueKind::CrossWorkspaceLeak => {
                 if ws_scope.is_some() {
-                    // Prohibited in workspace-scoped repairs; requires global admin authorization.
                     0
                 } else {
                     let n1 = tx.execute(

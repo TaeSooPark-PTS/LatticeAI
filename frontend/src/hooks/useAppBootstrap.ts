@@ -7,26 +7,16 @@ import { clamp } from "@/lib/utils";
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/**
- * Focusable descendants that are actually rendered.
- *
- * The menu holds a copy of the management links that CSS hides once the topbar
- * shows them. Those anchors stay in the DOM, so a plain querySelectorAll would
- * report focus targets the browser will refuse to focus and Tab will skip —
- * putting the focus trap's boundaries in the wrong place.
- */
 export function focusablesIn(root: HTMLElement | null): HTMLElement[] {
   return Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []).filter(
     (element) => element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0,
   );
 }
 
-/** Exported for tests: focus a target that may already have gone away. */
 export function restoreFocusTo(element: HTMLElement | null) {
   element?.focus();
 }
 
-/** Exported for tests: whether a pointer-down landed on the menu or one of its triggers. */
 export function pointerDownHitsMenu(
   target: Node,
   panel: HTMLElement | null,
@@ -66,10 +56,6 @@ export function useBrainState() {
   return { state, intensity, setBrain };
 }
 
-/**
- * Synchronizes document theme/locale attributes, hash deep-link state, and
- * LivingBrain ambient state for the root application shell.
- */
 export function useAppBootstrap() {
   const theme = useAppStore((state) => state.theme);
   const language = useAppStore((state) => state.language);
@@ -93,10 +79,6 @@ export function useAppBootstrap() {
   };
 }
 
-/**
- * Manages the responsive shell popover menu, Escape/Tab focus trap, outside
- * pointer dismissal, and route-change auto-close.
- */
 export function useShellMenu(activeRoute: string) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuPanelRef = React.useRef<HTMLDivElement>(null);

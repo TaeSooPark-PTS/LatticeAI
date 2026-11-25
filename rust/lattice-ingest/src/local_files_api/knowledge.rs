@@ -1,5 +1,3 @@
-//! The eight `/knowledge-graph/local/*` routes.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -180,10 +178,6 @@ pub(super) async fn watch_stop(
     if source_id.is_empty() {
         return detail(404, "source_id required");
     }
-    // One writer: `GraphWriter::set_local_source_watch`. The
-    // `/worker/graph/mutate` delegation that used to stand behind this was
-    // retired with the Python write door in v11.6.0, so a store without a
-    // native writer has nowhere to send the change and says so.
     let Some(graph) = state.graph().cloned() else {
         return detail(404, &format!("knowledge source not found: {source_id}"));
     };

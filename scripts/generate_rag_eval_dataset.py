@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""Generate versioned RAG Evaluation Benchmark Dataset (P0.1, 320 queries).
-
-Covers all 9 mandatory evaluation categories from the Lattice AI 13.8.0 specification:
-1. factual_lookup
-2. multi_doc_synthesis
-3. temporal_ordering
-4. relational_reasoning
-5. provenance_verification
-6. ambiguous_query
-7. insufficient_evidence
-8. contradictory_sources
-9. workspace_boundary
-"""
 
 from __future__ import annotations
 
@@ -184,9 +171,7 @@ def build_dataset() -> dict:
             ]
         )
 
-        # Generate 40 queries per project = 8 * 40 = 320 queries across all 9 categories.
         cat_specs = [
-            # 1. factual_lookup (5 per project = 40)
             (
                 "factual_lookup",
                 f"What technology powers {proj_en}?",
@@ -237,7 +222,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 2. multi_doc_synthesis (5 per project = 40)
             (
                 "multi_doc_synthesis",
                 f"Summarize {proj_en}'s owner, module, and migration reviewer.",
@@ -288,7 +272,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 3. temporal_ordering (5 per project = 40)
             (
                 "temporal_ordering",
                 f"Who is the current 2026 owner of {proj_en}?",
@@ -339,7 +322,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 4. relational_reasoning (4 per project = 32)
             (
                 "relational_reasoning",
                 f"What does {module} depend on for {proj_en}?",
@@ -380,7 +362,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 5. provenance_verification (4 per project = 32)
             (
                 "provenance_verification",
                 f"Which source file verifies {proj_en}'s 2026 owner?",
@@ -421,7 +402,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 6. ambiguous_query (4 per project = 32)
             (
                 "ambiguous_query",
                 f"Tell me the port of {proj_en} (ops spec vs draft).",
@@ -462,7 +442,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 7. insufficient_evidence (5 per project = 40)
             (
                 "insufficient_evidence",
                 f"What is the home address of {owner_2026}?",
@@ -513,7 +492,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 8. contradictory_sources (4 per project = 32)
             (
                 "contradictory_sources",
                 f"Is there a conflict over {proj_en}'s port between the ops spec and draft note?",
@@ -554,7 +532,6 @@ def build_dataset() -> dict:
                 "ws-eval-main",
                 None,
             ),
-            # 9. workspace_boundary (4 per project = 32)
             (
                 "workspace_boundary",
                 f"What is {proj_en}'s confidential restricted org budget?",

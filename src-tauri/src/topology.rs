@@ -1,55 +1,19 @@
-//! Which front door the desktop opens, and on which ports.
-//!
-//! v11.6.0 One Door: **lattice-host is the only front door.** The shell either
-//! serves the gateway in-process (default) or attaches to an already-running
-//! lattice-host named by `LATTICEAI_DESKTOP_BACKEND_ORIGIN`. There is no
-//! Python-direct topology — `LATTICEAI_DESKTOP_DIRECT` and
-//! `LATTICEAI_DESKTOP_NO_BACKEND` are retired and ignored.
-//!
-//! | Environment | Topology | Webview origin | Spawns |
-//! |---|---|---|---|
-//! | *(none)* | `gateway` | `http://127.0.0.1:{gateway}` | worker (internal port) + in-process gateway |
-//! | `LATTICEAI_DESKTOP_BACKEND_ORIGIN=…` | `external` | that origin, verbatim (must be a lattice-host) | nothing |
-//!
-//! An explicit origin outranks the default. `LATTICEAI_PORT`, when set, is
-//! honoured verbatim as the **port the person visits** — the gateway port —
-//! because the reason to set it is that something else knows the number.
-
 use lattice_host::supervisor::{find_free_port, HostProbe, DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS};
 
-/// Point the shell at an already-running **lattice-host**. Nothing is spawned,
-/// and this exact string is what `backend_origin` returns and the webview
-/// navigates to. A bare Python worker origin is not a supported value.
 pub const ORIGIN_ENV: &str = "LATTICEAI_DESKTOP_BACKEND_ORIGIN";
-/// Retired in 11.6.0: previously a kill switch. Ignored — the shell always
-/// boots or attaches through lattice-host.
 pub const NO_BACKEND_ENV: &str = "LATTICEAI_DESKTOP_NO_BACKEND";
-/// Retired in 11.6.0: previously opted into a Python-direct front door.
-/// Ignored — lattice-host is the only front door.
 pub const DIRECT_ENV: &str = "LATTICEAI_DESKTOP_DIRECT";
-/// An explicit port, honoured verbatim.
 pub const PORT_ENV: &str = "LATTICEAI_PORT";
-/// The single loopback port pinned by production `tauri.conf.json` CSP and
-/// `capabilities/default.json` remote IPC URLs.
 pub const PINNED_PRODUCTION_PORT: u16 = DEFAULT_PORT;
 
-/// How port resolution reconciles runtime binding with Tauri security policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum PortPolicy {
-    /// Production build policy: pin the gateway origin to
-    /// [`PINNED_PRODUCTION_PORT`] (`4825`) so the webview origin never diverges
-    /// from `tauri.conf.json` `app.security.csp` and `capabilities/default.json`.
-    /// Never silently scans upward to an unreachable fallback port (`4826+`).
     PinnedProduction,
-    /// Development build policy (`debug_assertions`, where `devCsp` allows
-    /// `http://127.0.0.1:*`): allows explicit `LATTICEAI_PORT` overrides and
-    /// upward fallback port scanning when `4825` is occupied.
     AllowDynamicFallback,
 }
 
 impl PortPolicy {
-    /// The policy enforced for the current build profile.
     pub const fn for_build() -> Self {
         #[cfg(not(debug_assertions))]
         {
@@ -62,17 +26,13 @@ impl PortPolicy {
     }
 }
 
-/// How this shell is arranged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Topology {
-    /// Gateway on the public port, worker behind it. The default.
     Gateway,
-    /// A lattice-host someone else started (`LATTICEAI_DESKTOP_BACKEND_ORIGIN`).
     External,
 }
 
 impl Topology {
-    /// The name this topology is reported under, in status and in logs.
     pub fn as_str(self) -> &'static str {
         match self {
             Topology::Gateway => "gateway",
@@ -80,49 +40,30 @@ impl Topology {
         }
     }
 
-    /// Whether this shell owns a worker process.
     pub fn supervises(self) -> bool {
         matches!(self, Topology::Gateway)
     }
 }
 
-/// The resolved arrangement: what to serve, what to spawn, where to navigate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Plan {
-    /// Which arrangement was chosen.
     pub topology: Topology,
-    /// Where the frontend and the webview go (always a lattice-host origin).
     pub origin: String,
-    /// Where the worker itself answers — the proxy target. Equal to `origin`
-    /// when we only attach to someone else's host (we do not speak to their
-    /// worker).
     pub worker_origin: String,
-    /// The worker's port (internal when we supervise; the named host port
-    /// when we attach).
     pub worker_port: u16,
-    /// The gateway's port, when this process serves one.
     pub gateway_port: Option<u16>,
 }
 
 impl Plan {
-    /// Whether this shell starts and owns the worker.
     pub fn supervised(&self) -> bool {
         self.topology.supervises()
     }
 
-    /// `{origin}/app` — the URL the window navigates to once health answers.
     pub fn app_url(&self) -> String {
         format!("{}/app", self.origin.trim_end_matches('/'))
     }
 }
 
-/// Parse a flag the way the product parses its booleans: set-and-truthy is on,
-/// set-and-falsy is off, absent is off.
-///
-/// Presence alone is deliberately *not* enough — `LATTICEAI_DESKTOP_DIRECT=0`
-/// must mean "no", or the variable becomes impossible to turn off in a shell
-/// profile that already exports it. The flag itself is retired; the parser
-/// stays so a leftover `=0` is not mistaken for "on" if anything still reads it.
 pub fn flag_is_on(raw: Option<&str>) -> bool {
     matches!(
         raw.map(|value| value.trim().to_ascii_lowercase())
@@ -131,7 +72,6 @@ pub fn flag_is_on(raw: Option<&str>) -> bool {
     )
 }
 
-/// The port named by an origin, when it names one.
 pub fn origin_port(origin: &str) -> Option<u16> {
     let authority = origin
         .split_once("://")
@@ -146,9 +86,6 @@ pub fn origin_port(origin: &str) -> Option<u16> {
         .filter(|port| *port != 0)
 }
 
-/// Validate an external `LATTICEAI_DESKTOP_BACKEND_ORIGIN` value before the
-/// desktop webview navigates to it: only `http://` or `https://` loopback
-/// origins (`127.0.0.1`, `localhost`, `[::1]`) are permitted.
 pub fn validate_external_origin(raw: &str) -> Option<String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -196,7 +133,6 @@ pub fn validate_external_origin(raw: &str) -> Option<String> {
     }
 }
 
-/// Safe non-wrapping fallback port for the internal worker behind `gateway_port`.
 fn next_safe_port(gateway_port: u16) -> u16 {
     let candidate = gateway_port
         .checked_add(1)
@@ -209,19 +145,6 @@ fn next_safe_port(gateway_port: u16) -> u16 {
     }
 }
 
-/// Resolve the public gateway port under the given [`PortPolicy`].
-///
-/// Under [`PortPolicy::PinnedProduction`], the gateway is pinned to
-/// [`PINNED_PRODUCTION_PORT`] (`4825`) so the runtime origin never diverges
-/// from `tauri.conf.json` CSP or `capabilities/default.json`:
-/// - Unset `LATTICEAI_PORT` returns `Ok(4825)` (never scans upward to `4826+`);
-///   if `4825` is occupied, `bind_loopback` fails fast with a user-facing error.
-/// - Any explicit `LATTICEAI_PORT` other than `4825` is rejected with a clear
-///   policy conflict error.
-///
-/// Under [`PortPolicy::AllowDynamicFallback`] (dev builds), an explicit
-/// `LATTICEAI_PORT` is honoured verbatim, else `4825` scans upward for a free
-/// port.
 pub fn resolve_port_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<u16, String> {
     let raw_port = probe
         .env_var(PORT_ENV)
@@ -265,27 +188,20 @@ pub fn resolve_port_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Re
     }
 }
 
-/// The public port in development mode: an explicit `LATTICEAI_PORT` verbatim,
-/// else 4825 scanning upward.
 #[cfg(test)]
 pub fn resolve_port(probe: &dyn HostProbe) -> u16 {
     resolve_port_with_policy(probe, PortPolicy::AllowDynamicFallback).unwrap_or(DEFAULT_PORT)
 }
 
-/// `http://127.0.0.1:{port}`.
 fn loopback(port: u16) -> String {
     format!("http://127.0.0.1:{port}")
 }
 
-/// Whether `origin` strictly matches the pinned production desktop origin
-/// permitted by BOTH `tauri.conf.json` `app.security.csp` and
-/// `capabilities/default.json` (`http://127.0.0.1:4825`, optional trailing slash).
 pub fn is_pinned_production_origin(origin: &str) -> bool {
     let trimmed = origin.trim().trim_end_matches('/');
     trimmed.eq_ignore_ascii_case(&format!("http://127.0.0.1:{PINNED_PRODUCTION_PORT}"))
 }
 
-/// Resolve the arrangement under an explicit [`PortPolicy`].
 pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<Plan, String> {
     let raw_external = probe
         .env_var(ORIGIN_ENV)
@@ -319,8 +235,6 @@ pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<
         );
     }
 
-    // Retired escape hatches: log once so a leftover profile is visible, then
-    // take the only remaining door.
     if flag_is_on(probe.env_var(DIRECT_ENV).as_deref()) {
         eprintln!(
             "lattice-ai-desktop: {DIRECT_ENV} is retired in 11.6.0; \
@@ -334,9 +248,6 @@ pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<
         );
     }
 
-    // The default: the gateway takes the public port and the worker moves
-    // behind it, on the first free port above — never the gateway's own and
-    // never wrapping 65535 to 0.
     let gateway_port = resolve_port_with_policy(probe, policy)?;
     let start_port = next_safe_port(gateway_port);
     let worker_port = match find_free_port(start_port, DEFAULT_SCAN_ATTEMPTS, &[gateway_port]) {
@@ -357,7 +268,6 @@ pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<
     })
 }
 
-/// Resolve the arrangement from the environment the probe reports (dev dynamic policy).
 #[cfg(test)]
 pub fn resolve(probe: &dyn HostProbe) -> Plan {
     resolve_with_policy(probe, PortPolicy::AllowDynamicFallback)
@@ -528,7 +438,6 @@ mod tests {
         ] {
             assert_eq!(validate_external_origin(rejected), None, "{rejected}");
         }
-        // Invalid ORIGIN_ENV falls back cleanly to Gateway topology.
         let plan = resolve(
             &StaticProbe::new()
                 .with_env(ORIGIN_ENV, "https://evil.example")
@@ -548,7 +457,6 @@ mod tests {
     #[test]
     fn production_policy_pins_default_port_even_when_occupied() {
         let _guard = PORT_4825_TEST_LOCK.blocking_lock();
-        // Hold port 4825 if currently free so we exercise the real conflict path.
         let _occupied = std::net::TcpListener::bind(("127.0.0.1", PINNED_PRODUCTION_PORT)).ok();
 
         let port = resolve_port_with_policy(&StaticProbe::new(), PortPolicy::PinnedProduction)
@@ -570,7 +478,6 @@ mod tests {
             "internal worker still moves behind the pinned gateway port"
         );
 
-        // Contrast: dev dynamic fallback scans upward when 4825 is occupied.
         if _occupied.is_some() {
             let dev_port =
                 resolve_port_with_policy(&StaticProbe::new(), PortPolicy::AllowDynamicFallback)

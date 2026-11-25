@@ -1,5 +1,3 @@
-"""Configuration runtime assembly for the FastAPI composition root."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,7 +37,6 @@ class ConfigRuntime(RuntimeStage):
 
 
 def build_config_runtime(config: "Optional[Config]" = None) -> ConfigRuntime:
-    """Build app configuration values without importing model/runtime code."""
 
     from latticeai.core.config import Config
 

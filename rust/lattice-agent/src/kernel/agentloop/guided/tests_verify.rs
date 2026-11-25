@@ -9,9 +9,6 @@ use crate::tools::catalog::{ArgSpec, CatalogEntry, EntryKind};
 
 #[tokio::test]
 async fn a_write_with_no_body_is_never_dispatched() {
-    // The live 2B, twice in one run: the body turn produced nothing, the loop
-    // sent `write_file` with a path and no content, and collected the tool's
-    // own `needs args.content` refusal — then did it again.
     let mut harness = harness(&["1", "notes/hello.md", "", "", "", "", "", "", ""]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
     harness.request.message = "인사말을 notes/hello.md 파일로 저장해줘".into();
@@ -23,9 +20,6 @@ async fn a_write_with_no_body_is_never_dispatched() {
         .await
         .expect("worker");
 
-    // The rule is about every path that can reach a write, not only the menu's:
-    // the direct fallback below it asks the same silent model for the same file
-    // and would otherwise leave a 0-byte artifact behind.
     for call in harness.tool_calls() {
         if call["tool"] != json!("write_file") {
             continue;
@@ -49,10 +43,6 @@ async fn a_write_with_no_body_is_never_dispatched() {
 
 #[tokio::test]
 async fn a_re_asked_line_turn_drops_the_stop_that_cut_the_answer_off() {
-    // The live gemma-4-e2b, thirteen dispatches across one cell: asked for
-    // `mcp.grep`'s pattern it answered `<|channel>thought\nLatticeAI`, the
-    // newline stop fired inside the frame header, and the harness was handed a
-    // label where a search term had actually been generated.
     let catalog = FakeCatalog::new();
     let mut harness = harness(&["1", "", "LatticeAI", "2", "done"]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
@@ -98,9 +88,6 @@ async fn a_re_asked_line_turn_drops_the_stop_that_cut_the_answer_off() {
 
 #[tokio::test]
 async fn a_call_missing_a_required_argument_is_never_dispatched() {
-    // Same rule as the contentless write, one tool over: a live gemma-4-e2b
-    // sent `mcp.grep` with no pattern thirteen times across a cell's retries,
-    // collecting the tool's own `'pattern'` refusal every time.
     let catalog = FakeCatalog::new();
     let mut harness = harness(&["1", "", "", "", "", "", "", "", ""]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
@@ -130,9 +117,6 @@ async fn a_call_missing_a_required_argument_is_never_dispatched() {
 
 #[tokio::test]
 async fn an_argument_turn_that_answered_with_a_bare_frame_takes_the_plans_value() {
-    // The live gemma-4-e2b: asked for `mcp.grep`'s pattern with the plan
-    // sitting on `LatticeAI`, it answered `<|channel>thought` — a frame header
-    // and no body — and the run searched the workspace for the word "thought".
     let catalog = FakeCatalog::new();
     let mut harness = harness(&["1", "<|channel>thought", "2", "done"]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
@@ -164,9 +148,6 @@ async fn an_argument_turn_that_answered_with_a_bare_frame_takes_the_plans_value(
 
 #[tokio::test]
 async fn a_reason_that_is_our_own_question_read_back_is_not_a_reason() {
-    // The live 2B answered the reason turn with our own question, one word
-    // inserted — and the run showed that to the user as the critic's reason and
-    // fed it back to the executor as the next attempt's correction.
     let mut harness = harness(&[
         "PASS",
         "이유를 다시 한 줄로 쓰세요. / Give the reason in one short line.",
@@ -191,7 +172,6 @@ async fn a_reason_that_is_our_own_question_read_back_is_not_a_reason() {
 fn a_one_line_value_is_refused_only_for_a_shape_this_crate_put_on_the_screen() {
     let request = "워크스페이스에서 LatticeAI라는 단어를 mcp.grep으로 찾아주고, \
 찾은 개수를 알려줘";
-    // 1. our own `[고른 행동 / CHOSEN ACTION]` label, carried on — the live 0.5B.
     assert!(!usable_line(
         "mcp.grep --pattern \"^LatticeAI",
         "mcp.grep",
@@ -199,7 +179,6 @@ fn a_one_line_value_is_refused_only_for_a_shape_this_crate_put_on_the_screen() {
         request
     ));
     assert!(!usable_line("mcp.grep", "mcp.grep", "pattern", request));
-    // 2. a command line rather than the value inside it.
     assert!(!usable_line(
         "--pattern LatticeAI",
         "mcp.grep",
@@ -207,19 +186,15 @@ fn a_one_line_value_is_refused_only_for_a_shape_this_crate_put_on_the_screen() {
         request
     ));
     assert!(!usable_line("\"LatticeAI", "mcp.grep", "pattern", request));
-    // 3. the request restated — the live 2B searched for a whole sentence.
     assert!(!usable_line(
         "워크스페이스에서 LatticeAI라는 단어를 찾았습니다. 3개의 개수가 존재했습니다.",
         "mcp.grep",
         "pattern",
         request
     ));
-    // And the answers that are answers, none of which may be refused.
     assert!(usable_line("LatticeAI", "mcp.grep", "pattern", request));
     assert!(usable_line("notes/hello.md", "write_file", "path", request));
     assert!(usable_line("^Lattice.*AI$", "mcp.grep", "pattern", request));
-    // A value that is wholly a fragment of the request is copied, not restated,
-    // trailing punctuation and all.
     assert!(usable_line(
         "워크스페이스에서 LatticeAI라는 단어를",
         "mcp.grep",
@@ -232,14 +207,12 @@ fn a_one_line_value_is_refused_only_for_a_shape_this_crate_put_on_the_screen() {
         "pattern",
         request
     ));
-    // A long path the request opened with is the answer to a path question.
     assert!(usable_line(
         "documents/reports/lattice-2026.md",
         "write_file",
         "path",
         "documents/reports/lattice-2026.md 파일로 저장해줘"
     ));
-    // And the one argument whose value *is* a command line keeps its flags.
     assert!(usable_line(
         "npm run build -- --watch",
         "run_command",
@@ -250,9 +223,6 @@ fn a_one_line_value_is_refused_only_for_a_shape_this_crate_put_on_the_screen() {
 
 #[tokio::test]
 async fn a_line_turn_that_answered_with_a_command_line_is_re_asked_for_the_value() {
-    // The live qwen05b:S5: asked for the search pattern it continued our own
-    // action label into a command line, and the workspace was searched for
-    // `mcp.grep --pattern "^LatticeAI`.
     let catalog = FakeCatalog::new();
     let mut harness = harness(&[
         "1",
@@ -289,7 +259,6 @@ async fn a_line_turn_that_answered_with_a_command_line_is_re_asked_for_the_value
         "the refusal is on the record: {:?}",
         ctx.trace.events
     );
-    // And the re-ask was a different question, or it was the first ask replayed.
     let asks: Vec<String> = harness
         .worker
         .calls
@@ -330,8 +299,6 @@ async fn a_line_turn_that_answered_with_a_command_line_is_re_asked_for_the_value
 
 #[test]
 fn a_plan_that_wrote_the_call_as_a_command_still_names_its_argument() {
-    // The live qwen05b planner: the tool in a field and its arguments nested
-    // one level under it, with the planner's own name for the argument.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let runtime = crate::kernel::agentloop::harness::runtime(workspace);
     let grep = CatalogEntry {
@@ -366,8 +333,6 @@ fn a_plan_that_wrote_the_call_as_a_command_still_names_its_argument() {
         "the argument's own name is read first"
     );
 
-    // Two strings, one of which the keyword rule names: `text` is a spelling of
-    // `pattern` (v12.0.0), so this is read rather than guessed at.
     let keyworded = plan(json!([{"action": "command",
         "args": {"command": "mcp.grep", "arguments": {"text": "LatticeAI", "in": "README.md"}}}]));
     assert_eq!(
@@ -376,15 +341,12 @@ fn a_plan_that_wrote_the_call_as_a_command_still_names_its_argument() {
         "the planner's own word for this argument, read under the name it used"
     );
 
-    // Two strings and no name to match at all: the harness does not choose
-    // between them, it asks.
     let ambiguous = plan(json!([{"action": "command",
         "args": {"command": "mcp.grep", "arguments": {"needle": "LatticeAI", "in": "README.md"}}}]));
     assert_eq!(
         runtime.suggested_arg(&ambiguous, &req, &grep, "pattern"),
         None
     );
-    // A command naming a different tool is a different call.
     let elsewhere = plan(json!([{"action": "command",
         "args": {"command": "run_command", "arguments": {"text": "LatticeAI"}}}]));
     assert_eq!(
@@ -395,8 +357,6 @@ fn a_plan_that_wrote_the_call_as_a_command_still_names_its_argument() {
 
 #[tokio::test]
 async fn a_rejected_line_yields_to_the_value_the_plan_computed() {
-    // The floor under the re-ask must not put a command line into a tool when
-    // the run itself already worked out the value.
     let catalog = FakeCatalog::new();
     let mut harness = harness(&[
         "1",
@@ -433,9 +393,6 @@ async fn a_rejected_line_yields_to_the_value_the_plan_computed() {
 
 #[tokio::test]
 async fn the_runs_own_answer_is_never_refused_for_restating_the_question() {
-    // `final` is the one action whose one-line argument is prose for the user
-    // rather than a value for a tool, and an answer that opens with the
-    // question is an answer.
     let mut harness = harness(&[
         "3",
         "이 폴더에 어떤 파일이 몇 개나 있는지 확인했습니다. 3개입니다.",
@@ -456,20 +413,8 @@ async fn the_runs_own_answer_is_never_refused_for_restating_the_question() {
     );
 }
 
-// ── v12.0.0 fix round: the two arguments a user states themselves ──────────
-
 #[tokio::test]
 async fn a_listing_the_tool_would_have_returned_is_never_refused() {
-    // The `gemma2b:S3` cell, end to end: nine `list_dir args{}` dispatches,
-    // every one refused by our own gate, three `LOOP_DETECTED` halts and no
-    // count — over a tool whose signature is `list_dir(path: str = ".")`.
-    // The model answers every path turn with nothing. Since v12.0.0 a
-    // defaulting argument is *offered* before it is asked for, so the turns
-    // are: menu 1 → list_dir, two silent choice turns (the ask and its one
-    // re-ask), three silent line turns (the cap), then the menu again — where
-    // `final` is row one now that the count is in hand. The floor under all of
-    // them is unchanged: an absent argument the tool documents is filled
-    // rather than refused.
     let mut harness = harness(&["1", "", "", "", "", "", "1", "파일을 확인했습니다"]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
     harness.runtime.deps.tool_names = vec!["list_dir".into(), "write_file".into()];
@@ -510,8 +455,6 @@ async fn a_listing_the_tool_would_have_returned_is_never_refused() {
         "and nothing was refused for the argument the tool defaults: {:?}",
         ctx.transcript
     );
-    // And the count the listing returned reaches the user, attributed to the
-    // tool the request named.
     assert!(
         ctx.final_message.contains('2'),
         "the deliverable is the number: {:?}",
@@ -521,10 +464,6 @@ async fn a_listing_the_tool_would_have_returned_is_never_refused() {
 
 #[tokio::test]
 async fn the_term_the_user_named_is_what_gets_searched_for() {
-    // Two live cells, one rule. A 0.5B answered `mcp.grep`'s pattern turn with
-    // `LatticeAI mcp.grep` and a 2B answered it with the whole request
-    // sentence; both searched for that string, found nothing over a workspace
-    // containing the word, and reported `0개` and `DONE`.
     let request =
         "워크스페이스에서 LatticeAI라는 단어를 mcp.remote_search로 찾아주고, 찾은 개수를 알려줘";
     for answer in [
@@ -558,35 +497,25 @@ fn a_term_is_only_read_from_a_request_that_names_exactly_one() {
     let catalog =
         crate::tools::catalog::native_entries(&["grep".to_string(), "read_file".to_string()]);
     let term = |request: &str| term_named_in_request(request, &catalog);
-    // The live shape: one ASCII literal, the tool name and the particles around
-    // it are not candidates.
     assert_eq!(
         term("워크스페이스에서 LatticeAI라는 단어를 grep으로 찾아주고, 찾은 개수를 알려줘")
             .as_deref(),
         Some("LatticeAI")
     );
-    // A quoted literal is unambiguous in any language.
     assert_eq!(term("\"TODO\" 를 찾아줘").as_deref(), Some("TODO"));
     assert_eq!(term("find '안녕' please").as_deref(), Some("안녕"));
-    // A path is a place, not a term…
     assert_eq!(
         term("README.md 안에서 LatticeAI를 찾아줘").as_deref(),
         Some("LatticeAI")
     );
-    // …and two candidates is a guess the harness does not make.
     assert_eq!(term("find TODO or FIXME"), None);
     assert_eq!(term("search the workspace for something"), None);
-    // Nothing ASCII at all: there is no literal to read.
     assert_eq!(term("안녕이라는 말을 찾아줘"), None);
     assert_eq!(term(""), None);
 }
 
-// ── v12.0.0 round 4: the argument a 0.5B cannot type ──────────────────────
-
-/// The S3 request, on the dial three live cells ran it on.
 const COUNT_REQUEST: &str = "이 폴더에 어떤 파일이 있는지 list_dir로 확인하고 파일 개수를 알려줘";
 
-/// A run whose only tools are the listing and a write, with no plan.
 async fn listing_harness(script: &[&str]) -> crate::kernel::agentloop::harness::Harness {
     let mut harness = harness(script).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
@@ -608,14 +537,6 @@ fn listing(items: usize) -> Value {
 
 #[tokio::test]
 async fn a_documented_default_is_offered_as_a_number_never_asked_for_as_a_path() {
-    // The live qwen05b:S3 turn. Asked `path — workspace-relative path`, the
-    // 0.5B answered `path/scratchpad/matrix/home_qwen05b/agent_workspace` — the
-    // workspace line in its own context, continued — and looped on
-    // `Directory does not exist.` until it halted. `list_dir(path: str = ".")`
-    // documents the answer, so the turn is a two-row menu and the answer is a
-    // number.
-    // menu 1 → list_dir, choice 1 → the documented default, then `final` — row
-    // one now that the count is in hand — and the answer.
     let mut harness = listing_harness(&["1", "1", "1", "확인했습니다"]).await;
     harness
         .worker
@@ -638,8 +559,6 @@ async fn a_documented_default_is_offered_as_a_number_never_asked_for_as_a_path()
         .collect();
     assert_eq!(listings.len(), 1, "one dispatch, not a loop: {listings:?}");
     assert_eq!(listings[0]["args"]["path"], json!("."));
-    // The turn that produced it offered the tool's own default as row one and
-    // an escape as row two — no path was ever asked for.
     let choice = harness
         .worker
         .calls
@@ -661,21 +580,15 @@ async fn a_documented_default_is_offered_as_a_number_never_asked_for_as_a_path()
         !choice.contains("workspace-relative path\n\n[기본값"),
         "the open value slot is what the 0.5B answered wrongly: {choice}"
     );
-    // And the count the listing returned is the run's answer.
     assert!(ctx.final_message.contains('2'), "{}", ctx.final_message);
 }
 
 #[tokio::test]
 async fn a_path_the_tool_says_is_not_there_is_repaired_once_with_the_tools_own_default() {
-    // Both live shapes, one rule. A 0.5B typed our own workspace line back
-    // (`path/scratchpad/…`) and a 2B typed a filename its planner had invented
-    // (`file_list.txt`); both dispatched, both were told the directory was not
-    // there, both sent the identical call again, and both halted with no count.
     for answered in [
         "path/scratchpad/matrix/home_qwen05b/agent_workspace",
         "file_list.txt",
     ] {
-        // menu → list_dir, choice → "2" (type it myself), then the live answer.
         let mut harness = listing_harness(&["1", "2", answered, "1", "확인했습니다"]).await;
         {
             let mut bodies = harness.worker.tool_bodies.lock().expect("lock");
@@ -704,7 +617,6 @@ async fn a_path_the_tool_says_is_not_there_is_repaired_once_with_the_tools_own_d
             vec![json!(answered), json!(".")],
             "the repaired call is a different call, and it runs: {paths:?}"
         );
-        // The repair is on the record, not silent.
         let repaired = ctx
             .transcript
             .iter()
@@ -738,11 +650,6 @@ async fn a_path_the_tool_says_is_not_there_is_repaired_once_with_the_tools_own_d
 
 #[tokio::test]
 async fn a_call_that_already_used_the_default_is_never_repaired_into_a_replay() {
-    // The halt is respected: a listing that failed *with* the default has
-    // nothing left to try, and sending it again would be the identical replay
-    // this rule exists to prevent.
-    // Three steps of menu-1 / choice-1: the same call, the same argument, the
-    // same error — the shape the repeat floor is for.
     let mut harness = listing_harness(&["1", "1", "1", "1", "1", "1"]).await;
     harness.worker.tool_bodies.lock().expect("lock").insert(
         "list_dir:.".into(),
@@ -775,10 +682,6 @@ async fn a_call_that_already_used_the_default_is_never_repaired_into_a_replay() 
 
 #[tokio::test]
 async fn guidance_read_means_the_declared_file_is_what_comes_next() {
-    // The live qwen05b:S4 shape. The run consulted `skill.code_review`, and its
-    // planner had named `read_file notes/review_note.md` — the file the request
-    // asks it to *write*. The menu offered that read as row one and the run
-    // spent itself on `File does not exist.`
     let catalog = FakeCatalog::new();
     let mut harness = harness(&[]).await;
     harness.runtime.deps.external = Some(catalog.clone());
@@ -791,8 +694,6 @@ async fn guidance_read_means_the_declared_file_is_what_comes_next() {
     .expect("plan")
     .clone();
 
-    // Before the consult the skill the request named is row one — the guidance
-    // is what was asked for first, and nothing here changes that.
     assert_eq!(
         harness.runtime.rank_catalog(&ctx, request)[0].name,
         "skill.file_edit"
@@ -812,17 +713,12 @@ async fn guidance_read_means_the_declared_file_is_what_comes_next() {
             .map(|entry| entry.name.clone())
             .collect::<Vec<_>>()
     );
-    // A request that declared no file owes none, so nothing is boosted for it.
     let counting = harness.runtime.rank_catalog(&ctx, COUNT_REQUEST);
     assert_ne!(counting[0].name, "write_file", "{counting:?}");
 }
 
 #[tokio::test]
 async fn a_counted_question_is_offered_the_exit_once_the_count_exists() {
-    // The deliverable of a count question is the number. Before the listing
-    // there is work to do and `final` is last; after it there is nothing to do
-    // but say the figure, and a 0.5B that answers "1" must land on `final`
-    // rather than on a `write_file` nobody asked for.
     let harness = listing_harness(&[]).await;
     let mut ctx = harness.context();
     let rows = |ctx: &AgentRunContext| -> Vec<String> {
@@ -849,7 +745,6 @@ async fn a_counted_question_is_offered_the_exit_once_the_count_exists() {
         Some("final"),
         "{after:?}"
     );
-    // And a request that never asked how many is untouched by this.
     let other: Vec<String> = harness
         .runtime
         .rank_catalog(&ctx, "notes/hello.md에 인사말을 써줘")

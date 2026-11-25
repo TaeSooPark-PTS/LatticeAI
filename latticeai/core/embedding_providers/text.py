@@ -1,12 +1,3 @@
-"""The five text embedders, their factory, and the resolution that never fails.
-
-Hash (offline fallback), MLX, Ollama, OpenAI-compatible and a user-supplied
-dotted callable. ``build_embedding_provider`` constructs one by name without
-ever making a network call; ``resolve_embedder`` probes it and degrades to the
-hash fallback while *reporting* requested vs. active, so a down provider is
-never quietly presented as live.
-"""
-
 from __future__ import annotations
 
 import importlib
@@ -44,30 +35,17 @@ from .profiles import RECOMMENDED_EMBEDDING_MODEL, RECOMMENDED_EMBEDDING_PROFILE
 
 
 def _as_float_list(value: Any) -> List[Any]:
-    """A pooled embedding row as a flat list.
-
-    ``mx.array.tolist()`` is typed as scalar-or-nested; at this call site the
-    array is always 1-D, so a scalar would be a bug worth surfacing.
-    """
     if isinstance(value, (int, float)):
         raise EmbeddingUnavailable("MLX embedding produced a scalar, not a vector")
     return list(value)
 
 
-#: Longest token sequence an encoder-family embedding model accepts. BERT and
-#: XLM-R both stop at 512 including the two special tokens; a longer sequence
-#: is a hard failure inside the model, not a slow answer, so the ids are cut
-#: here rather than discovered at inference time.
 MLX_MAX_TOKENS = 512
 
-#: The E5 family was trained with these literal prefixes and loses accuracy
-#: without them. Keyed on the ``kind`` ``POST /worker/embed`` already sends.
 E5_PREFIXES: Dict[str, str] = {"query": "query: ", "passage": "passage: "}
 
-#: Default Hugging Face semantic embedding model (Google EmbeddingGemma 2).
 DEFAULT_HF_EMBEDDING_MODEL = "google/embeddinggemma-2"
 
-#: Task-steered instruction prefixes for Google EmbeddingGemma models.
 EMBEDDINGGEMMA_PREFIXES: Dict[str, str] = {
     "query": "task: search result | query: ",
     "passage": "title: none | text: ",
@@ -75,17 +53,14 @@ EMBEDDINGGEMMA_PREFIXES: Dict[str, str] = {
 
 
 def _wants_e5_prefix(model: str) -> bool:
-    """Whether this model id names an E5-family checkpoint."""
     return "e5" in str(model or "").lower()
 
 
 def _wants_embeddinggemma_prefix(model: str) -> bool:
-    """Whether this model id names an EmbeddingGemma checkpoint."""
     return "embeddinggemma" in str(model or "").lower()
 
 
 def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
-    """Extract or mean-pool sentence vectors from a Hugging Face model output."""
     for attr in ("sentence_embedding", "text_embeds", "pooler_output"):
         pooled = getattr(outputs, attr, None)
         if pooled is not None:
@@ -97,7 +72,6 @@ def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
     data = hidden.tolist() if hasattr(hidden, "tolist") else list(hidden)
     if not data:
         return []
-    # 2-D output: already one vector per item in the batch.
     if isinstance(data[0], (list, tuple)) and (
         not data[0] or isinstance(data[0][0], (int, float))
     ):
@@ -139,16 +113,6 @@ def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
 
 
 class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
-    """Local Hugging Face / sentence-transformers semantic embedder.
-
-    Defaults to ``google/embeddinggemma-2`` (768 dimensions) and supports:
-    1. ``sentence_transformers.SentenceTransformer`` when installed;
-    2. ``transformers`` ``AutoModel`` + ``AutoTokenizer`` with mean pooling;
-    3. ``mlx_embeddings`` when an MLX checkpoint is given on Apple Silicon;
-    4. a verified local snapshot in ``HF_HUB_CACHE`` / ``~/.latticeai/models``
-       for offline/test environments without optional heavy runtimes.
-    """
-
     provider = "huggingface"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -192,7 +156,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         ) or self._model_name.endswith("-mlx")
         if is_mlx_repo:
             try:
-                from mlx_embeddings.utils import load as mlx_load  # type: ignore
+                from mlx_embeddings.utils import load as mlx_load
 
                 model, tokenizer = mlx_load(self._model_name)
                 self._encoder = ("mlx_embeddings", model, tokenizer)
@@ -210,7 +174,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map))
 
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore
+            from sentence_transformers import SentenceTransformer
 
             is_real_st = getattr(SentenceTransformer, "__module__", "").startswith(
                 "sentence_transformers."
@@ -231,13 +195,16 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 ) from exc
 
         try:
-            from transformers import AutoModel, AutoTokenizer  # type: ignore
+            from transformers import AutoModel, AutoTokenizer
 
             is_real_tf = getattr(AutoModel, "__module__", "").startswith(
                 "transformers."
             )
             if is_real_tf:
-                import torch as _torch  # noqa: F401  # type: ignore
+                import importlib.util
+
+                if importlib.util.find_spec("torch") is None:
+                    raise ImportError("torch is required for local transformers")
 
                 target = str(snapshot) if snapshot is not None else self._model_name
                 tokenizer = AutoTokenizer.from_pretrained(target, local_files_only=True)
@@ -257,7 +224,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
 
         if not is_mlx_repo:
             try:
-                from mlx_embeddings.utils import load as mlx_load  # type: ignore
+                from mlx_embeddings.utils import load as mlx_load
 
                 model, tokenizer = mlx_load(self._model_name)
                 self._encoder = ("mlx_embeddings", model, tokenizer)
@@ -286,7 +253,6 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
     def embed_batch_for(
         self, texts: Sequence[str], kind: str = "passage"
     ) -> List[List[float]]:
-        """Apply task-steered instruction prefixes for EmbeddingGemma or E5 models."""
         role = (
             "query" if str(kind or "passage").strip().lower() == "query" else "passage"
         )
@@ -335,7 +301,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     return_tensors="pt",
                 )
                 try:
-                    import torch  # type: ignore
+                    import torch
 
                     with torch.no_grad():
                         outputs = model(**encoded)
@@ -343,7 +309,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     outputs = model(**encoded)
                 return _mean_pool_transformers(outputs, encoded)
             if backend == "mlx_embeddings":
-                import mlx.core as mx  # type: ignore
+                import mlx.core as mx
 
                 out: List[List[float]] = []
                 for text in texts:
@@ -386,15 +352,6 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
 
 
 class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
-    """A local Apple-Silicon sentence embedder through ``mlx_embeddings``.
-
-    Nothing here reaches the network: the model must already be in the local
-    Hugging Face cache (that is exactly what
-    :func:`~.autodetect.detect_local_mlx` looks for). A missing package or a
-    missing snapshot is :class:`EmbeddingUnavailable`, which
-    :func:`resolve_embedder` turns into the honest hash fallback.
-    """
-
     provider = "mlx"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -416,13 +373,13 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
     def _load(self):
         if self._encoder is not None:
             return self._encoder
-        try:  # optional dependency; only imported when this provider is used
-            from mlx_embeddings.utils import load as mlx_load  # type: ignore
+        try:
+            from mlx_embeddings.utils import load as mlx_load
 
             model, tokenizer = mlx_load(self._cfg.model)
             self._encoder = ("mlx_embeddings", model, tokenizer)
             return self._encoder
-        except ImportError as exc:  # pragma: no cover - environment dependent
+        except ImportError as exc:
             env_map = (
                 self._cfg.extra.get("env")
                 if isinstance(self._cfg.extra, dict)
@@ -439,7 +396,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             raise EmbeddingUnavailable(
                 f"MLX embedding model unavailable: {exc}"
             ) from exc
-        except Exception as exc:  # pragma: no cover - environment dependent
+        except Exception as exc:
             raise EmbeddingUnavailable(
                 f"MLX embedding model unavailable: {exc}"
             ) from exc
@@ -447,7 +404,6 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
     def embed_batch_for(
         self, texts: Sequence[str], kind: str = "passage"
     ) -> List[List[float]]:
-        """E5 asymmetry, honoured. Non-E5 models see the text unchanged."""
         if not self._prefixed:
             return self.embed_batch(texts)
         prefix = E5_PREFIXES.get(str(kind or "passage").lower(), E5_PREFIXES["passage"])
@@ -458,7 +414,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
         if backend == "local_snapshot":
             return [model.embed(text) for text in texts]
         try:
-            import mlx.core as mx  # type: ignore
+            import mlx.core as mx
 
             out: List[List[float]] = []
             for text in texts:
@@ -468,7 +424,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             return out
         except EmbeddingUnavailable:
             raise
-        except Exception as exc:  # pragma: no cover - environment dependent
+        except Exception as exc:
             raise EmbeddingUnavailable(f"MLX embedding failed: {exc}") from exc
 
     def metadata(self) -> Dict[str, Any]:
@@ -494,14 +450,6 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
 
 
 def _pool(mx: Any, result: Any) -> List[Any]:
-    """One sentence vector out of whatever shape the model handed back.
-
-    ``mlx_embeddings`` models return an output object carrying a pooled
-    ``text_embeds`` on newer versions and a bare hidden-state tensor on older
-    ones. Preferring the model's own pooled output matters: a checkpoint with a
-    trained pooler produces a better vector than a mean over its last layer,
-    and mean-pooling on top of an already-pooled row would be nonsense.
-    """
     for attribute in ("text_embeds", "pooler_output"):
         pooled = getattr(result, attribute, None)
         if pooled is not None:
@@ -532,7 +480,6 @@ class OllamaEmbeddingProvider(_NetworkEmbeddingProvider):
             import httpx
 
             with httpx.Client(timeout=self._cfg.timeout) as client:
-                # /api/embed supports batching; fall back to /api/embeddings.
                 resp = client.post(
                     f"{self._base}/api/embed",
                     json={"model": self._cfg.model, "input": list(texts)},
@@ -620,12 +567,6 @@ class OpenAICompatibleEmbeddingProvider(_NetworkEmbeddingProvider):
 
 
 class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
-    """Loads a dotted ``module:callable`` (or ``module.callable``).
-
-    The callable receives ``List[str]`` and returns ``List[List[float]]``.
-    Configured via ``LATTICEAI_EMBEDDING_CUSTOM_TARGET``.
-    """
-
     provider = "custom"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -687,7 +628,6 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
             return {"status": "unavailable", "detail": str(exc)}
 
 
-# ── factory + resolution ──────────────────────────────────────────────────────
 PROVIDER_TYPES = ("hash", "huggingface", "mlx", "ollama", "openai", "custom")
 
 
@@ -701,7 +641,6 @@ def build_embedding_provider(
     timeout: float = 30.0,
     extra: Optional[Dict[str, Any]] = None,
 ) -> EmbeddingProvider:
-    """Construct a provider by name. Never makes a network call."""
     kind = str(provider or "hash").strip().lower()
     if kind in {"", "hash", "local", "fallback"}:
         return HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
@@ -736,9 +675,6 @@ class ResolvedEmbedder:
     fell_back: bool
     health: Dict[str, Any]
     detail: str = ""
-    #: What :mod:`.autodetect` found on this machine, if anyone looked. It is
-    #: reported whether or not it was adopted, so a user running on the hash
-    #: fallback with a real embedder already downloaded can *see* that.
     detected: Optional[Any] = None
 
     def as_dict(self) -> Dict[str, Any]:
@@ -768,13 +704,6 @@ def resolve_embedder(
     extra: Optional[Dict[str, Any]] = None,
     probe: bool = True,
 ) -> ResolvedEmbedder:
-    """Build the requested provider, degrading to hash if it is unavailable.
-
-    Local-first guarantee: the app always gets a working embedder. When the
-    requested provider is unreachable we return the hash fallback but record
-    ``fell_back=True`` and the failing health detail so the UI shows it as
-    *Unavailable* — the system never pretends a down provider is live.
-    """
     requested = str(provider or "hash").strip().lower() or "hash"
     if requested == AUTO_PROVIDER:
         env_map = (extra or {}).get("env") if isinstance(extra, dict) else None
@@ -872,7 +801,7 @@ def resolve_embedder(
             ValueError,
             TypeError,
             AttributeError,
-        ) as exc:  # provider health must never crash startup
+        ) as exc:
             health = {"status": "unavailable", "detail": str(exc)}
     else:
         health = {"status": "unknown", "detail": "not probed"}

@@ -38,7 +38,6 @@ describe("MessageBody markdown rendering", () => {
     );
     const md = document.querySelector(".brain-md")!;
     expect(md.querySelector(".brain-md-heading.is-depth-1")!.textContent).toBe("제목");
-    // Depth is clamped at 3 so #### still reads as a heading.
     expect(md.querySelector(".brain-md-heading.is-depth-3")!.textContent).toBe("깊은 제목");
     expect(md.querySelector("strong")!.textContent).toBe("강조");
     expect(md.querySelector("code")!.textContent).toBe("코드");
@@ -46,12 +45,10 @@ describe("MessageBody markdown rendering", () => {
     expect(link.getAttribute("href")).toBe("https://lattice.dev");
     expect(link.textContent).toBe("링크");
     expect(md.querySelector("br")).toBeTruthy();
-    // The three bullet styles merge into one list; the ordered pair into another.
     expect(md.querySelectorAll("ul").length).toBe(1);
     expect(md.querySelectorAll("ul li").length).toBe(3);
     expect(md.querySelectorAll("ol li").length).toBe(2);
     expect(md.querySelector("blockquote")!.textContent).toBe("인용 첫 줄 인용 둘째 줄");
-    // The horizontal rule renders nothing but still separates paragraphs.
     expect(md.textContent).not.toContain("---");
     expect(md.textContent).toContain("다음 문단");
     expect(md.textContent).not.toContain("**");
@@ -81,7 +78,6 @@ describe("MessageBody markdown rendering", () => {
     expect(blocks.length).toBe(2);
     expect(blocks[0]!.querySelector(".brain-code-lang")!.textContent).toBe("python");
     expect(blocks[0]!.querySelector("pre code")!.textContent).toBe("print('hi')");
-    // A fence without a language falls back to the neutral label.
     expect(blocks[1]!.querySelector(".brain-code-lang")!.textContent).toBe("text");
     expect(blocks[1]!.querySelector("pre code")!.textContent).toBe("tail without end");
   });
@@ -102,7 +98,6 @@ describe("MessageBody markdown rendering", () => {
     render(<MessageBody language="ko" content="**끝**" />);
     const md = document.querySelector(".brain-md")!;
     expect(md.querySelector("strong")!.textContent).toBe("끝");
-    // Nothing follows the mark, so there is no trailing text node to render.
     expect(md.textContent).toBe("끝");
   });
 });
@@ -139,11 +134,8 @@ describe("CodeBlock actions", () => {
     renderCode();
     fireEvent.click(screen.getByText("복사"));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    // Failure keeps the idle label — no false "copied" promise.
     expect(screen.getByText("복사")).toBeTruthy();
 
-    // Without a clipboard API the optional call resolves to nothing and the
-    // label still flips (there was no error to report).
     Object.assign(navigator, { clipboard: undefined });
     fireEvent.click(screen.getByText("복사"));
     await screen.findByText("복사했어요");
@@ -166,7 +158,6 @@ describe("CodeBlock actions", () => {
     } as never);
     renderCode("```brainfuck\n+++\n```");
     fireEvent.click(screen.getByText("파일로 저장"));
-    // A directory-shaped path falls back to the suggested name.
     await screen.findByText(/^chat-\d{8}-\d{6}\.txt$/);
     expect(save).toHaveBeenCalledWith(expect.stringMatching(/\.txt$/), "+++");
   });
@@ -277,7 +268,6 @@ describe("CreatedFilesCard", () => {
     expect(screen.getByText("2.0 KB")).toBeTruthy();
     expect(screen.getByText("3.0 MB")).toBeTruthy();
     expect(screen.getByText(/자동 보정됨/)).toBeTruthy();
-    // txt/md preview; zip and the empty bin do not.
     expect(screen.getAllByRole("button", { name: /미리보기/ }).length).toBe(2);
     expect(screen.getAllByRole("button", { name: /다운로드/ }).length).toBe(4);
     expect(document.querySelector(".brain-created-files.is-compact")).toBeNull();
@@ -308,7 +298,6 @@ describe("CreatedFilesCard", () => {
     const buttons = screen.getAllByRole("button", { name: /다운로드/ });
     fireEvent.click(buttons[0]!);
     await screen.findByText("내려받는 중…");
-    // While one download runs, a second request is ignored entirely.
     fireEvent.click(buttons[1]!);
     expect(download).toHaveBeenCalledTimes(1);
     expect(download).toHaveBeenCalledWith("a.txt", "a.txt");

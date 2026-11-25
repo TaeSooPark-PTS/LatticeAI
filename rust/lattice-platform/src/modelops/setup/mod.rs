@@ -1,24 +1,3 @@
-//! Setup wizard + demo corpus — native (v11.6.0, WP-R2).
-//!
-//! Port of `latticeai/api/setup.py`. `/setup/scan` is client-critical
-//! onboarding; `/setup/install` is SSE with **no Accept negotiation**. Demo
-//! corpus deletes are native: `GraphWriter::delete_document_tree`.
-//!
-//! ## Structure
-//!
-//! Four files along one seam — *look*, *act*, *seed*, *route*:
-//!
-//! | module | what it owns |
-//! |---|---|
-//! | [`scan`] | reading the host: the environment block, zero-config state, recommendations, the install plan, the verification checks |
-//! | `install` | performing a consented install step, and the SSE frames it emits |
-//! | [`demo`] | the three demo documents, their questions, and their exact removal |
-//! | this file | [`SetupState`], the router, and the eight handlers |
-//!
-//! The split is by *effect*, not by size: [`scan`] answers questions and
-//! `install` changes the machine, so a change to what onboarding *reports* can
-//! never accidentally change what it *runs*.
-
 use std::collections::HashSet;
 
 use axum::extract::{Path, State};
@@ -98,15 +77,10 @@ pub struct SetupState {
     pub auth: Arc<AuthState>,
     pub demo: Option<DemoStore>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
-    /// When false, demo routes 503 (`capture.ingestion_disabled`).
     pub pipeline_available: bool,
     pub data_dir: PathBuf,
-    /// Worker seam for `/models`, `/worker/sysinfo`, prepare-model.
     pub worker: Option<WorkerSeamClient>,
-    /// `open_url` is a no-op by default (tests / headless).
     pub opener: Arc<dyn Fn(&str) + Send + Sync>,
-    /// Test seam for consented brew/pip/uv execution. `None` runs the
-    /// process. The production path never takes a command from the client.
     pub runner: Option<install::InstallRunner>,
 }
 
@@ -124,7 +98,6 @@ impl SetupState {
         }
     }
 
-    /// Point setup probes and installable model actions at this worker.
     pub fn with_worker(mut self, worker: WorkerSeamClient) -> Self {
         self.worker = Some(worker);
         self

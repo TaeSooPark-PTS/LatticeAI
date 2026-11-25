@@ -1,13 +1,3 @@
-"""Read-only git tools (no shell, allow-listed subcommands).
-
-``run_command`` and its sandbox left the worker in v11.6.0 §W4 — execution is
-``lattice-agent``'s. The flag/binary allowlists that only that validator read
-went with it in 11.8.0; what is left here is the four git readers ``POST
-/agent/tool`` still dispatches, and the two argument guards they apply:
-remote targets are refused outright, and a revision may not carry ``..``,
-``:``, ``/``, ``\\`` or a leading ``-``.
-"""
-
 from __future__ import annotations
 
 import subprocess

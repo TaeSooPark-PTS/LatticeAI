@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// The knowledge graph explorer — canvas controls, focus and grouping,
-// coverage, and the Brain-side entry points into it.
 export const brainGraphCopy: NamespaceCopy = {
   ko: {
     "brain.graph.open": "연결 지도 열기",

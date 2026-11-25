@@ -1,17 +1,3 @@
-//! The dial that decides whether a turn may reach a cloud provider.
-//!
-//! Port of `latticeai/core/network_boundary.py` plus the **read** half of
-//! `services/network_boundary_service.py` and `services/hybrid_policy.py`
-//! (`services/mode_store.py` is their shared storage). Chat only ever reads
-//! these files; `PATCH /api/network/boundary` and the policy writer are
-//! `lattice-platform`'s routes (WP-R9), and two writers of one JSON file is
-//! exactly the failure the shared store exists to prevent.
-//!
-//! Precedence is the Python one and it is **not** the obvious one: the
-//! *workspace* entry wins over the *user* entry, which wins over `default`.
-//! A file that cannot be read degrades to defaults rather than to permission —
-//! `local_only`, no auto-commit — because an unreadable policy is not consent.
-
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -19,17 +5,13 @@ use serde_json::{Map, Value};
 
 use crate::pyvalue::{text as py_text, truthy};
 
-/// `NetworkBoundaryMode`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkMode {
-    /// Nothing leaves this machine.
     LocalOnly,
-    /// Minimal related nodes may be sent to a cloud LLM.
     CloudAllowed,
 }
 
 impl NetworkMode {
-    /// The wire value (`mode`, `X-Network-Mode`).
     pub fn as_str(self) -> &'static str {
         match self {
             Self::LocalOnly => "local_only",
@@ -38,18 +20,13 @@ impl NetworkMode {
     }
 }
 
-/// `DEFAULT_NETWORK_MODE`.
 pub const DEFAULT_NETWORK_MODE: NetworkMode = NetworkMode::LocalOnly;
 
-/// The env var that moves the process default.
 pub const NETWORK_MODE_ENV: &str = "LATTICEAI_NETWORK_MODE";
 
-/// `network_boundary.json` — the dial's file, under the data dir.
 pub const NETWORK_BOUNDARY_FILE: &str = "network_boundary.json";
-/// `hybrid_policy.json` — what may happen to what comes back.
 pub const HYBRID_POLICY_FILE: &str = "hybrid_policy.json";
 
-/// `normalize_network_mode` — every alias, unknown input falling to local_only.
 pub fn normalize_network_mode(value: &str) -> NetworkMode {
     match value.trim().to_lowercase().as_str() {
         "cloud_allowed" | "cloud" | "cloud-allowed" | "hybrid" | "online" => {
@@ -59,7 +36,6 @@ pub fn normalize_network_mode(value: &str) -> NetworkMode {
     }
 }
 
-/// `HARD_BLOCK_NODE_TYPES` — the circuit breaker no policy can widen.
 pub const HARD_BLOCK_NODE_TYPES: [&str; 6] = [
     "ApiKey",
     "Credential",
@@ -69,11 +45,9 @@ pub const HARD_BLOCK_NODE_TYPES: [&str; 6] = [
     "Token",
 ];
 
-/// `HARD_BLOCK_METADATA_FLAGS` — truthy on a node means it never leaves.
 pub const HARD_BLOCK_METADATA_FLAGS: [&str; 4] =
     ["do_not_share", "local_only", "private", "sensitive"];
 
-/// `is_node_blocked_for_cloud` — the reason, or `None` when it may go.
 pub fn blocked_reason(node: &Value) -> Option<String> {
     let node_type = node.get("type").and_then(Value::as_str).unwrap_or("");
     if HARD_BLOCK_NODE_TYPES.contains(&node_type) {
@@ -82,8 +56,6 @@ pub fn blocked_reason(node: &Value) -> Option<String> {
         ));
     }
     let meta = node.get("metadata").and_then(Value::as_object)?;
-    // Python iterates a frozenset, whose order is unspecified; the sorted array
-    // here makes the *reported* flag deterministic when a node carries two.
     for flag in HARD_BLOCK_METADATA_FLAGS {
         if meta.get(flag).is_some_and(truthy) {
             return Some(format!(
@@ -122,8 +94,6 @@ pub fn blocked_reason(node: &Value) -> Option<String> {
     None
 }
 
-/// `is_node_blocked_for_cloud` — enforces both immutable hard blocks and any
-/// additional node types or metadata flags configured in `policy`.
 pub fn blocked_reason_for_policy(node: &Value, policy: &HybridPolicy) -> Option<String> {
     if let Some(reason) = blocked_reason(node) {
         return Some(reason);
@@ -145,7 +115,6 @@ pub fn blocked_reason_for_policy(node: &Value, policy: &HybridPolicy) -> Option<
     None
 }
 
-/// `mode_store._read` — the three buckets, defaults on any unreadable file.
 fn read_store(path: &Path) -> Map<String, Value> {
     let mut data = std::fs::read_to_string(path)
         .ok()
@@ -177,10 +146,6 @@ fn scoped<'a>(
         .filter(|entry| truthy(entry))
 }
 
-/// `NetworkBoundaryService.resolve` over the file at `data_dir`.
-///
-/// `env_default` is `_env_default_mode()`: the process default before any file
-/// says otherwise.
 pub fn resolve_network_mode(
     data_dir: &Path,
     env_default: NetworkMode,
@@ -201,7 +166,6 @@ pub fn resolve_network_mode(
     }
 }
 
-/// `_env_default_mode()`.
 pub fn env_default_mode() -> NetworkMode {
     match std::env::var(NETWORK_MODE_ENV) {
         Ok(value) => normalize_network_mode(&value),
@@ -209,7 +173,6 @@ pub fn env_default_mode() -> NetworkMode {
     }
 }
 
-/// `chat_hybrid.resolve_request_network_mode` — the per-request override wins.
 pub fn request_network_mode(
     request_mode: Option<&str>,
     data_dir: &Path,
@@ -222,36 +185,24 @@ pub fn request_network_mode(
     }
 }
 
-/// The resolved hybrid policy — what may happen to what the cloud returns.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HybridPolicy {
-    /// Node types this scope refuses to send, hard blocks unioned in.
     pub blocked_node_types: BTreeSet<String>,
-    /// Metadata flags this scope refuses to send, hard blocks unioned in.
     pub blocked_metadata_flags: BTreeSet<String>,
-    /// Whether cloud-derived knowledge may be written instead of staged.
     pub auto_commit: bool,
-    /// Whether multimodal cloud calls are allowed when cloud mode is on.
     pub allow_multimodal: bool,
-    /// Confidence floor for heuristic extraction.
     pub min_extraction_confidence: f64,
-    /// When a `cloud_allowed` turn actually leaves the machine.
     pub escalation: Escalation,
 }
 
-/// How aggressively a `cloud_allowed` turn is sent to the cloud.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Escalation {
-    /// Every turn — the pre-11.9 behaviour.
     Always,
-    /// Only when the local lane cannot answer honestly.
     Auto,
-    /// Only when the user prefixes `/cloud ` or `클라우드:`.
     Manual,
 }
 
 impl Escalation {
-    /// The wire / file value.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Always => "always",
@@ -260,7 +211,6 @@ impl Escalation {
         }
     }
 
-    /// Parse a file / request token; unknown input is the default (`auto`).
     pub fn parse(value: &str) -> Self {
         match value.trim().to_lowercase().as_str() {
             "always" | "all" | "every" => Self::Always,
@@ -270,21 +220,15 @@ impl Escalation {
     }
 }
 
-/// Why this turn was sent to the cloud. Carried on `hybrid_context` and egress.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EscalationReason {
-    /// Policy is `always`.
     Always,
-    /// No local MLX model is loaded.
     NoLocalModel,
-    /// `assemble_context` / context-quality matched fewer than the threshold.
     WeakLocalContext,
-    /// The user prefixed `/cloud ` or `클라우드:`.
     ExplicitRequest,
 }
 
 impl EscalationReason {
-    /// The `reason` token the SPA / egress record carry.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Always => "always",
@@ -295,10 +239,8 @@ impl EscalationReason {
     }
 }
 
-/// Matched-node floor below which `auto` treats local context as too thin.
 pub const WEAK_CONTEXT_NODE_THRESHOLD: i64 = 2;
 
-/// Whether the user asked for the cloud lane by prefix.
 pub fn is_explicit_cloud_request(message: &str) -> bool {
     let trimmed = message.trim_start();
     trimmed == "/cloud"
@@ -308,7 +250,6 @@ pub fn is_explicit_cloud_request(message: &str) -> bool {
         || trimmed.starts_with("클라우드:")
 }
 
-/// Strip a leading `/cloud ` / `클라우드:` so the provider sees the question.
 pub fn strip_cloud_prefix(message: &str) -> &str {
     let trimmed = message.trim_start();
     for prefix in ["/cloud ", "/cloud\t", "/cloud\n", "클라우드:"] {
@@ -322,7 +263,6 @@ pub fn strip_cloud_prefix(message: &str) -> &str {
     message
 }
 
-/// Decide whether this turn escalates, and why.
 pub fn escalation_reason(
     escalation: Escalation,
     no_local_model: bool,
@@ -394,7 +334,6 @@ fn string_set(value: Option<&Value>, hard: &[&str]) -> BTreeSet<String> {
     set
 }
 
-/// `HybridPolicyService.resolve` — default, then user, then workspace.
 pub fn resolve_hybrid_policy(
     data_dir: &Path,
     user_email: Option<&str>,
@@ -419,8 +358,6 @@ pub fn resolve_hybrid_policy(
         ),
         auto_commit: policy.get("auto_commit").is_some_and(truthy),
         allow_multimodal: policy.get("allow_multimodal").is_some_and(truthy),
-        // `float(...)` with a TypeError/ValueError fallback: an unusable value
-        // is the default, never a refusal.
         min_extraction_confidence: match policy.get("min_extraction_confidence") {
             Some(Value::Number(number)) => number.as_f64().unwrap_or(0.55),
             Some(Value::String(text)) => text.trim().parse::<f64>().unwrap_or(0.55),
@@ -595,8 +532,6 @@ mod tests {
 
     #[test]
     fn the_env_default_is_read_when_no_file_says_otherwise() {
-        // Reading the process env, not setting it: a set() here would race
-        // every other test in this binary.
         let expected = match std::env::var(NETWORK_MODE_ENV) {
             Ok(value) => normalize_network_mode(&value),
             Err(_) => NetworkMode::LocalOnly,

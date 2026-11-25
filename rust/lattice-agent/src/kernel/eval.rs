@@ -1,16 +1,3 @@
-//! Agent quality evaluation metrics and deterministic run scoring (P2).
-//!
-//! Pure kernel evaluator over [`AgentRunContext`], [`LoopTrace`], and the
-//! post-run [`Workspace`] state. Measures:
-//!
-//! * Requirement fulfillment rate
-//! * Task success rate
-//! * Unsupported / ungrounded claim rate
-//! * File modification accuracy
-//! * Retry count & token / execution cost tracking
-//! * Safe abort rate after change-proposal / approval rejection
-//! * Cross-model profile consistency (`standard` / `compact` / `guided`)
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
@@ -19,8 +6,6 @@ use serde_json::Value;
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::tools::sandbox::Workspace;
 
-/// Deterministic character-to-token estimate (~4 chars/token) used when a
-/// worker response omits explicit token counts.
 pub fn estimate_tokens(text: &str) -> u64 {
     let chars = text.chars().count() as u64;
     if chars == 0 {
@@ -30,7 +15,6 @@ pub fn estimate_tokens(text: &str) -> u64 {
     }
 }
 
-/// Token consumption recorded or estimated for an evaluated run.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TokenCost {
     pub prompt_tokens: u64,
@@ -47,8 +31,6 @@ impl TokenCost {
         }
     }
 
-    /// Estimate token usage from the run's transcript and final message when
-    /// exact provider counters were not supplied.
     pub fn estimate_from_context(ctx: &AgentRunContext, prompt_text: &str) -> Self {
         let mut prompt_chars = estimate_tokens(prompt_text);
         let mut completion_chars = estimate_tokens(&ctx.final_message);
@@ -70,7 +52,6 @@ impl TokenCost {
     }
 }
 
-/// Execution telemetry extracted from [`LoopTrace`] and wall-clock duration.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExecutionCost {
     pub duration_ms: u64,
@@ -126,7 +107,6 @@ impl ExecutionCost {
     }
 }
 
-/// Expected workspace file state after a run completes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileExpectation {
     pub path: String,
@@ -137,8 +117,6 @@ pub struct FileExpectation {
     pub exact_content: Option<String>,
 }
 
-/// A single functional requirement checked against the run's transcript and
-/// workspace side effects.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RequirementSpec {
     pub id: String,
@@ -151,7 +129,6 @@ pub struct RequirementSpec {
     pub required_response_terms: Vec<String>,
 }
 
-/// Explicit claim in the final answer that must be backed by tool/workspace evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClaimAssertion {
     pub statement: String,
@@ -163,21 +140,16 @@ pub struct ClaimAssertion {
     pub evidence_substrings: Vec<String>,
 }
 
-/// Governance/approval rejection contract for verifying safe aborts.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ProposalAbortExpectation {
     #[default]
     NotRejected,
     Rejected {
-        /// Whether the run was cleanly cancelled/aborted (e.g. proposal rejected
-        /// or user denied resume) and must NOT leave mutations on disk.
         aborted_cleanly: bool,
-        /// Baseline workspace bytes before the run/rejection (`path -> Some(bytes) | None`).
         baseline_files: BTreeMap<String, Option<Vec<u8>>>,
     },
 }
 
-/// One evaluation case executed against the agent loop.
 #[derive(Debug, Clone)]
 pub struct EvalCase {
     pub case_id: String,
@@ -215,7 +187,6 @@ impl EvalCase {
     }
 }
 
-/// Evaluation score for a single agent run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalRunResult {
     pub case_id: String,
@@ -240,7 +211,6 @@ pub struct EvalRunResult {
     pub safe_abort_verified: bool,
 }
 
-/// Per-profile rollup inside [`CrossModelConsistencyReport`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileEvalSummary {
     pub profile_name: String,
@@ -251,8 +221,6 @@ pub struct ProfileEvalSummary {
     pub mean_retries: f64,
 }
 
-/// Consistency of behavior across models/profiles (`standard`, `compact`, `guided`)
-/// evaluated on the same `case_id` tasks.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrossModelConsistencyReport {
     pub shared_case_count: usize,
@@ -261,7 +229,6 @@ pub struct CrossModelConsistencyReport {
     pub per_profile: Vec<ProfileEvalSummary>,
 }
 
-/// Aggregate quality metrics report across a benchmark/regression suite.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityMetricsReport {
     pub total_runs: usize,
@@ -381,9 +348,6 @@ fn requirement_fulfilled(
     tools_ok && files_ok && terms_ok
 }
 
-/// Extract file path tokens mentioned in `final_message` (e.g. `src/app.rs`,
-/// `notes/todo.md`, `report.txt`) so ungrounded claims about nonexistent files
-/// are caught automatically even without explicit `ClaimAssertion`s.
 pub fn extract_claimed_paths(final_message: &str) -> Vec<String> {
     const KNOWN_EXTS: &[&str] = &[
         "rs", "py", "ts", "tsx", "js", "jsx", "json", "toml", "yaml", "yml", "md", "txt", "html",
@@ -497,7 +461,6 @@ fn verify_safe_abort(
     }
 }
 
-/// Score one completed or aborted run deterministically.
 pub fn evaluate_run(
     case: &EvalCase,
     ctx: &AgentRunContext,
@@ -621,8 +584,6 @@ pub fn evaluate_run(
     }
 }
 
-/// Aggregate a suite of [`EvalRunResult`]s into a [`QualityMetricsReport`],
-/// including cross-model / cross-profile consistency across shared `case_id`s.
 pub fn aggregate_report(results: &[EvalRunResult]) -> QualityMetricsReport {
     let total_runs = results.len();
     if total_runs == 0 {

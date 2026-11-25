@@ -1,37 +1,5 @@
-"""Ingestion: what a source *is*, how it hashes, and how good it looks.
-
-v3.6.0's Knowledge Graph First principle — *no data source bypasses the
-Knowledge Graph and no source creates an isolated silo* — is still the rule.
-The door it goes through is no longer here: v11.6.0 §Wave 2.5 made Rust the
-single writer of the Brain, so ``IngestionPipeline.ingest``, the per-source
-routing doors, the folder walk, the ``.latticeignore`` reader and the durable
-background queue moved to ``lattice-core`` / ``lattice-ingest`` /
-``lattice-jobs``.
-
-What stays is the vocabulary both sides share, and the compute the write path
-asks this worker for:
-
-* ``constants`` — the routing tables and the multi-modal gates;
-* ``models`` — :class:`IngestionItem` / :class:`IngestionResult`, now the DTOs
-  of a parse request rather than of a write;
-* ``hashing`` — ``content_hash_text`` and the file digest, which decide
-  idempotency and must produce the same bytes on both sides;
-* ``quality`` — the advisory extraction score behind ``POST /worker/parse``.
-
-``pipeline`` was a fifth: an ``IngestionPipeline`` reduced to a single
-capability probe, whose one route (``GET /api/ingestion/multimodal``) had no
-caller. v11.8.0 removed the route and the class with it — the gates it read
-still live in ``constants``, where anything that needs them can ask directly.
-"""
-
 from __future__ import annotations
 
-# Re-exports use the redundant-alias form: it says "this is a re-export", not a
-# leftover import.
-#
-# Stubbing note: rebinding one of these *here* changes only this module's name.
-# The submodule that calls it holds its own reference, so a test standing in for
-# a helper patches the submodule that uses it.
 from ..gates import FeatureGate as FeatureGate
 from ..multimodal import AUDIO_EXTENSIONS as AUDIO_EXTENSIONS
 from ..multimodal import DEFAULT_KEYFRAMES as DEFAULT_KEYFRAMES

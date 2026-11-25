@@ -1,43 +1,18 @@
-//! `ChatRequest`, and the 422 pydantic answers for a body that is not one.
-//!
-//! Port of `latticeai/api/chat_contracts.py`. The model itself is four lines of
-//! Python; what has to be reproduced is the **refusal**, because
-//! `rust/fixtures/http/chat.json` pins two of them byte-for-byte
-//! (`validation_missing_message`, `wrong_types_422`) and the SPA's
-//! `friendlyError` reads the `detail[]` shape.
-//!
-//! `lattice_auth::body::parse_model` covers flat all-`str` models and stops
-//! there — `ChatRequest` has an `int`, a `float` and two `bool`s, whose lax-mode
-//! coercions and error codes (`int_parsing`, `float_parsing`, `bool_parsing`,
-//! `int_from_float`, `*_type`) are what a caller sees when it sends
-//! `{"stream": "yes please"}`. Those live here rather than being pushed into
-//! `lattice-auth`, which is another package's file.
-//!
-//! Order matters twice: errors are reported in **field-declaration** order, and
-//! a `missing` entry's `input` is the **whole body**, not the absent value.
-
 use axum::http::StatusCode;
 use axum::response::Response;
 use lattice_auth::response::json_response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
-/// What one field of the model accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Kind {
-    /// `str` — required, no default.
     Str,
-    /// `Optional[str] = None`.
     OptStr,
-    /// `int` with a default.
     Int,
-    /// `float` with a default.
     Float,
-    /// `bool` with a default.
     Bool,
 }
 
-/// `ChatRequest`'s fields, in declaration order. The order is the contract.
 const FIELDS: &[(&str, Kind)] = &[
     ("message", Kind::Str),
     ("conversation_id", Kind::OptStr),
@@ -55,7 +30,6 @@ const FIELDS: &[(&str, Kind)] = &[
     ("network_mode", Kind::OptStr),
 ];
 
-/// `ChatRequest` with Python's defaults already applied.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChatRequest {
     pub message: String,
@@ -95,7 +69,6 @@ impl Default for ChatRequest {
     }
 }
 
-/// One pydantic error entry, in the key order FastAPI emits.
 fn entry(kind: &str, loc: Value, msg: &str, input: Value, ctx: Option<Value>) -> OrderedMap {
     let mut problem = OrderedMap::new();
     problem.insert("type", json!(kind));
@@ -108,7 +81,6 @@ fn entry(kind: &str, loc: Value, msg: &str, input: Value, ctx: Option<Value>) ->
     problem
 }
 
-/// The common case: one field of the body.
 fn problem(kind: &str, field: &str, msg: &str, input: Value) -> OrderedMap {
     entry(kind, json!(["body", field]), msg, input, None)
 }
@@ -125,7 +97,6 @@ fn errors(problems: &[OrderedMap]) -> Response {
     )
 }
 
-/// Pydantic v2 lax `bool`: `str` from a fixed vocabulary, `0`/`1` numbers.
 fn coerce_bool(field: &str, value: &Value) -> Result<bool, OrderedMap> {
     const TRUE: [&str; 6] = ["1", "on", "t", "true", "y", "yes"];
     const FALSE: [&str; 6] = ["0", "off", "f", "false", "n", "no"];
@@ -165,7 +136,6 @@ fn coerce_bool(field: &str, value: &Value) -> Result<bool, OrderedMap> {
     }
 }
 
-/// Pydantic v2 lax `int`: numeric strings and integral floats, never `bool`.
 fn coerce_int(field: &str, value: &Value) -> Result<i64, OrderedMap> {
     match value {
         Value::Number(number) => {
@@ -205,7 +175,6 @@ fn coerce_int(field: &str, value: &Value) -> Result<i64, OrderedMap> {
     }
 }
 
-/// Pydantic v2 lax `float`: numbers and numeric strings, never `bool`.
 fn coerce_float(field: &str, value: &Value) -> Result<f64, OrderedMap> {
     match value {
         Value::Number(number) => number.as_f64().ok_or_else(|| {
@@ -245,7 +214,6 @@ fn coerce_str(field: &str, value: &Value) -> Result<String, OrderedMap> {
     }
 }
 
-/// Parse a `POST /chat` body, or render FastAPI's 422.
 pub fn parse_chat_request(bytes: &[u8]) -> Result<ChatRequest, Response> {
     let parsed: Value = match serde_json::from_slice(bytes) {
         Ok(value) => value,
@@ -274,19 +242,10 @@ pub fn parse_chat_request(bytes: &[u8]) -> Result<ChatRequest, Response> {
     for (name, kind) in FIELDS {
         let Some(value) = object.get(*name) else {
             if *kind == Kind::Str {
-                problems.push(problem(
-                    "missing",
-                    name,
-                    "Field required",
-                    // The whole body, which is what pydantic reports for a
-                    // missing key — not the absent value.
-                    parsed.clone(),
-                ));
+                problems.push(problem("missing", name, "Field required", parsed.clone()));
             }
             continue;
         };
-        // `Optional[...] = None` fields take an explicit null as the default;
-        // `str`/`int`/`float`/`bool` fields do not.
         if value.is_null() && *kind == Kind::OptStr {
             continue;
         }
@@ -337,10 +296,6 @@ fn assign_opt(request: &mut ChatRequest, name: &str, value: Option<String>) {
         "user_nickname" => request.user_nickname = value,
         "image_data" => request.image_data = value,
         "network_mode" => request.network_mode = value,
-        // Unreachable: `FIELDS` is the only caller and every `OptStr` entry is
-        // named above. A silent no-op rather than a panic, because a future
-        // field added to `FIELDS` and forgotten here must not take the process
-        // down mid-request.
         _ => {}
     }
 }
@@ -429,7 +384,6 @@ mod tests {
         assert!((parsed.temperature - 1.0).abs() < f64::EPSILON);
         assert!(!parsed.stream);
         assert!(parsed.allow_file_context);
-        // An integral float is an int; a fractional one is not.
         assert_eq!(
             parse_chat_request(br#"{"message":"m","max_tokens":8.0}"#)
                 .unwrap()

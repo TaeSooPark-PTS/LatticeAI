@@ -1,6 +1,3 @@
-//! Envelope key aliasing, labeled-prose action salvage, and XML tool-call
-//! salvage for [`super`] (`extract_action_details`).
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
@@ -17,8 +14,6 @@ pub(super) fn fenced_content_block() -> &'static Regex {
     compiled(&RE, r"(?s)```[A-Za-z0-9_-]*\r?\n(.*?)```")
 }
 
-/// Tools this crate will actually dispatch. A backtick around an unknown
-/// name is chatter, not a call. Strictly ASCII-sorted for `binary_search`.
 pub(super) const KNOWN_ACTIONS: &[&str] = &[
     "computer_click",
     "computer_drag",
@@ -117,12 +112,6 @@ fn parse_kv_pairs(text: &str) -> Map<String, Value> {
     args
 }
 
-/// A name this crate will dispatch, including `mcp.*` / `skill.*` rows.
-///
-/// Native tools stay on the frozen [`KNOWN_ACTIONS`] list. Qualified host
-/// names are accepted by prefix so a 2B that writes `Action: mcp.grep` is
-/// not declined as chatter — until v12.2.0 the labeled regex and the known
-/// list both refused the dot, which is the whole of an MCP call's spelling.
 pub(super) fn accepted_action(name: &str) -> Option<String> {
     let name = name.trim();
     if name.is_empty() {
@@ -176,13 +165,6 @@ fn object_from_args_value(value: &Value) -> Option<(Map<String, Value>, &'static
     }
 }
 
-/// Map the function-calling envelope onto `action` / `args`.
-///
-/// Qwen, Llama and Gemma 2B instruct models emit `name`+`arguments` (or a
-/// nested `function` object or `tool_calls` array) more often than this
-/// crate's `action`+`args`. The object already parsed; this only copies keys.
-/// An object that already has `action` is untouched, so a genuine
-/// `{"action": "final"}` cannot become something else.
 pub(super) fn normalize_call_keys(
     mut map: Map<String, Value>,
     repairs: &mut Vec<String>,
@@ -290,8 +272,6 @@ fn action_object(action: &str, args: Map<String, Value>) -> Map<String, Value> {
     map
 }
 
-/// A path-taking tool with no path is not a call — it is a KeyError at
-/// dispatch. Decline so the next salvage pattern (or a parse_error) can fire.
 pub(super) fn usable_labeled(action: &str, args: Map<String, Value>) -> Option<Map<String, Value>> {
     if matches!(
         action,
@@ -309,15 +289,6 @@ pub(super) fn usable_labeled(action: &str, args: Map<String, Value>) -> Option<M
     Some(action_object(action, args))
 }
 
-/// Gemma-4-e2b often spends the whole reply inside `<|channel>thought` and
-/// never opens a brace. The live verify5 tapes named the call anyway:
-///
-/// * `Action: \`read_file\`\nArgs: \`path: "README.md"\``
-/// * `the first step: \`read_file\` for \`README.md\``
-/// * `the first step (\`read_file\`)` plus an earlier `` `README.md` ``
-///
-/// Execute-only — [`super::extract_verdict_details`] must not invent a tool call
-/// from a critic that happened to mention one.
 pub(super) fn salvage_labeled_action(raw: &str) -> Option<Parsed> {
     let mut repairs: Vec<String> = Vec::new();
     let stripped = think_block().replace_all(raw, "");
@@ -344,7 +315,6 @@ pub(super) fn salvage_labeled_action(raw: &str) -> Option<Parsed> {
         let name = captures.get(1).map(|found| found.as_str()).unwrap_or("");
         if let Some(action) = accepted_action(name) {
             let args_capture = labeled_args_line().captures(&text).ok().flatten();
-            // Defer `Action: <tool>\nAction Input: ...` to `react_format` when no `Args:` line exists.
             let is_react = args_capture.is_none()
                 && react_action_input_line().is_match(&text).unwrap_or(false);
             if !is_react {

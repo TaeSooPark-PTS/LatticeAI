@@ -19,8 +19,7 @@ const fullHealth = {
   grade: "good",
   dimensions: {
     freshness: { score: 91 },
-    connectivity: {}, // record without numeric score → em dash
-    // embedding_coverage / consistency absent → em dash via the non-record side
+    connectivity: {},
   },
   recommended_actions: [
     { id: "rebuild_vector_index" },
@@ -72,15 +71,14 @@ describe("BrainIntelligencePanel", () => {
     expect(dimensions).toHaveLength(4);
     expect(dimensions[0]!.textContent).toContain("신선도");
     expect(dimensions[0]!.textContent).toContain("91");
-    expect(dimensions[1]!.textContent).toContain("—"); // record without score
-    expect(dimensions[2]!.textContent).toContain("—"); // dimension missing entirely
+    expect(dimensions[1]!.textContent).toContain("—");
+    expect(dimensions[2]!.textContent).toContain("—");
 
     expect(screen.getByText("최근 7일 새 지식 4개")).toBeTruthy();
     expect(screen.getByText("오래된 지식 2개")).toBeTruthy();
-    expect(screen.getByText("연결 없는 지식 0개")).toBeTruthy(); // non-numeric → 0
+    expect(screen.getByText("연결 없는 지식 0개")).toBeTruthy();
     expect(screen.getByText("어긋나는 기억 3건")).toBeTruthy();
 
-    // Known action ids localize; unknown ones fall back to reason, then id.
     expect(screen.getByText("의미 검색 색인 다시 만들기")).toBeTruthy();
     expect(screen.getByText("커스텀 사유")).toBeTruthy();
     expect(screen.getByText("unknown_action")).toBeTruthy();
@@ -95,10 +93,10 @@ describe("BrainIntelligencePanel", () => {
     await expand();
 
     await screen.findByText("신선도");
-    expect(screen.queryByText(/종합 점수/)).toBeNull(); // overall_score missing
-    expect(screen.queryByText("추천 관리 작업")).toBeNull(); // actions not an array
-    expect(screen.getByText("최근 7일 새 지식 0개")).toBeTruthy(); // insights failed
-    expect(screen.getByText("어긋나는 기억 0건")).toBeTruthy(); // non-record payload
+    expect(screen.queryByText(/종합 점수/)).toBeNull();
+    expect(screen.queryByText("추천 관리 작업")).toBeNull();
+    expect(screen.getByText("최근 7일 새 지식 0개")).toBeTruthy();
+    expect(screen.getByText("어긋나는 기억 0건")).toBeTruthy();
   });
 
   it("labels unknown grades honestly", async () => {
@@ -136,7 +134,6 @@ describe("BrainIntelligencePanel", () => {
   });
 
   it("treats a degraded live response and a thrown fetch as errors too", async () => {
-    // ok:true but source "unavailable" — degraded data must not render as zeros.
     renderPanel({ brainHealth: { ok: true, status: 200, source: "unavailable", data: {} } });
     await expand();
     expect(await screen.findByRole("alert")).toBeTruthy();
@@ -146,7 +143,7 @@ describe("BrainIntelligencePanel", () => {
     renderPanel({ brainHealth: () => Promise.reject(new Error("network")) });
     await expand();
     const alert = await screen.findByRole("alert");
-    expect(alert.querySelector("small")).toBeNull(); // no envelope → no detail
+    expect(alert.querySelector("small")).toBeNull();
   });
 
   it("shows the error state when the client returns a malformed null envelope", async () => {
@@ -175,7 +172,6 @@ describe("BrainIntelligencePanel", () => {
       await userEvent.click(screen.getByRole("button", { name: "중복 기억 정리 실행" }));
       expect(await screen.findByText("중복 기억 2개를 정리했습니다.")).toBeTruthy();
       expect(consolidate).toHaveBeenLastCalledWith(true);
-      // Applying invalidates the health check and hides the apply button again.
       expect(screen.queryByRole("button", { name: "중복 기억 정리 실행" })).toBeNull();
       await waitFor(() =>
         expect(vi.mocked(latticeApi.brainHealth).mock.calls.length).toBeGreaterThan(healthCalls),
@@ -210,7 +206,6 @@ describe("BrainIntelligencePanel", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "중복 기억 정리 실행" }));
       await waitFor(() => expect(consolidate).toHaveBeenLastCalledWith(true));
-      // A failed apply must not overwrite the honest preview verdict.
       expect(screen.getByText("중복 기억 2개 · 중복 연결 0개 발견")).toBeTruthy();
     });
 
@@ -240,11 +235,9 @@ describe("BrainIntelligencePanel", () => {
       await waitFor(() =>
         expect(screen.getByRole("button", { name: "중복 정리 미리보기" })).toBeEnabled(),
       );
-      // Failed envelope → no note rendered at all.
-      expect(screen.queryByText(/중복/)).not.toBeNull(); // the preview button itself
+      expect(screen.queryByText(/중복/)).not.toBeNull();
       expect(screen.queryByText("중복된 기억이 없습니다.")).toBeNull();
 
-      // ok but non-record data is ignored the same way.
       await userEvent.click(screen.getByRole("button", { name: "중복 정리 미리보기" }));
       await waitFor(() => expect(consolidate).toHaveBeenCalledTimes(2));
       expect(screen.queryByText("중복된 기억이 없습니다.")).toBeNull();

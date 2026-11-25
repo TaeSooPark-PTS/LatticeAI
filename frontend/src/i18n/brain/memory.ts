@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// How the Brain shows what it holds: memory tiers, rings, the garden,
-// timeline, and the overview / readiness / stats panels.
 export const brainMemoryCopy: NamespaceCopy = {
   ko: {
     "brain.memoryTier.workspace": "작업공간 기억",
@@ -78,9 +76,6 @@ export const brainMemoryCopy: NamespaceCopy = {
     "brain.stats.health": "상태",
     "brain.stats.format": "Brain 형식",
     "brain.stats.storage": "저장소",
-    // The payload answers these two with a schema number and a storage engine
-    // name. Neither means anything without the schema; in the plain view the
-    // same two slots answer the questions people actually have.
     "brain.stats.savedWhere": "저장 위치",
     "brain.stats.savedWhere.local": "내 컴퓨터",
     "brain.stats.exportable": "가져가기",

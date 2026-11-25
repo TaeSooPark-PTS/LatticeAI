@@ -1,25 +1,11 @@
-//! Server-side message catalog — port of `latticeai.core.messages`.
-//!
-//! One id per message, both `ko` and `en`, language chosen by the request
-//! ([`resolve_language`]), never by the call site. Unknown ids return the id
-//! itself so a missing string cannot turn a 404 into a 500.
-//!
-//! `lattice-core` does not depend on axum. [`http_error`] returns the FastAPI
-//! envelope (`{"detail": "..."}`) plus a status so a handler can wrap it as
-//! `(StatusCode::from_u16(err.status).unwrap(), Json(err.body))`.
-
 use serde_json::{json, Value};
 
 use crate::pytext::strip;
 
-/// `latticeai.core.messages.DEFAULT_LANGUAGE`.
 pub const DEFAULT_LANGUAGE: &str = "ko";
-/// `latticeai.core.messages.SUPPORTED_LANGUAGES` — same order as Python.
 pub const SUPPORTED_LANGUAGES: &[&str] = &["ko", "en"];
-/// `latticeai.core.messages.LANGUAGE_HEADER`. Preferred over `Accept-Language`.
 pub const LANGUAGE_HEADER: &str = "x-lattice-language";
 
-/// `(id, ko, en)` — sorted by `id`. Keep sorted when adding a message.
 #[rustfmt::skip]
 const MESSAGES: &[(&str, &str, &str)] = &[
     ("admin.cannot_delete_self", "자기 자신은 삭제할 수 없습니다.", "You cannot delete your own account."),
@@ -170,11 +156,6 @@ const MESSAGES: &[(&str, &str, &str)] = &[
     ("worker_seam.role_invalid", "'{role}' 은(는) 기록할 수 있는 역할이 아닙니다. {allowed} 중 하나여야 합니다.", "'{role}' is not a role a turn can be recorded under. Use one of {allowed}."),
 ];
 
-/// FastAPI/Starlette `HTTPException` JSON body plus the status the route chose.
-///
-/// FastAPI serializes `HTTPException(detail=<str>)` as `{"detail": <str>}`.
-/// Response headers that Python's `http_error(..., headers=...)` can set are
-/// not part of that envelope and are not carried here.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HttpError {
     pub status: u16,
@@ -182,7 +163,6 @@ pub struct HttpError {
 }
 
 impl HttpError {
-    /// The localized `detail` string inside the envelope.
     pub fn detail(&self) -> &str {
         self.body
             .get("detail")
@@ -190,20 +170,11 @@ impl HttpError {
             .unwrap_or("")
     }
 
-    /// Pair an axum handler wraps as `(StatusCode::from_u16(status), Json(body))`.
     pub fn into_response_parts(self) -> (u16, Value) {
         (self.status, self.body)
     }
 }
 
-/// Language for this request: the product's choice, then the browser's.
-///
-/// `x_lattice_language` is the value of [`LANGUAGE_HEADER`] (already extracted;
-/// Starlette/axum lookup is case-insensitive). `accept_language` is the
-/// `Accept-Language` header value. Never returns an unsupported language.
-///
-/// Accept-Language is walked in send order; `q=` values are stripped and
-/// ignored, matching Python (the two agree on every real header).
 pub fn resolve_language(
     x_lattice_language: Option<&str>,
     accept_language: Option<&str>,
@@ -220,10 +191,6 @@ pub fn resolve_language(
     DEFAULT_LANGUAGE
 }
 
-/// [`resolve_language`] over `(name, value)` pairs.
-///
-/// Names are compared ASCII-case-insensitively (Starlette `Headers`). The first
-/// value of each of [`LANGUAGE_HEADER`] and `Accept-Language` wins.
 pub fn resolve_language_from_headers<'a, I>(headers: I) -> &'static str
 where
     I: IntoIterator<Item = (&'a str, &'a str)>,
@@ -240,16 +207,10 @@ where
     resolve_language(explicit, accept)
 }
 
-/// Localized text for `id` — Python `translate`.
-///
-/// An unknown id returns the id itself. A language that is not `en` falls
-/// back to [`DEFAULT_LANGUAGE`]. `{name}` placeholders are replaced by simple
-/// string substitution, in `args` order, the same way Python walks `**params`.
 pub fn text(id: &str, lang: &str, args: &[(&str, &str)]) -> String {
     let Some((_, ko, en)) = lookup(id) else {
         return id.to_owned();
     };
-    // `entry.get(language) or entry.get(DEFAULT_LANGUAGE) or key`
     let primary = if lang == "en" {
         en
     } else if lang == "ko" {
@@ -270,7 +231,6 @@ pub fn text(id: &str, lang: &str, args: &[(&str, &str)]) -> String {
     out
 }
 
-/// FastAPI error envelope for this id, plus the status the route chose.
 pub fn http_error(status: u16, id: &str, lang: &str, args: &[(&str, &str)]) -> HttpError {
     HttpError {
         status,
@@ -285,7 +245,6 @@ fn lookup(id: &str) -> Option<(&'static str, &'static str, &'static str)> {
         .map(|index| MESSAGES[index])
 }
 
-/// `"en-GB"` → `"en"` when supported, else `None`. Python `_normalize`.
 fn normalize(value: Option<&str>) -> Option<&'static str> {
     let value = value?;
     if value.is_empty() {

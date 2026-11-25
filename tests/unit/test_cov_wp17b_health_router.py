@@ -1,12 +1,3 @@
-"""wp17 (second pass) — the identified-caller branch of ``GET /health``.
-
-An anonymous request against a server that requires auth gets the cheap base
-payload and no engine sweep. As soon as the caller is identified — or the
-server does not require auth at all — the router pays for the engine probe and
-returns the full payload. Both directions are asserted here, since the second
-one is what a signed-in dashboard actually renders.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -18,8 +9,6 @@ from latticeai.api.health import create_health_router
 
 
 class _StatusService:
-    """The projection ``server_app`` hands the router (see model_service.py)."""
-
     def health_base(self, *, version: str, mode: str) -> Dict[str, Any]:
         return {"status": "ok", "version": version, "mode": mode}
 
@@ -92,8 +81,6 @@ def test_health_for_an_anonymous_caller_skips_the_engine_sweep():
         "status": "ok",
         "version": "11.0.0-test",
         "mode": "local",
-        # Stated even on the cheap payload: the Rust front door gates its own
-        # native lanes on this and never authenticates.
         "access": {"require_auth": True, "externally_reachable": False},
     }
     assert "engines" not in body
@@ -101,7 +88,6 @@ def test_health_for_an_anonymous_caller_skips_the_engine_sweep():
 
 
 def test_the_access_posture_is_stated_on_every_health_answer():
-    """Both facts, both directions, on the authenticated payload too."""
     client, _ = _client(require_auth=False, externally_reachable=True)
     body = client.get("/health").json()
     assert body["access"] == {"require_auth": False, "externally_reachable": True}

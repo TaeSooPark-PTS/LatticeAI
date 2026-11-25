@@ -1,4 +1,3 @@
-//! Unit tests for [`super::kg`].
 use super::kg::*;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;

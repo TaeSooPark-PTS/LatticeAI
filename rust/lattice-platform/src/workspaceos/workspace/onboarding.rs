@@ -1,30 +1,15 @@
-//! First-run onboarding progress.
-//!
-//! Port of `core/workspace_onboarding.py`. Owns the `onboarding` branch of the
-//! state document: which named step the person is on, what each step recorded,
-//! and whether the whole run is finished.
-//!
-//! An unknown step or status raises in Python and **no handler catches it**, so
-//! the client sees Starlette's plain-text 500. That is reproduced rather than
-//! improved: turning it into a 400 here would be a contract change the fixture
-//! (`workspace_onboarding_step/error_unknown_step`) would fail on, and the
-//! decision of what those routes should answer is not this port's to make.
-
 use serde_json::{json, Map, Value};
 
 use super::constants::{ONBOARDING_STATUSES, ONBOARDING_STEPS};
 use super::pyutil::now_iso;
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// One account as `status` reads it: the email and the role.
 pub type Account<'a> = (&'a str, &'a str);
 
-/// `onboarding_status(users, graph_stats)`.
 pub fn status(store: &WorkspaceOsStore, users: &[Account<'_>], graph_stats: &Value) -> Value {
     project(&store.load_state(), users, graph_stats)
 }
 
-/// The same projection, over an already-loaded document.
 fn project(state: &Value, users: &[Account<'_>], graph_stats: &Value) -> Value {
     let onboarding = state.get("onboarding").and_then(Value::as_object);
     let steps = onboarding
@@ -66,11 +51,6 @@ fn truthy(value: Option<&Value>) -> bool {
     }
 }
 
-/// `update_onboarding_step`.
-///
-/// Returns the fresh [`status`] payload, which is what the route answers.
-// Eight parameters because `update_onboarding_step` takes eight; the port
-// keeps the original's argument list so the two can be read side by side.
 #[allow(clippy::too_many_arguments)]
 pub fn update_step(
     store: &WorkspaceOsStore,
@@ -114,8 +94,6 @@ pub fn update_step(
             .expect("steps is an object")
             .entry(step)
             .or_insert_with(|| json!({"id": step}));
-        // `data or record.get("data") or {}`: a caller that sends nothing keeps
-        // whatever the step already recorded.
         let kept = record.get("data").cloned();
         let resolved = match data {
             Some(value) if truthy(Some(value)) => value.clone(),
@@ -158,12 +136,10 @@ pub fn update_step(
         json!({"step": step, "status": step_status}),
         None,
     );
-    // Python's `update_step` returns `self.status()` with no arguments.
     let _ = (users, graph_stats);
     Ok(status(store, &[], &json!({})))
 }
 
-/// `complete_onboarding` — walk every step to `complete`, in order.
 pub fn complete(
     store: &WorkspaceOsStore,
     data: Option<&Value>,

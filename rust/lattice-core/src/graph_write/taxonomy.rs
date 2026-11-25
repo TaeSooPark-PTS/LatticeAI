@@ -1,22 +1,3 @@
-//! `lattice_brain/graph/schema.py`'s `NodeType` / `EdgeType` normalization.
-//!
-//! Only `from_legacy(label).value` is ever reached from the write path, so the
-//! enums are ported as string functions rather than as Rust enums: the value
-//! *is* the contract (it lands in `nodes_v2.type` / `edges_v2.type`), and a
-//! Rust enum would add a second name for the same thing plus a conversion that
-//! could drift from it.
-//!
-//! The two-step rule is Python's, in Python's order:
-//!
-//! 1. `cls(m.upper())` — a canonical value round-trips exactly, which is what
-//!    keeps `CODE_FILE` / `AI_RESPONSE` from degrading to `CONCEPT`. Note that
-//!    it also catches ordinary labels whose uppercase *is* canonical
-//!    (`"Chat"` → `CHAT`), before the alias table is consulted at all;
-//! 2. the alias table, keyed on `m.lower()`;
-//! 3. `CONCEPT` (nodes) / `MENTIONS` (edges) as the fallback. Nothing is lost:
-//!    the caller stores the raw label in `legacy_type` beside it.
-
-/// Every `NodeType` member value, in declaration order.
 pub const NODE_TYPES: [&str; 43] = [
     "CONVERSATION",
     "MESSAGE",
@@ -63,7 +44,6 @@ pub const NODE_TYPES: [&str; 43] = [
     "VIDEO",
 ];
 
-/// Every `EdgeType` member value, in declaration order.
 pub const EDGE_TYPES: [&str; 39] = [
     "CONTAINS",
     "MENTIONS",
@@ -106,7 +86,6 @@ pub const EDGE_TYPES: [&str; 39] = [
     "CONFLICTS_WITH",
 ];
 
-/// `_LEGACY_NODE_MAP` — lowercase alias → canonical value.
 const LEGACY_NODE_MAP: &[(&str, &str)] = &[
     ("conversation", "CONVERSATION"),
     ("chat", "CHAT"),
@@ -179,7 +158,6 @@ const LEGACY_NODE_MAP: &[(&str, &str)] = &[
     ("동영상", "VIDEO"),
 ];
 
-/// `_LEGACY_EDGE_MAP` — lowercase alias → canonical value.
 const LEGACY_EDGE_MAP: &[(&str, &str)] = &[
     ("언급함", "MENTIONS"),
     ("포함함", "CONTAINS"),
@@ -245,7 +223,6 @@ const LEGACY_EDGE_MAP: &[(&str, &str)] = &[
     ("구성요소", "PART_OF"),
 ];
 
-/// `NodeType.from_legacy(label).value`.
 pub fn node_type_from_legacy(label: &str) -> String {
     let trimmed = label.trim();
     let upper = trimmed.to_uppercase();
@@ -260,7 +237,6 @@ pub fn node_type_from_legacy(label: &str) -> String {
         .unwrap_or_else(|| "CONCEPT".to_string())
 }
 
-/// `EdgeType.from_legacy(label).value`.
 pub fn edge_type_from_legacy(label: &str) -> String {
     let trimmed = label.trim();
     let upper = trimmed.to_uppercase();
@@ -288,9 +264,6 @@ mod tests {
 
     #[test]
     fn uppercase_of_an_ordinary_label_wins_before_the_alias_table() {
-        // `cls(m.upper())` is tried first, so "Chat" resolves through the enum
-        // rather than through `_LEGACY_NODE_MAP["chat"]` — same answer here,
-        // and the order is what keeps that true for every other member.
         assert_eq!(node_type_from_legacy("Chat"), "CHAT");
         assert_eq!(node_type_from_legacy("Document"), "DOCUMENT");
     }

@@ -40,14 +40,6 @@ export function titleize(value: unknown) {
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-/**
- * Read text that came from a document or a model as plain words.
- *
- * Titles and summaries carry whatever Markdown the source had, so search
- * results and graph nodes showed "**요약하자면,**" verbatim — which reads as a
- * rendering fault, not as emphasis. Returns "" for an absent value so callers
- * can fall through to the next candidate.
- */
 export function plainText(value: unknown): string {
   if (value === null || value === undefined || value === "") return "";
   const text = String(value)
@@ -64,10 +56,6 @@ export function plainText(value: unknown): string {
   return text === "-" ? "" : text;
 }
 
-/**
- * "mlx-community/gemma-4-26b-a4b-it-4bit" is a package coordinate, not a name a
- * person recognises. Keep the words, drop the registry and the quantisation.
- */
 export function humanizeModelId(id: string): string {
   const tail = id.split("/").pop() || id;
   const words = tail

@@ -1,54 +1,3 @@
-"""AI-Worker seam (v11.5.1, plan §Y1) — the two calls the Rust loop makes back.
-
-Once the agent loop moves into ``lattice-agent`` (plan §Y2), Python stops being
-the orchestrator and becomes exactly what the system diagram already draws: the
-**AI Worker**. It infers with the loaded model and it runs tool handlers. The
-Rust kernel decides *what* to do next; it has to call Python to actually do it.
-
-Reconnaissance found no surface it could call:
-
-* there is no bare completion endpoint — every LLM route (``/chat``,
-  ``/agent``) also writes history, assembles context, or drives the whole
-  Python loop, none of which a Rust orchestrator wants;
-* ``/tools/*`` is the **direct** surface: it runs ``enforce_policy``, which
-  denies anything not auto-approved (403) and never stages a proposal. Correct
-  for a human clicking a button, useless for a governed loop.
-
-So this module adds the two seams, and nothing else:
-
-``POST /agent/llm``
-    One completion. No history, no context assembly, no persistence of any
-    kind — the whole body is one ``generate_as`` await.
-
-``POST /agent/tool``
-    One governed tool call: the mode-invariant guards, the role check, then the
-    shared ``pre_tool`` → execute → ``post_tool`` lifecycle.
-
-WP-P1 retired a third seam, ``POST /agent/change-proposal``: proposal state
-(the review queue, the staged diff, the Review Center) is native platform state
-now, and a worker that owns none of it has no verdict to give.
-
-Two boundaries stated here so the payloads are not read as more than they are:
-
-* **The guards are re-run on the server, always.** The Rust kernel preflights
-  permission mode before it ever calls; this seam still re-derives the policy,
-  still asks :func:`~latticeai.core.permission_mode.is_circuit_breaker`, and
-  still asks :func:`~latticeai.core.tool_governor.classify_tool_call`. A
-  compromised or buggy kernel therefore cannot widen what Python will execute —
-  the mode-invariant denials are defence in depth, not a duplicated preflight.
-  What the seam deliberately does *not* own is mode gating itself (which of the
-  approval-requiring steps may run): that is the kernel's decision, made with
-  the run's approval state, which HTTP does not have.
-
-* **``workspace_id`` is attribution, not authorization.** Tools resolve their
-  own paths under ``AGENT_ROOT`` (or the home sandbox, via their own guards);
-  they are not workspace-scoped resources the way ``/api/*`` reads are. The
-  field is forwarded to the hook lifecycle so an audit event lands in the right
-  workspace, and it is not used to widen or narrow what may run. A caller
-  cannot reach another workspace's data by naming it here, because no code path
-  downstream consults it for that.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -64,106 +13,41 @@ from latticeai.core.permission_mode import is_circuit_breaker
 from latticeai.core.tool_governor import classify_tool_call
 from latticeai.tools import ToolError
 
-#: Host-injected switch. Off by default: the loop seam is for a worker the
-#: ``lattice-host`` supervisor started for itself, never for a browser that
-#: happens to hold a session cookie. Read per request, not at import, so the
-#: answer follows the process environment as it actually is.
 SEAM_ENV_VAR = "LATTICEAI_AGENT_TOOL_SEAM"
 
-#: Bounds on one completion. The ceiling is twice ``generate_as``'s own default
-#: — enough for a long verification pass, short of a request that would hold the
-#: single MLX executor for minutes.
 MIN_MAX_TOKENS = 1
 MAX_MAX_TOKENS = 8192
 MIN_TEMPERATURE = 0.0
 MAX_TEMPERATURE = 2.0
 
-#: How many stop strings one completion may name. The kernel sends two.
 MAX_STOP_STRINGS = 8
 
-#: Longest forced completion prefix one call may name (v12.0.0). The prefix is
-#: prepended to the prompt, so an unbounded one is an unbounded prompt. The
-#: kernel sends two, and both are short: the executor's opening brace
-#: (``{"thoughts": "``) and the guided menu's answer label — a few dozen
-#: characters between them, and nothing legitimate needs a paragraph.
 MAX_PREFIX_CHARS = 256
 
-#: Rate-limit bucket. Deliberately *not* the ``"agent"`` bucket ``/agent`` uses:
-#: that one is sized per *run* (10 burst, one refill per 10s) because one HTTP
-#: call there is a whole agent run. Here one call is a single loop step, and a
-#: Rust run makes a dozen of them, so reusing ``"agent"`` would 429 the loop
-#: mid-run. This key is absent from ``_RATE_LIMITS``, so it takes the module
-#: default (60 burst, 1/s) — a real per-user ceiling at per-step granularity.
 SEAM_RATE_BUCKET = "agent_seam"
 
 
 class AgentLLMRequest(BaseModel):
-    """One completion, with the model chosen per call.
-
-    ``model_id`` omitted means the router's current default; a model that is
-    not cached makes ``generate_as`` answer ``"No model."``, which is returned
-    verbatim rather than dressed up as an error — the loop records it as the
-    step's text and re-plans, exactly as the Python loop does.
-    """
-
     model_id: Optional[str] = None
     message: str
     context: Optional[str] = None
     max_tokens: int = 4096
     temperature: float = 0.2
-    #: Strings that end the reply (v11.9.0). Optional, and absent means what it
-    #: always meant: generate to ``max_tokens``. The kernel sends it on exactly
-    #: one call — the strict verification re-ask, whose reply is one short
-    #: closed object — because a stop string that is safe there ("\n```") would
-    #: truncate any reply carrying file content. Bounded so a caller cannot make
-    #: the sampler check a thousand needles per token.
     stop: Optional[List[str]] = Field(default=None, max_length=MAX_STOP_STRINGS)
-    #: Characters the reply is **forced to begin with** (v12.0.0).
-    #:
-    #: The cheapest structural guarantee the seam can offer: instead of asking
-    #: a weak model to start at ``{`` and repairing the markdown fence it emits
-    #: instead, the worker prefills those characters and the model continues
-    #: from them. The response's ``text`` always starts with the prefix, so a
-    #: caller reads one shape whether the local prefill or a cloud provider's
-    #: assistant-prefill message produced it.
-    #:
-    #: Bounded because it is prepended to the prompt: an unbounded prefix would
-    #: be an unbounded prompt on the single MLX executor. The kernel sends
-    #: fourteen characters.
     prefix: Optional[str] = Field(default=None, max_length=MAX_PREFIX_CHARS)
 
 
 class AgentToolRequest(BaseModel):
-    """One governed tool call on behalf of the authenticated user."""
-
     tool: str
     args: Dict[str, Any] = Field(default_factory=dict)
     workspace_id: Optional[str] = None
 
 
 def _seam_open() -> bool:
-    """Whether this process is a worker the host opened the seam for."""
     return os.environ.get(SEAM_ENV_VAR) == "1"
 
 
 def _path_probe(dispatch_service: Any, tool: str) -> Optional[Callable[[str], bool]]:
-    """The *same* existence probe the direct surface classifies with.
-
-    ``classify_tool_call`` asks "does the target already exist?" to tell an
-    additive create from an overwrite. ``ToolDispatchService`` answers that
-    through ``_governed_path_exists``, which resolves document creators'
-    ``filename`` through their real output directory first — checking the raw
-    argument inspects a path nothing ever writes. Reusing that method is the
-    point: a second, subtly different probe here would let this seam and
-    ``/tools/*`` disagree about whether a file exists, and the disagreement
-    would show up as one surface staging a proposal while the other overwrites.
-
-    ``classify_tool_call`` types ``path_exists`` as optional, so a dispatch
-    service without the method (an injected fake, a future slimmer port) yields
-    ``None`` and every target-write call classifies as additive. That is the
-    weaker guard, and it is the honest one: claiming a file does not exist is
-    what "we could not look" means to this classifier.
-    """
     probe = getattr(dispatch_service, "_governed_path_exists", None)
     if not callable(probe):
         return None
@@ -182,34 +66,15 @@ def create_agent_worker_seam_router(
     router = APIRouter()
 
     def _require_seam(request: Request) -> None:
-        """404 unless the host opened the seam for this worker.
-
-        The detail says *why* rather than imitating a missing route. Hiding it
-        would buy nothing: the paths are in the generated OpenAPI schema either
-        way, this is a local-first Brain rather than a multi-tenant service, and
-        an operator who forgot the environment variable otherwise gets a bare
-        404 with nothing to act on.
-        """
         if not _seam_open():
             raise http_error(404, "agent_seam.disabled", resolve_language(request))
 
     def _admit(request: Request) -> str:
-        """Authenticate and charge this call against the per-step budget."""
         current_user = require_user(request)
         enforce_rate_limit(current_user, SEAM_RATE_BUCKET)
         return str(current_user or "")
 
     def _guard(tool: str, args: Dict[str, Any], language: str) -> Dict[str, Any]:
-        """The mode-invariant denials, re-derived server-side.
-
-        One call to :func:`is_circuit_breaker` covers both denials the plan
-        names. The destructive-policy check is *inside* it — ``permission_mode``
-        answers ``"destructive action is always blocked"`` for
-        ``policy["destructive"]`` or ``risk == "destructive"`` before it looks
-        at anything else. Writing a second, separate destructive check here (as
-        ``enforce_policy`` does) would be code that can never run, and
-        unreachable code is not a guard.
-        """
         policy = dispatch_service.policy_for(tool, args)
         breaker = is_circuit_breaker(tool, dict(policy), args)
         if breaker:
@@ -238,17 +103,6 @@ def create_agent_worker_seam_router(
 
     @router.post("/agent/llm")
     async def agent_llm(req: AgentLLMRequest, request: Request):
-        """Generate once. Writes nothing, remembers nothing.
-
-        Not gated by ``LATTICEAI_AGENT_TOOL_SEAM``: a completion has no side
-        effect to gate, and the Rust loop is not the only caller that wants one
-        (``/rust/context/document`` composes a prompt the same way). Auth and
-        the per-step rate limit are the whole ceremony.
-
-        Structural problems in the body — a missing ``message``, a string where
-        a number belongs — answer with FastAPI's own 422, uniform with every
-        other router. Semantic ones answer in the caller's language.
-        """
         _admit(request)
         language = resolve_language(request)
         if not req.message.strip():
@@ -277,30 +131,12 @@ def create_agent_worker_seam_router(
             temperature=req.temperature,
             stop=req.stop or None,
             prefix=req.prefix or None,
-            # **The seam's ``context`` is a prompt, not a corpus** (v12.0.0).
-            # ``_compose_system`` appends the citation mandate to any non-empty
-            # context, which is right for chat (where it really is retrieved
-            # passages) and wrong here: the Rust kernel sends its whole executor
-            # prompt as ``context``, so every agent turn was being told its own
-            # instructions were sources to "cite inline as [1], [2]". Small
-            # models obey that — a 0.5B wrote ``[1] …`` into a file and a 2B
-            # answered a tool call with the citation instruction. A caller that
-            # wants citations puts them in its own prompt.
             cite_sources=False,
         )
         return {"text": str(text)}
 
     @router.post("/agent/tool")
     async def agent_tool(req: AgentToolRequest, request: Request):
-        """Run one tool through the same lifecycle the Python loop uses.
-
-        The answer shape mirrors the loop's own catch (``execution.py``): a
-        ``ToolError``/``KeyError``/``TypeError``/``PermissionError`` is the
-        *step's* outcome, not the request's, so it comes back 200 with
-        ``{"error": ...}`` for the transcript. A denial — role, circuit
-        breaker, fail-closed governance — is the request's outcome and comes
-        back 4xx, because retrying it would be pointless.
-        """
         _require_seam(request)
         current_user = _admit(request)
         language = resolve_language(request)
@@ -311,14 +147,9 @@ def create_agent_worker_seam_router(
 
         _guard(tool, args, language)
 
-        # After the mode-invariant denials, deliberately: they are the same
-        # answer for every role, so they need no user-table read to decide.
         try:
             dispatch_service.check_role(tool, current_user)
         except PermissionError as exc:
-            # The shipped service raises HTTPException(403) here and that
-            # propagates untouched; a port that speaks Python's own
-            # authorization error gets the same status rather than a 500.
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
         def _run() -> Any:
@@ -333,8 +164,6 @@ def create_agent_worker_seam_router(
             )
 
         try:
-            # Off the loop: tool handlers open files, shell out, and write the
-            # graph, and this server has one event loop for every user (10.9.0).
             result = await asyncio.to_thread(_run)
         except (ToolError, KeyError, TypeError, PermissionError) as exc:
             return {"error": str(exc)}

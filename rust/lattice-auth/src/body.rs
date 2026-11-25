@@ -1,20 +1,3 @@
-//! Request-body validation with FastAPI's 422 shape.
-//!
-//! Every model in `api/auth.py` is a flat pydantic model of `str` and
-//! `Optional[str]` fields, so one validator covers all four. What has to match
-//! is not the check but the *report*: FastAPI answers
-//! `{"detail": [{"type", "loc", "msg", "input"}, …]}` with one entry per bad
-//! field, in **field-declaration order**, and the SPA's `friendlyError`
-//! (`frontend/src/api/base.ts`) reads that shape.
-//!
-//! Validation runs before the handler, which is why a malformed login body is
-//! a 422 and never reaches the rate limiter.
-//!
-//! Not reproduced: the `json_invalid` entry's `ctx.error` text, which is
-//! CPython's own JSON decoder message and changes between releases. A body
-//! that is not JSON at all gets the same `type`/`loc`/`msg` with this crate's
-//! decoder message in `ctx.error`.
-
 use axum::http::StatusCode;
 use axum::response::Response;
 use serde_json::{json, Map, Value};
@@ -22,7 +5,6 @@ use serde_json::{json, Map, Value};
 use crate::pyjson::OrderedMap;
 use crate::response::json_response;
 
-/// One pydantic error entry, in the key order FastAPI emits.
 fn problem(kind: &str, loc: Value, msg: &str, input: Value, ctx: Option<Value>) -> OrderedMap {
     let mut entry = OrderedMap::new();
     entry.insert("type", json!(kind));
@@ -35,16 +17,12 @@ fn problem(kind: &str, loc: Value, msg: &str, input: Value, ctx: Option<Value>) 
     entry
 }
 
-/// One field of a flat pydantic model.
 #[derive(Debug, Clone, Copy)]
 pub struct Field {
-    /// The field name, which is also its `loc` tail.
     pub name: &'static str,
-    /// Whether the model declares it without a default.
     pub required: bool,
 }
 
-/// A required `str` field.
 pub const fn required(name: &'static str) -> Field {
     Field {
         name,
@@ -52,7 +30,6 @@ pub const fn required(name: &'static str) -> Field {
     }
 }
 
-/// An `Optional[str] = None` field.
 pub const fn optional(name: &'static str) -> Field {
     Field {
         name,
@@ -60,30 +37,25 @@ pub const fn optional(name: &'static str) -> Field {
     }
 }
 
-/// A validated flat model: present string fields, by name.
 #[derive(Debug, Clone, Default)]
 pub struct Validated {
     values: Map<String, Value>,
 }
 
 impl Validated {
-    /// The field's value, or `""` — the reading a required field always has.
     pub fn str(&self, name: &str) -> &str {
         self.values.get(name).and_then(Value::as_str).unwrap_or("")
     }
 
-    /// The field's value when the caller sent one that was not `null`.
     pub fn opt(&self, name: &str) -> Option<&str> {
         self.values.get(name).and_then(Value::as_str)
     }
 
-    /// Whether the caller sent this key at all (`null` counts as sent).
     pub fn present(&self, name: &str) -> bool {
         self.values.contains_key(name)
     }
 }
 
-/// Parse and validate one request body against `fields`.
 pub fn parse_model(bytes: &[u8], fields: &[Field]) -> Result<Validated, Response> {
     let parsed: Value = match serde_json::from_slice(bytes) {
         Ok(value) => value,
@@ -123,7 +95,6 @@ pub fn parse_model(bytes: &[u8], fields: &[Field]) -> Result<Validated, Response
                 }
             }
             Some(Value::Null) if !field.required => {
-                // `Optional[str] = None`: an explicit null is the default.
                 values.insert(field.name.to_string(), Value::Null);
             }
             Some(Value::String(text)) => {
@@ -170,7 +141,6 @@ mod tests {
         String::from_utf8(bytes).unwrap()
     }
 
-    /// A tiny blocking body reader so this module needs no async runtime.
     fn futures_lite_block_on(body: axum::body::Body) -> Vec<u8> {
         tokio::runtime::Builder::new_current_thread()
             .build()

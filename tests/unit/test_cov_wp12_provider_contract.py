@@ -1,14 +1,3 @@
-"""wp12 coverage — the EmbeddingProvider interface contract and the factory.
-
-Everything in this file is offline. The shared codec/similarity/health surface
-is exercised through a minimal subclass that implements only the one required
-method (``embed_batch``), exactly as the module docstring says a provider must;
-the factory is checked name-by-name; and ``resolve_embedder`` is pushed through
-each of its degradation rules. The two resolutions that need a *failing* probe
-patch the probe itself rather than reaching for a socket, so the outcome is the
-same on every machine.
-"""
-
 from __future__ import annotations
 
 import math
@@ -30,8 +19,6 @@ from latticeai.core.embedding_providers import (
 
 
 class _ListProvider(EmbeddingProvider):
-    """A third-party embedder that implements only the required method."""
-
     provider = "test"
 
     def __init__(self, rows):
@@ -41,9 +28,6 @@ class _ListProvider(EmbeddingProvider):
 
     def embed_batch(self, texts):
         return [self._rows[t] for t in texts if t in self._rows]
-
-
-# ── the shared half of the interface ─────────────────────────────────────────
 
 
 def test_a_single_embed_is_served_by_the_subclass_batch_method():
@@ -80,8 +64,6 @@ def test_decoding_trusts_the_payload_length_over_a_disagreeing_dimension():
     payload = prov.encode([1.0, 2.0, 3.0])
 
     assert len(payload) == 12
-    # the provider's own dim (8) and an explicit wrong dim (99) both lose to
-    # the 12 bytes actually on disk
     assert prov.decode(payload) == [1.0, 2.0, 3.0]
     assert prov.decode(payload, dim=99) == [1.0, 2.0, 3.0]
 
@@ -100,9 +82,6 @@ def test_similarity_of_a_normalized_vector_with_itself_is_one():
     assert math.isclose(prov.similarity(vec, vec), 1.0, rel_tol=1e-6)
 
 
-# ── profiles ─────────────────────────────────────────────────────────────────
-
-
 def test_an_unknown_profile_is_rejected_by_name():
     with pytest.raises(ValueError, match="unknown embedding profile"):
         resolve_embedding_profile("openai:text-embedding-9-enormous")
@@ -110,9 +89,6 @@ def test_an_unknown_profile_is_rejected_by_name():
 
 def test_an_empty_profile_selects_nothing_rather_than_failing():
     assert resolve_embedding_profile("") == {}
-
-
-# ── factory ──────────────────────────────────────────────────────────────────
 
 
 def test_every_hash_alias_builds_the_offline_fallback():
@@ -126,8 +102,6 @@ def test_every_hash_alias_builds_the_offline_fallback():
 def test_the_factory_maps_each_provider_name_to_its_class_without_touching_the_network():
     mlx = build_embedding_provider("mlx", model="bge-m3")
     assert isinstance(mlx, MLXEmbeddingProvider)
-    # an unpinned dimension is guessed from the model name, as it is for every
-    # other model-backed provider — bge-m3 is 1024-wide, not the 384 default
     assert mlx.dim == 1024
     assert mlx.model_id == "mlx:bge-m3:1024"
 
@@ -150,9 +124,6 @@ def test_an_unknown_provider_name_is_rejected_by_the_factory():
         build_embedding_provider("teleport")
 
 
-# ── resolution ───────────────────────────────────────────────────────────────
-
-
 def test_resolution_falls_back_when_the_requested_provider_cannot_be_built():
     resolved = resolve_embedder("teleport", dim=16)
 
@@ -162,7 +133,6 @@ def test_resolution_falls_back_when_the_requested_provider_cannot_be_built():
     assert resolved.health["status"] == "unavailable"
     assert "unknown embedding provider" in resolved.health["detail"]
     assert resolved.detail == "could not construct teleport; using hash fallback"
-    # the caller still receives a working embedder
     assert len(resolved.provider.embed("still works")) == 16
 
 

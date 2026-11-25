@@ -1,5 +1,3 @@
-//! The thirteen `/api/brain/*` handlers, in FastAPI's order of operations.
-
 use axum::extract::{Request, State};
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -13,7 +11,6 @@ use crate::memory_api::shared::{
 
 use super::{consistency, digest, health, proposals};
 
-/// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/brain/clusters"),
     ("POST", "/api/brain/consolidate"),
@@ -46,8 +43,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/brain/vector-freshness"),
 ];
 
-/// The mountable router for `latticeai/api/brain_intelligence.py` and the
-/// v13.8.0–v13.9.0 Digital Brain extension endpoints.
 pub fn router(state: BrainState) -> Router {
     let ext = super::extensions::router(state.clone());
     Router::new()
@@ -228,7 +223,6 @@ async fn brain_consolidate(State(state): State<BrainState>, request: Request) ->
         Ok(payload) => payload,
         Err(refusal) => return refusal,
     };
-    // `dry_run` takes precedence when provided; omitted keeps the apply flag.
     let apply = match body_opt_bool(&payload, "dry_run") {
         Some(dry_run) => !dry_run,
         None => match payload.get("apply") {

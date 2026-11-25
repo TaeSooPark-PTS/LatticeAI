@@ -1,17 +1,6 @@
-/* ── The conversation screen ─────────────────────────────────────────────
-   Three defects found by measuring the live screen with a model loaded:
 
-   1. The header Brain rendered at 311px. `size="trace"` is meant to be a small
-      presence mark, but no rule ever sized it, so it inherited the base
-      `clamp(220px, 28vw, 320px)` and ate 46% of the viewport — permanently,
-      because the header is sticky.
-   2. The sticky composer covered the end of the last answer. The stream had no
-      bottom padding, so the newest text sat underneath it and was unreadable.
-   3. Reply actions sat below that same fold.
 
-   Loaded after conversation-active.css so these win. */
 
-/* 1. A trace-sized Brain is a mark beside the title, not a hero. */
 .brain-header-presence .brain-organism,
 .brain-organism.size-trace {
   width: 2.75rem;
@@ -33,14 +22,12 @@
   padding: 0;
 }
 
-/* 2. Reserve room for the sticky composer so the newest answer is never
-      hidden behind it. */
+
 .brain-chat-home-card.has-messages .brain-stream {
   padding-bottom: 11rem;
 }
 
-/* The model name is a label, not a package coordinate — keep it from
-   stretching the header when a long id does slip through. */
+
 .brain-model-pill {
   max-width: 14rem;
   overflow: hidden;
@@ -60,12 +47,7 @@
   }
 }
 
-/* 3. Nothing may follow the sticky composer.
 
-   The suggestion panel, the save toast, and the "Brain 세부 정보" drawer were
-   rendered after it, so the input box floated in the middle of the page with
-   content scrolling past underneath — it read as stuck, not as the place you
-   type. Make the card a column and push the composer to the end. */
 .brain-chat-home-card.has-messages {
   display: flex;
   flex-direction: column;
@@ -79,9 +61,7 @@
   order: 2;
 }
 
-/* ── The provenance meter ────────────────────────────────────────────────
-   It used to be a bare percentage in the page header. It now carries the two
-   counts and one line saying what was counted, so it needs room to read. */
+
 .brain-layer-meter {
   display: flex;
   max-width: min(22rem, 46vw);
@@ -90,12 +70,7 @@
   gap: 0.05rem;
 }
 
-/* The sentence explaining what was counted is right-aligned, three lines deep,
-   and started ~20px from where the page headline ended — two ragged text
-   blocks butting into each other, which read as one broken paragraph rather
-   than a title and a statistic. The block still sits to the right; its text
-   gets a straight left edge and a hairline rule so it is legible as its own
-   object, and the header keeps a real gap between the two. */
+
 .brain-layer-header {
   gap: clamp(1.25rem, 4vw, 3rem);
 }
@@ -120,8 +95,7 @@
     max-width: 100%;
     align-items: flex-start;
     text-align: left;
-    /* Stacked under the title on a phone, the rule is a stray vertical line
-       against the left margin rather than a divider between two columns. */
+    
     padding-left: 0;
     border-left: 0;
   }

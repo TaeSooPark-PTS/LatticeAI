@@ -51,8 +51,6 @@ export function buildConversationSummaries(historyData: unknown): ConversationSu
     .flatMap((item): ConversationSummary[] => {
       const id = textValue(item, ["id", "conversation_id"]);
       if (!id) return [];
-      // textValue falls back to the id, which the guard above proved non-blank,
-      // so the trimmed title can never be empty.
       const title = textValue(item, ["title", "summary", "last_message"], id).trim();
       return [{
         id,
@@ -74,11 +72,6 @@ export function parseConversationMessages(data: unknown): Message[] {
   });
 }
 
-/**
- * The memory manager labels its tiers in English ("Workspace Memory"). The id
- * is the contract, so translate on the way in and keep the server label for
- * anything we do not recognise.
- */
 function memoryTierTitle(item: ApiRecord, language: Language, fallback: string) {
   const id = textValue(item, ["id"]);
   if (id) {
@@ -201,8 +194,6 @@ export function extractIngestionEvidence(data: unknown): IngestionEvidence {
   };
 }
 
-// Additive ingest meta: {"extraction_quality": {score, level, reasons}} with a
-// sibling "warnings" list when the level is low. Absent → undefined (no UI).
 export function parseExtractionQuality(container: unknown): ExtractionQuality | null {
   const root = isRecord(container) ? container : {};
   const quality = isRecord(root.extraction_quality) ? root.extraction_quality : null;
@@ -220,9 +211,6 @@ export function parseExtractionQuality(container: unknown): ExtractionQuality | 
   };
 }
 
-// Additive chat meta: "context_quality" travels on the same channel as
-// sources/evidence (the answer trace). Accepts the trailer payload or the
-// trace record itself; returns null when the backend does not emit it yet.
 export function parseContextQuality(value: unknown): MessageContextQuality | null {
   const root = isRecord(value) ? value : {};
   const direct = isRecord(root.context_quality) ? root.context_quality : null;
@@ -242,9 +230,6 @@ export function parseContextQuality(value: unknown): MessageContextQuality | nul
   };
 }
 
-// Answer-citation binding verdict from the backend ("grounding"): defensive
-// parse of {status, reason, claim_verification}. The backend's Korean `label`
-// field is intentionally ignored so display copy always comes from i18n keys.
 export function parseGrounding(value: unknown): MessageGrounding | null {
   const root = isRecord(value) ? value : {};
   const direct = isRecord(root.grounding) ? root.grounding : null;
@@ -277,8 +262,6 @@ function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-// Hybrid `{"type":"hybrid_context", node_ids, keywords, ...}` — keep the ids
-// on the message; the chip only counts them.
 export function parseHybridContext(value: unknown): MessageHybridContext | null {
   if (!isRecord(value)) return null;
   const type = textValue(value, ["type"]);
@@ -299,7 +282,6 @@ export type ParsedHybridDone = {
   expansion: MessageKgExpansion | null;
 };
 
-// Hybrid `{"type":"hybrid_done", answer, kg_expansion, ...}`.
 export function parseHybridDone(value: unknown): ParsedHybridDone | null {
   if (!isRecord(value)) return null;
   const type = textValue(value, ["type"]);
@@ -350,8 +332,6 @@ export function cloudAnswerFromDone(
   };
 }
 
-// "Brain remembered" chip data from a brain_ingest entry. Only ok/pending/
-// failed become a chip; other statuses (skipped/unavailable/...) stay silent.
 function parseBrainIngestEntry(entry: unknown): MessageBrainIngest | null {
   if (!isRecord(entry)) return null;
   const status = textValue(entry, ["status"]);
@@ -360,10 +340,6 @@ function parseBrainIngestEntry(entry: unknown): MessageBrainIngest | null {
   return { status, ...(detail ? { detail } : {}) };
 }
 
-// Joins an agent payload's created_files with the artifacts[] preview verdict
-// and the payload-level brain_ingest verdict (single dict for the one-file
-// path, {path,...} list for bundles) — shared by the streaming onAgent handler
-// and the approval-resume merge so both render through the same file-card path.
 export function agentPayloadFiles(agent: {
   created_files?: Array<{ path: string; filename?: string; bytes?: number }>;
   artifacts?: Array<Record<string, unknown>>;
@@ -406,9 +382,6 @@ export function agentPayloadFiles(agent: {
   });
 }
 
-// One live `event: agent_step` frame → typed step event. Requires phase +
-// event strings; every other field is optional and unknown fields are dropped
-// so future backend additions never break rendering.
 export function parseAgentStepEvent(value: unknown): AgentStepEvent | null {
   if (!isRecord(value)) return null;
   const phase = textValue(value, ["phase"]);
@@ -429,10 +402,6 @@ export function parseAgentStepEvent(value: unknown): AgentStepEvent | null {
   };
 }
 
-// Post-hoc timeline from the final payload's `steps` transcript, for runs that
-// did not stream progress frames (approval resumes, direct file routes).
-// EXECUTING entries with an action become tool events (ok unless an error is
-// recorded); other entries collapse into state markers.
 export function parseAgentTranscript(steps: unknown): AgentStepEvent[] {
   return asArray<ApiRecord>(steps).flatMap((item): AgentStepEvent[] => {
     if (!isRecord(item)) return [];
@@ -459,8 +428,6 @@ export function parseAgentTranscript(steps: unknown): AgentStepEvent[] {
   });
 }
 
-// Loop honesty meta (payload.loop): null unless something was actually
-// repaired, so the "N회 보정" note only appears when it is true.
 export function parseLoopSummary(value: unknown): MessageLoopSummary | null {
   if (!isRecord(value)) return null;
   const repairs: Record<string, number> = {};
@@ -477,10 +444,6 @@ export function parseLoopSummary(value: unknown): MessageLoopSummary | null {
   return { repairs, parseErrors, parseRecovered, total };
 }
 
-// Backend `explanation` payload (v9.9.6). The server already localizes into
-// {ko, en}; this picks the surface language and keeps only what the note
-// renders. A clean, verified run carries no details — nothing to show, so it
-// stays null and the UI adds no noise.
 export function parseRunExplanation(
   value: unknown,
   language: "ko" | "en",
@@ -499,13 +462,10 @@ export function parseRunExplanation(
   const strainLevel =
     strain === "light" || strain === "moderate" || strain === "heavy" ? strain : "none";
   const ok = value.ok === true;
-  // A verified, effortless run needs no explanation at all.
   if (ok && !details.length) return null;
   return { code, ok, headline, details, strainLevel };
 }
 
-// GET /agent/approvals → pending paused runs. The token stays with the
-// original approval card; these summaries only inform.
 export function parsePendingApprovals(data: unknown): PendingApprovalSummary[] {
   const record = isRecord(data) ? data : {};
   return asArray<ApiRecord>(record.pending).flatMap((item): PendingApprovalSummary[] => {
@@ -519,8 +479,6 @@ export function parsePendingApprovals(data: unknown): PendingApprovalSummary[] {
   });
 }
 
-// GET /api/ingestion/watch → watch-mode health. Defensive: last_result and
-// last_errors may be absent (older servers) — every line hides itself then.
 export function parseIngestionWatchStatus(data: unknown): IngestionWatchStatus {
   const record = isRecord(data) ? data : {};
   const watches = asArray<ApiRecord>(record.watches).flatMap((item): IngestionWatch[] => {
@@ -561,9 +519,6 @@ export function parseIngestionWatchStatus(data: unknown): IngestionWatchStatus {
   };
 }
 
-// "unavailable" here is a machine state, not display copy: consumers gate on
-// it (VectorFreshnessNotice only renders for "pending") or map it to i18n
-// keys. Never render this status string directly in the UI.
 export function parseVectorFreshness(data: unknown): VectorFreshness {
   const record = isRecord(data) ? data : {};
   return {
@@ -574,9 +529,6 @@ export function parseVectorFreshness(data: unknown): VectorFreshness {
   };
 }
 
-// The backend job schema records errors as {index, source, detail} objects;
-// older payloads use plain strings. Normalize both into readable one-liners
-// so the completion report can show skip/failure samples with reasons.
 function jobErrorText(entry: unknown): string {
   if (typeof entry === "string") return entry.trim();
   if (!isRecord(entry)) return "";

@@ -1,8 +1,3 @@
-//! Shared replay harness for WP-R2 families.
-//!
-//! Copied from `lattice-auth/tests/auth_security.rs`: real loopback socket +
-//! `ConnectInfo`, fixture tokens applied symmetrically.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -216,7 +211,6 @@ pub fn install_auth(dir: &Path, require_auth: bool) -> (Arc<AuthState>, String, 
     env.insert("LATTICEAI_OPEN_REGISTRATION".into(), "1".into());
     env.insert("LATTICEAI_RATE_LIMIT".into(), "0".into());
     env.insert("LATTICE_TZ".into(), "UTC".into());
-    // tz_name() reads the process env, not AuthConfig.
     std::env::set_var("LATTICE_TZ", "UTC");
     let mut config = AuthConfig::from_map(&env, None);
     config.data_dir = dir.to_path_buf();
@@ -254,8 +248,6 @@ pub struct Answer {
     pub body: Vec<u8>,
 }
 
-// Eight parameters because a recorded fixture case has eight fields worth
-// replaying; a params struct here would be the same eight under a new name.
 #[allow(clippy::too_many_arguments)]
 pub async fn issue(
     origin: &str,
@@ -333,7 +325,6 @@ pub async fn issue(
             );
         }
     }
-    // also grab x-accel-buffering for SSE
     if let Some(value) = response.headers().get("x-accel-buffering") {
         captured.insert(
             "x-accel-buffering".into(),
@@ -370,10 +361,7 @@ pub fn values_match(expected: &Value, actual: &Value) -> bool {
             };
             text_match(exp_text, &act_text)
         }
-        Value::Object(exp) if exp.len() == 1 && exp.contains_key("@binary") => {
-            // handled by the caller with raw bytes
-            true
-        }
+        Value::Object(exp) if exp.len() == 1 && exp.contains_key("@binary") => true,
         Value::Object(exp) => {
             let Some(act) = actual.as_object() else {
                 return false;

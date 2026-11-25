@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { t } from "@/i18n";
-// Shared with the home-screen dial so the same setting is named the same way
-// on both surfaces — see lib/permissionCopy.ts.
 import {
   activeModeLabel,
   permissionModeLabel as optionLabel,
@@ -29,13 +27,6 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "danger"> = {
   high: "danger",
 };
 
-/**
- * The autonomy dial (v9.9.8).
- *
- * Renders whatever `/api/permission-mode` reports rather than a hardcoded mode
- * list, so the server stays the single source of truth for which modes exist
- * and which one needs an explicit risk acknowledgement.
- */
 export function PermissionModePanel() {
   const qc = useQueryClient();
   const language = useAppStore((state) => state.language);
@@ -57,14 +48,8 @@ export function PermissionModePanel() {
   const data: PermissionModeState | undefined = state.data?.ok ? state.data.data : undefined;
   const catalog = data?.catalog ?? [];
   const active = data?.mode ?? "";
-  // Before any interaction the active mode is the selection, so the panel opens
-  // showing what is actually in force rather than an empty form.
   const draft = selected ?? active;
   const draftOption = catalog.find((option) => option.id === draft);
-  // The ack box exists only for a *different* mode that demands an
-  // acknowledgement, so carry that option itself: rendering from it keeps the
-  // warning copy tied to the mode that needs it, with no impossible
-  // "ack box without an option" state to guard against.
   const ackOption = draftOption?.requires_ack && draft !== active ? draftOption : undefined;
   const needsAck = ackOption !== undefined;
   const blocked = needsAck && !acknowledged;

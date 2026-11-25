@@ -1,11 +1,3 @@
-"""P1b coverage — multimodal facts, ingestion DTOs, quiet, extraction leftovers.
-
-Drives the remaining Brain Core compute doors with real tiny files (PNG via
-Pillow, sidecar `.srt` / `.vtt`, a few bytes of text) and mocked ffmpeg /
-pytesseract / LLM-router seams. No product code is patched except public
-callables those modules already expose as test seams.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -70,8 +62,6 @@ from lattice_brain.multimodal.video import (
     read_video_facts,
     video_quality_score,
 )
-
-# ── helpers ──────────────────────────────────────────────────────────────────
 
 
 def _write_png(
@@ -147,9 +137,7 @@ def test_detect_modality_uses_the_module_extension_tables(name, expected):
 
 
 def test_detect_modality_falls_back_to_stdlib_mimetypes_then_text():
-    # `.svg` is not in IMAGE_EXTENSIONS; the stdlib table still calls it image.
     assert detect_modality(path="icon.svg") == "image"
-    # `.mpeg` is not in VIDEO_EXTENSIONS.
     assert detect_modality(path="clip.mpeg") == "video"
     assert detect_modality(path="") == "text"
     assert detect_modality() == "text"
@@ -480,20 +468,27 @@ def test_which_ffmpeg_and_run_ffmpeg(monkeypatch):
     assert _which_ffmpeg() is None
     assert ffmpeg_available() is False
 
-    class Completed:
+    import asyncio
+
+    class FakeProc:
         returncode = 7
+
+        async def wait(self):
+            return 7
+
+        def kill(self):
+            pass
 
     seen = {}
 
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
+    async def fake_exec(*argv, **kwargs):
+        seen["argv"] = list(argv)
         seen["kwargs"] = kwargs
-        return Completed()
+        return FakeProc()
 
-    monkeypatch.setattr(ports_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
     assert _run_ffmpeg("/bin/ffmpeg", ["-version"]) == 7
     assert seen["argv"] == ["/bin/ffmpeg", "-version"]
-    assert seen["kwargs"]["check"] is False
 
 
 def test_extract_keyframes_injected_and_ffmpeg_outcomes(tmp_path: Path, monkeypatch):
@@ -752,7 +747,6 @@ def test_assess_extraction_quality_upstream_and_empty():
     low = assess_extraction_quality("ignored", upstream_confidence=-2)
     assert low["score"] == 0.0
     assert low["level"] == "low"
-    # Unusable confidence falls through to the text heuristics.
     empty = assess_extraction_quality("   ", upstream_confidence="not-a-number")
     assert empty == {"score": 0.0, "level": "low", "reasons": ["empty_text"]}
     assert assess_extraction_quality(None, upstream_confidence=object())["reasons"] == [

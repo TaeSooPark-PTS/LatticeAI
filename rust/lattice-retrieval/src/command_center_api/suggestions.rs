@@ -1,19 +1,3 @@
-//! `AutomationIntelligenceService.suggestions`, as far as the briefing reads it.
-//!
-//! `_suggestion_section` keeps only the suggestions that are **not** installed,
-//! publishes their number, and renders `id` / `kind` / `title` for the first
-//! three. Everything else the service returns (`confidence_factors`, `reason`,
-//! `cadence`, `low_confidence`, `quality`, `consent`) is unreachable from this
-//! family's two responses and is therefore not materialised.
-//!
-//! What *is* reproduced in full is every computation that decides **which**
-//! suggestions exist and in **what order**: the question clustering, the intent
-//! rules, the KG grounding count, and the confidence floor. Confidence is
-//! rounded to two places before the comparison, exactly as Python rounds it, and
-//! `if kg_related:` is Python truthiness — a grounding count of **0** takes the
-//! `elif kg_related == 0` penalty branch, while `None` (graph unreadable) takes
-//! neither.
-
 use std::collections::{BTreeSet, HashSet};
 use std::sync::OnceLock;
 
@@ -25,20 +9,13 @@ use serde_json::Value;
 use super::store::{py_text, stable_id};
 use crate::history::{self, HistoryScope};
 
-/// `_MIN_PATTERN_COUNT`.
 const MIN_PATTERN_COUNT: i64 = 2;
-/// `_MAX_HISTORY`.
 const MAX_HISTORY: i64 = 4000;
-/// `_SIGNATURE_SIMILARITY`.
 const SIGNATURE_SIMILARITY: f64 = 0.6;
-/// `_MIN_SUGGESTION_CONFIDENCE`.
 const MIN_SUGGESTION_CONFIDENCE: f64 = 0.35;
-/// `_KG_GROUNDING_LIMIT`.
 const KG_GROUNDING_LIMIT: i64 = 5;
-/// `_UNGROUNDED_PENALTY`.
 const UNGROUNDED_PENALTY: f64 = 0.15;
 
-/// `_STOPWORDS`, in the file's own order (membership only).
 const STOPWORDS: [&str; 45] = [
     "the",
     "a",
@@ -87,19 +64,12 @@ const STOPWORDS: [&str; 45] = [
     "있어",
 ];
 
-/// The stopwords the Python set spells with more than one token per line — the
-/// tail of the same literal, kept separate only to stay inside one line width.
 const STOPWORDS_TAIL: [&str; 6] = ["있나", "있는지", "어떻게", "뭐야", "알려줘", "보여줘"];
 
-/// `_QUESTION_HINT_RE`, with `re.IGNORECASE` spelled inline.
 const QUESTION_HINT: &str = r"(?i)(\?|어때|뭐야|뭐가|뭘까|알려줘|보여줘|정리해|요약해|정리 좀|요약 좀|해줘|what|how|why|when|where|status|summar|remind|list|show me|tell me)";
 
-/// `_tokens`' pattern. Python's `\w` is Unicode-aware for `str` patterns and so
-/// is this crate's, which is why the explicit Hangul range adds nothing but is
-/// carried anyway — it is what the original spells.
 const TOKEN_PATTERN: &str = r"[\w가-힣]+";
 
-/// `_INTENT_RULES` — `(intent, pattern, recipe_id)`, in order; first match wins.
 const INTENT_RULES: [(&str, &str, &str); 3] = [
     (
         "digest",
@@ -118,29 +88,20 @@ const INTENT_RULES: [(&str, &str, &str); 3] = [
     ),
 ];
 
-/// One suggestion, reduced to what `_suggestion_section` renders.
 pub(crate) struct Suggestion {
-    /// `_stable_id("sug-q" | "sug-src", …)`.
     pub(crate) id: String,
-    /// `"recurring_question"` or `"knowledge_source"`.
     pub(crate) kind: &'static str,
-    /// The untruncated title; the section clips it to 120 characters.
     pub(crate) title: String,
-    /// Whether a workflow already carries this suggestion's provenance.
     pub(crate) installed: bool,
 }
 
-/// Everything the suggestion pass needs from the request.
 pub(crate) struct Request<'a> {
     pub(crate) user_email: &'a str,
     pub(crate) workspace_id: Option<&'a str>,
-    /// The Workspace OS state document, already loaded.
     pub(crate) state: &'a Value,
-    /// `enable_graph and knowledge_graph is not None`.
     pub(crate) enable_graph: bool,
 }
 
-/// `AutomationIntelligenceService.suggestions(...)["suggestions"]`.
 pub(crate) fn suggestions(conn: &Connection, request: &Request<'_>) -> Vec<Suggestion> {
     let patterns = question_patterns(conn, request);
     let (by_suggestion, by_recipe) = installed_workflows(request.state, request.workspace_id);
@@ -167,9 +128,6 @@ pub(crate) fn suggestions(conn: &Connection, request: &Request<'_>) -> Vec<Sugge
             seen_recipes.insert(recipe);
         }
         let suggestion_id = stable_id("sug-q", &pattern.id);
-        // `by_suggestion.get(id) or (by_recipe.get(recipe) if recipe else None)`
-        // — an entry only exists for a workflow whose metadata is non-empty, so
-        // the `or` never trips over a falsy-but-present workflow.
         let installed = by_suggestion.contains(&suggestion_id)
             || pattern
                 .recipe_id
@@ -212,7 +170,6 @@ pub(crate) fn suggestions(conn: &Connection, request: &Request<'_>) -> Vec<Sugge
     items
 }
 
-/// `_question_confidence` — the rounded score the floor is compared against.
 fn question_confidence(
     count: i64,
     distinct_examples: usize,
@@ -225,7 +182,6 @@ fn question_confidence(
         score += 0.15;
     }
     match kg_related {
-        // `if kg_related:` — a count of 0 is falsy and falls to the `elif`.
         Some(related) if related != 0 => score += f64::min(0.2, 0.05 * related as f64),
         Some(_) => score -= UNGROUNDED_PENALTY,
         None => {}
@@ -233,7 +189,6 @@ fn question_confidence(
     round_to(score.clamp(0.0, 1.0), 2)
 }
 
-/// `_source_confidence` — note there is no lower clamp here, only `min(1.0, …)`.
 fn source_confidence(indexed: i64, watch_enabled: bool) -> f64 {
     let mut score = 0.25 + 0.6 * f64::min(1.0, indexed as f64 / 25.0);
     if watch_enabled {
@@ -242,7 +197,6 @@ fn source_confidence(indexed: i64, watch_enabled: bool) -> f64 {
     round_to(score.min(1.0), 2)
 }
 
-/// `_kg_related_count` — `None` means "grounding was impossible", not "zero".
 fn kg_related_count(conn: &Connection, text: &str, request: &Request<'_>) -> Option<i64> {
     if !request.enable_graph {
         return None;
@@ -267,7 +221,6 @@ fn kg_related_count(conn: &Connection, text: &str, request: &Request<'_>) -> Opt
     )
 }
 
-/// `_installed_workflows`, as the two membership sets the caller reads.
 fn installed_workflows(
     state: &Value,
     workspace_id: Option<&str>,
@@ -288,17 +241,14 @@ fn installed_workflows(
     (by_suggestion, by_recipe)
 }
 
-/// One clustered recurring question, after `as_dict()`.
 struct Pattern {
     id: String,
     representative: String,
     count: i64,
     recipe_id: Option<&'static str>,
-    /// Already `[:3]`; only its length reaches the score.
     examples: Vec<String>,
 }
 
-/// The mutable cluster `question_patterns` grows.
 struct Cluster {
     representative: String,
     signature: BTreeSet<String>,
@@ -307,7 +257,6 @@ struct Cluster {
     examples: Vec<String>,
 }
 
-/// `question_patterns(...)["patterns"]`.
 fn question_patterns(conn: &Connection, request: &Request<'_>) -> Vec<Pattern> {
     let mut clusters: Vec<Cluster> = Vec::new();
     for (content, timestamp) in user_questions(conn, request) {
@@ -330,7 +279,6 @@ fn question_patterns(conn: &Connection, request: &Request<'_>) -> Vec<Pattern> {
             continue;
         };
         cluster.count += 1;
-        // Union keeps the cluster stable as phrasing drifts.
         cluster.signature.extend(signature);
         if timestamp >= cluster.last_asked {
             cluster.last_asked = timestamp;
@@ -345,8 +293,6 @@ fn question_patterns(conn: &Connection, request: &Request<'_>) -> Vec<Pattern> {
         .iter()
         .filter(|cluster| cluster.count >= MIN_PATTERN_COUNT)
         .collect();
-    // `sort(key=(count, last_asked), reverse=True)` — stable, so equal keys keep
-    // the order they were discovered in.
     recurring.sort_by(|left, right| {
         (right.count, right.last_asked.as_str()).cmp(&(left.count, left.last_asked.as_str()))
     });
@@ -369,7 +315,6 @@ fn question_patterns(conn: &Connection, request: &Request<'_>) -> Vec<Pattern> {
         .collect()
 }
 
-/// `_user_questions` — `(content, timestamp)` for every question-shaped turn.
 fn user_questions(conn: &Connection, request: &Request<'_>) -> Vec<(String, String)> {
     let scope = HistoryScope {
         user_email: Some(request.user_email.to_string()),
@@ -396,7 +341,6 @@ fn user_questions(conn: &Connection, request: &Request<'_>) -> Vec<(String, Stri
         .collect()
 }
 
-/// `_tokens`.
 fn tokenize(text: &str) -> Vec<String> {
     let lowered = text.to_lowercase();
     token_pattern()
@@ -411,9 +355,6 @@ fn is_stopword(token: &str) -> bool {
     STOPWORDS.contains(&token) || STOPWORDS_TAIL.contains(&token)
 }
 
-/// The three compiled patterns are process-wide: `question_patterns` runs them
-/// once per cluster and `tokenize` once per turn, and recompiling a backtracking
-/// regex on every message would dominate the whole read.
 fn token_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| crate::build_pattern(TOKEN_PATTERN))
@@ -435,7 +376,6 @@ fn intent_rules() -> &'static [Regex; 3] {
     })
 }
 
-/// `_similarity` — Jaccard, `0.0` when either side is empty.
 fn similarity(left: &BTreeSet<String>, right: &BTreeSet<String>) -> f64 {
     if left.is_empty() || right.is_empty() {
         return 0.0;
@@ -453,10 +393,6 @@ mod tests {
 
     use super::super::store::clip;
 
-    /// `_suggestion_section` — count the uninstalled, render the first three.
-    ///
-    /// The briefing renders its sections through the command-center handlers;
-    /// this stays here as the shape the section assertion below pins.
     fn section_items(items: &[Suggestion]) -> (i64, Vec<Value>) {
         let open: Vec<&Suggestion> = items.iter().filter(|item| !item.installed).collect();
         let top = open
@@ -496,7 +432,6 @@ mod tests {
 
     #[test]
     fn a_grounding_count_of_zero_is_charged_and_none_is_not() {
-        // The cheapest recurring question: asked twice, one phrasing, no recipe.
         let ungrounded = question_confidence(2, 1, None, Some(0));
         let unknown = question_confidence(2, 1, None, None);
         assert!(

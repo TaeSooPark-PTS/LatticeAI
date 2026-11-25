@@ -1,5 +1,3 @@
-//! Fixture seeding for the brain HTTP replay harness.
-
 use std::path::{Path, PathBuf};
 
 use axum::extract::Json;
@@ -42,9 +40,6 @@ pub(crate) fn seed_schema(dir: &Path) {
     .iter()
     .collect();
     if source.exists() {
-        // Open the Python-seeded capture store (scripts/gen_http_fixtures_brain.py
-        // --seed-store-only). Copy, never mutate the committed file. WAL sidecars
-        // stay next to the temp copy.
         std::fs::copy(&source, &dest).expect("copy brain_store.sqlite");
         let conn = rusqlite::Connection::open(&dest).expect("sqlite");
         seed_naive_provenance_stamps(&conn);
@@ -112,10 +107,6 @@ pub(crate) fn seed_schema(dir: &Path) {
     seed_capture_graph(&conn);
 }
 
-/// Health's embedding_coverage counts every node (visible or not). The
-/// original capture had 64 embeddable items / 63 ready; the committed store
-/// has 62 / 61. Two Preference rows (not in GRAPH_VISIBLE_TYPES) pad the
-/// index without changing the 36-node sample the other dimensions read.
 pub(crate) fn seed_embedding_padding(conn: &rusqlite::Connection) {
     let ready: i64 = conn
         .query_row("SELECT COUNT(*) FROM vector_embeddings", [], |row| {
@@ -130,7 +121,6 @@ pub(crate) fn seed_embedding_padding(conn: &rusqlite::Connection) {
     let needed = 63 - ready;
     let has_raw = table_has_column(conn, "nodes", "raw_json");
     let has_blob = table_has_column(conn, "vector_embeddings", "embedding");
-    // Preference nodes are not GRAPH_VISIBLE, so the 36-node sample stays put.
     for i in 0..needed {
         let id = format!("p-pad-{i:02}");
         let title = format!("Preference pad {i:02}");
@@ -211,9 +201,6 @@ pub(crate) fn seed_review_items(conn: &rusqlite::Connection) {
             "workspace_id": "personal",
         }),
     ];
-    // Command-center briefing was captured after synthesize had opened 11
-    // more items. Those are not `kg_change_digest`, so proactive-brief
-    // still reports the three self-model facts.
     for i in 0..11 {
         items.push(json!({
             "id": format!("review-fixture-briefing-{i:02}"),
@@ -236,8 +223,6 @@ pub(crate) fn seed_review_items(conn: &rusqlite::Connection) {
     .expect("wsos update");
 }
 
-/// Self-model nodes written after `--seed-store-only` persist (briefing /
-/// synthesize later phases). Chronicle entities count them.
 pub(crate) fn seed_chronicle_padding(conn: &rusqlite::Connection) {
     let stamp = super::match_util::CAPTURE_NOON;
     let _ = conn.execute(
@@ -277,25 +262,6 @@ pub(crate) fn seed_chronicle_padding(conn: &rusqlite::Connection) {
     }
 }
 
-/// Drop the `+00:00` the capture left on fifteen `captured_at` stamps.
-///
-/// The second wall-clock coupling in this family, and a nastier one than
-/// `@today` because it hides until you change machines. `chronicle_api::pytime`
-/// documents its own precondition: "nothing in the product writes [an offset];
-/// every stored stamp comes from `now_iso()`, which is naive". The committed
-/// store breaks it — `ingestion_provenance.captured_at` is
-/// `2026-08-14T12:00:00+00:00` — so `_local` does what Python's `astimezone`
-/// does and moves those rows into the *runner's* zone. At UTC or KST they stay
-/// on the capture day and everything passes; at UTC+14 they land on the 15th and
-/// `/api/chronicle/overview` answers a two-day `series` against a one-day
-/// fixture. Verified: `TZ=Pacific/Kiritimati` failed, `TZ=UTC` and
-/// `TZ=Etc/GMT+12` passed.
-///
-/// Normalising the copy to the naive form the product actually writes is a fix
-/// to the *fixture's* fidelity, not to behaviour: `_local` leaves a naive stamp
-/// alone, so every zone now reads what UTC read before. No fixture pins the
-/// offset spelling (checked: zero `+00:00` anywhere in `memory_brain.json`).
-/// The committed file is never touched — this runs on the temp copy.
 pub(crate) fn seed_naive_provenance_stamps(conn: &rusqlite::Connection) {
     let _ = conn.execute(
         "UPDATE ingestion_provenance
@@ -329,10 +295,6 @@ pub(crate) fn table_has_column(conn: &rusqlite::Connection, table: &str, column:
         .unwrap_or(false)
 }
 
-/// Command-search conversation hits come from two chat turns the HTTP
-/// capture recorded *after* seed. Overlay them onto the Python store (and
-/// onto the fallback schema) so those cases stay green without replaying
-/// the whole chat family.
 pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
     let has_hash: bool = conn
         .prepare("PRAGMA table_info(conversation_messages)")
@@ -347,7 +309,6 @@ pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
         })
         .unwrap_or(false);
     if has_hash {
-        // Python store: chat captures already wrote the rows (with hashes).
         return;
     }
     conn.execute_batch(
@@ -370,8 +331,6 @@ pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
     if already > 0 {
         return;
     }
-    // Stamped on the capture day like everything else, so the chronicle's
-    // day/as-of routes see one day and only one.
     let date = super::match_util::CAPTURE_DATE;
     conn.execute(
         "INSERT INTO conversation_messages
@@ -386,14 +345,9 @@ pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
     .expect("history");
 }
 
-/// The capture sandbox's health report sampled 36 visible nodes / 42 edges
-/// and graded embedding coverage at 63 ready + 1 pending. The Python seed
-/// ran the full ingest pipeline; here we write the same *counts* so the
-/// read-only Brain routes see the fixture's numbers.
 pub(crate) fn seed_capture_graph(conn: &rusqlite::Connection) {
     let stamp = super::match_util::CAPTURE_NOON;
     let model = "lattice-local-hash-v1:384";
-    // First eight ids must sort first (ORDER BY updated_at DESC, id ASC).
     let visible: &[(&str, &str, &str)] = &[
         ("computer:4a0a339b0c6d:@hostname", "Computer", "host"),
         (
@@ -540,7 +494,6 @@ pub(crate) fn seed_capture_graph(conn: &rusqlite::Connection) {
         ids[6],
     ];
     let mut pairs: Vec<(&str, &str)> = star.iter().map(|other| (person, *other)).collect();
-    // Hub-hub edges to land the fixture degrees 11 / 5 / 4 / 4 / 4.
     pairs.extend_from_slice(&[
         (doc_rust, doc_contr),
         (doc_rust, src_contr),
@@ -593,11 +546,6 @@ pub(crate) fn fact_id(kind: &str, text: &str) -> String {
     format!("self:{kind}:{}", &hex[..12])
 }
 
-/// How many times the retired `POST /worker/graph/mutate` was asked for.
-///
-/// It is mounted as a **tripwire**, not a stand-in: every graph write this
-/// crate makes is native since v11.7.0, and a fixture that still passes
-/// because a stand-in answered would be the fixture testing the stand-in.
 pub(crate) static GRAPH_MUTATE_CALLS: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 
@@ -605,8 +553,6 @@ pub(crate) async fn spawn_fake_worker() -> String {
     async fn mutate(Json(body): Json<Value>) -> impl IntoResponse {
         GRAPH_MUTATE_CALLS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let op = body.get("op").and_then(Value::as_str).unwrap_or("");
-        // A 200 with a plausible body, so a caller that still reaches here is
-        // caught by the assertion rather than by an error it might swallow.
         (
             StatusCode::OK,
             Json(json!({"op": op, "result": {"ok": true}})),

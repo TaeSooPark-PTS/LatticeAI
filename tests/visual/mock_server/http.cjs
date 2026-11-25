@@ -1,11 +1,3 @@
-/**
- * Response writers for the visual mock.
- *
- * Each one returns `true`. The route modules are one long `if` chain that used
- * to live inside `http.createServer`, where `return json(res, …)` simply ended
- * the handler; now the same statement has to tell the entry "answered, stop
- * here", so the writers report that themselves and every branch keeps its shape.
- */
 const fs = require("fs");
 const path = require("path");
 

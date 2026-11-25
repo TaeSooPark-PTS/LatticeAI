@@ -1,10 +1,3 @@
-"""Coverage for SearchService (wp34).
-
-``SearchService`` now only reports the resolved embedder. Retrieval lives in
-``lattice-retrieval``; these tests drive ``embeddings_status`` over fake
-providers so the grade / state / health mapping stays honest.
-"""
-
 from __future__ import annotations
 
 from latticeai.services.search_service import SearchService

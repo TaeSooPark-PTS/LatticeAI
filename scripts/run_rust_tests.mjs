@@ -1,12 +1,4 @@
 #!/usr/bin/env node
-/**
- * Parallel Rust workspace test runner.
- *
- * Uses `cargo nextest run` when `cargo-nextest` is installed (fast process-isolated
- * parallel execution) and falls back cleanly to `cargo test --workspace` otherwise.
- * Always scrubs ambient connector/bot tokens (`LATTICEAI_TELEGRAM_BOT_TOKEN`, etc.)
- * so local developer shells never contaminate golden fixture parity suites.
- */
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,7 +40,6 @@ if (hasNextest) {
     { stdio: "inherit", env: cleanEnv },
   );
   if (res.status !== 0) process.exit(res.status ?? 1);
-  // nextest does not execute doctests by default; run doctests separately.
   const docRes = spawnSync(
     "cargo",
     ["test", "--manifest-path", manifestPath, "--workspace", "--doc", "--quiet"],

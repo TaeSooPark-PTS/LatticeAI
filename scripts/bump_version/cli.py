@@ -1,5 +1,3 @@
-"""Command-line interface for the modular Lattice AI version synchronization tool."""
-
 from __future__ import annotations
 
 import argparse
@@ -29,7 +27,6 @@ def bump(
     repo: Optional[Path] = None,
     targets: Optional[Iterable[Tuple[str, str, Optional[str]]]] = None,
 ) -> int:
-    """Synchronize or verify all version copies across the repository."""
     if not is_valid_semver(version):
         print(f"error: '{version}' is not a sane semantic version", file=sys.stderr)
         return 2
@@ -39,7 +36,6 @@ def bump(
 
 
 def _normalize_argv(argv: Sequence[str]) -> List[str]:
-    """Normalize CLI args so bare ``<version> [--check]`` maps to ``all <version> [--check]``."""
     args = list(argv)
     if not args:
         return args
@@ -54,7 +50,6 @@ def _normalize_argv(argv: Sequence[str]) -> List[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the CLI parser supporting ``all``, ``openapi``, ``cargo``, and ``markers``."""
     parser = argparse.ArgumentParser(
         prog="bump_version",
         description=(
@@ -95,7 +90,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    """CLI entrypoint supporting both subcommand and positional ``<version> [--check]`` forms."""
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     normalized = _normalize_argv(raw_argv)
     parser = build_parser()

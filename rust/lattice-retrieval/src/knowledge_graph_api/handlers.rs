@@ -1,5 +1,3 @@
-//! Knowledge-graph read routes.
-
 use std::sync::Arc;
 
 use axum::extract::{Path as AxumPath, RawQuery, State};
@@ -15,8 +13,6 @@ use super::{
     pipeline_payload, provenance_coverage, scoped_documents, stats,
 };
 use crate::search_api::{http_error, language, ok, Query, RetrievalApiState};
-
-// ── reads ───────────────────────────────────────────────────────────────────
 
 pub(crate) async fn promotions(
     State(state): State<Arc<RetrievalApiState>>,
@@ -151,8 +147,6 @@ pub(crate) async fn search_route(
         (Ok(q), Ok(limit)) => (q, limit),
         (Err(refusal), _) | (_, Err(refusal)) => return refusal,
     };
-    // `if not q or not q.strip(): return {"query": q, "matches": []}` — the
-    // empty answer comes back before the store is consulted at all.
     if q.trim().is_empty() {
         let mut payload = OrderedMap::new();
         payload.insert("query", json!(q));
@@ -160,9 +154,6 @@ pub(crate) async fn search_route(
         return ok(&serde_json::to_value(payload).unwrap_or(Value::Null));
     }
     match read(&state, move |conn| {
-        // The router calls `kg.search(q, limit)` positionally — unscoped — and
-        // filters afterwards, which is a different code path from the scoped
-        // `search()` the service layer uses.
         let mut payload = crate::keyword::search(conn, &q, limit, None, false)?;
         if scope.allowed_workspaces.is_some() {
             let matches = payload

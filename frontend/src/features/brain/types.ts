@@ -5,47 +5,29 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   proof?: MessageProof;
-  // Real files the assistant created in the local workspace for this reply.
   files?: MessageFile[];
-  // Honest signal about how much graph context backed this answer.
   contextQuality?: MessageContextQuality;
-  // Terminal agent-loop state for this reply (NEEDS_REVIEW/FAILED render as
-  // warnings, never as success).
   agentState?: string;
-  // Interactive plan approval (status "awaiting_approval"): the run is paused
-  // server-side behind a short-TTL single-use token until the user decides.
   approval?: MessageApproval;
-  // Answer-citation binding verdict ("근거 있음/근거 없음") from the backend.
   grounding?: MessageGrounding;
-  // Live agent-loop step events (streamed `event: agent_step` frames) or the
-  // post-hoc transcript derived from the final payload's `steps`.
   agentSteps?: AgentStepEvent[];
-  // Loop transparency: how many times the model output had to be repaired.
   loopSummary?: MessageLoopSummary;
-  // Plain-language outcome for an agent run (v9.9.6): why it ended the way it
-  // did and how hard the model had to work to get there.
   runExplanation?: MessageRunExplanation;
-  // Hybrid cloud lane: the memories sent with this turn. Kept on the message
-  // so the chip can count them; the ids themselves are not rendered.
   hybridContext?: MessageHybridContext;
-  // Set only when this reply came from the cloud lane (`hybrid_done`).
   cloudAnswer?: MessageCloudAnswer;
 };
 
-// Which local memories left the machine for one hybrid turn.
 export type MessageHybridContext = {
   nodeIds: string[];
   keywords: string[];
 };
 
-// Knowledge-expansion proposal summary from `hybrid_done.kg_expansion`.
 export type MessageKgExpansion = {
   status: string;
   candidateCount: number;
   stagedForReview: boolean;
 };
 
-// A cloud-lane answer: provider/model plus the sent-memory / expansion summary.
 export type MessageCloudAnswer = {
   provider: string;
   model: string;
@@ -53,12 +35,9 @@ export type MessageCloudAnswer = {
   expansion: MessageKgExpansion | null;
 };
 
-// One agent-loop step event. Streamed frames carry {phase, event, ...detail};
-// unknown extra fields are dropped at parse time so future backend additions
-// never break rendering.
 export type AgentStepEvent = {
-  phase: string; // plan | execute | verify | rollback | terminal | ...
-  event: string; // planned | tool | proposed | blocked | parse_error | final | verdict | state | ...
+  phase: string;
+  event: string;
   action?: string;
   path?: string;
   step?: number;
@@ -69,19 +48,13 @@ export type AgentStepEvent = {
   detail?: string;
 };
 
-// Aggregated loop honesty meta from payload.loop: deterministic repairs the
-// loop applied to model output, keyed by repair kind.
 export type MessageLoopSummary = {
   repairs: Record<string, number>;
   parseErrors: number;
   parseRecovered: number;
-  // Sum of repair counts + recovered parse errors — the "N회 보정" number.
   total: number;
 };
 
-// Backend `explanation` payload: an honest, deterministic sentence about how
-// the run ended. `ok` is true only for a verified DONE — every other code
-// renders as a caution, never as success.
 export type MessageRunExplanation = {
   code: string;
   ok: boolean;
@@ -97,9 +70,6 @@ export type ApprovalStatus =
   | "expired"
   | "error";
 
-// A paused agent run waiting for the user's go-ahead. `token` is single-use
-// with a ~10 minute server TTL; `plan` is the normalized plan the user may
-// edit before resuming.
 export type MessageApproval = {
   runId: string;
   token: string;
@@ -108,22 +78,15 @@ export type MessageApproval = {
   plan: Record<string, unknown> | null;
   status: ApprovalStatus;
   errorReason?: string;
-  // The original user request, offered by the server on a 410 expiry so the
-  // UI can propose "다시 계획" as a fresh chat send. Absent on client-side
-  // expiry (no server round-trip happened).
   replanMessage?: string;
 };
 
-// A paused approval reported by GET /agent/approvals (survives reloads and
-// server restarts). The single-use token stays with the original card — this
-// summary only informs.
 export type PendingApprovalSummary = {
   runId: string;
   goal: string;
   expiresAt: string;
 };
 
-// Deterministic claim-level grounding metrics emitted by `verify_grounding_and_abstention`.
 export type MessageClaimVerification = {
   claimSupportRatio: number;
   citationPrecision: number;
@@ -135,16 +98,12 @@ export type MessageClaimVerification = {
   abstentionReason: string | null;
 };
 
-// Honest answer-grounding signal: whether the reply actually used retrieved
-// sources. `no_context` means nothing was retrieved at all.
 export type MessageGrounding = {
   status: "supported" | "unsupported" | "no_context" | string;
   reason: string | null;
   claimVerification?: MessageClaimVerification;
 };
 
-// Additive chat meta ("context_quality") flowing on the same channel as
-// sources/evidence. `limited` means the graph context was thinner than usual.
 export type MessageContextQuality = {
   mode: "hybrid" | "lexical_only" | "none" | string;
   nodes: number;
@@ -156,20 +115,11 @@ export type MessageFile = {
   path: string;
   filename: string;
   bytes: number;
-  // True when the generation pipeline had to fall back to a deterministic
-  // repair scaffold — the UI badges these so they are never oversold.
   repaired?: boolean;
-  // From the artifacts[] response contract: whether the backend judged this
-  // file safe/sensible to preview inline. Undefined when the artifact meta is
-  // absent (older responses) — the UI then falls back to an extension check.
   previewable?: boolean;
-  // From the payload-level `brain_ingest` field: whether this generated file
-  // was actually indexed into the Brain. Absent → unknown → no chip.
   brainIngest?: MessageBrainIngest;
 };
 
-// "Brain remembered" verdict for a generated file. Only ok/pending/failed
-// render a chip; any other status stays silent (never oversold).
 export type MessageBrainIngest = {
   status: "ok" | "pending" | "failed" | string;
   detail?: string;
@@ -186,18 +136,10 @@ export type MessageProof = {
     source: string;
     title: string;
     snippet: string;
-    // Evidence explainability: why the Brain picked this citation.
     matchedTerms: string[];
     confidence: EvidenceConfidence;
     score: number;
-    // Where inside the document this chunk came from ("Guide > Setup · p.4").
-    // Empty when the chunk carries no such provenance — never guessed.
     locator: string;
-    // v11.1.0 multi-modal evidence. `kind` is the graph node type ("Image"),
-    // `caption` is what a vision model said about the picture (empty when no
-    // model was loaded — never filled in from the filename), and `thumbnail`
-    // is the inline data: URI stored on the node. All three are empty for the
-    // ordinary text citation.
     kind?: string;
     caption?: string;
     thumbnail?: string;
@@ -213,12 +155,10 @@ export type MemoryFragment = {
   agentGenerated: boolean;
 };
 
-// A past conversation the user can resume from the Brain home.
 export type ConversationSummary = {
   id: string;
   title: string;
   messageCount: number;
-  // Unix epoch (ms) of the latest activity; undefined when the backend omits it.
   updatedAt?: number;
 };
 
@@ -228,8 +168,6 @@ export type KnowledgeConcept = {
   type: string;
   summary: string;
   importance: number;
-  // Optional unix epoch (ms) the concept was added to the graph. Enables
-  // time-based exploration; absent when the backend does not yet emit it.
   createdAt?: number;
 };
 
@@ -292,8 +230,6 @@ export type BrainProof = {
       matchedTerms: string[];
       confidence: EvidenceConfidence;
       locator: string;
-      // v11.1.0: present for a multi-modal memory (see MessageProof above);
-      // absent everywhere else, including in older payloads.
       kind?: string;
       caption?: string;
       thumbnail?: string;
@@ -406,8 +342,6 @@ export type IngestionEvidence = {
   extraction?: ExtractionQuality;
 };
 
-// Additive ingest meta ("extraction_quality"): how well the source content
-// could be extracted. Low quality carries user-facing warnings.
 export type ExtractionQuality = {
   score: number;
   level: "high" | "medium" | "low";
@@ -422,8 +356,6 @@ export type VectorFreshness = {
   detail: string;
 };
 
-// Folder watch mode health (GET /api/ingestion/watch): per-watch scan results
-// so the home surface can show whether "connected" folders actually flow.
 export type IngestionWatchError = {
   path: string;
   detail: string;

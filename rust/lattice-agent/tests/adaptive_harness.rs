@@ -1,7 +1,3 @@
-//! End-to-end and unit verification suite for the Phase 1 Universal Adaptive
-//! Harness (`probe`, `parse`, `tools::catalog`, `prompts`, `execution`,
-//! `guided`, `verification`, `transcript`, and `rag_grounding`).
-
 mod common;
 
 use std::path::PathBuf;
@@ -42,7 +38,6 @@ async fn probe_measures_reasoning_framing_and_grounding_with_legacy_cache_compat
     let dir = scratch("probe_measure");
     let config = ProbeConfig::new(dir.join("probe_cache"));
 
-    // Legacy cache entry without `reasoning_framed` or `grounding_ok` deserializes safely.
     std::fs::create_dir_all(&config.cache_dir).expect("cache dir");
     std::fs::write(
         config.cache_path(),
@@ -56,10 +51,6 @@ async fn probe_measures_reasoning_framing_and_grounding_with_legacy_cache_compat
     assert!(!legacy.reasoning_framed);
     assert!(!legacy.grounding_ok);
 
-    // Live 3-turn micro-probe against ReplayServer:
-    // 1. Action probe reply wrapped in `<think>` framing -> Repaired + reasoning_framed = true
-    // 2. Menu probe reply -> "2" -> menu_ok = true
-    // 3. Grounding micro-probe reply -> "8443" (active value, not superseded 4040) -> grounding_ok = true
     let server = start_replay_worker(&dir).await;
     server.worker.push_completions(&[
         "<think>Need to write probe.txt</think>\n{\"thoughts\": \"write it\", \"action\": \"write_file\", \"args\": {\"path\": \"probe.txt\", \"content\": \"hello\\nshe said \\\"hi\\\"\\n\"}}".to_string(),
@@ -95,7 +86,6 @@ async fn probe_measures_reasoning_framing_and_grounding_with_legacy_cache_compat
 
 #[test]
 fn parser_fallback_rungs_recover_unescaped_newlines_react_python_calls_and_xml_tags() {
-    // 1. unescaped_newline before truncated_close / python_literal
     let raw_newline = "{\"thoughts\": \"line one\nline two\", \"action\": \"web_search\", \"args\": {\"query\": \"lattice\nrag\"}}";
     let (parsed, repairs) = extract_action_details(raw_newline).expect("unescaped_newline");
     assert_eq!(parsed["action"], json!("web_search"));
@@ -109,7 +99,6 @@ fn parser_fallback_rungs_recover_unescaped_newlines_react_python_calls_and_xml_t
         "{repairs:?}"
     );
 
-    // 2. react_format (Action/Action Input and Tool/Input)
     let react = "Thought: I should search the web.\nAction: web_search\nAction Input: {\"query\": \"LatticeAI 13\", \"max_results\": 5}";
     let (parsed_react, repairs_react) = extract_action_details(react).expect("react_format");
     assert_eq!(parsed_react["action"], json!("web_search"));
@@ -130,7 +119,6 @@ fn parser_fallback_rungs_recover_unescaped_newlines_react_python_calls_and_xml_t
         "{repairs_tool:?}"
     );
 
-    // 3. python_call syntax
     for (input, expected_action, expected_check) in [
         (
             r#"web_fetch(url="https://example.com/docs")"#,
@@ -157,7 +145,6 @@ fn parser_fallback_rungs_recover_unescaped_newlines_react_python_calls_and_xml_t
         );
     }
 
-    // 4. Expanded xml_arg_tag + KNOWN_ACTIONS
     let xml = "<tool_call><name>computer_drag</name><x1>10</x1><y1>20</y1><x2>300</x2><y2>400</y2></tool_call>";
     let (parsed_xml, repairs_xml) = extract_action_details(xml).expect("xml_call");
     assert_eq!(parsed_xml["action"], json!("computer_drag"));
@@ -212,7 +199,6 @@ fn catalog_coerces_and_unwraps_args_and_exposes_all_signatures() {
     );
     assert_eq!(signature("computer_screenshot"), "computer_screenshot");
 
-    // Unwrap nested `arguments` + coerce stringified ints/float/bools.
     let click_entry = entry_for(&entries, "computer_click").expect("computer_click");
     let mut click_args: Map<String, Value> = serde_json::from_value(json!({
         "arguments": {
@@ -232,7 +218,6 @@ fn catalog_coerces_and_unwraps_args_and_exposes_all_signatures() {
     assert_eq!(click_args["interval"], json!(0.25));
     assert_eq!(click_args["double"], json!(true));
 
-    // Normalize `computer_key` aliases.
     let key_entry = entry_for(&entries, "computer_key").expect("computer_key");
     for (raw_key, expected_key) in [
         ("Enter", "return"),
@@ -280,7 +265,6 @@ fn bilingual_domain_classifiers_and_observation_first_ranking_work() {
         Some("https://docs.lattice.ai/v13/guide")
     );
 
-    // Verify observation-before-actuation ranking in guided & lean lists.
     let dir = scratch("ranking_obs");
     let workspace = Workspace::new(dir.join("ws")).expect("workspace");
     let mut deps = lattice_agent::kernel::agentloop::LoopDeps::new(
@@ -299,7 +283,6 @@ fn bilingual_domain_classifiers_and_observation_first_ranking_work() {
     let mut ctx = AgentRunContext::new();
     let request = "화면에서 확인 버튼을 클릭해줘";
 
-    // Before observation step: `computer_ui_inspect` and `computer_screenshot` precede `computer_click`.
     let ranked_before: Vec<String> = runtime
         .rank_catalog(&ctx, request)
         .into_iter()
@@ -320,7 +303,6 @@ fn bilingual_domain_classifiers_and_observation_first_ranking_work() {
     assert!(pos_inspect < pos_click, "{ranked_before:?}");
     assert!(pos_shot < pos_click, "{ranked_before:?}");
 
-    // After `computer_ui_inspect` observation step on transcript: `computer_click` precedes `computer_ui_inspect`.
     ctx.transcript.push(json!({
         "state": "EXECUTING",
         "action": "computer_ui_inspect",
@@ -362,11 +344,6 @@ async fn execution_resolves_ui_element_coords_fills_url_coerces_args_and_upgrade
             "result": {"clicked": true, "x": 420, "y": 310}
         }),
     ]);
-    // 1. Call `web_fetch` with empty args -> URL extracted from request.
-    // 2. Call `computer_ui_inspect`.
-    // 3. Call `computer_click` with nested `arguments` + `element_id: "btn_submit"` + stringified `"clicks": "1"` -> unwrapped, coerced, and resolved to center (420, 310).
-    // 4. Call `write_file` with missing required `content` -> refusal includes signature `write_file{path, content}` and parameter hint.
-    // 5. Final.
     server.worker.push_completions(&[
         r#"{"thoughts": "fetch page", "action": "web_fetch", "args": {}}"#.to_string(),
         r#"{"thoughts": "inspect ui", "action": "computer_ui_inspect", "args": {}}"#.to_string(),
@@ -432,7 +409,6 @@ async fn mid_run_adaptive_escalation_enables_json_prefix_then_demotes_to_guided_
     let workspace = Workspace::new(dir.join("ws")).expect("workspace");
     let server = start_replay_worker(workspace.root()).await;
 
-    // Seed probe cache as `STANDARD` for `flaky-model` so it starts on measured `standard`.
     let probe_cfg = ProbeConfig::new(dir.join("probe"));
     store(
         &probe_cfg,
@@ -445,16 +421,11 @@ async fn mid_run_adaptive_escalation_enables_json_prefix_then_demotes_to_guided_
         "tool": "list_dir",
         "result": {"path": ".", "items": ["a.md", "b.md"], "count": 2}
     })]);
-    // Step 1 (standard): valid tool call `list_dir` succeeds -> execution evidence now exists on transcript!
-    // Steps 2, 3, 4 (standard): 3 parse failures -> after 2nd failure `adaptive_prefix_enabled` fires;
-    // after 3rd failure (`parse_failures >= STANDARD.parse_failure_budget`), `profile_demoted_mid_run`
-    // fires even though step 1 succeeded, and the run finishes in `guided` mode!
     server.worker.push_completions(&[
         r#"{"thoughts": "list dir", "action": "list_dir", "args": {"path": "."}}"#.to_string(),
         "not valid json 1".to_string(),
         "not valid json 2".to_string(),
         "not valid json 3".to_string(),
-        // Guided mode menu choice for `final` (row 1 because count_in_hand is true!) + final message
         "1".to_string(),
         "폴더에 파일이 2개 있습니다.".to_string(),
     ]);
@@ -487,7 +458,6 @@ async fn mid_run_adaptive_escalation_enables_json_prefix_then_demotes_to_guided_
         "expected profile_demoted_mid_run in trace: {:?}",
         ctx.trace.events
     );
-    // Prior transcript step (`list_dir`) is preserved intact!
     assert!(ctx
         .transcript
         .iter()
@@ -498,7 +468,6 @@ async fn mid_run_adaptive_escalation_enables_json_prefix_then_demotes_to_guided_
 #[tokio::test]
 async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_verifies_fail_closed()
 {
-    // 1. Context distillation in `transcript.rs`
     let shot = json!({
         "state": "EXECUTING",
         "action": "computer_screenshot",
@@ -523,7 +492,6 @@ async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_ver
         json!("[screenshot omitted: 24 bytes]")
     );
 
-    // 2. Unit verification of all 5 GroundingDefect types + build_evidence_card
     let passages = extract_evidence_passages(&[ksearch]);
     assert_eq!(passages.len(), 2);
     let card = build_evidence_card(&passages, 1000);
@@ -540,7 +508,6 @@ async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_ver
     let pol_report = verify_grounded_answer("Active port is not 8443 [1].", &passages);
     assert!(pol_report.has(GroundingDefect::PolarityMismatch));
 
-    // 3. Zero active evidence hallucination -> grounded_abstention_enforced on `final`
     let dir = scratch("rag_abstention");
     let workspace = Workspace::new(dir.join("ws")).expect("workspace");
     let server = start_replay_worker(workspace.root()).await;
@@ -581,8 +548,6 @@ async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_ver
         ctx.final_message
     );
 
-    // 4. Superseded / numeric defect on `final` -> ONE targeted self-repair completion (`grounded_answer_repaired`)
-    //    and if defect persists at `verify`, fail-closed `NEEDS_REVIEW` (`needs_review_rag_grounding`).
     let dir2 = scratch("rag_self_repair");
     let workspace2 = Workspace::new(dir2.join("ws")).expect("workspace");
     let server2 = start_replay_worker(workspace2.root()).await;
@@ -598,12 +563,9 @@ async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_ver
     server2.worker.push_completions(&[
         r#"{"thoughts": "search", "action": "knowledge_search", "args": {"query": "port"}}"#
             .to_string(),
-        // Defective final answer leaking superseded 4040
         r#"{"thoughts": "answer", "action": "final", "message": "Service port is 4040."}"#
             .to_string(),
-        // Self-repair completion still leaks 4040 so we also test fail-closed verification!
         "Service port is 4040.".to_string(),
-        // Critic says PASS, but verification.rs::settle_answer must fail closed to NEEDS_REVIEW!
         r#"{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok", "corrections": []}"#
             .to_string(),
     ]);
@@ -636,16 +598,12 @@ async fn rag_grounding_distills_context_enforces_abstention_self_repairs_and_ver
         ctx2.trace.events
     );
 
-    // 5. Guided mode `final` with evidence injects `[ACTIVE GROUNDED EVIDENCE]` and uses execute_tokens.min(512).
     let dir3 = scratch("rag_guided_final");
     let workspace3 = Workspace::new(dir3.join("ws")).expect("workspace");
     let server3 = start_replay_worker(workspace3.root()).await;
-    server3.worker.push_completions(&[
-        // Menu choice 3 (`final` in read_file, write_file, final)
-        "3".to_string(),
-        // Guided final message grounded in active evidence [1]
-        "Service port is 8443 [1].".to_string(),
-    ]);
+    server3
+        .worker
+        .push_completions(&["3".to_string(), "Service port is 8443 [1].".to_string()]);
     let mut deps3 = loop_deps(&server3, workspace3);
     deps3.agent_profile = Some(GUIDED);
     deps3.tool_names = vec!["write_file".into(), "read_file".into()];

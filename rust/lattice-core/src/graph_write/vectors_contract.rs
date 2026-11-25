@@ -1,8 +1,3 @@
-//! Embedder fingerprint & [`EmbeddingIndexContract`] persistence in `graph_meta`.
-//!
-//! Port of `lattice_brain/graph/retrieval_vector/fingerprint.py` plus contract
-//! conflict detection across `vector_embeddings`.
-
 use rusqlite::{Connection, Transaction};
 use serde_json::{json, Map, Value};
 
@@ -13,13 +8,10 @@ use crate::pytext::safe_loads;
 use super::pyaux::json_of;
 use super::GraphWriter;
 
-/// `graph_meta` key holding the embedder fingerprint.
 pub const EMBEDDER_FINGERPRINT_KEY: &str = "embedder_fingerprint";
-/// `graph_meta` key holding the full [`EmbeddingIndexContract`] JSON.
 pub const EMBEDDING_INDEX_CONTRACT_KEY: &str = "embedding_index_contract";
 
 impl GraphWriter {
-    /// Read the active [`EmbeddingIndexContract`] from `graph_meta` (or synthesize from `embedder_fingerprint`).
     pub fn read_index_contract(conn: &Connection) -> Option<EmbeddingIndexContract> {
         let contract_raw: Option<String> = conn
             .query_row(
@@ -58,13 +50,11 @@ impl GraphWriter {
         None
     }
 
-    /// Current [`EmbeddingIndexContract`] recorded in `graph_meta`, if any.
     pub fn current_index_contract(&self) -> Result<Option<EmbeddingIndexContract>, CoreError> {
         self.store
             .with_read_conn(|conn| Ok(Self::read_index_contract(conn)))
     }
 
-    /// Record a supplied provider's [`EmbeddingIndexContract`] and report whether existing vectors mismatch.
     pub fn record_supplied_contract(
         &self,
         contract: &EmbeddingIndexContract,
@@ -124,7 +114,6 @@ impl GraphWriter {
         Ok(reindex_required)
     }
 
-    /// `_embedder_fingerprint_record`.
     pub(crate) fn embedder_fingerprint(
         &self,
         txn: &Transaction<'_>,
@@ -151,7 +140,6 @@ impl GraphWriter {
         Ok(Some((model_id.to_string(), dim)))
     }
 
-    /// `_write_embedder_fingerprint` — in the caller's transaction.
     pub(crate) fn write_embedder_fingerprint(
         &self,
         txn: &Transaction<'_>,

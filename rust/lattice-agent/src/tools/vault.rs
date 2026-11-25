@@ -1,13 +1,3 @@
-//! `knowledge_save` / `obsidian_save` — the knowledge-garden writers.
-//!
-//! These write under `BRAIN_DIR` rather than the agent workspace, so the
-//! confinement rule is a different one and it is worth naming: the folder must
-//! be one of the five `STRUCTURE` names, and the vault root is a **per-scope**
-//! partition derived from the authenticated workspace and user. The loop
-//! overwrites `workspace_id`/`user_email` in the arguments before the call
-//! (`SCOPED_KNOWLEDGE_TOOLS`), so a model cannot name someone else's partition;
-//! the fail-closed check below is what happens when nobody set them at all.
-
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
@@ -17,12 +7,9 @@ use crate::tools::args;
 use crate::tools::files::io_error;
 use crate::tools::sandbox::{ToolError, MAX_FILE_BYTES};
 
-/// `STRUCTURE`'s keys — the only folders a note may land in.
 pub const KNOWLEDGE_FOLDERS: [&str; 5] =
     ["00_Raw", "10_Wiki", "20_Skills", "30_Projects", "40_Log"];
 
-/// `BRAIN_DIR` — `$LATTICEAI_OBSIDIAN_VAULT_DIR`, then `$LATTICEAI_BRAIN_DIR`,
-/// then `~/.ltcai-brain`.
 pub fn default_brain_dir() -> PathBuf {
     for name in ["LATTICEAI_OBSIDIAN_VAULT_DIR", "LATTICEAI_BRAIN_DIR"] {
         if let Some(value) = std::env::var_os(name) {
@@ -44,7 +31,6 @@ fn hex_lower(bytes: &[u8]) -> String {
     out
 }
 
-/// `_scope_digest`: `sha256(f"{kind}\0{value}")[:24]`, prefixed by the kind.
 fn scope_digest(kind: &str, value: &str) -> String {
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
@@ -55,7 +41,6 @@ fn scope_digest(kind: &str, value: &str) -> String {
     format!("{kind}-{}", &hex[..24])
 }
 
-/// The scope pair, or the fail-closed refusal `_knowledge_scope` raises.
 fn scope_of(args: &Map<String, Value>) -> Result<(String, String), ToolError> {
     let workspace_id = args::coerced_str(args, "workspace_id", "")
         .trim()
@@ -71,7 +56,6 @@ fn scope_of(args: &Map<String, Value>) -> Result<(String, String), ToolError> {
     Ok((workspace_id, user_email))
 }
 
-/// `knowledge_scope_root`: the private partition for one workspace user.
 pub fn scope_root(brain_dir: &Path, workspace_id: &str, user_email: &str) -> PathBuf {
     brain_dir
         .join(".lattice-scopes")
@@ -79,7 +63,6 @@ pub fn scope_root(brain_dir: &Path, workspace_id: &str, user_email: &str) -> Pat
         .join(scope_digest("user", user_email))
 }
 
-/// `_safe_brain_folder`.
 fn safe_folder(args: &Map<String, Value>) -> Result<String, ToolError> {
     let folder = match args.get("folder") {
         None => "00_Raw".to_string(),
@@ -94,21 +77,12 @@ fn safe_folder(args: &Map<String, Value>) -> Result<String, ToolError> {
     }
 }
 
-/// `safe_title`: the caller's title or the first line, stripped of everything
-/// that is not alphanumeric, space, `-` or `_`, then whitespace-joined.
-///
-/// The characters are **dropped**, not replaced (unlike the document creators'
-/// `_safe_filename`, which substitutes `_`), so `"보고서: v2"` becomes
-/// `"보고서_v2"` and `"???"` becomes `"note"`.
 fn safe_title(title: Option<&str>, content: &str) -> Result<String, ToolError> {
     let base = match title {
         Some(title) if !title.is_empty() => title.to_string(),
         _ => {
             let stripped = content.trim();
             let Some(first) = stripped.lines().next() else {
-                // `content.strip().splitlines()[0]` on whitespace-only content
-                // raises IndexError, which the seam does not catch. Named as a
-                // deviation: an error step rather than a 500.
                 return Err(ToolError::tool("list index out of range"));
             };
             let first = char_slice(first, 60);
@@ -131,13 +105,11 @@ fn safe_title(title: Option<&str>, content: &str) -> Result<String, ToolError> {
     })
 }
 
-/// `knowledge_save(content, folder, title, *, workspace_id, user_email)`.
 pub fn knowledge_save(brain_dir: &Path, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let (result, _) = save_note(brain_dir, args)?;
     Ok(result)
 }
 
-/// `obsidian_save` — `knowledge_save` plus the vault's own two fields.
 pub fn obsidian_save(brain_dir: &Path, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let (mut result, root) = save_note(brain_dir, args)?;
     result["vault_root"] = json!(root.display().to_string());
@@ -148,10 +120,7 @@ pub fn obsidian_save(brain_dir: &Path, args: &Map<String, Value>) -> Result<Valu
     Ok(result)
 }
 
-/// The shared body: both doors write the same note to the same place.
 fn save_note(brain_dir: &Path, args: &Map<String, Value>) -> Result<(Value, PathBuf), ToolError> {
-    // The handler reads `a["content"]` first, so a missing key is the KeyError
-    // before any of the tool's own checks run.
     let content = args::required_str(args, "content")?;
     let (workspace_id, user_email) = scope_of(args)?;
     let folder = safe_folder(args)?;
@@ -231,8 +200,6 @@ mod tests {
 
     #[test]
     fn the_scope_partition_is_the_python_digest() {
-        // Independently computed: sha256("workspace\0personal") and
-        // sha256("user\0owner@example.com"), first 24 hex characters.
         assert_eq!(
             scope_digest("workspace", "personal"),
             format!("workspace-{}", &sha256_hex("workspace\0personal")[..24])
@@ -245,8 +212,6 @@ mod tests {
                 .join(scope_digest("workspace", "personal"))
                 .join(scope_digest("user", "owner@example.com"))
         );
-        // The email is lowercased before it is hashed, so one user is one
-        // partition however they typed their address.
         let dir = tempfile::tempdir().expect("tempdir");
         let first = knowledge_save(dir.path(), &args(json!({"content": "a"}))).expect("a");
         let mut upper = args(json!({"content": "b"}));

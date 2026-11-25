@@ -1,5 +1,3 @@
-//! Garden ingest now supplies per-chunk vectors (F-ING part 2).
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;

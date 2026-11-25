@@ -1,15 +1,3 @@
-//! Chunk-level incremental re-embedding, move relocation, and deletion reconciliation.
-//!
-//! Addresses Review Sections 4.2 #2, 15 (P1 — 증분 수집 및 멀티모달), and 16.4:
-//! - Reuses existing `vector_embeddings` rows by deterministic `text_hash` +
-//!   [`EmbeddingIndexContract`] `(model_id, dimension)` so editing one section of a
-//!   large document only embeds the modified chunk(s) instead of re-embedding the
-//!   entire document.
-//! - Relocates renamed/moved documents while reusing cached chunk embeddings and
-//!   superseding the prior path's document node via bi-temporal lineage (`SUPERSEDES`).
-//! - Retires removed chunks and their vectors immediately so deleted paragraphs never
-//!   leak into active search.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_core::db::CoreError;
@@ -28,7 +16,6 @@ use crate::local_files_api::enrich;
 use crate::sections;
 use crate::worker::{NOTE_SOURCE_TYPE, PIPELINE_NAME};
 
-/// Request for chunk-level incremental synchronization of one document.
 #[derive(Debug, Clone)]
 pub struct IncrementalSyncRequest {
     pub title: String,
@@ -41,7 +28,6 @@ pub struct IncrementalSyncRequest {
     pub metadata: Map<String, Value>,
 }
 
-/// Telemetry & audit receipt returned by [`sync_document_incremental`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncrementalSyncReceipt {
     pub node_id: String,
@@ -181,12 +167,6 @@ fn find_active_prior_revision(
     })
 }
 
-/// Prepared two-phase incremental sync plan produced by [`plan_incremental_sync`].
-///
-/// Separates read-only diffing (identifying cached vs. uncached chunk hashes)
-/// from asynchronous embedding (e.g. `POST /worker/embed`) and final SQLite
-/// commit ([`commit_incremental_sync`]) so async callers never block a Tokio
-/// runtime thread on HTTP or invoke `Handle::block_on` inside `spawn_blocking`.
 #[derive(Debug)]
 pub struct IncrementalSyncPlan {
     req: IncrementalSyncRequest,
@@ -202,20 +182,15 @@ pub struct IncrementalSyncPlan {
 }
 
 impl IncrementalSyncPlan {
-    /// Texts that must be embedded before calling [`commit_incremental_sync`].
-    /// Empty when every chunk and the document summary vector are already cached.
     pub fn texts_to_embed(&self) -> &[String] {
         &self.batch_inputs
     }
 
-    /// True when the document is an exact unchanged duplicate with cached vectors.
     pub fn is_duplicate(&self) -> bool {
         self.duplicate_receipt.is_some()
     }
 }
 
-/// Phase 1: inspect the active prior revision and plan which chunks can reuse
-/// cached vectors versus which texts must be embedded.
 pub fn plan_incremental_sync(
     writer: &GraphWriter,
     req: &IncrementalSyncRequest,
@@ -350,9 +325,6 @@ pub fn plan_incremental_sync(
     })
 }
 
-/// Phase 2: commit a prepared [`IncrementalSyncPlan`] with vectors computed for
-/// [`IncrementalSyncPlan::texts_to_embed`], reusing cached vectors and retiring
-/// superseded chunks atomically.
 pub fn commit_incremental_sync(
     writer: &GraphWriter,
     mut plan: IncrementalSyncPlan,
@@ -541,8 +513,6 @@ pub fn commit_incremental_sync(
     })
 }
 
-/// Synchronize one document incrementally, reusing unchanged chunk embeddings and
-/// retiring stale chunks from superseded revisions.
 pub fn sync_document_incremental<F>(
     writer: &GraphWriter,
     req: &IncrementalSyncRequest,
@@ -564,7 +534,6 @@ where
     commit_incremental_sync(writer, plan, contract, computed)
 }
 
-/// Reconcile vanished file URIs by deleting their active Document subgraphs cleanly.
 pub fn reconcile_deleted_uris(
     writer: &GraphWriter,
     deleted_uris: &[String],

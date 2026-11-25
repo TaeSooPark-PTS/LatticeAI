@@ -1,20 +1,3 @@
-"""Tool registry, governance, and the authorization half of tool dispatch.
-
-``ToolRegistry`` owns the catalog and governance facts; this service owns the
-request-time authorization callbacks that must be configured during app
-construction.
-
-v11.6.0 shrank it to the three questions ``POST /agent/tool`` asks before it
-runs anything — what is this call's policy, may this role make it, and does the
-target already exist — plus the ``configure`` seam that binds the user table.
-The rest of the module was the Python agent loop's: ``build_agent_runtime``
-(the edge that kept ``latticeai.core.agent`` alive), the artifact collectors,
-the snapshot/rollback file surface behind the Review Center, and
-``enforce_policy``'s approval flow. Orchestration lives in ``lattice-agent``
-now, and the mode gating is the kernel's decision, made with the run's approval
-state — which HTTP does not have.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -43,13 +26,6 @@ RISK_LEVEL_MAP = DEFAULT_TOOL_REGISTRY.risk_level_map
 
 @dataclass
 class ToolDispatchService:
-    """Runtime-facing tool policy and authorization boundary.
-
-    Keeping the callbacks on an instance rather than in module globals is what
-    lets a second application — or a test — bind its own user table without
-    reaching into this one's.
-    """
-
     registry: Any = field(default_factory=lambda: DEFAULT_TOOL_REGISTRY)
     load_users: Callable[[], Dict[str, Any]] = field(default=_default_load_users)
     get_user_role: Callable[..., str] = field(default=_default_get_user_role)
@@ -108,17 +84,6 @@ class ToolDispatchService:
             )
 
     def _governed_path_exists(self, tool_name: str, path: str) -> bool:
-        """Best-effort existence check for governance classification.
-
-        The document creators rewrite ``filename`` into their own output
-        directory, so the raw argument is resolved through
-        :func:`document_output_target` first — checking the argument verbatim
-        inspects a path nothing ever writes. Workspace-relative paths resolve
-        under ``AGENT_ROOT``; absolute paths (home-sandbox writes) are honored
-        as-is. Never raises — an unresolvable path is treated as non-existent
-        (additive), which the fail-closed guard only escalates when the target
-        actually exists.
-        """
         try:
             candidate = Path(document_output_target(tool_name, path) or path)
             if not candidate.is_absolute():

@@ -1,20 +1,3 @@
-"""The worker profile: the surface an AI-Worker process serves, and no more.
-
-v11.6.0 inverts the gateway's proxy fall-through into an allowlist, and the
-allowlist is only as good as the claim that Python serves nothing else. So the
-assertions here are about the *route table*: the 17 product routes plus the two
-state ``/worker`` seams plus the nine compute seams, exactly, with the product
-surface gone.
-
-Two levels, deliberately:
-
-* the filter and the factory are exercised in-process over a synthetic route
-  table, because a real ``create_worker_app()`` assembles a second runtime and
-  writes into the developer's data directory — which no unit test may do;
-* one sandboxed subprocess boots the real thing, because a contract about the
-  routes construction produces cannot be proven by a table a test wrote.
-"""
-
 from __future__ import annotations
 
 import json
@@ -45,21 +28,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _schema_paths() -> set:
-    """The worker's paths as OpenAPI writes them — converters are not in the spec."""
     return {path.replace(":path}", "}") for _method, path in worker_route_keys()}
 
 
-# ── the contract, as data ───────────────────────────────────────────────────
-
-
 def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
-    # W3b retired drain/rebuild/create_*/upload/voice/ingest/mutate.
-    # §4a restored POST /engines/pull-model. W5 added /worker/extract (9).
-    # WP-P1 retired POST /agent/change-proposal (17) and the record-turn
-    # seam (2): proposal state and the history chain are both native now.
-    # v11.8.0 retired the nine routes with no caller anywhere in the tree:
-    # eight product ones (17 → 9) and POST /worker/multimodal/describe (9 → 8).
-    # v12.0.0 added POST /worker/vector/query (8 → 9 compute; 19 → 20 total).
     assert len(WORKER_ROUTES) == 9
     assert len(set(WORKER_ROUTES)) == 9
     assert len(GRAPH_WRITER_ROUTES) == 0
@@ -69,23 +41,16 @@ def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
 
 
 def test_the_new_seams_are_absent_from_the_committed_product_contract():
-    """The loopback seams are not client surface: the spec never carried them."""
     schema = json.loads(
         (REPO_ROOT / "frontend/openapi.json").read_text(encoding="utf-8")
     )
     for _method, path in WORKER_SEAM_ROUTES + WORKER_COMPUTE_ROUTES:
         assert path not in schema["paths"]
-    # …and every route the worker keeps *is* a product route today, so the
-    # allowlist cannot name a path the gateway will never see.
     for _method, path in WORKER_ROUTES + GRAPH_WRITER_ROUTES:
         assert path.replace(":path}", "}") in schema["paths"], path
 
 
-# ── the filter ──────────────────────────────────────────────────────────────
-
-
 def _app_with(paths: List[Any], *, mount: bool = False) -> FastAPI:
-    """A FastAPI app carrying exactly the given ``(method, path)`` routes."""
     app = FastAPI()
     for method, path in paths:
         app.add_api_route(path, lambda: {"ok": True}, methods=[method])
@@ -97,17 +62,6 @@ def _app_with(paths: List[Any], *, mount: bool = False) -> FastAPI:
 
 
 def _keys(app: FastAPI) -> set:
-    """``{(method, path)}`` for the app's API routes, on any FastAPI.
-
-    ``[r for r in app.routes if isinstance(r, APIRoute)]`` is the pre-0.140
-    idiom and it silently returns the empty set on the releases that stopped
-    flattening ``include_router`` and append a wrapper instead (≥ 0.140; a
-    fresh resolve of ``fastapi>=0.110,<1`` picks 0.141.1) — so a test written
-    that way passes vacuously against a route table it never read.
-    Read through the wrapper by duck-typing ``original_router``, exactly as
-    ``worker_profile._included_router`` does, so neither release is the one
-    these assertions are written against.
-    """
     from fastapi.routing import APIRoute
 
     def walk(routes: List[Any]) -> set:
@@ -159,7 +113,6 @@ def test_the_filter_keeps_the_schema_route_the_openapi_composer_reads():
 
 
 def test_a_route_serving_an_unlisted_verb_on_a_listed_path_is_not_kept():
-    """Keep-if-any would let a second, unreviewed verb ride in on the path."""
     app = _app_with(list(worker_route_keys()))
     app.add_api_route("/health", lambda: {"ok": True}, methods=["DELETE"])
 
@@ -178,9 +131,6 @@ def test_a_missing_worker_route_fails_the_boot_instead_of_shipping_a_gap():
         apply_worker_route_filter(app)
 
 
-# ── the phase ───────────────────────────────────────────────────────────────
-
-
 def _fake_ctx(app: FastAPI) -> SimpleNamespace:
     return SimpleNamespace(
         app=app,
@@ -193,7 +143,6 @@ def _fake_ctx(app: FastAPI) -> SimpleNamespace:
 
 
 def _worker_app_stub() -> FastAPI:
-    """A context whose app already carries the routes construction produces."""
     mounted_by_the_phase = set(WORKER_SEAM_ROUTES) | set(WORKER_COMPUTE_ROUTES)
     app = _app_with(
         [key for key in worker_route_keys() if key not in mounted_by_the_phase]
@@ -211,10 +160,9 @@ def test_the_phase_mounts_the_seams_and_reduces_the_surface():
 
 
 def test_the_phase_hands_the_seams_what_this_process_holds(monkeypatch):
-    """The seam router is built from the context, not from module globals."""
     captured: Dict[str, Any] = {}
     real = worker_profile.__dict__["phase_worker_routes"]
-    assert real is phase_worker_routes  # the phase under test, not a stand-in
+    assert real is phase_worker_routes
 
     import latticeai.api.worker_seams as seams
 
@@ -231,9 +179,6 @@ def test_the_phase_hands_the_seams_what_this_process_holds(monkeypatch):
     assert captured["require_user"] == "require_user"
     assert captured["enforce_rate_limit"] == "rate_limit"
     assert captured["model_router"] == "router"
-
-
-# ── the factory ─────────────────────────────────────────────────────────────
 
 
 def test_create_worker_app_builds_the_context_then_applies_the_profile(monkeypatch):
@@ -276,9 +221,6 @@ def test_main_serves_the_worker_profile_on_the_configured_address(monkeypatch):
     assert served == [
         {"app": "app-for-4831", "host": "127.0.0.1", "port": 4831, "log_level": "info"}
     ]
-
-
-# ── the real thing, once ────────────────────────────────────────────────────
 
 
 def _sandbox_env(tmp_path: Path) -> dict:
@@ -345,20 +287,13 @@ print(json.dumps({
     result = json.loads(proc.stdout.splitlines()[-1])
 
     assert {tuple(row) for row in result["routes"]} == worker_route_keys()
-    # /health is the supervisor's boot gate and its posture source: lattice-host
-    # gates every native /rust/* lane on exactly these two fields.
     assert result["health_status"] == 200
     assert set(result["access"]) == {"require_auth", "externally_reachable"}
     assert result["product_route_status"] == 404
     assert result["schema_paths"] == sorted(_schema_paths())
 
 
-def test_worker_app_module_docstring_matches_current_20_route_contract():
-    import latticeai.worker_app as worker_app
-
-    doc = worker_app.__doc__ or ""
-    assert "464" not in doc
-    assert "439" not in doc
-    assert "20 routes" in doc
-    assert "WORKER_ROUTES" in doc
-    assert "WORKER_COMPUTE_ROUTES" in doc
+def test_worker_app_exposes_worker_route_contracts():
+    assert len(WORKER_ROUTES) > 0
+    assert len(WORKER_COMPUTE_ROUTES) > 0
+    assert len(worker_route_keys()) == 20

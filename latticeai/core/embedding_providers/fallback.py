@@ -1,10 +1,3 @@
-"""Deterministic offline fallback text embedders.
-
-Provides :class:`FallbackTextEmbedder` (multi-scale subword n-grams + CJK/Korean
-stemming projection) and :class:`HashEmbeddingProvider` (strictly parity-locked to
-``lattice-local-hash-v1`` in ``lattice_brain.embeddings.LocalEmbeddingModel``).
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -16,7 +9,6 @@ from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM, LocalEmbeddingModel
 
 from .base import EmbeddingProvider
 
-#: Default dimension for the upgraded multi-scale subword FallbackTextEmbedder (matches EmbeddingGemma 2).
 DEFAULT_FALLBACK_DIM = 768
 
 _FALLBACK_TOKEN_RE = re.compile(
@@ -209,9 +201,6 @@ def _emit_latin_token_features(
 
 
 def _extract_fallback_features(text: str) -> List[Tuple[str, float]]:
-    """Extract multi-scale character n-grams (3..5), CJK bigrams, word unigrams/bigrams,
-    and IDF/positional weights for deterministic offline projection.
-    """
     cleaned = _strip_instruction_prefix(text).lower()
     if not cleaned:
         return []
@@ -288,11 +277,6 @@ def _project_weighted_features(
 
 
 class FallbackTextEmbedder(EmbeddingProvider):
-    """Upgraded offline zero-download text embedder using multi-scale character
-    n-grams (3..5-grams + CJK bigrams), word unigrams/bigrams, IDF/positional
-    weighting, signed random projection, and L2 normalization.
-    """
-
     provider = "hash"
     grade = "fallback"
 
@@ -321,8 +305,6 @@ class FallbackTextEmbedder(EmbeddingProvider):
 
 
 class HashEmbeddingProvider(FallbackTextEmbedder):
-    """Deterministic feature-hashing embedder — no network, always available."""
-
     provider = "hash"
     grade = "fallback"
 
@@ -336,7 +318,6 @@ class HashEmbeddingProvider(FallbackTextEmbedder):
         self._model = LocalEmbeddingModel(dim=resolved_dim)
 
     def embed(self, text: str) -> List[float]:
-        # Preserve exact bit-for-bit parity with `LocalEmbeddingModel` (`lattice-local-hash-v1`).
         return self._model.embed(text)
 
     def health(self) -> Dict[str, Any]:

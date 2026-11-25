@@ -16,11 +16,6 @@ function focusableIn(node: HTMLElement): HTMLElement[] {
   );
 }
 
-// Accessibility contract for every modal/dialog surface: Tab cycles inside the
-// container, Escape closes it, and focus returns to the opener on deactivation.
-// Attach the returned ref to the dialog element. Pass `active` when the host
-// component stays mounted while the dialog is closed (e.g. the command
-// palette); dialogs that only mount while open can omit it.
 export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
   onEscape?: () => void,
   active = true,

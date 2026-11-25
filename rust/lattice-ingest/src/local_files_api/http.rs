@@ -1,5 +1,3 @@
-//! FastAPI-shaped validation + the three refusals these routes share.
-
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_auth::response::json_response;
@@ -7,13 +5,11 @@ use lattice_auth::OrderedMap;
 use lattice_core::messages::{self, LANGUAGE_HEADER};
 use serde_json::{json, Map, Value};
 
-/// One JSON body, compact separators, `application/json` with no charset.
 pub fn ok(value: &Value) -> Response {
     let body = serde_json::to_string(value).unwrap_or_else(|_| "null".into());
     json_response(StatusCode::OK, &body, None)
 }
 
-/// One `HTTPException(status, detail)` with a literal detail.
 pub fn detail(status: u16, text: &str) -> Response {
     let body = serde_json::to_string(&json!({ "detail": text })).unwrap_or_default();
     json_response(
@@ -23,17 +19,14 @@ pub fn detail(status: u16, text: &str) -> Response {
     )
 }
 
-/// One catalog `http_error`.
 pub fn http_error(status: u16, id: &str, lang: &str) -> Response {
     detail(status, &messages::text(id, lang, &[]))
 }
 
-/// One catalog `http_error` with interpolation.
 pub fn http_error_with(status: u16, id: &str, lang: &str, args: &[(&str, &str)]) -> Response {
     detail(status, &messages::text(id, lang, args))
 }
 
-/// The language this request is answered in.
 pub fn language(headers: &HeaderMap) -> &'static str {
     messages::resolve_language(
         headers
@@ -69,14 +62,12 @@ fn validation_error(problems: &[OrderedMap]) -> Response {
     )
 }
 
-/// Query-string parser with FastAPI's coercions.
 #[derive(Debug, Clone, Default)]
 pub struct Query {
     pairs: Vec<(String, String)>,
 }
 
 impl Query {
-    /// Parse a raw query string (no leading `?`).
     pub fn parse(raw: Option<&str>) -> Self {
         let mut pairs = Vec::new();
         for chunk in raw.unwrap_or_default().split('&') {
@@ -92,7 +83,6 @@ impl Query {
         Self { pairs }
     }
 
-    /// The last value for `name`.
     pub fn raw(&self, name: &str) -> Option<&str> {
         self.pairs
             .iter()
@@ -101,7 +91,6 @@ impl Query {
             .map(|(_, value)| value.as_str())
     }
 
-    /// A required `str` parameter.
     pub fn require_str(&self, name: &'static str) -> Result<String, Response> {
         match self.raw(name) {
             Some(value) => Ok(value.to_string()),
@@ -115,12 +104,10 @@ impl Query {
         }
     }
 
-    /// An optional `str`.
     pub fn str_or(&self, name: &str, fallback: &str) -> String {
         self.raw(name).unwrap_or(fallback).to_string()
     }
 
-    /// An `int` with a default.
     pub fn int_or(&self, name: &'static str, fallback: i64) -> Result<i64, Response> {
         let Some(raw) = self.raw(name) else {
             return Ok(fallback);
@@ -136,7 +123,6 @@ impl Query {
         })
     }
 
-    /// A `bool` with a default.
     pub fn bool_or(&self, name: &'static str, fallback: bool) -> Result<bool, Response> {
         let Some(raw) = self.raw(name) else {
             return Ok(fallback);
@@ -187,33 +173,22 @@ fn percent_decode(raw: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// What one pydantic field accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
-    /// `str`, with an optional `min_length`.
     Str(usize),
-    /// `Optional[str] = None`.
     OptStr,
-    /// `int`.
     Int,
-    /// `bool`.
     Bool,
-    /// `Dict[str, Any]`.
     Object,
 }
 
-/// One field of a flat pydantic model.
 #[derive(Debug, Clone, Copy)]
 pub struct FieldSpec {
-    /// Field name.
     pub name: &'static str,
-    /// Accepted kind.
     pub kind: Kind,
-    /// Whether the model declares it without a default.
     pub required: bool,
 }
 
-/// A required field.
 pub const fn required(name: &'static str, kind: Kind) -> FieldSpec {
     FieldSpec {
         name,
@@ -222,7 +197,6 @@ pub const fn required(name: &'static str, kind: Kind) -> FieldSpec {
     }
 }
 
-/// A field with a default.
 pub const fn optional(name: &'static str, kind: Kind) -> FieldSpec {
     FieldSpec {
         name,
@@ -231,14 +205,12 @@ pub const fn optional(name: &'static str, kind: Kind) -> FieldSpec {
     }
 }
 
-/// A validated request body.
 #[derive(Debug, Clone, Default)]
 pub struct Model {
     values: Map<String, Value>,
 }
 
 impl Model {
-    /// Parse and validate one JSON body against `fields`.
     pub fn parse(bytes: &[u8], fields: &[FieldSpec]) -> Result<Self, Response> {
         let parsed: Value = if bytes.is_empty() {
             Value::Object(Map::new())
@@ -298,12 +270,10 @@ impl Model {
         }
     }
 
-    /// String value, or `""`.
     pub fn str(&self, name: &str) -> &str {
         self.values.get(name).and_then(Value::as_str).unwrap_or("")
     }
 
-    /// Integer value, or `fallback`.
     pub fn int(&self, name: &str, fallback: i64) -> i64 {
         self.values
             .get(name)
@@ -311,7 +281,6 @@ impl Model {
             .unwrap_or(fallback)
     }
 
-    /// Boolean value, or `fallback`.
     pub fn bool(&self, name: &str, fallback: bool) -> bool {
         self.values
             .get(name)
@@ -319,7 +288,6 @@ impl Model {
             .unwrap_or(fallback)
     }
 
-    /// Raw JSON value, if present.
     pub fn get(&self, name: &str) -> Option<&Value> {
         self.values.get(name)
     }

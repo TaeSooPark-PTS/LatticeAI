@@ -149,16 +149,11 @@ export function BrainConversation({
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
 
-  // Approval runs already represented by an inline card — the pending-
-  // approvals notice only surfaces runs that would otherwise be invisible.
   const knownApprovalRunIds = React.useMemo(
     () => messages.flatMap((message) => (message.approval ? [message.approval.runId] : [])),
     [messages],
   );
 
-  // The same capture controls ride inside the composer's + menu on both
-  // surfaces — a person should not have to leave the conversation (or the
-  // home) to add a folder.
   const ingestionDock = (
     <BrainIngestionDock
       language={language}
@@ -327,10 +322,6 @@ export function BrainConversation({
               />
             </>
           ) : (
-            // Spacing for the stage and the station lives in
-            // experience/home-simple.css, which is unlayered and therefore
-            // outranks Tailwind utilities — width/gap/padding utilities here
-            // would be dead weight (see the 10.6.x notes in that file).
             <div className="brain-centered-home" data-testid="brain-home-stage">
               <section className="brain-home-station" data-testid="brain-home-station">
                 <BrainHomeHero
@@ -345,8 +336,6 @@ export function BrainConversation({
                   trailing={modelReady ? null : <ModelMissingNotice language={language} />}
                 />
 
-                {/* Composer + autonomy stay one unit so a tall station cannot
-                    park the dial on the floor with a dead band under the box. */}
                 <div className="brain-writing-desk">
                   <div className="brain-composer-wrapper">
                     <CloudBoundaryHint language={language} />
@@ -371,10 +360,6 @@ export function BrainConversation({
                 </div>
               </section>
 
-              {/* Three things to try, on a card of their own below the station.
-                  The name belongs on this <section>: it is the element with a
-                  role (a named section is a `region`), whereas the strip inside
-                  it is a plain div, where `aria-label` is dropped on the floor. */}
               <section
                 className="brain-secondary-deck"
                 data-testid="brain-secondary-deck"
@@ -429,9 +414,6 @@ export function BrainConversation({
                 )}
               </section>
 
-              {/* Everything quieter — past conversations, stats, the memory
-                  map — lives on the dock: a rail on the canvas's edge that
-                  opens a drawer, so the first screen stays the composer. */}
               <footer className="brain-home-quiet">
                 <BrainHomeDock
                   language={language}
@@ -487,9 +469,6 @@ export function BrainConversation({
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
             </div>
             <div className="brain-utility-grid">
-              {/* No `hasMessages ?` here: the drawer itself only renders on the
-                  hasMessages surface, so re-checking would be a constant-true
-                  conditional. */}
               <BrainIngestionPanel
                 language={language}
                 uploadingDocument={uploadingDocument}
@@ -532,10 +511,6 @@ export function BrainConversation({
   );
 }
 
-// Honest signaling: a quiet inline note when the Brain answered with limited
-// graph-backed context, so users know how much to trust the recall behind it.
-// Terminal non-success states get a visually distinct warning strip so a
-// NEEDS_REVIEW/FAILED run can never be mistaken for a completed one.
 function AgentStateNote({ language, state }: { language: Language; state: string }) {
   const key = state === "FAILED" ? "brain.agent.failed" : "brain.agent.needsReview";
   return (
@@ -549,9 +524,6 @@ function AgentStateNote({ language, state }: { language: Language; state: string
   );
 }
 
-// Small, unobtrusive answer-citation verdict: whether the reply actually used
-// retrieved sources ("근거 있음") or not ("근거 없음"). Copy comes from i18n —
-// the backend's Korean label field is never rendered directly.
 function GroundingBadge({ language, grounding }: { language: Language; grounding: NonNullable<Message["grounding"]> }) {
   const supported = grounding.status === "supported";
   return (
@@ -582,8 +554,6 @@ function findLastAssistantIndex(messages: Message[]): number {
   return -1;
 }
 
-// Per-answer actions users expect from every chat product: copy the whole
-// reply, and regenerate the latest answer without retyping the question.
 function MessageActions({
   language,
   content,

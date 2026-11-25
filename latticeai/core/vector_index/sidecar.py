@@ -1,13 +1,3 @@
-"""Load, refresh, and query the HNSW sidecar next to a brain database.
-
-The live graph is cached per ``(db_path, model_id, dim)``. A missing sidecar
-is ``index: "none"``. When the store has vectors the cache (or a rebuild from
-``vector_embeddings``) can serve, the reply is ``index: "hnsw"``. Freshness is
-sidecar size vs ``COUNT(*)`` for that identity. A warm COUNT match never
-opens embedding blobs. Growth loads **missing ids only** and appends; a
-shrink still rebuilds from the remaining rows.
-"""
-
 from __future__ import annotations
 
 import sqlite3
@@ -28,7 +18,6 @@ _LOCK = threading.Lock()
 
 
 def resolve_graph_db(workspace: Optional[str] = None) -> Path:
-    """Brain sqlite path: explicit file, a data dir, or ``LATTICEAI_DATA_DIR``."""
     if workspace:
         raw = Path(str(workspace)).expanduser()
         if raw.is_file():
@@ -40,7 +29,6 @@ def resolve_graph_db(workspace: Optional[str] = None) -> Path:
 
 
 def decode_f32le(blob: bytes, dim: int) -> List[float]:
-    """Little-endian f32 payload — the same layout Rust ``encode`` writes."""
     if not blob:
         return []
     count = dim if dim > 0 else len(blob) // 4
@@ -52,14 +40,12 @@ def decode_f32le(blob: bytes, dim: int) -> List[float]:
 
 
 def sidecar_fingerprint(model_id: str, dim: int, size: int) -> str:
-    """Identity the ``.hnsw.meta.json`` file is keyed on."""
     return f"{model_id}|{int(dim)}|{int(size)}"
 
 
 def store_vector_stamp(
     conn: sqlite3.Connection, model_id: str, dim: int
 ) -> Tuple[int, str]:
-    """Metadata-only count + boundary stamp so equal-count edits/swaps invalidate."""
     row = conn.execute(
         "SELECT COUNT(*), COALESCE(MAX(indexed_at), ''), COALESCE(MIN(indexed_at), ''), "
         "COALESCE(MIN(item_id), ''), COALESCE(MAX(item_id), '') "
@@ -75,7 +61,6 @@ def store_vector_stamp(
 def load_store_stamps(
     conn: sqlite3.Connection, model_id: str, dim: int
 ) -> Dict[str, str]:
-    """Item ids and indexed_at strings only — never touches embedding blobs."""
     rows = conn.execute(
         "SELECT item_id, COALESCE(indexed_at, '') FROM vector_embeddings "
         "WHERE embedding_model=? AND embedding_dim=? ORDER BY indexed_at ASC, item_id ASC",
@@ -106,20 +91,22 @@ def load_store_items_for(
     dim: int,
     item_ids: Sequence[str],
 ) -> List[Tuple[str, List[float], Dict[str, Any]]]:
-    """Blobs for ``item_ids`` only, preserving the caller's order."""
     if not item_ids:
         return []
     by_id: Dict[str, List[float]] = {}
     wanted = [str(item_id) for item_id in item_ids]
-    # SQLite caps bound parameters; 400 leaves room for the identity pair.
+    import json
+
     for start in range(0, len(wanted), 400):
         chunk = wanted[start : start + 400]
-        qmarks = ",".join("?" * len(chunk))
         query = (
-            "SELECT item_id, embedding FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=? AND item_id IN (%s)"  # noqa: S608
-            % qmarks
+            "SELECT item_id, embedding FROM vector_embeddings "
+            "WHERE embedding_model=? AND embedding_dim=? "
+            "AND item_id IN (SELECT value FROM json_each(?))"
         )
-        for item_id, blob in conn.execute(query, (model_id, int(dim), *chunk)):
+        for item_id, blob in conn.execute(
+            query, (model_id, int(dim), json.dumps(chunk))
+        ):
             vector = decode_f32le(bytes(blob or b""), int(dim))
             if len(vector) != int(dim):
                 continue
@@ -183,12 +170,11 @@ def _sidecar_meta_state(db_path: Path) -> Tuple[Optional[int], Optional[str]]:
         labels = meta.get("labels") or []
         stamp = str(meta["stamp"]) if meta.get("stamp") is not None else None
         return len(labels), stamp
-    except Exception:  # noqa: BLE001 — absent/corrupt meta is "no sidecar"
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return None, None
 
 
 def sidecar_meta_size(db_path: Path) -> Optional[int]:
-    """Label count from the sidecar meta file, or ``None`` when it is absent."""
     size, _ = _sidecar_meta_state(db_path)
     return size
 
@@ -266,7 +252,6 @@ def query_sidecar(
     k: int,
     db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Serve one ANN query from the sidecar (or say the index is absent)."""
     dim = int(embedding_dim)
     model_id = str(embedding_model or "")
     wanted = max(1, min(int(k), VECTOR_QUERY_K_CAP))
@@ -284,7 +269,6 @@ def query_sidecar(
     if not model_id:
         return _none_reply(detail="embedding_model is required")
 
-    # Metadata stamp first. Warm queries that match never open embedding blobs.
     store_size, store_stamp = _open_and_stamp(path, model_id, dim)
 
     key = (str(path), model_id, dim)
@@ -420,7 +404,6 @@ def sidecar_freshness(
     embedding_dim: Optional[int] = None,
     db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Cheap on-disk vs store comparison — no ANN query, no rebuild."""
     path = Path(db_path) if db_path is not None else resolve_graph_db(workspace)
     meta_size, meta_stamp = _sidecar_meta_state(path)
     store_size = 0
@@ -468,7 +451,6 @@ def sidecar_freshness(
 
 
 def reset_sidecar_cache() -> None:
-    """Drop the process cache — tests only."""
     with _LOCK:
         _CACHE.clear()
 

@@ -1,11 +1,3 @@
-//! Minimal real workflow executor.
-//!
-//! Walks the definition's nodes (or the legacy `steps` list). Step kinds that
-//! map to a native action run for real; everything else completes as
-//! `{status: "manual", detail}` rather than pretending. The run always reaches
-//! a terminal status (`ok` / `failed` / `partial`) unless it pauses for an
-//! explicit approval gate.
-
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -23,23 +15,18 @@ mod steps;
 pub(crate) use steps::store_data_dir;
 use steps::{execute_graph, execute_notification, execute_output, execute_tool};
 
-/// Optional governed tool dispatch. Absent → tool steps complete as manual.
 pub(crate) struct ToolContext<'a> {
     pub tools: &'a ToolsState,
     pub identity: &'a Identity,
     pub headers: &'a HeaderMap,
 }
 
-/// How far a (re)start should walk.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ResumeFrom {
-    /// Skip nodes until this id has been seen, then continue at its successor.
     pub after_node: Option<String>,
-    /// The approval step itself is recorded as approved rather than re-gated.
     pub approved_node: Option<String>,
 }
 
-/// Record a queued run, walk every step, persist a terminal (or paused) row.
 pub(crate) fn start_run(
     store: &WorkflowStore,
     workflow: &Value,
@@ -103,7 +90,6 @@ pub(crate) fn start_run(
     serde_json::to_value(&accepted).unwrap_or(json!({}))
 }
 
-/// Continue a run that is genuinely `awaiting_approval`.
 pub(crate) fn resume_paused(
     store: &WorkflowStore,
     workflow: &Value,
@@ -181,7 +167,6 @@ pub(crate) fn resume_paused(
     ))
 }
 
-/// Whether this run is parked on an approval step.
 pub(crate) fn is_awaiting_approval(run: &Value) -> bool {
     let pause = run.get("pause").cloned().unwrap_or(json!({}));
     run.get("status").and_then(Value::as_str) == Some("awaiting_approval")
@@ -191,7 +176,6 @@ pub(crate) fn is_awaiting_approval(run: &Value) -> bool {
             .is_some_and(|node| !node.is_empty())
 }
 
-/// Execute an already-persisted workflow and return the terminal run row.
 pub fn execute_workflow_now(
     data_dir: impl AsRef<Path>,
     workflow: &Value,
@@ -297,8 +281,6 @@ fn drive_run(
             "result": outcome.get("result").cloned().unwrap_or(Value::Null),
         }));
         if status == "failed" && kind != "manual" {
-            // A native action failed: stop walking so later steps do not run
-            // against a half-applied world.
             break;
         }
     }

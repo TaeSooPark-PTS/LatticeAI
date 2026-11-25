@@ -82,7 +82,6 @@ fn v2_pbkdf2_600k_and_v2_scrypt_16k_roundtrip_cleanly() {
     let signer = DeviceIdentity::load_or_create(&dir.path().join("signer.key"));
     let payload = b"confidential archive v2 kdf payload";
 
-    // 1. Default v2 scrypt (N=16384, v=2)
     std::env::remove_var(ARCHIVE_KDF_ENV);
     let scrypt_path = dir.path().join("v2_scrypt.latticebrain");
     let mut manifest1 = OrderedMap::new();
@@ -103,7 +102,6 @@ fn v2_pbkdf2_600k_and_v2_scrypt_16k_roundtrip_cleanly() {
             .unwrap();
     assert_eq!(dec1.plaintext, payload);
 
-    // 2. v2 PBKDF2-HMAC-SHA256 (600,000 iterations)
     std::env::set_var(ARCHIVE_KDF_ENV, "pbkdf2-hmac-sha256");
     let pbkdf2_path = dir.path().join("v2_pbkdf2.latticebrain");
     let mut manifest2 = OrderedMap::new();

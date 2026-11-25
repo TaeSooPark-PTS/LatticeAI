@@ -1,16 +1,3 @@
-//! OS-level handle-relative fd-confined filesystem operations (P0.4).
-//!
-//! Eliminates TOCTOU (Time-of-Check to Time-of-Use) race conditions and symlink
-//! escapes between path resolution and file I/O:
-//! - On Unix (macOS/Linux): opens the canonical workspace root with
-//!   `O_RDONLY | O_DIRECTORY | O_CLOEXEC`, pins its `(st_dev, st_ino)` via
-//!   `fstat`, walks every relative path component using `openat(..., O_NOFOLLOW | O_CLOEXEC)`
-//!   (and `mkdirat` when creating parent directories), verifies the root fd's
-//!   `(st_dev, st_ino)` matches the live directory inode, and performs reads or
-//!   creates/writes directly on the opened file descriptor.
-//! - On non-Unix platforms: verifies each component with non-following
-//!   `symlink_metadata` and canonical containment immediately before I/O.
-
 use std::io::{self, Read, Write};
 use std::path::{Component, Path};
 
@@ -59,7 +46,6 @@ mod unix_fd {
     impl OwnedDirFd {
         fn open_root(root: &Path) -> io::Result<(Self, u64, u64)> {
             let c_root = path_to_cstring(root)?;
-            // SAFETY: c_root is a valid NUL-terminated path; fd is closed in Drop.
             let fd = unsafe {
                 libc::open(
                     c_root.as_ptr(),
@@ -77,7 +63,6 @@ mod unix_fd {
         fn open_subdir(&self, name: &str, create: bool) -> io::Result<Self> {
             let c_name = str_to_cstring(name)?;
             if create {
-                // SAFETY: self.0 is a valid directory fd and c_name is NUL-terminated.
                 let rc = unsafe { libc::mkdirat(self.0, c_name.as_ptr(), 0o755) };
                 if rc < 0 {
                     let err = io::Error::last_os_error();
@@ -86,7 +71,6 @@ mod unix_fd {
                     }
                 }
             }
-            // SAFETY: O_NOFOLLOW refuses symlinks atomically in the kernel.
             let fd = unsafe {
                 libc::openat(
                     self.0,
@@ -107,7 +91,6 @@ mod unix_fd {
             mode: libc::c_uint,
         ) -> io::Result<File> {
             let c_name = str_to_cstring(name)?;
-            // SAFETY: O_NOFOLLOW rejects symlink leaf atomically; returned fd is owned by File.
             let fd = unsafe {
                 libc::openat(
                     self.0,
@@ -119,14 +102,12 @@ mod unix_fd {
             if fd < 0 {
                 return Err(io::Error::last_os_error());
             }
-            // SAFETY: fd is a freshly opened owned file descriptor.
             Ok(unsafe { File::from_raw_fd(fd) })
         }
     }
 
     impl Drop for OwnedDirFd {
         fn drop(&mut self) {
-            // SAFETY: OwnedDirFd exclusively owns self.0.
             unsafe {
                 libc::close(self.0);
             }
@@ -147,7 +128,6 @@ mod unix_fd {
 
     fn fstat_dev_ino(fd: RawFd) -> io::Result<(u64, u64)> {
         let mut st: libc::stat = unsafe { std::mem::zeroed() };
-        // SAFETY: fd is open and st is valid writable memory.
         let rc = unsafe { libc::fstat(fd, &mut st) };
         if rc < 0 {
             return Err(io::Error::last_os_error());
@@ -288,7 +268,6 @@ mod windows_handle {
         fn into_file(self) -> File {
             let raw = self.0;
             std::mem::forget(self);
-            // SAFETY: `raw` is a valid, uniquely owned Win32 file handle.
             unsafe { File::from_raw_handle(raw as RawHandle) }
         }
     }
@@ -296,7 +275,6 @@ mod windows_handle {
     impl Drop for OwnedWinHandle {
         fn drop(&mut self) {
             if self.0 != INVALID_HANDLE_VALUE && self.0 != 0 {
-                // SAFETY: `self.0` is an open Win32 handle owned exclusively by this guard.
                 unsafe {
                     let _ = CloseHandle(self.0);
                 }
@@ -319,7 +297,6 @@ mod windows_handle {
 
     fn file_info(handle: isize) -> io::Result<ByHandleFileInformation> {
         let mut info = ByHandleFileInformation::default();
-        // SAFETY: `handle` is open and `info` is a valid writable output struct.
         let ok = unsafe { GetFileInformationByHandle(handle, &mut info) };
         if ok == 0 {
             return Err(io::Error::last_os_error());
@@ -328,14 +305,12 @@ mod windows_handle {
     }
 
     fn final_path(handle: isize) -> io::Result<String> {
-        // SAFETY: Query required length first.
         let needed =
             unsafe { GetFinalPathNameByHandleW(handle, std::ptr::null_mut(), 0, VOLUME_NAME_DOS) };
         if needed == 0 {
             return Err(io::Error::last_os_error());
         }
         let mut buf = vec![0u16; needed as usize];
-        // SAFETY: `buf` has capacity `needed`.
         let written =
             unsafe { GetFinalPathNameByHandleW(handle, buf.as_mut_ptr(), needed, VOLUME_NAME_DOS) };
         if written == 0 || written >= needed {
@@ -365,7 +340,6 @@ mod windows_handle {
         let wide = to_wide_null(path)?;
         let share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
         let flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
-        // SAFETY: `wide` is NUL-terminated UTF-16.
         let raw = unsafe {
             CreateFileW(
                 wide.as_ptr(),
@@ -442,7 +416,6 @@ mod windows_handle {
             cur_path.push(seg);
             if create_missing {
                 let wide = to_wide_null(&cur_path)?;
-                // SAFETY: `wide` is NUL-terminated UTF-16.
                 let ok = unsafe { CreateDirectoryW(wide.as_ptr(), std::ptr::null()) };
                 if ok == 0 {
                     let err = io::Error::last_os_error();
@@ -472,7 +445,6 @@ mod windows_handle {
         let wide = to_wide_null(&cur_path)?;
         let share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
         let flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT;
-        // SAFETY: `wide` is NUL-terminated UTF-16.
         let raw = unsafe {
             CreateFileW(
                 wide.as_ptr(),
@@ -526,7 +498,6 @@ mod windows_handle {
             CREATE_ALWAYS
         };
         let flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT;
-        // SAFETY: `wide` is NUL-terminated UTF-16.
         let raw = unsafe {
             CreateFileW(
                 wide.as_ptr(),
@@ -579,7 +550,6 @@ fn map_safe_io_err(err: io::Error) -> ToolError {
     ToolError::tool(err.to_string())
 }
 
-/// Read a workspace file via handle-relative `O_NOFOLLOW` descriptor traversal.
 pub fn safe_read_bytes(
     workspace: &Workspace,
     target: &Path,
@@ -609,7 +579,6 @@ pub fn safe_read_bytes(
     Ok(buf)
 }
 
-/// Write bytes to a workspace file via handle-relative `O_NOFOLLOW` descriptor traversal.
 pub fn safe_write_bytes(
     workspace: &Workspace,
     target: &Path,
@@ -633,8 +602,6 @@ pub fn safe_write_bytes(
     Ok(bytes.len() as u64)
 }
 
-/// Atomically create a brand-new workspace file (`O_CREAT | O_EXCL | O_NOFOLLOW`),
-/// returning `Ok(true)` if created or `Ok(false)` if it already existed.
 pub fn safe_create_new_bytes(
     workspace: &Workspace,
     target: &Path,

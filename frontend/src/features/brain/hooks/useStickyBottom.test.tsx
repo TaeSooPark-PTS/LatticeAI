@@ -4,9 +4,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { useStickyBottom } from "./useStickyBottom";
 
-// jsdom has no layout, so scrollHeight/clientHeight are always 0 and scrollTop
-// silently refuses to move. Stand in a scroll box whose numbers behave like a
-// real one, including the clamp at the bottom.
 type ScrollBox = { scrollHeight: number; clientHeight: number; top: number };
 
 function patchScrollBox(element: HTMLElement, box: ScrollBox) {
@@ -29,8 +26,6 @@ function unpatchScrollBox(element: HTMLElement) {
 
 function Harness({ items, box, scroller }: { items: number; box: ScrollBox; scroller: "element" | "page" }) {
   const streamRef = useStickyBottom<HTMLDivElement>(items);
-  // Layout effects run before the hook's passive effects, so the box is
-  // measurable by the time the hook first tries to follow.
   React.useLayoutEffect(() => {
     if (scroller === "page") {
       patchScrollBox(document.documentElement, box);
@@ -40,7 +35,7 @@ function Harness({ items, box, scroller }: { items: number; box: ScrollBox; scro
     if (!node) return;
     node.style.overflowY = "auto";
     patchScrollBox(node, box);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div ref={streamRef} data-testid="stream">
@@ -71,7 +66,6 @@ describe("useStickyBottom", () => {
     const stream = getByTestId("stream");
     expect(box.top).toBe(1000);
 
-    // Reader scrolls up to re-read an earlier answer.
     stream.scrollTop = 200;
     fireEvent.scroll(stream);
 
@@ -79,7 +73,6 @@ describe("useStickyBottom", () => {
     rerender(<Harness items={4} box={box} scroller="element" />);
     expect(box.top).toBe(200);
 
-    // Reader returns to the newest line: following resumes.
     stream.scrollTop = 1400;
     fireEvent.scroll(stream);
 
@@ -93,14 +86,12 @@ describe("useStickyBottom", () => {
     const { getByTestId, rerender } = render(<Harness items={2} box={box} scroller="element" />);
     const stream = getByTestId("stream");
 
-    // 40px off the bottom — inside the threshold, so still "at the bottom".
     stream.scrollTop = 560;
     fireEvent.scroll(stream);
     box.scrollHeight = 1400;
     rerender(<Harness items={3} box={box} scroller="element" />);
     expect(box.top).toBe(1000);
 
-    // 100px off the bottom — outside the threshold, so following stops.
     stream.scrollTop = 900;
     fireEvent.scroll(stream);
     box.scrollHeight = 1800;
@@ -109,8 +100,6 @@ describe("useStickyBottom", () => {
   });
 
   it("follows the page when the content element is not the scroll box", () => {
-    // The active conversation turns .brain-stream into `overflow: visible`, so
-    // the page scrolls; writing to the stream element would be a no-op.
     const box: ScrollBox = { scrollHeight: 3000, clientHeight: 800, top: 0 };
     const { rerender } = render(<Harness items={2} box={box} scroller="page" />);
 
@@ -138,9 +127,6 @@ describe("useStickyBottom", () => {
   });
 
   it("does nothing at all when its ref was never attached", () => {
-    // A conditional layout can render the hook without mounting the stream
-    // element; there is no scroll box to resolve, so both the follow effect and
-    // the scroll listener must return without touching anything.
     function Detached({ items }: { items: number }) {
       useStickyBottom<HTMLDivElement>(items);
       return <p>no stream</p>;
@@ -157,16 +143,12 @@ describe("useStickyBottom", () => {
     const stream = getByTestId("stream");
     expect(box.top).toBe(1000);
 
-    // The stream moved (e.g. a programmatic jump), but the event the listener
-    // hears comes from some other element — a nested code block scrolling.
     const other = document.createElement("div");
     document.body.appendChild(other);
     stream.scrollTop = 200;
     fireEvent.scroll(other);
     other.remove();
 
-    // Had the event been attributed to the stream, following would have
-    // stopped; because it was ignored, the next append still re-pins.
     box.scrollHeight = 1800;
     rerender(<Harness items={4} box={box} scroller="element" />);
     expect(box.top).toBe(1400);
@@ -177,7 +159,6 @@ describe("useStickyBottom", () => {
     const { rerender } = render(<Harness items={2} box={box} scroller="page" />);
     expect(box.top).toBe(2200);
 
-    // Some browsers dispatch page scrolls on the root element, not the document.
     document.documentElement.scrollTop = 100;
     fireEvent.scroll(document.documentElement);
 
@@ -192,10 +173,8 @@ describe("useStickyBottom", () => {
     const stream = getByTestId("stream");
     expect(box.top).toBe(1000);
 
-    // Walk away from the newest line…
     stream.scrollTop = 100;
     fireEvent.scroll(stream);
-    // …then inch downward without reaching the bottom: still reading history.
     stream.scrollTop = 200;
     fireEvent.scroll(stream);
 

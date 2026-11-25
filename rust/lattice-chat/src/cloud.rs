@@ -1,37 +1,9 @@
-//! The hybrid cloud lane, behind the network-boundary dial.
-//!
-//! Ports `services/hybrid_context.py`, `cloud_token_guard.py`,
-//! `cloud_egress_audit.py`, `openai_compatible_adapter.py`,
-//! `cloud_extraction.py` and `cloud_streaming.py`. The lane is entered only
-//! when [`crate::boundary::NetworkMode::CloudAllowed`] is resolved for this
-//! turn *and* the graph is on — `local_only` never reaches this module's
-//! network code at all.
-//!
-//! Three disciplines are the whole point of the lane and are ported exactly:
-//!
-//! 1. **The minimal extracted slice.** One retrieval, hard-blocked nodes
-//!    dropped, preferred types first, at most 12 nodes, each rendered as one
-//!    `- [Type] title: summary` line truncated at 400 characters, and the whole
-//!    block run through [`crate::redact::redact_secret_text`] before it can
-//!    leave. A retrieval that fails sends **nothing** — never a wider context.
-//! 2. **The token guard.** Identical limits, identical refusal text, and the
-//!    refusal is audited too: "nothing left the machine, and here is why".
-//! 3. **The egress record is written before the call**, not after: if the
-//!    provider hangs or the process dies mid-stream, the record of what was
-//!    about to leave already exists.
-
-/// `LATTICEAI_CLOUD_API_KEY`.
 pub const CLOUD_API_KEY_ENV: &str = "LATTICEAI_CLOUD_API_KEY";
-/// `LATTICEAI_CLOUD_BASE_URL`.
 pub const CLOUD_BASE_URL_ENV: &str = "LATTICEAI_CLOUD_BASE_URL";
-/// `LATTICEAI_CLOUD_MODEL`.
 pub const CLOUD_MODEL_ENV: &str = "LATTICEAI_CLOUD_MODEL";
-/// The adapter's default when the environment names none.
 pub const DEFAULT_CLOUD_MODEL: &str = "gpt-4o-mini";
-/// Where an OpenAI-compatible provider lives when none is configured.
 pub const DEFAULT_CLOUD_BASE_URL: &str = "https://api.openai.com/v1";
 
-/// The system prompt every hybrid turn sends, verbatim.
 pub const HYBRID_SYSTEM_PROMPT: &str =
     "You are assisting a user whose private Knowledge Graph lives on their machine. \
      Use only the provided context. If the context is insufficient, say so honestly.";
@@ -121,7 +93,6 @@ mod tests {
         assert_eq!(budget_for(&key).session_used, 7);
         reset_budget(&key);
         assert_eq!(budget_for(&key).session_used, 0);
-        // The empty key is the "global" bucket, not a key of its own.
         reset_budget("");
         assert_eq!(record_budget("", 1).session_used, 1);
         reset_budget("global");
@@ -220,7 +191,6 @@ mod tests {
         assert_eq!(plan.conversation_title, "질문");
         assert_eq!(plan.new_edges[0]["type"], "grounded_on");
         assert!(!plan.auto_commit);
-        // Deterministic, unlike the salted Python original.
         assert_eq!(
             plan.new_nodes[0]["id"],
             plan_kg_expansion(&result).new_nodes[0]["id"]
@@ -257,7 +227,6 @@ mod tests {
         assert_eq!(plan.new_nodes.len(), 2);
         assert_eq!(plan.provenance["candidate_count"], 1);
         assert_eq!(plan.provenance["extraction"], "heuristic_v1");
-        // turn → grounded_on n1, turn → implies cand, cand → grounded_on n1.
         assert_eq!(plan.new_edges.len(), 3);
         let turn = plan.new_nodes[0]["id"].as_str().unwrap().to_string();
         assert_eq!(plan.new_nodes[1]["id"], format!("{turn}:cand:0"));

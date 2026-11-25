@@ -3,11 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { latticeApi } from "./client";
 import { failFetchWith, jsonResponse, recordFetch, resetDispatcher } from "@/test/apiClientHarness";
 
-/**
- * The wrappers that move a file or a decision rather than read a list: uploads,
- * downloads, approval resume, the demo corpus, and the agent run whose failure
- * is a throw rather than an envelope.
- */
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -287,8 +282,6 @@ describe("runAgent", () => {
   });
 
   it("names the HTTP status when the server offers no message at all", async () => {
-    // An empty-string detail survives friendlyError verbatim, which is the one
-    // way a failed envelope can carry a falsy error.
     recordFetch(() => jsonResponse({ detail: "" }, 502));
 
     await expect(latticeApi.runAgent("정리해줘", [])).rejects.toThrow("Agent run failed with HTTP 502");

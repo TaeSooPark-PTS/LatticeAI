@@ -15,14 +15,6 @@ type RingModel = {
   items: string[];
 };
 
-/**
- * Concentric memory rings around the living Brain.
- *
- * Each ring is a real layer of the Brain (now memory → durable memories →
- * topics → graph), not decoration: populated rings light up, and every ring
- * label is a keyboard-accessible peek button that previews that layer without
- * leaving the home screen. "Go deeper" hands off to the full depth view.
- */
 export function MemoryRings({
   language,
   brainState,
