@@ -1,11 +1,3 @@
-//! Multimodal (Vision, Speech, Image Retrieval) platform provider contracts
-//! and policy enforcement gates.
-//!
-//! Model inference and embedding generation stay inside the Python worker seam;
-//! `lattice-platform` enforces MIME/size bounds, embedding dimensionality
-//! alignment, local-only network boundaries, organization governance policies,
-//! and sanitized audit trail emission before any capture or retrieval runs.
-
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -149,9 +141,6 @@ impl std::fmt::Display for MultimodalViolation {
     }
 }
 
-/// Validate a multimodal provider invocation against MIME/size contracts,
-/// `PolicyStore::allow_multimodal`, `BoundaryStore` local-only guarantees,
-/// `OrganizationGovernancePolicy`, and optional embedding dimensions.
 pub fn validate_multimodal_contract(
     data_dir: &Path,
     req: &MultimodalContractRequest,
@@ -289,7 +278,6 @@ pub fn validate_multimodal_contract(
     })
 }
 
-/// Convenience helper validating incoming audio payloads against the Speech contract.
 pub fn validate_speech_audio_payload(
     data_dir: &Path,
     mime_type: &str,
@@ -321,7 +309,6 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let data = dir.path();
 
-        // Unsupported MIME fails cleanly.
         let bad_mime = validate_multimodal_contract(
             data,
             &MultimodalContractRequest {
@@ -338,7 +325,6 @@ mod tests {
         );
         assert_eq!(bad_mime.unwrap_err().code, "unsupported_mime_type");
 
-        // Cloud fallback blocked under default local_only network boundary.
         let cloud_blocked = validate_multimodal_contract(
             data,
             &MultimodalContractRequest {
@@ -358,7 +344,6 @@ mod tests {
             "network_boundary_local_only"
         );
 
-        // Hybrid opt-in gating works when require_hybrid_multimodal_opt_in = true.
         let hybrid_blocked = validate_multimodal_contract(
             data,
             &MultimodalContractRequest {
@@ -378,7 +363,6 @@ mod tests {
             "hybrid_policy_multimodal_disabled"
         );
 
-        // Enabling hybrid allow_multimodal allows local worker dispatch.
         PolicyStore::open(data.join("hybrid_policy.json")).set_policy(
             serde_json::json!({"allow_multimodal": true})
                 .as_object()
@@ -404,7 +388,6 @@ mod tests {
         assert_eq!(plan.worker_endpoint, "/worker/embed");
         assert_eq!(plan.embedding_dim, Some(512));
 
-        // Org policy can restrict modalities.
         let mut policy = OrganizationGovernancePolicy::default_for("acme");
         policy.allowed_modalities = vec!["speech".into()];
         save_org_governance_policy(data, "acme", &policy, Some("owner@example.com")).unwrap();

@@ -1,23 +1,3 @@
-//! The R3 route family: register, login, logout, account profile, SSO config.
-//!
-//! Same paths, same bodies, same `Set-Cookie` as `latticeai/api/auth.py`. The
-//! router factory follows `lattice_retrieval::router`'s shape — the crate that
-//! owns the behaviour owns its HTTP contract, and the host only mounts it.
-//!
-//! Ordering inside each handler is part of the port, not an implementation
-//! detail: FastAPI validates the body *before* the handler runs, so a malformed
-//! login is a 422 that never reaches the rate limiter; and `register` checks
-//! the invite gate before the password policy, so an uninvited caller is told
-//! about the invitation rather than about their password.
-//!
-//! Deliberately **not** served here: `GET /auth/sso/login` and
-//! `GET /auth/sso/callback`. Those are the OIDC flow — discovery fetch, PKCE
-//! state, token exchange and JWT signature verification against the provider's
-//! JWKS (`latticeai/core/oidc.py`, cryptography-backed). Only the *config*
-//! surface is ported; the flow stays with the Python worker until someone can
-//! port the verifier faithfully, and a half-ported verifier is worse than a
-//! proxied one.
-
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -38,7 +18,6 @@ use crate::setcookie::{delete_session_cookie, session_cookie};
 use crate::state::{peer_of, AuthState};
 use crate::users::{ensure_user_identity, normalize_email, Users};
 
-/// Every path this crate serves, for the mount test and the OpenAPI composer.
 pub const AUTH_PATHS: [&str; 6] = [
     "/register",
     "/login",
@@ -58,15 +37,6 @@ const LOGIN_FIELDS: &[Field] = &[required("email"), required("password")];
 const CHANGE_PASSWORD_FIELDS: &[Field] = &[required("current_password"), required("new_password")];
 const PROFILE_FIELDS: &[Field] = &[optional("name"), optional("nickname")];
 
-/// The mountable router for the auth family.
-///
-/// ```no_run
-/// # use std::sync::Arc;
-/// # let state: Arc<lattice_auth::AuthState> =
-/// #     lattice_auth::AuthState::new(lattice_auth::AuthConfig::from_env());
-/// let app = axum::Router::new().merge(lattice_auth::router(state));
-/// # let _ = app;
-/// ```
 pub fn router(state: Arc<AuthState>) -> Router {
     Router::new()
         .route("/register", post(register))
@@ -78,9 +48,6 @@ pub fn router(state: Arc<AuthState>) -> Router {
         .with_state(state)
 }
 
-/// The same router with the CSRF guard already wrapped around it — what a
-/// standalone smoke test mounts. The gateway applies the guard globally
-/// instead, so it uses [`router`].
 pub fn router_with_csrf(state: Arc<AuthState>) -> Router {
     router(Arc::clone(&state)).layer(axum::middleware::from_fn_with_state(
         state,
@@ -88,7 +55,6 @@ pub fn router_with_csrf(state: Arc<AuthState>) -> Router {
     ))
 }
 
-/// Render one ordered JSON object as a 200.
 fn ok(entries: Vec<(&str, Value)>) -> Response {
     let mut map = OrderedMap::new();
     for (key, value) in entries {
@@ -98,7 +64,6 @@ fn ok(entries: Vec<(&str, Value)>) -> Response {
     json_response(StatusCode::OK, &body, None)
 }
 
-/// Split a request into the pieces every handler needs.
 async fn split(request: Request) -> (HeaderMap, Option<String>, Bytes) {
     let (parts, body) = request.into_parts();
     let peer = peer_of(&parts);
@@ -129,8 +94,6 @@ async fn register(State(state): State<Arc<AuthState>>, request: Request) -> Resp
     if config.invite_gate_enabled && !invite_claim {
         return http_error(StatusCode::FORBIDDEN, "auth.invitation_required", language);
     }
-    // Closed public registration stays closed unless the operator enabled the
-    // invite gate and this exact request carries a valid signed claim.
     if !config.open_registration && !invite_claim {
         return http_error(
             StatusCode::FORBIDDEN,
@@ -199,8 +162,6 @@ async fn login(State(state): State<Arc<AuthState>>, request: Request) -> Respons
     let stored = account(&users, &email)
         .map(|record| text_of(record, "password").to_string())
         .unwrap_or_default();
-    // `if not user` in Python, so an empty record is "no account", not a
-    // passwordless one.
     let known = account(&users, &email).is_some();
     if !known || !verify_and_migrate(&state, &email, body.str("password"), &stored, &mut users) {
         state.record_audit("auth.login.failed", json!({"email": email, "ip": ip}));
@@ -392,8 +353,6 @@ async fn get_profile(State(state): State<Arc<AuthState>>, request: Request) -> R
 }
 
 async fn sso_config(State(state): State<Arc<AuthState>>) -> Response {
-    // Re-read the stored file per request, as `get_sso_settings` does, so an
-    // admin's `PATCH /admin/sso` is visible without a restart.
     let sso = state.config().clone().with_stored_sso().sso;
     ok(vec![
         ("enabled", json!(sso.enabled)),
@@ -406,8 +365,6 @@ async fn sso_config(State(state): State<Arc<AuthState>>) -> Response {
     ])
 }
 
-/// `_enforce_password_policy`: 8+ characters with at least one letter and one
-/// digit. A 4-character minimum was not a policy.
 fn enforce_password_policy(password: &str, language: &str) -> Result<(), Response> {
     let long_enough = password.chars().count() >= 8;
     let has_letter = password.chars().any(char::is_alphabetic);
@@ -423,12 +380,6 @@ fn enforce_password_policy(password: &str, language: &str) -> Result<(), Respons
     }
 }
 
-/// `verify_and_migrate_password`: verify a scrypt digest, or accept a legacy
-/// plaintext once and upgrade it in place.
-///
-/// The Python original also writes a `password_migrated_from_plaintext` audit
-/// event. Audit is not this crate's (there is no Rust audit sink yet), so the
-/// upgrade happens and the event does not — recorded in the wiring note.
 fn verify_and_migrate(
     state: &AuthState,
     email: &str,
@@ -460,11 +411,6 @@ fn text_of<'a>(record: &'a Map<String, Value>, key: &str) -> &'a str {
     record.get(key).and_then(Value::as_str).unwrap_or("")
 }
 
-/// The account record, treating an empty one as absent.
-///
-/// Python reads `user = users.get(email)` and then `if not user`, and an empty
-/// dict is falsy — so a record with no fields is "no such account" at every
-/// call site except the `email in users` membership test in `register`.
 fn account<'a>(users: &'a Users, email: &str) -> Option<&'a Map<String, Value>> {
     users.get(email).filter(|record| !record.is_empty())
 }
@@ -487,8 +433,6 @@ fn with_cookie(mut response: Response, cookie: &str) -> Response {
     response
 }
 
-/// The 401 a caller sees when a guard refuses — exported so a route package
-/// can produce the identical body without importing the message catalog.
 pub fn login_required() -> Response {
     detail_error(
         StatusCode::UNAUTHORIZED,
@@ -506,7 +450,6 @@ mod tests {
         for weak in ["short1", "abcdefgh", "12345678", ""] {
             assert!(enforce_password_policy(weak, "ko").is_err(), "{weak}");
         }
-        // Non-ASCII letters and digits count, as `str.isalpha`/`isdigit` do.
         assert!(enforce_password_policy("가나다라마바1２", "ko").is_ok());
     }
 

@@ -1,24 +1,3 @@
-"""Token hashing, secret redaction, and the worker's per-user rate limiter.
-
-What is *not* here any more, and why: password hashing / verification, the
-``client_ip`` resolver with its per-IP login limiter, and the file-magic
-extension check were all ported to ``lattice-auth`` / ``lattice-chat`` in
-v11.6.0, when the front door and every write moved to Rust. They were left
-behind as fully orphaned Python — no route, no service, no script called them
-— and a second copy of an authentication rule that nothing enforces is worse
-than no copy: it reads like a live guard.
-
-What stays, stays because something still calls it:
-
-* :func:`enforce_rate_limit` — charged by every ``/worker/*`` and ``/agent/*``
-  seam through ``_admit``.
-* :func:`redact_secret_text` / :func:`redact_secrets` — and they additionally
-  generate the Rust redaction fixture via ``scripts/gen_redact_fixture.py``.
-* the trusted-proxy allowlist — ``_peer_is_trusted_proxy`` is what
-  :mod:`latticeai.core.http_origin` (and through it the CSRF check) asks before
-  believing an ``X-Forwarded-Host``.
-"""
-
 import hashlib
 import ipaddress
 import logging
@@ -33,15 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def sha256_hex(text: str) -> str:
-    """The one UTF-8 SHA-256 hex digest.
-
-    Six modules each carried this three-token expression, and they did not
-    agree on what to do with ``None``: two coerced it away, one raised. The
-    helper stays **strict** on purpose — coercing here would silently give
-    every caller the digest of the empty string, which is a valid-looking
-    token hash for "no token at all". Each call site keeps the contract it
-    already had, stated in its own body where a reader can see it.
-    """
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -54,24 +24,10 @@ def host_is_loopback(host: str) -> bool:
         return False
 
 
-# ── Trusted-proxy allowlist ──────────────────────────────────────────────────
-# The per-IP login limiter this list was born for is ``lattice-auth``'s now, and
-# ``client_ip`` went with it. The list itself is still load-bearing on this
-# side: :func:`latticeai.core.http_origin.peer_may_forward` — and through it the
-# CSRF front-door check — asks ``_peer_is_trusted_proxy`` whether an
-# ``X-Forwarded-Host`` from this peer may be believed. Off loopback the answer
-# is "only for an operator-listed proxy", which is what makes forging a front
-# door from another machine impossible. ``configure_trusted_proxies`` is the one
-# way that list is ever non-empty, so it stays with the guard it feeds.
 _trusted_proxies: List["ipaddress._BaseNetwork"] = []
 
 
 def configure_trusted_proxies(values) -> int:
-    """Set the trusted-proxy allowlist from IPs / CIDRs. Returns the count parsed.
-
-    Accepts a comma-separated string or an iterable of IPs/CIDRs. Invalid entries
-    are skipped. Passing an empty value disables forwarded-header trust entirely.
-    """
     global _trusted_proxies
     if isinstance(values, str):
         items = [v.strip() for v in values.split(",")]
@@ -145,7 +101,6 @@ def _is_secret_key(key: Any) -> bool:
 
 
 def redact_secret_text(text: str) -> str:
-    """Redact known secret shapes from user-visible text, logs, and audit data."""
 
     if not text:
         return ""
@@ -164,7 +119,6 @@ def redact_secret_text(text: str) -> str:
 
 
 def redact_secrets(value: Any) -> Any:
-    """Recursively redact secret-like values before logs, audit, or API previews."""
 
     if isinstance(value, str):
         return redact_secret_text(value)
@@ -182,7 +136,6 @@ def redact_secrets(value: Any) -> Any:
     return value
 
 
-# ── Per-user token-bucket rate limiting ──────────────────────────────────────
 _RATE_LIMITS = {
     "chat": (30, 0.5),
     "agent": (10, 0.1),

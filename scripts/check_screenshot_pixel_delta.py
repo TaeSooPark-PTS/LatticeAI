@@ -1,23 +1,4 @@
 #!/usr/bin/env python3
-"""Compare release screenshots against a prior release and fail on no-change.
-
-Proves the layout rebuild actually moved pixels (or height), not just copy.
-
-Usage:
-  python scripts/check_screenshot_pixel_delta.py \\
-    --current output/release/v10.6.3/screenshots \\
-    --baseline output/release/v10.6.2/screenshots
-
-Environment:
-  LTCAI_SCREENSHOT_CURRENT            default: output/release/v{package}/screenshots
-  LTCAI_SCREENSHOT_BASELINE           explicit baseline dir (must match expected version)
-  LTCAI_SCREENSHOT_BASELINE_VERSION   pin expected baseline, e.g. 10.6.2 (default: prior git tag)
-  LTCAI_PIXEL_MIN_PCT                 default: 1.5  (non-LivingBrain screens)
-  LTCAI_PIXEL_MIN_PCT_LIVE            default: 8.0  (01/03/04 — animation alone ~7.9%)
-  LTCAI_HEIGHT_MIN_PX                 default: 24   (layout height shift counts as change)
-
-Exit 0 all screens moved enough, 1 one or more below threshold / wrong baseline, 2 bad args.
-"""
 
 from __future__ import annotations
 
@@ -48,7 +29,6 @@ SHOTS = [
     "13-chronicle.png",
 ]
 
-# LivingBrain animation noise can hit ~7.9% with zero layout change.
 LIVING_BRAIN = {
     "01-login.png",
     "03-install-load-progress.png",
@@ -85,7 +65,6 @@ def _normalize_version(name: str) -> str:
 
 
 def _git_version_tags(root: Path) -> List[str]:
-    """Return sorted semver tags like ``10.6.2`` (no leading v) from the repo."""
     try:
         result = subprocess.run(
             ["git", "tag", "-l", "v*.*.*"],
@@ -112,31 +91,12 @@ def _git_version_tags(root: Path) -> List[str]:
 
 
 def expected_baseline_version(root: Path, current_version: Optional[str] = None) -> str:
-    """Pin the baseline to a release tag — never "any older dir".
-
-    Resolution order:
-      1. ``LTCAI_SCREENSHOT_BASELINE_VERSION`` (explicit pin)
-      2. Git tag whose name matches the package version (same-name tag)
-         — used when the version was not bumped after a release. Comparing
-         against the prior tag (e.g. 10.6.2 while package is still 10.6.3 and
-         ``v10.6.3`` is tagged) lets screens that are identical to the already
-         shipped release pass, because they still differ from two-releases-ago.
-         Same-name baseline forces a real delta vs the published screenshots
-         (materialized via ``git show`` when the on-disk dir is missing/stale).
-      3. Highest git tag strictly older than the package version
-      4. Patch-1 of the package version (last resort when tags are unavailable)
-
-    This also prevents a silent downgrade to v10.6.1 when v10.6.2 is deleted
-    from ``output/release/`` — which would inflate the pixel-change rate.
-    """
     env = os.environ.get("LTCAI_SCREENSHOT_BASELINE_VERSION")
     if env:
         return _normalize_version(env.strip())
 
     current = _normalize_version(current_version or _package_version(root))
     tags = _git_version_tags(root)
-    # Same-name tag = this version already shipped. Baseline is that release,
-    # not the prior one (failure mode: unbumped recapture vs two-releases-ago).
     if current in tags:
         return current
 
@@ -166,12 +126,6 @@ def _baseline_looks_complete(shots: Path) -> bool:
 
 
 def _extract_baseline_from_git(root: Path, version: str) -> Optional[Path]:
-    """Materialize ``v{version}`` release screenshots from the matching git tag.
-
-    Used when the working tree no longer has ``output/release/vX.Y.Z`` but the
-    tag still carries the evidence (so deleting a local dir cannot silently
-    fall back to an older on-disk release).
-    """
     version = _normalize_version(version)
     tag = f"v{version}"
     probe = subprocess.run(
@@ -209,9 +163,6 @@ def _extract_baseline_from_git(root: Path, version: str) -> Optional[Path]:
             missing.append(name)
             continue
         dest.write_bytes(result.stdout)
-    # A screen the baseline release never captured is a screen introduced by
-    # the current release (the comparison loop reports it as "new" and does
-    # not gate it). Only a baseline with no core capture at all is broken.
     if "01-login.png" in missing:
         return None
     if missing:
@@ -228,16 +179,6 @@ def resolve_baseline(
     *,
     explicit: Optional[Path] = None,
 ) -> Tuple[Optional[Path], str]:
-    """Return ``(baseline_dir_or_None, expected_version)``.
-
-    Never substitutes an older-than-expected on-disk release. Callers must fail
-    when the path is None.
-
-    When the baseline version equals the package version (same-name tag path),
-    prefer screenshots materialized from the git tag over
-    ``output/release/vX.Y.Z/`` — that on-disk dir is where capture writes, so
-    it may already hold WIP overwrites of the published release.
-    """
     expected = expected_baseline_version(root)
     print(f"pixel delta: expected baseline version = v{expected}")
 
@@ -247,7 +188,6 @@ def resolve_baseline(
     env = os.environ.get("LTCAI_SCREENSHOT_BASELINE")
     if env:
         path = Path(env).resolve()
-        # If the path embeds a version segment, it must match the pin.
         parent_name = path.parent.name if path.name == "screenshots" else path.name
         if parent_name.startswith("v") and _normalize_version(parent_name) != expected:
             print(
@@ -261,9 +201,6 @@ def resolve_baseline(
     package = _normalize_version(_package_version(root))
     same_name_as_package = _normalize_version(expected) == package
 
-    # Same-name baseline: always take the tagged release via git show.
-    # Local output/release/v{package}/ is the capture target and may already
-    # contain unreleased UI (exactly the failure mode this pin prevents).
     if same_name_as_package:
         extracted = _extract_baseline_from_git(root, expected)
         if extracted is not None and _baseline_looks_complete(extracted):
@@ -291,7 +228,6 @@ def resolve_baseline(
 
 
 def _default_baseline(root: Path, current: Path) -> Optional[Path]:
-    """Backward-compatible helper: path only (no version). Prefer resolve_baseline."""
     path, _version = resolve_baseline(root, current)
     return path
 
@@ -301,18 +237,10 @@ def _pixel_delta_pct(
     b: Path,
     region: Optional[List[float]] = None,
 ) -> Tuple[float, int, int, int, int]:
-    """Return (changed_pct, changed_px, total_px, height_a, height_b).
-
-    ``region`` is ``[x0, y0, x1, y1]`` as fractions of the aligned canvas. It
-    narrows the comparison to the part of the screen a release says it
-    changed, so an animated element elsewhere cannot mask a real change — or
-    manufacture one. Heights are always reported for the full images.
-    """
     with Image.open(a) as im_a, Image.open(b) as im_b:
         im_a = im_a.convert("RGB")
         im_b = im_b.convert("RGB")
         h_a, h_b = im_a.size[1], im_b.size[1]
-        # Align to common box so pure vertical growth still registers.
         w = max(im_a.size[0], im_b.size[0])
         h = max(h_a, h_b)
         canvas_a = Image.new("RGB", (w, h), (0, 0, 0))
@@ -332,10 +260,6 @@ def _pixel_delta_pct(
                 canvas_b = canvas_b.crop(box)
                 w, h = canvas_a.size
         diff = ImageChops.difference(canvas_a, canvas_b)
-        # Any channel delta > 8 counts as changed (ignore sub-pixel AA noise).
-        # Count on RGB get_flattened_data: a pixel is changed if any channel exceeds the
-        # threshold. (A point()+convert("L") mask would average channels and
-        # under-count single-channel diffs, so we do not use it.)
         pixels = diff.get_flattened_data()
         changed = sum(1 for r, g, b in pixels if r > 8 or g > 8 or b > 8)
         total = w * h
@@ -349,11 +273,6 @@ CLAIMS_PATH = "scripts/release_screen_claims.json"
 def _load_screen_claims(
     root: Path, version: str
 ) -> Optional[Dict[str, Dict[str, object]]]:
-    """What this release says it changed, or None for "all twelve".
-
-    A version with no entry is gated on every screen, so forgetting to write a
-    claim makes this check stricter rather than weaker.
-    """
     path = root / CLAIMS_PATH
     if not path.is_file():
         return None
@@ -426,7 +345,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 1
 
-    # Final pin check: if baseline path embeds a version, it must match.
     parent_name = (
         baseline.parent.name if baseline.name == "screenshots" else baseline.name
     )
@@ -472,10 +390,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"{name:<32} {'—':>8} {'—':>6} {'—':>6} FAIL")
             continue
         if not base.is_file():
-            # No baseline image: either the screen is new this release
-            # (legitimate — nothing to diff against, report and move on) or a
-            # claim names a screen the baseline should have had (a typo — the
-            # claim gate must fail loudly rather than skip it).
             if claims is not None and name not in claims:
                 print(f"{name:<32} {'new':>8} {'—':>6} {'—':>6} {'—':>5} (no baseline)")
                 results.append(
@@ -504,12 +418,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         pct, changed, total, h_cur, h_base = _pixel_delta_pct(cur, base, region)
         height_delta = abs(h_cur - h_base)
         live = name in LIVING_BRAIN
-        # A claim that names its region has already excluded the animated part
-        # of the screen, so the live threshold no longer buys anything there.
         default_min = args.min_pct_live if (live and not region) else args.min_pct
         override = options.get("min_pct")
         min_pct = float(override) if isinstance(override, (int, float)) else default_min
-        # Height growth alone proves layout rebuild for full-page shots.
         moved = pct >= min_pct or height_delta >= args.min_height_px
         ok = moved or not claimed
         tag = "ok" if moved else ("—" if not claimed else "FAIL")
@@ -549,8 +460,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"  - {item}", file=sys.stderr)
         return 1
 
-    # An unclaimed screen that moved is not a failure, but it is worth saying:
-    # it is either an unintended side effect or a claim someone forgot to write.
     surprises = [
         f"{item['file']} ({item['pixel_pct']:.2f}%)"
         for item in results

@@ -1,12 +1,3 @@
-//! Change-class governor — a 1:1 port of `latticeai.core.tool_governor`.
-//!
-//! The policy table answers "how risky is this tool". The governor answers the
-//! question users actually care about: **does this call create something new,
-//! or change/remove something that already exists?** Mutations and deletions
-//! are proposal-first, and a change that must be reviewed but cannot be staged
-//! is *fail-closed* — `fail_closed = proposal_required and not
-//! proposal_supported` is the whole reason this module exists.
-
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -19,14 +10,12 @@ pub const CHANGE_MUTATION: &str = "mutation";
 pub const CHANGE_DESTRUCTIVE: &str = "destructive";
 pub const CHANGE_EXEC: &str = "exec";
 
-/// Inventory categories.
 pub const NEW_ARTIFACT: &str = "new_artifact";
 pub const EXISTING_CONTENT_UPDATE: &str = "existing_content_update";
 pub const DELETE: &str = "delete";
 pub const EXTERNAL_SIDE_EFFECT: &str = "external_side_effect";
 pub const INTERNAL_STATE: &str = "internal_state";
 
-/// Tools whose effect depends on whether the target already exists.
 const TARGET_WRITE_TOOLS: [&str; 6] = [
     "create_docx",
     "create_pdf",
@@ -35,11 +24,8 @@ const TARGET_WRITE_TOOLS: [&str; 6] = [
     "local_write",
     "write_file",
 ];
-/// Tools that always rewrite existing content.
 const ALWAYS_MUTATION_TOOLS: [&str; 1] = ["edit_file"];
-/// Tools that remove existing content.
 const DESTRUCTIVE_TOOLS: [&str; 3] = ["clear_history", "delete_file", "remove_file"];
-/// Append-style knowledge writes that never rewrite.
 const ADDITIVE_TOOLS: [&str; 5] = [
     "create_web_project",
     "knowledge_graph_ingest",
@@ -48,12 +34,6 @@ const ADDITIVE_TOOLS: [&str; 5] = [
     "todo_write",
 ];
 
-/// Every side-effecting tool, classified into exactly one category.
-///
-/// `assert_governance_coverage` in Python fails CI when a registry tool is
-/// missing from here, so this list is the proof that nothing mutating ships
-/// ungoverned. Sorted by name; the parity suite asserts it equals the Python
-/// dictionary entry for entry.
 pub const MUTATING_TOOL_INVENTORY: [(&str, &str); 26] = [
     ("build_project", EXTERNAL_SIDE_EFFECT),
     ("clear_history", DELETE),
@@ -83,11 +63,8 @@ pub const MUTATING_TOOL_INVENTORY: [(&str, &str); 26] = [
     ("write_file", EXISTING_CONTENT_UPDATE),
 ];
 
-/// Tools whose existing-content update the proposal service can stage *and*
-/// apply. A `proposal_required` tool outside this set is blocked, not applied.
 pub const PROPOSAL_CAPABLE_TOOLS: [&str; 2] = ["edit_file", "write_file"];
 
-/// One call's change class and proposal requirement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Classification {
     pub tool: String,
@@ -98,11 +75,6 @@ pub struct Classification {
     pub reason: String,
 }
 
-/// Classify one tool call.
-///
-/// `path_exists` is injected for the same reason Python injects it: the agent
-/// loop, the chat path and the tests must share exactly one policy, and a
-/// classifier that stats the disk itself cannot be one of them.
 pub fn classify_tool_call(
     name: &str,
     args: &Map<String, Value>,
@@ -144,15 +116,11 @@ pub fn classify_tool_call(
         change_class: change.to_string(),
         proposal_required,
         proposal_supported,
-        // A change that must be reviewed but that we cannot stage is
-        // fail-closed: callers block it instead of applying it silently.
         fail_closed: proposal_required && !proposal_supported,
         reason: reason.to_string(),
     }
 }
 
-/// `str(args.get(key) or "")` restricted to the one falsy case that matters:
-/// an empty string is no path at all.
 fn text_arg(args: &Map<String, Value>, key: &str) -> Option<String> {
     match args.get(key) {
         Some(Value::String(text)) if !text.is_empty() => Some(text.clone()),
@@ -233,7 +201,6 @@ mod tests {
             assert_eq!(result.change_class, CHANGE_DESTRUCTIVE, "{tool}");
             assert!(result.fail_closed, "{tool}");
         }
-        // A destructive *policy* is enough, even for a tool with a benign name.
         let destructive = ToolPolicy {
             destructive: true,
             ..ToolPolicy::default()

@@ -4,11 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "@/i18n";
 import { BrainComposer, fileToDataUrl } from "./BrainComposer";
 
-// Detached-ref harness: with `detachedRefs.on`, `useRef` still registers its
-// real hook slot (hook order stays untouched) but hands the component a facade
-// whose reads are null and writes are dropped — the state a ref is in while
-// its node is detached. This is how the composer's "ref already gone" guards
-// (the height measurer and the scheduled hover-close) are made observable.
 const detachedRefs = vi.hoisted(() => ({ on: false }));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
@@ -19,9 +14,7 @@ vi.mock("react", async (importOriginal) => {
       get current() {
         return null;
       },
-      set current(_value) {
-        // A detached ref swallows writes.
-      },
+      set current(_value) {},
     };
   }) as typeof actual.useRef;
   return { ...actual, useRef };
@@ -90,8 +83,6 @@ describe("BrainComposer typing and sending", () => {
         draft={"첫 줄\n둘째 줄\n셋째 줄"}
       />,
     );
-    // jsdom reports scrollHeight 0; the effect still must have written a
-    // measured pixel height rather than leaving "auto".
     expect(textarea.style.height).toMatch(/px$/);
   });
 
@@ -137,8 +128,6 @@ describe("BrainComposer attach menu", () => {
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
     expect(toggle()).toHaveAttribute("aria-controls", menu()!.id);
 
-    // A click landing within the 350ms debounce is the click that opened it
-    // (or the hover-open race) — it must not read as "toggle closed".
     act(() => {
       vi.advanceTimersByTime(100);
     });
@@ -163,7 +152,6 @@ describe("BrainComposer attach menu", () => {
     fireEvent.pointerOver(attach, { pointerType: "mouse" });
     expect(menu()).toBeTruthy();
 
-    // Re-entering while open must keep it open (openedAt only set once).
     fireEvent.pointerOver(attach, { pointerType: "mouse" });
     expect(menu()).toBeTruthy();
 
@@ -238,7 +226,6 @@ describe("BrainComposer attach menu", () => {
 
   it("closes on Escape only when no capture popover is open, and ignores other keys", () => {
     renderComposer();
-    // Escape with the menu closed is a no-op.
     fireEvent.keyDown(toggle(), { key: "Escape" });
     expect(menu()).toBeNull();
 
@@ -279,12 +266,9 @@ describe("BrainComposer attach menu", () => {
     vi.useFakeTimers();
     detachedRefs.on = true;
     renderComposer({ draft: "이미 적힌 질문" });
-    // The height measurer ran against a detached ref and had to bail — the
-    // textarea keeps whatever height the browser gave it.
     const textarea = screen.getByPlaceholderText(t("ko", "brain.placeholder")) as HTMLTextAreaElement;
     expect(textarea.style.height).toBe("");
 
-    // A hover-close that fires after the ref is gone must leave the menu be.
     fireEvent.click(toggle());
     const attach = toggle().parentElement as HTMLElement;
     fireEvent.pointerOut(attach, { pointerType: "mouse" });

@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Empirical 3-arm small-model benchmark for LatticeAI v13.4.0 Universal Adaptive Harness.
-
-Measures real performance across five capability categories (Tool Calling, Web Handling,
-Computer Use, Answer Quality, and RAG Grounding) comparing:
-  1. raw_no_harness        - direct model call + strict unassisted JSON parsing
-  2. standard_loop         - LatticeAI runtime locked to uncalibrated STANDARD profile
-  3. adaptive_harness_v13_4 - LatticeAI v13.4.0 Universal Adaptive Harness (probe + repairs + grounding)
-"""
 
 from __future__ import annotations
 
@@ -41,7 +33,7 @@ DEFAULT_QWEN_GGUF = (
     / "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf"
 )
 
-from benchmark_adaptive_harness_fixtures import (  # noqa: E402
+from benchmark_adaptive_harness_fixtures import (
     CATEGORIES,
     RAW_SYSTEM_PROMPT,
     UI_ELEMENTS,
@@ -52,8 +44,6 @@ from benchmark_adaptive_harness_fixtures import (  # noqa: E402
 
 
 class BenchLoopbackServer:
-    """In-process loopback HTTP server backing worker seam, web fixtures, and UI bridge."""
-
     def __init__(self, llm_origin: str, llm_model: str) -> None:
         self.llm_origin = llm_origin.rstrip("/")
         self.llm_model = llm_model
@@ -166,7 +156,7 @@ class BenchLoopbackServer:
         server_ref = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+            def log_message(self, format: str, *args: Any) -> None:
                 return
 
             def _send_json(self, code: int, obj: Any) -> None:
@@ -185,7 +175,7 @@ class BenchLoopbackServer:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def do_GET(self) -> None:  # noqa: N802
+            def do_GET(self) -> None:
                 parsed = urllib.parse.urlparse(self.path)
                 path = parsed.path
                 if path == "/search":
@@ -278,7 +268,7 @@ class BenchLoopbackServer:
 
                 self._send_json(404, {"error": f"Unknown path {path}"})
 
-            def do_POST(self) -> None:  # noqa: N802
+            def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", "0") or 0)
                 raw_body = self.rfile.read(length) if length > 0 else b"{}"
                 data = json.loads(raw_body.decode("utf-8") or "{}")
@@ -339,7 +329,6 @@ class BenchLoopbackServer:
 def run_raw_arm(
     server: BenchLoopbackServer, task: Dict[str, Any], max_steps: int = 5
 ) -> Dict[str, Any]:
-    """Arm A: unassisted direct model loop using strict json.loads only."""
     ws = server.reset_task()
     t0 = time.perf_counter()
     transcript: List[Dict[str, Any]] = []
@@ -428,7 +417,6 @@ def run_rust_arm(
     model_name: str,
     profile_cache: Path,
 ) -> Dict[str, Any]:
-    """Arm B (standard) or Arm C (adaptive) via the compiled Rust harness_bench binary."""
     ws = server.reset_task()
     brain_dir = ws / ".brain"
     env = os.environ.copy()
@@ -576,7 +564,6 @@ def _grade_state_checks(
 def grade_task_result(
     task: Dict[str, Any], result: Dict[str, Any]
 ) -> Tuple[bool, List[str]]:
-    """Deterministically grade a single arm outcome against task checks."""
     checks = task["checks"]
     failures: List[str] = []
     answer = str(result.get("answer", "") or "")
@@ -604,7 +591,6 @@ def grade_task_result(
 def aggregate_arm(
     tasks: List[Dict[str, Any]], outcomes: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
-    """Compute overall and per-category pass counts, pass rates, and repair totals."""
     by_cat: Dict[str, Dict[str, Any]] = {
         cat: {"passed": 0, "total": 0, "rate_pct": 0.0} for cat in CATEGORIES
     }

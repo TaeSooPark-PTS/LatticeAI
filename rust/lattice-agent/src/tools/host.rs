@@ -1,54 +1,3 @@
-//! The native tool set — every mutating handler, executed here (v11.6.0, W4).
-//!
-//! v11.5.1 left one hole in "the kernel decides, the worker acts": the acting.
-//! Every write the loop chose still travelled back over `POST /agent/tool` to a
-//! Python handler, so a run that never left Rust for its *decisions* left Rust
-//! for all of its *effects*. This module closes it. The eighteen mutating
-//! handlers of `latticeai.tools` run here, and the four document creators split
-//! (the builder computes in the worker, the file is written here), which leaves
-//! `/agent/tool` carrying only the twenty-five compute-only handlers.
-//!
-//! Three rules hold for every tool below:
-//!
-//! * **the same result** — key for key and message for message with the Python
-//!   handler, because the transcript, the critic and the artifact list all read
-//!   those keys. Even the refusals are ported literally, including the fact
-//!   that a missing required argument is Python's `KeyError` repr (`'path'`);
-//! * **the same containment** — every workspace path resolves through
-//!   [`crate::tools::sandbox::Workspace::resolve`], never a raw string, so the tools,
-//!   the loop's pre-write snapshot and the overwrite guard share one rule;
-//! * **the same authorization** — [`authorize::check_role`], the one check the
-//!   Python seam ran that the loop's permission kernel does not, ported with
-//!   the role taken as input.
-//!
-//! ## Hook semantics (`lattice_brain.runtime.hooks.dispatch_tool`)
-//!
-//! The Python seam wrapped every dispatch in `pre_tool` → execute → `post_tool`.
-//! Three platform hooks bind runners to those points and **none of them changes
-//! what happens to these tools**:
-//! `builtin:tool-permission-gate` blocks only when the governance policy says
-//! `deny`, which no entry in `TOOL_GOVERNANCE` does (its risks are read / write
-//! / exec / destructive), so it is a log line over a decision the kernel has
-//! already made; `builtin:sensitive-data-guard` classifies and never blocks;
-//! and the `brain-event-triggers` `post_tool` runner fires only for
-//! `tool.kg_ingest.*` events, which no registered handler produces. Those three
-//! are therefore **retired** for native tools, and saying so is the honest
-//! description of what was already happening.
-//!
-//! What is *not* retired is a **user-registered** hook: those carry a shell
-//! command, run as a subprocess, and a `pre_tool` one can block. That is a real
-//! feature over a registry (`hooks.json`) this crate does not own, so the
-//! lifecycle survives as a port — [`HookSink`] — that the gateway wires.
-//!
-//! Since v11.7.0 the gateway does wire it: `lattice_platform::governance::hooks::
-//! NativeHookSink` is the production implementation (the registry is above this
-//! crate in the dependency graph, so the adapter lives with the registry), it
-//! arrives through `LoopConfig::with_hooks`, and both construction sites —
-//! [`crate::surface::runbody::RunBody::to_deps_with_hooks`] and
-//! [`crate::kernel::agentloop::LoopDeps::with_hook_sink`] — carry it. A user
-//! `pre_tool` hook can now block a native write, and every fire is recorded in
-//! `hooks_runs.json` where `GET /api/hooks/runs` shows it.
-
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -61,11 +10,6 @@ use crate::kernel::policy::ToolPolicy;
 use crate::seam::worker::{ToolOutcome, WorkerClient};
 use crate::tools::sandbox::{ToolError, Workspace};
 
-/// The eighteen mutating handlers, sorted.
-///
-/// This is grok's DROP verdict table (`scratchpad/grok_keepset_v2.md` §4.4)
-/// made executable: a handler is here when it writes a file, writes the graph,
-/// actuates the OS or executes something.
 pub const MUTATING_TOOLS: [&str; 18] = [
     "build_project",
     "computer_click",
@@ -87,24 +31,10 @@ pub const MUTATING_TOOLS: [&str; 18] = [
     "write_file",
 ];
 
-/// The four document creators, sorted: compute in the worker, write here.
 pub const RENDER_TOOLS: [&str; 4] = ["create_docx", "create_pdf", "create_pptx", "create_xlsx"];
 
-/// Native web research and structured computer-use inspection tools, sorted.
 pub const WEB_AND_INSPECT_TOOLS: [&str; 3] = ["computer_ui_inspect", "web_fetch", "web_search"];
 
-/// Whether the loop should execute `tool` itself instead of calling the worker.
-///
-/// [`MUTATING_TOOLS`] minus [`desktop::POINTER_TOOLS`], plus [`RENDER_TOOLS`]
-/// and [`WEB_AND_INSPECT_TOOLS`]. The six pointer tools are a deliberate exception
-/// (v11.6.0 gateway integration §4b): mouse and keyboard actuation is
-/// `pyautogui`, a *capability of the worker's interpreter*, not a file write
-/// this crate can perform. Native versions could only reproduce the refusal,
-/// and reproducing a refusal costs the one install that pip-installed
-/// `pyautogui` into the worker venv its working pointer control. So the loop
-/// keeps sending them to `POST /agent/tool`, where the real handler lives, and
-/// the `/agent/tool` whitelist is the twenty-five compute handlers plus these
-/// six.
 pub fn is_native(tool: &str) -> bool {
     if crate::kernel::policy::in_set(&desktop::POINTER_TOOLS, tool) {
         return false;
@@ -114,70 +44,36 @@ pub fn is_native(tool: &str) -> bool {
         || crate::kernel::policy::in_set(&WEB_AND_INSPECT_TOOLS, tool)
 }
 
-/// Who the run belongs to — the seam's `user_email` / `workspace_id` fields.
-///
-/// The knowledge tools read their scope from the **arguments** (the loop
-/// overwrites them there before policy evaluation), so this carries the same
-/// values for the hook lifecycle rather than a second authority on scope.
 #[derive(Debug, Clone, Default)]
 pub struct CallScope {
     pub user_email: Option<String>,
     pub workspace_id: Option<String>,
 }
 
-/// One native dispatch: what to run, with what, under which policy, for whom.
 #[derive(Debug, Clone, Copy)]
 pub struct NativeCall<'a> {
     pub tool: &'a str,
     pub args: &'a Map<String, Value>,
-    /// The **registry** policy (`PolicyTable::get`), not the argument-rewritten
-    /// one: `check_role` reads `policy_for(tool, {})`, so a blocked-prefix write
-    /// must not become an admin-only tool on its way to the role check.
     pub policy: &'a ToolPolicy,
     pub scope: &'a CallScope,
 }
 
-/// A boxed dispatch future. The crate carries no async-trait dependency, and
-/// one `Pin<Box<…>>` per tool call is noise next to the syscalls it wraps.
 pub type ToolFuture<'a> = Pin<Box<dyn Future<Output = ToolOutcome> + Send + 'a>>;
 
-/// The port the loop dispatches through.
-///
-/// A trait rather than a struct for exactly one reason: the trajectory suite
-/// wraps the real implementation to record what was dispatched, and a fake that
-/// did not really write would let the loop's own disk reads pass over an empty
-/// workspace.
 pub trait ToolHost: std::fmt::Debug + Send + Sync {
-    /// Whether this host executes `tool` itself.
     fn handles(&self, tool: &str) -> bool;
-    /// Run one tool. Every failure is an outcome, never a panic.
     fn execute<'a>(&'a self, call: NativeCall<'a>) -> ToolFuture<'a>;
 }
 
-/// The `pre_tool` / `post_tool` lifecycle, for a host that owns `hooks.json`.
-///
-/// `pre_tool` returning `Err(reason)` is Python's `PermissionError`, which the
-/// seam answers as `{"error": str(exc)}` — so the reason lands on the step.
 pub trait HookSink: std::fmt::Debug + Send + Sync {
-    /// The payload Python sends is `{tool, args_keys, source}`; the keys are
-    /// passed rather than the values, as `dispatch_tool` does.
     fn pre_tool(&self, tool: &str, arg_keys: &[String], scope: &CallScope) -> Result<(), String>;
-    /// Fired for both outcomes — Python fires `post_tool` on the error path too,
-    /// before re-raising.
     fn post_tool(&self, tool: &str, status: &str, detail: &str, scope: &CallScope);
 }
 
-/// What the native tools need that the workspace does not carry.
 #[derive(Debug, Clone)]
 pub struct ToolConfig {
-    /// `BRAIN_DIR` — the knowledge garden's root.
     pub brain_dir: PathBuf,
-    /// The caller's role, for [`authorize::check_role`]. Python's own default
-    /// (`_default_get_user_role`) is `user`, and so is this one: an unwired
-    /// host is exactly as restrictive as an unconfigured `ToolDispatchService`.
     pub role: String,
-    /// `LOCAL_WRITE_BLOCKED_PREFIXES`, as data — the same list the policy table
-    /// carries, so there is one copy of the denylist in a run.
     pub blocked_write_prefixes: Vec<String>,
 }
 
@@ -192,12 +88,10 @@ impl Default for ToolConfig {
 }
 
 impl ToolConfig {
-    /// The environment's brain directory, with Python's defaults.
     pub fn from_env() -> Self {
         Self::default()
     }
 
-    /// The caller's role, resolved by the gateway from the session.
     pub fn with_role(mut self, role: Option<String>) -> Self {
         if let Some(role) = role {
             self.role = role;
@@ -205,14 +99,12 @@ impl ToolConfig {
         self
     }
 
-    /// The denylist from the run's policy table.
     pub fn with_blocked_write_prefixes(mut self, prefixes: Vec<String>) -> Self {
         self.blocked_write_prefixes = prefixes;
         self
     }
 }
 
-/// The production [`ToolHost`].
 #[derive(Debug, Clone)]
 pub struct NativeTools {
     workspace: Workspace,
@@ -222,8 +114,6 @@ pub struct NativeTools {
 }
 
 impl NativeTools {
-    /// A host over one workspace, one config and one worker (for the four
-    /// render calls; nothing else here talks to the worker).
     pub fn new(workspace: Workspace, config: ToolConfig, worker: WorkerClient) -> Self {
         Self {
             workspace,
@@ -233,23 +123,19 @@ impl NativeTools {
         }
     }
 
-    /// Wire the `pre_tool` / `post_tool` lifecycle.
     pub fn with_hooks(mut self, hooks: Arc<dyn HookSink>) -> Self {
         self.hooks = Some(hooks);
         self
     }
 
-    /// The workspace these tools write into.
     pub fn workspace(&self) -> &Workspace {
         &self.workspace
     }
 
-    /// The config in force.
     pub fn config(&self) -> &ToolConfig {
         &self.config
     }
 
-    /// Role check → `pre_tool` → the tool → `post_tool`, in Python's order.
     async fn run(&self, call: NativeCall<'_>) -> Result<Value, ToolError> {
         authorize::check_role(call.tool, call.policy, &self.config.role)?;
         if let Some(hooks) = &self.hooks {
@@ -274,7 +160,6 @@ impl NativeTools {
         outcome
     }
 
-    /// The table itself.
     async fn dispatch(&self, call: NativeCall<'_>) -> Result<Value, ToolError> {
         match call.tool {
             "write_file" => self.blocking(call.args, files::write_file).await,
@@ -310,23 +195,16 @@ impl NativeTools {
             "computer_ui_inspect" => desktop::computer_ui_inspect(call.args).await,
             "web_fetch" => web::web_fetch(call.args).await,
             "web_search" => web::web_search(call.args).await,
-            // Unreachable through the loop since §4b — `handles` says no, so
-            // the six pointer tools go to the worker. Kept for a direct caller
-            // (and for the harness), where answering Python's own message is
-            // still the right answer.
             pointer if crate::kernel::policy::in_set(&desktop::POINTER_TOOLS, pointer) => {
                 desktop::pointer_tool(pointer, call.args)
             }
             creator if render::is_creator(creator) => {
                 render::create_document(&self.worker, &self.workspace, creator, call.args).await
             }
-            // Unreachable through the loop, which asks `handles` first. A direct
-            // caller gets `ToolRegistry.execute`'s own answer.
             other => Err(ToolError::tool(format!("Unknown tool: {other}"))),
         }
     }
 
-    /// Run a workspace tool off the reactor — Python's `asyncio.to_thread`.
     async fn blocking<F>(&self, args: &Map<String, Value>, tool: F) -> Result<Value, ToolError>
     where
         F: FnOnce(&Workspace, &Map<String, Value>) -> Result<Value, ToolError> + Send + 'static,
@@ -336,8 +214,6 @@ impl NativeTools {
         blocking(move || tool(&workspace, &args)).await
     }
 
-    /// The same, for the two tools rooted in the knowledge garden, pinning
-    /// server scope onto `args` so callers cannot spoof another user/workspace.
     async fn in_vault_scoped<F>(
         &self,
         args: &Map<String, Value>,
@@ -365,12 +241,6 @@ impl NativeTools {
     }
 }
 
-/// `pre_tool`, off the reactor.
-///
-/// A user hook is a **subprocess** with a twenty-second ceiling, and the trait
-/// is synchronous because Python's is. Running it on the event loop would stall
-/// every other request behind somebody's shell script (the v10.9.0 lesson), so
-/// the sink is called from a blocking thread like every other syscall here.
 async fn pre_tool(
     hooks: &Arc<dyn HookSink>,
     tool: &str,
@@ -380,14 +250,10 @@ async fn pre_tool(
     let (hooks, tool, scope) = (Arc::clone(hooks), tool.to_string(), scope.clone());
     match tokio::task::spawn_blocking(move || hooks.pre_tool(&tool, &keys, &scope)).await {
         Ok(verdict) => verdict,
-        // "A misbehaving hook never breaks the dispatch" (`_run_one`): a sink
-        // that panicked did not block, and the tool runs.
         Err(_) => Ok(()),
     }
 }
 
-/// `post_tool`, off the reactor, awaited so the run is recorded before the
-/// result is returned — Python fires it before it hands the value back.
 async fn post_tool(
     hooks: &Arc<dyn HookSink>,
     tool: &str,
@@ -407,8 +273,6 @@ async fn post_tool(
     .await;
 }
 
-/// `asyncio.to_thread`: file tools open files, and this server has one event
-/// loop for every user (the v10.9.0 lesson, in Rust).
 async fn blocking<F>(tool: F) -> Result<Value, ToolError>
 where
     F: FnOnce() -> Result<Value, ToolError> + Send + 'static,
@@ -428,8 +292,6 @@ impl ToolHost for NativeTools {
         Box::pin(async move {
             match self.run(call).await {
                 Ok(result) => ToolOutcome::Result(result),
-                // The seam answers `{"error": str(exc)}` with a 200 for a tool
-                // that refused, and the loop records the message on the step.
                 Err(error) => ToolOutcome::Error(error.message),
             }
         })
@@ -507,7 +369,6 @@ mod tests {
         }
     }
 
-    /// §4b: actuation is a worker capability, so the loop must not claim it.
     #[test]
     fn the_six_pointer_tools_go_to_the_worker() {
         assert_eq!(desktop::POINTER_TOOLS.len(), 6);
@@ -522,8 +383,6 @@ mod tests {
                  only take the capability away from an install that has it"
             );
         }
-        // The two openers next to them stay native: `open`/`xdg-open`/`start`
-        // is a subprocess, not an optional Python dependency.
         assert!(is_native("computer_open_app"));
         assert!(is_native("computer_open_url"));
         assert_eq!(
@@ -604,11 +463,6 @@ mod tests {
             arg_keys: &[String],
             _scope: &CallScope,
         ) -> Result<(), String> {
-            // Sorted for the assertion's sake, not the hook's: `Map`'s iteration
-            // order is insertion order when `lattice-retrieval` pulls
-            // `serde_json/preserve_order` into a workspace build and sorted when
-            // this crate is built alone. Python sends the argument *names*, and
-            // that is what a hook reads.
             let mut arg_keys = arg_keys.to_vec();
             arg_keys.sort();
             self.events

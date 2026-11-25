@@ -1,5 +1,3 @@
-//! `lattice_brain/graph/proactive.py` — duplicates, contradictions, quality.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_auth::OrderedMap;
@@ -11,15 +9,10 @@ use super::pyutil;
 use super::quality::{content_signature, dedupe_key, jaccard, EdgeQuality, MemoryQuality};
 use super::sampling::{self, Sample};
 
-/// `_DEFAULT_NEAR_THRESHOLD`.
 pub const NEAR_THRESHOLD: f64 = 0.75;
-/// `_DEFAULT_MAX_PAIRS`.
 pub const MAX_PAIRS: usize = 200;
-/// `_DEFAULT_CONTRADICTION_NODES`.
 pub const CONTRADICTION_NODES: usize = 300;
-/// `_DEFAULT_STALE_DAYS` for the quality report (not the health 45-day window).
 pub const QUALITY_STALE_DAYS: i64 = 90;
-/// `_DEFAULT_HALF_LIFE_DAYS`.
 pub const HALF_LIFE_DAYS: f64 = 30.0;
 
 const EPISODIC_TYPES: [&str; 7] = [
@@ -32,7 +25,6 @@ const EPISODIC_TYPES: [&str; 7] = [
     "chunk",
 ];
 
-/// `ProactiveBrain.find_duplicates` over an already-taken sample.
 pub fn find_duplicates(nodes: &[Value], near_threshold: f64, max_pairs: usize) -> OrderedMap {
     let mut by_key: BTreeMap<String, Vec<&Value>> = BTreeMap::new();
     let mut signatures: Vec<(&Value, BTreeSet<String>)> = Vec::new();
@@ -99,8 +91,6 @@ pub fn find_duplicates(nodes: &[Value], near_threshold: f64, max_pairs: usize) -
         }
     }
     let mut scored: Vec<((usize, usize), i64)> = cooccur.into_iter().collect();
-    // HashMap iteration is not PYTHONHASHSEED=0. Tie-break on the index
-    // pair so equal-overlap candidates keep a stable order.
     scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
 
     let mut near_pairs: Vec<Value> = Vec::new();
@@ -176,7 +166,6 @@ pub fn find_duplicates(nodes: &[Value], near_threshold: f64, max_pairs: usize) -
     out
 }
 
-/// `ProactiveBrain.detect_contradictions` over an already-taken sample.
 pub fn detect_contradictions(nodes: &[Value], edges: &[Value]) -> OrderedMap {
     let cap = CONTRADICTION_NODES.max(1);
     let mut rows: Vec<Value> = Vec::new();
@@ -277,11 +266,6 @@ pub fn detect_contradictions(nodes: &[Value], edges: &[Value]) -> OrderedMap {
     out
 }
 
-/// `ProactiveBrain.quality_report` over an already-taken sample.
-///
-/// `now_utc` is UTC epoch seconds, injected rather than read: the staleness
-/// cutoff below is a threshold, and a fixture whose nodes all carry one stamp
-/// crosses it all at once. See `BrainState::with_utc_clock`.
 pub fn quality_report(sample: &Sample, generated_at: &str, now_utc: f64) -> OrderedMap {
     let duplicates = find_duplicates(&sample.nodes, NEAR_THRESHOLD, MAX_PAIRS);
     let contradictions = detect_contradictions(&sample.nodes, &sample.edges);
@@ -424,11 +408,6 @@ pub fn quality_report(sample: &Sample, generated_at: &str, now_utc: f64) -> Orde
     out
 }
 
-/// Access counters for `importance_report`.
-///
-/// Python reads `nodes_v2.importance_score` (`KnowledgeGraphStore.access_stats`).
-/// A row that was never touched still reports `0.0`, and a non-empty map is
-/// what flips `access_source` from `"metadata"` to `"store"`.
 pub async fn access_stats(state: &BrainState, nodes: &[Value]) -> HashMap<String, f64> {
     let ids: Vec<String> = nodes
         .iter()
@@ -473,7 +452,6 @@ fn access_count(node: &Value, stored: Option<f64>) -> Option<f64> {
     stored
 }
 
-/// `ProactiveBrain.importance_report` over an already-taken sample.
 pub fn importance_report(
     sample: &Sample,
     stats: &HashMap<String, f64>,
@@ -489,9 +467,6 @@ pub fn importance_report(
             }
         }
     }
-    // A smooth decay, not a threshold — the common factor cancels out of the
-    // ordering — but `age_days` is printed, so it is injected too rather than
-    // left as the one clock read this family still made.
     let now = now_utc;
     let half_life = HALF_LIFE_DAYS.max(0.5);
     let mut scored: Vec<Value> = Vec::new();
@@ -561,7 +536,6 @@ fn is_episodic(node: &Value) -> bool {
     EPISODIC_TYPES.iter().any(|name| *name == kind)
 }
 
-/// `ProactiveBrain.consolidate_duplicates(..., dry_run=True)`.
 pub fn consolidate_duplicates(sample: &Sample, dry_run: bool) -> OrderedMap {
     let duplicates = find_duplicates(&sample.nodes, NEAR_THRESHOLD, MAX_PAIRS);
     let groups: Vec<Value> = duplicates

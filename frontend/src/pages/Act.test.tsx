@@ -6,13 +6,6 @@ import { latticeApi } from "@/api/client";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { ActPage } from "./Act";
 
-/**
- * The automation surface. Its contract is consent-first: a suggestion is a
- * draft, an install is disabled by default, and anything that would change
- * existing content becomes a reviewable proposal. The screen must also read in
- * the user's language — agent roles and recipe names arrive as stable ids and
- * are localised here, which is exactly where an id can leak through.
- */
 
 const RECIPES = {
   recipes: [
@@ -52,9 +45,6 @@ describe("ActPage", () => {
   });
 
   it("opens on the review inbox, because that is what waits on the person", async () => {
-    // Reordering the tab array is not the same as changing where the screen
-    // opens. Both levels have to agree, at whichever tab the shell hands over.
-    // "실행" names both a top tab and a sub tab, so each is scoped to its strip.
     for (const initialTab of [undefined, "review"]) {
       const view = render({}, {}, { initialTab });
       await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
@@ -66,7 +56,6 @@ describe("ActPage", () => {
   });
 
   it("still honours a deep link to a demoted tab", async () => {
-    // Promoting the review inbox must not strip the older entry points.
     render({}, {}, { initialTab: "agents" });
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     expect(screen.getByRole("tab", { name: "목표" }).getAttribute("aria-selected")).toBe("true");
@@ -95,14 +84,6 @@ describe("ActPage", () => {
   });
 
   it("captions every tab with its own panel, including the last one", async () => {
-    // The hero follows the open tab. It was built as a chain of ternaries whose
-    // final `else` captured whatever was left over, so the permissions panel
-    // sat under the safeguards heading — the one tab nobody checks, because it
-    // is the one the chain never names. Assert each pairing, not just the
-    // promoted tab, so a sixth tab cannot inherit a caption by accident.
-    // Advanced mode is the only one that shows all five; it also renames the
-    // last two ("보호 장치"/"권한" become "훅"/"도구"), so the tab is addressed by
-    // the label this mode actually renders.
     const captions: Array<[string, string]> = [
       ["실행", "지금 하는 일과 검토할 일"],
       ["목표", "새로 맡길 일 적기"],
@@ -135,8 +116,6 @@ describe("ActPage", () => {
   it("renders in English when the language is en", async () => {
     render({}, { language: "en" });
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
-    // A Korean-only string leaking into the English UI is the failure mode the
-    // i18n namespace checker cannot see.
     expect(document.body.textContent).not.toMatch(/자동화 제안|오늘의 기억 정리/);
   });
 
@@ -159,7 +138,6 @@ describe("ActPage", () => {
   });
 
   it("does not present any automation as already running", async () => {
-    // Installs are consent-first drafts; the screen must not imply otherwise.
     render();
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     const checkboxes = screen.queryAllByRole("checkbox") as HTMLInputElement[];
@@ -167,10 +145,6 @@ describe("ActPage", () => {
   });
 
   it("stacks the runs tab by urgency: approvals, then automations, then history", async () => {
-    // This tab's rebuild *is* the order. An approval waits on a person, the
-    // installed list says what is armed, and the two run lists are only what
-    // already happened. Moving a block in the JSX reverses that silently —
-    // the screenshot would change but nothing would say the hierarchy broke.
     render({
       permissionsPending: ok({ pending: { "tok-1": { tool: "write_file", path: "README.md" } } }),
       automationOverview: ok({
@@ -186,7 +160,6 @@ describe("ActPage", () => {
     await userEvent.click(within(sub!).getByRole("tab", { name: /실행/ }));
 
     await waitFor(() => expect(screen.getByText("설치된 자동화")).toBeTruthy());
-    // getAllByRole returns document order, which is the reading order here.
     const order = screen.getAllByRole("heading").map((node) => node.textContent || "");
     const approvals = order.findIndex((text) => text.includes("승인함"));
     const installed = order.findIndex((text) => text.includes("설치된 자동화"));
@@ -198,8 +171,6 @@ describe("ActPage", () => {
   });
 
   it("keeps the installed automations reachable from the runs tab, not only from workflows", async () => {
-    // It is rendered in both tabs. A future cleanup that dedupes it by deleting
-    // the runs-tab copy would take the middle tier of the hierarchy with it.
     render({
       automationOverview: ok({
         suggestions: [],
@@ -214,12 +185,6 @@ describe("ActPage", () => {
     expect(screen.getByText("매일 기억 요약")).toBeTruthy();
   });
 
-  // The approval inbox is the one screen where a person has to decide whether
-  // to let the agent touch their files. It showed `act.approval.action.파일_읽기`
-  // instead of an action, because the i18n key was built from the localised
-  // label rather than the `action` enum and `t()` returns the key on a miss.
-  // Both shapes are asserted: an unmapped English action, and a mapped action
-  // arriving with a Korean label — the second is the one that regressed.
   describe("approval inbox action labels", () => {
     const pendingWith = (entry: Record<string, unknown>) =>
       ok({ pending: { "tok-1": entry }, count: 1 });
@@ -233,8 +198,6 @@ describe("ActPage", () => {
     it("keys off `action`, not the already-localised `action_label`", async () => {
       render({ permissionsPending: pendingWith({ action: "read", action_label: "파일 읽기", path: "notes/a.md" }) }, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getByText("파일 읽기")).toBeTruthy());
-      // Keying off action_label produced the token `파일_읽기`, which matches
-      // nothing — this is the assertion that fails if that path comes back.
       expect(document.body.textContent).not.toContain("act.approval.action.");
     });
 
@@ -245,9 +208,6 @@ describe("ActPage", () => {
     });
 
     it("names the request with a raw action, no path, and no requester", async () => {
-      // No `action`/`action_label` at all: the label falls all the way back to
-      // the default copy, and the absence of a path/reason/requester must not
-      // render as literal "undefined" anywhere in the row.
       render({ permissionsPending: pendingWith({}) }, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getByText("권한 요청")).toBeTruthy());
       expect(document.body.textContent).not.toMatch(/undefined/);
@@ -265,7 +225,6 @@ describe("ActPage", () => {
       await waitFor(() => expect(screen.getByText("custom_tool")).toBeTruthy());
       expect(screen.getByText("정리를 위해")).toBeTruthy();
       expect(screen.getByText(/요청자.*a@example\.com/)).toBeTruthy();
-      // The path is reduced to its filename inside a `<code>` element.
       expect(screen.getByText("plan.md")).toBeTruthy();
     });
 
@@ -313,7 +272,6 @@ describe("ActPage", () => {
       render({ agentRuntime: ok({ runtime: { ready: false } }) }, { mode: "basic" }, { initialTab: "agents" });
       await waitFor(() => expect(screen.getByText("중요한 변경은 실행하기 전에 항상 확인받습니다.")).toBeTruthy());
       expect(screen.getByText("작업을 시작하려면 먼저 AI 모델을 준비해 주세요.")).toBeTruthy();
-      // The readiness / agent-team / capabilities panels are advanced-only.
       expect(screen.queryByText("준비 상태")).toBeNull();
       expect(screen.queryByText("Agent 팀")).toBeNull();
     });
@@ -400,7 +358,6 @@ describe("ActPage", () => {
       }, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getByText("회의록 요약")).toBeTruthy());
       expect(screen.getByText("주간 점검")).toBeTruthy();
-      // Only the workflow run offers resume actions; the agent run does not.
       const resumeApproved = screen.getAllByRole("button", { name: "승인 후 재개" });
       expect(resumeApproved).toHaveLength(1);
 
@@ -409,7 +366,6 @@ describe("ActPage", () => {
       await userEvent.click(screen.getByRole("button", { name: "거부 후 재개" }));
       await waitFor(() => expect(latticeApi.resumeWorkflowRun).toHaveBeenLastCalledWith("w-1", false));
 
-      // The workflow run's stop button calls stopWorkflowRun, not stopAgentRun.
       const stopButtons = screen.getAllByRole("button", { name: "중지" });
       await userEvent.click(stopButtons[1]!);
       await waitFor(() => expect(latticeApi.stopWorkflowRun).toHaveBeenCalledWith("w-1"));
@@ -422,9 +378,6 @@ describe("ActPage", () => {
       }, {}, { initialTab: "runs" });
       const heading = await screen.findByText("최근 실행 기록");
       const panel = heading.closest(".data-panel") as HTMLElement;
-      // Once the failed activity feed and the (ok) runtime query both settle,
-      // the combined-runs panel's source badge reflects runtime.data, not the
-      // failed activity envelope — proof the ternary actually swapped sources.
       await waitFor(() => expect(within(panel).getByText("연결됨")).toBeTruthy());
     });
 
@@ -498,14 +451,6 @@ describe("ActPage", () => {
     });
 
     it("enables an already-installed draft, exercising the envelope's nested `.data.recipe` shape", async () => {
-      // This is the path the previous coverage pass suspected of an
-      // envelope mismatch: the mutation resolves to the request envelope
-      // (`{ok,status,data,source}`), and the server body with `recipe`/
-      // `enabled` lives one level down, on `.data`. Reading `.recipe`
-      // directly off the envelope (skipping `.data`) would leave `lastRid`
-      // permanently empty and this test would fail to ever see the
-      // "activated" label — so this test is the regression guard for that
-      // bug, not just a coverage filler.
       let resolveInstall!: (value: unknown) => void;
       render({
         automationRecipes: ok({ recipes: [{ id: "daily-memory-digest", cadence: "daily", creates: ["memory digest"] }] }),
@@ -543,7 +488,7 @@ describe("ActPage", () => {
             { id: "weekly-project-review", cadence: "weekly", creates: ["decision summary", "risk list"], consent: { requires_user_enable: true } },
             { id: "custom-thing", cadence: "custom_cadence_xyz", creates: ["mystery item"], consent: {} },
             { id: "no-cadence-recipe" },
-            {}, // no id at all: exercises `String(recipe.id || "")`'s empty fallback.
+            {},
           ],
         }),
         workflowDefinitions: ok({
@@ -551,8 +496,8 @@ describe("ActPage", () => {
             { id: "wf-enabled", name: "Enabled WF", metadata: { created_from: "brain_automation_recipe", recipe_id: "weekly-project-review", automation_state: "enabled" } },
             { id: "wf-plain", name: "Plain Flow" },
             { workflow_id: "wf-legacy", name: "Legacy Flow" },
-            { id: "wf-noname" }, // no name: node label and list title fall back to the id.
-            {}, // neither id, workflow_id nor name: falls back to index for both.
+            { id: "wf-noname" },
+            {},
           ],
         }),
         runWorkflow: () => Promise.resolve(ok({})),
@@ -561,25 +506,18 @@ describe("ActPage", () => {
         importWorkflow: () => Promise.resolve(ok({ id: "wf-imported" })),
       }, {}, { initialTab: "workflows" });
 
-      // Matched cadence, consent badge, matched + unmatched creates, active recipe.
       await screen.findByRole("button", { name: "✓ 기억 자동화 작동 중" });
       expect(screen.getByText("초안 확인 후 활성화")).toBeTruthy();
       expect(screen.getByText("결정 요약")).toBeTruthy();
       expect(screen.getByText("위험 목록")).toBeTruthy();
       expect(screen.getByText("새 기억이 들어오면 결과를 검토함에 초안으로 만듭니다.")).toBeTruthy();
 
-      // Unmatched cadence falls back to the raw string; unmatched creates item
-      // falls back to its raw label; not-yet-installed recipe offers "create".
       expect(screen.getByText("custom_cadence_xyz")).toBeTruthy();
       expect(screen.getByText("mystery item")).toBeTruthy();
 
-      // No cadence at all falls back to the "draft" status word.
       expect(screen.getAllByText("초안").length).toBeGreaterThan(0);
       expect(screen.getAllByRole("button", { name: "검토 가능한 자동화 초안 만들기" }).length).toBe(2);
 
-      // Definitions list: three workflows -> at least one graph edge, plus
-      // id/workflow_id fallbacks, plus the run/export actions. Each name
-      // appears twice: once as a graph node label, once in the definitions list.
       expect(screen.getAllByText("Plain Flow").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Legacy Flow").length).toBeGreaterThan(0);
       await userEvent.click(screen.getAllByRole("button", { name: "실행" })[0]!);
@@ -587,21 +525,15 @@ describe("ActPage", () => {
       await userEvent.click(screen.getAllByRole("button", { name: "내보내기" })[0]!);
       await waitFor(() => expect(latticeApi.exportWorkflow).toHaveBeenCalled());
 
-      // Manual create + import.
       await userEvent.type(screen.getByPlaceholderText("워크플로 이름"), "새 워크플로");
       await userEvent.click(screen.getByRole("button", { name: "만들기" }));
       await waitFor(() => expect(screen.getByText("워크플로를 만들었습니다")).toBeTruthy());
       expect(latticeApi.createWorkflow).toHaveBeenLastCalledWith(expect.objectContaining({ name: expect.stringContaining("새 워크플로") }));
 
-      // Clearing the name falls back to the default workflow name rather than
-      // creating a blank one.
       await userEvent.clear(screen.getByPlaceholderText("워크플로 이름"));
       await userEvent.click(screen.getByRole("button", { name: "만들기" }));
       await waitFor(() => expect(latticeApi.createWorkflow).toHaveBeenLastCalledWith(expect.objectContaining({ name: "수동 워크플로" })));
 
-      // user-event's keyboard parser treats `{` as the start of a special-key
-      // token (e.g. `{enter}`); only the opening brace needs escaping (`{{`) to
-      // type it literally, a bare `}` is not special.
       await userEvent.type(screen.getByPlaceholderText("워크플로 내보내기 내용을 붙여넣으세요"), '{{"name":"Imported"}');
       await userEvent.click(screen.getByRole("button", { name: "가져오기" }));
       await waitFor(() => expect(screen.getByText("워크플로를 가져왔습니다")).toBeTruthy());
@@ -629,8 +561,6 @@ describe("ActPage", () => {
     it("falls back to a numbered name and an unknown condition for a paused, unnamed trigger", async () => {
       render({
         workflowTriggers: ok({
-          // The second entry has neither a kind nor any id at all: it exercises
-          // the empty-kind fallback and the row key's final `|| index` fallback.
           armed: [{ id: "t-2", kind: "mystery_kind" }, {}],
           running: false,
         }),

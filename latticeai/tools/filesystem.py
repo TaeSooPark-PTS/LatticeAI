@@ -1,9 +1,3 @@
-"""Filesystem tools confined to the agent workspace.
-
-read/write/edit/grep/search, todo list, HTML inspection and web scaffolding.
-Path resolution reads ``latticeai.tools.AGENT_ROOT`` so tests can redirect the sandbox.
-"""
-
 from __future__ import annotations
 
 import json
@@ -87,14 +81,6 @@ def workspace_tree(path: str = ".", max_depth: int = 3) -> Dict[str, Any]:
 def read_file(
     path: str, offset: int = 0, limit: int = 0, line_numbers: bool = True
 ) -> Dict[str, Any]:
-    """Read a file from the agent workspace.
-
-    Returns content as plain text. When line_numbers is True (default), also
-    returns a numbered view (`numbered`) plus `total_lines` so the agent can
-    cite file:line locations precisely.
-
-    offset is 0-indexed (the first line is offset=0). limit=0 reads to the end.
-    """
     target = _resolve_path(path)
     if not target.exists():
         raise ToolError("File does not exist.")
@@ -185,13 +171,6 @@ def grep(
     case_insensitive: bool = False,
     context_lines: int = 0,
 ) -> Dict[str, Any]:
-    """Regex search across the agent workspace.
-
-    Unlike `search_files` (single line, 9 extensions, substring only), this
-    walks all text files, supports regex, returns line numbers, and can
-    optionally include surrounding context lines. Skips obvious binary
-    files/directories.
-    """
     if not pattern:
         raise ToolError("Pattern is required.")
     try:
@@ -279,7 +258,6 @@ def _todo_file(root: Optional[Path] = None, *, create_dir: bool = True) -> Path:
 
 
 def todo_read(root: Optional[Path] = None) -> Dict[str, Any]:
-    """Read the agent's persistent TODO list (per-workspace) without side-effecting mkdir."""
     target = _todo_file(root=root, create_dir=False)
     if not target.exists():
         return {"todos": [], "path": _TODO_REL_PATH}
@@ -345,9 +323,6 @@ class _HTMLInspector(HTMLParser):
             self.links.append(attr["href"])
         elif tag == "script" and attr.get("src"):
             self.scripts.append(attr["src"])
-        # ``HTMLParser`` hands every attribute value over as a string, so rel is
-        # split on whitespace (rel="stylesheet preload" is two tokens) rather
-        # than joined, and matched case-insensitively.
         elif (
             tag == "link" and "stylesheet" in str(attr.get("rel") or "").lower().split()
         ):
@@ -409,6 +384,4 @@ def preview_url(path: str = "index.html") -> Dict[str, Any]:
     }
 
 
-# Generous cap for a generated-project archive — the workspace itself caps
-# individual files at MAX_FILE_BYTES, this only bounds pathological trees.
 MAX_ZIP_TOTAL_BYTES = 50_000_000

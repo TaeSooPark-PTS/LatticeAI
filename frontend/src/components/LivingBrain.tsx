@@ -7,14 +7,14 @@ export type BrainState = "idle" | "listening" | "thinking" | "recalling" | "synt
 
 export interface LivingBrainProps {
   state?: BrainState;
-  intensity?: number; // 0-1 how "alive" it feels right now
-  onPulse?: () => void; // allow parent to trigger a memory pulse
+  intensity?: number;
+  onPulse?: () => void;
   size?: "normal" | "large" | "trace";
   label?: string;
   className?: string;
   showLabel?: boolean;
-  depth?: number; // 0-5 progressive exploration depth; higher = more "open" / revealing
-  onInteract?: () => void; // called on click to advance exploration (travel deeper)
+  depth?: number;
+  onInteract?: () => void;
 }
 
 const THOUGHT_PARTICLES = Array.from({ length: 12 }, (_, index) => index);
@@ -27,11 +27,6 @@ const VITAL_SPARKS = [
   { x: 31, y: 75, delay: -2.8, duration: 6.2 },
 ] as const;
 
-/**
- * The Living Brain — the primary visual and emotional object in the product.
- * It is not decoration. It is the other participant.
- * It breathes. It reacts. It remembers.
- */
 export function LivingBrain({
   state = "idle",
   intensity = 0.6,
@@ -68,7 +63,6 @@ export function LivingBrain({
     onPulse?.();
   }, [onPulse]);
 
-  // Every visible Brain responds to real recall and ingestion events.
   React.useEffect(() => {
     const handler = () => firePulse();
     window.addEventListener("brain:recall", handler as EventListener);
@@ -78,7 +72,6 @@ export function LivingBrain({
     };
   }, [firePulse]);
 
-  // Auto gentle pulse when recalling or high intensity
   React.useEffect(() => {
     if (state === "recalling" || intensity > 0.82) {
       const t = window.setTimeout(() => firePulse(), 180);
@@ -96,13 +89,10 @@ export function LivingBrain({
   const isBusy = state === "thinking" || state === "recalling" || state === "synthesizing" || state === "acting";
   const handleClick = () => {
     firePulse();
-    // Keep the Brain responsive to touch while it is working, but do not
-    // navigate away and orphan an active request or ingestion.
     if (isBusy) return;
     onInteract?.();
   };
 
-  // 3D tilt — the orb leans toward the pointer so it reads as a volume, not a sticker.
   const reducedMotionRef = React.useRef(false);
   React.useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -114,8 +104,6 @@ export function LivingBrain({
 
   const handleTilt = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     if (reducedMotionRef.current || event.pointerType === "touch") return;
-    // The handler runs synchronously on the very element the ref points at, so
-    // read `currentTarget` instead of the ref and its can-never-be-null guard.
     const el = event.currentTarget;
     const rect = el.getBoundingClientRect();
     const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -136,7 +124,6 @@ export function LivingBrain({
       window.cancelAnimationFrame(tiltFrameRef.current);
       tiltFrameRef.current = null;
     }
-    // Same reasoning as handleTilt: `currentTarget` is the organism itself.
     const el = event.currentTarget;
     el.style.setProperty("--tilt-y", "0deg");
     el.style.setProperty("--tilt-x", "0deg");
@@ -195,12 +182,10 @@ export function LivingBrain({
           ))}
         </div>
 
-        {/* Living anatomical presence. The glow opens with depth; the folds make it unmistakably a Brain. */}
         <div className="brain-core" style={{ "--core-scale": `${1 + effectiveDepth * 0.045}` } as React.CSSProperties}>
           <div className="brain-body-motion">
             <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
             <defs>
-              {/* 상단 좌측 광원 기준의 볼륨 셰이딩 — 로브가 부풀어 보이게 한다 */}
               <radialGradient id={gradients.left} cx="34%" cy="26%" r="85%">
                 <stop offset="0%" stopColor="hsl(var(--brain-halo) / 0.8)" />
                 <stop offset="42%" stopColor="hsl(var(--brain-core) / 0.46)" />
@@ -246,7 +231,6 @@ export function LivingBrain({
             <path className="brain-fold fold-e" d="M186 82c-22-8-45-5-58 8" />
             <path className="brain-fold fold-f" d="M177 119c-18 5-35 2-49-11" />
             <path className="brain-fold fold-mid" d="M110 38c-5 30-5 70 0 112" />
-            {/* 광택 — 위쪽에서 떨어지는 반사광 한 줄이 표면의 곡률을 말해준다 */}
             <path
               className="brain-sheen"
               style={{ fill: `url(#${gradients.sheen})` }}
@@ -256,25 +240,16 @@ export function LivingBrain({
           </div>
         </div>
 
-        {/* Breathing field expands as we go deeper. */}
         <div
           className="brain-aura"
           style={{
             animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
             "--aura-scale": `${1 + effectiveDepth * 0.12}`,
             opacity: 0.65 + effectiveDepth * 0.05,
-            // The blur is read from `--aura-blur` rather than written literally,
-            // because this is an inline style and no stylesheet can outrank one.
-            // 60px was drawn for the 220–320px organism this component renders
-            // when it stands alone; a host that shrinks the organism has to be
-            // able to shrink the glow with it, or the halo ends up wider than
-            // the body it belongs to. The fallback keeps every existing host
-            // pixel-identical.
             boxShadow: effectiveDepth > 2 ? "0 0 var(--aura-blur, 60px) hsl(var(--brain-core) / 0.25)" : "none"
           } as React.CSSProperties}
         />
 
-        {/* Thought activity — increases and starts to "resolve" into structure at higher depths */}
         <div className="thought-activity" aria-hidden>
           {THOUGHT_PARTICLES.slice(0, Math.min(12, 5 + effectiveDepth * 2)).map((i) => (
             <div
@@ -290,7 +265,6 @@ export function LivingBrain({
           ))}
         </div>
 
-        {/* Memory ripples — more and stronger as depth increases (echoes surfacing) */}
         {Array.from({ length: 1 + Math.floor(effectiveDepth / 1.5) }).map((_, i) => (
           <div
             key={i}
@@ -331,7 +305,6 @@ function humanStateKey(s: BrainState) {
   }
 }
 
-// Helper to broadcast recall pulses from anywhere (conversation, memory surface, etc)
 export function triggerBrainRecall() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("brain:recall"));

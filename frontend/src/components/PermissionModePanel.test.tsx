@@ -89,8 +89,6 @@ describe("PermissionModePanel", () => {
     for (const option of CATALOG) {
       expect(screen.getByTestId(`permission-mode-option-${option.id}`)).toBeTruthy();
     }
-    // The server ships "엄격"/"Strict" — the engineering name for the mode.
-    // This dial is on the first screen, so the mode is named by what it does.
     expect(screen.getByTestId("permission-mode-active").textContent).toBe("먼저 물어보기");
   });
 
@@ -103,15 +101,10 @@ describe("PermissionModePanel", () => {
     expect(screen.getByTestId("permission-mode-active").textContent).toBe("Ask me first");
     expect(screen.getByTestId("permission-mode-option-trusted").textContent)
       .toContain("Still asks before running programs");
-    // "Bypass" is the word this pass exists to remove from the first screen.
     expect(document.body.textContent).not.toMatch(/Bypass|YOLO/);
   });
 
   it("falls back to the server's own copy for a mode it does not know", async () => {
-    // The catalog is the server's to define. A mode added server-side must
-    // still render — translating by id must not become a hidden allowlist.
-    // The risk word is unknown too — the badge falls back to caution rather
-    // than crashing on a vocabulary the server grew after this client shipped.
     const extended = [...CATALOG, {
       id: "supervised",
       label: "Supervised", label_ko: "감독",
@@ -183,8 +176,6 @@ describe("PermissionModePanel", () => {
     await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
     await userEvent.click(screen.getByTestId("permission-mode-option-bypass"));
 
-    // The server refuses bypass without acknowledge_risk, so the UI must not
-    // even offer to send the request until the box is ticked.
     expect((screen.getByTestId("permission-mode-apply") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/평소의 확인 창이 뜨지 않습니다/)).toBeTruthy();
     expect(setMode).not.toHaveBeenCalled();
@@ -216,8 +207,6 @@ describe("PermissionModePanel", () => {
     renderPanel();
 
     await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
-    // bypass is already active — no warning box, and apply stays disabled
-    // because nothing would change.
     expect(screen.queryByTestId("permission-mode-ack")).toBeNull();
     expect((screen.getByTestId("permission-mode-apply") as HTMLButtonElement).disabled).toBe(true);
   });

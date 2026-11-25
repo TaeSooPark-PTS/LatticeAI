@@ -1,10 +1,3 @@
-//! Direct tool surface, minus the document-matrix worker routes (v11.6.0, WP-R8).
-//!
-//! Filesystem writes go through [`lattice_agent::tools::sandbox::Workspace`] so the
-//! three writers (write_file, edit_file, proposal-approve) share one path
-//! policy. Traversal denials are the exact Python `ToolError` / i18n bodies
-//! the fixtures pin.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -75,7 +68,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/tools/permissions"),
     ("GET", "/tools/registry"),
     ("GET", "/tools/registry/diagnostics"),
-    // Native product routes (W3b). Spec still lives in worker_keep.json.
     ("POST", "/tools/create_docx"),
     ("POST", "/tools/create_xlsx"),
     ("POST", "/tools/create_pptx"),
@@ -102,7 +94,6 @@ impl ToolsState {
         }
     }
 
-    /// Worker render seam (`POST /worker/render/{kind}`).
     pub fn with_worker(mut self, worker: lattice_core::worker::WorkerSeamClient) -> Self {
         self.worker = Some(worker);
         self
@@ -165,7 +156,6 @@ pub(crate) fn tool_err(message: &str) -> Response {
     detail(StatusCode::BAD_REQUEST, message)
 }
 
-/// Failure from a tool's core (the HTTP handler turns this into a response).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ToolExecError {
     Missing(&'static str),
@@ -187,7 +177,6 @@ pub(crate) fn policy_denied_message(tool: &str) -> String {
     )
 }
 
-/// Same rules [`enforce`] applies, as a string so MCP can surface them as JSON-RPC.
 pub(crate) fn check_governance(
     name: &str,
     identity: &Identity,

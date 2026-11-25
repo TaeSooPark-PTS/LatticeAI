@@ -1,13 +1,3 @@
-//! Canonical Entity Resolution, alias merging, and provenance-preserving consolidation.
-//!
-//! Follows Lattice Knowledge Graph invariants:
-//! - Non-destructive: duplicate entity mentions are linked via `SAME_AS` edges and
-//!   annotated in `metadata_json.entity_resolution` rather than deleted.
-//! - Provenance-preserving: every merged alias retains its originating source/document
-//!   node IDs so citations and rollback never lose lineage.
-//! - Reversible: [`rollback_entity_consolidation`] removes synthesized `SAME_AS`
-//!   links (`er_same_as:*`) and clears the projection overlay cleanly.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use rusqlite::{params, Connection, Transaction};
@@ -19,9 +9,6 @@ use crate::read::{scoped_workspace_visible, workspace_is_default, DEFAULT_WORKSP
 
 fn canonical_type_bucket(node_type: &str) -> String {
     match node_type.trim() {
-        // Generic `Entity` / `Concept` / `Topic` may coalesce with each other,
-        // while strongly typed classes (`Person`, `Organization`, `Project`,
-        // `System`, `Tool`) never auto-merge across incompatible types.
         "Entity" | "Concept" | "Topic" => "Concept".to_string(),
         other => other.to_string(),
     }
@@ -48,7 +35,6 @@ fn node_matches_workspace(row_ws: Option<&str>, meta: &Value, target_ws: &str) -
     scoped_workspace_visible(eff_ws, &allowed, workspace_is_default(Some(target_ws)))
 }
 
-/// Node types eligible for canonical entity resolution.
 pub const ENTITY_NODE_TYPES: &[&str] = &[
     "Concept",
     "Entity",
@@ -60,7 +46,6 @@ pub const ENTITY_NODE_TYPES: &[&str] = &[
     "Topic",
 ];
 
-/// Trailing Korean postpositions stripped on multi-syllable Hangul entity tokens.
 const KO_ENTITY_PARTICLES: &[&str] = &[
     "에서는",
     "으로는",
@@ -104,11 +89,6 @@ fn strip_korean_particle(token: &str) -> &str {
     token
 }
 
-/// Compute a deterministic canonical key for an entity surface form.
-///
-/// Normalizes case, separators (`-`, `_`, `.`, `/`, whitespace), parenthetical
-/// acronyms, and trailing Korean particles so `"Project-Alpha"`, `"project alpha"`,
-/// and `"프로젝트 알파는"` map consistently.
 pub fn canonical_entity_key(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -138,19 +118,16 @@ pub fn canonical_entity_key(raw: &str) -> String {
     parts.join("")
 }
 
-/// Bilingual / domain alias registry mapping surface variations to a shared canonical key.
 #[derive(Debug, Clone, Default)]
 pub struct EntityAliasBook {
     alias_to_group: HashMap<String, String>,
 }
 
 impl EntityAliasBook {
-    /// Empty alias book (relies purely on surface normalization, `metadata_json.aliases`, and `SAME_AS` edges).
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Register a canonical name and one or more surface aliases (e.g. Korean/English/acronym).
     pub fn register_aliases<I, S>(&mut self, canonical: &str, aliases: I)
     where
         I: IntoIterator<Item = S>,
@@ -170,14 +147,12 @@ impl EntityAliasBook {
         }
     }
 
-    /// Resolve a surface string through registered alias groups, falling back to [`canonical_entity_key`].
     pub fn resolve_key(&self, surface: &str) -> String {
         let key = canonical_entity_key(surface);
         self.alias_to_group.get(&key).cloned().unwrap_or(key)
     }
 }
 
-/// Consolidated canonical entity cluster with full source lineage.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResolvedEntityCluster {
     pub canonical_id: String,
@@ -190,7 +165,6 @@ pub struct ResolvedEntityCluster {
     pub confidence: f64,
 }
 
-/// Summary returned by [`apply_entity_consolidation`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EntityConsolidationSummary {
     pub total_entities_scanned: usize,
@@ -274,7 +248,6 @@ fn has_nodes_v2(conn: &Connection) -> bool {
     .unwrap_or(false)
 }
 
-/// Resolve canonical entity clusters across `conn` within `workspace_id` without mutating the store.
 pub fn resolve_entities_in_conn(
     conn: &Connection,
     workspace_id: Option<&str>,
@@ -386,11 +359,8 @@ pub fn resolve_entities_in_conn(
         .map(|(idx, c)| (c.id.clone(), idx))
         .collect();
     let mut dsu = DisjointSet::new(candidates.len());
-    // Type-scoped exact ownership map: prevents homonym collisions across
-    // incompatible entity types (e.g., Person "Apple" vs Organization "Apple").
     let mut key_owner: HashMap<(String, String), usize> = HashMap::new();
 
-    // Load explicit do-not-merge pairs (DIFFERENT_FROM) so unmerged homonyms never re-merge.
     let blocked_pairs: BTreeSet<(String, String)> =
         crate::entity_resolution_ext::load_do_not_merge_pairs(conn).unwrap_or_default();
 
@@ -417,7 +387,6 @@ pub fn resolve_entities_in_conn(
         }
     }
 
-    // Honor pre-existing SAME_AS edges between scoped entity nodes.
     let mut same_stmt =
         conn.prepare("SELECT from_node, to_node FROM edges WHERE UPPER(type) = 'SAME_AS'")?;
     let same_rows =
@@ -429,7 +398,6 @@ pub fn resolve_entities_in_conn(
         }
     }
 
-    // Gather provenance neighbors (edges touching any member entity).
     let mut neighbor_prov: HashMap<String, BTreeSet<String>> = HashMap::new();
     let mut edge_stmt = conn.prepare("SELECT from_node, to_node, type FROM edges")?;
     let edge_rows = edge_stmt.query_map([], |r| {
@@ -463,7 +431,6 @@ pub fn resolve_entities_in_conn(
 
     let mut clusters: Vec<ResolvedEntityCluster> = Vec::with_capacity(groups.len());
     for members in groups.into_values() {
-        // Choose canonical leader deterministically: highest importance, earliest created_at, shortest title, lexical ID.
         let leader_idx = *members
             .iter()
             .min_by(|&&a, &&b| {
@@ -504,7 +471,6 @@ pub fn resolve_entities_in_conn(
         let confidence = if member_ids.len() == 1 {
             1.0
         } else {
-            // Exact normalized-key match yields 0.96, alias-book mediated match yields 0.90.
             let direct_keys: BTreeSet<String> = members
                 .iter()
                 .map(|&i| canonical_entity_key(&candidates[i].title))
@@ -532,8 +498,6 @@ pub fn resolve_entities_in_conn(
     Ok(clusters)
 }
 
-/// Non-destructively project canonical entity clusters into `metadata_json.entity_resolution`
-/// and idempotent `SAME_AS` edges (`er_same_as:<dup>-><canonical>`).
 pub fn apply_entity_consolidation(
     txn: &Transaction<'_>,
     workspace_id: Option<&str>,
@@ -620,7 +584,6 @@ pub fn apply_entity_consolidation(
     Ok(summary)
 }
 
-/// Roll back synthesized entity consolidation projections and `er_same_as:*` edges cleanly.
 pub fn rollback_entity_consolidation(
     txn: &Transaction<'_>,
     workspace_id: Option<&str>,
@@ -757,7 +720,6 @@ mod tests {
             .provenance_node_ids
             .contains(&"doc:2".to_string()));
 
-        // Idempotent second run keeps exact same counts without duplicating SAME_AS rows.
         let summary2 =
             apply_entity_consolidation(&txn, Some("personal"), &book, "2026-11-18T00:00:00Z")
                 .expect("idempotent consolidate");
@@ -771,7 +733,6 @@ mod tests {
             .expect("count");
         assert_eq!(same_count, 2);
 
-        // Rollback removes projection cleanly while keeping all 3 entity nodes intact.
         let reverted = rollback_entity_consolidation(&txn, Some("personal")).expect("rollback");
         assert_eq!(reverted, 3);
         let remaining_same: i64 = txn

@@ -28,16 +28,11 @@ export default defineConfig({
       exclude: [
         "frontend/src/**/*.test.{ts,tsx}",
         "frontend/src/test/**",
-        "frontend/src/api/openapi.ts", // generated
-        "frontend/src/i18n/**", // copy tables, not logic (namespaces and their domain parts)
-        "frontend/src/main.tsx", // bootstrap, covered by the visual suite
+        "frontend/src/api/openapi.ts",
+        "frontend/src/i18n/**",
+        "frontend/src/main.tsx",
       ],
       reporter: ["text-summary", "text"],
-      // Thresholds keep every file in `frontend/src` at 100 on all four
-      // metrics: a new branch without a test fails here and in CI.
-      // Note when reading the printed table: vitest hides fully-covered files
-      // from the `text` reporter under an agent, so "my file vanished" means
-      // 100, not missing — confirm with `--coverage.reporter=json-summary`.
       thresholds: {
         statements: 100,
         branches: 100,

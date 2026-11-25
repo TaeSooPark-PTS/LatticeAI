@@ -92,7 +92,6 @@ async fn an_unreachable_worker_leaves_the_posture_unknown_and_caches_it() {
             WorkerStatus::idle(1, true)
         }
         fn worker_origin(&self) -> String {
-            // Port 1 on loopback: reserved, nothing listens there.
             "http://127.0.0.1:1".into()
         }
     }
@@ -128,15 +127,11 @@ async fn a_pinned_posture_short_circuits_the_probe() {
 fn the_proxy_client_is_this_state_s_own() {
     let shared = http_client().expect("client");
     let state = GatewayState::with_client(Arc::new(Stub), shared).expect("state");
-    // Distinct handles: the shared one follows redirects, this one must not.
     assert!(!std::ptr::eq(state.client(), state.proxy_client()));
 }
 
 #[test]
 fn the_router_builds_without_route_conflicts() {
-    // Pinned at a temporary root: building the router creates the agent
-    // workspace, and a unit test has no business writing to the home
-    // directory of whoever runs it.
     let dir = tempfile::tempdir().expect("tempdir");
     let state = GatewayState::new(Arc::new(Stub))
         .expect("state")
@@ -145,7 +140,6 @@ fn the_router_builds_without_route_conflicts() {
     assert!(state.jobs().is_none(), "no scheduler unless one is wired");
     let _router = build_router(Arc::new(state));
 
-    // …and again with the jobs routes mounted.
     let state = GatewayState::new(Arc::new(Stub))
         .expect("state")
         .with_db_path(dir.path().join("knowledge_graph.sqlite"))

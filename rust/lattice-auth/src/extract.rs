@@ -1,28 +1,3 @@
-//! axum extractors, so a Wave-2 handler declares what it needs in its
-//! signature instead of remembering to call a guard.
-//!
-//! Every extractor's rejection **is** the guard's refusal — the same status and
-//! the same body a Python handler produced by raising out of `require_user` /
-//! `require_admin`. Nothing here re-decides anything; they are thin wrappers
-//! over [`AuthState`], which stays callable directly for handlers that take a
-//! whole `Request`.
-//!
-//! Wiring: the route package's own state must expose the shared
-//! `Arc<AuthState>` through `FromRef`, e.g.
-//!
-//! ```ignore
-//! #[derive(Clone)]
-//! struct PlatformState {
-//!     auth: std::sync::Arc<lattice_auth::AuthState>,
-//! }
-//!
-//! impl axum::extract::FromRef<PlatformState> for std::sync::Arc<lattice_auth::AuthState> {
-//!     fn from_ref(state: &PlatformState) -> Self {
-//!         std::sync::Arc::clone(&state.auth)
-//!     }
-//! }
-//! ```
-
 use std::sync::Arc;
 
 use axum::extract::{FromRef, FromRequestParts};
@@ -32,25 +7,15 @@ use axum::response::Response;
 use crate::scope::workspace_scope_from_request;
 use crate::state::{peer_of, AuthState, Identity};
 
-/// The caller, after `require_user`. Rejects 401 when a session is required
-/// and absent; resolves to the empty-identity owner on a trusted local bind.
 #[derive(Debug, Clone)]
 pub struct CurrentUser(pub Identity);
 
-/// The caller, after `require_admin`. Rejects 403.
 #[derive(Debug, Clone)]
 pub struct AdminUser(pub Identity);
 
-/// The workspace this request names — header first, then query — *unresolved*.
-///
-/// Authorization needs a [`crate::scope::WorkspaceResolver`], which lives in
-/// the crate that owns workspace membership; call
-/// [`crate::scope::resolve_workspace_scope`] there. This extractor is the
-/// "what did they ask for" half, which is what most read routes want.
 #[derive(Debug, Clone)]
 pub struct RequestedWorkspace(pub Option<String>);
 
-/// The address rate limits and audit records key on.
 #[derive(Debug, Clone)]
 pub struct ClientIp(pub String);
 

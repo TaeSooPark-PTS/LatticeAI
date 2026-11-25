@@ -1,29 +1,3 @@
-//! `CommandCenterService.search` — the Cmd+K answer, across three surfaces.
-//!
-//! ## The knowledge group fills now: a deliberate divergence from the oracle
-//!
-//! Python's `_search_knowledge` called `SearchService.keyword_search(...)` and
-//! then read `payload.get("results")`. That service answers `{"query", "mode",
-//! "matches"}` — there is no `results` key and there never has been — so the
-//! knowledge group was `[]` on every query, and `search()` dropped it because it
-//! only keeps groups whose `items` are non-empty. Cmd+K could never surface a
-//! knowledge node; the one third of the feature that gave the palette its reason
-//! to exist was dead on arrival. v11.6.0 ported the bug faithfully and disclosed
-//! it (§5.2); v11.7.0 fixes it.
-//!
-//! What is fixed is **only the key**. Everything else is the oracle's code read
-//! literally: the same `keyword_search(query, limit=limit, **graph_scope_kwargs)`
-//! call, the same `[:limit]` slice on top of a lane that already capped itself,
-//! the same four-field projection in the same order
-//! (`id` / `_clip(title, 120)` / `_clip(summary, 160)` / `type`), the same
-//! `except Exception: return []`, and the same `self._enable_graph` guard that
-//! makes a graph-less install answer an empty group rather than an error.
-//!
-//! Three fixture cases pinned the empty group and no longer can (`search`,
-//! `search_conversation_hit`, `search_korean`) — see `tests/command_replay.rs`
-//! and the DIVERGENCE FROM ORACLE notes those cases carry in
-//! `rust/fixtures/http/memory_brain.json`.
-
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -34,28 +8,17 @@ use super::store::{clip, py_text};
 use crate::history::{self, HistoryScope};
 use crate::service::{self, Scope};
 
-/// `_SEARCH_HISTORY_LIMIT`.
 const SEARCH_HISTORY_LIMIT: i64 = 2000;
 
-/// One `GET /api/command/search` call, after query validation.
 pub(crate) struct SearchRequest<'a> {
-    /// `str(query or "").strip()`, already applied.
     pub(crate) query: &'a str,
     pub(crate) user_email: &'a str,
     pub(crate) workspace_id: Option<&'a str>,
-    /// The Workspace OS state document, already loaded.
     pub(crate) state: &'a Value,
-    /// `max(1, min(int(limit or 8), 20))`, already applied.
     pub(crate) limit: i64,
-    /// `CommandCenterService._enable_graph` — a graph-less install still
-    /// answers, it just answers without the knowledge group.
     pub(crate) enable_graph: bool,
 }
 
-/// The three groups, and the total across all of them.
-///
-/// `total` sums every group including the ones `search()` drops for being
-/// empty — which, since an empty group contributes zero, is the same number.
 pub(crate) fn groups(conn: &Connection, request: &SearchRequest<'_>) -> (Vec<Value>, i64) {
     let built = [
         ("knowledge", knowledge(conn, request)),
@@ -76,20 +39,10 @@ pub(crate) fn groups(conn: &Connection, request: &SearchRequest<'_>) -> (Vec<Val
     (kept, total)
 }
 
-/// `_search_knowledge` — the lexical lane, projected down to four fields.
-///
-/// The oracle read `payload["results"]`; the producer emits `matches`. This
-/// reads `matches` (the one divergence, see the module header) and is otherwise
-/// the oracle line for line.
 fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
-    // `if self._search is None or not self._enable_graph: return []`. The search
-    // service is not optional in this port — it is a function in this crate — so
-    // only the graph switch survives as a condition.
     if !request.enable_graph {
         return Vec::new();
     }
-    // `graph_scope_kwargs(workspace_id)`: a named workspace reads only itself and
-    // never the legacy pool; an unscoped caller reads everything it may.
     let scope = Scope {
         allowed_workspaces: request.workspace_id.map(|id| {
             let mut set = BTreeSet::new();
@@ -98,8 +51,6 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         }),
         include_legacy_global: request.workspace_id.is_none(),
     };
-    // `except Exception: LOGGER.exception(...); return []` — an unreadable graph
-    // costs the group, never the query.
     let Ok(payload) = service::keyword_search(conn, request.query, request.limit, &scope) else {
         return Vec::new();
     };
@@ -108,9 +59,6 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        // `[:limit]`. The lane already caps itself at `limit`, and scoping can
-        // only shorten the list, so this slice is the oracle's belt to its own
-        // braces — kept because a future lane change must not widen the group.
         .take(request.limit.max(0) as usize)
         .map(|item| {
             let mut hit = OrderedMap::new();
@@ -129,7 +77,6 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         .collect()
 }
 
-/// `_search_conversations` — newest first, one hit per conversation.
 fn conversations(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
     let needle = request.query.to_lowercase();
     let scope = HistoryScope {
@@ -138,8 +85,6 @@ fn conversations(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         include_legacy_global: request.workspace_id.is_none(),
     };
     let Ok(items) = history::history(conn, None, Some(SEARCH_HISTORY_LIMIT), &scope) else {
-        // `_history` logs and answers `[]`; the briefing never breaks on a
-        // conversation store that cannot be read.
         return Vec::new();
     };
     let mut seen: Vec<String> = Vec::new();
@@ -169,7 +114,6 @@ fn conversations(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
     matches
 }
 
-/// `_search_automations` — a substring scan over installed workflow names.
 fn automations(request: &SearchRequest<'_>) -> Vec<Value> {
     let needle = request.query.to_lowercase();
     let mut matches: Vec<Value> = Vec::new();
@@ -194,7 +138,6 @@ fn automations(request: &SearchRequest<'_>) -> Vec<Value> {
     matches
 }
 
-/// The whole answer body, in Python's key order.
 pub(crate) fn body(
     request: &SearchRequest<'_>,
     kept: Vec<Value>,
@@ -209,7 +152,6 @@ pub(crate) fn body(
     body
 }
 
-/// The short answer an empty query gets: no `total` key at all.
 pub(crate) fn empty_body(now: &str) -> OrderedMap {
     let mut body = OrderedMap::new();
     body.insert("query", Value::String(String::new()));
@@ -242,7 +184,6 @@ mod tests {
         }
     }
 
-    /// A graph the lexical lane can actually answer from.
     fn graph() -> (tempfile::TempDir, Connection) {
         let dir = tempfile::tempdir().expect("tempdir");
         let conn = Connection::open(dir.path().join("g.sqlite")).expect("open");
@@ -293,7 +234,6 @@ mod tests {
             hits[1]["summary"], "",
             "a NULL summary is \"\", never null: str(None or \"\")"
         );
-        // The group is no longer dropped, and it counts toward `total`.
         let (kept, total) = groups(&conn, &request("ranking", &doc, 8));
         assert_eq!(kept[0]["kind"], "knowledge");
         assert_eq!(kept[0]["items"].as_array().expect("items").len(), 2);
@@ -427,8 +367,6 @@ mod tests {
             0,
             "search() drops a group whose items are empty"
         );
-        // No `nodes` table at all: the lane raises and `_search_knowledge`
-        // swallows it, so the query still answers.
         let broken = Connection::open_in_memory().expect("memory");
         assert!(knowledge(&broken, &request("ranking", &doc, 8)).is_empty());
         let (kept, total) = groups(&broken, &request("digest", &doc, 8));
@@ -442,7 +380,6 @@ mod tests {
         let doc = state();
         let hits = automations(&request("digest", &doc, 8));
         assert_eq!(hits.len(), 2);
-        // `list_workflows` reverses, so w2 comes first.
         assert_eq!(hits[0]["id"], "w2");
         assert_eq!(hits[0]["enabled"], false);
         assert_eq!(hits[1]["id"], "w1");

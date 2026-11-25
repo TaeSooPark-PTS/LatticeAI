@@ -1,25 +1,3 @@
-//! Change-proposal Review Center surface (`latticeai/api/change_proposals.py`).
-//!
-//! The whole lifecycle is native since v11.6.0 §P1c. List / detail / reject
-//! were already; **approve-and-apply** — the base-SHA conflict check and the
-//! file write — used to be one `POST /agent/change-proposal` to the Python
-//! worker, and §P1a retired that route. The write now goes through
-//! [`lattice_agent::tools::sandbox::Workspace`], the same sandbox the agent's own
-//! native `write_file` resolves through (§W4), so a proposal cannot apply to a
-//! path the agent could not have written in the first place.
-//!
-//! The two conflict shapes are the contract and are unchanged: the
-//! `/api/proposals` path turns a base-SHA conflict into a **400 string**
-//! (`change proposal conflict (reason): path`), and the Review Center
-//! `/automation/reviews/{id}/approve` path answers **409** with the structured
-//! `{error,conflict,reason,path,kind,base_sha256,current_sha256,rebase_hint}`
-//! body. Both are pinned by `rust/fixtures/http/review_proposals.json`.
-//!
-//! This module is also where the *other* end of the pipeline is wired: the
-//! agent loop stages proposals through [`lattice_agent::kernel::proposals::ProposalStore`],
-//! and [`GovernanceState`] implements it, so a loop-staged proposal lands in
-//! the very store these routes read.
-
 use axum::extract::{Path as AxumPath, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
@@ -38,7 +16,6 @@ use crate::governance::review_queue::{
     ReviewError,
 };
 
-/// Mounted (method, axum-path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/proposals"),
     ("GET", "/api/proposals/counts"),
@@ -50,31 +27,18 @@ pub const MOUNTED: &[(&str, &str)] = &[
 const REBASE_HINT: &str = "제안 생성 이후 파일 상태가 바뀌었습니다. 이 제안을 거부하고 현재 파일 내용을 기준으로 제안을 다시 생성하세요.";
 const ALREADY_HINT: &str = "이미 처리된 제안입니다. 다시 적용할 수 없습니다.";
 
-/// `workspace_reorganization.REORG_KIND`.
-///
-/// It is **not** `"reorganization"`, which is what this module compared against
-/// until §P1c — a real folder-reorganization proposal was answered
-/// `unknown change proposal kind: folder_reorganization` and could never be
-/// approved. No fixture covered the kind, so nothing caught it.
 const REORG_KIND: &str = "folder_reorganization";
 
-/// `_MAX_STAGED_BYTES`, from the crate that stages (one constant, two ends).
 const MAX_STAGED_BYTES: usize = lattice_agent::kernel::proposals::MAX_STAGED_BYTES;
 
-/// Why approve-and-apply did not land.
 #[derive(Debug)]
 pub enum ProposalConflict {
-    /// No such review item, or it is not a change proposal.
     NotFound(String),
-    /// Structured conflict (file drifted / already resolved).
     Conflict(Value),
-    /// Unknown kind, a path outside the agent sandbox, or other ValueError.
     BadRequest(String),
-    /// The agent workspace itself cannot be used (→ 503).
     Unavailable(String),
 }
 
-/// The `/api/proposals*` router.
 pub fn router(state: GovernanceState) -> Router {
     Router::new()
         .route("/api/proposals", get(list_proposals))
@@ -101,9 +65,6 @@ async fn list_proposals(
     .filter(|item| review_queue::map_str(item, "effective_status") == "pending")
     .map(review_queue::into_value)
     .collect::<Vec<_>>();
-    // list_review_items already emits ReviewItem key order (effective_status
-    // third). The proposals surface has no response_model, so we re-list from
-    // the store in raw order.
     let raw = raw_pending(&state, scope.as_deref(), Some(user.email.as_str()));
     let mut body = OrderedMap::new();
     body.insert("items", Value::Array(raw));
@@ -171,7 +132,6 @@ async fn approve_proposal(
         }
         Err(ProposalConflict::NotFound(msg)) => Err(http_detail(StatusCode::NOT_FOUND, &msg)),
         Err(ProposalConflict::Conflict(detail)) => {
-            // /api/proposals catches ProposalConflictError as ValueError → 400 string.
             let reason = detail
                 .get("reason")
                 .and_then(Value::as_str)
@@ -220,17 +180,6 @@ async fn reject_proposal(
     Ok(json_ok(&body))
 }
 
-/// Reject == dismiss, through the Review Center's own transition.
-///
-/// v11.6.0 rejected an already-rejected proposal with a **500**: Python's
-/// router did not catch `InvalidReviewTransition`, and this module reproduced
-/// the escape faithfully, down to a hand-copied dismiss so the review queue's
-/// own conflict could not be reused. A second rejection is not a server fault
-/// — it is the caller telling us something we already did — so it now answers
-/// **409** with the very detail the sibling
-/// `POST /automation/reviews/{id}/dismiss` answers with, from the very same
-/// guard. The wording stays `cannot 'dismiss' …` because the transition
-/// underneath *is* the dismiss; only the timeline label says `reject`.
 fn reject_dismiss(
     state: &GovernanceState,
     item_id: &str,
@@ -245,8 +194,6 @@ fn reject_dismiss(
         "reject",
     )
     .map_err(|error| match error {
-        // FileNotFoundError(item_id) → the detail is the bare id, as the
-        // load-side 404 on this route already is.
         ReviewError::NotFound => http_detail(StatusCode::NOT_FOUND, item_id),
         ReviewError::Conflict(detail) => http_detail(StatusCode::CONFLICT, &detail),
         ReviewError::Invalid(detail) => http_detail(StatusCode::UNPROCESSABLE_ENTITY, &detail),
@@ -277,23 +224,17 @@ fn load_proposal(
     match load_review_item(state, item_id, scope) {
         Ok(item) => {
             if item.get("source").and_then(Value::as_str) != Some("change_proposal") {
-                // KeyError(f"not a change proposal: {id}") → str() wraps quotes.
                 return Err(ProposalConflict::NotFound(format!(
                     "'not a change proposal: {item_id}'"
                 )));
             }
             Ok(item)
         }
-        Err(ReviewError::NotFound) => {
-            // FileNotFoundError(item_id) → detail is the bare id.
-            Err(ProposalConflict::NotFound(item_id.to_string()))
-        }
+        Err(ReviewError::NotFound) => Err(ProposalConflict::NotFound(item_id.to_string())),
         Err(other) => Err(ProposalConflict::BadRequest(format!("{other:?}"))),
     }
 }
 
-/// `approve_and_apply` — apply the staged change exactly as reviewed, but only
-/// if the file on disk still matches the base snapshot the reviewer looked at.
 pub async fn apply_proposal(
     state: &GovernanceState,
     item_id: &str,
@@ -333,7 +274,6 @@ pub async fn apply_proposal(
         )));
     }
 
-    // The staged change lands here, in this process, under the agent sandbox.
     let workspace = Workspace::new(&state.agent_root).map_err(|error| {
         ProposalConflict::Unavailable(format!("agent workspace is unavailable: {error}"))
     })?;
@@ -344,13 +284,8 @@ pub async fn apply_proposal(
         None
     };
 
-    // Status flip after the write landed — never before, so a conflict leaves
-    // the proposal pending and re-approvable once the file is rebased.
     let approved = mark_approved(state, item_id, scope, undo_proposal_id.as_deref())?;
     let view = review_item_raw_view(&approved);
-    // `_audit("change_proposal_applied", …)` — the review timeline doubles as
-    // the change audit log, and the applying half of it used to be recorded by
-    // the Python service the worker route reached.
     let mut event = serde_json::Map::new();
     event.insert("user_email".into(), json!(user.email));
     event.insert("proposal_id".into(), json!(item_id));
@@ -379,9 +314,6 @@ pub async fn apply_proposal(
     Ok(result)
 }
 
-/// When a forward `folder_reorganization` moves ≥1 file, automatically stage a
-/// ready-to-approve reverse `folder_reorganization` proposal (`is_undo = true`)
-/// so the reviewer has 1-click sandboxed rollback.
 fn stage_reorganization_undo(
     state: &GovernanceState,
     original_item_id: &str,
@@ -453,9 +385,6 @@ fn stage_reorganization_undo(
     Some(undo_id)
 }
 
-/// Flip the item to `approved` — through the Review Center's write funnel, so
-/// an approval that lands here emits the same timeline event an approval that
-/// lands through `/automation/reviews/{id}/approve` does, exactly once.
 fn mark_approved(
     state: &GovernanceState,
     item_id: &str,
@@ -502,11 +431,6 @@ fn conflict_body(
     review_queue::into_value(body)
 }
 
-/// The file side of approve-and-apply: check the base, then land the change.
-///
-/// `Ok(Some(moves))` is a reorganization's per-move report; `Ok(None)` is a
-/// file update or delete. Nothing touches disk when the base check fails, so a
-/// user's out-of-band edit survives a stale approval.
 pub fn apply_staged_change(
     workspace: &Workspace,
     payload: &Value,
@@ -514,8 +438,6 @@ pub fn apply_staged_change(
     kind: &str,
 ) -> Result<Option<Value>, ProposalConflict> {
     if kind == REORG_KIND {
-        // A reorganization has no single base file to hash: each move is
-        // re-checked at apply time and a drifted one is skipped, never forced.
         return apply_reorganization(workspace, payload).map(Some);
     }
     check_base_unchanged(workspace, payload, path, kind)?;
@@ -529,13 +451,11 @@ pub fn apply_staged_change(
                 .unwrap_or(""),
         );
     } else if kind == "file_delete" && target.is_file() {
-        // Re-verified here, inside the same call that checked the base.
         let _ = std::fs::remove_file(&target);
     }
     Ok(None)
 }
 
-/// `_check_base_unchanged` — disk state *now* against the staged snapshot.
 fn check_base_unchanged(
     workspace: &Workspace,
     payload: &Value,
@@ -543,8 +463,6 @@ fn check_base_unchanged(
     kind: &str,
 ) -> Result<(), ProposalConflict> {
     if payload.get("base_sha256").is_none() || payload.get("base_exists").is_none() {
-        // Legacy proposal staged before base snapshots existed — keep the
-        // historical apply-as-reviewed behaviour rather than rejecting it.
         return Ok(());
     }
     let base_exists = payload
@@ -598,7 +516,6 @@ fn check_base_unchanged(
     Ok(())
 }
 
-/// `apply_reorganization` — moves only, nothing deleted or overwritten.
 fn apply_reorganization(workspace: &Workspace, payload: &Value) -> Result<Value, ProposalConflict> {
     let root = payload
         .get("root")
@@ -660,19 +577,12 @@ fn apply_reorganization(workspace: &Workspace, payload: &Value) -> Result<Value,
     }))
 }
 
-/// `resolve_workspace_path` — the agent sandbox, shared with the native tools.
-///
-/// Python let the `ToolError` escape as a 500; a refusal is a request problem,
-/// so it is the 400 the rest of this surface answers with, carrying the same
-/// message [`lattice_agent::tools`] uses.
 fn resolve(workspace: &Workspace, path: &str) -> Result<std::path::PathBuf, ProposalConflict> {
     workspace
         .resolve(path)
         .map_err(|error| ProposalConflict::BadRequest(error.message))
 }
 
-/// `_snapshot` — the same truncate-then-decode both ends of the check use, so
-/// an unchanged file hashes identically at staging and at approval.
 fn snapshot(workspace: &Workspace, path: &str) -> (bool, String) {
     let Ok(target) = workspace.resolve(path) else {
         return (false, String::new());
@@ -700,16 +610,6 @@ fn atomic_write(target: &std::path::Path, content: &str) {
     lattice_auth::atomic::write_text(target, content);
 }
 
-/// Where the agent loop's staged proposals land.
-///
-/// `lattice-agent` cannot depend on this crate (the dependency runs the other
-/// way), so it declares the port and this is the product's implementation. It
-/// must be the one the host injects: `GovernanceState` holds the workspace-OS
-/// document in memory and mirrors it into SQLite, so the loop's default
-/// JSON-file store would be invisible to a Review Center running in the same
-/// process — and overwritten by its next save.
-/// The port requires `Debug`; the state holds an auth handle and a mutex, and
-/// neither belongs in a log line. The data directory is what identifies it.
 impl std::fmt::Debug for GovernanceState {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter

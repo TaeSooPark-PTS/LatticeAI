@@ -1,16 +1,3 @@
-//! Separated Retrieval vs. Generation RAG Evaluation & Model-Swap Grounding Suite.
-//!
-//! Addresses Review Sections 6.1 #1, 7.1, 8, and 16.1–16.2:
-//! 1. Uses the real production [`LocalEmbeddingModel`] (`lattice-local-hash-v1`)
-//!    rather than ad-hoc synthetic test hashes.
-//! 2. Separates **Retrieval Quality** (`Recall@5`, `NDCG@10`, `MRR`, Korean/English/Mixed,
-//!    multi-document synthesis recall, temporal current-state recall, superseded exclusion)
-//!    from **Generation & Grounding Quality** (`claim_support_ratio`, `citation_precision`,
-//!    `citation_recall`, `abstention_accuracy` on unanswerable queries, and hallucination
-//!    trap rejection).
-//! 3. Verifies **Model-Agnostic Brain Invariance** across `gemma-4-local`, `qwen-local`,
-//!    and `cloud-frontier` generation adapters against the exact same durable Brain store.
-
 use std::collections::HashMap;
 
 use lattice_core::{CoreError, LocalEmbeddingModel};
@@ -23,7 +10,6 @@ use crate::grounding::{verify_grounding_and_abstention, EvidencePassage};
 use crate::rag_eval::{jaccard_at_k, ndcg_at_k, recall_at_k};
 use crate::service::Scope;
 
-/// Category of an evaluation query in the separated RAG benchmark.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EvalQueryKind {
@@ -36,7 +22,6 @@ pub enum EvalQueryKind {
     UngroundedAbstain,
 }
 
-/// Benchmark query specification with retrieval ground truth andabstention expectation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeparatedEvalCase {
     pub id: String,
@@ -48,7 +33,6 @@ pub struct SeparatedEvalCase {
     pub expect_abstain: bool,
 }
 
-/// Execution mode distinguishing deterministic fixture checks from live LLM inference (P0.1).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EvalExecutionMode {
@@ -59,7 +43,6 @@ pub enum EvalExecutionMode {
     EndToEnd,
 }
 
-/// Honest execution status for each evaluated model adapter (never mislabeling stubs as live runs).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EvalModelStatus {
@@ -69,7 +52,6 @@ pub enum EvalModelStatus {
     Unavailable,
 }
 
-/// Complete provenance metadata recorded on every evaluation report (P0.1).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EvalRunMetadata {
     pub execution_mode: EvalExecutionMode,
@@ -82,7 +64,6 @@ pub struct EvalRunMetadata {
     pub config_params: serde_json::Value,
 }
 
-/// Pure retrieval-stage metrics (model-independent Brain search quality).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RetrievalStageMetrics {
     pub answerable_queries: usize,
@@ -96,13 +77,10 @@ pub struct RetrievalStageMetrics {
     pub multi_doc_recall_at_5: f64,
     pub temporal_current_recall_at_5: f64,
     pub superseded_exclusion_rate: f64,
-    /// Fraction of duplicate / near-duplicate results within top-k.
     #[serde(default)]
     pub duplication_rate: f64,
-    /// Fraction of answerable queries whose top-1 hit is irrelevant.
     #[serde(default)]
     pub irrelevant_top_rank_rate: f64,
-    /// Fraction of queries with zero cross-workspace boundary leaks (1.0 = airtight).
     #[serde(default = "default_one")]
     pub workspace_boundary_compliance: f64,
 }
@@ -111,7 +89,6 @@ fn default_one() -> f64 {
     1.0
 }
 
-/// Pure generation & grounding verification metrics for a specific adapter.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerationStageMetrics {
     pub model_id: String,
@@ -136,7 +113,6 @@ pub struct GenerationStageMetrics {
     pub avg_latency_ms: f64,
 }
 
-/// Cross-adapter Brain evaluation report with explicit execution-mode honesty metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeparatedRagEvalReport {
     pub metadata: EvalRunMetadata,
@@ -147,12 +123,8 @@ pub struct SeparatedRagEvalReport {
     pub cross_model_abstention_agreement: f64,
 }
 
-/// Pluggable answer synthesizer representing a local or cloud generation model
-/// consuming retrieved Brain passages.
 pub trait GroundedModelSynthesizer {
     fn model_id(&self) -> &str;
-    /// Synthesize `(answer_text, cited_passage_ids)` strictly from active `passages`,
-    /// or return `None` when abstaining.
     fn synthesize(
         &self,
         query: &str,
@@ -160,7 +132,6 @@ pub trait GroundedModelSynthesizer {
     ) -> Option<(String, Vec<String>)>;
 }
 
-/// Deterministic adapter modeling concise structured synthesis (`gemma-4-local`).
 pub struct GemmaLocalSynthesizer;
 
 impl GroundedModelSynthesizer for GemmaLocalSynthesizer {
@@ -194,7 +165,6 @@ impl GroundedModelSynthesizer for GemmaLocalSynthesizer {
     }
 }
 
-/// Deterministic adapter modeling bulleted multilingual synthesis (`qwen-local`).
 pub struct QwenLocalSynthesizer;
 
 impl GroundedModelSynthesizer for QwenLocalSynthesizer {
@@ -234,7 +204,6 @@ impl GroundedModelSynthesizer for QwenLocalSynthesizer {
     }
 }
 
-/// Deterministic adapter modeling comprehensive multi-source synthesis (`cloud-frontier`).
 pub struct CloudFrontierSynthesizer;
 
 impl GroundedModelSynthesizer for CloudFrontierSynthesizer {
@@ -281,7 +250,6 @@ fn reciprocal_rank(retrieved: &[String], expected: &[String]) -> f64 {
     0.0
 }
 
-/// Run the full separated Retrieval + Multi-Model Grounded Generation evaluation suite.
 pub fn run_separated_rag_evaluation(
     workspace_id: &str,
 ) -> Result<SeparatedRagEvalReport, CoreError> {
@@ -370,7 +338,6 @@ pub fn run_separated_rag_evaluation(
         let hits = hybrid_bm25_vector_graph_search(&conn, &embedder, &case.query, &opts)?;
         let hit_ids = extract_ids(&hits);
 
-        // Re-run retrieval to confirm 100% deterministic model-independent retrieval invariance.
         let hits_repeat = hybrid_bm25_vector_graph_search(&conn, &embedder, &case.query, &opts)?;
         let repeat_ids = extract_ids(&hits_repeat);
         invariance_jaccards.push(jaccard_at_k(&hit_ids, &repeat_ids, 5));
@@ -512,8 +479,6 @@ pub fn run_separated_rag_evaluation(
                 leaks += verdict.superseded_citation_leaks;
                 answered_n += 1;
 
-                // Adversarial check: inject a fabricated numeric claim (port 99999) and verify
-                // the grounding gate rejects it!
                 hallucination_traps_total += 1;
                 let poisoned = format!("{answer} The secret undocumented port is 99999.");
                 let trap_verdict = verify_grounding_and_abstention(
@@ -618,7 +583,6 @@ mod tests {
             .embedding_model_id
             .starts_with("lattice-local-hash-v1"));
 
-        // Retrieval stage gates
         assert!(
             report.retrieval.recall_at_5 >= 0.90,
             "r@5={}",
@@ -633,7 +597,6 @@ mod tests {
         assert_eq!(report.retrieval.temporal_current_recall_at_5, 1.0);
         assert_eq!(report.retrieval_invariance_jaccard_at_5, 1.0);
 
-        // Generation & model-swap gates across deterministic fixture adapters
         assert_eq!(
             report.metadata.execution_mode,
             EvalExecutionMode::FixtureDeterministic

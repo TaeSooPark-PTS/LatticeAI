@@ -1,23 +1,9 @@
-/**
- * The knowledge graph itself: graph, stats, pipeline journey, the unified Act
- * run timeline, portability/archive, provenance and ingestion.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const { repoRoot, json } = require("./http.cjs");
 const { graphNodes, graphEdges, workspaceOs } = require("./fixtures.cjs");
 
 module.exports = function handleKnowledge({ req, res, url, pathname }) {
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
-  // Capture 3-step journey ribbon (layout rebuild screen 11).
-  // Counts: received=12, extracted=11 (1 still pending), connected=10.
-  // stages.*.status + pending are the single source of truth (B4) — never
-  // return pending=0 with status=waiting when count>0.
-  // Intentionally leave extracted.pending=1 / status=working so the capture
-  // gates on stages (not count-only inference): if the UI ignores stages,
-  // screen 11 still looks fully done and the bug stays invisible.
   if (pathname === "/knowledge-graph/pipeline/status") return json(res, {
     received: graphNodes.length,
     extracted: graphNodes.length - 1,
@@ -29,10 +15,6 @@ module.exports = function handleKnowledge({ req, res, url, pathname }) {
       connected: { count: graphEdges.length, pending: 0, status: "done" },
     },
   });
-  // Unified Act run timeline (layout rebuild screen 09). Includes an
-  // awaiting_approval row so the approval badge is always capturable.
-  // Inline object (no bare `runs` identifier) so mock↔real shape tests can
-  // parse this payload as JSON without evaluating JS.
   if (pathname === "/api/activity/runs" || pathname === "/automations/runs/combined") {
     return json(res, {
       runs: [

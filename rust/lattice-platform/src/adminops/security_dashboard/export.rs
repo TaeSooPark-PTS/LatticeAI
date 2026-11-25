@@ -10,14 +10,6 @@ use crate::adminops::admin::{
 
 use super::*;
 
-/// The compute seam that builds a workbook: `rows` in, bytes out.
-///
-/// This used to be `/tools/create_xlsx`, which is a **product** route this
-/// process mounts itself (`tools::meta::create_xlsx`) — the worker stopped
-/// serving it in v11.6.0, so the xlsx export has been posting into a 404 ever
-/// since. `/worker/render/xlsx` is the surviving door and the one
-/// `tools::meta::create_document` already uses; it is on
-/// `rust/fixtures/worker_allowlist.json`.
 const RENDER_XLSX: &str = "/worker/render/xlsx";
 
 pub(crate) async fn security_export(
@@ -92,7 +84,6 @@ pub(crate) async fn security_export(
         }
         "excel" | "xlsx" => {
             if rows_have_non_scalar(&rows) {
-                // Python's openpyxl raises on list-valued cells → Starlette 500.
                 return Ok(plain_500());
             }
             let bytes = excel_via_worker(&state, &rows).await?;
@@ -169,9 +160,6 @@ async fn excel_via_worker(state: &SecurityState, rows: &[Value]) -> Result<Vec<u
                 .collect(),
         );
     }
-    // The request body is `RenderXlsxRequest` verbatim (`rows` / `filename` /
-    // `sheet_name`), which is the same triple `create_xlsx` posted — only the
-    // door changed, so the workbook a person downloads is unchanged.
     let mut body = OrderedMap::new();
     body.insert("rows", json!(table));
     body.insert("filename", json!("security_export.xlsx"));
@@ -186,9 +174,6 @@ async fn excel_via_worker(state: &SecurityState, rows: &[Value]) -> Result<Vec<u
                 &e.to_string(),
             )
         })?;
-    // The render seam answers with the bytes themselves — it never names a
-    // path, because the file it would name lives on the worker's disk and this
-    // process is the one that decides where a document lands.
     if let Some(b64) = reply.get("content_b64").and_then(Value::as_str) {
         if let Ok(bytes) = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64) {
             return Ok(bytes);
@@ -251,7 +236,6 @@ fn value_cell(v: &Value) -> String {
             }
         }
         Value::Number(n) => n.to_string(),
-        // csv.DictWriter uses Python `str()`, not JSON (`['secret']` not `["secret"]`).
         Value::Array(items) => format!(
             "[{}]",
             items
@@ -288,7 +272,6 @@ fn minimal_pdf(title: &str, rows: &[Value]) -> Vec<u8> {
         text.push_str(&serde_json::to_string(&redact_structure(row)).unwrap_or_default());
         text.push('\n');
     }
-    // Minimal valid PDF so the fixture's `%PDF` magic matches.
     let stream = format!("BT /F1 12 Tf 72 720 Td ({title}) Tj ET\n");
     let escaped = stream.replace('(', "\\(").replace(')', "\\)");
     format!(

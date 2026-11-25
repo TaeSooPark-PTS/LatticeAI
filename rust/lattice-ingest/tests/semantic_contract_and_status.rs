@@ -243,7 +243,6 @@ async fn upload_preserves_semantic_provider_contract_and_reports_degraded_and_re
     let worker = spawn_worker(Arc::clone(&cfg)).await;
     let (origin, token, store, graph) = boot_upload(data.path(), &worker).await;
 
-    // 1. Healthy semantic provider (EmbeddingGemma 2) stores actual model_id/dim and Complete status.
     let (status, payload) = post_upload(
         &origin,
         &token,
@@ -288,7 +287,6 @@ async fn upload_preserves_semantic_provider_contract_and_reports_degraded_and_re
         })
         .unwrap();
 
-    // 2. Embed seam outage -> raw text saved, explicit Partial + hash_fallback.
     cfg.lock().unwrap().embed_ok = false;
     let (status, payload) = post_upload(
         &origin,
@@ -308,11 +306,10 @@ async fn upload_preserves_semantic_provider_contract_and_reports_degraded_and_re
         .iter()
         .any(|v| v == "embed_seam_unavailable"));
 
-    // 3. Corrupted dimension from worker -> dropped cleanly, reported Partial.
     {
         let mut guard = cfg.lock().unwrap();
         guard.embed_ok = true;
-        guard.wrong_vector_len = Some(2); // claims dim=4, sends len=2
+        guard.wrong_vector_len = Some(2);
     }
     let (status, payload) = post_upload(
         &origin,
@@ -334,7 +331,6 @@ async fn upload_preserves_semantic_provider_contract_and_reports_degraded_and_re
             .unwrap_or("")
             .starts_with("embed_contract_invalid:")));
 
-    // 4. Parse outage on binary upload -> raw save still lands, Partial + parse_seam_unavailable.
     {
         let mut guard = cfg.lock().unwrap();
         guard.wrong_vector_len = None;
@@ -356,7 +352,6 @@ async fn upload_preserves_semantic_provider_contract_and_reports_degraded_and_re
         .iter()
         .any(|v| v == "parse_seam_unavailable"));
 
-    // 5. Provider swap (MLX dim=3 vs stored HuggingFace dim=4) -> ReindexRequired.
     {
         let mut guard = cfg.lock().unwrap();
         guard.parse_ok = true;
@@ -403,7 +398,6 @@ async fn browser_tab_and_note_ingestor_preserve_semantic_vectors_and_status() {
         Some(data.path()),
     );
 
-    // Browser endpoint check.
     let bstate = BrowserState::new(auth, runtime)
         .with_graph(graph.clone())
         .with_seam(seam.clone());
@@ -442,7 +436,6 @@ async fn browser_tab_and_note_ingestor_preserve_semantic_vectors_and_status() {
     assert_eq!(body["embedding_mode"], "semantic");
     assert_eq!(body["semantic"], true);
 
-    // NoteIngestor check (semantic vs offline hash_fallback).
     let ingestor = NoteIngestor::new(graph.clone()).with_seam(seam);
     let note = NoteSubmission {
         title: "Watched Note.md".into(),
@@ -459,7 +452,6 @@ async fn browser_tab_and_note_ingestor_preserve_semantic_vectors_and_status() {
     assert!(receipt.semantic);
     assert!(receipt.indexed);
 
-    // Offline NoteIngestor (no seam) reports Partial + hash_fallback.
     let offline_ingestor = NoteIngestor::new(graph);
     let offline_note = NoteSubmission {
         title: "Offline Note.md".into(),

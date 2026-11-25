@@ -1,5 +1,3 @@
-//! Hybrid BM25F + Subword Vector + 1-hop/2-hop Wikilink/Tag GraphRAG search for markdown vaults.
-
 use std::path::{Path, PathBuf};
 
 use axum::response::Response;
@@ -32,7 +30,6 @@ fn strip_ko_suffix(tok: &str) -> &str {
     tok
 }
 
-/// Tokenize note/query text into normalized stems + CJK character bigrams for BM25F vault search.
 fn tokenize_vault_bm25(text: &str) -> Vec<(String, f64)> {
     let lower = text.to_lowercase();
     let chars: Vec<char> = lower.chars().collect();
@@ -189,9 +186,6 @@ pub(super) fn search_notes_with_options(
             })
             .unwrap_or(false);
 
-    // Default fast path when no graph/hybrid mode was requested: preserve exact walk order
-    // if substring matches exist, and fall back to BM25F + CJK bigram + graph expansion when
-    // naive substring matching finds nothing (e.g., multi-term or Korean particle queries).
     if !rich_mode {
         let mut results = Vec::new();
         fn walk(dir: &Path, root: &Path, ql: &str, max: usize, out: &mut Vec<Value>) {
@@ -242,7 +236,6 @@ pub(super) fn search_notes_with_options(
         }
     }
 
-    // Collect all markdown files in vault for BM25F + Subword Vector + Multi-Hop Graph ranking
     let mut md_files = walkdir_md(&root);
     md_files.sort();
     let mut notes: Vec<VaultNote> = Vec::new();
@@ -358,7 +351,6 @@ pub(super) fn search_notes_with_options(
         }
     }
 
-    // Build Vault Graph edges (wikilinks + shared tags) and propagate 1-hop / 2-hop scores
     let max_hops = hops.unwrap_or(2).clamp(1, 2);
     let mut adj: Vec<Vec<(usize, f64, String)>> = vec![Vec::new(); notes.len()];
     let mut subgraph_edges: Vec<Value> = Vec::new();
@@ -437,7 +429,6 @@ pub(super) fn search_notes_with_options(
         }
     }
 
-    // Compute 3-way RRF + normalized blend across BM25F, Vector, and Graph channels
     let rrf_ranks = |scores: &[f64]| -> Vec<Option<usize>> {
         let mut order: Vec<(usize, f64)> = scores
             .iter()

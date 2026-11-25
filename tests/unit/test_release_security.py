@@ -1,5 +1,3 @@
-"""Regression checks for release-context and container hardening."""
-
 from __future__ import annotations
 
 import json

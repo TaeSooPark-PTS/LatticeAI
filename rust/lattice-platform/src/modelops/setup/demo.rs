@@ -1,19 +1,3 @@
-//! The demo corpus — three documents a brand-new install has something to ask
-//! about, and the questions that show it working.
-//!
-//! A first run with an empty graph looks broken even when it is not: every
-//! answer is "I don't know anything yet". [`DemoStore`] seeds three short
-//! Korean documents (a meeting note, a project doc, a reading note) and
-//! [`suggested_questions`] pairs each one with a question whose answer is in
-//! it, so the first thing a new user sees is retrieval succeeding on content
-//! they can verify by eye.
-//!
-//! Everything written here is labelled at the source — [`DEMO_URI_PREFIX`] on
-//! the `source_uri` and [`DEMO_METADATA_FLAG`] in the metadata — which is what
-//! makes removal exact. Without that label, "delete the demo corpus" would be
-//! a heuristic sweep over documents a user may since have written themselves,
-//! and the one thing this feature must never do is delete something real.
-
 use std::sync::{Arc, Mutex};
 
 use axum::extract::State;
@@ -90,7 +74,6 @@ pub struct IngestResult {
     pub detail: Option<String>,
 }
 
-/// In-process demo corpus. `delete_document_tree` is the graph's own.
 #[derive(Clone, Default)]
 pub struct DemoStore {
     inner: Arc<Mutex<Vec<Map<String, Value>>>>,
@@ -322,10 +305,6 @@ pub(super) async fn demo_remove(
                     .unwrap_or(removed_nodes);
             }
         }
-        // Without a native writer the demo rows are dropped from the setup
-        // store and the graph keeps its nodes; the `/worker/graph/mutate`
-        // delegation that used to run here was retired in v11.6.0, and the
-        // reported `status`/`removed_nodes` stay the store's own record.
         let mut row = OrderedMap::new();
         row.insert("node_id", json!(node_id));
         row.insert("title", doc.get("title").cloned().unwrap_or(Value::Null));

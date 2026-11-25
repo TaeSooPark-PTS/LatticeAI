@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Taking material in: uploads, drag-and-drop, the ingestion pipeline stages,
-// background jobs, and how fresh the resulting memory is.
 export const brainIngestCopy: NamespaceCopy = {
   ko: {
     "brain.files.title": "파일을 만들었어요",
@@ -54,10 +52,6 @@ export const brainIngestCopy: NamespaceCopy = {
     "brain.ingest.cta.web": "URL을 넣고 Enter",
     "brain.ingest.active": "{label} 처리 중",
     "brain.ingest.progress.aria": "{label} 수집 진행 상태",
-    // Stage names people read while a file is being taken in. They used to be
-    // the pipeline's internal words ("파싱", "임베딩", "인덱싱"), which describe
-    // the machine's job rather than the reader's. Each one now answers "what is
-    // it doing to my file right now?" in words nobody has to look up.
     "brain.ingest.stage.preparing": "파일 여는 중",
     "brain.ingest.stage.parsing": "내용 읽는 중",
     "brain.ingest.stage.embedding": "뜻 파악하는 중",

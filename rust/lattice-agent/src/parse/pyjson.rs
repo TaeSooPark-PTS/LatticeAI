@@ -1,38 +1,14 @@
-//! `json.loads`, reported the way CPython reports it.
-//!
-//! The parse-failure transcript step records `str(exc)` for a
-//! `json.JSONDecodeError`, so the loop's own output carries the decoder's
-//! message text and character position. `serde_json` does the parsing here —
-//! it is the parser that has been proved right — and this module supplies the
-//! *diagnosis*: a scanner that walks the same document and names the first
-//! structural fault in CPython's vocabulary, with CPython's
-//! `line L column C (char N)` suffix.
-//!
-//! Two honest limits, both out of contract for an action object and both
-//! recorded as deviations rather than hidden:
-//!
-//! * `NaN` / `Infinity` / `-Infinity` are accepted by CPython's decoder and
-//!   have no `serde_json::Value` representation, so they are a parse failure
-//!   here.
-//! * The decoder's message *wording* is CPython-version-specific (3.14 renamed
-//!   several and moved two positions), which is why the parity goldens compare
-//!   the `Agent did not return valid JSON:` prefix and normalise the detail.
-
 use serde_json::Value;
 
-/// A CPython-shaped decode failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DecodeError {
-    /// The bare message, e.g. `Expecting value`.
     pub msg: String,
-    /// Character (not byte) offset the fault was reported at.
     pub pos: usize,
     line: usize,
     column: usize,
 }
 
 impl std::fmt::Display for DecodeError {
-    /// `JSONDecodeError.__str__`: `{msg}: line {lineno} column {colno} (char {pos})`.
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             formatter,
@@ -43,7 +19,6 @@ impl std::fmt::Display for DecodeError {
 }
 
 impl DecodeError {
-    /// `JSONDecodeError.__init__`'s two derived coordinates.
     fn locate(msg: &str, pos: usize, doc: &[char]) -> Self {
         let before = &doc[..pos.min(doc.len())];
         let last_newline = before.iter().rposition(|character| *character == '\n');
@@ -51,7 +26,6 @@ impl DecodeError {
             msg: msg.to_string(),
             pos,
             line: before.iter().filter(|c| **c == '\n').count() + 1,
-            // `pos - doc.rfind('\n', 0, pos)`; a missing newline is `-1` there.
             column: match last_newline {
                 Some(at) => pos - at,
                 None => pos + 1,
@@ -63,14 +37,12 @@ impl DecodeError {
         Self::locate("Expecting value", 0, doc)
     }
 
-    /// 1-based line, as CPython computes it.
     #[cfg(test)]
     fn line_of(&self) -> usize {
         self.line
     }
 }
 
-/// `json.loads` — the value, or the failure CPython would have raised.
 pub fn loads(text: &str) -> Result<Value, DecodeError> {
     match serde_json::from_str::<Value>(text) {
         Ok(value) => Ok(value),
@@ -81,7 +53,6 @@ pub fn loads(text: &str) -> Result<Value, DecodeError> {
     }
 }
 
-/// The first fault a CPython-shaped scan finds, if any.
 fn diagnose(doc: &[char]) -> Option<DecodeError> {
     let mut scanner = Scanner { doc };
     let start = scanner.skip_ws(0);
@@ -94,7 +65,6 @@ fn diagnose(doc: &[char]) -> Option<DecodeError> {
     }
 }
 
-/// A fault before it knows the document — `msg` plus a character offset.
 struct Fault(&'static str, usize);
 
 impl Fault {
@@ -129,7 +99,6 @@ impl Scanner<'_> {
         self.doc.len() >= index + letters.len() && self.doc[index..index + letters.len()] == letters
     }
 
-    /// `_scan_once`: the value at `index`, or where a value was expected.
     fn scan_once(&mut self, index: usize) -> Scan {
         match self.at(index) {
             Some('"') => self.string(index + 1),
@@ -142,7 +111,6 @@ impl Scanner<'_> {
         }
     }
 
-    /// `NUMBER_RE`: `-?(0|[1-9]\d*)(\.\d+)?([eE][-+]?\d+)?`.
     fn number(&self, start: usize) -> Option<usize> {
         let mut index = start;
         if self.at(index) == Some('-') {
@@ -178,7 +146,6 @@ impl Scanner<'_> {
         Some(index)
     }
 
-    /// `py_scanstring`, entered just after the opening quote.
     fn string(&self, after_quote: usize) -> Scan {
         let begin = after_quote - 1;
         let mut index = after_quote;
@@ -215,7 +182,6 @@ impl Scanner<'_> {
         }
     }
 
-    /// `JSONObject`, entered just after `{`.
     fn object(&mut self, after_brace: usize) -> Scan {
         let mut end = self.skip_ws(after_brace);
         if self.at(end) == Some('}') {
@@ -257,7 +223,6 @@ impl Scanner<'_> {
         }
     }
 
-    /// `JSONArray`, entered just after `[`.
     fn array(&mut self, after_bracket: usize) -> Scan {
         let mut end = self.skip_ws(after_bracket);
         if self.at(end) == Some(']') {
@@ -287,7 +252,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Every string here was read off CPython 3.14 rather than reasoned about.
     #[test]
     fn the_messages_are_the_messages_cpython_prints() {
         let cases = [
@@ -364,7 +328,6 @@ mod tests {
 
     #[test]
     fn the_position_is_a_character_offset_not_a_byte_offset() {
-        // Two Korean characters are six bytes and two positions.
         let error = loads("{\"작업\": }").expect_err("value");
         assert_eq!(error.pos, 7);
         assert_eq!(
@@ -389,9 +352,6 @@ mod tests {
 
     #[test]
     fn a_disagreement_between_parser_and_scanner_still_answers() {
-        // CPython accepts the non-finite constants; serde_json has no value for
-        // them, so the port fails closed with a locatable message rather than
-        // pretending to have parsed something.
         let error = loads("NaN").expect_err("NaN is out of the value space");
         assert_eq!(error.msg, "Expecting value");
         assert_eq!(error.pos, 0);

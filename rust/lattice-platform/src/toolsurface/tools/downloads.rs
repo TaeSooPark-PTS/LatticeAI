@@ -1,5 +1,3 @@
-//! Todos, HTML inspect, preview, and file download tools.
-
 use std::path::{Path, PathBuf};
 
 use axum::extract::{Query, State};
@@ -327,7 +325,7 @@ fn parse_html_attrs(raw: &str) -> std::collections::BTreeMap<String, String> {
             map.insert(key, String::new());
             continue;
         }
-        i += 1; // skip '='
+        i += 1;
         while i < bytes.len() && bytes[i].is_ascii_whitespace() {
             i += 1;
         }
@@ -399,9 +397,6 @@ pub(crate) struct DownloadQuery {
 
 fn download_target(ws: &Workspace, raw: &str) -> Result<PathBuf, (StatusCode, &'static str)> {
     let rel = raw.trim_start_matches('/');
-    // `Workspace::resolve` applies `..` the way Python's `Path.resolve(strict=False)`
-    // does, so `../../etc/passwd` is a 403 (outside) rather than a 404 (the
-    // lexical join still "starts with" the root).
     ws.resolve(rel)
         .map_err(|_| (StatusCode::FORBIDDEN, "tools.path_outside_workspace"))
 }
@@ -530,7 +525,6 @@ fn urlencoding_decode(s: &str) -> String {
 }
 
 fn zip_dir_store(dir: &Path) -> Result<Vec<u8>, String> {
-    // Minimal ZIP (store). Leading magic PK\x03\x04 matches the fixture.
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     fn collect(root: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) {
         let Ok(rd) = std::fs::read_dir(dir) else {

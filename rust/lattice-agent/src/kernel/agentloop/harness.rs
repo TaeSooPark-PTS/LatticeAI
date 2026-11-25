@@ -1,18 +1,3 @@
-//! The seam, faked, for the loop's own tests.
-//!
-//! A scripted reasoner and a tool handler that **really writes**, so the two
-//! disk reads the loop owns — the pre-write snapshot and the fail-closed
-//! existence check — see the workspace a real worker would have left behind.
-//! A fake that only returned JSON would let a snapshot test pass while
-//! snapshotting nothing.
-//!
-//! Since W4 the mutating tools are native, so "really writes" is no longer a
-//! fake at all: [`RecordingHost`] wraps the **real** [`NativeTools`] and records
-//! what it executed into the same ordered log the fake worker uses. A test
-//! therefore reads one list of dispatches whichever side ran them, and the
-//! knowledge tools are pointed at a temporary brain directory so no test can
-//! write into the developer's actual vault.
-
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -34,7 +19,6 @@ pub(crate) fn workspace() -> (tempfile::TempDir, Workspace) {
     (dir, workspace)
 }
 
-/// A runtime with no worker to reach: for the pure helpers around the loop.
 pub(crate) fn runtime(workspace: Workspace) -> Runtime {
     Runtime::new(LoopDeps::new(
         WorkerClient::new("http://127.0.0.1:1"),
@@ -42,13 +26,9 @@ pub(crate) fn runtime(workspace: Workspace) -> Runtime {
     ))
 }
 
-/// The seam, faked: a scripted reasoner and a tool handler that really
-/// writes, so the loop's own disk reads (snapshot, overwrite guard) see the
-/// same workspace the "worker" changed.
 #[derive(Debug, Default)]
 pub(crate) struct FakeWorker {
     pub completions: Mutex<VecDeque<String>>,
-    /// Tool name → the exact body `/agent/tool` answers with.
     pub tool_bodies: Mutex<std::collections::BTreeMap<String, Value>>,
     pub calls: Mutex<Vec<Value>>,
     pub root: Mutex<PathBuf>,
@@ -66,11 +46,6 @@ impl FakeWorker {
         let tool = body["tool"].as_str().unwrap_or_default().to_string();
         {
             let bodies = self.tool_bodies.lock().expect("lock");
-            // A tool that answers differently per path is keyed `tool:path` —
-            // which is how a test replays "the stated directory was not there,
-            // the tool's own default was". The plain tool key still answers
-            // every other call, so nothing that does not use the long key
-            // changes.
             let path = body["args"]["path"].as_str().unwrap_or_default();
             if let Some(canned) = bodies.get(&format!("{tool}:{path}")) {
                 return canned.clone();
@@ -93,7 +68,6 @@ impl FakeWorker {
     }
 }
 
-/// The real native tool set, logging each dispatch beside the worker's.
 #[derive(Debug)]
 pub(crate) struct RecordingHost {
     inner: NativeTools,
@@ -120,15 +94,11 @@ pub(crate) struct Harness {
     pub request: RunRequest,
     pub worker: Arc<FakeWorker>,
     pub root: PathBuf,
-    /// The scratch data directory the proposal store writes into. A test that
-    /// stages must never reach `$HOME`, and reading the staged item back is
-    /// how "it was staged" is proved rather than assumed.
     pub data_dir: PathBuf,
     _dir: tempfile::TempDir,
 }
 
 impl Harness {
-    /// The review items the loop staged, in order.
     pub fn staged_items(&self) -> Vec<Value> {
         let path = self.data_dir.join("workspace_os.json");
         let Ok(text) = std::fs::read_to_string(path) else {
@@ -143,7 +113,6 @@ impl Harness {
 }
 
 impl Harness {
-    /// A context with a pinned trace clock, so events are comparable.
     pub fn context(&self) -> AgentRunContext {
         AgentRunContext {
             trace: LoopTrace::pinned("2026-08-11T00:00:00+00:00"),
@@ -159,7 +128,6 @@ impl Harness {
             .count()
     }
 
-    /// Every `/agent/tool` body the loop sent, in order.
     pub fn tool_calls(&self) -> Vec<Value> {
         self.worker
             .calls
@@ -172,7 +140,6 @@ impl Harness {
     }
 }
 
-/// Start a fake worker and point a runtime at it.
 pub(crate) async fn harness(completions: &[&str]) -> Harness {
     let (dir, workspace) = workspace();
     let fake = Arc::new(FakeWorker {
@@ -225,11 +192,7 @@ pub(crate) async fn harness(completions: &[&str]) -> Harness {
     let root = workspace.root().to_path_buf();
     let data_dir = dir.path().join("data");
     let mut deps = LoopDeps::new(WorkerClient::new(&origin), workspace.clone());
-    // Never `JsonProposalStore::from_env()` here: that would stage into the
-    // developer's own `$HOME/.ltcai/workspace_os.json`.
     deps.proposals = Arc::new(crate::kernel::proposals::JsonProposalStore::new(&data_dir));
-    // The real tools, with the vault pointed at the test's own directory and
-    // the owner role, so the loop's gates are what decides — not `check_role`.
     deps.native = Arc::new(RecordingHost {
         inner: NativeTools::new(
             workspace,

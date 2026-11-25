@@ -12,9 +12,6 @@ pub(super) const FINAL: &str = r#"{"action": "final", "message": "done"}"#;
 
 #[tokio::test]
 async fn a_reply_that_copies_the_worked_example_writes_nothing() {
-    // A live 2B handed a Korean request answered with the prompt's own example
-    // — same path, same body — and the run wrote it, passed verification and
-    // reported success over a file nobody asked for.
     let example = format!(
         r#"{{"thoughts": "t", "action": "write_file", "args": {{"path": "notes/hello.md", "content": {}}}}}"#,
         serde_json::to_string(crate::prompts::WRITE_EXAMPLE_CONTENT).expect("json")
@@ -50,7 +47,6 @@ async fn a_reply_that_copies_the_worked_example_writes_nothing() {
         ctx.corrections
     );
 
-    // And the example's *path* alone is refused too.
     let path_only = r#"{"thoughts": "t", "action": "write_file", "args": {"path": "example.txt", "content": "a real document"}}"#;
     let mut harness = super::super::harness::harness(&[path_only]).await;
     let mut ctx = harness.context();
@@ -87,7 +83,6 @@ async fn a_write_then_final_is_two_steps_and_a_real_file() {
         std::fs::read_to_string(harness.root.join("note.md")).expect("file"),
         "hello"
     );
-    // The pre-write snapshot recorded that the file did not exist yet.
     assert_eq!(
         ctx.rollback_log,
         vec![json!({"path": "note.md", "existed": false,
@@ -97,7 +92,6 @@ async fn a_write_then_final_is_two_steps_and_a_real_file() {
 
 #[tokio::test]
 async fn the_budget_is_what_is_left_of_max_steps_not_max_steps() {
-    // One executing step already on the transcript, max_steps 2 → one turn.
     let mut harness = harness(&[&write_action("a.md", "1"), &write_action("b.md", "2")]).await;
     harness.request.permission_mode = Some("trusted".into());
     harness.request.max_steps = 2;
@@ -252,8 +246,6 @@ async fn a_final_with_no_message_gets_the_default_and_an_explicit_null_does_not(
 
 #[tokio::test]
 async fn a_native_refusal_is_an_error_step_not_a_crash() {
-    // The write runs in-process now, so this is the tool's own refusal —
-    // and it lands on the transcript exactly where a seam error did.
     let mut harness = harness(&[&write_action("../escape.md", "x"), FINAL]).await;
     harness.request.permission_mode = Some("trusted".into());
     let mut ctx = harness.context();
@@ -281,8 +273,6 @@ async fn a_native_refusal_is_an_error_step_not_a_crash() {
 
 #[tokio::test]
 async fn a_seam_refusal_is_an_error_step_not_a_crash() {
-    // A compute-only tool is still a worker call, and its refusal is
-    // recorded the same way a native one is.
     let mut harness = harness(&[
         &json!({"action": "read_file", "args": {"path": "missing.md"}}).to_string(),
         FINAL,
@@ -305,17 +295,10 @@ async fn a_seam_refusal_is_an_error_step_not_a_crash() {
     assert_eq!(ctx.trace.summary()["tool_outcomes"], json!({"error": 1}));
 }
 
-/// The live gemma2b:S4 spiral: `run_command npm run build` refused thirteen
-/// times in a row. A tool error is not a format error, so no budget in the JSON
-/// loop was counting it and the run spent every step on the same refusal. The
-/// floor the guided dial has always had now stands under both dials — and it
-/// hands the run to the same escape hatch a spent format budget takes, which is
-/// what still produces the file the plan asked for.
 #[tokio::test]
 async fn an_identical_failing_dispatch_stops_the_run_and_takes_the_escape_hatch() {
     let refused =
         json!({"action": "run_command", "args": {"command": "npm run build"}}).to_string();
-    // Two refusals is the floor; the third completion is the direct write's.
     let mut harness = harness(&[&refused, &refused, "# 체크리스트\n\n- 읽고 나서 고친다\n"]).await;
     harness.runtime.deps.agent_profile = Some(crate::kernel::profile::COMPACT);
     harness.request.permission_mode = Some("bypass".into());
@@ -363,18 +346,11 @@ async fn an_identical_failing_dispatch_stops_the_run_and_takes_the_escape_hatch(
     );
 }
 
-/// A live 2B answered `Unknown action: plan` by sending `plan` three more
-/// times: the only feedback it got was buried in a transcript step. The
-/// correction names the run's real catalog, once.
 #[tokio::test]
 async fn an_invented_action_name_is_answered_with_the_catalog_once() {
     let invented = json!({"action": "plan", "args": {"goal": "list the files"}}).to_string();
     let mut harness = harness(&[&invented, &invented]).await;
     harness.request.message = "이 폴더의 파일 개수를 알려줘".into();
-    // The live step recorded `auto_approve: false` and dispatched anyway, so
-    // the run was in `bypass`. Under the stricter modes the approval gate
-    // refuses the unknown name first and the seam never gets to say it does
-    // not exist — a different (already-tested) path.
     harness.request.permission_mode = Some("bypass".into());
     harness
         .worker

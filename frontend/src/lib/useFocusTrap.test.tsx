@@ -1,10 +1,3 @@
-/**
- * The accessibility contract every modal in this app depends on: Tab cycles
- * inside the dialog, Escape closes it from anywhere inside, and focus returns
- * to whatever opened it. A keyboard user who falls out of a modal has no way
- * back, so each edge — an empty dialog, focus already outside it, an inactive
- * trap — is asserted rather than assumed.
- */
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
@@ -33,7 +26,6 @@ function Trapped({
   );
 }
 
-/** The shape used by dialogs that only exist while open — `active` omitted. */
 function AlwaysTrapped({ onEscape }: { onEscape?: () => void }) {
   const ref = useFocusTrap<HTMLDivElement>(onEscape);
   return (
@@ -157,8 +149,8 @@ describe("useFocusTrap key handling", () => {
 
     const notCancelled = fireEvent.keyDown(screen.getByText("첫 번째"), { key: "Escape" });
     expect(onEscape).toHaveBeenCalledTimes(1);
-    expect(notCancelled).toBe(false); // preventDefault()
-    expect(onOuterKey).not.toHaveBeenCalled(); // stopPropagation()
+    expect(notCancelled).toBe(false);
+    expect(onOuterKey).not.toHaveBeenCalled();
     document.removeEventListener("keydown", onOuterKey);
   });
 

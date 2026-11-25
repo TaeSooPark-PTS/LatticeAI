@@ -1,6 +1,3 @@
-//! Pure PDF page, heading, Markdown table/image, and semantic table-chunk parsers
-//! used by [`crate::document_structure`].
-
 use lattice_core::graph_write::types::ChunkPiece;
 use serde_json::{json, Map, Value};
 

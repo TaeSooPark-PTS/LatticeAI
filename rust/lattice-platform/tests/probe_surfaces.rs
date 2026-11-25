@@ -1,5 +1,3 @@
-//! Probe / recommendation / eval surfaces — worker-up and worker-down.
-
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;

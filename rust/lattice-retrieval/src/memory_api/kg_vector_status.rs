@@ -1,5 +1,3 @@
-//! Vector index health, embedder fingerprint status, and freshness breakdown.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_auth::OrderedMap;
@@ -9,7 +7,6 @@ use serde_json::Value;
 
 use super::{count_by, source_items, SourceItem, EMBEDDER_FINGERPRINT_KEY};
 
-/// `_embedder_fingerprint_record` + `embedder_fingerprint_status`.
 fn embedder_status(conn: &Connection, model_id: &str, dim: i64) -> OrderedMap {
     let recorded = conn
         .query_row(
@@ -67,16 +64,6 @@ fn embedder_status(conn: &Connection, model_id: &str, dim: i64) -> OrderedMap {
     out
 }
 
-/// `_VectorStatusMixin.index_status`, on the numbers every caller reads.
-///
-/// **Stated narrowing.** `storage.engine` in Python is the storage engine's own
-/// capability object and `storage.vector_index` is the in-process backend
-/// selection; both describe the *Python* process. This port reports the fields
-/// it can measure from the store itself and omits the two that would otherwise
-/// be a Rust process describing a Python one. Everything the health report, the
-/// freshness chip and the memory manager read — `status`, `embedder`,
-/// `source_items`, `indexed_items`, `ready/missing/stale/pending_items`,
-/// `by_item_type`, `scale` and `operations` — is complete.
 pub fn index_status(conn: &Connection, db_path: &str) -> Result<OrderedMap, CoreError> {
     let model = lattice_core::LocalEmbeddingModel::from_env();
     let explicit_contract: Option<lattice_core::embedding_contract::EmbeddingIndexContract> = conn
@@ -368,7 +355,6 @@ fn latency_budget(operations: &[Value]) -> Value {
     serde_json::to_value(&budget).unwrap_or(Value::Null)
 }
 
-/// `_vector_freshness_summary` over an already-read `index_status`.
 pub fn vector_freshness_summary(conn: &Connection, status: &OrderedMap) -> OrderedMap {
     let pending = status
         .get("pending_items")
@@ -437,7 +423,6 @@ fn freshness(status: &str, pending: i64, total: i64, detail: &str) -> OrderedMap
     out
 }
 
-/// `vector_freshness_breakdown` — the four numbers behind the chip.
 pub fn vector_freshness_breakdown(
     conn: &Connection,
     status: &OrderedMap,
@@ -458,9 +443,6 @@ pub fn vector_freshness_breakdown(
     out.insert("missing", Value::from(get(status, "missing_items")));
     out.insert("stale", Value::from(get(status, "stale_items")));
     out.insert("total", Value::from(get(summary, "total_items")));
-    // `VectorEmbedQueue.available` is true whenever the store has a database,
-    // which it does here by construction; `None` stays reserved for a queue
-    // with nowhere to persist rather than standing in for an empty backlog.
     let queued: Option<i64> = conn
         .query_row(
             "SELECT COUNT(*) FROM vector_jobs WHERE status='pending'",

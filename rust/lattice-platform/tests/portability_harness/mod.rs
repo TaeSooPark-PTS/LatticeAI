@@ -1,12 +1,3 @@
-//! Shared replay helpers for WP-R9 fixture tests.
-//!
-//! Included via `#[path]` from `portability_parity.rs`. It lives in a
-//! directory rather than beside the suites so Cargo does not also compile it
-//! as an integration-test binary of its own — it has no `#[test]` items.
-
-// A harness is written for every family that includes it, so a helper only one
-// suite calls still reads as dead here.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -343,7 +334,6 @@ pub fn is_keep_or_static_gap(case: &Value) -> bool {
     family == "voice_capture.py" || path == "/activity"
 }
 
-/// Graph-dependent or process-state bodies we only pin status + content-type.
 pub fn partial_body(case: &Value) -> bool {
     let name = case["name"].as_str().unwrap_or("");
     let branch = case["branch"].as_str().unwrap_or("");
@@ -356,8 +346,6 @@ pub fn partial_body(case: &Value) -> bool {
             | ("backup_graph", "happy")
             | ("migrate_postgres", "error_dry_run")
             | ("realtime_feed", "happy")
-            // Presence list is process-state (a prior join + 29 feed events
-            // from the capture session). Pin status only.
             | ("realtime_presence", "happy")
             | ("preview_cloud_context", "happy")
             | ("preview_cloud_context", "happy_top_k_clamped")

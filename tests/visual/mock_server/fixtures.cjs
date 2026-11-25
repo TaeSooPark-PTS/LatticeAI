@@ -1,10 +1,3 @@
-/**
- * The one coherent personal brain every capture screen is drawn from.
- *
- * Screens 05 and 11 have to look like the same computer, so node/edge counts,
- * workspace totals and pipeline stages all derive from these two arrays rather
- * than from per-route invented numbers.
- */
 const path = require("path");
 
 const { repoRoot } = require("./http.cjs");
@@ -13,14 +6,6 @@ const port = Number(process.env.LTCAI_VISUAL_PORT || 4927);
 const appVersion = require(path.join(repoRoot, "package.json")).version;
 const releaseRunId = `run-${appVersion.replace(/\D/g, "")}-product`;
 
-// One coherent personal brain for release captures 05 + 11: pipeline counts
-// (received/extracted/connected) must match this graph's scale so the two
-// screenshots look like the same computer.
-//
-// Capture 05 types "workspace" into the graph search. Client-side filter is
-// substring match on id/title/type/summary — at least 4 nodes and 3 edges
-// among those nodes must survive that filter (B1). Labels below intentionally
-// share the token "workspace" so the filtered subgraph stays a real map.
 const graphNodes = [
   { id: "entity:lattice", type: "Topic", title: "Lattice Workspace", summary: "Local-first personal memory system for this workspace", importance_norm: 0.96, metadata: { graph_metrics: { degree: 6, importance_norm: 0.96, mention_count: 14, conversation_count: 5 } } },
   { id: "entity:workspace", type: "Concept", title: "Workspace Health", summary: "How this computer's Brain is doing in the workspace", importance_norm: 0.82, metadata: { graph_metrics: { degree: 4, importance_norm: 0.82 } } },
@@ -36,8 +21,6 @@ const graphNodes = [
   { id: "note:budget", type: "Note", title: "Q3 예산 메모", summary: "Personal note kept in the Brain", importance_norm: 0.48, metadata: { graph_metrics: { degree: 1, importance_norm: 0.48 } } },
 ];
 
-// Edges among the four "workspace" search hits (lattice, workspace, memory,
-// readme): lattice↔workspace, lattice↔memory, workspace→readme, memory→readme.
 const graphEdges = [
   { from: "entity:lattice", to: "entity:workspace", type: "discusses", weight: 1.4 },
   { from: "entity:lattice", to: "entity:skills", type: "mentions", weight: 1.1 },
@@ -80,7 +63,6 @@ const workspaceOs = {
   version: "1.7.0",
   updated_at: "2026-06-01T12:00:00",
   counts: { snapshots: 2, traces: 3, memories: 7, agent_runs: 4, workflows: 2, skills: 3, timeline: 8 },
-  // Matches graphNodes (12) + graphEdges (10) used by capture 05 / pipeline 11.
   graph: {
     nodes: { Topic: 1, Concept: 2, Task: 2, Decision: 2, File: 4, Note: 1 },
     edges: { discusses: 2, mentions: 3, based_on: 5 },

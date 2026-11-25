@@ -1,7 +1,3 @@
-//! End-to-end gateway isolation, workspace ACL, tenant boundary, and audit
-//! enforcement tests across `/agent`, `/tools/*`, `/mcp/call`, `/skills/*`,
-//! `/cu/*`, `/api/automation/*`, and `/api/browser/*`.
-
 mod common;
 
 use std::collections::HashMap;
@@ -158,7 +154,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     )
     .expect("product");
 
-    // Mint sessions for Alice (acme), Carol (acme), Bob (globex).
     let alice_tok = product
         .auth
         .sessions()
@@ -172,7 +167,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
         .sessions()
         .create("user:bob", Some("bob@globex.test"));
 
-    // Create shared org workspace owned by Alice, with Carol as read-only viewer; Bob is NOT a member.
     let org_ws = product
         .resolver
         .create_organization_workspace("Acme Eng", Some("alice@acme.test"), None)
@@ -200,11 +194,9 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     .with_product(Arc::new(product));
     let gateway = TestGateway::start_with_state(gw_state).await;
 
-    // 1. Unauthenticated access to /tools/list_dir is denied (401).
     let unauth = post_json(gateway.url("/tools/list_dir"), None, &[], json!({})).await;
     assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
 
-    // 2. Alice writes a secret file via /tools/write_file into her isolated personal root.
     let write_alice = post_json(
         gateway.url("/tools/write_file"),
         Some(&alice_tok),
@@ -221,7 +213,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     assert!(alice_ws_path.contains("tenants"), "{alice_ws_path}");
     assert!(alice_ws_path.contains("users"), "{alice_ws_path}");
 
-    // 3. Bob cannot read Alice's secret.txt directly or via `..` traversal or `search_files` or `run_command`.
     let bob_read = post_json(
         gateway.url("/tools/read_file"),
         Some(&bob_tok),
@@ -267,7 +258,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     .await;
     assert_eq!(bob_exec.status(), StatusCode::FORBIDDEN);
 
-    // Symlink inside Bob's isolated root pointing at Alice's secret is blocked.
     let bob_root = resolve_isolated_agent_root(&IsolatedRootSpec {
         base_root: agent_root.clone(),
         user_id: Some("bob@globex.test".into()),
@@ -294,7 +284,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
         assert_eq!(sym_read.status(), StatusCode::BAD_REQUEST);
     }
 
-    // 4. MCP (`/mcp/call`) and Computer Use (`/tools/computer_use_status`) use per-user isolated roots.
     let alice_cu = client()
         .get(gateway.url("/tools/computer_use_status"))
         .bearer_auth(&alice_tok)
@@ -328,10 +317,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
         "MCP call in Bob's sandbox must not read Alice's secret.txt: {bob_mcp_json}"
     );
 
-    // 5. Shared org workspace permissions:
-    //    - Alice writes `shared.txt` into org_id
-    //    - Carol (viewer) CAN read `shared.txt` in org_id, CANNOT write to org_id
-    //    - Bob (non-member) CANNOT read or write org_id (403 Forbidden)
     let alice_org_write = post_json(
         gateway.url("/tools/write_file"),
         Some(&alice_tok),
@@ -368,7 +353,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     .await;
     assert_eq!(bob_org_read.status(), StatusCode::FORBIDDEN);
 
-    // 6. Automation & Browser routes block unauthorized workspace spoofing (`X-Workspace-Id`).
     let bob_auto = client()
         .get(gateway.url("/api/automation/patterns"))
         .bearer_auth(&bob_tok)
@@ -387,8 +371,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     .await;
     assert_eq!(bob_browser.status(), StatusCode::FORBIDDEN);
 
-    // 7. Tenant spoofing (`X-Tenant-Id: acme` by Bob who belongs to `globex`) is denied 403
-    //    and written to `audit_log.json` via PlatformAuthAudit.
     let cross_tenant = post_json(
         gateway.url("/tools/list_dir"),
         Some(&bob_tok),
@@ -398,7 +380,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     .await;
     assert_eq!(cross_tenant.status(), StatusCode::FORBIDDEN);
 
-    // 8. `/agent` enforces server-side user_email & isolated root (ignores spoofed user_email).
     let alice_agent = post_json(
         gateway.url("/agent"),
         Some(&alice_tok),
@@ -420,7 +401,6 @@ async fn multi_user_gateway_isolates_agent_tools_mcp_skills_cu_automation_and_te
     );
     assert!(!bob_root.join("personal.txt").exists());
 
-    // Audit log recorded auth.tenant.denied and agent.workspace.denied events.
     let audit_text =
         std::fs::read_to_string(data_dir.join("audit_log.json")).expect("audit_log.json");
     assert!(

@@ -1,10 +1,3 @@
-//! Claim-level evidence grounding, citation verification, and ungrounded-query abstention.
-//!
-//! Ensures the Brain fails closed ("insufficient grounded evidence") when:
-//! - Retrieval returns no active passages or only superseded/retired passages,
-//! - Query-to-evidence lexical + semantic alignment falls below the grounding floor, or
-//! - Generated claims introduce unsupported numbers, identifiers, or inverted polarity.
-
 use std::collections::BTreeSet;
 
 use lattice_core::LocalEmbeddingModel;
@@ -12,14 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::bm25::tokenize_bm25_cjk;
 
-/// Minimum fraction of non-stopword query concepts/tokens or cosine similarity required
-/// before attempting grounded synthesis instead of abstaining.
 pub const DEFAULT_MIN_QUERY_ALIGNMENT: f64 = 0.25;
 
-/// Minimum fraction of answer claims that must be backed by active evidence.
 pub const DEFAULT_MIN_CLAIM_SUPPORT_RATIO: f64 = 0.75;
 
-/// One retrieved passage inspected by the grounding verifier.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EvidencePassage {
     pub id: String,
@@ -29,21 +18,15 @@ pub struct EvidencePassage {
     pub confidence: f64,
 }
 
-/// Explicit reason why the Brain abstained rather than risking hallucination.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AbstentionReason {
-    /// Zero passages were retrieved for the workspace/query.
     NoRetrievedEvidence,
-    /// Passages were retrieved, but every candidate was superseded or retired.
     OnlySupersededEvidence,
-    /// Active passages exist in the store, none align with the user's question.
     InsufficientQueryAlignment,
-    /// Candidate answer contains claims, numbers, or polarity unsupported by active evidence.
     UnsupportedAnswerClaims,
 }
 
-/// Grounding check result for a single atomic claim in a candidate answer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaimSupportVerdict {
     pub claim_text: String,
@@ -55,7 +38,6 @@ pub struct ClaimSupportVerdict {
     pub polarity_mismatch: bool,
 }
 
-/// Full grounding & abstention evaluation over a query, retrieved passages, and optional answer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GroundingVerdict {
     pub should_abstain: bool,
@@ -259,7 +241,6 @@ fn has_polarity_conflict(claim: &str, title: &str, text: &str) -> bool {
     false
 }
 
-/// Split a synthesized answer into atomic declarative claims.
 pub fn split_answer_claims(answer: &str) -> Vec<String> {
     let mut claims = Vec::new();
     for line in answer.lines() {
@@ -298,9 +279,6 @@ fn build_abstention_messages(reason: AbstentionReason) -> (String, String) {
     }
 }
 
-/// Evaluate whether `passages` provide sufficient active grounding for `query`,
-/// and (when `candidate_answer` + `cited_ids` are supplied) verify every atomic claim
-/// and citation for faithfulness, numeric accuracy, polarity, and supersession safety.
 pub fn verify_grounding_and_abstention(
     query: &str,
     passages: &[EvidencePassage],
@@ -446,7 +424,6 @@ pub fn verify_grounding_and_abstention(
             }
         }
 
-        // Also allow multi-passage union support (synthesis across 2+ active documents!).
         if supporting_ids.is_empty() && !c_tokens.is_empty() {
             let union_overlap = c_tokens
                 .iter()
@@ -579,7 +556,6 @@ mod tests {
             },
         ];
 
-        // 1. Out-of-domain ungrounded question -> immediate abstention!
         let ungrounded = verify_grounding_and_abstention(
             "프랑스 파리의 2026년 지하철 요금 인상률은 얼마인가요?",
             &passages,
@@ -592,7 +568,6 @@ mod tests {
             Some(AbstentionReason::InsufficientQueryAlignment)
         );
 
-        // 2. Grounded synthesis with accurate number + active citation passes!
         let valid = verify_grounding_and_abstention(
             "What loopback port does Lattice Host listen on?",
             &passages,
@@ -604,7 +579,6 @@ mod tests {
         assert_eq!(valid.citation_precision, 1.0);
         assert_eq!(valid.superseded_citation_leaks, 0);
 
-        // 3. Hallucinated port number (9999) or superseded citation (doc:old) -> rejected!
         let bad_num = verify_grounding_and_abstention(
             "What loopback port does Lattice Host listen on?",
             &passages,
@@ -623,7 +597,6 @@ mod tests {
         assert!(leaked_old.should_abstain);
         assert_eq!(leaked_old.superseded_citation_leaks, 1);
 
-        // 4. Polarity inversion -> rejected!
         let inverted_polarity = verify_grounding_and_abstention(
             "What loopback port does Lattice Host listen on?",
             &passages,

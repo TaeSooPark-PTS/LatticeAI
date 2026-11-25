@@ -1,16 +1,3 @@
-//! The ingest doors — port of `lattice_brain/graph/ingest.py`.
-//!
-//! Four doors, one shape: derive the content identity, upsert the content node,
-//! attach a `Source` node and the people and conversations around it, write the
-//! retrieval chunks, then the extracted concepts, the concept–concept edges and
-//! the Task/Decision items. The order is Python's, statement for statement,
-//! because the ids of everything downstream are hashed from what came before.
-//!
-//! What crosses the seam as *data* (see [`super::types`]): chunk boundaries,
-//! concepts with their classification, triples with their evidence class, and
-//! semantic items. What is derived **here**: every id, every hash, the blob
-//! sidecar, the sensitivity stamp, and the rows.
-
 use std::path::Path;
 
 use rusqlite::Transaction;
@@ -23,30 +10,21 @@ use super::pyaux::{json_of, scoped_slug_id, sha256_text};
 use super::types::{ChunkPiece, ConceptSpec, EdgeSpec, NodeSpec, StructureChild, TripleSpec};
 use super::GraphWriter;
 
-/// What every ingest door hands back.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IngestOutcome {
-    /// The content node.
     pub node_id: String,
-    /// Its legacy type label.
     pub node_type: String,
-    /// The `Source` node it was indexed from, when there is one.
     pub source_node_id: Option<String>,
-    /// The identity hash the dedup check is made against.
     pub content_hash: Option<String>,
-    /// Set by the file door only (`ingest_document` reports both keys).
     pub sha256: Option<String>,
     pub chunk_ids: Vec<String>,
     pub chunk_count: usize,
-    /// Whether the content node already existed before this call.
     pub duplicate: bool,
     pub captured_at: Option<String>,
-    /// The file door's full node metadata, as it reports it.
     pub metadata: Option<Map<String, Value>>,
 }
 
 impl IngestOutcome {
-    /// The JSON body the Python doors return, key for key.
     pub fn to_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("node_id".into(), json!(self.node_id));
@@ -68,19 +46,11 @@ impl IngestOutcome {
         Value::Object(map)
     }
 
-    /// `{"node_id": …, "type": …}` — all `ingest_message` and `ingest_event`
-    /// report. The other doors report the dedup and chunk facts a caller needs
-    /// to record provenance; these two have nothing to add.
     pub fn to_json_brief(&self) -> Value {
         json!({"node_id": self.node_id, "type": self.node_type})
     }
 }
 
-/// `_triple_edge_metadata` — the evidence class travels with the edge.
-///
-/// Review 2026-07-27 P1 #6: a verb-backed relation and a bare co-occurrence
-/// used to land in the graph identically, so a reader could not tell a meaning
-/// edge from an adjacency edge.
 pub(crate) fn triple_edge_metadata(triple: &TripleSpec) -> Map<String, Value> {
     let mut metadata = Map::new();
     metadata.insert(
@@ -97,8 +67,6 @@ pub(crate) fn triple_edge_metadata(triple: &TripleSpec) -> Map<String, Value> {
 }
 
 impl GraphWriter {
-    /// `_attach_source_node` — every ingested node points at exactly one
-    /// `Source`, so the graph can always explain where a node came from.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn attach_source_node(
         &self,
@@ -186,11 +154,6 @@ impl GraphWriter {
         Ok(source_id)
     }
 
-    /// The chunk loop the three text doors share.
-    ///
-    /// `collect_ids` is the one difference between them: `ingest_message` does
-    /// not report chunk ids, and reproducing that means not collecting them
-    /// rather than dropping them afterwards.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn write_chunks(
         &self,
@@ -231,8 +194,6 @@ impl GraphWriter {
                     visibility: None,
                 },
             )?;
-            // The chunk *row*'s metadata is never workspace-stamped, in either
-            // door — only the Chunk node's is.
             let mut chunk_metadata = Map::new();
             chunk_metadata.insert("index".into(), json!(index));
             chunk_metadata.insert("source_node".into(), json!(source_node));
@@ -263,9 +224,6 @@ impl GraphWriter {
         Ok(ids)
     }
 
-    /// The concept loop: one node per extracted concept, one edge back to the
-    /// content node. Returns `(lowercased concept, node id)` in order — which
-    /// is what the triple loop resolves its subjects and objects against.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn write_concepts(
         &self,
@@ -316,7 +274,6 @@ impl GraphWriter {
         Ok(resolved)
     }
 
-    /// The concept–concept edge loop.
     pub(crate) fn write_triples(
         &self,
         txn: &Transaction<'_>,
@@ -345,10 +302,6 @@ impl GraphWriter {
         Ok(())
     }
 
-    /// `_ingest_structure_nodes` — slides, pages, sheets and images.
-    ///
-    /// The topic labels per slide and per page come from `_topic_candidates`,
-    /// which is NLP; they arrive on [`StructureChild::topics`].
     pub(crate) fn write_structure_nodes(
         &self,
         txn: &Transaction<'_>,
@@ -534,12 +487,10 @@ pub(crate) fn lookup_concept<'a>(
         .map(|(_, id)| id.as_str())
 }
 
-/// `json.dumps(image, ensure_ascii=False, sort_keys=True)` for the image key.
 pub(crate) fn sorted_compact_json(payload: &Map<String, Value>) -> String {
     json_of(payload)
 }
 
-/// Python's `Path.suffix.lower()` — the last dot-segment of the file name only.
 pub(crate) fn extension_of(path: &Path) -> String {
     let Some(name) = path
         .file_name()

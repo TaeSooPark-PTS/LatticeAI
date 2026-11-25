@@ -1,10 +1,6 @@
-//! Bilingual (EN/KO) domain classifiers and observation-first tool priority lists.
-
 use super::{action_succeeded, named_in};
 use crate::kernel::state::AgentRunContext;
 
-/// Extract an explicit URL stated in `request`, stripping surrounding quotes,
-/// parentheses, and trailing non-ASCII particles (e.g. Korean postpositions).
 pub fn url_named_in_request(request: &str) -> Option<String> {
     let is_url_char = |c: char| {
         c.is_ascii_alphanumeric()
@@ -42,7 +38,6 @@ pub fn url_named_in_request(request: &str) -> Option<String> {
     None
 }
 
-/// Deterministic bilingual (EN/KO) domain classifier for web search / fetch requests.
 pub fn request_wants_web(request: &str) -> bool {
     let trimmed = request.trim();
     if trimmed.is_empty() {
@@ -85,7 +80,6 @@ pub fn request_wants_web(request: &str) -> bool {
     CUES.iter().any(|cue| lower.contains(cue))
 }
 
-/// Deterministic bilingual (EN/KO) domain classifier for desktop / UI automation requests.
 pub fn request_wants_computer_use(request: &str) -> bool {
     let trimmed = request.trim();
     if trimmed.is_empty() {
@@ -151,7 +145,6 @@ pub fn request_wants_computer_use(request: &str) -> bool {
     CUES.iter().any(|cue| lower.contains(cue))
 }
 
-/// Deterministic bilingual (EN/KO) domain classifier for Knowledge Graph / Vault requests.
 pub fn request_wants_knowledge(request: &str) -> bool {
     let trimmed = request.trim();
     if trimmed.is_empty() {
@@ -201,8 +194,6 @@ pub fn request_wants_knowledge(request: &str) -> bool {
     CUES.iter().any(|cue| lower.contains(cue))
 }
 
-/// Whether the transcript already contains a successful UI observation step
-/// (`computer_ui_inspect` or `computer_screenshot`).
 pub(in crate::kernel::agentloop) fn has_ui_observation(ctx: &AgentRunContext) -> bool {
     action_succeeded(ctx, "computer_ui_inspect")
         || action_succeeded(ctx, "computer_screenshot")
@@ -210,11 +201,6 @@ pub(in crate::kernel::agentloop) fn has_ui_observation(ctx: &AgentRunContext) ->
         || action_succeeded(ctx, "mcp.computer_screenshot")
 }
 
-/// Domain-matched tools in priority order for `request`.
-///
-/// When `request_wants_computer_use(request)` and `!ui_observed`, observation
-/// tools (`computer_ui_inspect`, `computer_screenshot`) always precede pointer
-/// or keyboard actuation tools (`computer_click`, `computer_type`, etc.).
 pub(in crate::kernel::agentloop) fn domain_priority_tools(
     request: &str,
     ui_observed: bool,

@@ -1,24 +1,7 @@
-//! PDF page arithmetic: which page a chunk offset landed on.
-//!
-//! `read_document` joins extracted pages with `"\n\n"`, so page *k* starts at
-//! `sum(chars[j] + 2 for j < k)` in the text that gets chunked. That `+2` is
-//! the whole trick, and getting it wrong shifts every citation by two
-//! characters per page — invisible on page one, a page off by page forty.
-//!
-//! Both functions answer `[]` / `None` rather than guessing when the structure
-//! is malformed: a citation that claims the wrong page is worse than one that
-//! claims no page.
-
 use serde_json::Value;
 
-/// `citation_locator`, already ported and golden-pinned in lattice-core.
 pub use lattice_core::pytext::citation_locator;
 
-/// `pdf_page_offsets(structure)` — the start offset of every page, or `[]`.
-///
-/// Anything malformed anywhere in the list poisons the whole answer, exactly as
-/// Python's early `return []` does: a half-built offset table would put later
-/// pages at confidently wrong positions.
 pub fn pdf_page_offsets(structure: &Value) -> Vec<i64> {
     let Some(object) = structure.as_object() else {
         return Vec::new();
@@ -35,9 +18,6 @@ pub fn pdf_page_offsets(structure: &Value) -> Vec<i64> {
         let Some(page) = page.as_object() else {
             return Vec::new();
         };
-        // `isinstance(chars, bool)` is checked first in Python because `True`
-        // is an `int` there; a JSON bool is simply not a number here, but the
-        // refusal has to be the same one.
         let chars = match page.get("chars") {
             Some(Value::Number(number)) => number.as_f64().unwrap_or(-1.0),
             _ => return Vec::new(),
@@ -46,16 +26,11 @@ pub fn pdf_page_offsets(structure: &Value) -> Vec<i64> {
             return Vec::new();
         }
         offsets.push(cursor);
-        cursor += chars.trunc() as i64 + 2; // +2 for the "\n\n" page joiner
+        cursor += chars.trunc() as i64 + 2;
     }
     offsets
 }
 
-/// `page_for_offset(page_offsets, offset)` — the 1-based page, or `None`.
-///
-/// `None` means "before the first page" or "no offsets", which is honest
-/// absence; the scan stops at the first page that starts after the offset, so
-/// a non-monotonic table answers the same thing Python's `break` answers.
 pub fn page_for_offset(page_offsets: &[i64], offset: i64) -> Option<i64> {
     if page_offsets.is_empty() {
         return None;
@@ -84,7 +59,6 @@ mod tests {
             pdf_page_offsets(&json!({"pages": [{"chars": 1200}]})),
             vec![0]
         );
-        // Floats truncate, exactly as `int(chars)` does.
         assert_eq!(
             pdf_page_offsets(&json!({"pages": [{"chars": 10.9}, {"chars": 5.0}]})),
             vec![0, 12]
@@ -120,8 +94,6 @@ mod tests {
         assert_eq!(page_for_offset(&offsets, 10_000), Some(3));
         assert_eq!(page_for_offset(&offsets, -1), None);
         assert_eq!(page_for_offset(&[], 5), None);
-        // A zero-length page shares a start with the next one; the later page
-        // wins, because the scan keeps assigning while `offset >= start`.
         assert_eq!(page_for_offset(&[0, 2, 12], 2), Some(2));
     }
 

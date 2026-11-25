@@ -1,19 +1,3 @@
-//! The skill registry: what is installed on this machine, and what is offered.
-//!
-//! Port of `core/workspace_skills.py` plus `remove_skill_directory` from
-//! `core/workspace_os_utils.py`.
-//!
-//! Installed skills are **machine-global**, not per-workspace
-//! (`WorkspaceService.SHARED_GLOBAL_AREAS`): the directory is on disk once and
-//! every workspace on this install sees the same one. Enable/disable still
-//! records a workspace-scoped timeline event, which is why those two routes
-//! take a user but no scope.
-//!
-//! `list_skill_registry` **writes**: it reconciles the registry with what is
-//! actually on disk and saves. That is Python's behaviour and it is load-bearing
-//! — a skill installed by unzipping a directory only becomes known to the
-//! product when someone lists.
-
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
@@ -21,7 +5,6 @@ use serde_json::{json, Map, Value};
 use super::pyutil::{now_iso, safe_slug};
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// `list_skill_registry(skills_dir, marketplace)`.
 pub fn list_skill_registry(
     store: &WorkspaceOsStore,
     skills_dir: Option<&Path>,
@@ -92,28 +75,20 @@ fn keep_or(existing: Option<&Value>, fallback: &str) -> Value {
     }
 }
 
-/// One installed skill directory, as the scan reads it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstalledSkill {
     pub name: String,
     pub description: String,
     pub version: String,
     pub path: String,
-    /// JSON-Schema object for the skill's `input`, when `schema.json` parsed.
     pub input_schema: Option<Value>,
     pub body: String,
 }
 
-/// `for skill_dir in sorted(skills_dir.iterdir())` — a directory with a
-/// `SKILL.md` is a skill; anything else is ignored without comment.
 pub fn scan_installed_skills(skills_dir: &Path) -> Vec<InstalledSkill> {
     scan_directory(skills_dir)
 }
 
-/// Turn a skill's `schema.json` `input` field into a JSON Schema object.
-///
-/// Skills in this repo use a compact `{required, optional, properties}` shape.
-/// Missing or already-standard objects fall back to an empty object schema.
 pub fn json_schema_from_skill_input(input: Option<&Value>) -> Value {
     let Some(input) = input else {
         return json!({"type": "object", "properties": {}});
@@ -132,8 +107,6 @@ pub fn json_schema_from_skill_input(input: Option<&Value>) -> Value {
     json!({"type": "object", "properties": {}})
 }
 
-/// `for skill_dir in sorted(skills_dir.iterdir())` — a directory with a
-/// `SKILL.md` is a skill; anything else is ignored without comment.
 fn scan_directory(skills_dir: &Path) -> Vec<InstalledSkill> {
     let Ok(entries) = std::fs::read_dir(skills_dir) else {
         return Vec::new();
@@ -195,7 +168,6 @@ fn scan_directory(skills_dir: &Path) -> Vec<InstalledSkill> {
         .collect()
 }
 
-/// A marketplace row, overlaid with whatever this install knows about it.
 fn project_marketplace(item: &Value, registry: &Value) -> Option<Value> {
     let name = item
         .get("skill")
@@ -250,7 +222,6 @@ fn project_marketplace(item: &Value, registry: &Value) -> Option<Value> {
     Some(Value::Object(merged))
 }
 
-/// The `a or b or fallback` chain, with Python's truthiness for strings.
 fn first_text(candidates: &[Option<&Value>], fallback: &str) -> Value {
     for candidate in candidates.iter().flatten() {
         if let Value::String(text) = candidate {
@@ -262,7 +233,6 @@ fn first_text(candidates: &[Option<&Value>], fallback: &str) -> Value {
     json!(fallback)
 }
 
-/// `set_skill_enabled`.
 pub fn set_enabled(
     store: &WorkspaceOsStore,
     skill: &str,
@@ -287,7 +257,6 @@ pub fn set_enabled(
     Ok(entry)
 }
 
-/// `mark_skill_installed`.
 pub fn mark_installed(
     store: &WorkspaceOsStore,
     skill: &str,
@@ -328,7 +297,6 @@ pub fn mark_installed(
     Ok(entry)
 }
 
-/// `mark_skill_uninstalled`.
 pub fn mark_uninstalled(store: &WorkspaceOsStore, skill: &str) -> Result<Value, StoreError> {
     let entry = store.mutate(|state| {
         Ok(update_entry(state, skill, |entry| {
@@ -341,7 +309,6 @@ pub fn mark_uninstalled(store: &WorkspaceOsStore, skill: &str) -> Result<Value, 
     Ok(entry)
 }
 
-/// `state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})`.
 fn update_entry(state: &mut Value, skill: &str, body: impl FnOnce(&mut Value)) -> Value {
     let registry = state
         .as_object_mut()
@@ -360,19 +327,11 @@ fn update_entry(state: &mut Value, skill: &str, body: impl FnOnce(&mut Value)) -
     entry.clone()
 }
 
-/// `remove_skill_directory` — delete an installed skill's directory.
-///
-/// The slug + prefix check is the containment guard: a `skill` of `../..`
-/// slugs to `..-..` and then has to still resolve inside the skills root.
 pub fn remove_skill_directory(skills_dir: &Path, skill: &str) -> Result<Value, StoreError> {
     let safe_name = safe_slug(skill);
     let root = skills_dir
         .canonicalize()
         .unwrap_or_else(|_| skills_dir.to_path_buf());
-    // Python's `Path.resolve()` still produces a path under the resolved
-    // parent when the target does not exist; `canonicalize` does not. Walk
-    // the slug's components (so a leftover `..` cannot escape) and fall
-    // back to `root / slug` when the directory is already gone.
     let resolved = resolve_skill_target(&root, &safe_name);
     if !resolved.starts_with(&root) {
         return Err(StoreError::Value("invalid skill path".into()));
@@ -389,7 +348,6 @@ pub fn remove_skill_directory(skills_dir: &Path, skill: &str) -> Result<Value, S
     }))
 }
 
-/// `(skills_dir / slug).resolve()` — parent is canonical, missing leaf stays.
 fn resolve_skill_target(root: &Path, slug: &str) -> PathBuf {
     let target = root.join(slug);
     if let Ok(canonical) = target.canonicalize() {
@@ -517,14 +475,12 @@ mod tests {
         let listing = list_skill_registry(&store, Some(skills.path()), &[]).unwrap();
         let installed = listing["installed"].as_array().unwrap();
         assert_eq!(installed.len(), 2);
-        // Sorted by path, so `a-skill` comes first.
         assert_eq!(installed[0]["name"], json!("a-skill"));
         assert_eq!(installed[0]["description"], json!("first"));
         assert_eq!(installed[0]["version"], json!("local"));
         assert_eq!(installed[0]["source"], json!("local"));
         assert_eq!(installed[0]["validation_status"], json!("ready"));
         assert_eq!(installed[1]["version"], json!("2.0.0"));
-        // The scan persisted: a second call sees the same registry.
         assert_eq!(
             store.load_state()["skill_registry"]["a-skill"]["installed"],
             json!(true)
@@ -575,7 +531,6 @@ mod tests {
             installed["metadata"]["install_result"]["status"],
             json!("recorded")
         );
-        // `enabled` is preserved through an install (it was false above).
         assert_eq!(installed["enabled"], json!(false));
 
         let removed = mark_uninstalled(&store, "alpha").unwrap();
@@ -604,7 +559,6 @@ mod tests {
         let (_dir, store) = store();
         let entry = mark_installed(&store, "beta", "1.0", &json!({"source": "plugin-x"})).unwrap();
         assert_eq!(entry["source"], json!("plugin-x"));
-        // An empty metadata keeps whatever was there.
         let again = mark_installed(&store, "beta", "1.1", &json!({})).unwrap();
         assert_eq!(again["source"], json!("plugin-x"));
         assert_eq!(again["metadata"], json!({"source": "plugin-x"}));
@@ -623,8 +577,6 @@ mod tests {
             remove_skill_directory(skills.path(), "gamma").unwrap_err(),
             StoreError::NotFound("gamma".into())
         );
-        // A traversal attempt slugs into a sibling name and is still not found
-        // rather than escaping the root.
         assert_eq!(
             remove_skill_directory(skills.path(), "../../etc").unwrap_err(),
             StoreError::NotFound("../../etc".into())

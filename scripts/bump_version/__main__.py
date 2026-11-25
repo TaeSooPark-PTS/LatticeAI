@@ -1,5 +1,3 @@
-"""Module entrypoint for ``python -m scripts.bump_version``."""
-
 from __future__ import annotations
 
 from scripts.bump_version.cli import main

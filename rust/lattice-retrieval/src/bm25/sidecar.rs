@@ -1,17 +1,3 @@
-//! Pre-tokenized BM25F Sidecar + Inverted Index + Graph Adjacency Cache.
-//!
-//! Eliminates per-query full-corpus tokenization and wikilink/tag scanning by
-//! maintaining:
-//! - O(1) per-node field lengths (`dl_title`, `dl_tags`, `dl_body`, `dl_meta`)
-//!   and per-field term frequencies (`tf_*`), synced incrementally by
-//!   `(node_id, updated_at, content_hash)` and hydrated from `bm25_node_stats`
-//!   when available (while remaining 100% transparent and schema-free on
-//!   read-only golden databases).
-//! - Inverted posting lists (`term -> Vec<PostingEntry>`), O(1) `df(t)` lookup,
-//!   and pre-aggregated `avgdl_f`.
-//! - Cached wikilink, hashtag, title, and edge adjacency maps for O(1) / O(deg)
-//!   GraphRAG expansion.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
@@ -31,7 +17,6 @@ use super::scoring::{
 
 const MAX_CACHED_EDGES: usize = 50_000;
 
-/// One posting entry in the inverted index for a single `(term, node)` pair.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PostingEntry {
     pub doc_idx: usize,
@@ -42,7 +27,6 @@ pub struct PostingEntry {
     pub tf_meta: usize,
 }
 
-/// An undirected/directed graph edge cached in memory for fast 1-hop/2-hop GraphRAG.
 #[derive(Debug, Clone)]
 pub struct CachedEdge {
     pub src: String,
@@ -51,7 +35,6 @@ pub struct CachedEdge {
     pub weight: f64,
 }
 
-/// Edge schema column layout (`schema.rs` vs legacy/test `source_id` layout).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EdgeColumnLayout {
     pub src_col: &'static str,
@@ -59,7 +42,6 @@ pub struct EdgeColumnLayout {
     pub rel_col: &'static str,
 }
 
-/// Observability counters for cache hits, incremental syncs, and sidecar DB hits.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SidecarCacheStats {
     pub cache_hits: u64,
@@ -108,7 +90,6 @@ pub struct SidecarDoc {
     subword_embedding: Option<Vec<f32>>,
 }
 
-/// Pre-tokenized BM25F sidecar & inverted index with incremental updates and graph caches.
 #[derive(Debug, Clone, Default)]
 pub struct Bm25SidecarIndex {
     docs: Vec<Option<SidecarDoc>>,
@@ -258,7 +239,6 @@ fn conn_sync_token(
     })
 }
 
-/// Detect the column names on `edges` (`from_node/to_node/type` vs `source_id/target_id/relation_type`).
 pub fn detect_edge_columns(conn: &Connection) -> Option<EdgeColumnLayout> {
     let mut stmt = conn.prepare("PRAGMA table_info(edges)").ok()?;
     let cols: Vec<String> = stmt
@@ -303,21 +283,18 @@ impl Bm25SidecarIndex {
         }
     }
 
-    /// Build a fresh sidecar index from a slice of `NodeRow`s.
     pub fn from_corpus(rows: &[NodeRow]) -> Self {
         let mut idx = Self::new();
         idx.sync_from_nodes(rows, None);
         idx
     }
 
-    /// O(1) field length lookup `(dl_title, dl_tags, dl_body, dl_meta)` by `node_id`.
     pub fn field_lengths(&self, node_id: &str) -> Option<(usize, usize, usize, usize)> {
         let &doc_idx = self.id_to_idx.get(node_id)?;
         let doc = self.docs.get(doc_idx)?.as_ref()?;
         Some((doc.dl_title, doc.dl_tags, doc.dl_body, doc.dl_meta))
     }
 
-    /// O(1) per-field term frequency lookup `(tf_title, tf_tags, tf_body, tf_meta)` by `node_id`.
     #[allow(clippy::type_complexity)]
     pub fn term_freqs(
         &self,
@@ -333,12 +310,10 @@ impl Bm25SidecarIndex {
         Some((&doc.tf_title, &doc.tf_tags, &doc.tf_body, &doc.tf_meta))
     }
 
-    /// O(1) document frequency `df(t)` lookup.
     pub fn doc_freq(&self, term: &str) -> usize {
         self.df.get(term).copied().unwrap_or(0)
     }
 
-    /// O(1) pre-aggregated average field lengths `(avgdl_title, avgdl_tags, avgdl_body, avgdl_meta)`.
     pub fn avgdl(&self) -> (f64, f64, f64, f64) {
         (
             self.avgdl_title,
@@ -348,18 +323,15 @@ impl Bm25SidecarIndex {
         )
     }
 
-    /// O(1) inverted posting list lookup for `term`.
     pub fn postings(&self, term: &str) -> &[PostingEntry] {
         self.postings.get(term).map(Vec::as_slice).unwrap_or(&[])
     }
 
-    /// O(1) document entry lookup by `node_id`.
     pub fn get_doc(&self, node_id: &str) -> Option<&SidecarDoc> {
         let &doc_idx = self.id_to_idx.get(node_id)?;
         self.docs.get(doc_idx)?.as_ref()
     }
 
-    /// O(1) document entry lookup by internal `doc_idx`.
     pub(crate) fn doc_at(&self, doc_idx: usize) -> Option<&SidecarDoc> {
         self.docs.get(doc_idx)?.as_ref()
     }
@@ -419,7 +391,6 @@ impl Bm25SidecarIndex {
             .collect()
     }
 
-    /// True if node index token still matches `conn` for `(max_rows, include_historical)`.
     pub(crate) fn is_synced_with(
         &self,
         conn: &Connection,
@@ -432,7 +403,6 @@ impl Bm25SidecarIndex {
         self.last_sync_token.as_ref() == Some(&token)
     }
 
-    /// True if graph edges token still matches `conn`.
     pub(crate) fn edges_synced_with(&self, conn: &Connection) -> bool {
         let Ok(token) = conn_sync_token(conn, 0, false) else {
             return false;
@@ -546,8 +516,6 @@ impl Bm25SidecarIndex {
         self.stats.unique_terms = self.df.len();
     }
 
-    /// Incrementally sync index from `rows`, reusing unchanged nodes and optional
-    /// precomputed `bm25_node_stats` without re-tokenizing.
     pub fn sync_from_nodes(
         &mut self,
         rows: &[NodeRow],
@@ -569,8 +537,6 @@ impl Bm25SidecarIndex {
         self.sync_from_scoped_records(&records, precomputed);
     }
 
-    /// Incrementally sync index from [`ScopedNodeRecord`] slices, preserving unchanged
-    /// tokenized fields and cached subword embeddings while updating changed/new docs.
     pub fn sync_from_scoped_records(
         &mut self,
         records: &[ScopedNodeRecord],
@@ -639,7 +605,6 @@ impl Bm25SidecarIndex {
         }
     }
 
-    /// Sync index incrementally from SQLite with explicit `include_historical` lifecycle control.
     pub fn sync_from_conn_with_options(
         &mut self,
         conn: &Connection,
@@ -703,8 +668,6 @@ impl Bm25SidecarIndex {
         Ok(())
     }
 
-    /// Sync index incrementally from SQLite, hydrating unchanged/precomputed nodes
-    /// from `bm25_node_stats` when available and never mutating read-only DBs.
     pub fn sync_from_conn(
         &mut self,
         conn: &Connection,

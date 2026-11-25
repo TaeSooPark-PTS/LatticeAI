@@ -1,4 +1,4 @@
-/* Terminal approval outcomes persist as small honest notes on the message. */
+
 .brain-approval-note {
   display: block;
   margin-top: 0.5rem;
@@ -29,8 +29,7 @@
   color: hsl(var(--danger-ink));
 }
 
-/* ── Answer grounding badge (근거 있음/근거 없음) ───────────────────────────
-   Tiny, unobtrusive verdict pill under the answer text. */
+
 .brain-grounding-badge {
   display: inline-flex;
   width: fit-content;
@@ -55,7 +54,7 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* Cloud-lane answer chip: quiet token-styled disclosure, never on local replies. */
+
 .brain-cloud-answer {
   margin-top: 0.4rem;
 }
@@ -115,10 +114,7 @@
   cursor: pointer;
 }
 
-/* ── Agent step timeline ────────────────────────────────────────────────────
-   Compact per-step transparency for agent runs: live while streaming, a
-   collapsed one-line summary once done. Muted by default; success/amber/red
-   only on the state dots so the timeline never competes with the answer. */
+
 .brain-step-timeline {
   margin-top: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.55);
@@ -225,7 +221,7 @@
   }
 }
 
-/* Loop transparency note ("모델 응답을 N회 보정했어요") — quiet, muted. */
+
 .brain-loop-repairs {
   display: block;
   margin: 0.4rem 0 0;
@@ -233,7 +229,7 @@
   font-size: 0.68rem;
 }
 
-/* ── 폴더별 기억 상태 (v9.9.7) ────────────────────────────────────────── */
+
 .folder-memory-health {
   display: flex;
   flex-direction: column;
@@ -358,7 +354,7 @@
   color: hsl(var(--warning, 32 78% 42%));
 }
 
-/* ── 지식 정원 (v9.9.7): 네 개의 화단 ──────────────────────────────────── */
+
 .brain-garden {
   border: 1px solid hsl(var(--border) / 0.55);
   border-radius: 10px;

@@ -1,5 +1,3 @@
-//! Review-item persistence and status transitions.
-
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
@@ -10,25 +8,14 @@ use super::{
     REVIEW_ITEM_UPDATED_EVENT,
 };
 
-// ── store ─────────────────────────────────────────────────────────────────
-
 #[derive(Debug)]
 pub(crate) enum ReviewError {
     NotFound,
     Conflict(String),
     Failed(String),
-    /// A field the request supplied cannot be used (→ 422, as the missing-field
-    /// refusal on the same route is).
     Invalid(String),
 }
 
-/// Stage one review item — and record that it happened.
-///
-/// This and [`update_review_item`] are the only two writers of the
-/// `review_items` list, which is what lets every route that touches a review
-/// item emit its timeline event from one place instead of eight.
-// Nine parameters because `review_queue.create` takes nine; a params struct
-// would only rename the same nine at every call site.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_review_item(
     state: &GovernanceState,
@@ -149,15 +136,6 @@ pub(crate) fn load_review_item(
     })
 }
 
-/// Patch one stored review item, then record the change on the timeline.
-///
-/// `action` names what the caller did (`"approve"`, `"dismiss"`, `"reject"`,
-/// …) and only ever reaches the event payload — the status guard is the
-/// caller's, because a `/reject` route is a dismiss underneath and must keep
-/// answering with the dismiss guard's wording.
-///
-/// A refusal (no such item, or one in another workspace) leaves the document
-/// byte-for-byte as it was: nothing is saved and no event is emitted.
 pub(crate) fn update_review_item(
     state: &GovernanceState,
     item_id: &str,
@@ -198,8 +176,6 @@ pub(crate) fn transition(
     update_review_item(state, item_id, workspace_id, action, patch)
 }
 
-/// Dismiss one item. `action` is the timeline label only: `/api/proposals/…
-/// /reject` passes `"reject"` and still guards — and refuses — as a dismiss.
 pub(crate) fn transition_dismiss(
     state: &GovernanceState,
     item_id: &str,
@@ -227,10 +203,6 @@ pub(crate) fn transition_dismiss(
     })
 }
 
-/// The wording an unparseable `until` is refused with.
-///
-/// Raw English, as this module's other field refusals are (`"title is
-/// required"`); the catalog id this wants is listed in the WP's wiring note.
 pub(crate) const SNOOZE_UNTIL_INVALID: &str =
     "until must be an ISO-8601 datetime (for example 2099-01-01T00:00:00+00:00)";
 
@@ -244,8 +216,6 @@ pub(crate) fn transition_snooze(
     if let Err(msg) = guard("snooze", &stored) {
         return Err(ReviewError::Conflict(msg));
     }
-    // Validated *before* the write, so an unreadable stamp cannot sit in the
-    // store and be re-read forever by `effective_status`.
     if parse_iso(until).is_none() {
         return Err(ReviewError::Invalid(SNOOZE_UNTIL_INVALID.to_string()));
     }
@@ -358,10 +328,6 @@ pub(crate) fn promote_agent_followup(
         "updated_at": now,
     });
     if state.worker.is_some() {
-        // The approve handler is async; the actual `ingest_event` write is
-        // issued from `promote_agent_followup_async` when the caller has a
-        // runtime. The sync path still writes the workflow draft (Python
-        // swallows graph failures onto `graph_error`).
         workflow["graph_node_id"] = Value::Null;
     }
     state.update_state(|doc| {
@@ -412,7 +378,6 @@ pub(crate) fn review_item_view(item: &Value, extra_end: Option<(&str, Value)>) -
     view
 }
 
-/// Raw store order plus `effective_status` last — the change-proposals surface.
 pub(crate) fn review_item_raw_view(item: &Value) -> OrderedMap {
     let mut view = OrderedMap::new();
     if let Some(obj) = item.as_object() {
@@ -424,15 +389,6 @@ pub(crate) fn review_item_raw_view(item: &Value) -> OrderedMap {
     view
 }
 
-/// Read-time snooze expiry: a snooze whose deadline has passed reads `pending`.
-///
-/// Until v11.6.0 an **offset-aware** deadline answered 500 here — Python
-/// compared an aware `datetime.fromisoformat` against a naive `datetime.now()`
-/// and the `TypeError` escaped, *after* the snooze had already been written, so
-/// the item was unreachable from then on. The offset is now honoured: an aware
-/// stamp is converted to the instant it names and compared against the same
-/// clock. A stamp that cannot be read at all keeps the item snoozed rather
-/// than failing the read — and `transition_snooze` refuses to store one.
 pub(crate) fn effective_status(item: &Value) -> String {
     let status = item
         .get("status")
@@ -468,7 +424,6 @@ mod tests {
 
     #[test]
     fn a_snooze_expires_at_the_instant_it_names_whatever_its_offset() {
-        // Far past, in four spellings of the same idea.
         for until in [
             json!("2020-01-01T00:00:00"),
             json!("2020-01-01T00:00:00+00:00"),
@@ -481,8 +436,6 @@ mod tests {
                 "{until}"
             );
         }
-        // Far future, likewise — including the offset-aware literal that used
-        // to make this function answer 500.
         for until in [
             json!("2099-01-01T00:00:00"),
             json!("2099-01-01T00:00:00+00:00"),
@@ -494,8 +447,6 @@ mod tests {
                 "{until}"
             );
         }
-        // An unreadable or absent deadline keeps the item snoozed rather than
-        // failing the read; `transition_snooze` is what stops one being stored.
         for until in [json!("next tuesday"), json!(""), Value::Null, json!(3)] {
             assert_eq!(
                 effective_status(&snoozed(until.clone())),
@@ -518,8 +469,6 @@ mod tests {
             guard("dismiss", &json!({"status": "dismissed"})).unwrap_err(),
             "cannot 'dismiss' a review item in status 'dismissed'"
         );
-        // A reject is a dismiss underneath and is never handed to the guard
-        // under its own name; an unknown action refuses everything.
         assert!(guard("reject", &json!({"status": "pending"})).is_err());
     }
 

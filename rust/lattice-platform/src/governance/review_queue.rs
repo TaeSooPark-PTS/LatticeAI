@@ -1,29 +1,3 @@
-//! Review Center (`latticeai/api/review_queue.py`) — native.
-//!
-//! Persistence is the workspace-OS review-item store (`workspace_os.json` +
-//! the `workspace_os_state` SQLite row). Status transitions are native.
-//! Approving a `change_proposal` item applies the staged file natively, under
-//! the agent sandbox ([`crate::governance::change_proposals`] — the worker seam it used to
-//! go through was retired in v11.6.0 §P1a); promoting an `agent_followup`
-//! writes a workflow draft and calls `ingest_event` on the native write
-//! engine.
-//!
-//! ## One writer for `workspace_os.json` (v11.7.0)
-//!
-//! Until v11.6.0 this family kept its **own** copy of the document — an
-//! `Arc<Mutex<Value>>` loaded once at `open` and written back on every
-//! mutation — while [`crate::workspaceos::workspace::WorkspaceOsStore`] wrote the same file
-//! and the same SQLite row with a reload-per-mutation discipline. Two stores
-//! over one document is last-writer-wins: a workspace-side write (a timeline
-//! event, a memory, a snapshot) landing between this family's load and its save
-//! was silently erased, and this family's cache never saw it at all.
-//!
-//! [`GovernanceState`] is now a thin facade over one [`WorkspaceOsStore`]
-//! handle, so there is exactly one lock, one merge policy and one version
-//! stamp. The host clones the *same* `Arc` into both
-//! ([`GovernanceState::with_store`]), which is what makes the guarantee hold
-//! process-wide rather than per-family.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -60,7 +34,6 @@ pub(crate) use workflows::{
     list_workflow_runs, list_workflows, update_workflow_metadata,
 };
 
-/// Mounted (method, axum-path) pairs. Greedy converters are `*name`.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/automation/reviews"),
     ("POST", "/automation/reviews"),
@@ -78,11 +51,8 @@ pub const MOUNTED: &[(&str, &str)] = &[
 const DEFAULT_WORKSPACE_ID: &str = "personal";
 const BULK_ACTION_CAP: usize = 200;
 
-/// Timeline `area` every review-item event is filed under.
 pub const REVIEW_TIMELINE_AREA: &str = "review";
-/// Timeline `event_type` for a review item that has just been created.
 pub const REVIEW_ITEM_CREATED_EVENT: &str = "review_item_created";
-/// Timeline `event_type` for a review item whose status has just changed.
 pub const REVIEW_ITEM_UPDATED_EVENT: &str = "review_item_updated";
 
 const REVIEW_SOURCES: &[&str] = &[
@@ -111,27 +81,16 @@ const REVIEW_ITEM_KEYS: &[&str] = &[
     "updated_at",
 ];
 
-/// Shared platform state for the R7 families.
 #[derive(Clone)]
 pub struct GovernanceState {
-    /// Process-wide identity.
     pub auth: Arc<AuthState>,
-    /// `LATTICEAI_DATA_DIR`.
     pub data_dir: PathBuf,
-    /// Agent workspace root (`LATTICEAI_AGENT_ROOT`).
     pub agent_root: PathBuf,
-    /// Worker seam (apply + hook run + graph mutate).
     pub worker: Option<WorkerSeamClient>,
-    /// The one workspace-OS store. Cloning a `GovernanceState` shares it.
     os: Arc<WorkspaceOsStore>,
 }
 
 impl GovernanceState {
-    /// Open (or join) the workspace OS document under `data_dir`.
-    ///
-    /// `WorkspaceOsStore::shared` is what makes this safe to call from
-    /// anywhere: naming the same directory twice yields the same handle, so
-    /// this cannot become the second writer it used to be.
     pub fn open(
         auth: Arc<AuthState>,
         data_dir: impl Into<PathBuf>,
@@ -147,11 +106,6 @@ impl GovernanceState {
         )
     }
 
-    /// The Review Center over a workspace-OS store somebody else opened.
-    ///
-    /// This is the product wiring: the host hands the very `Arc` the Workspace
-    /// OS routes were built from, so a review write and a workspace write take
-    /// the same lock and neither can erase the other.
     pub fn with_store(
         auth: Arc<AuthState>,
         os: Arc<WorkspaceOsStore>,
@@ -169,12 +123,10 @@ impl GovernanceState {
         }
     }
 
-    /// The store this state reads and writes through.
     pub fn store(&self) -> &Arc<WorkspaceOsStore> {
         &self.os
     }
 
-    /// The workspace-OS JSON document.
     pub fn state_path(&self) -> PathBuf {
         self.os.state_path().to_path_buf()
     }
@@ -183,7 +135,6 @@ impl GovernanceState {
         f(&self.os.load_state())
     }
 
-    /// Load, mutate, save — under the store's lock, as one step.
     pub(crate) fn update_state<T>(&self, f: impl FnOnce(&mut Value) -> T) -> T {
         let mut produced: Option<T> = None;
         let _: Result<(), StoreError> = self.os.mutate(|doc| {
@@ -193,7 +144,6 @@ impl GovernanceState {
         produced.expect("mutate always runs the body it was given")
     }
 
-    /// Build the canonical review timeline payload for `item` and `action`.
     fn build_review_event_payload(item: &Value, action: &str) -> (String, Value) {
         let workspace = item
             .get("workspace_id")
@@ -211,8 +161,6 @@ impl GovernanceState {
         (workspace, payload)
     }
 
-    /// Mutate `review_items` and append the matching timeline event in a single
-    /// atomic `WorkspaceOsStore` transaction, firing the live SSE sink once after save.
     pub(crate) fn update_state_with_review_event(
         &self,
         event_type: &str,
@@ -238,8 +186,6 @@ impl GovernanceState {
         item
     }
 
-    /// Fallible counterpart to [`Self::update_state_with_review_event`]: on `Err`,
-    /// neither `review_items` nor `timeline` is modified or persisted.
     pub(crate) fn try_update_state_with_review_event<E>(
         &self,
         event_type: &str,
@@ -273,7 +219,6 @@ impl GovernanceState {
         }
     }
 
-    /// Seed a Daily Memory Digest recipe workflow (test / fixture setup).
     pub fn seed_recipe_workflow(&self, workflow_id: &str) -> Value {
         let now = now_iso();
         let definition = daily_memory_digest_definition(false);
@@ -306,7 +251,6 @@ impl GovernanceState {
         workflow
     }
 
-    /// Seed a non-automation workflow so run-now can 404 it as "not an automation".
     pub fn seed_plain_workflow(&self, workflow_id: &str) -> Value {
         let now = now_iso();
         let workflow = json!({
@@ -345,7 +289,6 @@ impl axum::extract::FromRef<GovernanceState> for Arc<AuthState> {
     }
 }
 
-/// The Review Center router.
 pub fn router(state: GovernanceState) -> Router {
     Router::new()
         .route("/automation/reviews", get(list_items).post(create_item))

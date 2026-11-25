@@ -1,5 +1,3 @@
-//! N5/N6: WAL-consistent backups, honest blob manifests, export counts.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -221,7 +219,6 @@ async fn a_wal_backup_captures_uncheckpointed_rows_and_blobs() {
     assert_eq!(health["latest_nodes"], json!(nodes));
     assert!(health["count"].as_u64().unwrap_or(0) >= 1);
 
-    // Mutate the live store, then restore the snapshot.
     seed_graph(&install.graph, "gamma");
     std::fs::remove_file(install.data.join("knowledge_graph_blobs/ab/memo.bin")).expect("rm blob");
     let (restore_status, restored) = install
@@ -257,9 +254,6 @@ fn node_titles(store: &Store) -> Vec<String> {
         .expect("titles")
 }
 
-/// The 11.9.0 ops-note: restore swapped the file but long-lived Store
-/// handles kept serving pre-restore bytes until the process restarted.
-/// The same GraphWriter / Store must see the snapshot on the next query.
 #[tokio::test]
 async fn restore_is_visible_through_the_same_store_without_a_restart() {
     let install = Install::start().await;

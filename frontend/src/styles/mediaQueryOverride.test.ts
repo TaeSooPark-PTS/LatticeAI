@@ -2,35 +2,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-/**
- * A guard for the second way this project's CSS breaks silently.
- *
- * `cssLayering.test.ts` covers Tailwind utilities losing to unlayered rules.
- * This one covers a partial override inside a media query: a block that
- * re-declares `display: flex` (or `grid`) for a selector whose base rule set a
- * `flex-direction`, but does not restate the direction. The declaration that
- * *is* written looks like the whole intent; the one that is inherited quietly
- * keeps the old axis.
- *
- * It shipped exactly once and was invisible in every automated check:
- *
- *   .brain-prompt-grid            { display: flex; flex-direction: column }
- *   @media (max-height: 800px) {
- *     .brain-prompt-grid          { display: flex; flex-wrap: wrap }   ← no row
- *     .brain-prompt-grid button   { border-radius: 999px }
- *   }
- *
- * The intent was pills. The container stayed a column, so `flex-wrap` had
- * nothing to wrap and every "pill" stretched to the deck's full ~950px to
- * hold four characters. Types passed, render tests passed, and the visual
- * suite's own screenshots contained the bug rather than catching it.
- */
 
 const ROOT = resolve(__dirname, "../../..");
 
 const SHEETS = [
   "frontend/src/styles.css",
-  // styles.css is now only the entry; its rules live in styles/core/*.css.
   "frontend/src/styles/core/01-backdrop-onboarding.css",
   "frontend/src/styles/core/02-brain-shell.css",
   "frontend/src/styles/core/03-brain-organism.css",
@@ -72,12 +48,6 @@ const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 type Rule = { selector: string; body: string; inMedia: boolean };
 
-/**
- * Flat scan of `selector { body }` pairs, tracking whether the rule sits
- * inside an `@media` block. Deliberately not a real parser: these sheets nest
- * one level (media → rule) and nothing else, so brace counting is enough and
- * cannot silently mis-handle a construct it does not know about.
- */
 function rules(css: string): Rule[] {
   const found: Rule[] = [];
   const source = stripComments(css);
@@ -99,7 +69,6 @@ function rules(css: string): Rule[] {
     const close = source.indexOf("}", open);
     if (close === -1) break;
 
-    // At-rules with declaration bodies that are not style rules.
     if (!prelude.startsWith("@")) {
       found.push({
         selector: prelude,
@@ -110,7 +79,6 @@ function rules(css: string): Rule[] {
 
     index = close + 1;
 
-    // Consume the closing braces of any media blocks that end right here.
     while (mediaDepth > 0) {
       const next = source.slice(index).match(/^\s*\}/);
       if (!next) break;
@@ -136,8 +104,6 @@ describe("a media query that re-declares display also states the axis", () => {
   );
 
   it("finds rules to check", () => {
-    // Without this, an extraction regression turns every assertion below into
-    // a vacuous pass.
     expect(all.length).toBeGreaterThan(500);
     expect(all.some((rule) => rule.inMedia)).toBe(true);
   });
@@ -145,7 +111,6 @@ describe("a media query that re-declares display also states the axis", () => {
   it.each(SHEETS)("%s restates flex-direction where it re-declares flex", (sheet) => {
     const sheetRules = all.filter((rule) => rule.sheet === sheet);
 
-    // Selectors whose base (non-media) rule pins a non-default axis.
     const directed = new Map<string, string>();
     for (const rule of sheetRules) {
       if (rule.inMedia) continue;
@@ -158,8 +123,6 @@ describe("a media query that re-declares display also states the axis", () => {
       if (!rule.inMedia) continue;
       const base = directed.get(rule.selector);
       if (!base) continue;
-      // Only a rule that re-asserts the display mode is claiming to redefine
-      // the box; one that just tweaks padding inside a column is fine.
       const display = valueOf(rule.body, "display");
       if (display !== "flex" && display !== "inline-flex") continue;
       if (declares(rule.body, "flex-direction")) continue;
@@ -179,8 +142,6 @@ describe("a media query that re-declares display also states the axis", () => {
   });
 
   it("keeps the suggestion chips on a row axis when height is scarce", () => {
-    // The concrete instance, asserted by name so a future edit to this block
-    // cannot reintroduce it without the test saying which control broke.
     const css = stripComments(read("frontend/src/styles/experience/home-simple.css"));
     const scarce = css.slice(css.indexOf("@media (max-height: 700px)"));
     const grid = scarce.slice(

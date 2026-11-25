@@ -1,21 +1,3 @@
-"""App-level configuration as a single deep module.
-
-All environment parsing for Lattice AI's *application* settings (mode, host,
-port, feature flags, SSO, auth gating, integrations) lives here behind one
-interface: ``Config.from_env``. Callers read typed attributes off a frozen
-``Config`` instance instead of reaching for ``os.getenv`` in 40 places.
-
-The ``env`` mapping passed to ``from_env`` is the seam:
-
-* production passes ``os.environ`` (the default);
-* tests pass a plain ``dict`` and get a fully-formed ``Config`` with no
-  monkeypatching of the process environment.
-
-Per-request provider credentials (``OPENAI_API_KEY``, ``LMSTUDIO_API_KEY`` …)
-are intentionally *not* here — those belong to the LLM Router's provider
-concept and are read dynamically at call time.
-"""
-
 from __future__ import annotations
 
 import os
@@ -37,47 +19,27 @@ __all__ = [
     "_int",
 ]
 
-#: The path the identity provider sends the browser back to.
 SSO_CALLBACK_PATH = "/auth/sso/callback"
 
 
 def default_sso_redirect_uri(port: int) -> str:
-    """The redirect URI when the operator has registered none.
-
-    Named rather than inlined because ``api/auth`` has to recognise it: this
-    exact string means "nobody chose a callback URL", which is the only case in
-    which the login flow may substitute the front door it was actually reached
-    through. A URI the operator *did* configure is registered with the identity
-    provider and must be sent back verbatim.
-    """
     return f"http://localhost:{port}{SSO_CALLBACK_PATH}"
 
 
-#: Where everything durable lives when the operator names nothing.
 DEFAULT_DATA_DIR_NAME = ".ltcai"
 
 
 def default_data_dir(env: Optional[Mapping[str, str]] = None) -> Path:
-    """The data directory ``LATTICEAI_DATA_DIR`` names, else ``~/.ltcai``.
-
-    Three runtime wiring modules each carried a byte-identical copy of this,
-    which meant a lazily-initialized service could disagree with ``Config``
-    about where the store lives — and the loser writes a second, invisible
-    copy of the user's data. ``env=None`` reads the live process environment,
-    which is what the lazy wiring paths need.
-    """
     source = os.environ if env is None else env
     raw = (source.get("LATTICEAI_DATA_DIR") or "").strip()
     return Path(raw) if raw else Path.home() / DEFAULT_DATA_DIR_NAME
 
 
 def _value(env: Mapping[str, str], key: str, default: str = "") -> str:
-    """Mirror the legacy ``env_value``: ``getenv(key) or default or ""`` (no strip)."""
     return env.get(key) or default or ""
 
 
 def _str(env: Mapping[str, str], key: str, default: str = "") -> str:
-    """Mirror ``os.getenv(key, default)``: default only when the key is absent."""
     raw = env.get(key)
     return raw if raw is not None else default
 
@@ -113,13 +75,6 @@ def _port(env: Mapping[str, str], key: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Config:
-    """Everything a caller must know about app-level settings.
-
-    Construct once at startup via :meth:`from_env`; pass the values onward
-    rather than re-reading the environment.
-    """
-
-    # ── mode / network ──────────────────────────────────────────────
     app_mode: str
     is_public: bool
     host: str
@@ -127,14 +82,12 @@ class Config:
     network_exposed: bool
     timezone: str
 
-    # ── feature flags ───────────────────────────────────────────────
     enable_telegram: bool
     enable_graph: bool
     autoload_models: bool
     model_idle_unload_seconds: int
     allow_local_models: bool
 
-    # ── auth / security ─────────────────────────────────────────────
     require_auth: bool
     allow_plaintext_api_keys: bool
     cors_allow_network: bool
@@ -148,7 +101,6 @@ class Config:
     admin_emails: List[str]
     trusted_proxies: List[str]
 
-    # ── models ──────────────────────────────────────────────────────
     public_model: str
     local_model: str
     local_draft_model: str
@@ -157,7 +109,6 @@ class Config:
     allow_model_downloads: bool
     model_download_timeout: int
 
-    # ── embeddings (retrieval vector signal) ────────────────────────
     embedding_provider: str
     embedding_profile: str
     embedding_model: str
@@ -167,25 +118,21 @@ class Config:
     embedding_timeout: int
     embedding_custom_target: str
 
-    # ── brain storage ───────────────────────────────────────────────
     storage_engine: str
     postgres_dsn: str
     postgres_schema: str
 
-    # ── SSO / OIDC ──────────────────────────────────────────────────
     sso_discovery_url: str
     sso_client_id: str
     sso_client_secret: str
     sso_redirect_uri: str
     sso_provider_name: str
 
-    # ── integrations ────────────────────────────────────────────────
     discord_permission_webhook: str
     discord_bot_token: str
     discord_permission_channel: str
     permission_monitor_secret: str
 
-    # ── paths ───────────────────────────────────────────────────────
     data_dir: Path
     static_dir: Path
 
@@ -215,9 +162,6 @@ class Config:
             for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",")
             if item.strip()
         ]
-        # Browser origins allowed to send *cookie-authenticated* writes. The
-        # server's own origin and loopback are added by the CSRF guard itself;
-        # this is the escape hatch for a reverse-proxied public hostname.
         csrf_trusted_origins = [
             item.strip()
             for item in _value(env, "LATTICEAI_CSRF_TRUSTED_ORIGINS", "").split(",")
@@ -239,9 +183,6 @@ class Config:
             "LATTICEAI_PUBLIC_MODEL",
             _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"),
         )
-        # Canonical HF casing (the Hub answers `gemma-4-12b-it-4bit` with
-        # `gemma-4-12B-it-4bit`); keeping it identical everywhere means the
-        # download path, the on-disk cache dir and the catalog key all agree.
         local_model = _value(
             env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12B-it-4bit"
         )
@@ -271,9 +212,6 @@ class Config:
             allow_local_models=_bool(
                 env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public
             ),
-            # Authentication is optional only for the local-first loopback
-            # profile.  An explicit ``false`` must never turn a public/LAN
-            # binding into an unauthenticated service.
             require_auth=(
                 True
                 if externally_reachable
@@ -288,17 +226,11 @@ class Config:
             cors_extra_origins=cors_extra,
             csrf_trusted_origins=csrf_trusted_origins,
             rate_limit_enabled=_str(env, "LATTICEAI_RATE_LIMIT", "1") != "0",
-            # Public/LAN startup is closed-registration even if a stale or
-            # unsafe environment file attempts to opt back in.
             open_registration=(
                 False
                 if externally_reachable
                 else _bool(env, "LATTICEAI_OPEN_REGISTRATION", default=True)
             ),
-            # There is deliberately no repository-wide/default invitation
-            # code.  When the gate is enabled, the security runtime persists a
-            # cryptographically random code if the operator did not provide
-            # one explicitly.
             invite_code=_value(env, "LATTICEAI_INVITE_CODE", ""),
             invite_cookie_secret=_value(env, "LATTICEAI_INVITE_COOKIE_SECRET", ""),
             invite_gate_enabled=_bool(

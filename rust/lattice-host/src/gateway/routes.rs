@@ -1,11 +1,3 @@
-//! Routes the host answers itself, plus the namespace guard.
-//!
-//! `/host/*` is the host's own namespace and is never proxied — an unknown
-//! `/host/...` path is a 404 from here, not a request leaked to the worker.
-//! `/rust/*` belongs to the native crates the same way; an unknown path under
-//! it is a 404 that lists what does exist, never a silent fall-through to the
-//! worker under a name that promised a native answer.
-
 use std::sync::Arc;
 
 use axum::extract::{OriginalUri, Request, State};
@@ -16,12 +8,6 @@ use axum::Json;
 use super::{proxy, GatewayState};
 use crate::VERSION;
 
-/// The `/rust/*` families the gateway mounts, in mount order.
-///
-/// Named here rather than discovered from the router, because a 404 that lists
-/// the routes is only useful if the list is the truth — so the test at the
-/// bottom of this file checks every path the mounted crates *declare* against
-/// it, and a family added to a crate without a line here fails there.
 pub const NATIVE_FAMILIES: [&str; 6] = [
     "/rust/search",
     "/rust/graph",
@@ -31,10 +17,6 @@ pub const NATIVE_FAMILIES: [&str; 6] = [
     "/rust/agent",
 ];
 
-/// `GET /host/health` — host liveness plus a live worker health probe.
-///
-/// Always 200: the host answering at all *is* the host's health. The worker's
-/// state is in the body (`status` is `ok` only when both are up).
 pub async fn host_health(State(state): State<Arc<GatewayState>>) -> Response {
     let worker_healthy = state.probe_worker_health().await;
     let snapshot = state.status();
@@ -50,7 +32,6 @@ pub async fn host_health(State(state): State<Arc<GatewayState>>) -> Response {
     .into_response()
 }
 
-/// `GET /host/status` — the supervisor snapshot, verbatim.
 pub async fn host_status(State(state): State<Arc<GatewayState>>) -> Response {
     Json(serde_json::json!({
         "gateway": {
@@ -62,7 +43,6 @@ pub async fn host_status(State(state): State<Arc<GatewayState>>) -> Response {
     .into_response()
 }
 
-/// `GET /host/diagnostics` — PII & secret redacted runtime diagnostics bundle (P2.4).
 pub async fn host_diagnostics(State(state): State<Arc<GatewayState>>) -> Response {
     let worker_healthy = state.probe_worker_health().await;
     let status = state.status();
@@ -116,7 +96,6 @@ pub async fn host_diagnostics(State(state): State<Arc<GatewayState>>) -> Respons
     .into_response()
 }
 
-/// Anything else under `/host/` — 404, and explicitly not proxied.
 pub async fn host_not_found(OriginalUri(uri): OriginalUri) -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -129,7 +108,6 @@ pub async fn host_not_found(OriginalUri(uri): OriginalUri) -> Response {
         .into_response()
 }
 
-/// Anything under `/rust/search/` that is not one of the mounted lanes.
 pub async fn unknown_search(OriginalUri(uri): OriginalUri) -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -149,12 +127,6 @@ pub async fn unknown_search(OriginalUri(uri): OriginalUri) -> Response {
         .into_response()
 }
 
-/// Anything under `/rust/` outside the search namespace that nothing mounted.
-///
-/// Separate from [`unknown_search`] because the answer is different: there the
-/// caller asked for a lane by name, here they asked for a family that may not
-/// be mounted on this host at all (the agent kernel is absent when no workspace
-/// can be created).
 pub async fn unknown_native(OriginalUri(uri): OriginalUri) -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -163,21 +135,12 @@ pub async fn unknown_native(OriginalUri(uri): OriginalUri) -> Response {
             "detail": "the /rust namespace is served natively by the lattice crates and is \
                        never proxied to the worker",
             "path": uri.path(),
-            // Deliberately "namespaces", not "available": these are the
-            // families this host owns, and one of them (`/rust/agent`) is
-            // absent when no workspace could be prepared. Calling the list
-            // "available" would promise a route that may not be mounted.
             "namespaces": NATIVE_FAMILIES,
         })),
     )
         .into_response()
 }
 
-/// FastAPI's own answer for a path no route matched.
-///
-/// The gateway is the product server now, so an unknown product path must read
-/// exactly as it read when Python served it — clients (and the SPA's error
-/// handling) parse `{"detail": …}`.
 pub fn not_found() -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -186,21 +149,6 @@ pub fn not_found() -> Response {
         .into_response()
 }
 
-/// Nothing matched: guard the host namespaces, then the worker allowlist.
-///
-/// This is the whole of the routing decision that cannot be a route, and since
-/// v11.6.0 it is also the security boundary. Three rules, in order:
-///
-/// 1. **`/host` and `/rust` are ours.** Both namespaces mount real paths from
-///    several crates, so reserving them with catch-all routes would collide
-///    with those mounts; deciding here keeps the rule — *answered here or a
-///    404, never proxied* — in one readable place.
-/// 2. **The worker gets only its own surface.** [`allowlist`] is the committed
-///    projection of `worker_route_keys()`. A path on it is forwarded; a path
-///    off it never reaches the worker at all.
-/// 3. **Everything else is 404.** Not "probably the worker's" — the gateway
-///    mounts the product, so a path it does not serve and the worker does not
-///    own is a path that does not exist.
 pub async fn gateway_fallback(state: State<Arc<GatewayState>>, request: Request) -> Response {
     let path = request.uri().path().to_string();
     let uri = OriginalUri(request.uri().clone());
@@ -219,10 +167,6 @@ pub async fn gateway_fallback(state: State<Arc<GatewayState>>, request: Request)
     proxy::proxy_handler(state, request).await
 }
 
-/// Whether `path` is `namespace` itself or something under it.
-///
-/// `/hostile` is not in the `/host` namespace; `/host` and `/host/` and
-/// `/host/anything` are.
 pub fn in_namespace(path: &str, namespace: &str) -> bool {
     path == namespace || path.starts_with(&format!("{namespace}/"))
 }
@@ -233,9 +177,6 @@ mod tests {
     use lattice_ingest::{CHUNK_PATH, PLAN_PATH};
     use lattice_retrieval::routes::plan::Endpoint;
 
-    /// Every path the mounted crates declare must fall inside a family the 404
-    /// names. A crate that grows a family the guard has never heard of would
-    /// otherwise be advertised as "not here" by a route that is.
     #[test]
     fn the_advertised_families_cover_every_mounted_path() {
         let mut declared: Vec<&str> = vec![PLAN_PATH, CHUNK_PATH];
@@ -252,14 +193,11 @@ mod tests {
         ] {
             declared.push(endpoint.path());
         }
-        // The agent kernel's three routes are declared as literals by
-        // `lattice_agent::surface::router`; naming them here keeps them in the sweep.
         declared.extend([
             "/rust/agent/preflight",
             "/rust/agent/exec",
             "/rust/agent/contract",
         ]);
-        // …and so are the host's own P1 lanes.
         declared.extend([
             "/rust/search/hybrid",
             "/rust/search/keyword",

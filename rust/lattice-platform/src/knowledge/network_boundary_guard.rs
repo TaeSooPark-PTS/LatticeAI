@@ -1,11 +1,3 @@
-//! Workspace scoping, policy filtering, and secret redaction for `network_boundary`.
-//!
-//! Ensures `POST /api/network-boundary/preview` mirrors actual hybrid cloud
-//! egress discipline (workspace visibility, hard-blocked node types & metadata
-//! flags, user/workspace `HybridPolicy` overrides, and secret redaction) and
-//! `POST /api/network-boundary/node-sensitivity` enforces workspace write
-//! authorization before mutating `local_only`.
-
 use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
@@ -87,7 +79,6 @@ fn node_is_blocked(
         return false;
     }
     let Ok(parsed) = serde_json::from_str::<Value>(raw) else {
-        // Fail closed on corrupted metadata JSON at the egress boundary.
         return true;
     };
     let Some(meta) = parsed.as_object() else {
@@ -118,7 +109,6 @@ fn metadata_workspace(metadata_json: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
-/// Resolve and authorize workspace read access for preview / boundary inspection.
 pub(crate) fn resolve_read_scope(
     workspaces: Option<&WorkspaceService>,
     user_email: Option<&str>,
@@ -139,7 +129,6 @@ pub(crate) fn resolve_read_scope(
     Ok((None, None))
 }
 
-/// Authorize workspace write access for boundary / policy settings.
 pub(crate) fn authorize_scope_write(
     workspaces: Option<&WorkspaceService>,
     user_email: Option<&str>,
@@ -159,7 +148,6 @@ pub(crate) fn authorize_scope_write(
         .map(str::to_string))
 }
 
-/// Authorize `set_node_sensitivity` against the target node's owning workspace.
 pub(crate) fn authorize_node_sensitivity_write(
     config: &RuntimeConfig,
     workspaces: Option<&WorkspaceService>,
@@ -226,7 +214,6 @@ pub(crate) fn authorize_node_sensitivity_write(
     Ok(())
 }
 
-/// Read, scope, policy-filter, and secret-redact candidate preview nodes.
 pub(crate) fn preview_nodes_filtered(
     config: &RuntimeConfig,
     keywords: &[String],

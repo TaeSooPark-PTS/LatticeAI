@@ -73,8 +73,6 @@ const groupDefinitions = [
   { id: "other", labelKey: "brain.group.other", token: "--fg", fallback: "43 26% 94%", types: [] },
 ] as const;
 
-// Cytoscape's hsl() parser requires commas (`hsl(205, 55%, 66%)`). A modern
-// space-separated wrap of an HSL triple is valid CSS but paints as gray/black.
 const CYTOSCAPE_HSL = /^(-?[\d.]+)[\s,]+([\d.]+)%[\s,]+([\d.]+)%$/;
 const LAST_RESORT_COLOR = "hsl(205, 55%, 66%)";
 
@@ -88,7 +86,6 @@ function asCytoscapeColor(value: string): string | null {
   return null;
 }
 
-/** Resolve a token triple (`--knowledge`) to a comma-separated `hsl()` Cytoscape can paint. */
 export function resolveTokenColor(token: string, fallback: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
   return asCytoscapeColor(raw) ?? asCytoscapeColor(fallback) ?? LAST_RESORT_COLOR;
@@ -168,8 +165,6 @@ export function parseGraph(data: unknown, language: Language = "en"): ParsedGrap
     const metadata = nestedRecord(node, "metadata");
     const metrics = nestedRecord(metadata, "graph_metrics");
     const type = field(node, ["type", "kind", "category"], "Node");
-    // Node titles come from ingested text, so a Markdown heading a model wrote
-    // showed up on the map as "**Enterprise IT 인프라 관점**".
     const label = plainText(field(node, ["title", "label", "name"], "")) || shortId(id, 38);
     const explicitImportance = numberField(node, ["importance_norm", "importance", "score"]) || numberField(metrics, ["importance_norm", "importance", "centrality"]);
     const nodeDegree = degree.get(id) || 0;
@@ -289,10 +284,6 @@ export function buildExplorerModel({
         borderColor: selectedId === node.id ? graphInkColor() : graphGroupColor(definition.id),
         size: Math.round(20 + node.importance * 34 + Math.min(node.degree, 10) * 2),
       },
-      // No "faded" class here: when a node is selected, the neighbour filter
-      // above already removes every non-neighbour, so a visible node can never
-      // be outside `neighborIds` — the class could never apply (and nothing
-      // styles it).
       classes: [
         selectedId === node.id ? "selected" : "",
         matched ? "match" : "",

@@ -1,5 +1,3 @@
-//! The three `/api/chronicle/*` handlers.
-
 use axum::extract::{Path, Request, State};
 use axum::response::Response;
 use axum::routing::get;
@@ -10,14 +8,12 @@ use crate::memory_api::shared::{message_response, missing_query, ok_json, BrainS
 use super::pytime;
 use super::service;
 
-/// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/chronicle/as-of"),
     ("GET", "/api/chronicle/day/:date"),
     ("GET", "/api/chronicle/overview"),
 ];
 
-/// The mountable router for `latticeai/api/chronicle.py`.
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/chronicle/overview", get(overview))
@@ -93,8 +89,6 @@ async fn as_of(State(state): State<BrainState>, request: Request) -> Response {
     let ts = match params.required_string("ts", Some(64)) {
         Ok(ts) => ts,
         Err(refusal) => {
-            // FastAPI's `Query(...)` with no default is `missing`, not our
-            // required_string helper's same shape — it already is.
             let _ = missing_query("ts");
             return refusal;
         }

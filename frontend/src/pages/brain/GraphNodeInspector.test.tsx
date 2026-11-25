@@ -103,18 +103,15 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     expect(screen.getByTestId("inspector-neighbor-n2")).toBeTruthy();
     expect(screen.getByTestId("inspector-neighbor-n3")).toBeTruthy();
 
-    // Clicking a neighbor or a multi-hop synthesis node pivots selection.
     await userEvent.click(screen.getByTestId("inspector-neighbor-n2"));
     expect(onSelectNode).toHaveBeenCalledWith("n2");
 
     await userEvent.click(screen.getByRole("button", { name: "Memory Arena 노드로 이동" }));
     expect(onSelectNode).toHaveBeenCalledWith("n3");
 
-    // Copy source button copies provenance path.
     await userEvent.click(screen.getByRole("button", { name: "출처 복사" }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("docs/ipc.md");
 
-    // Open source excerpt modal -> test Inspect in Knowledge Graph jump & modal close.
     await userEvent.click(screen.getByTestId("inspector-open-source"));
     expect(await screen.findByTestId("source-chunk-modal")).toBeTruthy();
     expect(await screen.findByText("Full stored source text")).toBeTruthy();
@@ -122,13 +119,11 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     expect(useAppStore.getState().focusedGraphNodeId).toBe("n1");
     expect(window.location.hash).toBe("#/knowledge-graph");
 
-    // Reopen and close via close button to exercise onClose callback.
     await userEvent.click(screen.getByTestId("inspector-open-source"));
     await screen.findByTestId("source-chunk-modal");
     await userEvent.click(screen.getByRole("button", { name: "원문 닫기" }));
     expect(screen.queryByTestId("source-chunk-modal")).toBeNull();
 
-    // Ask Brain seeds pendingChatPrompt and navigates to #/brain.
     await userEvent.click(screen.getByTestId("inspector-ask-brain"));
     expect(useAppStore.getState().pendingChatPrompt).toContain("Zero-Copy IPC");
     expect(window.location.hash).toBe("#/brain");
@@ -155,7 +150,6 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
   });
 
   it("honors focusedGraphNodeId, conflict-only toggle, and / + Escape keyboard shortcuts in DigitalBrainExplorer", async () => {
-    // First test an unmatched focusedGraphNodeId clears cleanly without selecting.
     useAppStore.setState({ focusedGraphNodeId: "missing-node" });
     const first = renderPage(<DigitalBrainExplorer data={SAMPLE_GRAPH} />, {
       api: { graphNodeInspect: ok({ node: {}, neighborhood: { nodes: [], edges: [] } }) },
@@ -163,7 +157,6 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     await waitFor(() => expect(useAppStore.getState().focusedGraphNodeId).toBeNull());
     first.unmount();
 
-    // Matching focusedGraphNodeId focuses n1 immediately.
     useAppStore.setState({ focusedGraphNodeId: "n1" });
     renderPage(<DigitalBrainExplorer data={SAMPLE_GRAPH} />, {
       api: { graphNodeInspect: ok({ node: { id: "n1" }, neighborhood: { nodes: [], edges: [] } }) },
@@ -172,30 +165,25 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     await waitFor(() => expect(useAppStore.getState().focusedGraphNodeId).toBeNull());
     expect(await screen.findByTestId("graph-node-inspector")).toBeTruthy();
 
-    // Toggle conflict-only filter.
     const conflictBtn = screen.getByTestId("graph-conflicts-toggle");
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("false");
     await userEvent.click(conflictBtn);
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("true");
 
-    // Pressing "/" outside an input focuses the graph search input; inside an input does not steal it.
     const searchInput = screen.getByRole("textbox", { name: "지식 그래프 검색" });
     searchInput.blur();
     fireEvent.keyDown(window, { key: "/" });
     expect(document.activeElement).toBe(searchInput);
     fireEvent.keyDown(searchInput, { key: "/" });
 
-    // Escape clears selection and resets conflict-only filter.
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => expect(screen.queryByTestId("graph-node-inspector")).toBeNull());
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("false");
 
-    // Toggle conflictsOnly with no selectedId, then press Escape to cover the conflictsOnly-only Escape branch.
     await userEvent.click(conflictBtn);
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("true");
     fireEvent.keyDown(window, { key: "Escape" });
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("false");
-    // Pressing Escape again when both are cleared is a calm no-op.
     fireEvent.keyDown(window, { key: "Escape" });
   });
 });

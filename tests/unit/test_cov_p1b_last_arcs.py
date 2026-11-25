@@ -1,5 +1,3 @@
-"""Close the last remaining branch/line holes."""
-
 from __future__ import annotations
 
 from pathlib import Path

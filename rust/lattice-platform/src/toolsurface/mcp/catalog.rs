@@ -1,5 +1,3 @@
-//! Skills marketplace, plugin directory, and `mcp_call`.
-
 use std::collections::BTreeMap;
 
 use axum::extract::{Query, State};
@@ -207,7 +205,6 @@ pub(crate) async fn skills_marketplace_refresh(
         let author = s.get("author").and_then(Value::as_str).unwrap_or("");
         *by_author.entry(author.to_string()).or_insert(0) += 1;
     }
-    // Python dict insertion order, not BTree — rebuild in first-seen order
     let mut seen = Vec::new();
     let mut counts: BTreeMap<String, i64> = BTreeMap::new();
     for s in &skills {

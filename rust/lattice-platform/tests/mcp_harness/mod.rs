@@ -1,5 +1,3 @@
-//! Shared replay harness for WP-R8 families.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -86,10 +84,6 @@ impl Install {
         let mut config = AuthConfig::from_map(&env, None);
         config.data_dir = data_dir.clone();
         let auth = AuthState::with_clock(config, Clock::frozen(1_700_000_000.0));
-        // HTTP register+login used to drop Set-Cookie (issue() only kept
-        // content-type/location), so every later call went out anonymous and
-        // 401'd. Seed the accounts on disk and mint sessions the same way the
-        // other platform harnesses do.
         let owner_token = auth.sessions().create(OWNER_EMAIL, Some(OWNER_EMAIL));
         let member_token = auth.sessions().create(MEMBER_EMAIL, Some(MEMBER_EMAIL));
 
@@ -130,8 +124,6 @@ impl Install {
     }
 
     async fn bootstrap(&mut self) {
-        // tools_misc.json captures list_dir *after* the approve/drift
-        // seeding steps in gen_http_fixtures_ecosystem.py.
         for (rel, content) in [
             ("fixture-note.md", "Fixture original line.\n"),
             (

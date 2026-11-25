@@ -1,19 +1,3 @@
-"""The graph's *compute* vocabulary, in one importable place.
-
-This package was the shared surface of the SQLite knowledge graph: constants,
-path/hash helpers, chunking, concept and triple extraction, and the schema
-handles the write mixins composed into ``KnowledgeGraphStore``. v11.6.0 moved
-every write into ``lattice-core``, and the store went with them.
-
-What is left is the half that produces *structures*: chunk a document, pull the
-concepts and triples out of a passage, classify a node type, infer an edge verb,
-hash a file. ``POST /worker/parse``, ``POST /worker/embed`` and
-``POST /worker/extract`` are the routes that answer with them; Rust decides what
-to write.
-"""
-
-# ruff: noqa: F401,F841
-
 import asyncio
 import hashlib
 import json
@@ -33,12 +17,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from ...embeddings import LocalEmbeddingModel
-
-# Static constants (projection/format versions, local-ingestion classification
-# tables, OS exclusion lists) live in ._kg_constants; re-exported here so every
-# existing ``from ._kg_common import <CONST>`` site is unaffected.
 from ...quiet import quiet
-from .._kg_constants import (  # noqa: E402
+from .._kg_constants import (
     _KG_DB_FORMAT_KEY,
     _KG_DB_FORMAT_VERSION,
     _PROJECTION_VERSION,
@@ -60,12 +40,7 @@ from .._kg_constants import (  # noqa: E402
     SENSITIVE_PATH_KEYWORDS,
     WINDOWS_EXCLUDED_NAMES,
 )
-
-# Pure fs/path/hash/classification helpers → ._kg_fsutil, re-exported so the
-# static __all__ below forwards them to the graph mixins. Listed explicitly
-# rather than star-imported: a star import here made every name in this
-# module unverifiable to both ruff and mypy.
-from .._kg_fsutil import (  # noqa: E402,F401
+from .._kg_fsutil import (
     _current_os_type,
     _drive_id_for_path,
     _excluded_directory_reason,
@@ -90,12 +65,7 @@ from .._kg_fsutil import (  # noqa: E402,F401
 )
 from ..json_utils import _json, _safe_loads
 from ..runtime import get_llm_router, set_llm_router
-
-# The logic this module used to hold inline lives in three cohesive submodules
-# (v11.3.0 decomposition). Every name is re-exported below, so the twelve
-# `from ._kg_common import *` consumers are unaffected — and `__all__` is still
-# the single written-down star-import contract.
-from .extraction import (  # noqa: E402
+from .extraction import (
     _CONCEPT_STOP,
     _LLM_EXTRACT_CONCEPT_PROMPT,
     _LLM_EXTRACT_TRIPLE_PROMPT,
@@ -109,7 +79,7 @@ from .extraction import (  # noqa: E402
     _semantic_items,
     _topic_candidates,
 )
-from .relations import (  # noqa: E402
+from .relations import (
     _NOT_PERSON_WORDS,
     COOCCURRENCE_CONCEPT_LIMIT,
     COOCCURRENCE_EDGE_WEIGHT,
@@ -119,14 +89,8 @@ from .relations import (  # noqa: E402
     _infer_edge,
     infer_edge_relation,
 )
-from .text import _chunks, _clean_text  # noqa: E402
+from .text import _chunks, _clean_text
 
-# Static export list. This used to be `[name for name in globals() if not
-# name.startswith("__")]`, which is invisible to a type checker: every
-# `from ._kg_common import *` consumer then had *no* resolvable names, and
-# mypy reported ~750 spurious `name-defined` errors across the graph
-# package. `tests/unit/test_kg_common_exports.py` asserts this list still
-# equals what the computed expression would produce, so it cannot drift.
 __all__ = [
     "Any",
     "COMMON_EXCLUDED_DIRS",

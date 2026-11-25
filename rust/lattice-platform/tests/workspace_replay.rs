@@ -1,11 +1,3 @@
-//! The workspace family: fixture replay for `workspace.py`, `invitations.py`
-//! and `permissions.py`, plus the OpenAPI contract the three compose.
-//!
-//! Four test binaries collapsed into one — three of them a single
-//! `replay_family` call each, all recompiling the same 40kB support module.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod workspace_support;
 

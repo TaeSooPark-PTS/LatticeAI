@@ -1,11 +1,3 @@
-"""wp16 coverage — ``lattice_brain.graph._kg_common`` text/NLP helpers.
-
-Chunking, concept/triple extraction, and the citation-locator maths. The
-LLM-first extractors are exercised through a fake router injected at the
-``get_llm_router`` seam (both the "no loop running" and "called from inside a
-loop" shapes), so no model, no network, and no wall-clock is involved.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -17,10 +9,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.graph import _kg_common as kg
-
-# ``ENABLE_LLM_EXTRACTION`` / ``get_llm_router`` are globals of the submodule
-# that reads them (v11.3.0 decomposition), so that is where they are patched:
-# rebinding them on the package would leave the reader's own globals alone.
 from lattice_brain.graph._kg_common import extraction as kg_extraction
 
 
@@ -33,8 +21,6 @@ class _FakeLoop:
 
 
 class _FakeRouter:
-    """Minimal stand-in for the LLM router: one awaitable ``generate``."""
-
     def __init__(self, reply: str = "[]", *, model_id: str = "fake-model", fail=None):
         self.current_model_id = model_id
         self._reply = reply
@@ -54,15 +40,10 @@ def _install_router(monkeypatch, router, *, loop_running: bool) -> None:
     monkeypatch.setattr(asyncio, "get_event_loop", lambda: _FakeLoop(loop_running))
 
 
-# ── legacy windowing ─────────────────────────────────────────────────────────
-
-
 def test_chunks_of_blank_text_is_empty() -> None:
     assert kg._chunks("") == []
     assert kg._chunks("   \n  ") == []
 
-
-# ── LLM-backed concept extraction ────────────────────────────────────────────
 
 _CONCEPT_REPLY = (
     '```json\n[{"concept": "Lattice AI", "importance": 0.9}, "Graph RAG", 42]\n```'
@@ -109,8 +90,6 @@ def test_extract_concepts_prefers_the_llm_answer(monkeypatch) -> None:
     ]
 
 
-# ── LLM-backed triple extraction ─────────────────────────────────────────────
-
 _TRIPLE_REPLY = (
     "```json\n"
     '[{"subject": "Lattice AI", "relation": "\\uc0ac\\uc6a9\\ud568",'
@@ -130,12 +109,10 @@ def test_llm_triple_extraction_labels_its_evidence(monkeypatch, loop_running) ->
 
     assert triples is not None
     verb, cooccurrence = triples
-    # A named verb plus quoted evidence is a semantic edge at full weight…
     assert verb["relation"] == "사용함"
     assert verb["evidence"] == "verb"
     assert verb["weight"] == 0.9
     assert verb["context"] == "Lattice AI uses Graph RAG."
-    # …a bare default relation with no evidence is adjacency, weighted down.
     assert cooccurrence["relation"] == "관련됨"
     assert cooccurrence["evidence"] == "cooccurrence"
     assert cooccurrence["weight"] == 0.28
@@ -164,9 +141,6 @@ def test_extract_triples_prefers_the_llm_answer(monkeypatch) -> None:
     triples = kg._extract_triples("text", ["Lattice AI", "Graph RAG"])
 
     assert [triple["object"] for triple in triples] == ["Graph RAG", "SQLite"]
-
-
-# ── rule-based extraction ────────────────────────────────────────────────────
 
 
 def test_concept_rules_pick_up_quoted_and_backticked_terms() -> None:

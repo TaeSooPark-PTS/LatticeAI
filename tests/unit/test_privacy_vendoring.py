@@ -1,10 +1,3 @@
-"""T9 privacy vendoring — shipped pages must make zero CDN calls.
-
-Local-first means local: fonts, icons, and JS libraries are vendored under
-static/vendor; no shipped HTML/CSS/JS may reference external CDNs, and the
-service worker precaches the Vite app bundle (not the retired v3 or legacy one).
-"""
-
 import json
 import re
 from pathlib import Path
@@ -22,7 +15,7 @@ def _shipped_files():
         if path.suffix not in {".html", ".css", ".js"}:
             continue
         if (STATIC / "vendor") in path.parents:
-            continue  # vendored copies may cite their origin in comments
+            continue
         yield path
 
 
@@ -51,7 +44,6 @@ def test_vendored_assets_exist_and_are_real():
         assert path.stat().st_size >= min_bytes, (
             f"vendored asset suspiciously small: {rel}"
         )
-    # woff2 magic number — the font files are real fonts, not error pages.
     for woff in (vendor / "fonts").glob("*.woff2"):
         assert woff.read_bytes()[:4] == b"wOF2", f"not a woff2 file: {woff.name}"
     assert (vendor / "icons" / "tabler-icons.woff2").read_bytes()[:4] == b"wOF2"
@@ -75,7 +67,6 @@ def test_service_worker_precaches_vite_app_not_legacy():
     assert "scripts/chat.js" not in sw, "sw must not precache the legacy bundle"
     assert "static/v3" not in sw, "sw must not precache the retired v3 bundle"
     assert "ltcai-v310" not in sw, "stale cache name"
-    # Every static SHELL path the sw lists must exist on disk.
     for match in re.findall(r'"(/static/vendor/[^"]+)"', sw):
         assert (REPO / match.lstrip("/")).exists(), (
             f"sw precaches missing file: {match}"

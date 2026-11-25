@@ -1,28 +1,3 @@
-//! What the desktop shell asks of `lattice-host`.
-//!
-//! Through 11.3.0 this file's job was done inline in `main.rs`: four hand-rolled
-//! command-resolution rules, a `Command::spawn`, a TCP-connect probe, and a
-//! restart that killed the child and spawned another one. All four moved into
-//! the `lattice-host` supervisor in 11.4.0, which the `lattice-host` binary uses
-//! too — so the desktop and the CLI front door cannot drift apart.
-//!
-//! 11.5.0 finishes the job: the shell no longer only *supervises* a worker, it
-//! **is** the front door. In the default topology it serves `lattice-host`'s
-//! gateway on the public port — the `/host/*` status routes, the native
-//! `/rust/*` retrieval, ingest and agent-kernel surfaces, the `/host/jobs`
-//! scheduler — and the worker runs on an internal port behind it. The webview
-//! navigates to the gateway, and the worker is told to trust that origin so
-//! cookie-authenticated writes still work through the proxy hop.
-//!
-//! 11.6.0 One Door: the Python-direct topologies are gone. The shell always
-//! boots or attaches through lattice-host. The window health-gates on
-//! `GET {origin}/health` — the **host** surface at the same origin the window
-//! loads, not a bare worker port.
-//!
-//! Which arrangement is chosen lives in [`crate::topology`]; what this module
-//! adds is the running of it, and the five IPC contracts on top (unchanged in
-//! name, type and meaning — the new status fields are additive).
-
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -36,97 +11,46 @@ use serde::Serialize;
 
 use crate::topology::{self, Plan, PortPolicy, Topology};
 
-/// The module the host supervises. I6's launch string is
-/// `uvicorn latticeai.worker_app:create_worker_app --factory`; the module form
-/// reads `LATTICEAI_PORT` from the supervisor, so we do not have to know the
-/// internal port at pin time.
 const WORKER_MODULE: &str = "latticeai.worker_app";
 const BACKEND_CMD_ENV: &str = "LATTICEAI_DESKTOP_BACKEND_CMD";
 
-/// The desktop shell's view of the worker.
-///
-/// The first six fields are the contract `latticeApi.desktopBackendStatus`
-/// has consumed since the first shell and are unchanged in name, type and
-/// meaning. The rest are additive: facts the ad-hoc shell could not know and
-/// the supervisor does.
 #[derive(Debug, Clone, Serialize)]
 pub struct BackendStatus {
-    /// Where the frontend should send its requests.
     pub origin: String,
-    /// The resolved command line, or why there is not one.
     pub command: String,
-    /// Working directory of the worker, when the resolution rule set one.
     pub cwd: Option<String>,
-    /// Whether a worker process is alive right now.
     pub running: bool,
-    /// Its OS process id, when running.
     pub pid: Option<u32>,
-    /// The last failure observed, if any.
     pub last_error: Option<String>,
-    /// Whether `GET /health` answered 2xx on the most recent probe.
     pub healthy: bool,
-    /// The chosen port — authoritative, not the configured preference.
     pub port: u16,
-    /// `false` when the shell only fronts a host it did not start.
     pub supervised: bool,
-    /// How many times the supervisor restarted the worker after a crash.
     pub restarts: u32,
-    /// Seconds since the current worker process started.
     pub uptime_seconds: Option<u64>,
-    /// Which arrangement this shell is running: `gateway` or `external`
-    /// (11.5.0, additive; `direct`/`disabled` retired in 11.6.0).
     pub topology: String,
-    /// Where the worker itself answers. Equal to `origin` unless a gateway is
-    /// in front of it (11.5.0, additive).
     pub worker_origin: String,
-    /// The gateway's origin when one is served here, else `null`
-    /// (11.5.0, additive).
     pub gateway_origin: Option<String>,
-    /// Whether the background jobs timer is running in this process
-    /// (11.5.0, additive).
     pub jobs_running: bool,
-    /// Why the front door is not there, when this shell was supposed to serve
-    /// one and could not bind it (11.5.2, additive). `null` normally.
     pub gateway_error: Option<String>,
-    /// Non-silent warning when the Python AI worker runtime is unavailable or
-    /// degraded while the native Rust Brain surface remains active (additive).
     pub worker_warning: Option<String>,
 }
 
-/// The gateway this shell is serving, and how to stop it.
 struct RunningGateway {
     shutdown: Option<tokio::sync::oneshot::Sender<()>>,
     task: tauri::async_runtime::JoinHandle<()>,
 }
 
-/// The supervisor, the front door, and the origin every surface is told about.
 pub struct DesktopBackend {
     plan: Plan,
     port_policy: PortPolicy,
     supervisor: Supervisor,
     health_deadline: Duration,
-    /// Serializes `start_gateway` / `stop_gateway` across `.await` points so
-    /// concurrent callers cannot race on `bind_loopback`.
     gateway_lifecycle: tokio::sync::Mutex<()>,
-    /// Present once the gateway is serving. `Mutex` because the Tauri commands
-    /// touch it from whichever thread the runtime hands them.
     gateway: Mutex<Option<RunningGateway>>,
-    /// The jobs scheduler, mounted on `/host/jobs` in the gateway topology.
-    /// Upgraded to a graph-bound native drain once `open_product` succeeds.
     jobs: Mutex<Option<Arc<lattice_jobs::Scheduler>>>,
-    /// Why the front door is not there, when it could not be bound.
-    ///
-    /// `None` means "nothing went wrong" — including in the topology that
-    /// attaches to someone else's host, where this process serves no gateway.
     gateway_error: Mutex<Option<String>>,
 }
 
-/// True when the packaged Resources tree already carries a worker.
-///
-/// Leave `LATTICEAI_DESKTOP_BACKEND_CMD` unset in that case so the supervisor
-/// can point `PYTHONPATH` at the tree (its bundled-tree rule). Integrator
-/// must flip `WORKER_MODULE` from `latticeai.cli.entrypoint` to
-/// `latticeai.worker_app`.
 fn bundled_worker_present(probe: &dyn HostProbe) -> bool {
     let Some(resources) = probe.resource_dir() else {
         return false;
@@ -141,8 +65,6 @@ fn bundled_worker_present(probe: &dyn HostProbe) -> bool {
     false
 }
 
-/// Discover a packaged `lattice-host` sidecar/sibling binary before falling
-/// back to a developer workspace build directory.
 pub fn resolve_packaged_host_binary(
     probe: &dyn HostProbe,
     exe_dir: Option<&std::path::Path>,
@@ -208,13 +130,6 @@ pub fn resolve_packaged_host_binary(
     None
 }
 
-/// Resolve the Python interpreter for the supervised AI worker (`--factory`),
-/// or `None` when an explicit command override is already active.
-///
-/// Pinning `LTCAI_PYTHON` (rather than setting `LATTICEAI_DESKTOP_BACKEND_CMD`
-/// to a bare `-m latticeai.worker_app`) lets [`Supervisor`] construct its
-/// canonical `python -m uvicorn latticeai.worker_app:create_worker_app --factory
-/// --host 127.0.0.1 --port <chosen>` command for both unpackaged and bundled `.app` builds.
 fn resolve_worker_python(probe: &dyn HostProbe) -> Option<String> {
     if probe
         .env_var(BACKEND_CMD_ENV)
@@ -247,9 +162,6 @@ fn resolve_worker_python(probe: &dyn HostProbe) -> Option<String> {
         .or_else(|| candidates.first().cloned())
 }
 
-/// Build immutable environment overrides (`LTCAI_PYTHON`, `LATTICEAI_HOST_BIN`)
-/// to inject via `EnvOverlayProbe` and `SupervisorConfig.extra_env` instead of
-/// mutating the process environment (`std::env::set_var`) in a multi-threaded runtime.
 fn resolve_launch_env_overrides(probe: &dyn HostProbe) -> Vec<(String, String)> {
     let mut overrides = Vec::new();
     if probe
@@ -283,7 +195,6 @@ fn resolve_launch_env_overrides(probe: &dyn HostProbe) -> Vec<(String, String)> 
 }
 
 impl DesktopBackend {
-    /// Resolve against the real machine without mutating process env vars.
     pub fn resolve() -> Result<Self, String> {
         let overrides = resolve_launch_env_overrides(&SystemProbe);
         let probe: Arc<dyn HostProbe> = if overrides.is_empty() {
@@ -297,13 +208,11 @@ impl DesktopBackend {
         Self::with_probe_policy_and_env(probe, PortPolicy::for_build(), overrides)
     }
 
-    /// Resolve against an injected probe (dev dynamic fallback policy).
     #[cfg(test)]
     pub fn with_probe(probe: Arc<dyn HostProbe>) -> Result<Self, String> {
         Self::with_probe_policy_and_env(probe, PortPolicy::AllowDynamicFallback, Vec::new())
     }
 
-    /// Resolve against an injected probe and explicit [`PortPolicy`].
     #[cfg(test)]
     pub fn with_probe_and_policy(
         probe: Arc<dyn HostProbe>,
@@ -320,9 +229,6 @@ impl DesktopBackend {
         let plan = topology::resolve_with_policy(&*probe, port_policy)?;
         let mut config = SupervisorConfig::new(plan.worker_port).with_system_dirs(&*probe);
         config.supervise = plan.supervised();
-        // Behind a gateway the worker's own CSRF default knows only its
-        // internal port; naming the front door here is what makes a
-        // cookie-authenticated POST through the proxy work at all.
         config.gateway_port = plan.gateway_port;
         config.extra_env.extend(extra_env);
         let health_deadline = config.health_deadline;
@@ -342,31 +248,22 @@ impl DesktopBackend {
         })
     }
 
-    /// Where the frontend and the webview should go.
     pub fn origin(&self) -> &str {
         &self.plan.origin
     }
 
-    /// `{origin}/app` — the URL the window navigates to once health answers.
     pub fn app_url(&self) -> String {
         self.plan.app_url()
     }
 
-    /// Whether this shell owns the worker process.
     pub fn supervised(&self) -> bool {
         self.plan.supervised()
     }
 
-    /// Which arrangement this shell resolved.
     pub fn topology(&self) -> Topology {
         self.plan.topology
     }
 
-    /// Why the front door is unavailable, when it is.
-    ///
-    /// `Some` only when this shell was supposed to serve the gateway and could
-    /// not bind it — in which case [`Self::app_url`] names a port nothing will
-    /// ever listen on, and `main::boot` must not navigate the window into it.
     pub fn gateway_error(&self) -> Option<String> {
         self.gateway_error
             .lock()
@@ -374,28 +271,18 @@ impl DesktopBackend {
             .clone()
     }
 
-    /// Start the front door, then the worker.
-    ///
-    /// The gateway comes up first on purpose: it is what the webview polls, and
-    /// a front door that answers "worker not up yet" is more use than a
-    /// connection refused.
     pub async fn start(&self) -> BackendStatus {
         self.start_gateway().await;
         if self.gateway_error().is_some() {
-            // Fail fast: do not spawn an orphaned Python worker when the
-            // gateway front door failed to bind (e.g. pinned port 4825 conflict).
             return self.status().await;
         }
         let outcome = self.supervisor.start().await;
         if let Err(err) = &outcome {
-            // Not fatal: the supervisor keeps retrying in the background, and
-            // the window must open either way so the person can read why.
             eprintln!("lattice-ai-desktop: worker did not come up: {err}");
         }
         self.status().await
     }
 
-    /// Serve the gateway on the public port, serialized across concurrent callers.
     async fn start_gateway(&self) {
         let Some(port) = self.plan.gateway_port else {
             return;
@@ -479,7 +366,6 @@ impl DesktopBackend {
         self.start_jobs();
     }
 
-    /// Start the background jobs timer, unless it is switched off.
     fn attach_product_scheduler(&self, mut state: GatewayState) -> GatewayState {
         if self.plan.topology == Topology::Gateway {
             if let Some(product) = state.product() {
@@ -512,19 +398,12 @@ impl DesktopBackend {
         eprintln!("lattice-ai-desktop: jobs scheduler every {interval}s");
     }
 
-    /// The agent workspace the worker will be given, so the host's native
-    /// kernel judges the same directory.
     fn agent_root(&self) -> Option<std::path::PathBuf> {
         SupervisorConfig::new(self.plan.worker_port)
             .with_system_dirs(&SystemProbe)
             .agent_root()
     }
 
-    /// Wait for `GET {origin}/health` on the **host** origin the window loads.
-    ///
-    /// Replaces the old TCP-connect probe, which proved only that *something*
-    /// had bound the port. After One Door this is never a bare worker port:
-    /// `plan.origin` is the in-process gateway or the attached lattice-host.
     pub async fn wait_until_serving(&self) -> bool {
         wait_for_health(
             &self.supervisor.client(),
@@ -536,7 +415,6 @@ impl DesktopBackend {
         .is_ok()
     }
 
-    /// A live snapshot, including a fresh health probe.
     pub async fn status(&self) -> BackendStatus {
         let healthy = self.supervisor.probe_health().await;
         let mut status = self.snapshot();
@@ -544,14 +422,11 @@ impl DesktopBackend {
         status
     }
 
-    /// Stop the worker and suppress restarts. The gateway keeps serving, so
-    /// `/host/status` still answers and the window can say what happened.
     pub async fn stop(&self) -> BackendStatus {
         let status = self.supervisor.stop().await;
         self.render(&status)
     }
 
-    /// Stop then start again, preserving the restart counter.
     pub async fn restart(&self) -> Result<BackendStatus, String> {
         if let Err(err) = self.supervisor.restart().await {
             eprintln!("lattice-ai-desktop: restart failed: {err}");
@@ -560,7 +435,6 @@ impl DesktopBackend {
         Ok(self.status().await)
     }
 
-    /// Stop the gateway and clear its slot so a subsequent `start_gateway()` can restart cleanly.
     pub async fn stop_gateway(&self) {
         let _lifecycle = self.gateway_lifecycle.lock().await;
         let running = {
@@ -620,8 +494,6 @@ impl DesktopBackend {
         })
     }
 
-    /// `command` has always been a plain string, never null, so an unresolved
-    /// worker says *why* rather than disappearing from the panel.
     fn command_text(&self, status: &WorkerStatus) -> String {
         if let Some(command) = &status.command {
             return command.clone();

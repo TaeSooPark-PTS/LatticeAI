@@ -1,11 +1,3 @@
-/**
- * Agent approval flow (SURFACE_PARITY, v9.9.5).
- *
- * Tokens are not re-issued by `GET /agent/approvals`, so resuming a paused run
- * depends on whichever token this session cached — or on the user pasting one.
- * That constraint is the reason these four functions belong together: every one
- * of them has to answer "do we have a token for this run?" the same way.
- */
 import * as vscode from "vscode";
 import { LatticeAIClient } from "./client";
 
@@ -26,9 +18,6 @@ export async function fetchPendingApprovals(c: LatticeAIClient): Promise<Pending
     .map((entry: any): PendingApprovalItem | null => {
       const runId = String(entry.run_id || entry.id || "");
       if (!runId) return null;
-      // Tokens are not re-issued by GET /agent/approvals (security). Resume
-      // only works when this extension cached the token from the pause
-      // response, or the user pastes one.
       const token = String(c.takeCachedApprovalToken(runId) || "");
       const planSummary = String(
         entry.plan_summary || entry.summary || entry.goal || entry.approval?.plan_summary || "(plan)"

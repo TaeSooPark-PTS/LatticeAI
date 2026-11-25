@@ -1,36 +1,3 @@
-//! `lattice_brain/graph/_kg_common/text.py` — typed chunking, ported exactly.
-//!
-//! Four strategies over one window budget:
-//!
-//! * **plain** is the legacy `_chunks` walk with `start_char` tracked. Its
-//!   boundaries are a compatibility contract — chunk ids hash over the chunk
-//!   text, so a moved boundary silently re-keys every chunk in the store.
-//! * **markdown** splits at `^#{1,6} ` headings, merges sections under 200
-//!   characters forward into the next one, and windows a section too big for
-//!   one chunk.
-//! * **code** packs contiguous segments (split at blank-line runs and
-//!   declaration lines) greedily up to `size`, and windows any single segment
-//!   past `size * 1.5`.
-//! * **prose** ends each chunk at the last sentence or paragraph boundary
-//!   inside the window, falling back to a line break and then to the hard cut.
-//!
-//! ## Characters, not bytes
-//!
-//! Python indexes `str` by code point: `cleaned[start:end]`, `len(cleaned)` and
-//! `match.start()` are all character counts. Every function below therefore
-//! works over `&[char]`, and `start_char` in the output is a character offset.
-//! A byte-indexed port would produce different boundaries for any non-ASCII
-//! text — and would panic outright inside a multi-byte sequence.
-//!
-//! ## Regexes, hand-rolled
-//!
-//! The four patterns Python uses (`^(#{1,6}) (.*)$`, the declaration-line
-//! prefix, `\n\s*\n`, and the prose boundary alternation) are matched by hand
-//! rather than by a regex engine. That is not a micro-optimisation: it keeps
-//! the character-index arithmetic explicit, and it avoids the one place the two
-//! engines genuinely disagree — Python's `\s` includes `\x1c`–`\x1f`, which the
-//! Unicode `White_Space` property does not (see [`crate::pystr::is_py_space`]).
-
 pub mod code;
 pub mod markdown;
 pub mod prose;
@@ -40,39 +7,23 @@ use serde_json::{Map, Value};
 
 use crate::pystr::py_strip;
 
-/// `_chunks`/`typed_chunks` default window, in characters.
 pub const DEFAULT_CHUNK_SIZE: i64 = 1200;
-/// `_chunks`/`typed_chunks` default overlap, in characters.
 pub const DEFAULT_CHUNK_OVERLAP: i64 = 160;
-/// `_CHUNK_STRATEGIES` — anything else falls back to `plain`.
 pub const CHUNK_STRATEGIES: [&str; 4] = ["plain", "markdown", "code", "prose"];
 
-/// One chunk's provenance: which strategy produced it and where it starts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChunkMeta {
-    /// `plain` | `markdown` | `code` | `prose`.
     pub strategy: String,
-    /// Character offset of this chunk inside the stripped source text.
     pub start_char: usize,
-    /// `" > "`-joined markdown heading path, or `None` when there is none.
     pub heading_path: Option<String>,
 }
 
-/// One chunk: the text and the provenance that lets a citation point at it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chunk {
-    /// The chunk text — an exact substring of the stripped source at
-    /// `meta.start_char`.
     pub text: String,
-    /// Where it came from.
     pub meta: ChunkMeta,
 }
 
-/// `typed_chunks(text, strategy=…, size=…, overlap=…)`.
-///
-/// `size` is coerced with `max(1, …)` and `overlap` clamped to
-/// `[0, size - 1]`, exactly as Python does, so no argument can produce a
-/// non-terminating walk. An unknown `strategy` falls back to `plain`.
 pub fn typed_chunks(text: &str, strategy: &str, size: i64, overlap: i64) -> Vec<Chunk> {
     let cleaned: Vec<char> = py_strip(text).chars().collect();
     if cleaned.is_empty() {
@@ -88,16 +39,10 @@ pub fn typed_chunks(text: &str, strategy: &str, size: i64, overlap: i64) -> Vec<
     }
 }
 
-/// `typed_chunks` with the product defaults (1200 / 160).
 pub fn typed_chunks_default(text: &str, strategy: &str) -> Vec<Chunk> {
     typed_chunks(text, strategy, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP)
 }
 
-/// `typed_chunk_meta_fields(piece)` — the additive chunk-metadata fields.
-///
-/// `heading_path` appears only when it is truthy: honest absence over an empty
-/// label. `strategy` falls back to `plain` for an empty string, mirroring
-/// Python's `str(meta.get("strategy") or "plain")`.
 pub fn chunk_meta_fields(chunk: &Chunk) -> Map<String, Value> {
     let mut fields = Map::new();
     let strategy = if chunk.meta.strategy.is_empty() {
@@ -131,7 +76,6 @@ pub(super) fn make_chunk(
     }
 }
 
-/// `_plain_windows` — the legacy `_chunks` walk with `start_char` tracked.
 pub(super) fn plain_windows(
     cleaned: &[char],
     size: usize,
@@ -156,14 +100,11 @@ pub(super) fn plain_windows(
         if end >= total {
             break;
         }
-        // Python's `max(0, end - overlap)`; overlap < size <= end here, so the
-        // floor never bites, but it is the contract and it is free.
         start = end.saturating_sub(overlap);
     }
     out
 }
 
-/// Character offsets at which a `^` in `re.MULTILINE` can match.
 pub(super) fn line_starts(cleaned: &[char]) -> Vec<usize> {
     let mut starts = vec![0usize];
     for (index, c) in cleaned.iter().enumerate() {
@@ -213,11 +154,9 @@ mod tests {
 
     #[test]
     fn size_and_overlap_are_coerced_the_way_python_coerces_them() {
-        // size <= 0 becomes 1; overlap is clamped into [0, size - 1].
         assert_eq!(texts(&typed_chunks("abc", "plain", 0, 5)), ["a", "b", "c"]);
         assert_eq!(texts(&typed_chunks("abc", "plain", -9, 5)), ["a", "b", "c"]);
         assert_eq!(texts(&typed_chunks("abcde", "plain", 3, -4)), ["abc", "de"]);
-        // overlap == size - 1 still advances by one character per window.
         assert_eq!(
             texts(&typed_chunks("abcd", "plain", 2, 99)),
             ["ab", "bc", "cd"]
@@ -232,7 +171,6 @@ mod tests {
             chunks.iter().map(|c| c.meta.start_char).collect::<Vec<_>>(),
             [0, 2, 4]
         );
-        // Byte lengths differ from character lengths, which is the whole point.
         assert_eq!(chunks[0].text.len(), 9);
         assert_eq!(chunks[0].text.chars().count(), 3);
     }

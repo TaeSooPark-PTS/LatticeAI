@@ -52,13 +52,6 @@ const TAB_ICON: Record<DockTab, typeof History> = {
   features: SlidersHorizontal,
 };
 
-/**
- * The home's support surfaces — past conversations, the stats panels the Brain
- * keeps, and the memory map — moved off the main canvas onto a dock: a quiet
- * rail that opens a drawer. The canvas keeps only the composer and its guide
- * cards; everything else is one deliberate click (or tap) away instead of a
- * stack of cards competing with the first move.
- */
 export function BrainHomeDock({
   language,
   brainState,
@@ -111,9 +104,6 @@ export function BrainHomeDock({
   const [tab, setTab] = React.useState<DockTab | null>(null);
   const open = tab !== null;
   const trapRef = useFocusTrap<HTMLElement>(() => {
-    // Escape closes the innermost surface first. The memory-ring peek closes
-    // itself on a *window* keydown — which the trap's stopPropagation starves —
-    // so close it here and keep the drawer under it open.
     const peek = document.getElementById("brain-ring-peek");
     if (peek) {
       peek.querySelector<HTMLButtonElement>("header button")?.click();
@@ -123,11 +113,6 @@ export function BrainHomeDock({
   }, open);
 
   const openTab = (next: DockTab) => {
-    // The stats and map panels read from queries the proof hook prefetches on
-    // demand — same contract the old insights shelf honoured with onToggle.
-    // 기능 is not one of them: the switchboard reads `/api/features` and
-    // nothing else, so prefetching the whole proof bundle for it would be work
-    // nobody asked for.
     if (next !== "conversations" && next !== "features") onRequestDetails();
     setTab((current) => (current === next && open ? null : next));
   };
@@ -158,10 +143,6 @@ export function BrainHomeDock({
         })}
       </div>
 
-      {/* Portaled to <body>: the home card sits under a backdrop-filter, which
-          makes every fixed descendant stack inside it — below the sticky
-          topbar. As a body child the layer's z-index is judged at root level
-          and the drawer actually covers the screen it claims to. */}
       {open ? createPortal(
         <div className="brain-home-dock-layer">
           <div className="brain-home-dock-scrim" aria-hidden="true" onClick={() => setTab(null)} />

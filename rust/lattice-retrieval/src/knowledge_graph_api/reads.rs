@@ -1,5 +1,3 @@
-//! Knowledge-graph SQL reads used by the WP-R6 routes.
-
 use lattice_auth::OrderedMap;
 use lattice_core::pytext::{round_to, safe_loads};
 use lattice_core::read::{column_json, read_tables};
@@ -12,7 +10,6 @@ use crate::knowledge_graph_api::{DEFAULT_EMBED_DIM, GRAPH_SCHEMA_VERSION, KG_SCH
 use crate::service::Scope;
 use lattice_core::read::filter_scoped_nodes;
 
-/// `_filter_scoped(kg, items, allowed)` — fail-closed v2 scope.
 pub fn filter_scoped(
     conn: &Connection,
     items: Vec<Value>,
@@ -32,8 +29,6 @@ pub fn filter_scoped(
     )
 }
 
-/// `_workspace_scope_sql`. `None` = no scoping; empty set matches nothing.
-/// `"personal"` also matches NULL/blank `workspace_id`.
 pub fn scope_sql(scope: &Scope) -> Option<(String, Vec<String>)> {
     lattice_core::workspace_membership_sql(
         scope.allowed_workspaces.as_ref(),
@@ -65,7 +60,6 @@ fn as_object(pairs: Vec<(String, i64)>) -> Value {
     serde_json::to_value(map).unwrap_or(Value::Null)
 }
 
-/// `KnowledgeGraphReadsMixin.stats` plus the router's `_scoped_stats`.
 pub fn stats(conn: &Connection, scope: &Scope) -> Result<Value, CoreError> {
     let (nodes_table, edges_table) = read_tables(conn);
     let predicate = scope_sql(scope);
@@ -115,10 +109,6 @@ pub fn stats(conn: &Connection, scope: &Scope) -> Result<Value, CoreError> {
                 ),
                 &doubled,
             )?;
-            // Local sources and the file index carry no workspace column. They
-            // are machine-local ingestion bookkeeping, not another tenant's
-            // content — but they are not this caller's scope either, so a
-            // scoped read reports none rather than guessing.
             (nodes, edges, 0, Vec::new())
         }
     };
@@ -135,7 +125,6 @@ pub fn stats(conn: &Connection, scope: &Scope) -> Result<Value, CoreError> {
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `KGStoreV2.stats()`, or `_scoped_v2_stats` when the caller has a scope.
 fn v2_stats(
     conn: &Connection,
     predicate: Option<&(String, Vec<String>)>,
@@ -201,15 +190,11 @@ fn v2_stats(
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `str(self.db_path)` — the file this connection is attached to.
 fn database_path(conn: &Connection) -> String {
     conn.path().map(str::to_string).unwrap_or_default()
 }
 
-/// `KnowledgeGraphReadsMixin.list_documents`.
 pub fn list_documents(conn: &Connection, limit: i64) -> Result<Value, CoreError> {
-    // `max(1, min(int(limit or 200), 1000))`: a zero is Python-falsy and means
-    // the default of 200, not one document.
     let limit = if limit == 0 { 200 } else { limit }.clamp(1, 1000);
     let (nodes_table, _) = read_tables(conn);
     let mut statement = conn.prepare(&format!(
@@ -237,8 +222,6 @@ pub fn list_documents(conn: &Connection, limit: i64) -> Result<Value, CoreError>
             )
             .unwrap_or(0);
         if chunk_count == 0 {
-            // Legacy projections linked chunks only through metadata_json.
-            // Kept as the fallback, never as the primary query.
             chunk_count = conn
                 .query_row(
                     &format!(
@@ -296,7 +279,6 @@ pub fn list_documents(conn: &Connection, limit: i64) -> Result<Value, CoreError>
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// The router's scope pass over `list_documents`.
 pub fn scoped_documents(
     conn: &Connection,
     payload: Value,
@@ -318,7 +300,6 @@ pub fn scoped_documents(
     Ok(Value::Object(object))
 }
 
-/// `KnowledgeGraphReadsMixin.neighbors`, unscoped — the router scopes after.
 pub fn neighbors(conn: &Connection, node_id: &str) -> Result<Value, CoreError> {
     let (nodes_table, edges_table) = read_tables(conn);
     let mut statement = conn.prepare(&format!(
@@ -379,7 +360,6 @@ pub fn neighbors(conn: &Connection, node_id: &str) -> Result<Value, CoreError> {
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `KnowledgeGraphProvenanceMixin.provenance_coverage`.
 pub fn provenance_coverage(conn: &Connection) -> Result<Value, CoreError> {
     let (nodes_table, _) = read_tables(conn);
     let total: i64 = conn
@@ -430,13 +410,6 @@ pub fn provenance_coverage(conn: &Connection) -> Result<Value, CoreError> {
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `KnowledgeGraphCurationMixin.pending_promotions`.
-///
-/// The queue is one JSON array in `graph_meta` under `pending_promotions`, not
-/// a table, and the read is deliberately tolerant: a corrupt or non-list value
-/// is an empty queue, and an entry without an `id` is dropped. Entries are
-/// returned **verbatim** rather than through a struct, because the writer's
-/// shape is not the reader's contract.
 pub fn pending_promotions(conn: &Connection) -> Result<Vec<Value>, CoreError> {
     let raw: Option<String> = conn
         .query_row(

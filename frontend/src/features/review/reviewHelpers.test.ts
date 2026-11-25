@@ -1,12 +1,3 @@
-/**
- * The Review Center's vocabulary layer.
- *
- * Every label here has the same shape of contract: the **id** is what the
- * backend owns, the words are what this app owns, and an id this app has never
- * seen must still render as *something* — a new backend source or risk class
- * appearing in the queue is a normal event, not an error. These tests pin both
- * halves, plus the date formatting that can silently print "Invalid Date".
- */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

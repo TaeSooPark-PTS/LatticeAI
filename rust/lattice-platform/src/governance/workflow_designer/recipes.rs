@@ -1,9 +1,5 @@
-//! Built-in Brain automation recipes.
-
 use lattice_auth::pyjson::OrderedMap;
 use serde_json::{json, Map, Value};
-
-// ── recipes ──────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 pub(crate) struct Recipe {

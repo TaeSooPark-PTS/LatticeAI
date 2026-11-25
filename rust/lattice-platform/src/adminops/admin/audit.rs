@@ -1,5 +1,3 @@
-//! Audit log load/append and sensitivity reports.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -45,9 +43,6 @@ const AUDIT_PUBLIC_KEYS: &[&str] = &[
 
 const AUDIT_DELETE_EVENTS: &[&str] = &["conversation_delete", "history_delete", "user_delete"];
 
-// ── public audit API ─────────────────────────────────────────────────────────
-
-/// Load `<data_dir>/audit_log.json`. Missing or corrupt → empty list.
 pub fn load_audit_log(path: &Path) -> Vec<Value> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return Vec::new();
@@ -58,11 +53,6 @@ pub fn load_audit_log(path: &Path) -> Vec<Value> {
     }
 }
 
-/// Append one event to `audit_log.json` (atomic replace, last 5000 kept).
-///
-/// `payload` is redacted first (`redact_secrets`). The event is:
-/// `{event_id, event_type, timestamp, **payload, contract}`. Failures are
-/// swallowed — an audit write must never take the product down.
 pub fn append_audit_event(path: &Path, event_type: &str, payload: Map<String, Value>) {
     let safe = match redact_secrets(&Value::Object(payload)) {
         Value::Object(map) => map,
@@ -102,14 +92,10 @@ pub fn append_audit_event(path: &Path, event_type: &str, payload: Map<String, Va
     lattice_auth::atomic::write_text(path, &text);
 }
 
-/// Convenience: resolve the audit file from a data dir via the I1 constant.
 pub fn audit_log_path(data_dir: &Path) -> PathBuf {
     data_dir.join(state_files::AUDIT_LOG)
 }
 
-/// Enforce `audit_retention_days` by pruning audit entries older than `cutoff_iso` (P3.4).
-///
-/// Returns `(kept_count, pruned_count)` and rewrites `audit_log.json` atomically.
 pub fn prune_audit_events_before(path: &Path, cutoff_iso: &str) -> (usize, usize) {
     let events = load_audit_log(path);
     let total = events.len();
@@ -131,7 +117,6 @@ pub fn prune_audit_events_before(path: &Path, cutoff_iso: &str) -> (usize, usize
     (kept.len(), pruned)
 }
 
-/// `classify_sensitive_message`.
 pub fn classify_sensitive_message(item: &Value, index: usize) -> OrderedMap {
     let content = item.get("content").map(value_as_string).unwrap_or_default();
     let found = find_sensitive(&content);
@@ -146,7 +131,6 @@ pub fn classify_sensitive_message(item: &Value, index: usize) -> OrderedMap {
             .to_string()
     };
     let preview_text: String = content.chars().take(240).collect();
-    // Python `len(preview_text)` is characters, not UTF-8 bytes.
     let preview_end = preview_text.chars().count();
     let preview_matches: Vec<&Map<String, Value>> = found
         .iter()
@@ -201,7 +185,6 @@ pub fn classify_sensitive_message(item: &Value, index: usize) -> OrderedMap {
     out
 }
 
-/// `build_sensitivity_report`.
 pub fn build_sensitivity_report(history: &[Value]) -> OrderedMap {
     let items: Vec<OrderedMap> = history
         .iter()
@@ -293,7 +276,6 @@ pub fn build_sensitivity_report(history: &[Value]) -> OrderedMap {
     report
 }
 
-/// `build_admin_audit_report` (the router then tacks on `filters` and `graph`).
 pub fn build_admin_audit_report(
     users: &lattice_auth::Users,
     auth: &AuthState,
@@ -617,7 +599,6 @@ fn find_sensitive(content: &str) -> Vec<Map<String, Value>> {
                 row.insert("type".into(), json!(key));
                 row.insert("label".into(), json!(label));
                 row.insert("severity".into(), json!(severity));
-                // Python `re.Match.start/end` are character offsets.
                 row.insert("start".into(), json!(char_offset(content, m.start())));
                 row.insert("end".into(), json!(char_offset(content, m.end())));
                 found.push(row);

@@ -105,8 +105,6 @@ async fn strict_stages_a_governed_mutation_as_a_proposal() {
         .execute(&mut ctx, &harness.request)
         .await
         .expect("execute");
-    // The proposal is staged **here** now (v11.6.0 §P1c), so the id on the
-    // transcript is a real review item's and the item is on disk.
     let items = harness.staged_items();
     assert_eq!(items.len(), 1, "one staged proposal");
     let proposal_id = items[0]["id"].as_str().expect("id").to_string();
@@ -133,8 +131,6 @@ async fn strict_stages_a_governed_mutation_as_a_proposal() {
     assert_eq!(harness.runtime.audit[0]["event"], "agent_change_proposed");
     assert_eq!(harness.runtime.audit[0]["change_class"], "mutation");
     assert_eq!(harness.runtime.audit[0]["proposal_id"], json!(proposal_id));
-    // Nothing crossed the seam: the retired `/agent/change-proposal` hop is
-    // gone, and the write never ran.
     assert!(harness.tool_calls().is_empty());
 }
 
@@ -142,7 +138,6 @@ async fn strict_stages_a_governed_mutation_as_a_proposal() {
 async fn a_staging_failure_is_an_error_step_not_a_silent_fallthrough() {
     let mut harness = harness(&[&write_action("a.md", "new"), FINAL]).await;
     std::fs::write(harness.root.join("a.md"), b"old").expect("file");
-    // A data directory that cannot hold a file: the store's write fails.
     std::fs::write(&harness.data_dir, b"not a directory").expect("block");
     let mut ctx = harness.context();
     harness
@@ -158,8 +153,6 @@ async fn a_staging_failure_is_an_error_step_not_a_silent_fallthrough() {
         "agent_change_proposal_failed"
     );
     assert_eq!(harness.runtime.audit[0]["path"], "a.md");
-    // The file is untouched: a change that could not be staged is not a
-    // change that gets applied.
     assert_eq!(
         std::fs::read_to_string(harness.root.join("a.md")).expect("read"),
         "old"
@@ -186,19 +179,14 @@ async fn trusted_applies_a_governed_mutation_and_audits_it_instead() {
         harness.runtime.audit[0]["event"],
         "agent_change_auto_applied"
     );
-    // The governor was never consulted, so no orphan proposal was left.
     assert!(
         harness.staged_items().is_empty(),
         "reviewing first would persist an orphan"
     );
-    // The snapshot captured the pre-run bytes, so rollback has something.
     assert_eq!(ctx.rollback_log[0]["content"], "old");
     assert_eq!(ctx.rollback_log[0]["existed"], true);
 }
 
-// ── the executor prompt and what surrounds it (v11.9.0) ─────────────────
-/// A run five steps in: a plan, five results, a written file, a
-/// conversation. This is the shape the compact profile was drowning in.
 fn five_steps_in(harness: &crate::kernel::agentloop::harness::Harness) -> AgentRunContext {
     let mut ctx = harness.context();
     ctx.plan = json!({"goal": "build the page", "steps": [
@@ -225,9 +213,6 @@ fn five_steps_in(harness: &crate::kernel::agentloop::harness::Harness) -> AgentR
 
 #[tokio::test]
 async fn execute_uses_the_profile_temperature_not_the_request_default() {
-    // Before: EXECUTE forwarded req.temperature (serde default 0.1) for
-    // every profile. After: compact 0.1 / standard 0.2, even if the
-    // request carries something else. PLAN/VERIFY temps are unchanged.
     for (profile, expected) in [
         (crate::kernel::profile::COMPACT, 0.1),
         (crate::kernel::profile::STANDARD, 0.2),
@@ -257,8 +242,6 @@ async fn execute_uses_the_profile_temperature_not_the_request_default() {
 
 #[tokio::test]
 async fn a_run_with_no_prompt_library_still_gets_the_action_contract() {
-    // The v11.9.0 bug in one assertion: this used to open with a blank line
-    // and the model was never told what a reply looked like.
     let harness = harness(&[]).await;
     let ctx = harness.context();
     let context =
@@ -320,7 +303,6 @@ async fn the_compact_context_drops_the_framing_the_transcript_already_carries() 
     assert!(!compact.contains("Recent conversation:"));
     assert!(!compact.contains("Files written by this run so far"));
     assert!(!compact.contains("USER: hi"));
-    // The plan and the transcript still carry every fact that was dropped.
     assert!(compact.contains("index.html"), "the plan is still there");
     assert!(compact.contains("Execution transcript:"));
 }
@@ -338,10 +320,6 @@ async fn the_compact_context_stays_small_enough_for_a_2b_model_at_step_five() {
         harness
             .runtime
             .executor_context(&ctx, &harness.request, crate::kernel::profile::COMPACT);
-    // ~4 characters per token for this mix of English prose and JSON, so
-    // 8,000 characters is the ~2k-token target. The standard profile is
-    // over it on the same run — which is the measurement this dial exists
-    // because of, and why it is asserted from both sides.
     assert!(
         compact.len() < 8_000,
         "compact context is {} chars",

@@ -1,8 +1,3 @@
-//! The scheduler against a fake worker: what it calls, what it does when the
-//! answer is a 500, and what `/host/jobs` says about all of it.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod common;
 
@@ -24,8 +19,6 @@ fn config(worker: &FakeWorker) -> SchedulerConfig {
 fn scheduler(config: SchedulerConfig) -> Arc<Scheduler> {
     Arc::new(Scheduler::with_client(config, client()))
 }
-
-// ── the tick calls the endpoint this release added ───────────────────────────
 
 #[tokio::test]
 async fn a_tick_posts_the_configured_limit_to_the_drain_endpoint() {
@@ -144,8 +137,6 @@ async fn a_drain_that_claimed_nothing_is_still_a_healthy_tick() {
     worker.shutdown();
 }
 
-// ── failure: the schedule stretches, then snaps back ─────────────────────────
-
 #[tokio::test]
 async fn a_5xx_backs_the_schedule_off_by_doubling_and_a_recovery_resets_it() {
     let worker = FakeWorker::start_with(Behaviour {
@@ -197,7 +188,6 @@ async fn the_backoff_stops_growing_at_the_cap() {
 
 #[tokio::test]
 async fn a_worker_that_is_not_there_is_a_failed_tick_not_a_panic() {
-    // Bind and drop, so the port is almost certainly refusing connections.
     let dead = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");
@@ -230,8 +220,6 @@ async fn a_worker_answering_nonsense_is_a_failed_tick_with_the_reason() {
     assert!(report.error.expect("a reason").contains("malformed JSON"));
     worker.shutdown();
 }
-
-// ── autoresume: opt-in, and conservative when it is on ───────────────────────
 
 #[tokio::test]
 async fn autoresume_stays_out_of_the_way_until_it_is_asked_for() {
@@ -302,7 +290,6 @@ async fn a_job_a_resume_could_not_advance_is_not_resumed_again() {
     assert_eq!(worker.count_to("/api/ingestion/jobs/stuck/resume"), 1);
     assert!(second.resumed.is_empty());
 
-    // Something moved it forward: it is worth another attempt.
     worker.set(|behaviour| behaviour.jobs_body = jobs_payload(&[("stuck", "partial", 5, 2)]));
     let third = scheduler.tick().await;
 
@@ -342,12 +329,9 @@ async fn a_failing_jobs_list_never_fails_the_drain() {
 
     assert!(report.ok, "the drain succeeded; autoresume is a passenger");
     assert!(report.resume_error.expect("a reason").contains("401"));
-    // The schedule follows the drain, not the passenger.
     assert_eq!(scheduler.next_delay(), scheduler.config().interval);
     worker.shutdown();
 }
-
-// ── the routes ───────────────────────────────────────────────────────────────
 
 struct TestHost {
     base: String,
@@ -419,7 +403,6 @@ async fn host_jobs_answers_the_documented_shape_before_anything_has_ticked() {
     assert_eq!(payload["last_tick"], serde_json::Value::Null);
     assert_eq!(payload["next_due_in"], serde_json::Value::Null);
     assert_eq!(payload["recent_ticks"], serde_json::json!([]));
-    // Counted straight from SQLite, with the worker never asked.
     assert_eq!(
         payload["queue_counts"]["available"],
         serde_json::json!(true)
@@ -503,7 +486,6 @@ async fn posting_a_tick_runs_one_now_and_answers_with_it() {
         serde_json::json!(2)
     );
     assert_eq!(payload["recent_ticks"].as_array().expect("array").len(), 1);
-    // A tick has happened, so the next one is now datable.
     assert!(payload["next_due_in"].as_u64().expect("seconds") <= 60);
 
     host.stop().await;
@@ -549,8 +531,6 @@ async fn an_unknown_jobs_path_is_not_answered_by_this_router() {
     worker.shutdown();
 }
 
-// ── the loop ─────────────────────────────────────────────────────────────────
-
 #[tokio::test]
 async fn the_loop_ticks_immediately_on_spawn_and_stops_when_asked() {
     let worker = FakeWorker::start().await;
@@ -561,8 +541,6 @@ async fn the_loop_ticks_immediately_on_spawn_and_stops_when_asked() {
         let _ = rx.await;
     });
 
-    // The moment a backlog most needs attention is right after a restart, so
-    // the first tick does not wait for the first interval.
     assert!(
         wait_until(Duration::from_secs(5), || worker.count_to(DRAIN) >= 1).await,
         "the loop never ticked"

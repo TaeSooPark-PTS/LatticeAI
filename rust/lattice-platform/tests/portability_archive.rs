@@ -1,13 +1,3 @@
-//! End-to-end integration tests for:
-//! - `.latticebrain` encrypted archive create -> inspect -> verify -> import/restore round-trip
-//! - Wrong passphrase rejection, tampered byte detection, unsupported version rejection
-//! - Path traversal & symlink escape rejection on both outer and inner archive entries
-//! - Automatic pre-restore backup creation and post-restore DB equivalence
-//! - Recipient key exchange, selective share export/archive, signature checks,
-//!   review-queue staging (`share_import`), and governance acceptance (`share_accept`)
-//! - PostgreSQL & Docker migration dry-run/planned honesty
-//! - P3 Enterprise tenant isolation, org policy audit logging, and multimodal contracts
-
 use std::collections::HashMap;
 use std::io::Write;
 use std::net::SocketAddr;
@@ -310,7 +300,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
     assert_eq!(created["counts"]["blobs"], json!(1));
     assert!(archive_path.exists());
 
-    // Confirm payload.enc is genuinely encrypted (no cleartext secret strings).
     let outer_file = std::fs::File::open(&archive_path).unwrap();
     let mut outer_zip = zip::ZipArchive::new(outer_file).unwrap();
     let mut enc_bytes = Vec::new();
@@ -324,7 +313,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
         "archive payload must not expose plaintext titles"
     );
 
-    // Inspect WITHOUT passphrase does not mutate DB and returns full manifest metadata.
     let (status, inspected) = node
         .post_json(
             "/api/knowledge-graph/archive/inspect",
@@ -341,7 +329,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
     assert_eq!(inspected["provenance"], json!(1));
     assert!(inspected["created_at"].as_str().is_some());
 
-    // Verify WITH passphrase passes cryptographic MAC + signature + checksums + SQLite integrity.
     let (status, verified) = node
         .post_json(
             "/api/knowledge-graph/archive/verify",
@@ -357,7 +344,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
     assert_eq!(verified["signature_verified"], json!(true));
     assert_eq!(verified["integrity_check"], json!("ok"));
 
-    // Corrupt/wipe live DB & blobs and plant a decoy node so pre-restore backup is proven.
     {
         let conn = lattice_core::db::open_read_write(&node.db_path).unwrap();
         for tbl in [
@@ -381,7 +367,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
     assert_eq!(node.count_table("nodes"), 1);
     assert_eq!(node.count_table("vector_embeddings"), 0);
 
-    // Restore from encrypted archive; verify automatic pre-restore backup & exact post-restore DB equivalence.
     let (status, restored) = node
         .post_json(
             "/api/knowledge-graph/archive/restore",
@@ -411,7 +396,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
         "pre-restore backup must exist"
     );
 
-    // Verify restored data bit-for-bit in live DB + blobs!
     let conn = lattice_core::db::open_read_only(&node.db_path).unwrap();
     let title: String = conn
         .query_row("SELECT title FROM nodes WHERE id='node-alpha'", [], |r| {
@@ -440,7 +424,6 @@ async fn archive_create_inspect_verify_restore_roundtrip_equivalence() {
         b"lattice-blob-bytes-v1"
     );
 
-    // Also verify `archive/import` in merge mode succeeds cleanly.
     let (status, merged) = node
         .post_json(
             "/api/knowledge-graph/archive/import",
@@ -471,7 +454,6 @@ async fn archive_rejects_wrong_password_tampering_and_unsupported_version() {
         .await;
     assert_eq!(status, 200);
 
-    // 1. Wrong password rejected on verify and restore.
     let (st_v, body_v) = node
         .post_json(
             "/api/knowledge-graph/archive/verify",
@@ -487,7 +469,6 @@ async fn archive_rejects_wrong_password_tampering_and_unsupported_version() {
         .await;
     assert_eq!(st_r, 400, "wrong password restore must fail: {body_r}");
 
-    // 2. Tamper one byte inside `payload.enc` -> detected by checksum/MAC.
     let tampered_path = node.data_dir.join("exports/tampered.latticebrain");
     rewrite_outer_zip_entry(&archive_path, &tampered_path, "payload.enc", |bytes| {
         if let Some(first) = bytes.first_mut() {
@@ -502,7 +483,6 @@ async fn archive_rejects_wrong_password_tampering_and_unsupported_version() {
         .await;
     assert_eq!(st_t, 400, "tampered bytes must fail verify: {body_t}");
 
-    // 3. Unsupported format_version rejected cleanly on inspect & verify.
     let future_path = node.data_dir.join("exports/v99.latticebrain");
     rewrite_outer_zip_entry(&archive_path, &future_path, "header.json", |bytes| {
         let mut h: Value = serde_json::from_slice(bytes).unwrap();
@@ -530,7 +510,6 @@ async fn archive_rejects_path_traversal_and_symlink_escapes() {
     let node = TestNode::start().await;
     node.seed_rich_graph();
 
-    // Case A: Outer container contains path traversal entry.
     let evil_outer = node.data_dir.join("exports/evil-outer.latticebrain");
     std::fs::create_dir_all(evil_outer.parent().unwrap()).unwrap();
     {
@@ -549,7 +528,6 @@ async fn archive_rejects_path_traversal_and_symlink_escapes() {
         .await;
     assert_eq!(st1, 400, "outer traversal must be rejected: {b1}");
 
-    // Case B: Outer container contains POSIX symlink entry.
     let symlink_outer = node.data_dir.join("exports/symlink-outer.latticebrain");
     {
         let file = std::fs::File::create(&symlink_outer).unwrap();
@@ -576,7 +554,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
     let sender = TestNode::start().await;
     let receiver = TestNode::start().await;
 
-    // Seed sender with shareable nodes + edges + sensitivity-blocked nodes.
     {
         let conn = lattice_core::db::open_read_write(&sender.db_path).unwrap();
         conn.execute(
@@ -611,7 +588,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
         .unwrap();
     }
 
-    // 1. Retrieve receiver's X25519 recipient public key.
     let (rk_st, rk_body) = receiver
         .get_json("/api/knowledge-graph/share/recipient-key")
         .await;
@@ -621,7 +597,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
         .as_str()
         .expect("recipient public_key");
 
-    // 2. Selective signed JSON export excludes blocked nodes cleanly.
     let (se_st, se_body) = sender
         .post_json(
             "/api/knowledge-graph/share/export",
@@ -637,7 +612,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
     assert_eq!(se_body["excluded_local_only"], json!(2));
     assert_eq!(se_body["signature_verified"], json!(true));
 
-    // 3. Seal encrypted share archive using receiver's X25519 recipient_public_key.
     let sealed_path = sender.data_dir.join("exports/for-receiver.latticebrain");
     let (sa_st, sa_body) = sender
         .post_json(
@@ -653,7 +627,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
     assert_eq!(sa_st, 200, "share_archive failed: {sa_body}");
     assert_eq!(sa_body["encryption_mode"], json!("recipient_public_key"));
 
-    // 4. Receiver imports sealed share archive -> stages in Review Queue WITHOUT mutating live DB.
     let (si_st, si_body) = receiver
         .post_json(
             "/api/knowledge-graph/share/import",
@@ -674,7 +647,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
         "share_import must never auto-merge before governance review"
     );
 
-    // 5. Cross-tenant accept attempt from wrong workspace is denied and audited.
     let (bad_ws_st, _) = receiver
         .post_json(
             &format!("/api/knowledge-graph/share/proposals/{proposal_id}/accept"),
@@ -684,7 +656,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
     assert_eq!(bad_ws_st, 404, "wrong tenant must not accept proposal");
     assert_eq!(receiver.count_table("nodes"), 0);
 
-    // 6. Accept proposal within matching workspace approves review item and merges nodes/edges!
     let (acc_st, acc_body) = receiver
         .post_json(
             &format!("/api/knowledge-graph/share/proposals/{proposal_id}/accept"),
@@ -697,7 +668,6 @@ async fn share_export_recipient_key_import_and_accept_roundtrip() {
     assert_eq!(receiver.count_table("nodes"), 2);
     assert_eq!(receiver.count_table("edges"), 1);
 
-    // 7. Tampered bundle signature on inline share_import is rejected fail-closed.
     let mut bad_bundle = se_body["bundle"].clone();
     bad_bundle["nodes"][0]["title"] = json!("Tampered Title");
     let (tamper_st, tamper_body) = receiver
@@ -761,7 +731,6 @@ async fn postgres_migration_and_docker_honestly_report_planned() {
 async fn p3_enterprise_tenant_isolation_and_multimodal_contracts() {
     let node = TestNode::start().await;
 
-    // 1. Organization governance policy persistence + audit logging.
     let mut policy = OrganizationGovernancePolicy::default_for("org-alpha");
     policy.enforce_tenant_isolation = true;
     policy.allow_multimodal_capture = false;
@@ -770,7 +739,6 @@ async fn p3_enterprise_tenant_isolation_and_multimodal_contracts() {
     let loaded = load_org_governance_policy(&node.data_dir, "org-alpha");
     assert!(!loaded.allow_multimodal_capture);
 
-    // 2. Tenant isolation enforcement logs denied attempt.
     let err = validate_tenant_scope(
         &node.data_dir,
         Some("org-alpha"),
@@ -781,7 +749,6 @@ async fn p3_enterprise_tenant_isolation_and_multimodal_contracts() {
     .expect_err("cross-tenant access must be denied");
     assert!(err.contains("Cross-tenant access denied"));
 
-    // 3. Multimodal contract denies speech/vision when org disables multimodal or bad MIME.
     let denied = validate_multimodal_contract(
         &node.data_dir,
         &MultimodalContractRequest {
@@ -798,7 +765,6 @@ async fn p3_enterprise_tenant_isolation_and_multimodal_contracts() {
     );
     assert_eq!(denied.unwrap_err().code, "org_policy_denied");
 
-    // 4. Voice endpoint validates audio MIME/size against multimodal contract.
     let (v_st, v_body) = node
         .post_json(
             "/api/capture/voice",

@@ -1,42 +1,10 @@
-//! `redact_secret_text` — the last gate before bytes leave the machine.
-//!
-//! Port of `latticeai/core/security.py`'s text redactor. The Python original is
-//! applied to logs, audit rows and API previews everywhere; the one path that
-//! *matters* here is the hybrid cloud lane, where `build_minimal_context` runs
-//! it over the compact payload. A token pasted into a note is not marked
-//! sensitive by anybody, so pattern redaction is the only thing between it and
-//! the provider.
-//!
-//! `fancy_regex` again, and here it is not optional: `TELEGRAM_TOKEN_BARE_RE`
-//! opens with the lookbehind `(?<![A-Za-z0-9_:-])` and closes with the negative
-//! lookahead `(?![A-Za-z0-9_-])`. Only the lookbehind ever refuses anything —
-//! `[A-Za-z0-9_-]{8,}` is greedy, so it swallows the tail and the lookahead is
-//! satisfied at end of input (`telegram_lookahead_is_greedy` in the fixture).
-//!
-//! One faithful oddity worth naming: the Python replacement for the keyed
-//! patterns writes `key=[REDACTED_SECRET]` with an `=` **whatever separator the
-//! text used** — `secret = 'x'` becomes `secret=[REDACTED_SECRET]`. (The
-//! `Authorization: Bearer …` header does *not* redact, because the value after
-//! the colon is `Bearer`, six characters, below the eight the pattern demands;
-//! `rust/fixtures/redact.json::keyed_authorization` pins that.)
-//!
-//! [`normalize_branding`] lives here too, because `write_chat_turn` step 1 is
-//! the pair: every turn is redacted, and an **assistant** turn is then rewritten
-//! from the product's legacy aliases. Both are pure regular expressions — no
-//! model, no tokenizer, nothing to ask the worker for — which is what makes the
-//! whole step portable. (The *ingest* step's concept extraction is LLM-first and
-//! therefore is not; see the W3a wiring note.)
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
 pub use lattice_core::redact::redact_secret_text;
 
-/// `models.router.branding.BRAND_NAME`.
 pub const BRAND_NAME: &str = "Lattice AI";
 
-/// `LEGACY_BRAND_PATTERNS`, in order — the order is the rule, because the first
-/// rewrite changes the text the next one sees.
 const LEGACY_BRAND_PATTERNS: &[&str] = &[
     r"(?i)\bconnect\s+ai\b",
     r"(?i)\bconnect-ai\b",
@@ -54,11 +22,6 @@ fn brand_patterns() -> &'static Vec<Regex> {
     })
 }
 
-/// `normalize_branding(text)` — the legacy-alias rewrite assistant turns get.
-///
-/// Applied **after** redaction (that is `write_chat_turn`'s order) and only to
-/// the assistant's own words: a user who typed "Connect AI" is quoted, not
-/// corrected.
 pub fn normalize_branding(text: &str) -> String {
     if text.is_empty() {
         return String::new();
@@ -70,7 +33,6 @@ pub fn normalize_branding(text: &str) -> String {
     normalized
 }
 
-/// `write_chat_turn` step 1, whole: redact, then brand-normalise an assistant.
 pub fn redact_for_role(role: &str, message: &str) -> String {
     let redacted = redact_secret_text(message);
     if role == "assistant" {
@@ -103,7 +65,6 @@ mod tests {
             redact_secret_text("password=hunter2hunter2"),
             "password=[REDACTED_SECRET]"
         );
-        // Under 8 characters is not a secret shape.
         assert_eq!(redact_secret_text("token: short"), "token: short");
     }
 

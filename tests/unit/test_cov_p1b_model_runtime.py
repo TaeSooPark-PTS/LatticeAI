@@ -1,5 +1,3 @@
-"""Coverage for model_runtime download / loading / service leftovers."""
-
 from __future__ import annotations
 
 import time

@@ -1,12 +1,3 @@
-"""wp19: the slim ``LTCAI`` worker entrypoint.
-
-``main`` loads ``.env``, applies ``LATTICEAI_EXTRA_PATH``, parses
-``--host`` / ``--port`` / ``--reload``, writes the address back into the
-environment, and hands ``latticeai.worker_app:create_worker_app`` to
-uvicorn. ``uvicorn.run`` is replaced through ``sys.modules`` so no test
-binds a port or spawns a process.
-"""
-
 from __future__ import annotations
 
 import os
@@ -23,7 +14,6 @@ import latticeai.cli.entrypoint as entrypoint
 from latticeai.cli.runtime import _apply_extra_path, _load_env_file
 
 
-# ── cli.runtime helpers ──────────────────────────────────────────────────────
 def test_load_env_file_fills_only_unset_keys_and_skips_noise(monkeypatch, tmp_path):
     env_file = tmp_path / ".env"
     env_file.write_text(
@@ -47,7 +37,6 @@ def test_load_env_file_fills_only_unset_keys_and_skips_noise(monkeypatch, tmp_pa
 
     assert os.environ["LATTICEAI_WP19_QUOTED"] == "quoted value"
     assert os.environ["LATTICEAI_WP19_PLAIN"] == "plain"
-    # An existing environment value always wins over the file.
     assert os.environ["LATTICEAI_WP19_PRESET"] == "from-environment"
     monkeypatch.delenv("LATTICEAI_WP19_QUOTED")
     monkeypatch.delenv("LATTICEAI_WP19_PLAIN")
@@ -83,8 +72,6 @@ def test_apply_extra_path_prepends_existing_directories_in_order(monkeypatch, tm
 
     _apply_extra_path()
 
-    # `first` is new so it is prepended; `second` is already on PATH and the
-    # missing directory is dropped entirely.
     assert os.environ["PATH"].split(os.pathsep) == [
         str(first),
         "/usr/bin",
@@ -92,9 +79,7 @@ def test_apply_extra_path_prepends_existing_directories_in_order(monkeypatch, tm
     ]
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
 def _stable_process(monkeypatch, tmp_path) -> List[Dict[str, Any]]:
-    """Pin cwd, env and uvicorn so ``main`` cannot escape the test."""
     served: List[Dict[str, Any]] = []
     monkeypatch.chdir(Path.cwd())
     monkeypatch.setenv("PATH", os.environ.get("PATH", ""))
@@ -173,7 +158,6 @@ def test_main_rejects_an_unknown_flag(monkeypatch, tmp_path):
 
 @pytest.mark.filterwarnings("ignore:.*found in sys.modules.*:RuntimeWarning")
 def test_running_the_module_as_a_script_reaches_main(monkeypatch, tmp_path):
-    """``python -m latticeai.cli.entrypoint`` must call ``main``."""
     served = _stable_process(monkeypatch, tmp_path)
     monkeypatch.setattr(sys, "argv", ["LTCAI", "--port", "4826"])
 

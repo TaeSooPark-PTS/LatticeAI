@@ -1,9 +1,3 @@
-//! Shared supervisor state and the crash-monitor / health-poller tasks.
-//!
-//! The monitor owns the child process. Everything else (the gateway, the Tauri
-//! commands) reads the state snapshot, so there is exactly one writer per
-//! field and no second source of truth about "is the worker up".
-
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -16,7 +10,6 @@ use super::process::spawn_worker;
 use super::status::{origin_for, WorkerStatus};
 use super::{SupervisorConfig, SupervisorError};
 
-/// Mutable supervisor state — written by the monitor, read by everyone.
 #[derive(Debug, Default)]
 pub(crate) struct State {
     pub running: bool,
@@ -29,7 +22,6 @@ pub(crate) struct State {
     pub started: bool,
 }
 
-/// Everything the supervisor tasks share.
 pub(crate) struct Shared {
     pub config: SupervisorConfig,
     pub probe: Arc<dyn HostProbe>,
@@ -47,8 +39,6 @@ impl Shared {
         }
     }
 
-    /// Lock the state, tolerating a poisoned mutex (a panicking reader must not
-    /// take the supervisor down with it).
     pub fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|err| err.into_inner())
     }
@@ -86,15 +76,12 @@ impl Shared {
         self.state().last_error = Some(message);
     }
 
-    /// Fold a live health observation into the state. A worker that is not
-    /// running is never reported healthy, whatever answers on that port.
     pub fn observe_health(&self, healthy: bool) {
         let mut state = self.state();
         state.healthy = healthy && (state.running || !self.config.supervise);
     }
 }
 
-/// Sleep, unless a stop is requested first. Returns `true` when stopping.
 pub(crate) async fn sleep_or_stop(stop_rx: &mut watch::Receiver<bool>, delay: Duration) -> bool {
     let signalled = tokio::select! {
         _ = tokio::time::sleep(delay) => false,
@@ -103,7 +90,6 @@ pub(crate) async fn sleep_or_stop(stop_rx: &mut watch::Receiver<bool>, delay: Du
     signalled || *stop_rx.borrow()
 }
 
-/// Background liveness poller: keeps `healthy` fresh for `/host/status`.
 pub(crate) async fn run_health_poller(shared: Arc<Shared>, mut stop_rx: watch::Receiver<bool>) {
     let origin = shared.origin();
     let interval = shared.config.health_poll_interval;
@@ -124,12 +110,6 @@ fn open_gate(gate: &mut Gate, result: Result<(), SupervisorError>) {
     }
 }
 
-/// The crash monitor: spawn → health gate → wait → backoff → repeat.
-///
-/// A manual stop (the `stop_rx` flag) suppresses every restart; a resolution
-/// failure is terminal (the machine is missing the worker, retrying cannot fix
-/// that); a spawn failure or a crash is retried with exponential backoff up to
-/// `backoff.max_attempts`.
 pub(crate) async fn run_monitor(
     shared: Arc<Shared>,
     mut stop_rx: watch::Receiver<bool>,
@@ -197,7 +177,6 @@ pub(crate) async fn run_monitor(
         }
         let run_started = Instant::now();
 
-        // Health gate — cancellable, so a stop during boot is immediate.
         let gate_result = tokio::select! {
             result = wait_for_health(
                 &shared.client,
@@ -219,7 +198,6 @@ pub(crate) async fn run_monitor(
                 let error = SupervisorError::Health(timeout.to_string());
                 shared.record_error(error.to_string());
                 open_gate(&mut gate, Err(error));
-                // P2.4: kill wedged child on startup health timeout instead of hanging indefinitely.
                 let _ = child.kill().await;
             }
             None => {
@@ -232,9 +210,6 @@ pub(crate) async fn run_monitor(
             }
         }
 
-        // P2.4: Watchdog monitors both child exit and consecutive health failures,
-        // automatically killing and restarting a hung/unresponsive worker while
-        // letting manual graceful stop (`stop_rx`) deliver SIGTERM + grace period.
         const MAX_CONSECUTIVE_HEALTH_FAILURES: u32 = 3;
         let poll_interval = shared.config.health_poll_interval;
         let mut consecutive_failures: u32 = 0;
@@ -245,8 +220,6 @@ pub(crate) async fn run_monitor(
             tokio::select! {
                 res = child.wait() => break res,
                 _ = stop_rx.changed() => {
-                    // Graceful stop in progress: let Supervisor::stop() deliver SIGTERM
-                    // and wait the configured grace period before reaping.
                     break child.wait().await;
                 }
                 _ = tokio::time::sleep(poll_interval) => {

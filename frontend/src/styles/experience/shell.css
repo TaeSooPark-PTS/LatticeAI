@@ -1,17 +1,9 @@
-/*
- * Lattice human-first experience layer
- *
- * The legacy stylesheet still contains feature-specific visualizations. This
- * file owns the product shell, conversation surface, and shared content
- * grammar so ordinary screens feel like a calm workspace instead of an
- * operations dashboard. Keep this import after styles.css.
- */
+
 
 :root {
   --experience-content: 64rem;
   --experience-reading: 46rem;
-  /* Elevation lives in tokens.css (--elev-0..4) so both themes share one
-     depth scale. These aliases keep older sheets pointing at the same steps. */
+  
   --experience-radius: var(--lt-radius-xl);
   --experience-control-radius: var(--lt-radius-lg);
   --experience-header-height: 4.25rem;
@@ -51,7 +43,7 @@ summary {
   outline-offset: 2px;
 }
 
-/* ── Product shell ───────────────────────────────────────────────────── */
+
 
 .brain-space {
   min-height: 100dvh;
@@ -250,17 +242,7 @@ summary {
   margin-left: auto;
 }
 
-/* The three management destinations are one list rendered twice: as topbar
-   quick links, and inside the "더보기" menu. Exactly one copy may be visible at
-   any width, so both are governed by this single breakpoint. Splitting them
-   across two different thresholds left a band showing both — and, because the
-   quick links add ~110px to a row that only just fit, a band where the topbar
-   overflowed its own box and clipped the menu button off the right edge.
-   The threshold was 960px while the primary nav carried three links. 11.3.0's
-   연대기 adds a fourth, roughly 90px, so the seam moved out to 1120px rather
-   than letting the quick links reappear at a width where the row no longer
-   fits. Below it the links go back to the menu, which stays reachable at
-   every width. */
+
 .brain-utility-quick-nav {
   display: none;
   align-items: center;
@@ -273,7 +255,7 @@ summary {
     display: flex;
   }
 
-  /* Its counterpart inside the menu, hidden once the topbar carries them. */
+  
   .brain-more-section-compact-only {
     display: none;
   }

@@ -1,5 +1,3 @@
-"""Local filesystem tools (require user approval via the UI) + desktop bridge status."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,7 +7,6 @@ from latticeai.tools import LOCAL_MAX_FILE_BYTES, ToolError
 
 
 def local_list(path: str) -> Dict[str, Any]:
-    """List any directory on the local filesystem (requires user approval via UI)."""
     target = Path(path).expanduser().resolve()
     if not target.exists():
         raise ToolError(f"경로가 존재하지 않습니다: {path}")
@@ -35,7 +32,6 @@ def local_list(path: str) -> Dict[str, Any]:
 
 
 def local_read(path: str) -> Dict[str, Any]:
-    """Read any file on the local filesystem (requires user approval via UI)."""
     target = Path(path).expanduser().resolve()
     if not target.exists():
         raise ToolError(f"파일이 존재하지 않습니다: {path}")

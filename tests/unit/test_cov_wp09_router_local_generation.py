@@ -1,11 +1,3 @@
-"""Local MLX generation: chat, streaming and the document pipeline.
-
-The generator functions import ``mlx.core``, ``mlx_vlm`` and ``mlx_lm`` inside
-the worker-thread body, so the fakes have to live in ``sys.modules``. That
-keeps these tests about what the router asks each backend for — prompt, image,
-sampler, draft model — on a machine with or without MLX installed.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -23,8 +15,6 @@ STREAM_TIMEOUT = 10.0
 
 
 class _TemplateTokenizer:
-    """Records the messages the router hands to the chat template."""
-
     def __init__(self):
         self.messages = None
 
@@ -58,11 +48,6 @@ def _install_fake_mlx(monkeypatch, *, vlm=None, lm=None):
     for name, value in (lm or {}).items():
         setattr(fake_lm, name, value)
     monkeypatch.setitem(sys.modules, "mlx_lm", fake_lm)
-    # v11.9.0 builds the sampler from `mlx_lm.sample_utils`. It has to be faked
-    # explicitly: `from mlx_lm.sample_utils import …` resolves through
-    # `sys.modules` by dotted name, so a real installation on the dev box would
-    # satisfy it straight past the fake parent above — and the test would then
-    # be measuring the machine rather than the router.
     sample_utils = types.ModuleType("mlx_lm.sample_utils")
     sample_utils.make_sampler = lambda **kwargs: _FakeSampler(**kwargs)
     fake_lm.sample_utils = sample_utils
@@ -71,12 +56,10 @@ def _install_fake_mlx(monkeypatch, *, vlm=None, lm=None):
 
 
 class _FakeSampler:
-    """What ``make_sampler`` returned, with the arguments it was given."""
-
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
-    def __repr__(self):  # pragma: no cover — only for assertion messages
+    def __repr__(self):
         return f"_FakeSampler({self.kwargs})"
 
 
@@ -126,7 +109,6 @@ def _delta_event(content):
 
 
 def _vlm_model():
-    """A vision checkpoint: ``mlx_vlm.apply_chat_template`` reads ``.config``."""
     return types.SimpleNamespace(config={"model_type": "gemma4"})
 
 
@@ -135,9 +117,6 @@ def _router_with(entry, key: str = "local"):
     router._cache = {key: entry}
     router._current = key
     return router
-
-
-# ── Chat generation on the text (mlx-lm) path ────────────────────────────
 
 
 def test_generate_runs_the_mlx_lm_text_path_and_rebrands_the_answer(monkeypatch):
@@ -161,19 +140,12 @@ def test_generate_runs_the_mlx_lm_text_path_and_rebrands_the_answer(monkeypatch)
     assert seen["prompt"] == "TEMPLATED PROMPT"
     assert seen["max_tokens"] == 64
     assert seen["draft_model"] is draft
-    # mlx-lm has no multimodal or MTP arguments; passing them would be a
-    # TypeError against the real package.
     assert "image" not in seen
     assert "draft_kind" not in seen
-    # v11.9.0: the caller's temperature reaches the sampler. Before it, this
-    # argument was `None` whatever anyone asked for, so the agent loop's 0.1 and
-    # its strict-retry 0.0 were both the backend's default on a local model.
     assert seen["sampler"].kwargs == {"temp": 0.7}
-    # No stop strings were asked for, so the buffered backend is used.
     assert "stop" not in seen
     assert "Context:\nLattice AI 문서" in tokenizer.messages[0]["content"]
     assert tokenizer.messages[1] == {"role": "user", "content": "질문"}
-    # Generation always pins the GPU stream first.
     assert devices == [sys.modules["mlx.core"].gpu]
 
 
@@ -187,11 +159,7 @@ def test_generate_as_reads_the_text_attribute_of_a_generation_result(monkeypatch
     )
 
     assert asyncio.run(router.generate_as("text-model", "질문")) == "Lattice AI 결과"
-    # A request-scoped model never changes the process-wide default.
     assert router.current_model_id == "text-model"
-
-
-# ── Chat generation on the vision (mlx-vlm) path ─────────────────────────
 
 
 def test_generate_as_sends_a_decoded_image_down_the_vlm_path(monkeypatch):
@@ -216,7 +184,6 @@ def test_generate_as_sends_a_decoded_image_down_the_vlm_path(monkeypatch):
     assert seen["draft_model"] is None
     assert seen["image"] is not None
     assert (seen["image"].width, seen["image"].height) == (4, 3)
-    # The VLM prompt builder owns the template, so the tokenizer is not used.
     assert processor.messages is None
 
 
@@ -235,17 +202,7 @@ def test_generate_on_the_vlm_path_without_an_image_passes_none(monkeypatch):
     assert seen["prompt"] == "VLM PROMPT"
 
 
-# ── Stop strings on the local path (v11.9.0) ─────────────────────────────
-
-
 def test_a_stop_string_ends_local_generation_instead_of_trimming_it(monkeypatch):
-    """The tokens past the stop are never produced.
-
-    This is the difference between a stop string and slicing the answer
-    afterwards, and it is the whole reason the buffered call is swapped for the
-    streaming one: a 2B model that keeps explaining a tool call it has already
-    emitted is spending seconds of a single-threaded GPU on text nobody reads.
-    """
     produced = []
 
     def lm_stream(_model, _tokenizer, **kwargs):
@@ -285,14 +242,13 @@ def test_the_stop_path_carries_the_sampler_and_the_vlm_arguments(monkeypatch):
 
 
 def test_an_empty_stop_list_takes_the_ordinary_buffered_path(monkeypatch):
-    """`stop=[]` and `stop=[""]` are "no stop", not "stop immediately"."""
     calls = []
 
     def lm_generate(*_args, **_kwargs):
         calls.append("buffered")
         return "완전한 답변"
 
-    def lm_stream(*_args, **_kwargs):  # pragma: no cover — must never run
+    def lm_stream(*_args, **_kwargs):
         calls.append("streamed")
         yield types.SimpleNamespace(text="")
 
@@ -304,9 +260,6 @@ def test_an_empty_stop_list_takes_the_ordinary_buffered_path(monkeypatch):
     for stop in (None, [], [""]):
         assert asyncio.run(router.generate("질문", stop=stop)) == "완전한 답변"
     assert calls == ["buffered", "buffered", "buffered"]
-
-
-# ── Chat streaming on the vision path ────────────────────────────────────
 
 
 def test_stream_generate_as_streams_the_vlm_path_in_every_chunk_shape(monkeypatch):
@@ -334,9 +287,6 @@ def test_stream_generate_as_streams_the_vlm_path_in_every_chunk_shape(monkeypatc
     assert seen["max_tokens"] == 16
     assert seen["draft_kind"] == "mtp"
     assert seen["image"] is not None
-
-
-# ── Document generation ──────────────────────────────────────────────────
 
 
 def test_generate_document_reports_when_no_model_is_loaded():
@@ -408,12 +358,10 @@ def test_generate_document_as_uses_the_vlm_path_with_the_document_prompt(monkeyp
     )
 
     assert result == "# Lattice AI 보고서"
-    # Documents are text-only even on a vision checkpoint.
     assert seen["image"] is None
     assert seen["draft_kind"] == "mtp"
     assert seen["max_tokens"] == 2048
     assert seen["prompt"] == "TEMPLATED PROMPT"
-    # The document system prompt replaces the chat identity prompt entirely.
     assert tokenizer.messages == [
         {"role": "system", "content": "DOC SYSTEM"},
         {"role": "user", "content": "보고서 써줘"},
@@ -461,9 +409,6 @@ def test_generate_document_as_uses_chatml_for_a_tokenizer_without_a_template(
         == "보고서 본문"
     )
     assert seen["prompt"].startswith("<|im_start|>system\nDOC SYSTEM<|im_end|>")
-
-
-# ── Document streaming ───────────────────────────────────────────────────
 
 
 def test_stream_generate_document_as_streams_the_vlm_path_after_a_template_failure(

@@ -7,14 +7,6 @@ import "@/i18n/chronicle";
 import { buildTimeline } from "./chronicleModel";
 import { GrowthScrubber, nextIndexFor } from "./GrowthScrubber";
 
-/**
- * The scrubber is the screen's only time control, so the two ways of using it
- * are both contracts: a thumb dragging across the plot, and a keyboard moving a
- * day at a time. Neither shows up in a screenshot, and the drag path in
- * particular is the one that silently produced `NaN` before the zero-width
- * guard — jsdom reports every box as 0×0, which is exactly the un-laid-out case
- * a real browser hits on first paint.
- */
 
 function series(): ChronicleSeriesPoint[] {
   return [
@@ -24,7 +16,7 @@ function series(): ChronicleSeriesPoint[] {
   ];
 }
 
-const TIMELINE = buildTimeline(series()); // five calendar days, 06-01 … 06-05
+const TIMELINE = buildTimeline(series());
 
 function render(index = TIMELINE.length - 1, timeline = TIMELINE) {
   const onIndexChange = vi.fn();
@@ -34,7 +26,6 @@ function render(index = TIMELINE.length - 1, timeline = TIMELINE) {
   return { ...result, onIndexChange, slider: screen.getByTestId("chronicle-scrubber") };
 }
 
-/** jsdom lays nothing out; give the track a real box for the drag tests. */
 function widen(element: HTMLElement, left = 0, width = 200) {
   vi.spyOn(element, "getBoundingClientRect").mockReturnValue({
     left, width, right: left + width, top: 0, bottom: 40, height: 40, x: left, y: 0,
@@ -50,8 +41,6 @@ describe("GrowthScrubber", () => {
     expect(slider).toHaveAttribute("aria-valuemin", "0");
     expect(slider).toHaveAttribute("aria-valuemax", "4");
     expect(slider).toHaveAttribute("aria-valuenow", "4");
-    // The value text is the cumulative state, not just a date — a slider that
-    // only announced "4" would say nothing about what moved.
     expect(slider.getAttribute("aria-valuetext")).toContain("2026-06-05");
     expect(slider.getAttribute("aria-valuetext")).toContain("자료 3");
     expect(screen.getByTestId("chronicle-scrubber-date")).toHaveTextContent("2026-06-05");
@@ -59,7 +48,6 @@ describe("GrowthScrubber", () => {
 
   it("shows the cumulative lanes for the chosen day, not the whole history", () => {
     render(0);
-    // Day one only: two sources, one idea, no links, one chat.
     expect(screen.getByText("자료").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("연결").nextElementSibling).toHaveTextContent("0");
   });
@@ -87,12 +75,10 @@ describe("GrowthScrubber", () => {
     const { slider, onIndexChange } = render(4);
     widen(slider);
 
-    // Half-way along a five-day span is day three (index 2).
     fireEvent.pointerDown(slider, { clientX: 100 });
     expect(onIndexChange).toHaveBeenLastCalledWith(2);
     expect(slider.className).toContain("is-dragging");
 
-    // The drag continues on the window, so it keeps tracking past the chart.
     fireEvent.pointerMove(window, { clientX: 0 });
     expect(onIndexChange).toHaveBeenLastCalledWith(0);
     fireEvent.pointerMove(window, { clientX: 999 });
@@ -106,8 +92,6 @@ describe("GrowthScrubber", () => {
   });
 
   it("gives up rather than moving to NaN when the chart has no width yet", () => {
-    // jsdom's default: a 0×0 box. Dividing by it is how the handle used to
-    // reach `NaN` and the day query `undefined`.
     const { slider, onIndexChange } = render(4);
     fireEvent.pointerDown(slider, { clientX: 100 });
     expect(onIndexChange).not.toHaveBeenCalled();
@@ -119,13 +103,11 @@ describe("GrowthScrubber", () => {
     ]);
     const { slider } = render(0, single);
     expect(slider).toHaveAttribute("aria-valuemax", "0");
-    // No span to divide by, so the handle parks at the end rather than at NaN%.
     expect(screen.getByTestId("chronicle-growth").querySelector<HTMLElement>(".chronicle-growth-handle")?.style.left)
       .toBe("100%");
   });
 
   it("renders without a chosen point rather than throwing", () => {
-    // Reachable while a refetch shortens the timeline under a pinned index.
     render(9);
     expect(screen.getByTestId("chronicle-scrubber-date")).toHaveTextContent("지금");
     expect(screen.getByTestId("chronicle-scrubber")).toHaveAttribute("aria-valuetext", "시점 고르기");

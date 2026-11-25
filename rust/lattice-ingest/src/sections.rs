@@ -1,48 +1,11 @@
-//! Section nodes: the document's own outline, as graph structure.
-//!
-//! The typed chunker already knows where every chunk sits — `heading_path` on
-//! each markdown chunk is a `" > "`-joined trail like `아키텍처 > 저장소`. Until
-//! v12.0.0 that string was written onto the Chunk node's metadata and stopped
-//! there: nothing in the graph said a document *had* sections, so "이 사실은
-//! 어느 절에서 나왔나" could only be answered by reading a metadata field, and
-//! "그 절에 또 뭐가 있나" could not be answered at all.
-//!
-//! This turns the outline into what it already was — a tree:
-//!
-//! ```text
-//! Document ←─part_of─ Section(아키텍처) ←─part_of─ Section(아키텍처 > 저장소)
-//!                                                      │
-//!                                                      has_chunk
-//!                                                      ↓
-//!                                                    Chunk
-//! ```
-//!
-//! `part_of` and `has_chunk` are both existing `EdgeType` members (`PART_OF`,
-//! `HAS_CHUNK`) and `Section` is an existing `NodeType`, so nothing here
-//! widens the schema — the taxonomy had the words, and the writer never wrote
-//! them. Everything goes through the public [`GraphWriter::upsert_nodes`] /
-//! [`GraphWriter::upsert_edges`] door, after the document itself has landed.
-//!
-//! Documents with no headings produce no sections. A single fabricated
-//! "Untitled section" per file would be worse than nothing: it would put a
-//! node in the graph that names something the author never wrote.
-
 use lattice_core::graph_write::pyaux::sha256_text;
 use lattice_core::graph_write::types::{ChunkPiece, EdgeSpec, NodeSpec};
 use serde_json::{json, Map, Value};
 
-/// `Section -part_of-> parent` — the outline's own spine.
 pub const SECTION_PARENT_EDGE: &str = "part_of";
-/// `Section -has_chunk-> Chunk` — which text belongs to this heading.
 pub const SECTION_CHUNK_EDGE: &str = "has_chunk";
-/// The separator `typed_chunks` joins a heading trail with.
 pub const HEADING_SEPARATOR: &str = " > ";
 
-/// The nodes and edges one document's outline contributes.
-///
-/// Not `PartialEq`: `NodeSpec`/`EdgeSpec` are the writer's own request shapes
-/// and do not compare, so a test asserts on the fields it means rather than on
-/// two whole request vectors.
 #[derive(Debug, Clone, Default)]
 pub struct SectionOverlay {
     pub nodes: Vec<NodeSpec>,
@@ -55,11 +18,6 @@ impl SectionOverlay {
     }
 }
 
-/// `section:<24 hex>` — stable for one `(workspace, document, heading path)`.
-///
-/// Scoped by document rather than globally by heading text, because `## 배경`
-/// in two different files is two different sections. Two workspaces with the
-/// same document id are still kept apart, the way every other id here is.
 pub fn section_id(document_id: &str, path: &str, workspace_id: Option<&str>) -> String {
     let scope = workspace_id
         .filter(|id| !id.is_empty())
@@ -70,12 +28,10 @@ pub fn section_id(document_id: &str, path: &str, workspace_id: Option<&str>) -> 
     )
 }
 
-/// The heading path one level up, or `None` for a top-level heading.
 fn parent_path(path: &str) -> Option<&str> {
     path.rfind(HEADING_SEPARATOR).map(|cut| &path[..cut])
 }
 
-/// The last segment — what the author actually typed after the `#`.
 fn leaf(path: &str) -> &str {
     path.rsplit(HEADING_SEPARATOR).next().unwrap_or(path)
 }
@@ -89,13 +45,6 @@ fn heading_of(piece: &ChunkPiece) -> Option<&str> {
         .filter(|path| !path.is_empty())
 }
 
-/// Build the outline overlay for one ingested document.
-///
-/// `chunk_ids` is the writer's own return value, positionally aligned with
-/// `chunks` — that alignment is the contract `write_chunks` guarantees, and it
-/// is what lets a section point at the exact rows it covers. A short
-/// `chunk_ids` (a door that did not collect them) simply yields no chunk edges
-/// rather than guessing at ids.
 pub fn build_overlay(
     chunks: &[ChunkPiece],
     chunk_ids: &[String],
@@ -107,8 +56,6 @@ pub fn build_overlay(
     if document_id.is_empty() {
         return overlay;
     }
-    // Insertion-ordered: sections appear in the order the document introduces
-    // them, so a reader walking the overlay reads the outline top to bottom.
     let mut order: Vec<String> = Vec::new();
     let mut counts: Vec<usize> = Vec::new();
 
@@ -140,9 +87,6 @@ pub fn build_overlay(
         }
     }
 
-    // Ancestors: `아키텍처 > 저장소` implies `아키텍처`, even when no chunk
-    // landed directly under the parent heading (a heading whose only content
-    // is its subsections is still a section).
     let mut complete = order.clone();
     for path in &order {
         let mut cursor = parent_path(path);
@@ -180,9 +124,6 @@ pub fn build_overlay(
             visibility: None,
         });
 
-        // One parent each: the section above it, or the document itself. A
-        // subsection hanging off *both* its parent and the document would read
-        // as two different claims about where it lives.
         let parent = parent_path(path)
             .map(|ancestor| section_id(document_id, ancestor, workspace_id))
             .unwrap_or_else(|| document_id.to_string());
@@ -227,7 +168,6 @@ mod tests {
         let chunks = vec![piece("plain text", None), piece("more", None)];
         let overlay = build_overlay(&chunks, &ids(2), "doc:1", None, None);
         assert!(overlay.is_empty());
-        // …and neither does a document with no id to hang the outline off.
         let headed = vec![piece("x", Some("A"))];
         assert!(build_overlay(&headed, &ids(1), "", None, None).is_empty());
     }

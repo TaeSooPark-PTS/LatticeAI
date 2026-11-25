@@ -1,5 +1,3 @@
-"""Small platform service construction seams for app startup."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -11,7 +9,6 @@ def build_model_service(
     runtime_features: Any,
     is_public: bool,
 ) -> Any:
-    """Construct the health/model summary service."""
 
     from latticeai.services.model_service import ModelService
 

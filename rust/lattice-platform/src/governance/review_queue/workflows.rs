@@ -1,13 +1,9 @@
-//! Workflow helpers used by automation.rs and Review Center.
-
 use serde_json::{json, Value};
 
 use super::http::{json_hash, now_iso};
 use super::os::scoped;
 use super::store::ReviewError;
 use super::{GovernanceState, DEFAULT_WORKSPACE_ID};
-
-// ── workflow helpers used by automation.rs ────────────────────────────────
 
 pub(crate) fn list_workflows(state: &GovernanceState, workspace_id: Option<&str>) -> Vec<Value> {
     state.with_state(|doc| {

@@ -1,5 +1,3 @@
-//! Batched `/worker/embed` during a native drain, against a fake worker.
-
 #[allow(dead_code)]
 mod common;
 

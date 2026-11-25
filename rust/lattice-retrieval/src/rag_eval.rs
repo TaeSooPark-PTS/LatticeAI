@@ -1,9 +1,3 @@
-//! Deterministic Quantitative RAG Evaluation Suite (Review Section 4.5).
-//!
-//! Measures end-to-end retrieval, citation grounding, lifecycle exclusion,
-//! Korean morphological/compound/mixed-language recall, cross-model consistency,
-//! and p50/p95 ingest & search latencies against deterministic SQLite fixtures.
-
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -18,7 +12,6 @@ use crate::bm25::{
 };
 use crate::service::Scope;
 
-/// Graded or binary evaluation query case.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RagEvalCase {
     pub id: String,
@@ -30,7 +23,6 @@ pub struct RagEvalCase {
     pub required_claim_terms: Vec<String>,
 }
 
-/// Per-query evaluation result breakdown.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RagEvalCaseResult {
     pub id: String,
@@ -47,7 +39,6 @@ pub struct RagEvalCaseResult {
     pub latency_ms: f64,
 }
 
-/// Latency distribution summary in milliseconds.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct LatencySummaryMs {
     pub samples: usize,
@@ -56,7 +47,6 @@ pub struct LatencySummaryMs {
     pub max_ms: f64,
 }
 
-/// Aggregated quantitative RAG evaluation report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RagEvalReport {
     pub total_queries: usize,
@@ -76,7 +66,6 @@ pub struct RagEvalReport {
     pub cases: Vec<RagEvalCaseResult>,
 }
 
-/// Compute `Recall@k` for `retrieved` against `expected`.
 pub fn recall_at_k(retrieved: &[String], expected: &[String], k: usize) -> f64 {
     if expected.is_empty() {
         return 1.0;
@@ -89,7 +78,6 @@ pub fn recall_at_k(retrieved: &[String], expected: &[String], k: usize) -> f64 {
     hits as f64 / expected.len() as f64
 }
 
-/// Compute `NDCG@k` with graded relevance (`1.0` for `expected`, `0.5` for `supporting`).
 pub fn ndcg_at_k(
     retrieved: &[String],
     expected: &[String],
@@ -136,8 +124,6 @@ pub fn ndcg_at_k(
     }
 }
 
-/// Compute `(citation_precision, citation_recall)` where top `cited_k` retrieved nodes
-/// serve as emitted citations against `expected + supporting` ground-truth evidence.
 pub fn citation_precision_recall(
     retrieved: &[String],
     expected: &[String],
@@ -166,8 +152,6 @@ pub fn citation_precision_recall(
     (precision.clamp(0.0, 1.0), recall.clamp(0.0, 1.0))
 }
 
-/// Compute deterministic `(faithfulness, answer_relevance)` from top retrieved node texts
-/// and expected answer claims using bilingual CJK/EN token grounding.
 pub fn faithfulness_and_relevance(
     query: &str,
     required_claim_terms: &[String],
@@ -220,7 +204,6 @@ pub fn faithfulness_and_relevance(
     )
 }
 
-/// Compute latency percentiles `(p50, p95, max)` in milliseconds from raw durations.
 pub fn summarize_latencies_ms(mut samples_ms: Vec<f64>) -> LatencySummaryMs {
     if samples_ms.is_empty() {
         return LatencySummaryMs::default();
@@ -237,7 +220,6 @@ pub fn summarize_latencies_ms(mut samples_ms: Vec<f64>) -> LatencySummaryMs {
     }
 }
 
-/// Compute Jaccard overlap at top `k` between two ranked ID lists.
 pub fn jaccard_at_k(a: &[String], b: &[String], k: usize) -> f64 {
     let sa: HashSet<&str> = a.iter().take(k).map(String::as_str).collect();
     let sb: HashSet<&str> = b.iter().take(k).map(String::as_str).collect();
@@ -282,10 +264,6 @@ fn encode_f32_le(vec: &[f64]) -> Vec<u8> {
     out
 }
 
-/// Build an in-memory deterministic benchmark corpus covering active/superseded/deprecated nodes,
-/// Korean postpositions, compound nouns, mixed KR/EN docs, cross-workspace decoys, and
-/// dual-model (`lattice-local-hash-v1:384` + `google/embeddinggemma-2` 768-d) embeddings,
-/// returning `(Connection, LatencySummaryMs /* ingest latencies */, Vec<RagEvalCase>)`.
 pub fn build_default_eval_fixture(
     workspace_id: &str,
     noise_other_workspace_count: usize,
@@ -499,7 +477,6 @@ pub fn build_default_eval_fixture(
         [],
     )?;
 
-    // Add newer decoy nodes in another workspace to verify SQL workspace filter before LIMIT.
     for i in 0..noise_other_workspace_count {
         let t0 = Instant::now();
         let id = format!("other-ws-noise-{i}");
@@ -591,7 +568,6 @@ fn extract_hit_ids_and_texts(report: &Value) -> (Vec<String>, Vec<String>) {
     (ids, texts)
 }
 
-/// Execute the full deterministic RAG evaluation suite across the fixture corpus.
 pub fn run_default_rag_evaluation(
     noise_other_workspace_count: usize,
 ) -> Result<RagEvalReport, CoreError> {
@@ -631,7 +607,6 @@ pub fn run_default_rag_evaluation(
 
         let (ids, texts) = extract_hit_ids_and_texts(&report_hash);
 
-        // Cross-model comparison against 768-d semantic provider query vector.
         let mut sem_opts = base_opts.clone();
         sem_opts.query_embedding = Some(QueryVectorOverride {
             model_id: "google/embeddinggemma-2".to_string(),

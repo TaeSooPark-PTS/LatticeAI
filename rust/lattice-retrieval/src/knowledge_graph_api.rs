@@ -1,33 +1,3 @@
-//! `latticeai/api/knowledge_graph.py`, natively (WP-R6).
-//!
-//! Fourteen of the module's seventeen routes. `GET /graph` and
-//! `GET /knowledge-graph` are page shells and belong to WP-I4's redirect table
-//! (`lattice_platform::shell::ui_redirects`, which already lists them); **`POST
-//! /knowledge-graph/ingest` stays on the worker** — it is the Brain's single
-//! write door, and the plan keeps it there on purpose. Nothing in this module
-//! claims it.
-//!
-//! ## Reads and writes, both native
-//!
-//! Ten of the fourteen are reads and are ported against the same
-//! `knowledge_graph.sqlite` Python reads, through
-//! [`lattice_core::read::read_tables`] so the `LATTICEAI_KG_READ_V2` view
-//! selection is the one selection. The other four — curate, noise curation and
-//! the two promotion actions — mutate the graph, and since v11.6.0 they run on
-//! [`lattice_core::graph_write::GraphWriter`] in this process, under the op
-//! names `memory_api::graph_native::dispatch` accepts. No write here crosses a
-//! process boundary.
-//!
-//! ## Scoping, and the two shapes it takes
-//!
-//! `knowledge_graph.py` does its scoping in the *router*, not in the store:
-//! `_scoped()` resolves the membership set and `_filter_scoped()` re-filters
-//! whatever the store returned. Some store methods also accept
-//! `allowed_workspaces` and some raise `TypeError` when handed it — the router
-//! catches that and filters afterwards. Both halves are reproduced here as one
-//! function, [`filter_scoped`], because the fallback path is the one that
-//! actually runs for `list_documents`, `search` and `neighbors`.
-
 use std::sync::Arc;
 
 use axum::response::Response;
@@ -41,18 +11,7 @@ use crate::search_api::{engine_error, RetrievalApiState};
 #[cfg(test)]
 use crate::service::Scope;
 
-// ── the route table ─────────────────────────────────────────────────────────
-
-/// Every `(method, path)` this module mounts.
-///
-/// `/knowledge-graph/neighbors/*node_id` is a wildcard because FastAPI declares
-/// it `{node_id:path}`: node ids carry colons *and* slashes
-/// (`local-file:…/notes/a.md`), and a plain capture would 404 on every one of
-/// them. `rust/fixtures/openapi/knowledge_search.json`'s `greedy_path_params`
-/// is the record, and `tests/kg_api_contract.rs` checks this table against it.
 pub const MOUNTED: &[(&str, &str)] = &[
-    // Native (W3b). Spec still lives in worker_keep.json so fragment
-    // byte-composition stays identical — see kg_api_contract.rs.
     ("POST", "/knowledge-graph/ingest"),
     ("POST", "/knowledge-graph/curate"),
     ("POST", "/knowledge-graph/curate/noise"),
@@ -70,14 +29,10 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/knowledge-graph/neighbors/*node_id"),
 ];
 
-/// `_kg_constants.GRAPH_SCHEMA_VERSION`.
 pub const GRAPH_SCHEMA_VERSION: i64 = 1;
-/// `schema.KG_SCHEMA_V2_VERSION`.
 pub const KG_SCHEMA_V2_VERSION: i64 = 2;
-/// `schema.EMBED_DIM`'s default; `LATTICEAI_EMBED_DIM` overrides it.
 pub const DEFAULT_EMBED_DIM: i64 = 1024;
 
-/// `graph_view._GRAPH_VISIBLE_TYPES` — the canvas's allow-list, in order.
 pub const GRAPH_VISIBLE_TYPES: &[&str] = &[
     "Computer",
     "Drive",
@@ -106,9 +61,6 @@ pub const GRAPH_VISIBLE_TYPES: &[&str] = &[
     "Agent",
 ];
 
-// ── router ──────────────────────────────────────────────────────────────────
-
-/// `create_knowledge_graph_router(...)` — the fourteen ported routes.
 pub fn router(state: Arc<RetrievalApiState>) -> Router {
     Router::new()
         .route("/knowledge-graph/ingest", post(ingest))
@@ -138,8 +90,6 @@ pub fn router(state: Arc<RetrievalApiState>) -> Router {
         .with_state(state)
 }
 
-/// One blocking read on the store, with the graph-disabled refusal already
-/// applied.
 pub(crate) async fn read<T, F>(state: &RetrievalApiState, work: F) -> Result<T, Response>
 where
     T: Send + 'static,
@@ -170,7 +120,6 @@ pub use view::{
     naive_local_iso_seconds, pipeline_payload, stage_view,
 };
 
-/// Kept public so a host can render the same refusal the route does.
 pub use crate::search_api::detail as json_detail;
 
 #[cfg(test)]
@@ -243,7 +192,6 @@ mod tests {
         let payload = list_documents(&conn, 200).unwrap();
         let documents = payload["documents"].as_array().unwrap();
         assert_eq!(documents.len(), 2);
-        // ORDER BY updated_at DESC: doc-a (Jan 3) before doc-b (Jan 2).
         assert_eq!(documents[0]["id"], json!("doc-a"));
         assert_eq!(documents[0]["filename"], json!("handbook.md"));
         assert_eq!(documents[0]["chars"], json!(12));
@@ -252,7 +200,6 @@ mod tests {
         assert_eq!(documents[0]["ingest_state"], json!("indexed"));
         assert_eq!(documents[1]["ingest_state"], json!("ingested"));
         assert_eq!(payload["total"], json!(2));
-        // Key order is the frozen wire schema, not an alphabetical accident.
         let rendered = serde_json::to_string(&documents[0]).unwrap();
         assert!(rendered.starts_with(r#"{"id":"doc-a","filename":"handbook.md","ext":".md""#));
     }
@@ -307,7 +254,6 @@ mod tests {
         assert_eq!(payload["local_sources"], json!(0));
         assert_eq!(payload["local_file_status"], json!({}));
         assert_eq!(payload["v2"]["nodes"], json!(2));
-        // A caller who may read nothing gets nothing, not the whole store.
         let nobody = stats(&conn, &scoped(&[])).unwrap();
         assert_eq!(nobody["nodes"], json!({}));
     }
@@ -350,7 +296,6 @@ mod tests {
         let nodes = payload["neighbors"].as_array().unwrap();
         assert_eq!(nodes.len(), 1);
         assert_eq!(nodes[0]["id"], json!("c-1"));
-        // No `updated_at` on a neighbour, unlike `graph()`.
         assert!(nodes[0].get("updated_at").is_none());
         let edges = payload["edges"].as_array().unwrap();
         assert_eq!(edges[0]["from"], json!("doc-a"));
@@ -373,7 +318,6 @@ mod tests {
             assert!(node["importance"].is_number());
             assert!(node["importance_norm"].is_number());
         }
-        // Both endpoints of the one edge scored a degree of 1.
         let by_id: std::collections::HashMap<&str, &Value> = nodes
             .iter()
             .map(|node| (node["id"].as_str().unwrap(), node))
@@ -412,8 +356,6 @@ mod tests {
         let missing = get_node(&conn, "nope", &unscoped()).unwrap_err();
         assert!(matches!(missing, CoreError::InvalidRequest(ref message)
             if message == "graph node not found: nope"));
-        // A legacy-global row is invisible to a scoped caller, and the refusal
-        // says "not found" rather than confirming it exists elsewhere.
         let hidden = get_node(&conn, "doc-b", &scoped(&["w1"])).unwrap_err();
         assert!(matches!(hidden, CoreError::InvalidRequest(ref message)
             if message == "graph node not found: doc-b"));
@@ -459,7 +401,6 @@ mod tests {
             format_context(&matches, 6),
             "- [Document] handbook.md | source=notes/handbook.md | a handbook with lines"
         );
-        // The source falls back through the chain and ends at the id.
         let bare = vec![json!({"id": "x", "type": null, "title": null, "summary": null})];
         assert_eq!(format_context(&bare, 6), "- [None] None | source=x | ");
         assert_eq!(format_context(&matches, 0), "");
@@ -524,8 +465,6 @@ mod tests {
 
     #[test]
     fn a_graph_without_a_write_engine_is_a_503_about_the_host() {
-        // The route's own `require_graph` answers the graph-disabled 404; this
-        // is the other refusal — the graph is on and nothing can write it.
         let refusal = crate::search_api::detail(503, writes::WRITE_ENGINE_UNCONFIGURED);
         assert_eq!(refusal.status(), 503);
     }

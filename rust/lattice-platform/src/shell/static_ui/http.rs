@@ -18,13 +18,6 @@ pub fn json_detail(status: StatusCode, detail: &str) -> Response<Body> {
     response
 }
 
-/// FastAPI's 405, with the `Allow` header the route declares.
-///
-/// The body is written even when the refused method is `HEAD`: hyper drops it on
-/// the wire and keeps the `Content-Length` that describes it, which is exactly
-/// what Starlette does (a `HEAD /manifest.json` is `Content-Length: 31` with no
-/// bytes). Emptying it here instead would report a length of zero and quietly
-/// disagree with the recording.
 pub fn method_not_allowed(allow: &'static str) -> Response<Body> {
     let mut response = json_detail(StatusCode::METHOD_NOT_ALLOWED, "Method Not Allowed");
     response
@@ -33,7 +26,6 @@ pub fn method_not_allowed(allow: &'static str) -> Response<Body> {
     response
 }
 
-/// A 200 carrying file bytes and an explicit content type.
 pub(crate) fn file_response(bytes: Vec<u8>, content_type: &'static str) -> Response<Body> {
     let mut response = Response::new(Body::from(bytes));
     response
@@ -42,7 +34,6 @@ pub(crate) fn file_response(bytes: Vec<u8>, content_type: &'static str) -> Respo
     response
 }
 
-/// The invitation wall: 403, HTML, no cache directives (Python sets none).
 pub(crate) fn invite_denied() -> Response<Body> {
     let mut response = Response::new(Body::from(INVITE_DENIED_HTML));
     *response.status_mut() = StatusCode::FORBIDDEN;
@@ -53,14 +44,6 @@ pub(crate) fn invite_denied() -> Response<Body> {
     response
 }
 
-/// Starlette's `mimetypes` answer for a served file, charset rule included.
-///
-/// Two entries are **machine-dependent** in Python and pinned here to the
-/// answer a developer box and the release builder give (CPython also reads
-/// `/etc/apache2/mime.types`): `.ico` is `image/x-icon` — matching the explicit
-/// media type the `/favicon.ico` route hard-codes, so the same bytes do not
-/// change type depending on which door they came through — and `.xml` is
-/// `application/xml`. The fixture records both answers.
 pub fn asset_content_type(path: &str) -> &'static str {
     let extension = Path::new(path)
         .extension()
@@ -89,8 +72,6 @@ pub fn asset_content_type(path: &str) -> &'static str {
         "otf" => "font/otf",
         "mp4" => "video/mp4",
         "webm" => "video/webm",
-        // Starlette's fallback when `mimetypes` has no answer — `.map` files
-        // (vite source maps) take this branch.
         _ => "application/octet-stream",
     }
 }

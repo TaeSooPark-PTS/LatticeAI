@@ -1,5 +1,3 @@
-//! Phase 0.1 regression suite: query-time semantic embedding via `POST /worker/embed`.
-
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -177,7 +175,6 @@ async fn semantic_store_embeds_queries_via_worker_seam_for_vector_and_hybrid() {
     let api_origin = spawn_router(search_api::router(state)).await;
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
 
-    // 1. Vector route retrieves semantic-only match with zero lexical overlap
     let (status, body) = post_json(
         &client,
         format!("{api_origin}/api/search/vector"),
@@ -189,7 +186,6 @@ async fn semantic_store_embeds_queries_via_worker_seam_for_vector_and_hybrid() {
     assert_eq!(body["matches"][0]["id"], "sem-1");
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 
-    // 2. Hybrid route fuses semantic vector match even with zero keyword overlap
     let (status2, body2) = post_json(
         &client,
         format!("{api_origin}/api/search/hybrid"),

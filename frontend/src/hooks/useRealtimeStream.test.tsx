@@ -105,15 +105,12 @@ describe("useRealtimeStream", () => {
     expect(result.current.transport).toBe("sse");
     expect(result.current.pollingInterval).toBe(false);
 
-    // Empty data and malformed JSON are ignored safely
     act(() => {
       es.onmessage?.({ data: "" });
       es.onmessage?.({ data: "{not-json" });
-      // Non-envelope cache state stays untouched
       es.onmessage?.({ data: JSON.stringify({ seq: 1, area: "brain", event_type: "note" }) });
     });
 
-    // Seed non-ok envelope first, then valid ok envelope without events array
     qc.setQueryData(["realtimeFeed"], { ok: false });
     act(() => {
       es.onmessage?.({ data: JSON.stringify({ seq: 1, area: "brain", event_type: "note" }) });
@@ -122,9 +119,7 @@ describe("useRealtimeStream", () => {
     qc.setQueryData(["realtimeFeed"], { ok: true, data: {} });
     act(() => {
       es.onmessage?.({ data: JSON.stringify({ seq: 10, area: "presence", event_type: "join" }) });
-      // Duplicate seq is ignored
       es.onmessage?.({ data: JSON.stringify({ seq: 10, area: "presence", event_type: "join" }) });
-      // Seq-less event still appends cleanly
       es.onmessage?.({ data: JSON.stringify({ area: "brain", event_type: "capture" }) });
     });
 
@@ -136,7 +131,6 @@ describe("useRealtimeStream", () => {
     expect(cached?.data.events[1]!.seq).toBe(10);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["presence"] });
 
-    // Error triggers polling fallback and scheduled reconnect
     act(() => {
       es.onerror?.();
     });
@@ -149,13 +143,11 @@ describe("useRealtimeStream", () => {
     });
     expect(MockEventSource.instances).toHaveLength(2);
 
-    // Trigger error again so cleanup clears pending reconnect timer cleanly
     act(() => {
       MockEventSource.instances[1]!.onerror?.();
     });
     unmount();
 
-    // Ensure post-unmount callbacks are no-ops
     act(() => {
       es.onopen?.();
       es.onmessage?.({ data: JSON.stringify({ seq: 99 }) });

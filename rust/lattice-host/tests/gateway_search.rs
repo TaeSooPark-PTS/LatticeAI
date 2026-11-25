@@ -1,17 +1,3 @@
-//! The native `/rust/search/*` lanes, over HTTP, against the committed goldens.
-//!
-//! `lattice-retrieval`'s own suite proves the engines equal Python's. This one
-//! proves the *gateway* does not lose that on the way out: same store, same
-//! queries, same golden files, but read through the router, the parameter
-//! parser, the JSON encoder and a real socket. A response that differs from the
-//! golden here means the front door changed the answer.
-//!
-//! The clock is pinned with the documented `now` parameter (the manifest's
-//! `frozen_now`), which is the only way a recency-decayed ranking can be
-//! compared to a file at all. `now` is reachable solely from this machine — the
-//! gateway refuses to bind off loopback — and one test asserts that leaving it
-//! out really does fall back to the system clock rather than to a zero.
-
 mod common;
 
 use std::path::{Path, PathBuf};
@@ -37,13 +23,6 @@ fn manifest() -> &'static Value {
     MANIFEST.get_or_init(|| read_json(fixtures().join("golden").join("manifest.json")))
 }
 
-/// The data directory the gateway will resolve, prepared exactly once.
-///
-/// The committed store is copied under the product's own file name so the
-/// resolution path (`LATTICEAI_DATA_DIR` → `knowledge_graph.sqlite`) is the one
-/// under test, and so a stray `-wal` sidecar can never land next to a checked-in
-/// fixture. Once, because the environment is process-global and these tests run
-/// in parallel.
 fn data_dir() -> &'static Path {
     static DIR: OnceLock<PathBuf> = OnceLock::new();
     DIR.get_or_init(|| {
@@ -64,9 +43,6 @@ fn data_dir() -> &'static Path {
     .as_path()
 }
 
-/// A gateway over the fixture store. Its "worker" is a port nothing listens on:
-/// if a search ever reached the proxy instead of the native lane, the 502 would
-/// say so immediately.
 async fn gateway() -> TestGateway {
     let _ = data_dir();
     TestGateway::start(Arc::new(FixedProvider::new(
@@ -80,11 +56,6 @@ fn frozen_now() -> &'static str {
     manifest()["frozen_now"].as_str().expect("frozen clock")
 }
 
-/// Every golden whose parameters this front door can actually express.
-///
-/// The `ws_*` cases pin workspace scoping, and these routes deliberately have
-/// none — they are the trusted local owner's path. Skipping them here is not a
-/// gap: `lattice-retrieval`'s suite covers them against the same goldens.
 fn unscoped_goldens(engine: &str) -> Vec<(String, Value)> {
     manifest()["queries"]
         .as_array()
@@ -103,7 +74,6 @@ fn unscoped_goldens(engine: &str) -> Vec<(String, Value)> {
         .collect()
 }
 
-/// The HTTP parameters that reproduce a golden's Python call.
 fn request_pairs(engine: &str, golden: &Value) -> Vec<(String, String)> {
     let params = &golden["params"];
     let mut pairs = vec![(
@@ -194,7 +164,6 @@ async fn vector_over_get_and_post_equals_the_python_goldens() {
 #[tokio::test]
 async fn the_defaults_alone_reproduce_the_default_golden() {
     let gateway = gateway().await;
-    // No top_k, no alpha, no floor — only the question and the pinned clock.
     let body = json(
         client()
             .get(gateway.url("/rust/search/hybrid"))
@@ -210,7 +179,6 @@ async fn the_defaults_alone_reproduce_the_default_golden() {
         "the documented defaults are Python's"
     );
 
-    // `query` is the long spelling of `q`, and it must mean the same thing.
     let long = json(
         client()
             .get(gateway.url("/rust/search/hybrid"))
@@ -245,8 +213,6 @@ async fn without_now_the_ranking_uses_the_system_clock() {
             "a recency query decays every hit: {item}"
         );
     }
-    // The frozen clock is ten days behind the real one, so at least one decay
-    // multiplier must differ from the golden's — otherwise `now` did nothing.
     let golden = read_json(fixtures().join("golden").join("hybrid__en_recency.json"));
     assert_ne!(
         body["matches"], golden["result"]["matches"],
@@ -288,7 +254,6 @@ async fn a_missing_store_is_an_honest_404() {
 #[tokio::test]
 async fn bad_input_is_a_422_that_names_the_field() {
     let gateway = gateway().await;
-    // (lane, query string, the field the rejection must name)
     let cases: [(&str, &str, &str); 6] = [
         ("hybrid", "", "query"),
         ("hybrid", "?q=x&top_k=0", "top_k"),
@@ -310,7 +275,6 @@ async fn bad_input_is_a_422_that_names_the_field() {
         assert!(!body["detail"].as_str().unwrap_or_default().is_empty());
     }
 
-    // A body that is not a JSON object is the same class of mistake.
     let response = client()
         .post(gateway.url("/rust/search/hybrid"))
         .header("content-type", "application/json")
@@ -350,16 +314,11 @@ async fn the_search_namespace_is_never_proxied() {
                 "/rust/search/hybrid",
                 "/rust/search/keyword",
                 "/rust/search/vector",
-                // Mounted from lattice-retrieval in 11.5.0: a different engine
-                // (three-channel service fusion), not a second spelling of the
-                // P1 lane above it.
                 "/rust/search/service-hybrid",
             ],
             "{path}"
         );
     }
-    // A real lane with no store is a 404 too, but a *different* one — and still
-    // nothing crossed to the worker.
     let response = client()
         .get(gateway.url("/rust/search/hybrid"))
         .query(&[("q", "x")])
@@ -368,7 +327,6 @@ async fn the_search_namespace_is_never_proxied() {
         .expect("get");
     assert_eq!(json(response).await["error"], "brain_not_found");
 
-    // Wrong verb on a real lane is a 405 from the router, not a proxied request.
     let response = client()
         .delete(gateway.url("/rust/search/hybrid"))
         .send()

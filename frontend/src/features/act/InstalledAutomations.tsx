@@ -33,19 +33,14 @@ type RunNowResponse = {
   last_execution?: LastExecution;
 };
 
-// Exported for tests: every render-site call is guarded by a truthy check, so
-// the empty-input contract is only reachable directly.
 export function shortWhen(value?: string): string {
   if (!value) return "";
   return value.replace("T", " ").slice(0, 16);
 }
 
-/** Installed automations with dry-run-first "run now" + last execution line (backlog #6). */
 export function InstalledAutomations({ language }: { language: Language }) {
   const qc = useQueryClient();
   const overview = useQuery({ queryKey: ["automationOverview"], queryFn: latticeApi.automationOverview });
-  // Dry-run first: a card unlocks its real run only after a dry run reported
-  // what would happen. Keyed per workflow so cards act independently.
   const [dryRunDone, setDryRunDone] = React.useState<Record<string, boolean>>({});
   const [lastResult, setLastResult] = React.useState<Record<string, RunNowResponse>>({});
   const runNow = useMutation({
@@ -123,7 +118,6 @@ export function InstalledAutomations({ language }: { language: Language }) {
                     ) : null}
                   </div>
 
-                  {/* Two-step Action Controls */}
                   <div className="pt-2 border-t border-border/40 space-y-2">
                     <div className="flex items-center gap-2">
                       <Button

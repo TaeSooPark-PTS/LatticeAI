@@ -1,20 +1,3 @@
-//! The identity layer itself: who is calling, and what may they do.
-//!
-//! Port of `latticeai/runtime/access_runtime.py`. Everything a Wave-2 route
-//! package needs hangs off [`AuthState`], and the two guards it exposes —
-//! [`AuthState::require_user`] and [`AuthState::require_admin`] — answer with
-//! the same status codes and the same bodies as the Python closures they
-//! replace.
-//!
-//! The rule worth stating twice, because clients depend on it: on a loopback
-//! bind with authentication off, the caller **is** the owner, and their
-//! identity is the empty string. That empty identity is a storage
-//! compatibility contract (ownerless workspaces, shared local vaults, the
-//! Local User profile) — the authorization answer comes from `get_user_role`,
-//! which projects the same caller as `owner`. The VS Code extension sends no
-//! cookie, no bearer token and no CSRF token, and this is the branch that lets
-//! it work.
-
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
@@ -35,17 +18,13 @@ use crate::ratelimit::RateLimiter;
 use crate::sessions::SessionStore;
 use crate::users::{normalize_email, UserStore, Users};
 
-/// Who the request is, once a guard has answered.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Identity {
-    /// The account's normalised email, or `""` for the trusted local owner.
     pub email: String,
-    /// The role authorization is decided on (`owner` for the local owner).
     pub role: String,
 }
 
 impl Identity {
-    /// The anonymous single owner of a loopback, no-auth install.
     pub fn local_owner() -> Self {
         Self {
             email: String::new(),
@@ -53,26 +32,18 @@ impl Identity {
         }
     }
 
-    /// Whether this is that owner rather than a signed-in account.
     pub fn is_local_owner(&self) -> bool {
         self.email.is_empty()
     }
 
-    /// Whether this identity holds a named capability.
     pub fn can(&self, capability: &str) -> bool {
         crate::policy::role_has_capability(&self.role, capability)
     }
 }
 
-/// The direct peer address, as the front door observed it.
-///
-/// The gateway serves with `ConnectInfo<SocketAddr>`, which this reads when
-/// present; the extension exists so a test (or a transport that does not model
-/// a socket) can state the peer explicitly.
 #[derive(Debug, Clone)]
 pub struct PeerAddr(pub String);
 
-/// The peer for one request, from the explicit extension or the socket.
 pub fn peer_of(parts: &Parts) -> Option<String> {
     if let Some(PeerAddr(peer)) = parts.extensions.get::<PeerAddr>() {
         return Some(peer.clone());
@@ -83,10 +54,8 @@ pub fn peer_of(parts: &Parts) -> Option<String> {
         .map(|info| info.0.ip().to_string())
 }
 
-/// Decides whether a request carries a valid signed invitation.
 pub type InviteGate = Arc<dyn Fn(&HeaderMap) -> bool + Send + Sync>;
 
-/// Users, sessions, limits, and the CSRF policy — one per process.
 pub struct AuthState {
     config: AuthConfig,
     users: UserStore,
@@ -111,12 +80,10 @@ impl std::fmt::Debug for AuthState {
 }
 
 impl AuthState {
-    /// Open the stores this config names, on the system clock.
     pub fn new(config: AuthConfig) -> Arc<Self> {
         Self::with_clock(config, Clock::system())
     }
 
-    /// The same, on an explicit clock — how fixtures replay expiry and refill.
     pub fn with_clock(config: AuthConfig, clock: Clock) -> Arc<Self> {
         crate::atomic::ensure_private_dir(&config.data_dir);
         let users = UserStore::new(&config.data_dir);
@@ -141,22 +108,16 @@ impl AuthState {
         })
     }
 
-    /// Attach an audit sink once per `AuthState` to capture auth, tenant, SSO,
-    /// and SCIM security events. Returns `false` if one is already set.
     pub fn set_audit_sink(&self, sink: Arc<dyn crate::enterprise::AuthAuditSink>) -> bool {
         self.audit_sink.set(sink).is_ok()
     }
 
-    /// Emit a structured auth/enterprise audit event when an audit sink is wired.
     pub fn record_audit(&self, event: &str, fields: Value) {
         if let Some(sink) = self.audit_sink.get() {
             sink.record(event, &fields);
         }
     }
 
-    /// Verify that an authenticated identity may operate in `requested_tenant`,
-    /// failing closed with `403 Forbidden` (and auditing `auth.tenant.denied`) on
-    /// cross-tenant access or unassigned tenant spoofing.
     pub fn verify_tenant_access(
         &self,
         identity: &Identity,
@@ -184,7 +145,6 @@ impl AuthState {
         }
     }
 
-    /// Resolve the primary tenant id assigned to `identity`, if any.
     pub fn tenant_for_identity(&self, identity: &Identity) -> Option<String> {
         if identity.email.is_empty() {
             return None;
@@ -195,49 +155,34 @@ impl AuthState {
             .and_then(crate::enterprise::tenant_of_user)
     }
 
-    /// Attach the invite-cookie predicate. Returns `false` if one is already
-    /// attached, so a second caller cannot silently replace the gate.
-    ///
-    /// The signed invite cookie is minted and verified by the static/SPA layer
-    /// (`api/static_routes.py`, WP-I4 on the Rust side), so this crate takes it
-    /// as a seam rather than re-deriving the HMAC. With no gate attached the
-    /// answer is "no invitation", which is the Python behaviour when
-    /// `invite_authorized` is `None`.
     pub fn set_invite_gate(&self, gate: InviteGate) -> bool {
         self.invite_gate.set(gate).is_ok()
     }
 
-    /// This install's configuration.
     pub fn config(&self) -> &AuthConfig {
         &self.config
     }
 
-    /// The clock every expiry and refill decision reads.
     pub fn clock(&self) -> &Clock {
         &self.clock
     }
 
-    /// The session table.
     pub fn sessions(&self) -> &SessionStore {
         &self.sessions
     }
 
-    /// The account store.
     pub fn users(&self) -> &UserStore {
         &self.users
     }
 
-    /// Both rate limiters.
     pub fn limiter(&self) -> &RateLimiter {
         &self.limiter
     }
 
-    /// The CSRF policy this install was built with.
     pub fn csrf_policy(&self) -> &CsrfOriginPolicy {
         &self.csrf
     }
 
-    /// Whether this request carries a valid signed invitation.
     pub fn invite_authorized(&self, headers: &HeaderMap) -> bool {
         match self.invite_gate.get() {
             Some(gate) => gate(headers),
@@ -245,17 +190,14 @@ impl AuthState {
         }
     }
 
-    /// The no-auth loopback profile: one human, no credential, full trust.
     pub fn trusted_local_owner(&self) -> bool {
         !self.config.require_auth && !self.config.externally_reachable
     }
 
-    /// Authentication as actually enforced, reachability included.
     pub fn effective_require_auth(&self) -> bool {
         self.config.require_auth || self.config.externally_reachable
     }
 
-    /// `extract_bearer_token`: the `Authorization` header, else the cookie.
     pub fn extract_bearer_token(&self, headers: &HeaderMap) -> Option<String> {
         let authorization = headers
             .get("authorization")
@@ -268,8 +210,6 @@ impl AuthState {
         cookie_value(cookie, SESSION_COOKIE_NAME)
     }
 
-    /// `get_user_role`: stored role, then the admin allowlist, then "the first
-    /// account registered is the administrator".
     pub fn get_user_role(&self, email: &str, users: &Users) -> String {
         if self.trusted_local_owner() && email.is_empty() {
             return "owner".into();
@@ -301,10 +241,6 @@ impl AuthState {
         }
     }
 
-    /// `active_session_email`: resolve a session only while its account lives.
-    ///
-    /// Re-checked on **every** request so a deleted or disabled account cannot
-    /// keep a stale cookie working.
     pub fn active_session_email(&self, identity: Option<&str>, users: &Users) -> Option<String> {
         let raw = identity.filter(|value| !value.is_empty())?;
         let normalized = normalize_email(raw);
@@ -327,14 +263,12 @@ impl AuthState {
         Some(normalize_email(&matched))
     }
 
-    /// `get_current_user`: the signed-in account, or nothing.
     pub fn get_current_user(&self, headers: &HeaderMap) -> Option<String> {
         let token = self.extract_bearer_token(headers)?;
         let identity = self.sessions.get_email(&token)?;
         self.active_session_email(Some(&identity), &self.users.load())
     }
 
-    /// `require_user`: an account, the anonymous local owner, or 401.
     pub fn require_user(&self, headers: &HeaderMap) -> Result<Identity, Response> {
         let users = self.users.load();
         if let Some(email) = self
@@ -342,8 +276,6 @@ impl AuthState {
             .and_then(|token| self.sessions.get_email(&token))
             .and_then(|identity| self.active_session_email(Some(&identity), &users))
         {
-            // Optional authentication stays meaningful in local mode: a valid
-            // session keeps its real account identity.
             let role = self.get_user_role(&email, &users);
             return Ok(Identity { email, role });
         }
@@ -356,8 +288,6 @@ impl AuthState {
         ))
     }
 
-    /// `require_admin`: the local owner, an account holding `admin:users`,
-    /// or 403.
     pub fn require_admin(&self, headers: &HeaderMap) -> Result<Identity, Response> {
         let users = self.users.load();
         if self.trusted_local_owner() {
@@ -376,11 +306,6 @@ impl AuthState {
         Err(detail_error(StatusCode::FORBIDDEN, ADMIN_REQUIRED_LITERAL))
     }
 
-    /// `public_user`: the redacted account record the admin surfaces publish.
-    ///
-    /// Returned as an [`OrderedMap`] rather than a `serde_json::Value` because
-    /// the Python dict's key order is the response's key order, and a
-    /// `Value::Object` is a sorted `BTreeMap`.
     pub fn public_user(
         &self,
         email: &str,
@@ -417,17 +342,11 @@ impl AuthState {
         view
     }
 
-    /// `enforce_rate_limit(email, bucket)` with this install's on/off switch.
     pub fn enforce_rate_limit(&self, email: &str, bucket_key: &str) -> Result<(), Response> {
         self.limiter
             .enforce(email, bucket_key, self.config.rate_limit_enabled)
     }
 
-    /// `client_ip`: the peer, unless a **configured** trusted proxy forwarded.
-    ///
-    /// Loopback is deliberately not special here — `core/security.client_ip`
-    /// consults only the operator's allowlist, which is empty by default, so a
-    /// client-supplied header can never move the rate-limit key.
     pub fn client_ip(&self, headers: &HeaderMap, peer: Option<&str>) -> String {
         let peer = peer.unwrap_or("");
         if self.peer_is_trusted_proxy(peer) {
@@ -587,13 +506,11 @@ mod tests {
         assert_eq!(state.get_user_role("first@x.y", &users), "admin");
         assert_eq!(state.get_user_role("boss@x.y", &users), "admin");
         assert_eq!(state.get_user_role("other@x.y", &users), "user");
-        // A stored role wins over both fallbacks.
         let mut users2 = users.clone();
         let mut record = Map::new();
         record.insert("role".into(), json!("VIEWER"));
         users2.insert("boss@x.y", record);
         assert_eq!(state.get_user_role("boss@x.y", &users2), "viewer");
-        // The trusted local owner projects as owner.
         assert_eq!(state.get_user_role("", &users), "owner");
     }
 

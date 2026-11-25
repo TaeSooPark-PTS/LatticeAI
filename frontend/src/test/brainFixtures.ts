@@ -9,16 +9,6 @@ import type {
   Message,
 } from "@/features/brain/types";
 
-/**
- * Hand-built prop fixtures for the Brain surface components.
- *
- * The Brain home splits into presentational components that take the whole
- * world as props (BrainConversation, BrainHomeDock, BrainHomeHero, the panels
- * in HomePanels). Rendering them directly with these fixtures reaches states
- * the full-page harness cannot: a populated graph, a proven model continuity,
- * approval cards, agent failures. Every key referenced here is a real i18n
- * key, so `t()` never leaks a raw `brain.*` key into an assertion.
- */
 
 export function makeReadiness(overrides: Partial<BrainReadiness> = {}): BrainReadiness {
   return {

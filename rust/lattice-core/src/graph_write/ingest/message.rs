@@ -1,5 +1,3 @@
-//! `ingest_message` — one chat turn as a Chat / Person / message graph.
-
 use serde_json::{json, Map};
 
 use crate::db::CoreError;
@@ -11,8 +9,6 @@ use super::super::GraphWriter;
 use super::IngestOutcome;
 
 impl GraphWriter {
-    /// `ingest_message` — one chat turn: Chat node, Person, the raw message,
-    /// its chunks, and the concepts and items extracted from it.
     pub fn ingest_message(
         &self,
         request: &IngestMessageRequest,

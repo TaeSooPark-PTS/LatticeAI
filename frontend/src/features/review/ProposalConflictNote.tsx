@@ -5,10 +5,6 @@ import { FileWarning, RotateCcw } from "lucide-react";
 import { t, type Language } from "@/i18n";
 import { rebaseProposal, type RebaseOutcome } from "./proposalRebase";
 
-// Inline explanation + recovery for a 409 "base changed" proposal approval:
-// the file drifted since staging, so the only honest path is to re-read the
-// current file and stage a fresh proposal against it. Shared by the pending
-// proposals panel and the Review Center card.
 export function ProposalConflictNote({
   language,
   itemId,

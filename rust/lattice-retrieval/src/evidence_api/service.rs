@@ -1,29 +1,3 @@
-//! `latticeai/services/evidence_actions.py` — the deterministic composer.
-//!
-//! Given the citations an answer actually used, resolve them against the graph
-//! and compose ready-to-send, evidence-scoped prompts. No model runs and
-//! nothing is written, so the whole module is a pure function of the question,
-//! the citation ids, the language, and the nodes those ids name.
-//!
-//! Python details that decide byte parity, reproduced exactly:
-//!
-//! * **`if value:` is Python truthiness.** A stored `title` that is `NULL`
-//!   *or* `""` falls back to the node id; a metadata origin key holding `""`
-//!   is skipped. [`crate::shape::truthy`] is that test — `Option::is_some`
-//!   would keep an empty string and change both fields.
-//! * **the excerpt cap counts characters** (`body[:600]`), so a Korean summary
-//!   keeps 600 syllables rather than 600 bytes' worth of them.
-//! * **the cap comes before the de-duplication.** `source_ids[:8]` slices the
-//!   raw list, so eight repeats of one id resolve to a single source, not to
-//!   eight distinct ones.
-//! * **failures are reported, never invented.** A citation that does not
-//!   resolve lands in `missing`; when nothing resolves, `actions` is empty and
-//!   `reason` says why. That is the module's stated honesty rule.
-//!
-//! Node reads go through [`crate::memory_api::kg::get_node`] and workspace
-//! scoping through [`lattice_core::filter_scoped_nodes`] — the same two
-//! readers `KnowledgeGraphReadsMixin.get_node` composes on the Python side.
-
 use std::collections::BTreeSet;
 
 use lattice_core::pytext;
@@ -34,20 +8,12 @@ use super::json::Json;
 use crate::memory_api::kg;
 use crate::shape::{py_str, truthy};
 
-/// `_EXCERPT_CHARS` — the per-source excerpt cap, in characters.
-///
-/// The service takes it as `max(120, int(excerpt_chars))`; every call site in
-/// the product builds `EvidenceActionService()` with no argument, so the
-/// clamp has exactly one reachable value and it is this one.
 pub const EXCERPT_CHARS: usize = 600;
 
-/// `_MAX_SOURCES` — how many citations one answer may spend.
 pub const MAX_SOURCES: usize = 8;
 
-/// `slugify(..., fallback="evidence-note")`.
 pub const SLUG_FALLBACK: &str = "evidence-note";
 
-/// The metadata keys an origin is read from, in Python's order.
 const ORIGIN_KEYS: [&str; 5] = [
     "relative_path",
     "file_path",
@@ -56,17 +22,13 @@ const ORIGIN_KEYS: [&str; 5] = [
     "source",
 ];
 
-/// One Korean/English phrase pair — `latticeai.core.messages.bilingual`.
 #[derive(Debug, Clone, Copy)]
 pub struct Phrase {
-    /// `phrase["ko"]`.
     pub ko: &'static str,
-    /// `phrase["en"]`.
     pub en: &'static str,
 }
 
 impl Phrase {
-    /// `phrase[language]`, where `language` is already normalized.
     pub fn get(self, language: &str) -> &'static str {
         if language == "ko" {
             self.ko
@@ -75,7 +37,6 @@ impl Phrase {
         }
     }
 
-    /// `dict(phrase)` — both languages, Korean first, whatever was asked for.
     pub fn to_json(self) -> Json {
         Json::Object(vec![
             ("ko", Json::string(self.ko)),
@@ -84,22 +45,15 @@ impl Phrase {
     }
 }
 
-/// One entry of the closed action catalog.
 #[derive(Debug, Clone, Copy)]
 pub struct ActionSpec {
-    /// `spec["id"]`.
     pub id: &'static str,
-    /// `spec["kind"]` — `chat` or `file`.
     pub kind: &'static str,
-    /// `spec["label"]`.
     pub label: Phrase,
-    /// `spec["instruction"]`, with `{path}` still in it.
     pub instruction: Phrase,
-    /// `spec["extension"]`, or `""` when the action produces no file.
     pub extension: &'static str,
 }
 
-/// `EVIDENCE_ACTIONS` — closed and deterministic, in the UI's render order.
 pub const EVIDENCE_ACTIONS: [ActionSpec; 4] = [
     ActionSpec {
         id: "summary",
@@ -155,49 +109,37 @@ pub const EVIDENCE_ACTIONS: [ActionSpec; 4] = [
     },
 ];
 
-/// The `[근거 자료]` / `[EVIDENCE]` header the composed prompt opens with.
 const EVIDENCE_HEADER: Phrase = Phrase {
     ko: "[근거 자료]",
     en: "[EVIDENCE]",
 };
 
-/// `_guard(language)` — use the quoted evidence, and say when it is not enough.
 const GUARD: Phrase = Phrase {
     ko: "위 근거 자료에 있는 내용만 사용하세요. 근거에 없는 사실은 지어내지 말고, 근거가 부족하면 '이 부분은 근거가 없습니다'라고 적으세요.",
     en: "Use only the evidence quoted above. Do not invent facts that are not in it; when the evidence does not cover something, say so explicitly.",
 };
 
-/// The `원래 질문:` / `Original question:` label of the trailing prompt line.
 const QUESTION_LABEL: Phrase = Phrase {
     ko: "원래 질문: ",
     en: "Original question: ",
 };
 
-/// The `reason` an answer with no usable evidence carries.
 const NO_EVIDENCE_REASON: Phrase = Phrase {
     ko: "근거로 쓸 출처를 찾지 못했습니다.",
     en: "No usable evidence could be resolved.",
 };
 
-/// One resolved citation, in the key order the response renders it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Source {
-    /// The citation id as the caller sent it, stripped.
     pub id: String,
-    /// `title or id or node_id`.
     pub title: String,
-    /// `str(record["type"] or "")`.
     pub node_type: String,
-    /// The first truthy of five metadata keys, or `""`.
     pub origin: String,
-    /// `body[:600]`.
     pub excerpt: String,
-    /// Whether the body was longer than the cap.
     pub truncated: bool,
 }
 
 impl Source {
-    /// The JSON object one source renders as.
     pub fn to_json(&self) -> Json {
         Json::Object(vec![
             ("id", Json::string(self.id.clone())),
@@ -210,19 +152,12 @@ impl Source {
     }
 }
 
-/// `resolve()` — `{"sources": [...], "missing": [...]}`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Resolved {
-    /// The citations that resolved, in the order they were cited.
     pub sources: Vec<Source>,
-    /// The citations that did not, in the order they were cited.
     pub missing: Vec<String>,
 }
 
-/// The citation ids one call will actually look up.
-///
-/// `list(source_ids or [])[:8]`, then `str(raw or "").strip()`, then skip
-/// blanks and repeats — in that order, because the cap slices the raw list.
 pub fn candidate_ids(source_ids: &[String]) -> Vec<String> {
     let mut ids: Vec<String> = Vec::new();
     for raw in source_ids.iter().take(MAX_SOURCES) {
@@ -235,12 +170,6 @@ pub fn candidate_ids(source_ids: &[String]) -> Vec<String> {
     ids
 }
 
-/// Resolve citation ids against the graph.
-///
-/// `conn == None` is the Python service with `node_reader=None`: the graph is
-/// disabled (`KNOWLEDGE_GRAPH` is `None`, so `getattr(..., "get_node", None)`
-/// answered nothing), and every citation is reported missing rather than
-/// silently dropped.
 pub fn resolve(
     conn: Option<&Connection>,
     ids: &[String],
@@ -256,12 +185,6 @@ pub fn resolve(
     resolved
 }
 
-/// `_read_node` — best-effort, and a failure is a missing citation.
-///
-/// Python catches **every** exception the reader raises (an unknown id, a
-/// workspace the caller may not read, a busy database) and answers `None`, so
-/// a store failure surfaces as "this citation did not resolve" rather than as
-/// a 500. `Err` is swallowed here for exactly that reason.
 fn read_node(
     conn: Option<&Connection>,
     node_id: &str,
@@ -272,9 +195,6 @@ fn read_node(
     let Some(allowed) = allowed_workspaces else {
         return Some(node);
     };
-    // `get_node(..., allowed_workspaces=…)` raises `graph node not found` when
-    // the scope filter drops the row, and `include_legacy_global` stays false:
-    // a legacy row with no workspace is private, not public.
     lattice_core::filter_scoped_nodes(conn, vec![node], Some(allowed), false, |item| {
         item.get("id")
             .filter(|v| truthy(v))
@@ -286,12 +206,7 @@ fn read_node(
     .next()
 }
 
-/// One resolved graph record as the citation the prompt quotes.
 fn source_from(record: &Value, node_id: &str) -> Source {
-    // `/api/graph/node` wraps its record under "node"; `get_node` — the one
-    // reader this port is wired to — returns it directly, and its key set is
-    // fixed (`id, type, title, summary, metadata, created_at, updated_at`), so
-    // Python's `node.get("node")` unwrap has no reachable input here.
     let title = truthy_field(record, "title")
         .or_else(|| truthy_field(record, "id"))
         .map(py_str)
@@ -321,12 +236,10 @@ fn source_from(record: &Value, node_id: &str) -> Source {
     }
 }
 
-/// `record.get(key)`, but only when Python would have called it truthy.
 fn truthy_field<'a>(record: &'a Value, key: &str) -> Option<&'a Value> {
     record.get(key).filter(|value| truthy(value))
 }
 
-/// `"ko" if str(language or "ko").lower().startswith("ko") else "en"`.
 pub fn normalize_language(language: &str) -> &'static str {
     let raw = if language.is_empty() { "ko" } else { language };
     if raw.to_lowercase().starts_with("ko") {
@@ -336,14 +249,7 @@ pub fn normalize_language(language: &str) -> &'static str {
     }
 }
 
-/// `slugify(text)` — a deterministic, filesystem-safe artifact stem.
-///
-/// Non-ASCII text (a Korean question is the common case) leaves nothing to
-/// slug, and the fallback keeps the suggested filename predictable instead of
-/// mangled or empty.
 pub fn slugify(text: &str) -> String {
-    // `_SLUG_STRIP_RE.sub("-", text.lower())`: every run of characters outside
-    // `[a-z0-9]` collapses to one dash, leading and trailing runs included.
     let mut collapsed = String::new();
     let mut pending = false;
     for character in text.to_lowercase().chars() {
@@ -377,7 +283,6 @@ pub fn slugify(text: &str) -> String {
     }
 }
 
-/// `_evidence_block` — the numbered citation list the prompt opens with.
 pub fn evidence_block(sources: &[Source], language: &str) -> String {
     let mut lines: Vec<String> = vec![EVIDENCE_HEADER.get(language).to_string()];
     for (index, source) in sources.iter().enumerate() {
@@ -396,12 +301,10 @@ pub fn evidence_block(sources: &[Source], language: &str) -> String {
     lines.join("\n")
 }
 
-/// `_guard(language)`.
 pub fn guard(language: &str) -> &'static str {
     GUARD.get(language)
 }
 
-/// `actions_for(...)` — the whole answer, in Python's key order.
 pub fn actions_for(question: &str, language: &str, resolved: &Resolved) -> Json {
     let language = normalize_language(language);
     let question_text = pytext::strip(question);

@@ -1,14 +1,3 @@
-"""wp13 coverage — the ``latticeai.tools`` package seam itself.
-
-``TOOL_HANDLERS`` is the single name → invocation table. Remaining handlers
-are read-only plus pointer tools; mutating creators live in ``lattice-agent``.
-Every knowledge tool goes through ``_knowledge_scope``, which refuses to run
-unless the caller injected an authenticated workspace *and* user. Those
-scopes, plus the public path resolver, are what this file drives — through
-``execute_tool`` rather than by calling the private helpers, so the table
-wiring is under test too.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -37,9 +26,6 @@ def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-# ── resolve_workspace_path ───────────────────────────────────────────────────
-
-
 def test_resolve_workspace_path_is_the_sandboxed_resolver(workspace: Path) -> None:
     assert resolve_workspace_path() == workspace
     assert resolve_workspace_path("sub/file.txt") == workspace / "sub" / "file.txt"
@@ -60,9 +46,6 @@ def test_resolve_workspace_path_creates_the_workspace_on_demand(
     assert root.is_dir()
 
 
-# ── remaining dispatchable tools ─────────────────────────────────────────────
-
-
 def test_list_dir_reads_the_workspace_through_the_handler_table(
     workspace: Path,
 ) -> None:
@@ -78,9 +61,6 @@ def test_todo_read_is_registered_and_returns_a_list(workspace: Path) -> None:
     result = execute_tool("todo_read", {})
 
     assert "items" in result or "todos" in result or isinstance(result, dict)
-
-
-# ── _knowledge_scope ─────────────────────────────────────────────────────────
 
 
 @pytest.fixture()
@@ -135,7 +115,6 @@ def test_a_scoped_knowledge_call_reads_only_its_own_partition(vault: Path) -> No
 
     assert [entry["relative_path"] for entry in tree["entries"]] == ["00_Raw/n.md"]
     assert len(found["results"]) == 1
-    # The email is normalised before it becomes part of the partition digest.
     upper = execute_tool(
         "knowledge_tree", {"workspace_id": "ws-1", "user_email": "OWNER@EXAMPLE.COM"}
     )
@@ -156,9 +135,6 @@ def test_scopes_cannot_read_each_others_notes(vault: Path) -> None:
     )
 
     assert other["results"] == []
-
-
-# ── the table itself ─────────────────────────────────────────────────────────
 
 
 def test_unknown_actions_are_rejected_by_name(workspace: Path) -> None:

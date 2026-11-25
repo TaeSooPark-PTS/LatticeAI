@@ -1,15 +1,3 @@
-//! `latticeai/api/local_files.py` + `services/local_knowledge.py` (WP-R6).
-//!
-//! Sixteen of local_files' seventeen routes plus the eight local-knowledge
-//! routes that file mounts. The seventeenth was `GET /api/ingestion/multimodal`,
-//! a capability probe that stayed KEEP_WORKER until v11.8.0 deleted it for
-//! having no caller — so `latticeai/api/local_files.py` is gone entirely and
-//! this module is the whole surviving family. Folder ingest and the watch
-//! door write through `GraphWriter` in this process; local index / resume
-//! still go over the worker seam when a compute worker is bound. Filesystem
-//! list/read/write/serve and the SQLite *reads* of `ingestion_jobs` /
-//! `knowledge_sources` / `local_file_index` are native.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -37,13 +25,10 @@ pub(crate) mod prune;
 pub(crate) mod upload_parse;
 mod watch_bridge;
 
-// The watch bridge moved out of `ingest` in v11.7.0; the crate-level names
-// stay where callers already found them.
 pub use watch_bridge::{resume_watches, scan_watches};
 
 pub use http::{detail, language, ok, FieldSpec, Kind, Model, Query};
 
-/// Every `(method, path)` this module mounts.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/local-agent/status"),
     ("GET", "/local/list"),
@@ -70,14 +55,11 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/knowledge-graph/local/tree"),
     ("POST", "/knowledge-graph/local/audit"),
     ("POST", "/knowledge-graph/local/index"),
-    // Native (W3b). Spec still lives in worker_keep.json.
     ("POST", "/upload/document"),
 ];
 
-/// `PermissionGateway.local_approval_ttl_seconds`.
 pub const APPROVAL_TTL_SECS: u64 = 5 * 60;
 
-/// `LOCAL_WRITE_BLOCKED_PREFIXES`.
 pub const WRITE_BLOCKED_PREFIXES: &[&str] = &[
     "/etc/",
     "/usr/",
@@ -95,7 +77,6 @@ const ACTION_LABELS: &[(&str, &str)] = &[
     ("write", "파일 쓰기"),
 ];
 
-/// The approval dance, in-process (the `/permissions/*` routes are R8's).
 #[derive(Debug)]
 pub struct LocalApprovals {
     inner: Mutex<HashMap<String, Approval>>,
@@ -112,20 +93,13 @@ struct Approval {
     token_hint: String,
 }
 
-/// What `/permissions/*` needs to redeem, deny, or list a local-files token.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApprovalView {
-    /// Canonical path the token was minted for.
     pub path: String,
-    /// `list` / `read` / `write`.
     pub action: String,
-    /// Owner identity the probe bound (empty string for the trusted local owner).
     pub user_email: String,
-    /// Whether `/permissions/approve` (or a test) has marked it.
     pub approved: bool,
-    /// Unix seconds; compare with now to decide expired vs pending.
     pub expires_at: f64,
-    /// First eight characters of the raw token — the Act inbox key.
     pub token_hint: String,
 }
 
@@ -151,12 +125,10 @@ impl Default for LocalApprovals {
 }
 
 impl LocalApprovals {
-    /// Empty table.
     pub fn new() -> Arc<Self> {
         Arc::new(Self::default())
     }
 
-    /// `normalize_local_path_for_approval`.
     pub fn normalize(path: &str) -> String {
         let expanded = expand_user(path);
         std::fs::canonicalize(&expanded)
@@ -164,7 +136,6 @@ impl LocalApprovals {
             .unwrap_or(expanded)
     }
 
-    /// Mint a permission-required payload (and remember the token).
     pub fn probe(&self, path: &str, action: &str, user_email: &str, content: &str) -> Value {
         let normalized = Self::normalize(path);
         let token = token_urlsafe(24);
@@ -200,14 +171,10 @@ impl LocalApprovals {
         serde_json::to_value(body).unwrap_or(Value::Null)
     }
 
-    /// Mark a minted token approved — the seeding step `/permissions/approve`
-    /// performs. Tests and the replay harness call this; the product UI still
-    /// goes through R8's route. Accepts the full token or its 8-char hint.
     pub fn approve(&self, token: &str) -> bool {
         self.approve_record(token).is_some()
     }
 
-    /// Approve and return the record so `/permissions/approve` can echo it.
     pub fn approve_record(&self, token: &str) -> Option<ApprovalView> {
         let now = now_secs();
         let Ok(mut map) = self.inner.lock() else {
@@ -220,7 +187,6 @@ impl LocalApprovals {
         Some(record.view())
     }
 
-    /// Drop a minted token (the `/permissions/deny` path).
     pub fn deny_record(&self, token: &str) -> Option<ApprovalView> {
         let Ok(mut map) = self.inner.lock() else {
             return None;
@@ -229,8 +195,6 @@ impl LocalApprovals {
         map.remove(&key).map(|record| record.view())
     }
 
-    /// Look up a token without changing it. Expired records stay visible so
-    /// `/permissions/status` can say `expired` instead of `denied_or_expired`.
     pub fn status_of(&self, token: &str) -> Option<ApprovalView> {
         let Ok(map) = self.inner.lock() else {
             return None;
@@ -239,7 +203,6 @@ impl LocalApprovals {
         map.get(&key).map(Approval::view)
     }
 
-    /// Non-expired records, for `/permissions/pending`.
     pub fn pending_records(&self) -> Vec<ApprovalView> {
         let now = now_secs();
         let Ok(map) = self.inner.lock() else {
@@ -251,7 +214,6 @@ impl LocalApprovals {
             .collect()
     }
 
-    /// `require_local_approval`.
     pub fn require(
         &self,
         token: Option<&str>,
@@ -306,7 +268,6 @@ impl LocalApprovals {
     }
 }
 
-/// Everything the local-files family needs.
 #[derive(Clone)]
 pub struct LocalFilesState {
     auth: Arc<AuthState>,
@@ -330,7 +291,6 @@ impl std::fmt::Debug for LocalFilesState {
 }
 
 impl LocalFilesState {
-    /// Graph on (or off, with `None`).
     pub fn new(auth: Arc<AuthState>, store: Option<Arc<Store>>, config: RuntimeConfig) -> Self {
         Self {
             auth,
@@ -346,13 +306,11 @@ impl LocalFilesState {
         }
     }
 
-    /// Native write engine (W3b).
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// Attach the worker seam writes (ingest / resume / index) travel through.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         self.seam = Some(seam);
         self
@@ -362,34 +320,28 @@ impl LocalFilesState {
         self.graph.as_ref()
     }
 
-    /// The worker compute seam, when the host bound one.
     pub fn seam(&self) -> Option<&WorkerSeamClient> {
         self.seam.as_ref()
     }
 
-    /// Share an approval table with a test harness (so it can approve tokens).
     pub fn with_permissions(mut self, permissions: Arc<LocalApprovals>) -> Self {
         self.permissions = permissions;
         self
     }
 
-    /// Override the reported product version (tests).
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version = version.into();
         self
     }
 
-    /// The in-process approval table.
     pub fn permissions(&self) -> &Arc<LocalApprovals> {
         &self.permissions
     }
 
-    /// `require_user`.
     pub fn require_user(&self, headers: &HeaderMap) -> Result<String, Response> {
         Ok(self.auth.require_user(headers)?.email)
     }
 
-    /// `require_local_user` — a *named* session, not the anonymous local owner.
     pub fn require_local_user(&self, headers: &HeaderMap) -> Result<String, Response> {
         match self.auth.get_current_user(headers) {
             Some(email) if !email.is_empty() => Ok(email),
@@ -397,7 +349,6 @@ impl LocalFilesState {
         }
     }
 
-    /// `_require_pipeline` / `_require_graph`.
     pub fn require_graph(&self, lang: &str) -> Result<&Arc<Store>, Response> {
         self.store
             .as_ref()
@@ -405,12 +356,7 @@ impl LocalFilesState {
     }
 }
 
-/// The twenty-four ported routes.
 pub fn router(state: Arc<LocalFilesState>) -> Router {
-    // Resume the folder watches a previous run left declared. Their snapshots
-    // are on disk, so this ingests what changed while the process was down and
-    // nothing else. A no-op with no watches declared, and outside a Tokio
-    // runtime, so building a router in a plain `#[test]` stays synchronous.
     resume_watches(&state);
     Router::new()
         .route("/api/local-agent/status", get(local::agent_status))
@@ -493,7 +439,6 @@ pub(crate) fn ensure_write_allowed(normalized: &str) -> Result<(), Response> {
     Ok(())
 }
 
-/// Full token (sha256 key) or the unique 8-char hint the Act inbox holds.
 fn resolve_token(map: &HashMap<String, Approval>, token: &str) -> Option<String> {
     let direct = sha256_hex(token.as_bytes());
     if map.contains_key(&direct) {
@@ -598,8 +543,6 @@ mod tests {
 
     #[test]
     fn the_route_table_includes_native_upload() {
-        // W3b: POST /upload/document is served natively. Spec stays in
-        // worker_keep.json; the fragment is not moved.
         assert_eq!(MOUNTED.len(), 26);
         assert!(MOUNTED.iter().any(|(_, path)| *path == "/upload/document"));
     }

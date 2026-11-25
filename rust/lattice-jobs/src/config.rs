@@ -1,68 +1,30 @@
-//! What the scheduler is, expressed as data — plus the two environment
-//! switches an operator gets.
-//!
-//! Both switches are parsed the way `latticeai/core/config.py` parses its own
-//! (`_int`: blank or unparseable falls back to the default; `_bool`: the
-//! `1/true/yes/on` and `0/false/no/off` sets, anything else the default), so an
-//! operator who has learned one half of the product's environment has learned
-//! this half too.
-//!
-//! The resolvers are pure functions over `Option<&str>`. Reading the process
-//! environment inside them would make every test that wants a different
-//! interval mutate global state, and those are exactly the tests that go
-//! flaky under a parallel harness.
-
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// Seconds between ticks. Blank or unparseable → [`DEFAULT_INTERVAL`].
 pub const INTERVAL_ENV: &str = "LATTICEAI_JOBS_INTERVAL";
-/// Opt in to resuming interrupted ingestion jobs. Off unless set.
 pub const AUTORESUME_ENV: &str = "LATTICEAI_JOBS_AUTORESUME";
 
-/// One tick a minute: often enough that a backlog is measured in minutes, rare
-/// enough that an idle Brain is not being asked hourly-many questions.
 pub const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
-/// Floor on the configured interval. A tick opens SQLite and can run an
-/// embedder; a one-second timer would be a load generator, not a scheduler.
 pub const MIN_INTERVAL: Duration = Duration::from_secs(5);
-/// Ceiling on the failure backoff: ten minutes, then it stops growing, so a
-/// worker that comes back is picked up within ten minutes at worst.
 pub const MAX_BACKOFF: Duration = Duration::from_secs(600);
-/// How long one drain may take. Embedding a full claim of nodes is slow and a
-/// short timeout would abandon work the worker is still doing.
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
-/// Nodes claimed per drain — the queue's own `DEFAULT_TICK_LIMIT`.
 pub const DEFAULT_DRAIN_LIMIT: u32 = 25;
-/// How many recent ingestion jobs the autoresume pass looks at.
 pub const RESUME_SCAN_LIMIT: u32 = 20;
-/// Tick reports kept for `/host/jobs`.
 pub const DEFAULT_HISTORY: usize = 20;
 
-/// Everything the scheduler needs to know, decided once at construction.
 #[derive(Debug, Clone)]
 pub struct SchedulerConfig {
-    /// Worker origin, e.g. `http://127.0.0.1:4825`. No trailing slash.
     pub worker_origin: String,
-    /// Delay between successful ticks.
     pub interval: Duration,
-    /// Whether a tick also resumes an interrupted ingestion job.
     pub autoresume: bool,
-    /// `limit` sent to `POST /api/index/drain`.
     pub drain_limit: u32,
-    /// Per-request timeout for the worker calls.
     pub request_timeout: Duration,
-    /// Upper bound on the failure backoff.
     pub max_backoff: Duration,
-    /// Store the read-only queue counts come from.
     pub db_path: PathBuf,
-    /// How many tick reports `/host/jobs` remembers.
     pub history: usize,
 }
 
 impl SchedulerConfig {
-    /// Defaults for a worker at `origin`, reading the environment-resolved
-    /// store (`LATTICEAI_DATA_DIR`, else `~/.ltcai`).
     pub fn new(origin: impl Into<String>) -> Self {
         Self {
             worker_origin: normalize_origin(origin.into()),
@@ -76,14 +38,12 @@ impl SchedulerConfig {
         }
     }
 
-    /// Defaults overlaid with [`INTERVAL_ENV`] and [`AUTORESUME_ENV`].
     pub fn from_env(origin: impl Into<String>) -> Self {
         let interval = std::env::var(INTERVAL_ENV).ok();
         let autoresume = std::env::var(AUTORESUME_ENV).ok();
         Self::from_values(origin, interval.as_deref(), autoresume.as_deref())
     }
 
-    /// The pure half of [`SchedulerConfig::from_env`].
     pub fn from_values(
         origin: impl Into<String>,
         interval: Option<&str>,
@@ -96,63 +56,50 @@ impl SchedulerConfig {
         }
     }
 
-    /// Override the tick interval, still honouring [`MIN_INTERVAL`].
     pub fn with_interval(mut self, interval: Duration) -> Self {
         self.interval = interval.max(MIN_INTERVAL);
         self
     }
 
-    /// Turn the ingestion-job autoresume pass on or off.
     pub fn with_autoresume(mut self, autoresume: bool) -> Self {
         self.autoresume = autoresume;
         self
     }
 
-    /// Override how many nodes one drain claims.
     pub fn with_drain_limit(mut self, limit: u32) -> Self {
         self.drain_limit = limit;
         self
     }
 
-    /// Override the per-request timeout.
     pub fn with_request_timeout(mut self, timeout: Duration) -> Self {
         self.request_timeout = timeout;
         self
     }
 
-    /// Point the queue counts at a specific store.
     pub fn with_db_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.db_path = path.into();
         self
     }
 
-    /// Override the ceiling on the failure backoff.
     pub fn with_max_backoff(mut self, cap: Duration) -> Self {
         self.max_backoff = cap;
         self
     }
 
-    /// Override how many tick reports are kept.
     pub fn with_history(mut self, history: usize) -> Self {
         self.history = history;
         self
     }
 
-    /// The store the queue counts are read from.
     pub fn db(&self) -> &Path {
         &self.db_path
     }
 
-    /// Absolute URL for a worker path (`/api/index/drain` → `http://…/api/index/drain`).
     pub fn worker_url(&self, path: &str) -> String {
         format!("{}{}", self.worker_origin, path)
     }
 }
 
-/// `LATTICEAI_JOBS_INTERVAL` → a delay, never below [`MIN_INTERVAL`].
-///
-/// Whole seconds only: the value is a poll period, and accepting `0.25` would
-/// invite exactly the load the floor exists to prevent.
 pub fn parse_interval(raw: Option<&str>) -> Duration {
     let Some(text) = raw.map(str::trim).filter(|text| !text.is_empty()) else {
         return DEFAULT_INTERVAL;
@@ -163,7 +110,6 @@ pub fn parse_interval(raw: Option<&str>) -> Duration {
     }
 }
 
-/// `_bool` from `latticeai/core/config.py`, in Rust.
 pub fn parse_flag(raw: Option<&str>, default: bool) -> bool {
     let Some(text) = raw else { return default };
     match text.trim().to_ascii_lowercase().as_str() {
@@ -173,7 +119,6 @@ pub fn parse_flag(raw: Option<&str>, default: bool) -> bool {
     }
 }
 
-/// Trim any trailing slash so `worker_url` never builds `http://host//path`.
 fn normalize_origin(origin: String) -> String {
     origin.trim_end_matches('/').to_string()
 }
@@ -248,7 +193,6 @@ mod tests {
             .with_history(3)
             .with_db_path("/tmp/elsewhere/knowledge_graph.sqlite");
 
-        // The floor applies to the builder too, not only to the env.
         assert_eq!(config.interval, MIN_INTERVAL);
         assert!(config.autoresume);
         assert_eq!(config.drain_limit, 7);

@@ -1,22 +1,8 @@
-//! Permission modes — a 1:1 port of `latticeai.core.permission_mode`.
-//!
-//! Three modes (`strict` → `trusted` → `bypass`) decide whether a tool call may
-//! run without a human in the loop. Two properties are load-bearing and are
-//! asserted as such by the goldens:
-//!
-//! * **Unknown input is strict.** `normalize_mode` never fails and never
-//!   escalates: anything it does not recognise — a typo, `null`, an empty
-//!   string — resolves to the most restrictive mode.
-//! * **Circuit breakers are mode-invariant.** [`is_circuit_breaker`] does not
-//!   read the mode. `bypass` skips approval prompts; it does not unlock a
-//!   destructive tool, a root/home path, or an `rm -rf /` shell string.
-
 use serde_json::{json, Value};
 
 use crate::kernel::policy::in_set;
 use crate::kernel::policy::ToolPolicy;
 
-/// The autonomy dial.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PermissionMode {
     Strict,
@@ -24,10 +10,8 @@ pub enum PermissionMode {
     Bypass,
 }
 
-/// Unknown input resolves here, and so does the absence of any input.
 pub const DEFAULT_MODE: PermissionMode = PermissionMode::Strict;
 
-/// Every mode, in dial order.
 pub const ALL_MODES: [PermissionMode; 3] = [
     PermissionMode::Strict,
     PermissionMode::Trusted,
@@ -44,8 +28,6 @@ impl PermissionMode {
     }
 }
 
-/// Computer-use split: observing the screen is low friction under `trusted`,
-/// driving it is not. Both lists stay sorted — `contains` is a binary search.
 pub const COMPUTER_OBSERVATION_TOOLS: [&str; 5] = [
     "chrome_status",
     "computer_screenshot",
@@ -89,16 +71,8 @@ pub const WORKSPACE_WRITE_TOOLS: [&str; 11] = [
     "write_file",
 ];
 
-/// Sandboxes that are blocked whatever the mode says. Kept for parity with the
-/// Python constant; the enforcement lives in [`effective_auto_approve`]'s
-/// bypass branch and in the upstream blocked-prefix guard.
 pub const HARD_BLOCK_SANDBOXES: [&str; 1] = ["system"];
 
-/// Parse user/API/env input into a mode; unknown → strict.
-///
-/// Python lowercases and strips first, so `"  TRUSTED  "` and `"acceptEdits"`
-/// both land. The alias table is copied verbatim, including the two names that
-/// exist to be shouted (`yolo`, `dangerously-skip-permissions`).
 pub fn normalize_mode(value: &str) -> PermissionMode {
     match value.trim().to_ascii_lowercase().as_str() {
         "strict" | "default" | "manual" => PermissionMode::Strict,
@@ -112,12 +86,6 @@ pub fn normalize_mode(value: &str) -> PermissionMode {
     }
 }
 
-/// Parse a JSON value the way Python's `str(value or "")` does.
-///
-/// Falsy JSON (`null`, `false`, `0`, `""`, `[]`, `{}`) collapses to the empty
-/// string and therefore to strict. Truthy non-strings stringify to something no
-/// alias matches (`"True"`, `"1"`, a list repr), so they are strict as well —
-/// this shortcut is behaviourally identical without emulating `repr`.
 pub fn normalize_value(value: &Value) -> PermissionMode {
     match value {
         Value::String(text) => normalize_mode(text),
@@ -125,12 +93,6 @@ pub fn normalize_value(value: &Value) -> PermissionMode {
     }
 }
 
-/// Whether this call may run without an extra human approval prompt.
-///
-/// Does **not** override circuit breakers: callers check [`is_circuit_breaker`]
-/// first and deny when it answers. Python's signature takes an `args` argument
-/// it never reads; the port drops it rather than carry a parameter that lies
-/// about influencing the decision.
 pub fn effective_auto_approve(
     mode: PermissionMode,
     tool_name: &str,
@@ -152,8 +114,6 @@ pub fn effective_auto_approve(
                 return true;
             }
             if in_set(&WORKSPACE_WRITE_TOOLS, tool_name) && sandbox == "workspace" {
-                // Additive and mutation both auto under trusted; destructive is
-                // already denied by the breaker above.
                 let by_risk = matches!(risk, "write" | "write_scoped" | "read");
                 let by_class = matches!(
                     change_class,
@@ -163,7 +123,6 @@ pub fn effective_auto_approve(
                     return true;
                 }
             }
-            // Reads gated for consent (local_list and friends) stay gated.
             false
         }
         PermissionMode::Bypass => {
@@ -175,7 +134,6 @@ pub fn effective_auto_approve(
                 && !in_set(&COMPUTER_CONTROL_TOOLS, tool_name)
                 && matches!(risk, "write" | "exec")
             {
-                // Non-desktop system tools stay gated even in bypass.
                 return false;
             }
             true
@@ -183,13 +141,10 @@ pub fn effective_auto_approve(
     }
 }
 
-/// Whether a mutation should become a Review proposal instead of an apply.
 pub fn should_stage_proposal(mode: PermissionMode, proposal_required: bool) -> bool {
     proposal_required && mode == PermissionMode::Strict
 }
 
-/// Plan-level gate: `bypass` never pauses, the other two pause on any non-auto
-/// step or on the plan's own flag.
 pub fn plan_requires_approval(
     mode: PermissionMode,
     non_auto_steps: &[String],
@@ -201,11 +156,6 @@ pub fn plan_requires_approval(
     !non_auto_steps.is_empty() || plan_flag
 }
 
-/// The label, risk and ack flag `mode_catalog` carries for one mode.
-///
-/// Only the four fields `mode_contract` reads are ported. The catalog's UI copy
-/// (`summary`, `warning`, and their Korean twins) stays in Python, where the
-/// surface that renders it lives.
 fn catalog_entry(mode: PermissionMode) -> (&'static str, &'static str, &'static str, bool) {
     match mode {
         PermissionMode::Strict => ("Strict", "엄격", "low", false),
@@ -214,7 +164,6 @@ fn catalog_entry(mode: PermissionMode) -> (&'static str, &'static str, &'static 
     }
 }
 
-/// The serialisable contract an API or agent response carries.
 pub fn mode_contract(mode: PermissionMode) -> Value {
     let (label, label_ko, risk, requires_ack) = catalog_entry(mode);
     let trusted_or_bypass = matches!(mode, PermissionMode::Trusted | PermissionMode::Bypass);
@@ -321,7 +270,6 @@ mod tests {
             &write,
             None
         ));
-        // A workspace writer whose sandbox is *not* the workspace stays gated.
         let home_write = ToolPolicy {
             sandbox: "home".into(),
             ..write.clone()
@@ -358,7 +306,6 @@ mod tests {
 
     #[test]
     fn trusted_accepts_a_workspace_write_on_either_axis() {
-        // risk says no, change_class says yes.
         let odd_risk = ToolPolicy {
             risk: "unclassified".into(),
             ..ToolPolicy::default()
@@ -375,7 +322,6 @@ mod tests {
             &odd_risk,
             Some("exec")
         ));
-        // risk says yes, change_class says no — still approved.
         let write = ToolPolicy {
             risk: "write".into(),
             ..ToolPolicy::default()
@@ -412,14 +358,12 @@ mod tests {
             &system_exec,
             None
         ));
-        // Desktop control is the exception the split exists for.
         assert!(effective_auto_approve(
             PermissionMode::Bypass,
             "computer_click",
             &system_exec,
             None
         ));
-        // A system *read* is not a write or an exec, so it passes.
         let system_read = ToolPolicy {
             risk: "read".into(),
             sandbox: "system".into(),

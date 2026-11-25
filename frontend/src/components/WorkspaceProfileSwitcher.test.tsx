@@ -1,10 +1,3 @@
-/**
- * The workspace/profile switcher is the shell's answer to "whose Brain am I
- * looking at" — the active workspace, the signed-in owner, and the one-click
- * path between workspaces. Until now it had no test at all, so a broken
- * popover or a switch that silently kept the old workspace id would have
- * shipped unseen.
- */
 
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -38,7 +31,6 @@ describe("WorkspaceProfileSwitcher", () => {
       },
     });
 
-    // "Local User" is the backend seed, not a person — show the friendly label.
     await waitFor(() => expect(screen.getByText("내 계정")).toBeTruthy());
     expect(screen.getByText("Personal")).toBeTruthy();
 
@@ -47,10 +39,8 @@ describe("WorkspaceProfileSwitcher", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
 
     const dialog = screen.getByRole("dialog");
-    // The active row is flagged; the others offer a switch.
     expect(screen.getByText("사용 중")).toBeTruthy();
     expect(dialog.textContent).toContain("w2");
-    // A row with no usable name or id still reads as a personal Brain.
     expect(dialog.textContent).toContain("개인 Brain");
 
     await userEvent.click(screen.getByText("w2"));
@@ -80,7 +70,6 @@ describe("WorkspaceProfileSwitcher", () => {
       api: { profile: ok({ email: "me@x.io" }) },
     });
     await waitFor(() => expect(screen.getAllByText("me@x.io").length).toBeGreaterThan(0));
-    // No workspace selected and none registered: a personal Brain, said plainly.
     expect(screen.getByText("개인 Brain")).toBeTruthy();
 
     await userEvent.click(screen.getByRole("button", { name: "작업공간 및 프로필" }));
@@ -111,10 +100,8 @@ describe("WorkspaceProfileSwitcher", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "작업공간 및 프로필" }));
     expect(screen.getByRole("dialog")).toBeTruthy();
-    // Pressing inside the popover must not dismiss it.
     fireEvent.mouseDown(screen.getByRole("dialog"));
     expect(screen.getByRole("dialog")).toBeTruthy();
-    // An unrelated key must not either.
     fireEvent.keyDown(window, { key: "a" });
     expect(screen.getByRole("dialog")).toBeTruthy();
 

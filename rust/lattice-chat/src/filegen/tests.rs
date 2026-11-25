@@ -1,5 +1,3 @@
-//! Unit-level proof for the pieces the HTTP tests then exercise end to end.
-
 use super::*;
 
 fn written(path: &str, repaired: bool) -> Written {
@@ -58,7 +56,6 @@ fn the_project_sentence_names_what_was_deferred_and_what_failed() {
     let en = project_sentence("en", &files, &["a.css".into(), "b.js".into()], &[]);
     assert!(en.starts_with("Created index.html, style.css."));
     assert!(en.contains("were not written yet"), "{en}");
-    // Nothing deferred, nothing failed: one clean sentence and no apology.
     let clean = project_sentence("ko", &files, &[], &[]);
     assert_eq!(clean, "index.html, style.css 파일을 만들었습니다.");
 }
@@ -76,11 +73,8 @@ fn the_payload_carries_the_badge_key_the_spa_reads() {
         true,
         true,
     );
-    // `agentPayloadFiles` in frontend/src/features/brain/brainData.ts reads
-    // exactly this key for the "자동 보정됨" badge.
     assert_eq!(payload["generation"]["repaired"], true);
     assert_eq!(payload["generation"]["attempts"][0]["attempt"], 1);
-    // …and the artifact carries the per-file truth beside it.
     assert_eq!(payload["artifacts"][0]["repaired"], true);
     assert_eq!(payload["artifacts"][0]["valid"], true);
     assert_eq!(payload["artifacts"][0]["previewable"], true);
@@ -148,7 +142,6 @@ fn a_bundles_ingest_receipts_carry_the_path_they_belong_to() {
     assert_eq!(receipts[0]["path"], "index.html");
     assert_eq!(receipts[1]["node_id"], "file:b");
 
-    // The single-file shape stays the flat object every client already reads.
     let mut only = written("a.md", false);
     only.ingest = Some(json!({"status": "ok"}));
     let single = reply::payload(
@@ -179,7 +172,6 @@ fn the_manifest_briefs_are_read_by_path() {
     let briefs = file_briefs(&manifest);
     assert!(briefs.contains_key("index.html"));
     assert!(briefs["index.html"].contains("style.css"));
-    // A manifest without briefs is an empty map, not a panic.
     assert!(file_briefs(&json!({"files": [{"path": "a.md"}]})).is_empty());
     assert!(file_briefs(&json!({})).is_empty());
 }
@@ -199,7 +191,6 @@ async fn the_progress_frame_is_the_documented_shape_and_is_optional() {
         "data: {\"type\":\"file_generation\",\"path\":\"page.html\",\"status\":\"generating\",\"chunk\":\"\"}\n\n\
          data: {\"type\":\"file_generation\",\"path\":\"page.html\",\"status\":\"written\",\"chunk\":\"\"}\n\n"
     );
-    // No sink (the `stream: false` path) is silence, not a panic.
     announce(None, "page.html", "generating").await;
 }
 
@@ -264,7 +255,6 @@ fn the_generation_failure_body_keeps_the_catalog_message_and_adds_the_trail() {
     use axum::http::HeaderMap;
     let response = generation_failed_body(&HeaderMap::new(), &[]);
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    // With attempts the body still carries `detail`; the trail is additive.
     let with_attempts = generation_failed_body(
         &HeaderMap::new(),
         &[json!({"attempt": 1, "outcome": "unusable"})],

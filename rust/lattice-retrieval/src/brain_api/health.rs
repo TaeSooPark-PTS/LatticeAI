@@ -1,9 +1,3 @@
-//! `GET /api/brain/health` and `GET /api/brain/vector-freshness`.
-//!
-//! Empty indexes report `unavailable` coverage, `round()` uses banker's
-//! rounding ([`super::pyutil::py_round`]), zero contradiction edges raise no
-//! action, and the composite averages only measurable dimensions.
-
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
@@ -14,7 +8,6 @@ use super::pyutil::{self, py_round};
 use super::quality::EdgeQuality;
 use super::sampling::{self, Sample, STALE_DAYS};
 
-/// `BrainIntelligenceService.health_report`.
 pub async fn health_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let sample = sampling::graph_sample(state, workspace_id).await;
     let index_status = read_index_status(state).await;
@@ -26,11 +19,6 @@ pub async fn health_report(state: &BrainState, workspace_id: Option<&str>) -> Or
     )
 }
 
-/// The pure half, so the scoring can be tested without a store.
-///
-/// `now_utc` is UTC epoch seconds, injected because `freshness_dimension`'s
-/// 45-day line is a threshold: a store whose nodes share one stamp does not
-/// decay, it flips. See `BrainState::with_utc_clock`.
 pub fn build_health_report(
     sample: &Sample,
     index_status: Option<&OrderedMap>,
@@ -54,10 +42,6 @@ pub fn build_health_report(
         .filter_map(|name| dimensions.get(name).and_then(|dim| dim.get("score")))
         .filter_map(Value::as_i64)
         .collect();
-    // Vacuous dimensions must not average out to a perfect score. A Brain
-    // that could only measure one of four (typically embedding coverage of
-    // an empty index, or freshness of nothing) used to grade "excellent /
-    // 100". Below this floor the verdict is insufficient data.
     const MIN_MEASURED: usize = 2;
     let overall = if scores.len() < MIN_MEASURED {
         None
@@ -68,7 +52,6 @@ pub fn build_health_report(
     };
     let grade = overall.map(grade_label);
 
-    // `sorted(...)` over the dimension names whose score is null.
     let mut unmeasured: Vec<&str> = names
         .iter()
         .copied()
@@ -159,7 +142,6 @@ fn unavailable(reason: &str) -> Value {
     json_of(&dim)
 }
 
-/// How much of the sampled knowledge saw a recent update.
 fn freshness_dimension(sample: &Sample, now_utc: f64) -> Value {
     if !sample.available || sample.nodes.is_empty() {
         return unavailable(sampling::no_graph_reason(sample.available));
@@ -185,7 +167,6 @@ fn freshness_dimension(sample: &Sample, now_utc: f64) -> Value {
     json_of(&dim)
 }
 
-/// Orphan nodes are knowledge the Brain cannot reason across.
 fn connectivity_dimension(sample: &Sample) -> Value {
     if !sample.available || sample.nodes.is_empty() {
         return unavailable(sampling::no_graph_reason(sample.available));
@@ -210,14 +191,12 @@ fn connectivity_dimension(sample: &Sample) -> Value {
     json_of(&dim)
 }
 
-/// `str(node.get("id"))` — an absent id stringifies to `"None"`, not `""`.
 fn node_id_str(node: &Value) -> String {
     node.get("id")
         .map(pyutil::py_str)
         .unwrap_or_else(|| "None".to_string())
 }
 
-/// Semantic recall only works for indexed items — and only where it was measured.
 fn embedding_dimension(index_status: Option<&OrderedMap>) -> Value {
     let empty = OrderedMap::new();
     let status = index_status.unwrap_or(&empty);
@@ -258,7 +237,6 @@ fn embedding_dimension(index_status: Option<&OrderedMap>) -> Value {
     json_of(&dim)
 }
 
-/// Duplicate-edge rate plus contradiction pressure, from the quality layer.
 fn consistency_dimension(sample: &Sample) -> Value {
     if !sample.available || sample.edges.is_empty() {
         let reason = if !sample.available || sample.nodes.is_empty() {
@@ -287,14 +265,12 @@ fn consistency_dimension(sample: &Sample) -> Value {
     json_of(&dim)
 }
 
-/// `"CONTRADICT" in str(edge.get("type") or "").upper()`.
 pub fn is_contradiction(edge: &Value) -> bool {
     pyutil::field_text(edge, "type")
         .to_uppercase()
         .contains("CONTRADICT")
 }
 
-/// The four rules that turn a diagnosis into something to do.
 fn recommended_actions(dimensions: &OrderedMap) -> Vec<Value> {
     let mut actions = Vec::new();
     let read = |name: &str, key: &str| -> Option<Value> {
@@ -342,7 +318,6 @@ fn recommended_actions(dimensions: &OrderedMap) -> Vec<Value> {
             format!("{stale} nodes untouched for over {STALE_DAYS} days."),
         ));
     }
-    // Truthiness, not a null check: zero contradiction edges raises nothing.
     if let Some(edges) = read("consistency", "contradiction_edges") {
         if pyutil::truthy(&edges) {
             actions.push(action(
@@ -357,7 +332,6 @@ fn recommended_actions(dimensions: &OrderedMap) -> Vec<Value> {
     actions
 }
 
-/// `self._kg.index_status()`, or `None` when the store could not answer.
 pub async fn read_index_status(state: &BrainState) -> Option<OrderedMap> {
     if !state.graph_enabled() {
         return None;
@@ -369,7 +343,6 @@ pub async fn read_index_status(state: &BrainState) -> Option<OrderedMap> {
         .unwrap_or(None)
 }
 
-/// `BrainIntelligenceService.vector_freshness` — four keys, plus a breakdown.
 pub async fn vector_freshness(state: &BrainState) -> OrderedMap {
     if !state.graph_enabled() {
         return freshness_unavailable("knowledge graph is disabled; no vector index is configured");
@@ -390,8 +363,6 @@ pub async fn vector_freshness(state: &BrainState) -> OrderedMap {
         .await
         .unwrap_or(None);
     let Some((summary, breakdown, sidecar)) = measured else {
-        // Python renders the exception text here; the exception is the store's,
-        // so the sentence names the failure without claiming Python's wording.
         return freshness_unavailable("vector freshness read failed: knowledge store unavailable");
     };
     let mut payload = contract_of(&summary);
@@ -447,7 +418,6 @@ fn sidecar_status(conn: &rusqlite::Connection, db_path: &str) -> Value {
     }
 }
 
-/// `_unavailable(detail)` — the honest zero, never a fake reading.
 fn freshness_unavailable(detail: &str) -> OrderedMap {
     let mut out = OrderedMap::new();
     out.insert("status", Value::from("unavailable"));
@@ -533,7 +503,6 @@ mod tests {
         let secs = sampling::now_utc_secs() - offset_days * 86_400.0;
         let days = (secs / 86_400.0).floor() as i64;
         let rest = secs - days as f64 * 86_400.0;
-        // A crude civil rendering is enough: only the parsed epoch matters.
         let (year, month, day) = civil_from_days(days);
         format!(
             "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}",
@@ -732,7 +701,6 @@ mod tests {
             available: true,
             ..Sample::default()
         };
-        // One measurable dimension at 100 used to average to "excellent".
         let report = build_health_report(
             &empty,
             Some(&status(1.0, 10, 10, 0, "ready")),
@@ -757,8 +725,6 @@ mod tests {
             available: true,
         };
         let report = build_health_report(&sample, None, "@ts", sampling::now_utc_secs());
-        // Freshness 100, connectivity 0 (two orphans), consistency/embedding
-        // unavailable. Average 50 is attention — never 100 from emptiness.
         assert_eq!(report.get("overall_score"), Some(&Value::from(50)));
         assert_eq!(report.get("grade"), Some(&Value::from("attention")));
         assert_ne!(report.get("grade"), Some(&Value::from("excellent")));

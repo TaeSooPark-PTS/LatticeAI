@@ -1,5 +1,3 @@
-"""Product and architecture readiness gates still resolve after the worker cut."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,11 +27,6 @@ def test_product_readiness_is_complete_on_this_tree():
     assert missing == {}, f"product readiness missing evidence: {missing}"
     assert report["status"] == "complete"
     assert report["architecture"] == "complete"
-    # Derived, not a literal: `bump_version.py` rewrites both
-    # `PRODUCT_VERSION_TARGET` and `latticeai.__version__`, so pinning the
-    # number here only guarantees that every release starts red for a reason
-    # that is not a defect. What is worth asserting is that the readiness
-    # report speaks for *this* build.
     assert report["version_target"] == latticeai.__version__
     assert report["score"] == f"{len(PRODUCT_GATES)}/{len(PRODUCT_GATES)}"
 

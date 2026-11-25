@@ -1,53 +1,4 @@
 #!/usr/bin/env node
-/**
- * Frontend build freshness gate.
- *
- * Why this exists
- * ---------------
- * The Playwright visual suite (`npm run test:visual`) drives the *committed*
- * build output in `static/app/`. Nothing else proves that directory was built
- * from the current `frontend/src/`. Change a component, forget
- * `npm run build:assets`, and CI goes green against a UI that no longer exists.
- *
- * What it does
- * ------------
- * Reproduces `npm run build:assets` into a scratch directory and compares the
- * result byte-for-byte with the committed `static/app/`. It runs the same two
- * steps as the real build, in the same order:
- *   1. `vite build --outDir <scratch> --emptyOutDir`
- *   2. `scripts/build_frontend_assets.mjs --out-dir <scratch>`
- * Step 2 matters: it strips trailing whitespace from the emitted css/js *after*
- * vite has already computed the content hash in the filename, so the shipped
- * bytes are not the raw rollup output. Comparing against raw vite output alone
- * produces a guaranteed false failure on at least one chunk.
- *
- * It additionally checks that `static/sw.js` carries the cache constant that
- * `build:assets` stamps from package.json, because that write is the one part
- * of the build that lands outside `static/app/`.
- *
- * Determinism (measured, not assumed)
- * -----------------------------------
- * On an unchanged tree two consecutive `vite build` runs are byte-identical,
- * including the content-hashed filenames, and the output does not depend on
- * where `--outDir` points (verified with outDirs inside and outside the repo).
- * So byte-exact comparison is the strictest gate that is actually stable, and
- * that is what this script does.
- *
- * What it does NOT catch
- * ----------------------
- *   * Toolchain drift. It compares a build made *now, here* against bytes
- *     committed *then, there*. A different vite/rolldown/tailwind version, or a
- *     platform whose native bindings emit different bytes, would fail this gate
- *     even though the source and the build output agree. `npm ci` against the
- *     committed package-lock.json is what keeps that from happening; if this
- *     gate ever fails with an identical file *set* but differing bytes, suspect
- *     the toolchain before suspecting the author.
- *   * Whether the built UI is *correct*. That is the visual suite's job. This
- *     only proves the visual suite is looking at the current source.
- *   * Anything outside `static/app/` and the `static/sw.js` cache constant.
- *
- * Exit codes: 0 fresh, 1 stale, 2 could not run the comparison at all.
- */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -59,9 +10,6 @@ const committedDir = join(repo, "static", "app");
 const viteCli = join(repo, "node_modules", "vite", "bin", "vite.js");
 const postBuild = join(repo, "scripts", "build_frontend_assets.mjs");
 
-// vite writes its raw manifest to a `.vite/` subdirectory under some configs.
-// build_frontend_assets.mjs reads it from either location and the repo does not
-// commit it, so excluding it from both sides avoids a false "extra file".
 const IGNORED_PREFIXES = [".vite/"];
 
 function fail(message, code = 1) {

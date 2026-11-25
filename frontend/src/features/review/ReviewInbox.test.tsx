@@ -6,16 +6,6 @@ import { latticeApi, type ReviewItem } from "@/api/client";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { ReviewInbox } from "./ReviewInbox";
 
-/**
- * The inbox header carries two filter strips. 10.6.x merged them onto one row
- * and gave each a visible caption, which is where two bugs entered:
- *
- *   - the captions were read from keys that did not exist. `t()` falls back to
- *     the key itself, never to a falsy value, so `t(k) || "Status"` rendered the
- *     literal string `review.status.title` on screen rather than the fallback.
- *   - two tablists on one row with no accessible name are indistinguishable to
- *     a screen reader; the captions have to name them.
- */
 
 function reviewItem(overrides: Partial<ReviewItem> = {}): ReviewItem {
   return {
@@ -45,7 +35,6 @@ function render(api: ApiOverrides = {}) {
   });
 }
 
-/** Wait for the queue to have replaced its loading panel with a card. */
 async function findCard(title = "검토 항목") {
   return screen.findByRole("heading", { name: title });
 }
@@ -54,7 +43,6 @@ describe("ReviewInbox", () => {
   it("renders the filter captions as copy, never as raw i18n keys", async () => {
     render();
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
-    // The exact failure this guards: `t()` returning the key string.
     expect(document.body.textContent).not.toContain("review.status.title");
     expect(document.body.textContent).not.toContain("review.source.title");
     expect(screen.getByText("상태")).toBeTruthy();
@@ -76,7 +64,6 @@ describe("ReviewInbox", () => {
     await userEvent.click(screen.getByRole("tab", { name: "전체" }));
     await userEvent.click(screen.getByRole("tab", { name: "변경 제안" }));
     await waitFor(() =>
-      // "all" is the absence of a filter, not a value the API is asked for.
       expect(latticeApi.automationReviews).toHaveBeenLastCalledWith({ source: "change_proposal" }),
     );
   });
@@ -93,7 +80,6 @@ describe("ReviewInbox when the queue is unreachable", () => {
     render({ automationReviews: () => Promise.reject(new Error("offline")) });
     await screen.findByText("검토함을 불러올 수 없습니다.");
     expect(screen.getByText("지금은 검토 대기열을 사용할 수 없습니다.")).toBeTruthy();
-    // No connection badge at all: there is no envelope to describe.
     expect(screen.queryByText("연결됨")).toBeNull();
     expect(screen.queryByText("사용 불가")).toBeNull();
   });
@@ -157,8 +143,6 @@ describe("ReviewInbox actions", () => {
   });
 
   it("rejects a change proposal through the proposal surface, with and without a reason", async () => {
-    // The rejection reason belongs in the proposal's provenance (audit trail),
-    // which the generic dismiss endpoint has nowhere to put.
     const proposal = ok({ items: [reviewItem({ source: "change_proposal", kind: "file_write" })] });
     render({ automationReviews: proposal });
     await findCard();
@@ -183,7 +167,6 @@ describe("ReviewInbox actions", () => {
   it("says 'regenerated' when the item had already run once", async () => {
     render({
       automationReviews: ok({ items: [reviewItem({ payload: { last_run_id: "run-1" } })] }),
-      // This run reports its id only through the provenance.
       runNowReviewItem: ok(reviewItem({ payload: {}, provenance: { run_id: "run-10" } })),
     });
     await findCard();
@@ -203,7 +186,6 @@ describe("ReviewInbox actions", () => {
     await findCard();
     await userEvent.click(screen.getByRole("button", { name: "승인" }));
     await screen.findByText(/승인 또는 기각 전까지/);
-    // Once beside the button that failed, once as the card's demoted detail.
     expect(screen.getAllByText("workflow engine offline")).toHaveLength(2);
   });
 

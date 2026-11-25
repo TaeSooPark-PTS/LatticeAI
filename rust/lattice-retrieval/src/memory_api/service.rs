@@ -1,19 +1,3 @@
-//! `MemoryService` — the cross-tier report and the maintenance half.
-//!
-//! Six tiers, three real backends: Workspace OS state (workspace / project /
-//! agent), the durable `conversation_messages` table (conversation), and the
-//! knowledge graph (graph / vector). The rule the Python module states and this
-//! port keeps is *never invent*: a tier with no backing reports `unavailable`
-//! and contributes `None`, never a zero dressed up as a measurement — which is
-//! why `count` is `Value::Null` rather than `0` for an absent vector index.
-//!
-//! [`Snapshot`] is the one read every surface here is computed from. Python
-//! re-reads the stores per method and pays for it four times inside
-//! `brain_brief` (manager → proof → manager again); taking the reads once is
-//! the only intentional difference, and it changes no output because nothing
-//! writes between them inside a request.
-
-/// `memory_service.constants.TIERS`.
 pub const TIERS: [&str; 6] = [
     "workspace",
     "project",
@@ -23,7 +7,6 @@ pub const TIERS: [&str; 6] = [
     "vector",
 ];
 
-/// `memory_service.constants.WORKSPACE_KINDS` — `WorkspaceOS.MEMORY_KINDS`.
 pub const WORKSPACE_KINDS: [&str; 7] = [
     "short_term",
     "workspace",
@@ -34,7 +17,6 @@ pub const WORKSPACE_KINDS: [&str; 7] = [
     "long_term",
 ];
 
-/// Longest inline thumbnail a recall row carries.
 pub const MAX_RECALL_THUMBNAIL_CHARS: usize = 24_000;
 
 pub(crate) mod mutate;
@@ -63,7 +45,6 @@ mod tests {
         let alive = brain_readiness(2, Some(62), Some(68), 6);
         assert_eq!(alive.get("state"), Some(&Value::String("alive".into())));
         assert_eq!(alive.get("score"), Some(&Value::from(100)));
-        // An unmeasured tier contributes nothing rather than a zero.
         assert_eq!(
             brain_readiness(0, None, None, 0).get("score"),
             Some(&Value::from(12))

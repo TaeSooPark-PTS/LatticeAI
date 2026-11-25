@@ -1,12 +1,6 @@
-//! The parity vectors: Python's own golden pairs, its deleted unit-test
-//! vectors, and the idempotence the two write paths depend on.
-
 use super::*;
 use crate::parse::pyjson;
 
-/// `tests/fixtures/filegen/` — the golden pairs `test_filegen_golden_files.py`
-/// pinned before the pipeline was deleted. Read with `include_str!` so a
-/// missing or renamed fixture is a compile error rather than a skipped test.
 const GOLDEN: [(&str, &str, &str, bool, bool); 5] = [
     (
         "fenced_html_with_prose",
@@ -53,7 +47,6 @@ const EXPECTED: [&str; 5] = [
     include_str!("../../../../../tests/fixtures/filegen/truncated_html.expected.html"),
 ];
 
-/// `_normalize`: CRLF→LF plus at most one trailing newline.
 fn normalize(text: &str) -> String {
     text.replace("\r\n", "\n")
         .trim_end_matches('\n')
@@ -78,8 +71,6 @@ fn the_python_golden_pairs_sanitize_to_the_same_bytes() {
 
 #[test]
 fn a_fenced_stylesheet_is_never_written_verbatim() {
-    // The 9.9.3 fix: `.css` used to check only for braces, so a fenced
-    // stylesheet was written fences and all.
     let (clean, meta) = sanitize_write_content("styles.css", GOLDEN[2].2, "");
     assert!(!clean.contains("```"));
     assert!(meta.sanitized);
@@ -87,9 +78,6 @@ fn a_fenced_stylesheet_is_never_written_verbatim() {
 
 #[test]
 fn everything_the_sanitizer_produces_survives_a_second_pass() {
-    // The loop sanitizes and the tool sanitizes again (v11.7.0 closes both
-    // doors). That is only safe if the pipeline is idempotent on its own
-    // output, so every vector in this file is run twice.
     let mut vectors: Vec<(&str, String)> = GOLDEN
         .iter()
         .map(|(_, target, dirty, _, _)| (*target, (*dirty).to_string()))
@@ -113,8 +101,6 @@ fn everything_the_sanitizer_produces_survives_a_second_pass() {
 
 #[test]
 fn a_channel_framed_js_reply_extracts_to_runnable_javascript() {
-    // What gemma-4-e2b actually emits for clock.js: a thought channel, then
-    // the document. Extraction must drop the frame so validation accepts it.
     let raw = "<|channel>thought\nThe user wants a clock. I'll write an interval.\n\n\
 <|message|>\n\
 function tick() {\n  const now = new Date();\n  console.log(now.toISOString());\n}\n\
@@ -139,7 +125,6 @@ setInterval(tick, 1000);\n\
         (true, "ok".into())
     );
 
-    // The live 2B often emits only the thought channel, no <|message|>.
     let thought_only =
         "<|channel>thought\nfunction tick() {\n  return Date.now();\n}\nsetInterval(tick, 1000);\n";
     let extracted = extract_file_content(thought_only, "clock.js");
@@ -170,7 +155,6 @@ fn clean_content_is_returned_byte_for_byte() {
 
 #[test]
 fn empty_content_is_never_repaired() {
-    // Creating an empty file is an intentional act (`__init__.py`).
     for blank in ["", "   ", "\n\n"] {
         let (clean, meta) = sanitize_write_content("src/__init__.py", blank, "");
         assert_eq!(clean, blank);
@@ -180,7 +164,6 @@ fn empty_content_is_never_repaired() {
 
 #[test]
 fn a_truncated_document_is_closed_and_then_validates() {
-    // FG-04.
     let truncated = "<!DOCTYPE html><html><head><title>t</title></head><body><p>hi</p>";
     let (fixed, meta) = sanitize_write_content("page.html", truncated, "");
     assert!(meta.sanitized && meta.repaired);
@@ -211,7 +194,6 @@ fn a_reply_that_was_only_a_think_block_is_repaired_from_the_raw_text() {
     assert!(meta.sanitized && meta.repaired);
     assert!(!meta.reason.is_empty());
     assert!(result.starts_with("# TODO: model produced invalid Python for: 정렬 스크립트"));
-    // Nothing is thrown away: the raw draft survives as comments.
     assert!(result.contains("# <think>파이썬 파일을 어떻게 쓸지 고민한다</think>"));
 }
 
@@ -287,9 +269,7 @@ fn a_prose_reply_becomes_a_page_rather_than_an_error() {
         "prose is escaped, one paragraph per non-blank line: {repaired}"
     );
     assert!(repaired.ends_with("</body>\n</html>"));
-    // An HTML fragment is embedded as-is rather than escaped.
     assert!(repair_file_content("<p>hi</p>", "page.html", "x").contains("<p>hi</p>\n</body>"));
-    // No salvage at all still produces a page, titled by the request.
     assert!(repair_file_content("", "page.html", "").contains("<title>Generated page</title>"));
 }
 
@@ -364,10 +344,8 @@ export default function App(): JSX.Element {\n\
             (true, "ok".into())
         );
     }
-    // An escaped brace inside a regex literal must not false-reject.
     let code = "const m = s.replace(/\\{/g, '(');\nexport const ok = () => m;\n";
     assert!(validate_file_content(code, "re.ts").0, "{code}");
-    // …and a truncated file still fails.
     let truncated = "export function run() {\n  if (true) {\n    doIt();\n";
     for target in ["a.ts", "a.tsx", "a.js", "a.jsx"] {
         let (ok, reason) = validate_file_content(truncated, target);
@@ -388,7 +366,6 @@ fn single_file_components_are_judged_by_their_blocks() {
     assert!(validate_file_content(VALID_VUE, "Counter.vue").0);
     assert!(validate_file_content(VALID_SVELTE, "Counter.svelte").0);
     assert!(!validate_file_content("<script>\n  let x = 1;\n", "Broken.svelte").0);
-    // A fenced component is recovered by extraction and then validates.
     let raw = format!("Sure! Here is the component:\n```vue\n{VALID_VUE}```\nEnjoy!");
     let extracted = extract_file_content(&raw, "Counter.vue");
     assert!(
@@ -405,16 +382,13 @@ fn extraction_prefers_the_matching_language_then_the_longest_block() {
         "import os\nprint(os.getcwd())",
         "the language tag wins over the position"
     );
-    // With no tag to match, the longest block wins…
     let untagged = "```\nshort\n```\n```\na much longer block of content\n```\n";
     assert_eq!(
         extract_file_content(untagged, "a.md"),
         "a much longer block of content"
     );
-    // …and the first of two equally long ones (`max` keeps the first).
     let tied = "```\naaaaa\n```\n```\nbbbbb\n```\n";
     assert_eq!(extract_file_content(tied, "a.md"), "aaaaa");
-    // An unclosed final fence is still recovered.
     assert_eq!(extract_file_content("```py\nx = 1\n", "a.py"), "x = 1");
 }
 
@@ -422,12 +396,10 @@ fn extraction_prefers_the_matching_language_then_the_longest_block() {
 fn extraction_strips_reasoning_blocks_and_chat_framing() {
     let raw = "<think>plan it</think>\nSure! Here is the file:\nthe body\nLet me know if you need changes!";
     assert_eq!(extract_file_content(raw, "a.md"), "the body");
-    // An unclosed think block (the model hit the token limit) goes too.
     assert_eq!(
         extract_file_content("keep\n<thinking>and then", "a.md"),
         "keep"
     );
-    // Nothing but chat lines leaves the text alone rather than emptying it.
     assert_eq!(extract_file_content("Sure!", "a.md"), "Sure!");
     assert_eq!(extract_file_content("   ", "a.md"), "");
 }
@@ -439,7 +411,6 @@ fn json_extraction_takes_the_largest_parseable_value() {
         extract_file_content(raw, "a.json"),
         "{\"a\": 1, \"b\": [2, 3]}"
     );
-    // Nothing parseable leaves the content for the repair pass.
     assert_eq!(
         extract_file_content("no json here", "a.json"),
         "no json here"
@@ -514,8 +485,6 @@ fn the_meta_is_pythons_dict_in_pythons_order() {
 
 #[test]
 fn a_reply_that_opens_with_its_own_reasoning_heading_is_not_a_file() {
-    // The live gemma-4-e2b body turn, verbatim shape: an enumerated monologue
-    // under a heading, 2,371 bytes of it, written into a greeting file.
     assert!(looks_like_reasoning_preamble(
         "Thinking Process:\n\n1.  **Analyze the Request:** the user wants a greeting."
     ));
@@ -525,10 +494,6 @@ fn a_reply_that_opens_with_its_own_reasoning_heading_is_not_a_file() {
     assert!(looks_like_reasoning_preamble("## Internal monologue\nhmm"));
     assert!(looks_like_reasoning_preamble("사고 과정:\n1. 요청 분석"));
     assert!(looks_like_reasoning_preamble("  thoughts  \nthen the rest"));
-    // A document is a document. The rule reads the first line and only the
-    // first line, and only when that whole line is one of the headings — so a
-    // file that is *about* thinking, or titled with more than the heading, is
-    // untouched.
     assert!(!looks_like_reasoning_preamble(
         "# Thinking Process for the Q3 launch\n\nWe start with the budget."
     ));

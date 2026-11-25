@@ -1,5 +1,3 @@
-"""Shared small IO helpers for JSON, timestamps, and file hashes."""
-
 from __future__ import annotations
 
 import hashlib
@@ -22,8 +20,6 @@ def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     try:
         path.chmod(0o600)
     except OSError:
-        # Windows and unusual filesystems may not expose POSIX mode bits; the
-        # atomic write is still the safest supported fallback there.
         quiet()
 
 

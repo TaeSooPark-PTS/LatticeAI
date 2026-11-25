@@ -1,13 +1,3 @@
-// Picking a folder means three different things depending on where Lattice is
-// running, and every surface that offers a "폴더" button has to handle all of
-// them or the button silently does nothing:
-//
-//   desktop shell (Tauri/Electron) → a real path the server can watch
-//   browser with File System Access → a directory handle we read files from
-//   browser without it             → a <input webkitdirectory> fallback
-//
-// This module owns that decision so the Brain home and the Capture page behave
-// identically. Callers handle the returned outcome; they never probe the shell.
 
 import { latticeApi } from "@/api/client";
 
@@ -34,7 +24,6 @@ type DesktopFolderPickerWindow = Window & {
   latticeDesktop?: { selectFolder?: () => Promise<string | null> };
 };
 
-/** Props for the last-resort `<input type="file">` folder fallback. */
 export const browserDirectoryInputProps: React.InputHTMLAttributes<HTMLInputElement> & {
   webkitdirectory: string;
   directory: string;
@@ -87,26 +76,16 @@ export async function filesFromBrowserDirectory(handle: BrowserDirectoryHandle):
 }
 
 export type FolderSelection =
-  /** A real filesystem path the server can connect to and keep watching. */
   | { kind: "path"; path: string }
-  /** Browser-read files; the caller uploads them one by one. */
   | { kind: "files"; files: File[]; name: string }
-  /** The user closed the picker — not an error, say nothing. */
   | { kind: "cancelled" }
-  /** No picker route exists; the caller should offer its file-input fallback. */
   | { kind: "unavailable" };
 
-/**
- * Ask the user for a folder using the best route this shell supports.
- * Never throws for a user cancel — that comes back as `cancelled`.
- */
 export async function pickFolder(): Promise<FolderSelection> {
   try {
     if (hasDesktopFolderPicker()) {
       const selectedPath = await latticeApi.selectFolder();
       if (selectedPath) return { kind: "path", path: selectedPath };
-      // The desktop dialog was dismissed; fall through to the browser route
-      // rather than reporting a failure the user did not cause.
     }
     const browserPicker = (window as BrowserDirectoryPickerWindow).showDirectoryPicker;
     if (typeof browserPicker === "function") {

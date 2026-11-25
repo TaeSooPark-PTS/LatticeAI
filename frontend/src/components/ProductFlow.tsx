@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/brain";
 import "@/i18n/onboarding";
 import { latticeApi } from "@/api/client";
@@ -30,9 +28,6 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const language = useAppStore((state) => state.language);
   const [step, setStep] = React.useState<FlowStep>("wake");
   const [analysis, setAnalysis] = React.useState<FlowAnalysis | null>(null);
-  // `null` endpoints means the probes are still running (loading). Once set,
-  // the per-endpoint success flags drive an honest analysis outcome so we never
-  // present a fabricated "ready" model on failure or unsupported hardware.
   const [endpoints, setEndpoints] = React.useState<AnalysisEndpointStatus | null>(null);
   const [reloadToken, setReloadToken] = React.useState(0);
   const [selected, setSelected] = React.useState<RecommendedModel | null>(null);
@@ -44,8 +39,6 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const outcome = React.useMemo(() => evaluateAnalysis({ analysis, endpoints }), [analysis, endpoints]);
   const embeddingModel = React.useMemo(() => recommendedEmbeddingModel(analysis), [analysis]);
 
-  // Run analysis in background immediately to save user wait time. `reloadToken`
-  // lets the user retry from the unavailable state.
   React.useEffect(() => {
     let cancelled = false;
     async function runAnalysis() {
@@ -94,20 +87,8 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ritual-shell">
-      {/* The landmark belongs here, once, around the step that is showing —
-          not inside each step. Two steps each emitting their own <main> would
-          have been two competing landmarks across the flow, and the greeting
-          each step leads with would have sat outside its own main. */}
       <main className="ritual-container" aria-label={t(language, "flow.shell")}>
         <LanguageChooser />
-        {/* The Brain is the hero of the welcome step and a wordmark on every
-            step after it. Rendering it at hero size throughout cost ~390px at
-            the top of the login, recommend and install screens — enough that
-            the name field, the recommended model and the progress list all
-            began below the fold on a 1440x900 display, and the first thing a
-            new person had to do was scroll to find the thing they were asked
-            to do. `data-scale` shrinks the same organism instead of swapping
-            it out, so the identity carries through the flow. */}
         <div className="ritual-brain" data-scale={step === "wake" ? "hero" : "mark"}>
           <LivingBrain
             state={brainStateForStep(step)}
@@ -264,10 +245,6 @@ function completeFlow(onComplete: () => void) {
   onComplete();
 }
 
-/**
- * Exported for tests: the install step is only ever entered through a
- * selection today, so the fallbacks are defensive and not reachable via UI.
- */
 export function pickInstallModel(
   selected: RecommendedModel | null,
   recommendations: RecommendedModel[],
@@ -275,7 +252,6 @@ export function pickInstallModel(
   return selected || recommendations[0] || fallbackModel();
 }
 
-/** Exported for tests: the "analysis" step is in the type but no screen sets it yet. */
 export function brainStateForStep(step: FlowStep): BrainState {
   if (step === "wake") return "idle";
   if (step === "analysis") return "listening";

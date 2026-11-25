@@ -1,11 +1,3 @@
-"""Document generation — the same backends, driven by a specialized prompt.
-
-Structurally parallel to :mod:`.generation` and deliberately separate: a
-document run carries the caller's own system prompt, never the chat system
-prompt, and never an image. Same executor, same stream-failure envelope, same
-drain.
-"""
-
 import asyncio
 import logging
 from typing import Any, AsyncIterator
@@ -18,10 +10,6 @@ from .loading import _mlx_sampler, executor
 
 
 class _DocumentMixin(_Core):
-    """The document generation half of :class:`LLMRouter`."""
-
-    # ── Document Generation Pipeline ──────────────────────────────────────
-
     async def generate_document_as(
         self,
         model_id: str | None,
@@ -31,7 +19,6 @@ class _DocumentMixin(_Core):
         max_tokens: int = 8192,
         temperature: float = 0.3,
     ) -> str:
-        """Generate a document with a request-scoped model."""
         _selected, cached = self._model_snapshot(model_id)
         if cached is None:
             return "No model loaded."
@@ -59,9 +46,9 @@ class _DocumentMixin(_Core):
         loop = asyncio.get_event_loop()
 
         def _gen():
-            import mlx.core as mx  # type: ignore[no-redef]
+            import mlx.core as mx
 
-            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
+            mx.set_default_device(mx.gpu)
             if loader_kind == "mlx_vlm":
                 from mlx_vlm import generate as vlm_gen
 
@@ -122,7 +109,6 @@ class _DocumentMixin(_Core):
         max_tokens: int = 8192,
         temperature: float = 0.3,
     ) -> AsyncIterator[str]:
-        """Stream a document with a request-scoped model."""
         _selected, cached = self._model_snapshot(model_id)
         if cached is None:
             yield "No model loaded."
@@ -154,9 +140,9 @@ class _DocumentMixin(_Core):
         queue: "asyncio.Queue[Any]" = asyncio.Queue()
 
         def _stream():
-            import mlx.core as mx  # type: ignore[no-redef]
+            import mlx.core as mx
 
-            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
+            mx.set_default_device(mx.gpu)
             try:
                 if loader_kind == "mlx_vlm":
                     from mlx_vlm import stream_generate as vlm_stream

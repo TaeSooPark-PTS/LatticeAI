@@ -1,13 +1,3 @@
-//! Knowledge lifecycle states, metadata, and conflict/supersession tracking.
-//!
-//! Review §6.4: organizational and regulatory knowledge cannot be treated as a
-//! flat timeless set. Nodes carry an explicit lifecycle state (`active`,
-//! `superseded`, `deprecated`, `disputed`, `pending_verification`), validity
-//! window, authority/approver provenance, supersession/conflict links, and an
-//! append-only change history stored in `nodes.metadata_json` + `nodes_v2.attrs`
-//! alongside the indexed `nodes_v2` columns (`superseded_by`, `valid_from`,
-//! `valid_to`) and typed edges (`SUPERSEDES`, `CONFLICTS_WITH`).
-
 use rusqlite::Transaction;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -30,7 +20,6 @@ fn default_lifecycle_version() -> u32 {
     1
 }
 
-/// Canonical lifecycle state for a knowledge node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum KnowledgeLifecycleState {
@@ -43,7 +32,6 @@ pub enum KnowledgeLifecycleState {
 }
 
 impl KnowledgeLifecycleState {
-    /// Canonical lowercase snake_case label stored in JSON metadata.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Active => "active",
@@ -54,7 +42,6 @@ impl KnowledgeLifecycleState {
         }
     }
 
-    /// Parse a lifecycle state name case-insensitively.
     pub fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
             "active" => Some(Self::Active),
@@ -68,19 +55,15 @@ impl KnowledgeLifecycleState {
         }
     }
 
-    /// True only when the knowledge node is currently active.
     pub fn is_active(&self) -> bool {
         matches!(self, Self::Active)
     }
 
-    /// True when the node has been superseded or deprecated and should be
-    /// excluded or demoted in default active-knowledge retrieval.
     pub fn is_superseded_or_deprecated(&self) -> bool {
         matches!(self, Self::Superseded | Self::Deprecated)
     }
 }
 
-/// One transition entry in a node's lifecycle audit history.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LifecycleHistoryEntry {
     pub timestamp: String,
@@ -93,7 +76,6 @@ pub struct LifecycleHistoryEntry {
     pub version: u32,
 }
 
-/// Full lifecycle metadata attached to a knowledge node.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnowledgeLifecycleMetadata {
     #[serde(default)]
@@ -141,7 +123,6 @@ impl Default for KnowledgeLifecycleMetadata {
     }
 }
 
-/// Selective update applied via [`GraphWriter::set_node_lifecycle`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct KnowledgeLifecycleUpdate {
     #[serde(default)]
@@ -174,10 +155,6 @@ pub struct KnowledgeLifecycleUpdate {
     pub bump_version: bool,
 }
 
-/// Extract lifecycle metadata from a node's JSON metadata and v2 columns.
-///
-/// Legacy nodes without an explicit `lifecycle` block synthesize one from
-/// `superseded_by` / `valid_from` / `valid_to`, defaulting to `Active`.
 pub fn read_lifecycle_from_metadata(
     metadata: &Map<String, Value>,
     superseded_by: Option<&str>,
@@ -428,7 +405,6 @@ pub(crate) fn update_lifecycle_in_txn(
 }
 
 impl GraphWriter {
-    /// Read a node's structured [`KnowledgeLifecycleMetadata`].
     pub fn get_node_lifecycle(
         &self,
         node_id: &str,
@@ -473,7 +449,6 @@ impl GraphWriter {
         })
     }
 
-    /// Update a node's lifecycle state, validity window, authority, and conflict/supersession links.
     pub fn set_node_lifecycle(
         &self,
         node_id: &str,
@@ -489,7 +464,6 @@ impl GraphWriter {
         updated.ok_or_else(|| CoreError::InvalidRequest(format!("node not found: {node_id}")))
     }
 
-    /// Mark a knowledge node as `disputed`, optionally linking a conflicting node.
     pub fn mark_disputed(
         &self,
         node_id: &str,
@@ -527,7 +501,6 @@ impl GraphWriter {
         Ok(result)
     }
 
-    /// Promote a `pending_verification` or `disputed` node to `active` with approver metadata.
     pub fn verify_node(
         &self,
         node_id: &str,

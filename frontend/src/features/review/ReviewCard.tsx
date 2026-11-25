@@ -35,9 +35,6 @@ type ReviewCardProps = {
 
 const DIFF_PREVIEW_LINES = 24;
 
-// Framed, readable diff preview shared by the review card and the pending
-// proposals panel: a plain-language header, +/- line coloring, and an honest
-// "N more lines" note instead of a silent truncation.
 export function ProposalDiff({
   language,
   diff,
@@ -84,9 +81,6 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const [rejectReason, setRejectReason] = React.useState("");
-  // The card names itself by its own title. `item.id` is server-issued and can
-  // carry characters that are not valid in an IDREF, so the id comes from React
-  // rather than from the item.
   const titleId = React.useId();
   const provenance = item.provenance || {};
   const payload = item.payload || {};
@@ -111,26 +105,14 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const toolName = typeof provenance.tool === "string" && provenance.tool.trim() ? provenance.tool : "";
   const proposedBy = typeof provenance.proposed_by === "string" && provenance.proposed_by.trim() ? provenance.proposed_by : "";
   const showTechnical = mode !== "basic";
-  // The two-column split only earns its keep when the evidence side has
-  // something in it. A chat follow-up in basic mode carries no diff, no risk
-  // badges and no technical panel, and would otherwise render a 7-column void
-  // beside the decision panel. Those cards stay single-column.
   const hasEvidence = Boolean(
     (isProposal && diff.length > 0) || snoozed || riskLabel || changeLabel || toolName || proposedBy || showTechnical,
   );
 
   return (
-    // <article>, not <div>. A bare <header> whose nearest sectioning ancestor is
-    // a plain div maps to the `banner` landmark, so an inbox of N cards was
-    // announcing N page banners. Wrapping the card scopes the header to it and
-    // makes each item one navigable unit.
     <article aria-labelledby={titleId} className="review-card">
-      {/* Header Bar */}
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 pb-3">
         <div className="min-w-0 flex-1 space-y-1">
-          {/* The item title is the card's heading. It used to be a plain div
-              while "결정하기" below was the <h3>, so heading navigation listed
-              N identical "결정하기" entries and never the items themselves. */}
           <h3 id={titleId} className="font-bold text-base text-foreground">{item.title}</h3>
           {item.summary ? <p className="text-xs leading-relaxed text-muted-foreground">{item.summary}</p> : null}
         </div>
@@ -152,10 +134,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
         </div>
       </header>
 
-      {/* Two-column body: evidence on the left, the decision on the right. This is
-          a plain div — a card repeated N times in a list must not emit <main>. */}
       <div className={`grid items-start gap-5 ${hasEvidence ? "md:grid-cols-12" : ""}`}>
-        {/* Left column: the evidence — what actually changes, and how risky it is. */}
         <div className={hasEvidence ? "md:col-span-7 space-y-3" : "hidden"}>
           {isProposal && diff.length > 0 ? (
             <div className="rounded-lg border border-border/60 bg-muted/20 p-3 max-h-64 overflow-y-auto">
@@ -220,11 +199,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
           ) : null}
         </div>
 
-        {/* Right column: the decision. Approve or reject sit together, always
-            in the same place, so the eye lands on them without hunting. */}
         <div className={`rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3 ${hasEvidence ? "md:col-span-5" : ""}`}>
-          {/* h4, one level under the item title above it. Repeated per card,
-              but now nested beneath a unique heading rather than replacing it. */}
           <h4 className="text-xs font-bold tracking-wide text-muted-foreground">
             {t(language, "review.decision.title")}
           </h4>

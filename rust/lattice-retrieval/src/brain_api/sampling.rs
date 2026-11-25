@@ -1,19 +1,3 @@
-//! One graph slice and one memory read, shared by every surface in the family.
-//!
-//! `latticeai/services/brain_intelligence/sampling.py` takes a single
-//! workspace-scoped slice and hands it to the health report, the insights
-//! digest, the garden and both consistency scans, which is what makes their
-//! numbers comparable. It also does the one normalisation the whole family
-//! depends on: the store emits edges keyed `from`/`to`, the quality layer wants
-//! `source`/`target`, and `setdefault` adds the second pair **while keeping the
-//! first**. `health_report`'s connectivity dimension then reads
-//! `edge.get("source") or edge.get("from_node")` — so an edge that arrived
-//! without a `from` key silently scores every node an orphan. That is the
-//! product's behaviour; it is reproduced, not repaired.
-//!
-//! Both readers degrade rather than raise: an unreadable graph reports
-//! `available: false` and an unreadable memory tier reads as empty.
-
 use std::collections::BTreeSet;
 
 use serde_json::Value;
@@ -23,31 +7,18 @@ use crate::memory_api::{kg, wsos};
 
 use super::pyutil;
 
-/// `_STALE_DAYS` — untouched for longer than this and a node is stale.
 pub const STALE_DAYS: i64 = 45;
-/// `_RECENT_DAYS` — the window "recent" means everywhere in this family.
 pub const RECENT_DAYS: i64 = 7;
-/// `_GRAPH_SAMPLE_LIMIT` — how much of the graph one pass looks at.
 pub const GRAPH_SAMPLE_LIMIT: i64 = 800;
-/// `MemoryService.inspect("workspace", limit=500)`.
 pub const MEMORY_LIMIT: usize = 500;
 
-/// The `{"nodes", "edges", "available"}` reading every surface starts from.
-///
-/// The `error` key Python adds on the failure branch is not carried: no surface
-/// in this family reads it, and a field nothing reads is a field that stops
-/// being true.
 #[derive(Debug, Clone, Default)]
 pub struct Sample {
-    /// Visible nodes, newest first, capped at [`GRAPH_SAMPLE_LIMIT`].
     pub nodes: Vec<Value>,
-    /// Edges keyed `from`/`to` **and** `source`/`target`.
     pub edges: Vec<Value>,
-    /// Whether the graph could be read at all.
     pub available: bool,
 }
 
-/// `_graph_sample` — the scoped slice, normalised, never raising.
 pub async fn graph_sample(state: &BrainState, workspace_id: Option<&str>) -> Sample {
     if !state.graph_enabled() {
         return Sample::default();
@@ -67,7 +38,6 @@ pub async fn graph_sample(state: &BrainState, workspace_id: Option<&str>) -> Sam
     }
 }
 
-/// `normalized.setdefault("source", edge.get("from"))` — both spellings survive.
 fn normalise_edge(edge: Value) -> Value {
     let Value::Object(mut map) = edge else {
         return edge;
@@ -79,11 +49,6 @@ fn normalise_edge(edge: Value) -> Value {
     Value::Object(map)
 }
 
-/// `edge.get("source") or edge.get("from_node")` — the connectivity reading.
-///
-/// `or`, not `??`: an edge whose `source` is `None` (a slice that lost its
-/// `from` key) falls through to a `from_node` that modern rows do not carry, so
-/// the endpoint reads as the empty string and nothing counts as connected.
 pub fn endpoint(edge: &Value, primary: &str, legacy: &str) -> String {
     let value = edge.get(primary).filter(|v| pyutil::truthy(v));
     match value {
@@ -92,7 +57,6 @@ pub fn endpoint(edge: &Value, primary: &str, legacy: &str) -> String {
     }
 }
 
-/// `_workspace_memories` — the workspace tier, scoped and capped.
 pub fn workspace_memories(
     state: &BrainState,
     user_email: &str,
@@ -107,7 +71,6 @@ pub fn workspace_memories(
     items
 }
 
-/// `_no_graph_reason` — "nothing saved yet" is not "could not be read".
 pub fn no_graph_reason(graph_available: bool) -> &'static str {
     if graph_available {
         "no knowledge saved yet"
@@ -116,7 +79,6 @@ pub fn no_graph_reason(graph_available: bool) -> &'static str {
     }
 }
 
-/// `_slim(node)` — the four fields every list of nodes is rendered down to.
 pub fn slim(node: &Value) -> lattice_auth::OrderedMap {
     let mut out = lattice_auth::OrderedMap::new();
     out.insert("id", node.get("id").cloned().unwrap_or(Value::Null));
@@ -132,14 +94,12 @@ pub fn slim(node: &Value) -> lattice_auth::OrderedMap {
     out
 }
 
-/// `_node_text(node)` — `f"{title} {summary}".strip()`.
 pub fn node_text(node: &Value) -> String {
     let title = lattice_core::pytext::strip(&pyutil::field_text(node, "title"));
     let summary = lattice_core::pytext::strip(&pyutil::field_text(node, "summary"));
     lattice_core::pytext::strip(&format!("{title} {summary}"))
 }
 
-/// The current instant as `datetime.now(timezone.utc).timestamp()`.
 pub fn now_utc_secs() -> f64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

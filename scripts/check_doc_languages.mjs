@@ -1,30 +1,4 @@
 #!/usr/bin/env node
-/**
- * Bilingual Documentation Language Purity & 100% EN↔KO Bidirectional Parity Gate.
- *
- * Enforces strict language separation and bidirectional mirror parity across
- * GitHub-facing Markdown docs:
- *   1. English canonical documents (root *.md except README.ko.md, docs/**
- *      except docs/ko/**, browser-extension/README.md, vscode-extension/README.md,
- *      rust/star/ARCHITECTURE.md) must contain ZERO Hangul characters outside
- *      the top language-switcher badge (`한국어`).
- *   2. 100% EN↔KO bidirectional parity: every non-excluded English .md doc
- *      MUST carry a `한국어` switcher badge pointing (case-sensitively via
- *      `existsExactCase`) to an existing Korean mirror whose `English` switcher
- *      badge points back to that exact English doc.
- *   3. Every Korean document under docs/ko/** (and README.ko.md) must carry an
- *      `English` switcher badge pointing (case-sensitively) to an existing
- *      non-Korean document in the repository AND contain Korean prose
- *      (preventing empty/untranslated stubs). When that English target is not
- *      an excluded path (such as `.github/` templates), its `한국어` switcher
- *      badge must point back to that exact Korean mirror.
- *   4. README.md and README.ko.md must carry bidirectional English / 한국어
- *      switcher links pointing to each other.
- *
- * GitHub YAML templates under `.github/`, runtime agent prompt assets under
- * `skills/`, plugins under `plugins/`, and test/release fixtures under `tests/`,
- * `output/`, `rust/fixtures/`, or `agent_workspace/` are intentionally excluded.
- */
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -38,8 +12,6 @@ function isInsideRoot(absPath) {
   return absPath === ROOT || absPath.startsWith(`${ROOT}${path.sep}`);
 }
 
-// Case-sensitive path existence check so macOS APFS cannot hide case mismatches
-// that would 404 on GitHub or Linux CI.
 function existsExactCase(absPath) {
   if (!existsSync(absPath)) return false;
   if (!isInsideRoot(absPath)) return false;
@@ -55,8 +27,6 @@ function existsExactCase(absPath) {
   return true;
 }
 
-// Strip only the standardized language switcher badge line(s) before checking
-// English docs for stray Hangul characters.
 function stripLanguageSwitcherLine(line) {
   if (
     line.includes("img.shields.io/badge/") &&
@@ -148,7 +118,6 @@ for (const rel of files) {
   if (isKoreanDoc(rel)) {
     koreanCount += 1;
 
-    // 1. Must contain Korean prose beyond the switcher badge.
     const bodyLines = lines.map(stripLanguageSwitcherLine);
     const koBodyLines = bodyLines.filter((l) => HANGUL_RE.test(l)).length;
     if (koBodyLines < 3) {
@@ -157,8 +126,6 @@ for (const rel of files) {
       );
     }
 
-    // 2. Must have a working English switcher button resolving inside repo
-    //    and pointing to a non-Korean doc that links back (unless excluded).
     const enTarget = extractBadgeTarget(content, "English");
     if (!enTarget) {
       errors.push(`${rel}: missing English language switcher badge`);
@@ -188,7 +155,6 @@ for (const rel of files) {
     continue;
   }
 
-  // English canonical document
   englishCount += 1;
   const leaks = [];
   for (let i = 0; i < lines.length; i += 1) {
@@ -203,9 +169,6 @@ for (const rel of files) {
     );
   }
 
-  // 100% EN↔KO bidirectional parity: every non-excluded English doc MUST carry
-  // a 한국어 switcher badge resolving case-sensitively to an existing Korean
-  // mirror whose English switcher badge points back to this exact English doc.
   const koTarget = extractBadgeTarget(content, "한국어");
   if (!koTarget) {
     errors.push(`${rel}: missing 한국어 language switcher badge (100% EN↔KO parity required)`);
@@ -236,7 +199,6 @@ for (const rel of files) {
   }
 }
 
-// Explicitly verify README.md <-> README.ko.md bidirectional switcher when in scope.
 if (filters.length === 0 || matchesFilters("README.md") || matchesFilters("README.ko.md")) {
   const readmeEn = readFileSync(path.join(ROOT, "README.md"), "utf8");
   if (extractBadgeTarget(readmeEn, "한국어") !== "README.ko.md") {

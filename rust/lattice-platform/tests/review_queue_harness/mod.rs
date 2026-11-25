@@ -1,5 +1,3 @@
-//! Shared replay harness for the R7 governance families.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -64,7 +62,6 @@ pub fn to_openapi(path: &str) -> String {
         .join("/")
 }
 
-/// One running install: auth + four family routers + a FakeWorker.
 pub struct Install {
     pub origin: String,
     pub worker_origin: String,
@@ -72,8 +69,6 @@ pub struct Install {
     pub agent_root: PathBuf,
     pub owner_token: String,
     pub member_token: String,
-    /// The store the four routers read — and the one the agent loop stages
-    /// into, since it implements `lattice_agent::kernel::proposals::ProposalStore`.
     pub gov: GovernanceState,
     pub symbols: HashMap<String, String>,
     hooks: HooksState,
@@ -119,7 +114,6 @@ impl Install {
             Some(worker),
         );
 
-        // Seed files the proposals apply against.
         write_file(
             &agent_root.join("fixture-note.md"),
             "Fixture original line.\n",
@@ -177,7 +171,6 @@ impl Install {
             .symbols
             .insert("$workflow_id".into(), "workflow-fixture-plain".into());
         install.seed_via_http().await;
-        // Drift the conflict file after the proposal is staged.
         write_file(
             &install.agent_root.join("fixture-conflict.md"),
             "Conflict drifted.\n",
@@ -354,8 +347,6 @@ impl Install {
         let hook_id_b = parsed["hook"]["id"].as_str().expect("id").to_string();
         self.symbols.insert("$hook_id_b".into(), hook_id_b);
 
-        // Recreate the run log the five pre-register write_file calls plus
-        // the post-register drift write produced on the Python side.
         self.hooks.hooks.seed_write_file_runs(&hook_id, 5, 1);
     }
 
@@ -560,9 +551,6 @@ fn write_file(path: &Path, content: &str) {
     std::fs::write(path, content).expect("write file");
 }
 
-/// The worker as it is after §P1a: `/agent/change-proposal` is gone, because
-/// approve-and-apply writes the file here now. What is left is the hook-run
-/// dispatch and the graph mutation seam.
 async fn spawn_fake_worker(agent_root: PathBuf) -> String {
     async fn tool(Json(_body): Json<Value>) -> axum::response::Response {
         (StatusCode::OK, axum::Json(json!({"result": "ok"}))).into_response()
@@ -667,8 +655,6 @@ fn values_match(expected: &Value, actual: &Value) -> bool {
                 return false;
             };
             if exp.len() != act.len() {
-                // Allow extra generated_at-only mismatches? No — require same keys
-                // unless expected has only a subset we care about. Strict.
                 return false;
             }
             exp.iter()

@@ -11,30 +11,24 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
       }
     });
 
-    // Clean session: start from onboarding
     await page.goto("/app");
     await page.waitForTimeout(500);
 
-    // If login button is visible, click it
     const loginBtn = page.getByRole("button", { name: /시작하기|로그인|Login|Start/i });
     if (await loginBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await loginBtn.click();
       await page.waitForTimeout(500);
     }
 
-    // Now on recommendations step
-    // Verify EmbeddingGemma 2 recommendation card is present
     const embeddingCard = page.locator("[data-testid='flow-embedding-recommendation']");
     if (await embeddingCard.isVisible({ timeout: 4000 }).catch(() => false)) {
       await expect(embeddingCard).toContainText(/EmbeddingGemma 2|google\/embeddinggemma-2/i);
       
-      // Click "임베딩 모델(EmbeddingGemma 2) 준비"
       const selectEmbeddingBtn = page.locator("[data-testid='flow-select-embedding-model']");
       await expect(selectEmbeddingBtn).toBeVisible();
       await selectEmbeddingBtn.click();
       await page.waitForTimeout(500);
 
-      // Verify we reached install step
       const backBtn = page.getByRole("button", { name: /뒤로|Back/i });
       if (await backBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await backBtn.click();
@@ -42,7 +36,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
       }
     }
 
-    // Click Skip model setup button ("모델 없이 Brain 열기")
     const skipBtn = page.getByRole("button", { name: /모델 없이 Brain 열기|Open Brain without a model|건너뛰기/i });
     if (await skipBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await skipBtn.click();
@@ -64,7 +57,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
 
     await openBrain(page);
 
-    // 1) Test composer input and send button
     const composerInput = page.locator("textarea, input[type='text']").first();
     if (await composerInput.isVisible()) {
       await composerInput.fill("안녕하세요! Lattice AI 테스트입니다.");
@@ -75,33 +67,27 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
       }
     }
 
-    // 2) Open attach menu and test clicking each chip
     const attachToggle = page.getByTestId("brain-attach-toggle");
     if (await attachToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await attachToggle.click();
       const attachMenu = page.getByTestId("brain-attach-menu");
       await expect(attachMenu).toBeVisible();
 
-      // Click around attach chips
       const chips = attachMenu.locator("button, label.brain-ingestion-dock-action");
       const chipCount = await chips.count();
       for (let i = 0; i < chipCount; i++) {
         const chip = chips.nth(i);
         if (await chip.isVisible()) {
-          // Verify focus/hover
           await chip.hover();
         }
       }
-      // Close attach menu
       await attachToggle.click();
     }
 
-    // 3) Open dock stats drawer and close it
     const statsBtn = page.getByTestId("brain-dock-stats");
     if (await statsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await statsBtn.click();
       await expect(page.getByTestId("brain-home-drawer")).toBeVisible();
-      // Close stats drawer cleanly with Escape
       await page.keyboard.press("Escape");
       await page.waitForTimeout(300);
     }
@@ -123,26 +109,22 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     await page.goto("/app#/models");
     await page.waitForTimeout(600);
 
-    // Verify Embedding recommendation section is visible
     const embeddingCard = page.locator("[data-testid='library-embedding-recommendation']");
     await expect(embeddingCard).toBeVisible({ timeout: 5000 });
     await expect(embeddingCard).toContainText(/Google EmbeddingGemma 2|google\/embeddinggemma-2/i);
 
-    // Test clicking activate button for EmbeddingGemma 2
     const activateBtn = page.locator("[data-testid='library-activate-embeddinggemma-2']");
     if (await activateBtn.isVisible().catch(() => false)) {
       await activateBtn.click();
       await page.waitForTimeout(400);
     }
 
-    // Test clicking all filter buttons & engine tabs on the page
     const buttons = page.locator("main button, nav button, [role='tab']");
     const count = await buttons.count();
     for (let i = 0; i < count; i++) {
       const btn = buttons.nth(i);
       if (await btn.isVisible() && await btn.isEnabled()) {
         const text = await btn.innerText().catch(() => "");
-        // Avoid destructive unload buttons during crawl
         if (!/삭제|제거|Unload|Delete/i.test(text)) {
           await btn.click().catch(() => {});
           await page.waitForTimeout(50);
@@ -167,7 +149,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     await page.goto("/app#/capture");
     await page.waitForTimeout(500);
 
-    // Click all tabs on capture screen
     const tabs = page.locator("[role='tab'], .tab-button, button.segmented-control-item");
     const tabCount = await tabs.count();
     for (let i = 0; i < tabCount; i++) {
@@ -178,7 +159,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
       }
     }
 
-    // Test text inputs and buttons
     const inputs = page.locator("input[type='text'], textarea");
     if (await inputs.count() > 0) {
       const input = inputs.first();
@@ -204,7 +184,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     await page.goto("/app#/knowledge-graph");
     await page.waitForTimeout(600);
 
-    // Click graph buttons (zoom, reset, layout)
     const graphButtons = page.locator("button");
     const count = await graphButtons.count();
     for (let i = 0; i < Math.min(count, 10); i++) {
@@ -231,7 +210,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     await page.goto("/app#/settings");
     await page.waitForTimeout(500);
 
-    // Click language switcher buttons or theme switcher buttons
     const buttons = page.locator("button, [role='radio']");
     const count = await buttons.count();
     for (let i = 0; i < count; i++) {
@@ -264,7 +242,6 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
       await page.goto(`/app${route}`);
       await page.waitForTimeout(400);
 
-      // Click all interactive tabs and buttons on each page
       const buttons = page.locator("[role='tab'], button.button, button.badge-action, .tab-item");
       const count = await buttons.count();
       for (let i = 0; i < Math.min(count, 8); i++) {

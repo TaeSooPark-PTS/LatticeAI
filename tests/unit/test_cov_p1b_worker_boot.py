@@ -1,10 +1,3 @@
-"""In-process worker boot + keep-set helpers.
-
-Subprocess factory tests do not count toward coverage. This module boots
-``create_worker_app`` in-process against a throwaway data dir and drives
-every allowlisted route plus the 0% helper modules the filter never reaches.
-"""
-
 from __future__ import annotations
 
 import json
@@ -59,7 +52,6 @@ def test_in_process_worker_hits_every_product_get(worker):
 
 
 def test_in_process_worker_answers_404_for_the_routes_v11_8_0_removed(worker):
-    """A deleted route is gone from the built app, not merely unmounted."""
     for path in (
         "/api/embeddings/providers",
         "/api/ingestion/multimodal",
@@ -193,7 +185,6 @@ def test_session_store_create_get_expire_and_migrate(tmp_path: Path):
     store.invalidate(token)
     assert store.get_email(token) is None
 
-    # Pre-v4 plaintext key is rehashed on load.
     raw = tmp_path / "sessions.json"
     raw.write_text(
         json.dumps(
@@ -212,11 +203,9 @@ def test_session_store_create_get_expire_and_migrate(tmp_path: Path):
     expired._sessions[key] = (subject, created - 10, email)
     assert expired.get_email(token2) is None
 
-    # Corrupt file starts empty.
     raw.write_text("not-json")
     assert load_sessions(tmp_path) == {}
 
-    # Missing Config path falls back to env.
     os.environ["LATTICEAI_DATA_DIR"] = str(tmp_path / "fallback")
     assert sessions_mod._sessions_file(None).name == "sessions.json"
 

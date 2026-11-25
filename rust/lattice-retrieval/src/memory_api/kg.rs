@@ -1,24 +1,3 @@
-//! The knowledge-graph reads the brain families ask for by name.
-//!
-//! `KnowledgeGraphStore` is a twelve-mixin class; these are the six methods the
-//! memory, brain-intelligence, chronicle, command-centre and evidence surfaces
-//! actually call — `stats`, `graph`, `index_status`, `vector_freshness`,
-//! `vector_freshness_breakdown` and `get_node` — ported over the read-only
-//! connection. `search` and `vector_search` are **not** here: this crate
-//! already owns proven-equal ports of both ([`crate::keyword::search`],
-//! [`crate::vector::vector_search`]) and a second copy would be the divergence
-//! the parity harness exists to prevent.
-//!
-//! Two shapes are contracts rather than details:
-//!
-//! * `graph()` emits edges keyed `from`/`to`. The Brain Intelligence sampler
-//!   re-keys them to `source`/`target` and *keeps both*, and its health report
-//!   reads `source or from_node` — so an edge that lost its `from` key silently
-//!   scores every node an orphan. The keys are reproduced exactly.
-//! * `index_status()`'s `scale.coverage_ratio` is the only reading that lets
-//!   `embedding_coverage` be graded at all; its absence is what makes a store
-//!   report `unavailable` instead of a flattering 100.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_auth::OrderedMap;
@@ -26,14 +5,10 @@ use lattice_core::{clean_text, safe_loads, sha256_text, CoreError};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-/// `_kg_constants.GRAPH_SCHEMA_VERSION`.
 pub const GRAPH_SCHEMA_VERSION: i64 = 1;
-/// `schema.KG_SCHEMA_V2_VERSION`.
 pub const KG_SCHEMA_V2_VERSION: i64 = 2;
-/// `fingerprint._EMBEDDER_FINGERPRINT_KEY`.
 pub const EMBEDDER_FINGERPRINT_KEY: &str = "embedder_fingerprint";
 
-/// `_GraphViewMixin._GRAPH_VISIBLE_TYPES`, in declaration order.
 pub const GRAPH_VISIBLE_TYPES: [&str; 24] = [
     "Computer",
     "Drive",
@@ -61,8 +36,6 @@ pub const GRAPH_VISIBLE_TYPES: [&str; 24] = [
     "Workflow",
 ];
 
-/// `_workspace_scope_sql` — `None` is "no scoping", an empty set is "nothing".
-/// `"personal"` also matches NULL/blank `workspace_id`.
 fn scope_sql(allowed: Option<&BTreeSet<String>>) -> Option<(String, Vec<String>)> {
     lattice_core::workspace_membership_sql(allowed, false)
 }
@@ -70,9 +43,6 @@ fn scope_sql(allowed: Option<&BTreeSet<String>>) -> Option<(String, Vec<String>)
 fn count_by(conn: &Connection, sql: &str, params: &[&str]) -> Result<OrderedMap, CoreError> {
     let mut stmt = conn.prepare(sql)?;
     let mut rows = stmt.query(rusqlite::params_from_iter(params.iter()))?;
-    // BTreeMap first: Python's `GROUP BY type` answers in SQLite's own order,
-    // and the committed fixture shows it sorted, which is what a `TEXT` group
-    // key yields. Ordering it here makes the answer independent of the plan.
     let mut counts: BTreeMap<String, i64> = BTreeMap::new();
     while let Some(row) = rows.next()? {
         let key: Option<String> = row.get(0)?;
@@ -90,7 +60,6 @@ fn scalar(conn: &Connection, sql: &str) -> i64 {
         .unwrap_or(0)
 }
 
-/// `KnowledgeGraphReadsMixin.stats`.
 pub fn stats(
     conn: &Connection,
     db_path: &str,
@@ -137,8 +106,6 @@ pub fn stats(
                     ),
                     &doubled,
                 )?,
-                // Machine-local ingestion bookkeeping has no workspace column,
-                // so a scoped read reports none rather than guessing.
                 0,
                 OrderedMap::new(),
             )
@@ -205,7 +172,6 @@ fn v2_stats(
                 ),
                 &doubled,
             )?;
-            // `_scoped_v2_stats` overwrites the totals with the scoped sums.
             let node_total = by_node.iter().filter_map(|(_, v)| v.as_i64()).sum();
             let edge_total = by_edge.iter().filter_map(|(_, v)| v.as_i64()).sum();
             (node_total, edge_total, by_node, by_edge)
@@ -227,21 +193,12 @@ fn v2_stats(
     Ok(out)
 }
 
-/// One `graph()` slice: the visible node window and the edges inside it.
 #[derive(Debug, Clone, Default)]
 pub struct GraphSlice {
-    /// Nodes, `updated_at DESC, id ASC`, capped at the sample limit.
     pub nodes: Vec<Value>,
-    /// Edges keyed `from`/`to`, both endpoints inside `nodes`.
     pub edges: Vec<Value>,
 }
 
-/// `_GraphViewMixin.graph`, without the topic-metric decoration.
-///
-/// The decoration (`degree`, topic mention counts) is rendered by
-/// `/knowledge-graph/graph`, which belongs to another package; every consumer
-/// in these six families reads only `nodes` and `edges`, so producing the rest
-/// here would be dead weight that still had to be kept true.
 pub fn graph_slice(
     conn: &Connection,
     limit: i64,
@@ -330,9 +287,6 @@ pub fn graph_slice(
     Ok(GraphSlice { nodes, edges })
 }
 
-// ── the vector index's honesty surface ──────────────────────────────────────
-
-/// One embeddable item, exactly as `_iter_vector_source_items` yields it.
 pub(crate) struct SourceItem {
     pub(crate) item_id: String,
     pub(crate) item_type: &'static str,
@@ -341,7 +295,6 @@ pub(crate) struct SourceItem {
     pub(crate) metadata: Map<String, Value>,
 }
 
-/// `_vector_text_for_node` — title, summary, and eight metadata fields.
 pub(crate) fn vector_text_for_node(
     title: &str,
     summary: &str,
@@ -441,7 +394,6 @@ pub(crate) fn source_items(conn: &Connection) -> Result<Vec<SourceItem>, CoreErr
 mod kg_vector_status;
 pub use kg_vector_status::{index_status, vector_freshness_breakdown, vector_freshness_summary};
 
-/// `KnowledgeGraphReadsMixin.get_node` — the shape evidence actions read.
 pub fn get_node(conn: &Connection, node_id: &str) -> Result<Option<Value>, CoreError> {
     let (nt, _) = lattice_core::read::read_tables(conn);
     let sql = format!(

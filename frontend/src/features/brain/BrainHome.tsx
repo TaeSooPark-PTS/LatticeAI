@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/brain";
 import "@/i18n/workspace";
 import { useQuery } from "@tanstack/react-query";
@@ -102,9 +100,6 @@ export function BrainHome({
     window.location.hash = depth <= 2 ? "/memory" : "/knowledge-graph";
   }, [onBrainChange]);
 
-  // Global drag-and-drop capture: dropped files reuse the exact upload/ingest
-  // mutation the click-to-upload tiles call, processed sequentially so each
-  // file gets its own pipeline feedback.
   const uploadDocumentRef = React.useRef(ingestion.uploadDocument);
   uploadDocumentRef.current = ingestion.uploadDocument;
   const handleDroppedFiles = React.useCallback((files: File[]) => {

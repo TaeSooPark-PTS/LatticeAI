@@ -1,17 +1,3 @@
-//! Local Computer Memory, and the VS Code presence record.
-//!
-//! Two unrelated things share this module because they share a property: both
-//! are *consent-shaped* state about the machine rather than about the graph.
-//!
-//! * **Local Computer Memory** (`core/workspace_computer_memory.py`) is off by
-//!   default and cannot be enabled without a recorded consent. The check lives
-//!   in one place so "what did this machine agree to observe" has one answer.
-//! * **VS Code presence** is the extension's heartbeat. In Python it is a
-//!   module-level dict — process memory, deliberately not persisted, so a
-//!   restarted server reports `offline` until the extension knocks again. That
-//!   is reproduced with an in-process record rather than "improved" into a file:
-//!   a persisted presence would claim a connected editor that is not there.
-
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -23,10 +9,6 @@ use super::constants::DEFAULT_COMPUTER_MEMORY_SCOPES;
 use super::pyutil::{json_hash_prefix, now_iso};
 use super::store::{StoreError, WorkspaceOsStore};
 
-// ── Local Computer Memory ───────────────────────────────────────────────────
-
-/// `load_state()["computer_memory"]` — what `GET /workspace/computer-memory`
-/// answers.
 pub fn config(store: &WorkspaceOsStore) -> Value {
     store
         .load_state()
@@ -35,11 +17,6 @@ pub fn config(store: &WorkspaceOsStore) -> Value {
         .unwrap_or(Value::Null)
 }
 
-/// `configure_computer_memory`.
-///
-/// Enabling without `consent.approved` is a `PermissionError` → 403. The
-/// consent is stored verbatim, because "what exactly was agreed to" is the
-/// point of keeping it.
 pub fn configure(
     store: &WorkspaceOsStore,
     enabled: bool,
@@ -105,7 +82,6 @@ pub fn configure(
     Ok(stored)
 }
 
-/// The record `record_activity` will store, decided before the graph is asked.
 pub fn plan_activity(activity: &Value) -> Value {
     let now = now_iso();
     let mut record = Map::new();
@@ -125,7 +101,6 @@ pub fn plan_activity(activity: &Value) -> Value {
     Value::Object(record)
 }
 
-/// The title `record_activity` ingests the activity under.
 pub fn activity_title(activity: &Value) -> String {
     let text = activity
         .get("summary")
@@ -141,11 +116,6 @@ pub fn activity_title(activity: &Value) -> String {
     text.chars().take(120).collect()
 }
 
-/// `record_computer_activity` — refused silently when the feature is off.
-///
-/// "Refused silently" is Python's behaviour and it is the right one: the
-/// extension posts activity on a timer and a 4xx storm would be noise. The
-/// answer states the reason.
 pub fn record_activity(
     store: &WorkspaceOsStore,
     mut record: Value,
@@ -161,8 +131,6 @@ pub fn record_activity(
         return Ok(json!({"status": "ignored",
                          "reason": "local computer memory is disabled"}));
     }
-    // A graph that refuses the event must not lose the activity: the record is
-    // kept either way and carries the reason it did not land.
     if let Some(Err(error)) = graph {
         record["graph_error"] = json!(error);
     }
@@ -197,17 +165,8 @@ pub fn record_activity(
     Ok(json!({"status": "ok", "activity": record}))
 }
 
-// ── VS Code presence ────────────────────────────────────────────────────────
-
-/// How long after the last heartbeat the extension still counts as connected.
-///
-/// The extension ticks every 20 s (`scout_clients.md` §VS Code), so 60 s is
-/// three missed beats — narrow enough to notice a closed editor, wide enough to
-/// survive one slow one.
 pub const PRESENCE_WINDOW_MS: i64 = 60_000;
 
-/// The in-process presence record, shared by the three `/workspace/vscode`
-/// routes.
 #[derive(Debug, Clone)]
 pub struct VsCodePresence {
     record: Arc<Mutex<Map<String, Value>>>,
@@ -227,12 +186,10 @@ impl Default for VsCodePresence {
 }
 
 impl VsCodePresence {
-    /// A fresh presence record — nothing has knocked yet.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// `GET /workspace/vscode/status`'s payload.
     pub fn status(&self, now_ms: i64) -> Value {
         let record = self.record.lock().unwrap_or_else(|error| {
             self.record.clear_poison();
@@ -254,7 +211,6 @@ impl VsCodePresence {
         Value::Object(payload)
     }
 
-    /// `POST /workspace/vscode/status` — the heartbeat. Answers the record.
     #[allow(clippy::too_many_arguments)]
     pub fn report(
         &self,
@@ -294,7 +250,6 @@ impl VsCodePresence {
         })
     }
 
-    /// `POST /workspace/vscode/send` — marks the editor synced.
     pub fn synced(
         &self,
         now_ms: i64,
@@ -325,14 +280,6 @@ impl VsCodePresence {
     }
 }
 
-/// `int(datetime.utcnow().timestamp() * 1000)`, without the local-offset skew.
-///
-/// **Stated deviation.** `datetime.utcnow()` returns a *naive* UTC time and
-/// `.timestamp()` then reads it as local, so Python's number is off by the
-/// machine's UTC offset. Both the writer and the reader use the same
-/// expression, so `connected` is unaffected — and the clients only read
-/// `connected` and `index_status` (`scout_clients.md`) — but the absolute
-/// value here is real epoch milliseconds rather than the skewed one.
 pub fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -488,7 +435,6 @@ mod tests {
 
         assert_eq!(presence.status(1_030_000)["connected"], json!(true));
         assert_eq!(presence.status(1_030_000)["status"], json!("connected"));
-        // Three missed beats later it is offline again, but the record is kept.
         let stale = presence.status(1_070_000);
         assert_eq!(stale["connected"], json!(false));
         assert_eq!(stale["status"], json!("offline"));

@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Library: models, skills, connectors, the marketplace, and the guided
-// steps that get a model ready to answer.
 export const workspaceLibraryCopy: NamespaceCopy = {
   ko: {
     "library.kicker": "AI 모델",

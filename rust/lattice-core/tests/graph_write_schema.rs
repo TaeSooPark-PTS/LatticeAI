@@ -1,19 +1,3 @@
-//! Schema ownership: a fresh Rust install and a live Python Brain agree.
-//!
-//! Two claims, and they are the same claim seen from either end.
-//!
-//! * A **fresh Rust-only install** must create a schema a Python build would
-//!   accept. `CREATE TABLE IF NOT EXISTS` never upgrades an existing table, so
-//!   the only thing that makes that true is the DDL text itself matching — down
-//!   to the implicit indexes SQLite derives from `PRIMARY KEY` and `UNIQUE`,
-//!   which is why the comparison is against `sqlite_master` rather than against
-//!   a hand-written list of column names.
-//! * An **existing Python-created database** must open and be written with no
-//!   migration at all: same objects afterwards, same rows, same version stamps.
-//!   `rust/fixtures/parity_store.sqlite` is a real Brain built by the Python
-//!   write path, which is what makes the second test evidence rather than a
-//!   restatement of the first.
-
 use std::sync::Arc;
 
 use lattice_core::db::Store;
@@ -21,8 +5,6 @@ use lattice_core::embeddings::LocalEmbeddingModel;
 use lattice_core::graph_write::{GraphWriter, SystemClock};
 use serde_json::Value;
 
-/// Platform objects bootstrap creates so readers do not 500 on a fresh Brain.
-/// They are not in Python's `KnowledgeGraphStore.__init__` schema fixture.
 fn is_platform_conversation_object(name: &str) -> bool {
     name == "conversation_messages"
         || name.starts_with("idx_conv_messages_")
@@ -82,8 +64,6 @@ fn a_fresh_rust_install_creates_the_schema_python_emits() {
     let (store, _writer) = open_writer(&work.path().join("knowledge_graph.sqlite"));
     let actual = schema_master(&store);
 
-    // Object by object, so a divergence names the object rather than printing
-    // sixty-seven of them.
     let expected_objects = expected["objects"].as_array().expect("expected objects");
     let actual_objects = actual["objects"].as_array().expect("actual objects");
     for object in expected_objects {
@@ -137,7 +117,6 @@ fn a_fresh_rust_install_creates_the_conversation_table_the_chat_writer_uses() {
                 |row| row.get(0),
             )?;
             assert_eq!(indexes, 4, "conv/time/user/workspace indexes");
-            // Idempotent against a store that already has the table.
             conn.execute_batch("SELECT 1 FROM conversation_messages")?;
             Ok(())
         })
@@ -149,7 +128,6 @@ fn opening_a_python_built_brain_migrates_nothing() {
     std::env::set_var("LATTICEAI_EMBED_DIM", "1024");
     let work = tempfile::tempdir().expect("temp dir");
     let path = work.path().join("knowledge_graph.sqlite");
-    // A copy, so the committed fixture is never the thing under test.
     std::fs::copy(fixture("parity_store.sqlite"), &path).expect("copy the fixture store");
 
     let before = {
@@ -168,7 +146,6 @@ fn opening_a_python_built_brain_migrates_nothing() {
         "opening a Python-built Brain changed the data"
     );
 
-    // …and it is writable afterwards, which is the point of not migrating.
     let outcome = writer
         .set_node_sensitivity("dec:fusion-alpha", true, Some("a Rust write"))
         .expect("set_node_sensitivity");

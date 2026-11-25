@@ -10,11 +10,6 @@ import { useConversationSession } from "../conversationSession";
 import type { Message } from "../types";
 import { useBrainProof } from "./useBrainProof";
 
-/**
- * The proof surface: what the Brain can show for "정말 기억하나요?". Covers the
- * brain-proof/brain-brief queries, attaching per-answer evidence, and the
- * model-continuity check.
- */
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({

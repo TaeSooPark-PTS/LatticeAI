@@ -1,10 +1,3 @@
-//! Knowledge-graph portability — native port of `latticeai/api/portability.py`.
-//!
-//! File operations (list / download / validate / backup ZIP / dry-run
-//! inspect) are native. So is the import write: `import_graph_data` runs on
-//! [`lattice_core::graph_write::GraphWriter`]. Encrypted-archive
-//! success with a live passphrase is a documented gap (nonce bytes).
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -16,7 +9,6 @@ use lattice_core::db::RuntimeConfig;
 
 use crate::knowledge::network::DeviceIdentity;
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/brain/storage"),
     ("POST", "/api/brain/storage/migrate-postgres"),
@@ -56,7 +48,6 @@ pub(crate) const SUBGRAPH_FORMAT: &str = "latticeai.kg.subgraph";
 pub(crate) const SEALED_BOX_ALGORITHM: &str = "x25519-hkdf-sha256-aes256gcm";
 pub(crate) const BRAIN_NETWORK_DISABLED_EN: &str = "Brain Network sharing is off. It is opt-in by design: set LATTICEAI_BRAIN_NETWORK=1 to enable selective subgraph export and receipt.";
 
-/// Router state.
 #[derive(Clone)]
 pub struct PortabilityState {
     pub auth: Arc<AuthState>,
@@ -110,7 +101,6 @@ use share::{
 use status::{backup_health, brain_storage, portability_status, provenance};
 pub(crate) use status::{backup_health_payload, postgres_capabilities, sqlite_capabilities};
 
-/// Build the portability router.
 pub fn router(state: PortabilityState) -> Router {
     Router::new()
         .route("/api/knowledge-graph/portability", get(portability_status))

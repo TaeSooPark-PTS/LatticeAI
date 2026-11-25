@@ -1,13 +1,4 @@
 #!/usr/bin/env node
-// Post-processes the `vite build` output in place: normalises trailing
-// whitespace in emitted css/js, rewrites the raw vite manifest into the
-// app-facing asset-manifest.json, and stamps the service-worker cache version.
-//
-// `--out-dir <dir>` points the first two steps at a directory other than
-// static/app so scripts/check_frontend_build_freshness.mjs can reproduce the
-// exact shipped bytes into a scratch tree. In that mode the static/sw.js
-// rewrite is skipped: it is a repo-level side effect, not part of the app dir,
-// and a freshness check must never mutate the working tree.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 

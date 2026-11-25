@@ -7,9 +7,6 @@ import { workspaceReviewCopy } from "./workspace/review";
 import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
-// The dictionary lives in ./workspace/*, one file per domain. This module is the
-// namespace: it merges those parts and registers them exactly once, so every
-// importer keeps using "@/i18n/workspace" and nothing else moves.
 export const workspaceCopy: NamespaceCopy = {
   ko: {
     ...workspaceLibraryCopy.ko,
@@ -29,5 +26,4 @@ export const workspaceCopy: NamespaceCopy = {
   },
 };
 
-// Route-scoped: registered when Act/Capture/Library/System/Admin loads.
 registerCopy(workspaceCopy);

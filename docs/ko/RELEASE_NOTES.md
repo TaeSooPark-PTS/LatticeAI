@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.1.2 - Living Synthesis] (2026-11-25)
+
+모든 추적 소스 언어에 저장소 전역 무주석(zero-comments) 표준을 적용했습니다: 필수 셔뱅 및 `/// <reference ... />` 지시문을 제외한 모든 인라인 주석, 블록 주석, 독스트링, JSDoc, 억제 지시문을 제거하고 전역 설정 완화 없이 소스 코드를 직접 수정해 모든 Ruff, mypy, TypeScript, Rust Clippy 검증을 통과했습니다. `npm run check:no-comments` (`scripts/check_no_comments.mjs`)를 `npm run lint`와 `.github/workflows/ci.yml`에 연동하고 `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러에 영구 정책을 명시했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.1.2.md](./releases/RELEASE_NOTES_v14.1.2.md).
+
 # [v14.1.1 - Living Synthesis] (2026-11-25)
 
 Python 포매팅, McCabe 복잡도 전역 강제, 서버 i18n 래칫, 컨테이너 위생에 대한 제로 기술 부채 패스를 완료했습니다: 전체 Python 파일 219개를 전용 커밋(`55ba57c381a433066fd94434c3a6250c4a1beb59`)으로 `ruff format .` 포매팅하고 `.git-blame-ignore-revs`에 기록하며 `npm run lint:python` 및 CI에 `ruff format --check .`를 강제했습니다. `create_models_router`와 `create_worker_compute_router`를 분해해 `pyproject.toml`의 `"C901"` 예외를 전량 제거(`max-complexity = 20` 예외 0건)하고 `/worker/extract` 테스트를 `tests/unit/test_worker_compute_extract.py`로 분리했으며, `worker_compute_render.py`와 `worker_resilience.py`를 `NON_ROUTER_HELPERS`에 명시 등록해 `scripts/check_server_i18n.mjs`를 `0 unclaimed` fail-closed 래칫으로 잠갔고, `Dockerfile`의 `lattice-host` 바이너리 복사에 `--chown=lattice:lattice --chmod=0755`를 명시했습니다.
@@ -118,10 +124,11 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 14.1.1까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.1.2까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
+- [v14.1.2 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.1.md)
 - [v14.1.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.0.md)
 - [v14.0.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.0.0.md)

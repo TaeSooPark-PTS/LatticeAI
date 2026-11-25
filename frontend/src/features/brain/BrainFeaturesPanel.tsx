@@ -8,24 +8,6 @@ import { t, type Language } from "@/i18n";
 
 export const FEATURES_QUERY_KEY = ["features"] as const;
 
-/**
- * The opt-in switchboard (v11.2.0).
- *
- * Everything on screen is the server's: ids, labels, one-line explanations,
- * defaults, and which options are even installable. The panel holds no feature
- * list of its own, so a switch added to `feature_toggles.CATALOG` appears here
- * with no client change — and, more importantly, the panel can never show a
- * switch the server would refuse.
- *
- * Three honesty rules it renders rather than hides:
- *
- * * a feature answered by an environment variable says so, instead of looking
- *   like something this person chose;
- * * the one switch that sends knowledge off this machine carries its caution
- *   line next to it, not in a doc;
- * * an option whose optional dependency is missing is shown *disabled with the
- *   reason*, because a hidden option is a mystery and a live one is a lie.
- */
 export function BrainFeaturesPanel({ language }: { language: Language }) {
   const qc = useQueryClient();
   const [notice, setNotice] = React.useState("");
@@ -34,10 +16,6 @@ export function BrainFeaturesPanel({ language }: { language: Language }) {
   const apply = useMutation({
     mutationFn: (input: { id: string; value: boolean | string }) =>
       latticeApi.setFeature(input.id, input.value),
-    // Optimistic: a switch has to move under the finger. The pre-write catalog
-    // is carried through as the rollback, so a refusal puts the switch back
-    // where it was rather than leaving the UI claiming something the server
-    // never agreed to.
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: FEATURES_QUERY_KEY });
       const previous = qc.getQueryData(FEATURES_QUERY_KEY);
@@ -97,9 +75,6 @@ export function BrainFeaturesPanel({ language }: { language: Language }) {
               key={feature.id}
               feature={feature}
               language={language}
-              // A sub-switch whose parent is off changes nothing yet. It stays
-              // readable and movable — "set it up now, turn the parent on
-              // later" is a real thing people do — but it says it is dormant.
               dormant={Boolean(feature.parent) && !enabledIds.has(String(feature.parent))}
               busy={apply.isPending}
               onChange={(value) => apply.mutate({ id: feature.id, value })}
@@ -242,10 +217,6 @@ function FeatureRow({
           aria-label={feature.label}
           className="brain-feature-switch"
           data-testid={`feature-switch-${feature.id}`}
-          // Never `disabled` while a write is in flight: disabling the button
-          // blurs it, and the drawer's Escape handler lives on the drawer
-          // node — focus on <body> means Escape stops closing the panel. The
-          // in-flight guard is the click handler's job instead.
           onClick={requestToggle}
         >
           <span className="brain-feature-switch-track" aria-hidden="true">
@@ -302,13 +273,6 @@ function ChoicePills({
   );
 }
 
-/**
- * The optimistic edit, as a pure function over whatever the cache holds.
- *
- * Written defensively because the cache entry is an `ApiResult` that may be a
- * failed read: replacing a `{ ok: false }` entry with an optimistic catalog
- * would turn a broken read into a panel of plausible-looking switches.
- */
 export function patchCatalog(current: unknown, id: string, value: boolean | string) {
   const result = current as { ok?: boolean; data?: FeatureCatalog } | undefined;
   if (!result?.ok || !result.data) return current;

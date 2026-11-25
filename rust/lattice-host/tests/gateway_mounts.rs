@@ -1,15 +1,3 @@
-//! Every mounted namespace, answered through the gateway (v11.5.0 §2a).
-//!
-//! `lattice-retrieval`, `lattice-ingest`, `lattice-agent` and `lattice-jobs`
-//! each prove their own behaviour in their own suite. What this file proves is
-//! the thing none of them can: that the host *mounted* them, ahead of the
-//! reverse proxy, and that the proxy is still what everything else falls
-//! through to.
-//!
-//! The fake worker is the instrument. Every native assertion also asserts that
-//! the worker saw nothing — a route that quietly became a proxy hop would still
-//! return plausible JSON, and only the request count says which crate answered.
-
 mod common;
 
 use std::path::{Path, PathBuf};
@@ -21,7 +9,6 @@ use common::{
 };
 use lattice_host::gateway::{mounts, GatewayState};
 
-/// `rust/fixtures` — the committed parity store the retrieval routes read.
 fn fixture_store() -> PathBuf {
     [env!("CARGO_MANIFEST_DIR"), "..", "fixtures"]
         .iter()
@@ -29,8 +16,6 @@ fn fixture_store() -> PathBuf {
         .join("parity_store.sqlite")
 }
 
-/// A copy of the fixture store under this suite's own name, so a `-wal`
-/// sidecar can never land next to a checked-in file.
 fn store_copy(name: &str) -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("gateway_mounts");
     std::fs::create_dir_all(&dir).expect("test data dir");
@@ -42,19 +27,12 @@ fn store_copy(name: &str) -> PathBuf {
     path
 }
 
-/// A gateway with every mount wired: the fixture store, a private agent root,
-/// and (optionally) a scheduler pointed at the fake worker.
 async fn gateway(worker: &FakeWorker, name: &str, jobs: bool) -> TestGateway {
     let mut state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
-        // The fake worker's own surface: since v11.6.0 the fall-through is an
-        // allowlist, and these suites test the proxy's mechanics rather than
-        // which paths the real worker owns (`binary_frontdoor.rs` does that).
         .with_allowlist(fake_worker_allowlist())
         .with_db_path(store_copy(name))
         .with_agent_root(test_agent_root(name))
-        // Never the real `~/.ltcai/rust_agent_runs`: a paused approval is a
-        // real file, and a test must not write into the user's store.
         .with_agent_runs_dir(test_agent_root(name).join("rust_agent_runs"));
     if jobs {
         state = state.with_jobs(mounts::scheduler(&worker.origin(), client()));
@@ -87,7 +65,6 @@ async fn the_graph_namespace_is_answered_natively() {
         "each match carries why the graph reached it: {body}"
     );
 
-    // The relationship and traversal reads are mounted from the same factory.
     let relationships = json(
         client()
             .get(gateway.url("/rust/graph/relationships"))
@@ -98,7 +75,6 @@ async fn the_graph_namespace_is_answered_natively() {
     .await;
     assert!(relationships["relationships"].is_array());
 
-    // …and so is the history family, on both verbs.
     let history = client()
         .post(gateway.url("/rust/history/search"))
         .header("content-type", "application/json")
@@ -177,7 +153,6 @@ async fn the_agent_kernel_answers_its_contract_and_refuses_mutation() {
     assert!(body["contract"].is_object());
     assert!(body["default_mode"].is_string());
 
-    // A preflight is a decision, and the decision arrives without the worker.
     let preflight = client()
         .post(gateway.url("/rust/agent/preflight"))
         .header("content-type", "application/json")
@@ -197,8 +172,6 @@ async fn the_agent_kernel_answers_its_contract_and_refuses_mutation() {
     worker.shutdown();
 }
 
-/// The loop routes mount alongside the kernel ones, and the approvals lane
-/// answers natively — from the host's own store, without a worker hop.
 #[tokio::test]
 async fn the_agent_loop_routes_are_mounted_and_answer_natively() {
     let worker = FakeWorker::start().await;
@@ -214,8 +187,6 @@ async fn the_agent_loop_routes_are_mounted_and_answer_natively() {
     .await;
     assert_eq!(pending["pending"], serde_json::json!([]), "{pending}");
 
-    // A resume for a run that was never paused is a 404 from *here*, not a
-    // proxied 404 from the worker.
     let missing = client()
         .post(gateway.url("/rust/agent/resume"))
         .header("content-type", "application/json")
@@ -225,7 +196,6 @@ async fn the_agent_loop_routes_are_mounted_and_answer_natively() {
         .expect("request");
     assert_eq!(missing.status(), 404);
 
-    // A run with no message is refused before any worker call is attempted.
     let invalid = client()
         .post(gateway.url("/rust/agent/run"))
         .header("content-type", "application/json")
@@ -271,9 +241,6 @@ async fn a_spawned_scheduler_reports_enabled_and_records_its_tick() {
     let scheduler = mounts::scheduler(&worker.origin(), client());
     let state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
-        // The fake worker's own surface: since v11.6.0 the fall-through is an
-        // allowlist, and these suites test the proxy's mechanics rather than
-        // which paths the real worker owns (`binary_frontdoor.rs` does that).
         .with_allowlist(fake_worker_allowlist())
         .with_db_path(store_copy("jobs-running"))
         .with_agent_root(test_agent_root("jobs-running"))
@@ -285,7 +252,6 @@ async fn a_spawned_scheduler_reports_enabled_and_records_its_tick() {
         let _ = stop_rx.await;
     });
 
-    // The first tick runs immediately on spawn; poll rather than sleep on it.
     let mut body = serde_json::Value::Null;
     for _ in 0..200 {
         body = json(
@@ -303,8 +269,6 @@ async fn a_spawned_scheduler_reports_enabled_and_records_its_tick() {
     }
     assert_eq!(body["enabled"], true, "the timer is running: {body}");
     assert!(!body["last_tick"].is_null(), "it ticked once: {body}");
-    // The fake worker answers text, not the drain payload — an honest failure
-    // is what a tick against a worker that cannot drain must record.
     assert_eq!(body["last_tick"]["ok"], false);
     assert!(body["last_tick"]["error"].is_string());
 
@@ -337,7 +301,6 @@ async fn an_unmounted_native_path_is_a_404_that_names_the_families() {
         assert!(families.contains(&family), "{family} missing from {body}");
     }
 
-    // /host is guarded the same way, and /host/jobs is absent when unwired.
     let jobs = client()
         .get(gateway.url("/host/jobs"))
         .send()
@@ -375,7 +338,6 @@ async fn an_event_stream_is_marked_unbufferable_on_its_way_out() {
         "a proxied SSE response must tell every hop in front of us not to buffer it"
     );
 
-    // A plain JSON response is left exactly as the worker sent it.
     let plain = client()
         .get(gateway.url("/api/anything"))
         .send()
@@ -389,9 +351,6 @@ async fn an_event_stream_is_marked_unbufferable_on_its_way_out() {
 
 #[tokio::test]
 async fn the_default_agent_root_is_the_one_the_worker_is_given() {
-    // Not a route test: the mount decision. The host judges paths against the
-    // same directory the supervisor hands the worker, or its verdicts are about
-    // files nothing will ever touch.
     let home = Path::new("/home/u");
     assert_eq!(
         mounts::resolve_agent_root(None, Some(home)),

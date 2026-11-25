@@ -1,9 +1,3 @@
-//! The chat + history router this crate owns.
-//!
-//! `GET /chat` (308 to `/app#/chat`) is WP-I4's. The `/agent*` operations that
-//! share `rust/fixtures/openapi/chat.json` are `lattice-agent`'s, mounted by
-//! the host. `tests/openapi_contract.rs` states both splits.
-
 use std::sync::Arc;
 
 use axum::routing::{get, post};
@@ -14,11 +8,6 @@ use crate::history::json_body;
 use crate::pipeline;
 use crate::state::ChatState;
 
-/// The routes this crate mounts, in the shape WP-I5's contract test compares.
-///
-/// Paths use axum 0.7 spelling (`/*conversation_id` for FastAPI `{id:path}`).
-/// The `/agent*` ops and `GET /chat` are intentionally absent — see the
-/// module docs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/cloud/status"),
     ("POST", "/chat"),
@@ -30,12 +19,10 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/history/search"),
 ];
 
-/// Build the chat + history router over one process-wide [`ChatState`].
 pub fn router(state: ChatState) -> Router {
     router_from_arc(Arc::new(state))
 }
 
-/// Same factory, taking a pre-shared `Arc` so a test can hold a clone.
 pub fn router_from_arc(state: Arc<ChatState>) -> Router {
     Router::new()
         .route("/api/cloud/status", get(cloud_status))
@@ -53,7 +40,6 @@ pub fn router_from_arc(state: Arc<ChatState>) -> Router {
         .with_state((*state).clone())
 }
 
-/// `GET /api/cloud/status` — `{configured, mode, provider, model, detail}`.
 async fn cloud_status(
     axum::extract::State(state): axum::extract::State<ChatState>,
     headers: axum::http::HeaderMap,

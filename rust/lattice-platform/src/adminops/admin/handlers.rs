@@ -1,5 +1,3 @@
-//! Admin console route handlers.
-
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 

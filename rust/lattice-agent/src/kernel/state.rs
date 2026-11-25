@@ -1,16 +1,7 @@
-//! The loop's state vocabulary and the object one run carries between phases.
-//!
-//! Ports of `latticeai.core.agent_state` and `latticeai.core.agent.context`.
-//! The loop itself is stateless: a run is exactly what its [`AgentRunContext`]
-//! says it is, which is also what makes the pause/resume store possible —
-//! `serialize` / `restore` here are the field contract
-//! `latticeai.core.run_store` persists, key for key.
-
 use serde_json::{json, Map, Value};
 
 use crate::kernel::trace::LoopTrace;
 
-/// Every state the single-agent loop can be in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AgentState {
     Idle,
@@ -20,13 +11,10 @@ pub enum AgentState {
     Verifying,
     Failed,
     Rollback,
-    /// Terminal, non-success: the run ended but completion could not be
-    /// verified. Never presented as success.
     NeedsReview,
     Done,
 }
 
-/// Declaration order, which is what `[state.value for state in AgentState]` is.
 pub const ALL_STATES: [AgentState; 9] = [
     AgentState::Idle,
     AgentState::Planning,
@@ -39,7 +27,6 @@ pub const ALL_STATES: [AgentState; 9] = [
     AgentState::Done,
 ];
 
-/// The loop exits when it reaches one of these.
 pub const TERMINAL_STATES: [AgentState; 3] = [
     AgentState::Done,
     AgentState::Failed,
@@ -61,7 +48,6 @@ impl AgentState {
         }
     }
 
-    /// `AgentState(value)` — `None` where Python raises `ValueError`.
     pub fn parse(value: &str) -> Option<Self> {
         ALL_STATES.into_iter().find(|state| state.as_str() == value)
     }
@@ -71,7 +57,6 @@ impl AgentState {
     }
 }
 
-/// Mutable state carrier passed through all agent phases.
 #[derive(Debug, Clone)]
 pub struct AgentRunContext {
     pub state: AgentState,
@@ -86,11 +71,8 @@ pub struct AgentRunContext {
     pub executing_model: Option<String>,
     pub reviewing_model: Option<String>,
     pub approved_by_human: bool,
-    /// Autonomy dial stamped for this run; `None` falls back to the resolver.
     pub permission_mode: Option<String>,
-    /// Project-session prompt block, `""` for a standalone run.
     pub project_context: String,
-    /// Resolved once per run; `None` means "not resolved yet".
     pub self_model_summary: Option<String>,
 }
 
@@ -121,7 +103,6 @@ impl AgentRunContext {
         Self::default()
     }
 
-    /// The plan's `goal`, or `""`.
     pub fn goal(&self) -> String {
         self.plan
             .get("goal")
@@ -130,7 +111,6 @@ impl AgentRunContext {
             .to_string()
     }
 
-    /// The plan's `steps` array.
     pub fn steps(&self) -> Vec<Value> {
         self.plan
             .get("steps")
@@ -139,7 +119,6 @@ impl AgentRunContext {
             .unwrap_or_default()
     }
 
-    /// `serialize_run_context` — plain JSON-safe data, key for key.
     pub fn serialize(&self) -> Value {
         json!({
             "state": self.state.as_str(),
@@ -153,14 +132,11 @@ impl AgentRunContext {
             "executing_model": self.executing_model,
             "reviewing_model": self.reviewing_model,
             "approved_by_human": self.approved_by_human,
-            // A paused run resumes under the dial it was planned with.
             "permission_mode": self.permission_mode,
             "trace": {"events": self.trace.events, "truncated": self.trace.truncated},
         })
     }
 
-    /// `restore_run_context`. An unknown state is `WAITING_APPROVAL`, never a
-    /// guess at something further along.
     pub fn restore(payload: &Value) -> Self {
         let text = |key: &str| payload.get(key).and_then(Value::as_str);
         let list = |key: &str| {

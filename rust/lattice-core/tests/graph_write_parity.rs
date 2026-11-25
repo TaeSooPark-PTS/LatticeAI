@@ -1,30 +1,3 @@
-//! Python↔Rust write-path parity: replay the scenario, compare the store.
-//!
-//! `scripts/gen_graph_write_goldens.py` drove the **real** Python
-//! `KnowledgeGraphStore` through a 32-step battery — fresh store, text and file
-//! ingests including a dedup hit, a multi-chunk document, a workspace-scoped
-//! ingest, chat turns, an event, direct upserts, provenance, promotions parked
-//! then applied and rejected, both curations, a sensitivity flip, vector writes
-//! and three rebuilds, an import (merge, dry-run and replace), source watch
-//! toggling and removal, and a document-tree delete — dumping every table after
-//! every step.
-//!
-//! This test replays the identical scenario through [`GraphWriter`] and
-//! compares three things:
-//!
-//! 1. **every op's return value**, step by step;
-//! 2. **a per-table digest of the whole store after every step**, so a
-//!    divergence names the table *and* the step that caused it;
-//! 3. **two full dumps** — the richest state the battery reaches, and the final
-//!    one — with the embedding BLOBs as raw hex, which is the byte-level proof
-//!    that both engines wrote the same vectors.
-//!
-//! The clock is the only thing pinned: the generator recorded what `_now()`,
-//! `time.time()`, `os.getpid()` and `perf_counter()` answered, and
-//! [`FrozenClock`] hands the replay the same readings. Nothing else is stubbed
-//! — the schema, the ids, the hashes, the projection and the embeddings are all
-//! produced by the engine under test.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -56,7 +29,6 @@ fn load(name: &str) -> Value {
         .unwrap_or_else(|err| panic!("cannot parse {}: {err}", path.display()))
 }
 
-/// `serde_json::from_value` with the step number in the failure.
 fn parse<T: serde::de::DeserializeOwned>(step: u64, op: &str, args: &Value) -> T {
     serde_json::from_value(args.clone())
         .unwrap_or_else(|err| panic!("step {step} ({op}): cannot read args: {err}"))
@@ -76,7 +48,6 @@ fn optional_ids(args: &Value) -> Option<Vec<String>> {
 
 #[test]
 fn the_rust_write_engine_reproduces_the_python_store_row_for_row() {
-    // `schema.EMBED_DIM` is stamped into `kg_meta`; the generator pinned it.
     std::env::set_var("LATTICEAI_EMBED_DIM", "1024");
     std::env::remove_var("LATTICEAI_GRAPH_PROMOTION_REVIEW");
 
@@ -109,8 +80,6 @@ fn the_rust_write_engine_reproduces_the_python_store_row_for_row() {
     ));
     let store =
         Arc::new(Store::open(&root.join("knowledge_graph.sqlite")).expect("open the store"));
-    // 384 is `LATTICEAI_VECTOR_DIM`'s pinned value; passing it explicitly keeps
-    // the replay independent of the environment the suite happens to run in.
     let writer = GraphWriter::with_parts(
         Arc::clone(&store),
         root.join("knowledge_graph_blobs"),
@@ -141,8 +110,6 @@ fn the_rust_write_engine_reproduces_the_python_store_row_for_row() {
             "step {number} ({op}): the return value diverged"
         );
         assert_snapshot(&store, &substitutions, &snapshots[index + 1], number, op);
-        // The byte-level checkpoints, compared at the step they were taken at
-        // rather than at whichever step the battery happens to end on.
         for (name, checkpoint) in full_dumps.as_object().expect("full dumps") {
             if checkpoint["after_step"].as_u64() != Some(number) {
                 continue;
@@ -296,7 +263,6 @@ fn run_step(writer: &GraphWriter, uploads: &Path, number: u64, op: &str, args: &
     }
 }
 
-/// The run root out of every string, the way the generator wrote it out.
 fn rewrite_paths(value: &Value, substitutions: &[(String, String)]) -> Value {
     match value {
         Value::String(text) => {

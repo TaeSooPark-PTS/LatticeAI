@@ -1,12 +1,3 @@
-//! `latticeai/api/browser.py` — native 127.0.0.1-gated fetch (WP-R6).
-//!
-//! Origin restrictions match Python byte for byte on the validation
-//! branches the fixtures pin: scheme, credentials, private/loopback/
-//! link-local/multicast hosts. The fetch itself is native. A fetched
-//! page is still forwarded to `POST /knowledge-graph/ingest`. A tab
-//! payload that already has text is ingested here through `GraphWriter`
-//! plus the W5 extract/embed enrichment chain.
-
 use std::net::{IpAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,17 +19,13 @@ use crate::local_files_api::http::{
     detail, http_error, language, ok, optional, required, FieldSpec, Kind, Model,
 };
 
-/// Every `(method, path)` this module mounts.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/api/browser/read-url"),
     ("POST", "/api/browser/ingest-current-tab"),
 ];
 
-/// `MAX_TAB_BYTES` / `MAX_URL_FETCH_BYTES`.
 pub const MAX_TAB_BYTES: usize = 4 * 1024 * 1024;
-/// `MAX_URL_LENGTH`.
 pub const MAX_URL_LENGTH: usize = 8192;
-/// `URL_FETCH_TIMEOUT`.
 pub const URL_FETCH_TIMEOUT: Duration = Duration::from_secs(12);
 
 const READ_URL: &[FieldSpec] = &[
@@ -56,7 +43,6 @@ const INGEST_TAB: &[FieldSpec] = &[
     optional("workspace_id", Kind::OptStr),
 ];
 
-/// What the two browser routes need.
 #[derive(Clone)]
 pub struct BrowserState {
     auth: Arc<AuthState>,
@@ -75,12 +61,6 @@ impl std::fmt::Debug for BrowserState {
 }
 
 impl BrowserState {
-    /// Construct.
-    ///
-    /// Opens a `GraphWriter` on this config's store so tab capture works
-    /// without a host `with_graph` call. Prefer [`BrowserState::with_graph`]
-    /// when the process already has a writer — two writers on one file still
-    /// serialize through SQLite, but they are two write connections.
     pub fn new(auth: Arc<AuthState>, config: RuntimeConfig) -> Self {
         let graph = config.open_store().ok().and_then(|store| {
             GraphWriter::open(
@@ -98,27 +78,21 @@ impl BrowserState {
         }
     }
 
-    /// Attach the worker the extract/embed enrichment (and `read_url` ingest)
-    /// is delegated to.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         self.seam = Some(seam);
         self
     }
 
-    /// Bind the process `GraphWriter`. Replaces the one [`BrowserState::new`]
-    /// opened so the host can share a single write connection.
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// The native writer, when one is bound or was opened at construct.
     pub fn graph(&self) -> Option<&GraphWriter> {
         self.graph.as_ref()
     }
 }
 
-/// The two browser routes.
 pub fn router(state: Arc<BrowserState>) -> Router {
     Router::new()
         .route("/api/browser/read-url", post(read_url))
@@ -426,7 +400,6 @@ async fn ingest_current_tab(
     ok(&payload)
 }
 
-/// `_validate_http_url` / `_parse_http_url`.
 pub fn validate_http_url(url: &str) -> Result<String, String> {
     let cleaned = url.trim();
     if cleaned.is_empty() {
@@ -456,7 +429,6 @@ pub fn validate_http_url(url: &str) -> Result<String, String> {
     Ok(cleaned.to_string())
 }
 
-/// Resolve the host and refuse every non-public address.
 pub fn resolve_public(url: &str) -> Result<Vec<IpAddr>, String> {
     let parsed = url::Url::parse(url).map_err(|_| "Malformed URL.".to_string())?;
     let hostname = parsed.host_str().unwrap_or_default();
@@ -556,7 +528,6 @@ async fn fetch_url(url: &str) -> Result<(String, String), String> {
     Ok(extract_readable_text(&body))
 }
 
-/// Best-effort HTML title + readable text. Never panics.
 pub fn extract_readable_text(html: &str) -> (String, String) {
     let mut title = String::new();
     let mut chunks: Vec<String> = Vec::new();
@@ -572,9 +543,6 @@ pub fn extract_readable_text(html: &str) -> (String, String) {
         };
         let tag_raw = &rest[..end];
         rest = &rest[end + 1..];
-        // Split on `/` only *after* the optional closer so `</title>` still
-        // names `title`. Splitting first made the first token empty and left
-        // `in_title` stuck on for the rest of the document.
         let closing = tag_raw.starts_with('/');
         let name_src = if closing { &tag_raw[1..] } else { tag_raw };
         let name = name_src
@@ -639,7 +607,6 @@ fn thin_capture() -> Value {
     })
 }
 
-// `url` crate may not be a dep. Parse with a tiny splitter instead if needed.
 mod url {
     pub struct Url {
         pub scheme: String,

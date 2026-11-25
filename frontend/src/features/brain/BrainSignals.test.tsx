@@ -94,15 +94,12 @@ describe("VectorFreshnessNotice", () => {
 
     renderWithQuery(<VectorFreshnessNotice language="ko" />);
     await screen.findByTestId("vector-freshness-chip");
-    // total_items === 0 hides the ratio meter cleanly.
     expect(screen.queryByTestId("vector-freshness-progress")).toBeNull();
 
-    // First click fails -> refreshes freshness to total_items: 20, showing progress bar.
     await userEvent.click(screen.getByTestId("vector-freshness-drain"));
     await waitFor(() => expect(drainSpy).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId("vector-freshness-progress")).toBeTruthy();
 
-    // Second click shows "인덱싱 중…" while pending, then resolves with processed: 4 -> drained chip shows!
     await userEvent.click(screen.getByTestId("vector-freshness-drain"));
     expect(await screen.findByText("인덱싱 중…")).toBeTruthy();
     releaseDrain({ ok: true, status: 200, source: "live", data: { status: "ok", processed: 4 } });
@@ -183,7 +180,6 @@ describe("StaleEmbedderNotice", () => {
     await waitFor(() => expect((screen.getByTestId("stale-embedder-reindex") as HTMLButtonElement).disabled).toBe(false));
     expect(screen.getByTestId("stale-embedder-reindex").textContent).toBe("기억 다시 정리하기");
     expect(document.querySelector(".is-error")).toBeNull();
-    // A successful rebuild invalidates the freshness query, triggering a refetch.
     await waitFor(() =>
       expect((latticeApi.brainVectorFreshness as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
         callsBeforeClick,
@@ -264,8 +260,6 @@ describe("IngestionJobsPanel", () => {
     await screen.findByTestId("ingestion-jobs-panel");
     const [first, second] = screen.getAllByRole("button", { name: /이어서 처리/ });
     fireEvent.click(first!);
-    // The clicked job says "resuming", its sibling keeps the idle label but is
-    // disabled with it while the request runs.
     await screen.findByText("다시 시작하는 중…");
     expect(second!.textContent).toContain("이어서 처리");
     expect((first as HTMLButtonElement).disabled).toBe(true);
@@ -290,7 +284,6 @@ describe("IngestionJobsPanel", () => {
     await screen.findByTestId("ingestion-jobs-panel");
     expect(screen.queryByTestId("ingestion-job-report")).toBeNull();
 
-    // active → completed: the report card appears and the list disappears.
     jobsSpy.mockResolvedValueOnce(envelope([completed]));
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ["ingestionJobs"] });
@@ -299,8 +292,6 @@ describe("IngestionJobsPanel", () => {
     expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.getByTestId("ingestion-job-report").textContent).toContain("+12 문서");
 
-    // The backend restarts the same job; when it completes again the report
-    // stays single (the id is deduplicated, not stacked).
     jobsSpy.mockResolvedValueOnce(envelope([running]));
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ["ingestionJobs"] });
@@ -312,7 +303,6 @@ describe("IngestionJobsPanel", () => {
     await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
     expect(screen.getAllByTestId("ingestion-job-report").length).toBe(1);
 
-    // Dismissing hides the report; with nothing else to show the panel leaves.
     fireEvent.click(screen.getByRole("button", { name: "수집 결과 닫기" }));
     await waitFor(() => expect(screen.queryByTestId("ingestion-jobs-panel")).toBeNull());
   });
@@ -330,8 +320,6 @@ describe("IngestionJobsPanel", () => {
     const { queryClient } = renderWithQuery(<IngestionJobsPanel language="ko" />);
     await screen.findByTestId("ingestion-jobs-panel");
 
-    // job-A finishes first: the previous (empty) report list is filtered,
-    // which is a no-op filter over zero items.
     jobsSpy.mockResolvedValueOnce(envelope([jobACompleted]));
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ["ingestionJobs"] });
@@ -339,12 +327,6 @@ describe("IngestionJobsPanel", () => {
     await screen.findByTestId("ingestion-job-report");
     expect(screen.getAllByTestId("ingestion-job-report").length).toBe(1);
 
-    // job-B starts and finishes while job-A's report is still on screen: the
-    // filter now runs over a non-empty previous list, keeping job-A's report
-    // (it is not in the newly-finished set) and placing job-B's first. The
-    // intermediate "job-B running" state must actually commit (not just
-    // resolve in the query cache) before job-B can be observed transitioning
-    // out of it, so wait for its progress bar before moving on.
     jobsSpy.mockResolvedValueOnce(envelope([jobACompleted, jobBRunning]));
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ["ingestionJobs"] });
@@ -378,7 +360,6 @@ describe("IngestionJobsPanel", () => {
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ["ingestionJobs"] });
     });
-    // Partial: report card and the resumable list entry coexist.
     await screen.findByTestId("ingestion-job-report");
     expect(screen.getByRole("progressbar")).toBeTruthy();
 
@@ -541,9 +522,6 @@ describe("WatchHealthCard", () => {
       watches: [{ id: "w1", path: "/tmp/a", enabled: false, tracked_files: 3 }],
     });
     const { queryClient } = renderWithQuery(<WatchHealthCard language="ko" />);
-    // Wait for the query to actually settle (not just for the call to have
-    // started) so this exercises the post-filter empty-watches guard rather
-    // than the trivial "still loading" null render.
     await waitFor(() => expect(queryClient.getQueryData(["ingestionWatch"])).toBeTruthy());
     expect(screen.queryByTestId("watch-health-card")).toBeNull();
   });
@@ -570,7 +548,6 @@ describe("WatchHealthCard", () => {
     expect(card.textContent).toContain("2일 전 스캔");
     expect(card.textContent).toContain("아직 스캔 전");
     expect(card.textContent).not.toContain("잘림");
-    // A root path has no basename to shorten to.
     expect(card.querySelector(".brain-watch-path")!.textContent).toBe("/");
   });
 
@@ -617,7 +594,6 @@ describe("PendingApprovalsNotice", () => {
     renderWithQuery(<PendingApprovalsNotice language="ko" knownRunIds={[]} />);
     const notice = await screen.findByTestId("pending-approvals-notice");
     expect(notice.textContent).toContain("주간 보고서 정리");
-    // An unparseable expiry falls back to the "decide on the original card" hint.
     expect(notice.textContent).toContain("깨진 시간");
     expect(notice.getAttribute("role")).toBe("note");
   });
@@ -656,7 +632,6 @@ describe("PendingApprovalsNotice", () => {
     renderWithQuery(<PendingApprovalsNotice language="en" knownRunIds={[]} />);
     const notice = await screen.findByTestId("pending-approvals-notice");
     expect(notice.querySelectorAll("p").length).toBe(2);
-    // No goal and no expiry → generic sentence plus the hint line.
     expect(notice.textContent).toContain("두번째 목표");
     expect(notice.textContent).not.toContain("세번째 목표");
   });

@@ -25,7 +25,6 @@ describe("unifiedDiffLines", () => {
     const diff = unifiedDiffLines("", "hello\nworld", "new.txt");
     expect(diff).toContain("+hello");
     expect(diff).toContain("+world");
-    // No removal lines beyond the "--- a/…" header.
     expect(diff.slice(2).some((line) => line.startsWith("-"))).toBe(false);
   });
 
@@ -35,15 +34,12 @@ describe("unifiedDiffLines", () => {
   });
 
   it("falls back to a coarse remove-all/add-all listing for very large files", () => {
-    // The LCS table is O(n·m); past 400 lines a side it stops being worth it,
-    // and the preview is capped either way.
     const before = Array.from({ length: 401 }, (_, i) => `old ${i}`).join("\n");
     const after = Array.from({ length: 401 }, (_, i) => `new ${i}`).join("\n");
     const diff = unifiedDiffLines(before, after, "big.txt");
-    expect(diff).toHaveLength(400); // MAX_DIFF_LINES
+    expect(diff).toHaveLength(400);
     expect(diff[0]).toBe("--- a/big.txt");
     expect(diff[2]).toBe("-old 0");
-    // Coarse means every "before" line is listed as removed, in order.
     expect(diff[3]).toBe("-old 1");
   });
 });
@@ -55,7 +51,6 @@ function mockProposalDetail(payload: unknown, item: Record<string, unknown> = {}
   } as never);
 }
 
-/** The three writes a rebase performs, stubbed and handed back for assertions. */
 function mockRebaseWrites({
   current,
   created,
@@ -148,8 +143,6 @@ describe("rebaseProposal", () => {
   });
 
   it("refuses a proposal that names no file", async () => {
-    // A payload that is not even an object, and a kind the backend omitted:
-    // both degrade rather than staging a proposal against nothing.
     mockProposalDetail("not-an-object", { kind: undefined });
     mockRebaseWrites();
     await expect(rebaseProposal("prop-1")).rejects.toThrow("proposal payload has no path");
@@ -161,7 +154,6 @@ describe("rebaseProposal", () => {
 
     expect(await rebaseProposal("prop-1")).toBe("rebased");
     const payload = create.mock.calls[0]![0].payload as Record<string, unknown>;
-    // No base to hash, so the snapshot records "the file did not exist".
     expect(payload.base_exists).toBe(false);
     expect(payload.base_sha256).toBe("");
     expect(payload.before_bytes).toBe(0);
@@ -185,7 +177,6 @@ describe("rebaseProposal", () => {
     const body = create.mock.calls[0]![0];
     expect(body.kind).toBe("file_delete");
     const payload = body.payload as Record<string, unknown>;
-    // A delete carries no replacement content, and never counts as a small edit.
     expect(payload.new_content).toBeUndefined();
     expect(payload.tier).toBe("large");
     expect(payload.after_bytes).toBe(0);
@@ -201,8 +192,6 @@ describe("rebaseProposal", () => {
   });
 
   it("omits the base snapshot entirely when WebCrypto is unavailable", async () => {
-    // Staging a wrong/empty hash would produce a proposal that can never be
-    // approved, so the fields are left off (legacy apply-as-reviewed).
     vi.stubGlobal("crypto", {});
     mockProposalDetail({ path: "docs/a.md", new_content: "fresh" });
     const { create } = mockRebaseWrites();
@@ -228,7 +217,6 @@ describe("rebaseProposal", () => {
       created: { ok: false, status: 422, error: "invalid payload" },
     });
     await expect(rebaseProposal("prop-1")).rejects.toThrow("invalid payload");
-    // The conflicted proposal is left alone; nothing replaced it.
     expect(reject).not.toHaveBeenCalled();
 
     create.mockResolvedValue({ ok: false, status: 500, source: "unavailable", data: {} } as never);

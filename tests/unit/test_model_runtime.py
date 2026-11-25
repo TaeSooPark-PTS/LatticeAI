@@ -1,13 +1,8 @@
-"""model_runtime trust gate unit tests for v6.1 hardening."""
-
 from dataclasses import FrozenInstanceError
 
 import pytest
 
 from latticeai.models import router as model_router
-
-# ``hf_model_dir`` reads the root from its own module globals, so after the
-# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
 from latticeai.models.router import local_models as router_local_models
 from latticeai.services import model_runtime
 from latticeai.services.model_errors import ModelRuntimeError
@@ -20,13 +15,10 @@ from latticeai.services.model_runtime import (
 
 
 def test_download_blocked_without_model_download_consent():
-    """External download must be blocked when no explicit consent is given."""
-    # Default state: no consent
     state = ModelRuntimeState()
     assert _download_allowed(allow_download=False, state=state) is False
     assert _download_allowed(allow_download=True, state=state) is True
 
-    # Without consent, calling block raises the expected 409 gate
     try:
         _download_block("huggingface", "some/model")
     except ModelRuntimeError as exc:
@@ -73,7 +65,6 @@ def _write_minimal_model_dir(path):
 
 
 def test_local_mlx_reuses_existing_huggingface_cache(monkeypatch, tmp_path):
-    """Already-downloaded HF cache snapshots should count as local MLX-ready."""
     monkeypatch.setenv("HOME", str(tmp_path))
     ltcai_root = tmp_path / ".ltcai" / "hf-models"
     monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", ltcai_root)
@@ -102,7 +93,7 @@ def test_model_runtime_state_is_immutable_and_not_module_ambient():
     state = ModelRuntimeState(PUBLIC_MODEL="test:model")
 
     with pytest.raises(FrozenInstanceError):
-        state.PUBLIC_MODEL = "other:model"  # type: ignore[misc]
+        state.PUBLIC_MODEL = "other:model"
 
     assert "STATE" not in vars(model_runtime)
     assert "PUBLIC_MODEL" not in vars(model_runtime)

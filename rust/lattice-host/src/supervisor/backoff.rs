@@ -1,21 +1,10 @@
-//! Restart backoff schedule.
-//!
-//! Exponential with a cap, and a "the worker actually stayed up" reset so a
-//! long-lived worker that dies once restarts immediately instead of inheriting
-//! yesterday's penalty.
-
 use std::time::Duration;
 
-/// Exponential backoff parameters for crash restarts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BackoffPolicy {
-    /// Delay before the first restart.
     pub base: Duration,
-    /// Upper bound for any single delay.
     pub cap: Duration,
-    /// How many consecutive restarts to attempt before giving up.
     pub max_attempts: u32,
-    /// A run that lasted at least this long resets the attempt counter.
     pub reset_after: Duration,
 }
 
@@ -31,8 +20,6 @@ impl Default for BackoffPolicy {
 }
 
 impl BackoffPolicy {
-    /// Delay before restart attempt `attempt` (1-based): `base * 2^(attempt-1)`
-    /// clamped to `cap`. Attempt `0` is treated as attempt `1`.
     pub fn delay_for(&self, attempt: u32) -> Duration {
         let step = attempt.saturating_sub(1).min(32);
         let factor = 1u64 << step;
@@ -40,13 +27,10 @@ impl BackoffPolicy {
         Duration::from_millis(millis).min(self.cap)
     }
 
-    /// Whether a further restart is allowed after `attempt` failures.
     pub fn may_retry(&self, attempt: u32) -> bool {
         attempt <= self.max_attempts
     }
 
-    /// Whether a run of `uptime` counts as "healthy enough" to reset the
-    /// attempt counter.
     pub fn resets(&self, uptime: Duration) -> bool {
         uptime >= self.reset_after
     }

@@ -1,20 +1,4 @@
 #!/usr/bin/env node
-// Proves the lazy i18n split is safe.
-//
-// `frontend/src/i18n/*` used to be one synchronous table merged into the entry
-// chunk, so every route's copy sat on the first-paint path (~3,000 lines).
-// Namespaces now register themselves on import, and a route pulls the namespace
-// it needs into its own lazy chunk.
-//
-// The failure mode that buys is silent: a component reads a key whose namespace
-// its chunk never imported, `t()` falls through to returning the raw key, and
-// the UI renders "system.permission.title" instead of Korean text. No error, no
-// test failure unless that exact component is rendered in a test.
-//
-// So this check walks the real module graph. For each entry — the eager root
-// plus every React.lazy() boundary — it collects the static closure, every
-// `t(lang, "key")` used in it, and every i18n namespace it imports. A key whose
-// namespace is not reachable from that entry is an error.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import process from "node:process";
@@ -28,17 +12,6 @@ const NAMESPACES = readdirSync(i18nDir)
   .map((name) => name.replace(/\.ts$/, ""))
   .filter((name) => !["types", "registry"].includes(name));
 
-/**
- * Every file that holds copy for a namespace.
- *
- * A namespace is one module — `brain.ts` — and that module is still the only
- * thing that calls `registerCopy`. But a dictionary that outgrew one file keeps
- * its domain parts in a directory beside it (`brain/home.ts`, `brain/chat.ts`,
- * …), which `brain.ts` imports and merges. Those parts own keys; they are not
- * namespaces of their own, and importing one does NOT make the namespace
- * available (nothing registers). So they feed `keyOwner` below, and the
- * availability check further down still only accepts the namespace module.
- */
 function namespaceSources(ns) {
   const files = [join(i18nDir, `${ns}.ts`)];
   const partsDir = join(i18nDir, ns);
@@ -55,13 +28,11 @@ function namespaceSources(ns) {
   return files;
 }
 
-/** A file inside frontend/src/i18n holds copy, never key uses to check. */
 function insideI18n(file) {
   const rel = relative(i18nDir, file);
   return rel !== "" && !rel.startsWith("..");
 }
 
-// key -> namespace that defines it
 const keyOwner = new Map();
 let copyFiles = 0;
 for (const ns of NAMESPACES) {
@@ -72,7 +43,6 @@ for (const ns of NAMESPACES) {
   }
 }
 
-// `shell` is registered by i18n.ts itself, so it is always available.
 const ALWAYS_AVAILABLE = new Set(["shell"]);
 
 const STATIC_IMPORT = /^\s*import\s+(?!type\s)([^;]*?)from\s+"([^"]+)"/gm;
@@ -93,8 +63,6 @@ function resolveSpec(spec, importer) {
 
 function readModule(file) {
   const raw = readFileSync(file, "utf8");
-  // Drop `import { type X }`-only specifiers: TypeScript elides them, so they
-  // are not runtime edges and must not count as namespace coverage.
   const statics = [];
   for (const match of raw.matchAll(STATIC_IMPORT)) {
     const clause = match[1];
@@ -118,7 +86,6 @@ function moduleInfo(file) {
   return cache.get(file);
 }
 
-/** Static closure of an entry, not crossing further lazy boundaries. */
 function closure(entry) {
   const seen = new Set();
   const stack = [entry];

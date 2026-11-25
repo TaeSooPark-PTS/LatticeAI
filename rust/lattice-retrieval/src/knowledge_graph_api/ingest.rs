@@ -1,5 +1,3 @@
-//! Native `POST /knowledge-graph/ingest` (W3b).
-
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -11,8 +9,6 @@ use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 
 use crate::search_api::{language, ok, Kind, Model, RetrievalApiState};
-
-// ── native ingest (W3b) ─────────────────────────────────────────────────────
 
 const INGEST_REQUEST: &[crate::search_api::FieldSpec] = &[
     crate::search_api::required("type", Kind::Str(1)),

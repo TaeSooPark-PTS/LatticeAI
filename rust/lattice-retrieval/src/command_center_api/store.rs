@@ -1,12 +1,3 @@
-//! The small reads and the Python arithmetic the command centre shares.
-//!
-//! Nothing here is command-centre policy — it is the collaborators
-//! `CommandCenterService` reaches through (`WorkspaceOSStore.list_workflows`,
-//! `ReviewQueueService.list`, `KnowledgeGraphStore.last_noise_curate_at`,
-//! `DiscoveryMixin.local_sources`) reduced to exactly the readings the two
-//! routes render, plus the two rounding/parsing helpers whose Python semantics
-//! decide branch outcomes rather than decoration.
-
 use lattice_core::pytext::{self, parse_iso, strip, truncate_chars};
 use lattice_core::CoreError;
 use rusqlite::Connection;
@@ -16,15 +7,8 @@ use sha2::{Digest, Sha256};
 use crate::memory_api::wsos;
 use crate::shape::{py_str, truthy};
 
-/// `graph/projection/curation.py:_LAST_NOISE_CURATE_KEY`.
 const LAST_NOISE_CURATE_KEY: &str = "last_noise_curate_at";
 
-/// `command_center._clip` — `str(text or "").strip()[:limit]`.
-///
-/// `text or ""` is Python truthiness, so `0`, `false`, `[]` and `{}` all clip to
-/// the empty string rather than to their repr. `[:limit]` counts **characters**,
-/// which is why a 120-character Korean title is 120 code points and not 360
-/// bytes.
 pub(crate) fn clip(value: &Value, limit: usize) -> String {
     let text = if truthy(value) {
         py_str(value)
@@ -34,8 +18,6 @@ pub(crate) fn clip(value: &Value, limit: usize) -> String {
     truncate_chars(&strip(&text), limit)
 }
 
-/// `str(value or "")` — the spelling `_conversation_section` and
-/// `_search_conversations` use for timestamps and roles.
 pub(crate) fn py_text(value: Option<&Value>) -> String {
     match value {
         Some(value) if truthy(value) => py_str(value),
@@ -43,34 +25,22 @@ pub(crate) fn py_text(value: Option<&Value>) -> String {
     }
 }
 
-/// CPython's `round(value)` — half-to-even on the exact binary value.
-///
-/// Every health score is `round(ratio * 100)`, and the grade thresholds are
-/// `>= 85` / `>= 70` / `>= 50`. Half-away-from-zero would move a score sitting
-/// exactly on `x.5` by one and, at the boundary, change the grade word the
-/// briefing prints.
 pub(crate) fn py_round_int(value: f64) -> i64 {
     pytext::round_to(value, 0) as i64
 }
 
-/// `automation_intelligence._stable_id`.
 pub(crate) fn stable_id(prefix: &str, seed: &str) -> String {
     let digest = Sha256::digest(seed.as_bytes());
     let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
     format!("{prefix}-{}", &hex[..10])
 }
 
-/// `WorkspaceRunsMixin.list_workflows(workspace_id=…)["workflows"]`.
-///
-/// `query` is never passed by this family, so the name/steps filter is not
-/// reachable from either route and is not reproduced.
 pub(crate) fn workflows(state: &Value, workspace_id: Option<&str>) -> Vec<Value> {
     let mut items = wsos::scoped(listify(state.get("workflows")), workspace_id);
     items.reverse();
     items
 }
 
-/// `_listify` — a non-list reads as empty rather than raising.
 fn listify(value: Option<&Value>) -> Vec<Value> {
     match value {
         Some(Value::Array(items)) => items.clone(),
@@ -78,11 +48,6 @@ fn listify(value: Option<&Value>) -> Vec<Value> {
     }
 }
 
-/// `ReviewQueueService.list(status="pending")` — the length, which is all the
-/// briefing renders.
-///
-/// `now` is naive local seconds, because `ReviewQueueService`'s default clock is
-/// `datetime.now` and `snoozed_until` is written by `now_iso()`.
 pub(crate) fn pending_reviews(
     state: &Value,
     workspace_id: Option<&str>,
@@ -91,8 +56,6 @@ pub(crate) fn pending_reviews(
 ) -> i64 {
     let mut items = wsos::scoped(listify(state.get("review_items")), workspace_id);
     if !user_email.is_empty() {
-        // `item.get("user_email") in {None, user_email}` — a record written
-        // before accounts existed stays visible to whoever asks.
         items.retain(|item| match item.get("user_email") {
             None | Some(Value::Null) => true,
             Some(Value::String(owner)) => owner == user_email,
@@ -105,11 +68,8 @@ pub(crate) fn pending_reviews(
         .count() as i64
 }
 
-/// `ReviewQueueService._effective_status` — read-time snooze expiry only.
 fn effective_status(item: &Value, now: f64) -> String {
     let status = item.get("status");
-    // `str(item.get("status")) != "snoozed"` — an absent status stringifies to
-    // `"None"`, which is not `"snoozed"`, so it takes the first branch.
     if status.and_then(Value::as_str) != Some("snoozed") {
         let raw = py_text(status);
         return if raw.is_empty() {
@@ -128,7 +88,6 @@ fn effective_status(item: &Value, now: f64) -> String {
     }
 }
 
-/// `KnowledgeGraphCurationMixin.last_noise_curate_at` — `None` on any failure.
 pub(crate) fn last_noise_curate_at(conn: &Connection) -> Option<String> {
     let value: Option<String> = conn
         .query_row(
@@ -140,12 +99,6 @@ pub(crate) fn last_noise_curate_at(conn: &Connection) -> Option<String> {
     value.filter(|text| !text.is_empty())
 }
 
-/// `CommandCenterService._older_than_days`.
-///
-/// An unreadable stamp is stale, because suggesting a dry-run pass is safe.
-/// `now` is UTC epoch seconds matching offset-free UTC stamps written by
-/// `now_iso()` across Rust and Python. One narrow contract remains: a stamp
-/// carrying an explicit UTC offset makes [`parse_iso`] answer `None` here.
 pub(crate) fn older_than_days(stamp: &str, days: i64, now: f64) -> bool {
     match parse_iso(Some(stamp)) {
         None => true,
@@ -153,12 +106,6 @@ pub(crate) fn older_than_days(stamp: &str, days: i64, now: f64) -> bool {
     }
 }
 
-/// `_parse_ts` — ISO text as **UTC** epoch seconds, offset-free UTC stamps included.
-///
-/// `datetime.fromisoformat(text.replace("Z", "+00:00"))` followed by
-/// `replace(tzinfo=utc)` for an offset-free result: because both Rust and Python
-/// now emit offset-free UTC timestamps, naive stamps align directly with
-/// `datetime.now(timezone.utc)` without host-timezone skew.
 pub(crate) fn parse_ts(value: &Value) -> Option<f64> {
     let text = if truthy(value) {
         py_str(value)
@@ -173,11 +120,8 @@ pub(crate) fn parse_ts(value: &Value) -> Option<f64> {
     Some(parse_iso(Some(naive))? - offset)
 }
 
-/// Split a trailing `±HH[:MM]` designator off an ISO stamp.
 fn split_offset(text: &str) -> (&str, f64) {
     let chars: Vec<(usize, char)> = text.char_indices().collect();
-    // Index 10 is the end of `YYYY-MM-DD`; the two hyphens before it are date
-    // separators, never offsets.
     let found = chars
         .iter()
         .skip(11)
@@ -203,31 +147,15 @@ fn split_offset(text: &str) -> (&str, f64) {
     )
 }
 
-/// One connected knowledge folder, reduced to what a suggestion reads.
 #[derive(Debug, Clone)]
 pub(crate) struct LocalSource {
-    /// `knowledge_sources.id`.
     pub(crate) id: String,
-    /// `knowledge_sources.root_path`.
     pub(crate) root_path: String,
-    /// `knowledge_sources.label`.
     pub(crate) label: String,
-    /// `bool(knowledge_sources.watch_enabled)`.
     pub(crate) watch_enabled: bool,
-    /// `sum(file_status.values())` — every `local_file_index` row for this id.
     pub(crate) indexed: i64,
 }
 
-/// `DiscoveryMixin.local_sources()["sources"]`, narrowed to five fields.
-///
-/// The seven columns this drops (`os_type`, `drive_id`, `status`,
-/// `include_ocr`, `consent`, the three stamps) are never read on the path from
-/// `AutomationIntelligenceService.suggestions` to the briefing's `top`, so
-/// materialising them would be weight that still had to be kept true.
-///
-/// `indexed` is `sum(int(v or 0) for v in file_status.values())` where
-/// `file_status` is the per-status histogram: summing every bucket is the row
-/// count for that source, which is what one `COUNT(*)` answers.
 pub(crate) fn local_sources(conn: &Connection) -> Result<Vec<LocalSource>, CoreError> {
     let mut counts: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
     {
@@ -291,7 +219,6 @@ mod tests {
 
     #[test]
     fn a_stable_id_is_the_first_ten_hex_digits_of_the_sha256() {
-        // sha256("") = e3b0c44298fc1c14...
         assert_eq!(stable_id("pat", ""), "pat-e3b0c44298");
     }
 

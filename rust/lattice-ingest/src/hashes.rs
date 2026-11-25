@@ -1,51 +1,22 @@
-//! Chunk ids and content hashes, exactly as the Python write path spells them.
-//!
-//! Three conventions, and they are not interchangeable:
-//!
-//! * a **chunk id** hashes `"{source_node}:{index}:{chunk_text}"`, so a moved
-//!   chunk boundary re-keys the chunk. That is why the plain strategy's
-//!   boundaries are a compatibility contract rather than an implementation
-//!   detail (`lattice_brain/graph/ingest.py:150,399,746`).
-//! * a **file** content hash is sha256 over the file's *bytes*
-//!   (`ingest.py:252`), because a file's identity is what is on disk.
-//! * a **text / web** content hash is sha256 over
-//!   `"{source_type}|{source_uri}|{text}"` and the identity hash wraps it with
-//!   the workspace (`ingest.py:660-662`), because two workspaces holding the
-//!   same page are two nodes, not one.
-//!
-//! Python encodes with `errors="replace"`, which only differs from a plain
-//! UTF-8 encode for lone surrogates — a `&str` cannot hold one, so the two are
-//! the same function here.
-
 use lattice_core::clean_text;
 pub use lattice_core::{sha256_bytes, sha256_text};
 
-/// How many hex characters of a digest an id carries.
 pub const ID_DIGEST_CHARS: usize = 24;
 
-/// `chunk:{sha256(f"{source_node_id}:{index}:{chunk_text}")[:24]}`.
 pub fn chunk_id(source_node_id: &str, index: usize, chunk_text: &str) -> String {
     let digest = sha256_text(&format!("{source_node_id}:{index}:{chunk_text}"));
     format!("chunk:{}", &digest[..ID_DIGEST_CHARS])
 }
 
-/// A file's content hash: sha256 over its bytes.
 pub fn file_content_hash(data: &[u8]) -> String {
     sha256_bytes(data)
 }
 
-/// A text/web source's content hash: `sha256("{type}|{uri}|{text}")`.
-///
-/// An absent *and* an empty URI both render as the empty string — Python's
-/// `source_uri or ''` treats them the same, and so must this.
 pub fn text_content_hash(source_type: &str, source_uri: Option<&str>, text: &str) -> String {
     let uri = source_uri.unwrap_or("");
     sha256_text(&format!("{source_type}|{uri}|{text}"))
 }
 
-/// `sha256("{workspace_id or 'legacy-global'}|{content_hash}")`.
-///
-/// An empty workspace id is falsy in Python, so it means "legacy global" too.
 pub fn identity_hash(workspace_id: Option<&str>, content_hash: &str) -> String {
     let workspace = match workspace_id {
         Some(id) if !id.is_empty() => id,
@@ -54,17 +25,11 @@ pub fn identity_hash(workspace_id: Option<&str>, content_hash: &str) -> String {
     sha256_text(&format!("{workspace}|{content_hash}"))
 }
 
-/// `webdoc:{identity_hash[:24]}` — the content node id for a text/web source.
 pub fn content_id(identity_hash: &str) -> String {
     let head: String = identity_hash.chars().take(ID_DIGEST_CHARS).collect();
     format!("webdoc:{head}")
 }
 
-/// The vector index's `text_hash`: sha256 over the **cleaned** text.
-///
-/// `_upsert_vector_item` collapses whitespace before hashing (`clean_text`),
-/// unlike chunking, which strips only. Two chunks that differ solely in
-/// internal whitespace therefore share an embedding row but not a chunk id.
 pub fn vector_text_hash(text: &str) -> String {
     sha256_text(&clean_text(text))
 }

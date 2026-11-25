@@ -1,15 +1,7 @@
-//! `time.time()` as an injectable seam.
-//!
-//! Session expiry, the sliding-window IP limiter and the per-user token bucket
-//! all read the wall clock, and all three are things a fixture has to be able
-//! to replay. A frozen clock is the difference between a parity test that
-//! proves the refill arithmetic and one that hopes the machine was fast enough.
-
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Seconds since the Unix epoch, as a float — Python's `time.time()`.
 #[derive(Clone)]
 pub struct Clock {
     frozen: Option<Arc<AtomicU64>>,
@@ -32,19 +24,16 @@ impl Default for Clock {
 }
 
 impl Clock {
-    /// The real wall clock.
     pub fn system() -> Self {
         Self { frozen: None }
     }
 
-    /// A clock that stands still at `seconds` until [`Clock::advance`].
     pub fn frozen(seconds: f64) -> Self {
         Self {
             frozen: Some(Arc::new(AtomicU64::new(seconds.to_bits()))),
         }
     }
 
-    /// The current time in seconds.
     pub fn now(&self) -> f64 {
         match &self.frozen {
             Some(cell) => f64::from_bits(cell.load(Ordering::Relaxed)),
@@ -55,7 +44,6 @@ impl Clock {
         }
     }
 
-    /// Move a frozen clock forward. A no-op on the system clock.
     pub fn advance(&self, seconds: f64) {
         if let Some(cell) = &self.frozen {
             let next = f64::from_bits(cell.load(Ordering::Relaxed)) + seconds;

@@ -11,9 +11,6 @@ import { brainSelfModelCopy } from "./brain/selfModel";
 import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
-// The dictionary lives in ./brain/*, one file per domain. This module is the
-// namespace: it merges those parts and registers them exactly once, so every
-// importer keeps using "@/i18n/brain" and nothing else moves.
 export const brainCopy: NamespaceCopy = {
   ko: {
     ...brainHomeCopy.ko,
@@ -41,5 +38,4 @@ export const brainCopy: NamespaceCopy = {
   },
 };
 
-// Route-scoped: registered when a Brain surface's lazy chunk loads.
 registerCopy(brainCopy);

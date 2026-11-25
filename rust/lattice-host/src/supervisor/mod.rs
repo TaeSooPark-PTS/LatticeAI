@@ -1,9 +1,3 @@
-//! Python worker supervision: command resolution, spawning, HTTP health
-//! gating, crash restart with exponential backoff, and graceful shutdown.
-//!
-//! The desktop shell does all of this ad hoc today; this module is the single
-//! implementation both `src-tauri` and the `lattice-host` binary use.
-
 pub mod backoff;
 pub mod command;
 pub mod health;
@@ -42,42 +36,22 @@ pub use worker_env::{
 
 use monitor::{run_health_poller, run_monitor, Shared};
 
-/// How the supervisor should behave.
 #[derive(Debug, Clone)]
 pub struct SupervisorConfig {
-    /// The chosen worker port. Authoritative — this is what the worker is told
-    /// to bind and what every consumer reads back.
     pub port: u16,
-    /// The gateway port this worker sits behind, when it sits behind one.
-    ///
-    /// Set it and the worker is told to trust the gateway's origin for
-    /// cookie-authenticated writes (`worker_env::csrf_trusted_origins`); leave
-    /// it `None` for the direct topology, where the browser talks to the
-    /// worker's own port and no second origin exists.
     pub gateway_port: Option<u16>,
-    /// `false` fronts an already-running worker without spawning anything.
     pub supervise: bool,
-    /// Worker working directory / agent root parent (`~/.ltcai/desktop-runtime`).
     pub runtime_dir: Option<PathBuf>,
-    /// Where `desktop-sidecar.log` / `.err.log` are appended (`~/.ltcai`).
     pub log_dir: Option<PathBuf>,
-    /// Delay between health probes while the start gate is closed.
     pub health_interval: Duration,
-    /// How long the start gate waits before declaring the boot failed.
     pub health_deadline: Duration,
-    /// Interval of the background liveness poller.
     pub health_poll_interval: Duration,
-    /// Restart schedule.
     pub backoff: BackoffPolicy,
-    /// How long SIGTERM gets before SIGKILL.
     pub stop_grace: Duration,
-    /// Extra environment applied after the pinned worker environment.
     pub extra_env: Vec<(String, String)>,
 }
 
 impl SupervisorConfig {
-    /// Defaults for `port`: supervised, 250 ms health interval, 45 s boot
-    /// deadline (the desktop shell's 45×500 ms budget), 5 s liveness poll.
     pub fn new(port: u16) -> Self {
         Self {
             port,
@@ -94,13 +68,6 @@ impl SupervisorConfig {
         }
     }
 
-    /// Fill `log_dir` (`~/.ltcai`) and `runtime_dir`
-    /// (`~/.ltcai/desktop-runtime`) from the probe's `HOME`.
-    ///
-    /// An explicit `LATTICEAI_AGENT_ROOT` (process env, or already in
-    /// `extra_env`) is copied onto `extra_env` so the worker is pinned to the
-    /// same root the host judges — not silently overwritten by the desktop
-    /// runtime default.
     pub fn with_system_dirs(mut self, probe: &dyn HostProbe) -> Self {
         self.log_dir = worker_env::ltcai_home(probe);
         self.runtime_dir = worker_env::desktop_runtime_dir(probe);
@@ -125,14 +92,6 @@ impl SupervisorConfig {
         }
     }
 
-    /// The agent workspace the worker will be given.
-    ///
-    /// Order matches [`crate::gateway::mounts::resolve_agent_root`]: an
-    /// explicit `LATTICEAI_AGENT_ROOT` on `extra_env` (copied from the process
-    /// environment by [`Self::with_system_dirs`]) wins; otherwise
-    /// `runtime_dir/agent_workspace`. The host's native kernel routes judge
-    /// paths against the same directory, so a preflight verdict is about the
-    /// files the worker would really touch.
     pub fn agent_root(&self) -> Option<PathBuf> {
         if let Some((_, value)) = self
             .extra_env
@@ -151,18 +110,12 @@ impl SupervisorConfig {
     }
 }
 
-/// Why the supervisor could not bring the worker up.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SupervisorError {
-    /// No worker command could be resolved on this machine.
     Resolve(ResolveError),
-    /// The process could not be spawned.
     Spawn(String),
-    /// The worker never answered `GET /health` in time.
     Health(String),
-    /// A stop was requested while starting.
     Stopped(String),
-    /// The shared HTTP client could not be built.
     Client(String),
 }
 
@@ -186,9 +139,6 @@ struct Tasks {
     health: Option<JoinHandle<()>>,
 }
 
-/// Owns the worker process and answers "what is its state right now".
-///
-/// Cheap to clone (everything is behind an `Arc`).
 #[derive(Clone)]
 pub struct Supervisor {
     shared: Arc<Shared>,
@@ -197,13 +147,10 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
-    /// Supervisor talking to the real machine.
     pub fn new(config: SupervisorConfig) -> Result<Self, SupervisorError> {
         Self::with_probe(config, Arc::new(SystemProbe))
     }
 
-    /// Supervisor with an injected probe (tests, or a caller that wants to
-    /// pin the resolution inputs).
     pub fn with_probe(
         config: SupervisorConfig,
         probe: Arc<dyn HostProbe>,
@@ -216,44 +163,29 @@ impl Supervisor {
         })
     }
 
-    /// The chosen worker port.
     pub fn port(&self) -> u16 {
         self.shared.config.port
     }
 
-    /// `http://127.0.0.1:{port}` — the worker origin the gateway proxies to.
     pub fn worker_origin(&self) -> String {
         self.shared.origin()
     }
 
-    /// The shared HTTP client (reused by the gateway so connections pool).
     pub fn client(&self) -> reqwest::Client {
         self.shared.client.clone()
     }
 
-    /// Current snapshot.
     pub fn status(&self) -> WorkerStatus {
         self.shared.snapshot()
     }
 
-    /// A live `GET /health` probe, folded into the cached state.
     pub async fn probe_health(&self) -> bool {
         let healthy = check_health(&self.shared.client, &self.shared.origin()).await;
         self.shared.observe_health(healthy);
         self.shared.snapshot().healthy
     }
 
-    /// Start the worker and wait for the health gate.
-    ///
-    /// In `supervise: false` mode nothing is spawned: the health poller starts
-    /// and one live probe decides the initial `healthy` flag.
-    ///
-    /// An `Err` here does not mean the supervisor gave up — a spawn failure or
-    /// a missed health deadline leaves the crash monitor running (and
-    /// retrying); the error is what the *first* attempt did.
     pub async fn start(&self) -> Result<WorkerStatus, SupervisorError> {
-        // The guard must not be held across `snapshot()` — the state mutex is
-        // not reentrant.
         let already_started = {
             let mut state = self.shared.state();
             let started = state.started;
@@ -266,9 +198,6 @@ impl Supervisor {
         if already_started {
             return Ok(self.shared.snapshot());
         }
-        // `send` fails once every receiver is gone (i.e. after a stop), which
-        // would leave the flag stuck at "stopping"; `send_replace` always
-        // writes the value.
         self.stop_tx.send_replace(false);
 
         if !self.shared.config.supervise {
@@ -305,8 +234,6 @@ impl Supervisor {
         }
     }
 
-    /// Stop the worker and suppress every restart: SIGTERM, then SIGKILL once
-    /// `stop_grace` has elapsed.
     pub async fn stop(&self) -> WorkerStatus {
         self.stop_tx.send_replace(true);
         let pid = self.shared.state().pid;
@@ -345,7 +272,6 @@ impl Supervisor {
         self.shared.snapshot()
     }
 
-    /// Stop then start again, preserving the cumulative restart counter.
     pub async fn restart(&self) -> Result<WorkerStatus, SupervisorError> {
         self.stop().await;
         self.start().await
@@ -445,7 +371,7 @@ mod tests {
     async fn unsupervised_mode_never_spawns_anything() {
         let mut config = config();
         config.supervise = false;
-        config.port = 1; // nothing listens on loopback port 1
+        config.port = 1;
         let supervisor =
             Supervisor::with_probe(config, Arc::new(StaticProbe::new())).expect("supervisor");
         let status = supervisor.start().await.expect("no spawn, no failure");

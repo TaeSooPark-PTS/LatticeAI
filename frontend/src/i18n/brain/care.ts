@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Ownership and care: backup, restore, archives and passphrases, plus the
-// Brain intelligence quality report.
 export const brainCareCopy: NamespaceCopy = {
   ko: {
     "care.title": "내 Brain 돌보기",

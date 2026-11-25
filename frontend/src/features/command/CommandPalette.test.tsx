@@ -17,7 +17,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // The briefing panel test installs one; jsdom ships no scrolling of its own.
   delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
 });
 
@@ -100,7 +99,6 @@ describe("CommandPalette", () => {
     const spy = vi.spyOn(latticeApi, "commandSearch");
     renderWithClient(<CommandPalette language="ko" />);
     await userEvent.keyboard("{Meta>}k{/Meta}");
-    // all shell pages listed by default
     expect(screen.getAllByRole("option").length).toBeGreaterThanOrEqual(6);
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByTestId("command-palette")).toBeNull();
@@ -136,7 +134,6 @@ describe("CommandPalette", () => {
     mockBriefing({ sections: {}, quick_actions: [] }, false);
     renderWithClient(<CommandPalette language="ko" />);
     await userEvent.keyboard("{Meta>}k{/Meta}");
-    // pages still listed, but no proactive group appears
     expect(screen.getAllByRole("option").length).toBeGreaterThanOrEqual(6);
     expect(screen.queryByText("지금 바로")).toBeNull();
   });
@@ -149,8 +146,6 @@ describe("CommandPalette", () => {
   });
 
   it("still offers the proactive actions when the briefing carries no numbers", async () => {
-    // An `ok` envelope with nothing in it — a brand new install. The section
-    // appears, but with no counts invented under the labels.
     mockBriefing(null as never);
     renderWithClient(<CommandPalette language="ko" initialOpen />);
 
@@ -180,7 +175,6 @@ describe("CommandPalette", () => {
     expect(screen.getAllByRole("option")[0]!.getAttribute("aria-selected")).toBe("true");
 
     await userEvent.type(input, "{Enter}");
-    // The briefing entry navigates *and* asks the panel to expand itself.
     expect(window.location.hash).toBe("#/brain");
     expect(opened).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("command-palette")).toBeNull();
@@ -213,7 +207,6 @@ describe("CommandPalette", () => {
         query: "회의",
         total: 6,
         groups: [
-          // A knowledge hit with nothing but its own existence.
           { kind: "knowledge", items: [{}] },
           {
             kind: "conversation",
@@ -223,7 +216,6 @@ describe("CommandPalette", () => {
             ],
           },
           { kind: "automation", items: [{ id: "w1", name: "회의록 정리", enabled: true }, {}] },
-          // A group kind this build does not render yet.
           { kind: "files", items: [{ id: "f1", name: "회의록.md" }] },
         ],
       },
@@ -233,12 +225,11 @@ describe("CommandPalette", () => {
     await userEvent.type(screen.getByRole("textbox"), "회의");
 
     await screen.findByText("회의 요약해줘");
-    expect(screen.getByText("2026-06-22")).toBeTruthy(); // timestamp trimmed to a date
+    expect(screen.getByText("2026-06-22")).toBeTruthy();
     expect(screen.getByText("지난 대화")).toBeTruthy();
     expect(screen.getByText("회의록 정리")).toBeTruthy();
     expect(screen.getByText("켜짐")).toBeTruthy();
-    expect(screen.getByText("초안")).toBeTruthy(); // the automation with no `enabled`
-    // The unknown kind contributes no option at all rather than an empty row.
+    expect(screen.getByText("초안")).toBeTruthy();
     expect(screen.queryByText("회의록.md")).toBeNull();
   });
 
@@ -269,6 +260,13 @@ describe("CommandPalette", () => {
     expect(screen.getByTestId("command-palette")).toBeTruthy();
 
     await userEvent.click(container.querySelector(".command-palette-backdrop") as HTMLElement);
+    expect(screen.queryByTestId("command-palette")).toBeNull();
+  });
+
+  it("closes when Escape is pressed inside the input", async () => {
+    mockBriefing({ sections: {}, quick_actions: [] }, false);
+    renderWithClient(<CommandPalette language="ko" initialOpen />);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
     expect(screen.queryByTestId("command-palette")).toBeNull();
   });
 });
@@ -338,16 +336,13 @@ describe("DailyBriefingPanel", () => {
   });
 
   it("shows zeros and a dash rather than blanks when the sections are bare", async () => {
-    // One section present keeps this out of the "empty briefing" path, so the
-    // stat grid renders with nothing behind it — the case that used to print
-    // "undefined/undefined".
     mockBriefing({ sections: { knowledge: {} } });
     renderWithClient(<DailyBriefingPanel language="ko" variant="home" />);
 
     await screen.findByText("질문");
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
     expect(screen.getByText("0/0")).toBeTruthy();
-    expect(screen.getByText("—")).toBeTruthy(); // no health grade to show
+    expect(screen.getByText("—")).toBeTruthy();
     expect(screen.queryByText("최근 담긴 지식")).toBeNull();
     expect(screen.queryByText(/자동화 제안/)).toBeNull();
   });
@@ -360,7 +355,6 @@ describe("DailyBriefingPanel", () => {
     const { container } = renderWithClient(<DailyBriefingPanel language="ko" variant="home" />);
     const entry = await screen.findByText("note-7");
     expect(entry.getAttribute("title")).toBe("");
-    // The nameless one still occupies a row rather than printing "undefined".
     const rows = container.querySelectorAll(".daily-briefing-recent li");
     expect(rows).toHaveLength(2);
     expect(rows[1]!.textContent).toBe("");
@@ -376,15 +370,12 @@ describe("DailyBriefingPanel", () => {
     });
     renderWithClient(<DailyBriefingPanel language="ko" variant="home" />);
 
-    // The known action renders even with no count of its own…
     await screen.findByText("지식 폴더 연결하기");
-    // …and the unknown one contributes no button rather than a raw key.
     expect(screen.queryByText(/teleport/)).toBeNull();
   });
 
   it("expands, opens its drawer and scrolls into view when the palette asks", async () => {
     const scrollIntoView = vi.fn();
-    // jsdom implements no scrolling at all; the component guards with `?.`.
     Element.prototype.scrollIntoView = scrollIntoView;
     mockBriefing({ sections: { conversations: { questions: 4 } }, quick_actions: [] });
 
@@ -394,7 +385,7 @@ describe("DailyBriefingPanel", () => {
         <DailyBriefingPanel language="ko" />
       </details>,
     );
-    expect(screen.queryByText("질문")).toBeNull(); // starts collapsed
+    expect(screen.queryByText("질문")).toBeNull();
 
     fireEvent(window, new Event("lattice:open-briefing"));
 
@@ -414,7 +405,6 @@ describe("DailyBriefingPanel", () => {
 
 describe("revealBriefingPanel", () => {
   it("does nothing when the panel is not on screen", () => {
-    // The effect calls this with a ref that can legitimately be null.
     expect(() => revealBriefingPanel(null)).not.toThrow();
   });
 });

@@ -1,6 +1,3 @@
-//! Enterprise tenant isolation, OIDC/SSO policy validation, SCIM 2.0
-//! provisioning guards, and security audit sink hooks.
-
 use std::collections::HashSet;
 
 use axum::http::{HeaderMap, StatusCode};
@@ -17,29 +14,22 @@ pub use crate::scim::{
     ScimUserProvision,
 };
 
-/// HTTP header used to assert an optional tenant boundary on multi-tenant gateways.
 pub const TENANT_HEADER: &str = "x-tenant-id";
 
-/// Structured security audit sink invoked by [`AuthState`] on auth, tenant,
-/// SSO, and SCIM policy decisions.
 pub trait AuthAuditSink: Send + Sync {
-    /// Record an authentication/authorization security event.
     fn record(&self, event: &str, fields: &Value);
 }
 
-/// In-memory audit recorder for tests and diagnostics.
 #[derive(Debug, Default)]
 pub struct MemoryAuditSink {
     events: std::sync::Mutex<Vec<(String, Value)>>,
 }
 
 impl MemoryAuditSink {
-    /// Create an empty recorder.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Snapshot every recorded `(event, fields)` pair in order.
     pub fn events(&self) -> Vec<(String, Value)> {
         self.events.lock().expect("audit lock").clone()
     }
@@ -54,8 +44,6 @@ impl AuthAuditSink for MemoryAuditSink {
     }
 }
 
-/// Constant-time byte slice comparison so tokens, nonces, and OAuth states do
-/// not leak prefix lengths via timing side channels.
 pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     let max_len = a.len().max(b.len());
     let mut diff = a.len() ^ b.len();
@@ -67,8 +55,6 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
-/// Validate a tenant/organization identifier so it cannot carry path traversal
-/// or control characters.
 pub fn is_valid_tenant_id(raw: &str) -> bool {
     let trimmed = raw.trim();
     if trimmed.is_empty() || trimmed.len() > 128 {
@@ -82,7 +68,6 @@ pub fn is_valid_tenant_id(raw: &str) -> bool {
         .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
 }
 
-/// Extract a requested tenant identifier from `x-tenant-id` header or query.
 pub fn requested_tenant(headers: &HeaderMap, query_tenant: Option<&str>) -> Option<String> {
     if let Some(raw) = headers
         .get(TENANT_HEADER)
@@ -98,7 +83,6 @@ pub fn requested_tenant(headers: &HeaderMap, query_tenant: Option<&str>) -> Opti
         .map(str::to_string)
 }
 
-/// Read the primary tenant identifier stored on a `users.json` record.
 pub fn tenant_of_user(record: &Map<String, Value>) -> Option<String> {
     for key in ["tenant_id", "org_id"] {
         if let Some(value) = record
@@ -113,7 +97,6 @@ pub fn tenant_of_user(record: &Map<String, Value>) -> Option<String> {
     None
 }
 
-/// All tenant identifiers a user record explicitly belongs to.
 pub fn allowed_tenants_of_user(record: &Map<String, Value>) -> Vec<String> {
     let mut seen = HashSet::new();
     let mut out = Vec::new();
@@ -145,7 +128,6 @@ pub fn allowed_tenants_of_user(record: &Map<String, Value>) -> Vec<String> {
     out
 }
 
-/// Reason a tenant boundary check failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TenantError {
     InvalidTenantId(String),
@@ -171,8 +153,6 @@ impl std::fmt::Display for TenantError {
     }
 }
 
-/// Verify that `email` (with optional `users.json` record) may operate under
-/// `requested_tenant`, returning the effective tenant id on success.
 pub fn verify_tenant_boundary(
     email: &str,
     record: Option<&Map<String, Value>>,
@@ -219,7 +199,6 @@ pub fn verify_tenant_boundary(
     }
 }
 
-/// Turn a [`TenantError`] into a `403 Forbidden` HTTP response.
 pub fn tenant_denied_response(err: &TenantError) -> Response {
     let status = match err {
         TenantError::InvalidTenantId(_) => StatusCode::BAD_REQUEST,
@@ -237,7 +216,6 @@ pub fn tenant_denied_response(err: &TenantError) -> Response {
         .into_response()
 }
 
-/// Hardened SSO/OIDC policy settings beyond raw [`SsoSettings`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OidcPolicy {
     pub require_https: bool,
@@ -261,7 +239,6 @@ impl Default for OidcPolicy {
     }
 }
 
-/// Callback binding inputs verified against an OIDC ID token's claims.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OidcCallbackCheck {
     pub expected_state: String,
@@ -271,7 +248,6 @@ pub struct OidcCallbackCheck {
     pub expected_tenant: Option<String>,
 }
 
-/// Parsed ID-token claims verified before issuing a session.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OidcClaims {
     pub iss: String,
@@ -286,7 +262,6 @@ pub struct OidcClaims {
     pub tenant_id: Option<String>,
 }
 
-/// Failure from SSO configuration or OIDC claim validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OidcPolicyError {
     InvalidConfiguration(String),
@@ -397,7 +372,6 @@ fn issuer_origin_from_discovery(discovery_url: &str) -> String {
         .to_string()
 }
 
-/// Validate configured [`SsoSettings`] against enterprise transport & OIDC rules.
 pub fn validate_sso_settings(
     sso: &SsoSettings,
     policy: &OidcPolicy,
@@ -429,7 +403,6 @@ pub fn validate_sso_settings(
     Ok(())
 }
 
-/// Validate an OIDC login callback and ID-token claims before minting a session.
 pub fn validate_oidc_claims(
     sso: &SsoSettings,
     policy: &OidcPolicy,
@@ -554,7 +527,6 @@ mod tests {
             verify_tenant_boundary("alice@acme.test", Some(&record), Some("../globex")),
             Err(TenantError::InvalidTenantId(_))
         ));
-        // Unassigned user cannot claim arbitrary tenant.
         let bare = Map::new();
         assert!(matches!(
             verify_tenant_boundary("anon@example.test", Some(&bare), Some("acme")),

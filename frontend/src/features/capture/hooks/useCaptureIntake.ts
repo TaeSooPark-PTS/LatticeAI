@@ -89,10 +89,6 @@ export function useFolderIntake(language: Language) {
     browserFolderUpload.mutate(files);
   }, [browserFolderUpload, language]);
   const chooseFolder = React.useCallback(async () => {
-    /* v8 ignore next -- unreachable: the only trigger is this screen's single
-       "choose folder" button, which is itself disabled by the same
-       `choosingFolder` flag in the same render. Kept as defense-in-depth. */
-    if (choosingFolder) return;
     setChoosingFolder(true);
     setFolderPickError(null);
     try {

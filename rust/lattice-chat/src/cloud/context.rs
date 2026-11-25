@@ -11,12 +11,10 @@ use serde_json::{json, Value};
 use crate::boundary::{blocked_reason, blocked_reason_for_policy, HybridPolicy, NetworkMode};
 use crate::pyvalue::{field, text as py_text};
 
-/// `build_minimal_context`'s soft type preference.
 const PREFERRED_TYPES: [&str; 8] = [
     "Decision", "Concept", "Task", "Document", "File", "CodeFile", "Person", "Feature",
 ];
 
-/// What may be sent to a cloud LLM.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MinimalContext {
     pub query: String,
@@ -29,7 +27,6 @@ pub struct MinimalContext {
 }
 
 impl MinimalContext {
-    /// `MinimalContext.to_dict`.
     pub fn to_value(&self) -> Value {
         json!({
             "query": self.query,
@@ -42,7 +39,6 @@ impl MinimalContext {
         })
     }
 
-    /// The node titles the `hybrid_context` frame reports.
     pub fn titles(&self) -> Vec<String> {
         self.nodes
             .iter()
@@ -58,17 +54,13 @@ impl MinimalContext {
     }
 }
 
-/// `_rough_token_estimate` — ~4 characters per token for mixed EN/KO.
 pub fn rough_token_estimate(text: &str) -> i64 {
     if text.is_empty() {
         return 0;
     }
-    // Python measures characters, and so does this: a Korean summary is half
-    // the tokens of its UTF-8 byte length.
     (text.chars().count().div_ceil(4) as i64).max(1)
 }
 
-/// `_extract_keywords` — deterministic, dependency-free candidates.
 pub fn extract_keywords(message: &str, limit: usize) -> Vec<String> {
     static RE: OnceLock<Regex> = OnceLock::new();
     let pattern = RE.get_or_init(|| Regex::new(r"[\w가-힣]{2,}").expect("pattern compiles"));
@@ -105,11 +97,6 @@ fn node_id_of(node: &Value) -> String {
     }
 }
 
-/// `build_minimal_context` — the smallest useful set of local nodes.
-///
-/// `mode` is carried for symmetry with the Python signature; the selection is
-/// mode-invariant (the hard blocks apply in every mode) and the *caller* is the
-/// one that decides whether the result may be transmitted.
 pub fn build_minimal_context(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -133,7 +120,6 @@ pub fn build_minimal_context(
     )
 }
 
-/// `build_minimal_context` with user/workspace `HybridPolicy` filtering.
 #[allow(clippy::too_many_arguments)]
 pub fn build_minimal_context_with_policy(
     conn: &Connection,
@@ -159,7 +145,6 @@ pub fn build_minimal_context_with_policy(
     )
 }
 
-/// [`build_minimal_context_with_policy`] with optional semantic query vector override.
 #[allow(clippy::too_many_arguments)]
 pub fn build_minimal_context_with_policy_and_query(
     conn: &Connection,
@@ -224,8 +209,6 @@ fn build_minimal_context_inner(
         semantic_degraded,
         ..Default::default()
     };
-    // Fail closed: an unusable retrieval sends nothing rather than falling back
-    // to a broader, unfiltered context.
     let (matches, quality) = match hybrid_search(conn, model, &query, &options) {
         Ok(result) => {
             let matches: Vec<Value> = result
@@ -252,8 +235,6 @@ fn build_minimal_context_inner(
             None => blocked_reason(node).is_none(),
         })
         .collect();
-    // `sort` in Python is stable, and so is `sort_by` here — the third key only
-    // breaks ties the first two leave.
     selected.sort_by(|left, right| {
         let rank = |node: &Value| {
             let node_type = field(node, "type");
@@ -299,9 +280,6 @@ fn build_minimal_context_inner(
                 node_type
             }
         };
-        // `.rstrip(": ")` strips the *characters* ':' and ' ' — so an empty
-        // summary loses the separator and a trailing colon in a title would go
-        // with it. Python's behaviour, reproduced.
         lines.push(
             format!("- [{node_type}] {title}: {summary}")
                 .trim_end_matches([':', ' '])

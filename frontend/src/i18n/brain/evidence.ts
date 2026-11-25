@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Trust surfaces: proof and citations, grounding, the source modal,
-// approvals, agent steps, watchers, and export / portability.
 export const brainEvidenceCopy: NamespaceCopy = {
   ko: {
     "brain.proof.aria": "Brain 증거",

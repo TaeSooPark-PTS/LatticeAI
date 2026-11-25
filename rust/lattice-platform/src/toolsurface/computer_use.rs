@@ -1,11 +1,3 @@
-//! Computer-use route surface — native port of `latticeai/api/computer_use.py`.
-//!
-//! Validation and status are native. Actual desktop actions (click/type/key/…)
-//! never call pyautogui: they delegate to `POST /agent/tool` through
-//! [`WorkerSeamClient`]. When no worker is wired, status and defaulted
-//! `open_app` return the same shapes the Python tools return without a
-//! display (`pyautogui not installed`, `requires_desktop_bridge`).
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -21,7 +13,6 @@ use serde_json::{json, Value};
 
 use crate::http_reply::{detail, json_ok, missing_fields, parse_json_object};
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/tools/chrome_status"),
     ("GET", "/tools/computer_use_status"),
@@ -38,14 +29,11 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/cu/agent"),
 ];
 
-/// Router state.
 #[derive(Clone)]
 pub struct ComputerUseState {
     pub auth: Arc<AuthState>,
     pub seam: Option<WorkerSeamClient>,
     pub agent_root: PathBuf,
-    /// When false the `/cu/agent` loop reports "No model loaded." — the
-    /// capture profile never loads one.
     pub model_loaded: bool,
 }
 
@@ -60,7 +48,6 @@ impl ComputerUseState {
     }
 }
 
-/// Build the computer-use router.
 pub fn router(state: ComputerUseState) -> Router {
     Router::new()
         .route("/tools/chrome_status", get(chrome_status))
@@ -352,12 +339,8 @@ async fn cu_agent(
             "action",
             &json!({"step": 1, "action": "computer_open_app", "args": {"app": "Google Chrome"}}),
         );
-        let result = if state.seam.is_some() {
-            // Delegation is the production path; the capture never hits it.
-            json!({"action": "open_app", "app": "Google Chrome"})
-        } else {
-            json!({"action": "open_app", "app": "Google Chrome"})
-        };
+        let _ = &state.seam;
+        let result = json!({"action": "open_app", "app": "Google Chrome"});
         let result_frame = sse_named(
             "result",
             &json!({"step": 1, "action": "computer_open_app", "result": result}),
@@ -377,8 +360,6 @@ async fn cu_agent(
     sse_response(sse_named("error", &json!({"error": "No model loaded."})))
 }
 
-/// FastAPI validates the body *before* `require_user`, so an empty POST is
-/// 422 even when the caller is anonymous.
 fn require_after_validation(
     state: &ComputerUseState,
     headers: &HeaderMap,

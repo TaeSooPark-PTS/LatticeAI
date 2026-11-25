@@ -1,18 +1,9 @@
-//! Canonical secret redaction (`core/security.py::redact_secret_text` + `redact_secrets`).
-//!
-//! Promoted to `lattice-core` in v13.0.0 so `lattice-platform` (`knowledge`,
-//! `workspaceos`, `adminops`) and `lattice-chat` share one `OnceLock`-compiled
-//! redaction engine downward rather than reaching sideways across domain
-//! boundaries or recompiling regexes per call.
-
 use std::sync::OnceLock;
 
 use fancy_regex::{Captures, Regex};
 use serde_json::{json, Map, Value};
 
-/// Marker substituted for redacted secret values.
 pub const REDACTION: &str = "[REDACTED_SECRET]";
-/// Marker substituted for redacted PII values.
 pub const PII_REDACTION: &str = "[REDACTED_PII]";
 
 const SECRET_PATTERNS: &[&str] = &[
@@ -74,14 +65,12 @@ fn patterns() -> &'static CompiledPatterns {
     })
 }
 
-/// One detected sensitive finding (category + count, never storing raw secret/PII value).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SensitiveFinding {
     pub category: String,
     pub count: usize,
 }
 
-/// Detect secret and PII categories present in `text` without echoing raw values.
 pub fn detect_sensitive_findings(text: &str) -> Vec<SensitiveFinding> {
     if text.is_empty() {
         return Vec::new();
@@ -111,7 +100,6 @@ pub fn detect_sensitive_findings(text: &str) -> Vec<SensitiveFinding> {
     findings
 }
 
-/// Redact PII (emails, phone numbers, RRN/SSN, card numbers, OS home directory usernames).
 pub fn redact_pii_text(text: &str) -> String {
     if text.is_empty() {
         return String::new();
@@ -125,12 +113,10 @@ pub fn redact_pii_text(text: &str) -> String {
     out
 }
 
-/// Redact both inline secrets and PII (used for cloud egress, agent traces, and diagnostics).
 pub fn redact_pii_and_secrets(text: &str) -> String {
     redact_pii_text(&redact_secret_text(text))
 }
 
-/// Recursive JSON redactor masking secret keys, inline secrets, and PII strings.
 pub fn redact_pii_and_secrets_value(value: &Value) -> Value {
     match value {
         Value::String(s) => json!(redact_pii_and_secrets(s)),
@@ -152,7 +138,6 @@ pub fn redact_pii_and_secrets_value(value: &Value) -> Value {
     }
 }
 
-/// Redact inline API keys, tokens, credentials, DSNs, PEM blocks, and Telegram bot tokens.
 pub fn redact_secret_text(text: &str) -> String {
     if text.is_empty() {
         return String::new();
@@ -184,7 +169,6 @@ pub fn redact_secret_text(text: &str) -> String {
     out
 }
 
-/// Recursive JSON structure redactor (`core/security.py::redact_secrets`).
 pub fn redact_secrets(value: &Value) -> Value {
     match value {
         Value::String(s) => json!(redact_secret_text(s)),
@@ -204,7 +188,6 @@ pub fn redact_secrets(value: &Value) -> Value {
     }
 }
 
-/// Walk JSON string leaves only, leaving secret-named keys intact unless their value matches a secret pattern.
 pub fn redact_structure(value: &Value) -> Value {
     match value {
         Value::String(text) => json!(redact_secret_text(text)),
@@ -220,7 +203,6 @@ pub fn redact_structure(value: &Value) -> Value {
     }
 }
 
-/// Return true if a JSON field name denotes a secret/credential key.
 pub fn is_secret_key(key: &str) -> bool {
     let lowered = key.trim().to_lowercase().replace('-', "_");
     [

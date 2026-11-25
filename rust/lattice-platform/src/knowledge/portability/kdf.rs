@@ -1,6 +1,3 @@
-//! Constant-time comparison, SHA-256 hex digest, HMAC-SHA256, HKDF-SHA256,
-//! PBKDF2-HMAC-SHA256, and RFC 7914 scrypt key derivation primitives.
-
 use sha2::{Digest, Sha256};
 
 const MAX_SCRYPT_N: u32 = 65_536;
@@ -180,7 +177,6 @@ fn scrypt_romix(b: &mut [u32], n: usize, r: usize) {
     }
 }
 
-/// RFC 7914 memory-hard scrypt KDF.
 pub(crate) fn scrypt_kdf(
     password: &[u8],
     salt: &[u8],

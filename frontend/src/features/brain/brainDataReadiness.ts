@@ -123,9 +123,6 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
         locator: textValue(item, ["locator"]),
         kind: textValue(item, ["kind"]),
         caption: textValue(item, ["caption"]),
-        // Only an inline data: URI is accepted. A remote src would turn an
-        // evidence card into an outbound request, which is not what a
-        // local-first Brain does when it shows you your own photo.
         thumbnail: dataImageValue(item),
       })),
     },
@@ -137,8 +134,6 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
   };
 }
 
-// status "unavailable" is a machine state consumed by boolean/i18n-key logic
-// (useBrainProof, HomePanels). It must not be rendered as user-facing text.
 function unavailableBrainProof(fallbackModelName: string): BrainProof {
   return {
     status: "unavailable",

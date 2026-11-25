@@ -1,5 +1,3 @@
-"""Target definitions and regex/JSON/package-lock update helpers for version bumping."""
-
 from __future__ import annotations
 
 import json
@@ -23,12 +21,9 @@ REPO = DEFAULT_REPO
 
 SEMVER_PATTERN = re.compile(r"\d+\.\d+\.\d+([-.][0-9A-Za-z.]+)?")
 
-# (path, kind, pattern) — pattern groups: (prefix, version)
 TARGETS: List[Tuple[str, str, Optional[str]]] = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
-    # WP-P1 deleted workspace_os / marketplace / multi_agent / the legacy
-    # shim registry. The package version is the runtime canonical now.
     (
         "latticeai/services/architecture_readiness.py",
         "regex",
@@ -52,12 +47,10 @@ TARGETS: List[Tuple[str, str, Optional[str]]] = [
 
 
 def is_valid_semver(version: str) -> bool:
-    """Return True if ``version`` is a valid semantic version string."""
     return bool(SEMVER_PATTERN.fullmatch(version))
 
 
 def resolve_repo(explicit_repo: Optional[Path] = None) -> Path:
-    """Resolve repository root, honoring pytest ``monkeypatch.setattr(..., 'REPO', ...)``."""
     if explicit_repo is not None:
         return explicit_repo
     for mod_name in (
@@ -80,7 +73,6 @@ def resolve_repo(explicit_repo: Optional[Path] = None) -> Path:
 def apply_regex_target(
     text: str, pattern: str, version: str
 ) -> Tuple[bool, str, str, bool]:
-    """Update a regex target with 3 capture groups ``(prefix)(version)(suffix)``."""
     m = re.search(pattern, text, flags=re.MULTILINE)
     if m is None:
         return False, "", text, False
@@ -103,7 +95,6 @@ def apply_regex_target(
 def apply_json_target(
     text: str, field: str, version: str
 ) -> Tuple[bool, str, str, bool]:
-    """Update a top-level field in a JSON file."""
     data = json.loads(text)
     if field not in data:
         return False, "", text, False
@@ -115,7 +106,6 @@ def apply_json_target(
 
 
 def apply_package_lock_target(text: str, version: str) -> Tuple[bool, str, str, bool]:
-    """Update top-level ``version`` and ``packages[''].version`` in ``package-lock.json``."""
     data = json.loads(text)
     if "version" not in data:
         return False, "", text, False
@@ -136,7 +126,6 @@ def apply_target(
     *,
     check: bool = False,
 ) -> Tuple[bool, str, str, bool]:
-    """Dispatch a single target update or check."""
     text = path.read_text(encoding="utf-8")
     if kind == "regex":
         assert spec is not None
@@ -154,7 +143,7 @@ def apply_target(
         return apply_openapi_fragment(text, version)
     if kind == "openapi-index":
         return apply_openapi_index(text, version, path, check=check)
-    raise AssertionError(f"Unknown target kind: {kind}")  # pragma: no cover
+    raise AssertionError(f"Unknown target kind: {kind}")
 
 
 def run_targets(
@@ -164,7 +153,6 @@ def run_targets(
     check: bool = False,
     repo: Optional[Path] = None,
 ) -> int:
-    """Execute version bump or verification over ``targets``."""
     target_repo = resolve_repo(repo)
     failures = 0
     for rel, kind, spec in targets:

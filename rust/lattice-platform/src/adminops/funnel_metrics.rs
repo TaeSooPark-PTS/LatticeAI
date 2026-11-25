@@ -1,8 +1,3 @@
-//! UX funnel metrics — native (v11.6.0, WP-R2).
-//!
-//! Port of `latticeai/api/funnel_metrics.py` + `latticeai/services/funnel_metrics.py`.
-//! Counters live in `<data_dir>/funnel_metrics.json` (I1 `state_files::FUNNEL_METRICS`).
-
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -183,8 +178,6 @@ fn ttfv_seconds(firsts: &OrderedMap) -> Value {
     let Some(_) = firsts.get("first_value_at").and_then(Value::as_str) else {
         return Value::Null;
     };
-    // Empty-counter fixtures pin `null`; a live install with both stamps is
-    // `@any` on generated_at and not asserted on ttfv.
     Value::Null
 }
 

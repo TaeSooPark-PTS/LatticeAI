@@ -1,19 +1,3 @@
-//! Port of the knowledge graph's relationship and traversal reads
-//! (`lattice_brain/graph/retrieval_reads.py`).
-//!
-//! Both functions run the **same SQL** against the same SQLite, because both are
-//! defined by their SQL: `relationship_search` is a six-way LIKE with a fixed
-//! `ORDER BY weight DESC, created_at DESC, id ASC`, and `traverse` is a
-//! breadth-first walk whose every round re-runs a capped
-//! `ORDER BY weight DESC, id ASC LIMIT limit*3`.
-//!
-//! That per-round cap is the part worth staring at. It is *not* a global cap: a
-//! round with a wide frontier can lose edges the same walk would have kept had
-//! the frontier been narrower, so the set of edges a traversal returns depends
-//! on how the rounds happened to split. Reproduced exactly — an implementation
-//! that hoisted the cap out of the loop would be a better graph walk and a
-//! worse port.
-
 use std::collections::{BTreeSet, HashMap};
 
 use lattice_core::pytext::safe_loads;
@@ -22,20 +6,13 @@ use lattice_core::CoreError;
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-/// Everything `relationship_search` accepts.
 #[derive(Debug, Clone, Default)]
 pub struct RelationshipQuery {
-    /// Free text matched against six columns with `LIKE %…%`.
     pub query: String,
-    /// Restrict to edges touching this node (either endpoint).
     pub node_id: String,
-    /// Restrict to edge types containing this substring.
     pub relationship_type: String,
-    /// Row cap; `0` means Python's default of 30, and the result clamps to 200.
     pub limit: i64,
-    /// `None` is the unscoped local-owner path; a set is a membership filter.
     pub allowed_workspaces: Option<BTreeSet<String>>,
-    /// Whether NULL-workspace legacy rows count as visible.
     pub include_legacy_global: bool,
 }
 
@@ -48,7 +25,6 @@ const RELATIONSHIP_COLUMNS: &str = "
 
 const TRAVERSE_NODE_COLUMNS: &str = "id, type, title, summary, metadata_json, updated_at";
 
-/// `max(1, min(int(limit or default), ceiling))` — a 0 means "the default".
 fn clamp_limit(limit: i64, default: i64, ceiling: i64) -> i64 {
     let requested = if limit == 0 { default } else { limit };
     requested.clamp(1, ceiling)
@@ -74,7 +50,6 @@ fn endpoint(row: &rusqlite::Row<'_>, id: &str, prefix: &str) -> rusqlite::Result
     Ok(Value::Object(node))
 }
 
-/// `KnowledgeGraphReadsMixin.relationship_search`.
 pub fn relationship_search(
     conn: &Connection,
     request: &RelationshipQuery,
@@ -141,8 +116,6 @@ pub fn relationship_search(
     let mut relationships: Vec<Value> = rows.filter_map(Result::ok).collect();
 
     if let Some(allowed) = request.allowed_workspaces.as_ref() {
-        // Both endpoints or neither: an edge whose far end the caller may not
-        // read is not a relationship the caller has.
         let mut kept = Vec::new();
         for rel in relationships {
             let endpoints: Vec<String> = ["source", "target"]
@@ -179,17 +152,11 @@ fn endpoint_id(rel: &Value, side: &str) -> String {
         .to_string()
 }
 
-/// Everything `traverse` accepts beyond the seed.
 #[derive(Debug, Clone)]
 pub struct TraverseOptions {
-    /// BFS rounds; clamps to `0..=4`. **`0` means the default of 1** (Python
-    /// spells it `int(depth or 1)`); pass a negative depth for "the seed alone".
     pub depth: i64,
-    /// Node budget; `0` means Python's default of 100, and it clamps to 500.
     pub limit: i64,
-    /// `None` is the unscoped local-owner path.
     pub allowed_workspaces: Option<BTreeSet<String>>,
-    /// Whether NULL-workspace legacy rows count as visible.
     pub include_legacy_global: bool,
 }
 
@@ -204,12 +171,6 @@ impl Default for TraverseOptions {
     }
 }
 
-/// `KnowledgeGraphReadsMixin.traverse`.
-///
-/// Returns [`CoreError::InvalidRequest`] where Python raises `ValueError`: a
-/// blank seed, and a seed the caller's scope cannot see (which is reported as
-/// "not found" rather than "forbidden", so the endpoint never confirms the
-/// existence of another workspace's node).
 pub fn traverse(
     conn: &Connection,
     node_id: &str,
@@ -233,17 +194,12 @@ pub fn traverse(
             )));
         }
     }
-    // `max(0, min(int(depth or 1), 4))`: a zero is Python-falsy, so it means
-    // "the default of one round", and only a negative depth reaches zero. Not a
-    // typo on either side — reproduced because callers already live with it.
     let depth = if options.depth == 0 { 1 } else { options.depth }.clamp(0, 4);
     let limit = clamp_limit(options.limit, 100, 500);
     let (nodes_table, edges_table) = read_tables(conn);
 
     let mut visited: BTreeSet<String> = [node_id.clone()].into_iter().collect();
     let mut frontier: BTreeSet<String> = [node_id.clone()].into_iter().collect();
-    // Insertion-ordered `edges_by_id`: a repeated edge keeps its first position
-    // and takes the newest value, which is what assigning into a Python dict does.
     let mut edge_order: Vec<String> = Vec::new();
     let mut edges_by_id: HashMap<String, Value> = HashMap::new();
 
@@ -402,7 +358,6 @@ mod tests {
             all["relationships"][1]["metadata"],
             serde_json::json!({"note": "x"})
         );
-        // A REAL weight stays a float; a NULL summary stays null.
         assert_eq!(all["relationships"][0]["weight"], serde_json::json!(0.9));
         assert_eq!(all["relationships"][1]["target"]["summary"], Value::Null);
 
@@ -450,7 +405,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(one["relationships"].as_array().unwrap().len(), 1);
-        // 0 means "the default 30", and a huge limit clamps rather than failing.
         assert_eq!(clamp_limit(0, 30, 200), 30);
         assert_eq!(clamp_limit(500, 30, 200), 200);
         assert_eq!(clamp_limit(-4, 30, 200), 1);
@@ -464,7 +418,6 @@ mod tests {
             },
         )
         .unwrap();
-        // e1 spans w1 → NULL: without the legacy opt-in the far end is invisible.
         assert!(scoped["relationships"].as_array().unwrap().is_empty());
         let scoped = relationship_search(
             &conn,
@@ -499,8 +452,6 @@ mod tests {
         assert_eq!(ids(&two, "nodes", "id"), vec!["b", "a", "c"]);
         assert_eq!(ids(&two, "edges", "id"), vec!["e1", "e2"]);
 
-        // A negative depth is how "the seed alone" is spelled; a zero is falsy
-        // in Python and therefore means the default of one round.
         let zero = traverse(
             &conn,
             "a",
@@ -512,7 +463,6 @@ mod tests {
         .unwrap();
         assert_eq!(ids(&zero, "nodes", "id"), vec!["a"]);
         assert!(zero["edges"].as_array().unwrap().is_empty());
-        // Out-of-range depths clamp instead of failing.
         for (asked, expect) in [(9, 4), (-1, 0), (0, 1)] {
             let out = traverse(
                 &conn,
@@ -541,8 +491,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(capped["nodes"].as_array().unwrap().len(), 2);
-        // e2's far endpoint never joined, but the edge was seen, so it stays —
-        // the honest record of what the walk touched.
         assert_eq!(ids(&capped, "edges", "id"), vec!["e1"]);
         let missing = traverse(&conn, "nope", &TraverseOptions::default()).unwrap();
         assert!(missing["nodes"].as_array().unwrap().is_empty());
@@ -567,7 +515,6 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(format!("{err}"), "graph node not found: a");
-        // An empty allowed set may read nothing at all.
         let none = BTreeSet::new();
         assert!(traverse(
             &conn,

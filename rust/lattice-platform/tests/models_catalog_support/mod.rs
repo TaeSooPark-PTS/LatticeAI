@@ -1,12 +1,3 @@
-//! Shared install / replay helpers for the R10 families.
-//!
-//! Pulled in via `#[path]` from `models_catalog_replay.rs`. It lives in a
-//! directory rather than beside the suites so Cargo does not also compile it
-//! as an integration-test binary of its own.
-
-// A harness is written for every family that includes it, so a helper only one
-// suite calls still reads as dead here.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};

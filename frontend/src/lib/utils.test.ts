@@ -1,11 +1,3 @@
-/**
- * The formatting helpers every screen leans on.
- *
- * All of them take `unknown` on purpose — the values come from API envelopes
- * that may be partial, null, or a string where a number was expected — so the
- * contract that matters is what each one does with the bad input, not the good
- * one. These tests drive both halves of every guard.
- */
 
 import { describe, expect, it } from "vitest";
 
@@ -42,7 +34,6 @@ describe("fmtNumber", () => {
     expect(fmtNumber(undefined)).toBe("0");
     expect(fmtNumber("not a number")).toBe("0");
     expect(fmtNumber({}, "—")).toBe("—");
-    // `Number(null)` is 0, not NaN — a null counter still prints as zero.
     expect(fmtNumber(null)).toBe("0");
   });
 });
@@ -133,8 +124,6 @@ describe("plainText", () => {
   });
 
   it("treats a lone dash placeholder as no text at all", () => {
-    // Backends write "-" for "nothing here"; a caller must be able to fall
-    // through to the next candidate instead of rendering a stray hyphen.
     expect(plainText("-")).toBe("");
   });
 });

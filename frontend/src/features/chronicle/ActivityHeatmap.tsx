@@ -13,15 +13,6 @@ const WEEKDAY_KEYS = [
   "chronicle.weekday.sat",
 ];
 
-/**
- * Week × weekday density grid, the shape everyone already reads without a legend.
- *
- * Cells are buttons, not coloured divs: picking a day is the screen's second
- * navigation control, and a div would leave it unreachable by keyboard and
- * unnamed to a screen reader. Padding cells — the days before the first Sunday
- * and after the last Saturday — render as inert spans rather than disabled
- * buttons, so tabbing never stops on a date the Brain has no opinion about.
- */
 export function ActivityHeatmap({
   weeks,
   selectedDate,

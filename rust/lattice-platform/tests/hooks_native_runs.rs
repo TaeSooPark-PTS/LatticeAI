@@ -1,11 +1,3 @@
-//! A user hook that fired for a **native tool** is visible at `GET /api/hooks/runs`.
-//!
-//! v11.6.0 shipped the lifecycle port unwired and said so ("네이티브 도구에
-//! 대해서는 아직 사용자 훅이 발화하지 않습니다"). This is the end of that: the
-//! sink writes into the same registry the routes read, so one store answers
-//! both, and a second `HooksStore::open` over the same directory — the failure
-//! this pins against — would show an empty run log here.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -59,7 +51,6 @@ async fn a_hook_fired_by_a_native_tool_shows_up_on_the_runs_route() {
     let auth = AuthState::with_clock(config, Clock::frozen(1_700_000_000.0));
     let token = auth.sessions().create(OWNER, Some(OWNER));
 
-    // One registry, two readers — exactly what `OneDoorState` builds.
     let store = HooksStore::open(&data_dir);
     let governance = GovernanceState::open(Arc::clone(&auth), &data_dir, &agent_root, None);
     let app = hooks::router(HooksState::with_store(governance, store.clone()));
@@ -93,12 +84,10 @@ async fn a_hook_fired_by_a_native_tool_shows_up_on_the_runs_route() {
         }
     };
 
-    // Nothing has run yet.
     let (status, body) = get("/api/hooks/runs".into()).await;
     assert_eq!(status, 200, "{body}");
     assert_eq!(body["total"], json!(0), "{body}");
 
-    // Register a user `pre_tool` hook through the same route a person uses.
     let registered = client
         .post(format!("{origin}/api/hooks/register"))
         .header("cookie", format!("session_token={token}"))
@@ -109,7 +98,6 @@ async fn a_hook_fired_by_a_native_tool_shows_up_on_the_runs_route() {
         .expect("register");
     assert_eq!(registered.status().as_u16(), 200);
 
-    // …and run a native tool with the production sink wired.
     let workspace = Workspace::new(agent_root.join("workspace")).expect("workspace");
     let tools = NativeTools::new(
         workspace.clone(),
@@ -150,7 +138,6 @@ async fn a_hook_fired_by_a_native_tool_shows_up_on_the_runs_route() {
     assert_eq!(watcher["target_kind"], json!("pre_tool"));
     assert_eq!(watcher["status"], json!("advisory"));
 
-    // The kind filter the UI uses still selects.
     let (_, filtered) = get("/api/hooks/runs?kind=post_tool".into()).await;
     assert_eq!(filtered["total"], json!(1), "{filtered}");
 

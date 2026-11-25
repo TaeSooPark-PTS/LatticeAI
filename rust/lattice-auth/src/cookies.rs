@@ -1,21 +1,5 @@
-//! Two cookie readers, and the difference between them is the point.
-//!
-//! * [`has_session_cookie`] is the CSRF guard's, ported from `core/csrf.py`:
-//!   the raw header is split by hand so a malformed pair cannot make the whole
-//!   jar unreadable. A request whose cookies we cannot parse must still count
-//!   as cookie-bearing — a strict parser here **fails open**, because the guard
-//!   short-circuits to "allow, no session cookie" the moment it decides there
-//!   is nothing to forge.
-//! * [`cookie_value`] is Starlette's `cookie_parser`, which is what
-//!   `request.cookies.get("session_token")` reaches in `access_runtime`'s
-//!   `extract_bearer_token`. It is a *different* parser in the original, so it
-//!   is a different function here.
-
-/// The cookie the session rides in (`SESSION_COOKIE_NAME`).
 pub const SESSION_COOKIE_NAME: &str = "session_token";
 
-/// Whether the raw `Cookie` header carries `session_token`, at all, in any
-/// shape. Deliberately loose: a pair with no `=` still names a cookie.
 pub fn has_session_cookie(cookie_header: Option<&str>) -> bool {
     let Some(header) = cookie_header else {
         return false;
@@ -29,8 +13,6 @@ pub fn has_session_cookie(cookie_header: Option<&str>) -> bool {
     })
 }
 
-/// Starlette's `cookie_parser` for one name: last occurrence wins, values are
-/// unquoted, and a chunk with no `=` is stored under the empty name.
 pub fn cookie_value(cookie_header: Option<&str>, name: &str) -> Option<String> {
     let header = cookie_header?;
     let mut found: Option<String> = None;
@@ -50,7 +32,6 @@ pub fn cookie_value(cookie_header: Option<&str>, name: &str) -> Option<String> {
     found
 }
 
-/// `http.cookies._unquote` for the shapes a session token can take.
 fn unquote(value: &str) -> String {
     let bytes = value.as_bytes();
     if bytes.len() < 2 || bytes[0] != b'"' || bytes[bytes.len() - 1] != b'"' {

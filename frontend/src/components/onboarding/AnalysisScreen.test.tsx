@@ -7,12 +7,6 @@ import { useAppStore } from "@/store/appStore";
 import { AnalysisScreen } from "./AnalysisScreen";
 import type { FlowAnalysis } from "./recommendationModel";
 
-/**
- * The hardware read-out shown while the setup probes run. What matters is that
- * it never claims more than the probes returned: no analysis means "checking",
- * a partial analysis fills only the cells it can prove, and the continue
- * button waits for either an answer or an explicit failure.
- */
 
 function renderScreen(analysis: FlowAnalysis | null, error: string | null = null, onContinue = vi.fn()) {
   render(<AnalysisScreen analysis={analysis} error={error} onContinue={onContinue} />);
@@ -70,11 +64,9 @@ describe("AnalysisScreen", () => {
       models: {},
       sysinfo: { gpu_mem_gb: 16 },
     });
-    // arm arch counts as Apple Silicon even without the explicit flag.
     expect(screen.getByText(t("ko", "flow.analysis.apple"))).toBeTruthy();
     expect(screen.getByText("16 GB")).toBeTruthy();
     expect(screen.getByText(t("ko", "flow.analysis.localReady"))).toBeTruthy();
-    // A top pick with only an id still names a friendly model.
     expect(screen.getByText(t("ko", "flow.analysis.bestFit", { model: "Qwen 3 8B" }))).toBeTruthy();
     expect(screen.getByText(t("ko", "flow.analysis.noModels"))).toBeTruthy();
   });

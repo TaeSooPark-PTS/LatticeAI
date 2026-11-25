@@ -1,5 +1,5 @@
-/* ── 실행 결과 설명 (v9.9.6): 숫자가 아니라 문장으로 ────────────────────── */
-/* 임베딩 모델 교체 복구 (v9.9.6): 문제를 이름 붙이고, 고치는 버튼을 준다 */
+
+
 .brain-stale-embedder {
   display: flex;
   align-items: flex-start;
@@ -86,7 +86,7 @@
   font-size: 0.68rem;
 }
 
-/* ── Approval TTL: countdown + urgency ───────────────────────────────────── */
+
 .brain-approval-countdown {
   margin-left: auto;
   color: hsl(var(--muted-foreground));
@@ -110,8 +110,7 @@
   font-weight: 700;
 }
 
-/* Expired note gains the "다시 계획하기" action when the server offered a
-   replan hint. The note keeps its warm warning treatment. */
+
 .brain-approval-note {
   display: flex;
   flex-wrap: wrap;
@@ -135,8 +134,7 @@
   background: hsl(var(--warning) / 0.24);
 }
 
-/* Paused approvals that survived a reload — inform only, never pretend the
-   token is reachable from here. */
+
 .brain-pending-approvals {
   display: grid;
   gap: 0.4rem;
@@ -166,7 +164,7 @@
   font-size: 0.68rem;
 }
 
-/* ── Watch health card (folder watch mode) ─────────────────────────────── */
+
 .brain-watch-card {
   margin-top: 0.6rem;
   border: 1px solid hsl(var(--border) / 0.6);
@@ -266,9 +264,7 @@
   font-size: 0.6rem;
 }
 
-/* ── "Brain remembered" chip on created-file rows ─────────────────────────
-   Same pill anatomy as .brain-created-file-repaired; success = actually
-   indexed, amber = failed (tooltip carries the reason), muted = pending. */
+
 .brain-created-file-brain {
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 999px;
@@ -294,8 +290,7 @@
   color: hsl(var(--warning-ink));
 }
 
-/* ── Source chunk modal (citation → 원문) ────────────────────────────────
-   Reuses the .file-preview-* shell; the cited source rows become buttons. */
+
 .brain-answer-proof li .brain-citation-open {
   display: grid;
   width: 100%;
@@ -386,7 +381,7 @@
   font-size: 0.68rem;
 }
 
-/* ── First Value Loop done-state CTAs ────────────────────────────────────── */
+
 
 
 

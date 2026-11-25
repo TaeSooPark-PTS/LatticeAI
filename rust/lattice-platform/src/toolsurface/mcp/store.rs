@@ -1,13 +1,3 @@
-//! The marketplace / plugins / agents view of `workspace_os.json`.
-//!
-//! Until v11.6.0 this was a **third** writer of that document: its own
-//! `read_to_string` → mutate → `atomic::write_text` with no lock and its own
-//! `dump_indent2` formatting, so a plugin toggle could erase a review item
-//! written a millisecond earlier (and rewrite the file in a different shape).
-//! It is now a view over the one [`WorkspaceOsStore`]: reads are that store's
-//! `load_state`, and every mutation runs inside its `mutate`, which holds the
-//! write lock across the load and the save.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -17,8 +7,6 @@ use serde_json::{json, Value};
 use crate::workspaceos::workspace::store::{StoreError, WorkspaceOsStore};
 
 use super::http::{json_hash, now_iso_seconds};
-
-// ── workspace_os.json (shared by marketplace / plugins / agents) ───────────
 
 #[derive(Clone)]
 pub(crate) struct PlatformStore {
@@ -32,15 +20,10 @@ impl PlatformStore {
         }
     }
 
-    /// The document. Its defaults are the store's `default_state`, which is a
-    /// superset of the nine keys this view reads — including the same five
-    /// `agents`, so `list_agents` answers exactly what it used to.
     pub(crate) fn load(&self) -> Value {
         self.os.load_state()
     }
 
-    /// Load, apply, save — under the store's lock, so a concurrent write to
-    /// another branch of the same document cannot be lost.
     fn mutate<T>(&self, body: impl FnOnce(&mut Value) -> T) -> T {
         let mut produced: Option<T> = None;
         let _: Result<(), StoreError> = self.os.mutate(|state| {

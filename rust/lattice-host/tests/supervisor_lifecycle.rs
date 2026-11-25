@@ -1,11 +1,3 @@
-//! Supervisor lifecycle integration tests.
-//!
-//! The "worker" is a `/bin/sh` script (so the process really exists, really
-//! traps signals and really exits) while its HTTP face is the pure-Rust
-//! [`common::FakeWorker`] on the port the supervisor chose. That split lets
-//! every branch — health gate, crash restart, graceful stop — be driven
-//! deterministically without a python interpreter.
-
 mod common;
 
 use std::path::{Path, PathBuf};
@@ -25,7 +17,6 @@ struct Scripted {
 }
 
 impl Scripted {
-    /// Write `body` as a shell script the supervisor will be told to run.
     fn new(body: &str) -> Self {
         let dir = tempfile::tempdir().expect("tempdir");
         let root = dir.path().to_path_buf();
@@ -97,7 +88,6 @@ async fn the_health_gate_opens_only_once_the_worker_answers() {
     )];
     let supervisor = Supervisor::with_probe(config, scripted.probe()).expect("supervisor");
 
-    // The gate must stay shut while /health answers 503.
     let start = supervisor.clone();
     let starting = tokio::spawn(async move { start.start().await });
     wait_for_file(&scripted.path("ready")).await;
@@ -118,12 +108,10 @@ async fn the_health_gate_opens_only_once_the_worker_answers() {
     assert_eq!(status.restarts, 0);
     assert!(status.supervised);
 
-    // The chosen port is what the worker was actually told to bind.
     assert_eq!(
         scripted.read("env.txt").trim(),
         format!("port={}", worker.port())
     );
-    // ...and stdout landed in the sidecar log.
     assert!(scripted.path("desktop-sidecar.log").exists());
 
     supervisor.stop().await;
@@ -196,7 +184,6 @@ async fn a_crashing_worker_is_restarted_and_a_manual_stop_ends_it() {
         status.last_error
     );
 
-    // A manual stop suppresses every further restart.
     let stopped = supervisor.stop().await;
     assert!(!stopped.running);
     let after_stop = scripted.lines("runs.txt");
@@ -323,8 +310,6 @@ async fn restart_brings_the_worker_back_up() {
     )];
     let supervisor = Supervisor::with_probe(config, scripted.probe()).expect("supervisor");
     let first = supervisor.start().await.expect("start");
-    // The health gate says "the worker answers", not "the script reached its
-    // first line" — wait for the process itself before replacing it.
     assert!(
         wait_until(Duration::from_secs(5), || scripted.lines("runs.txt") >= 1).await,
         "the first worker never ran"

@@ -1,5 +1,3 @@
-//! Seeded SQLite store and ground-truth evaluation cases for [`super`].
-
 use lattice_core::entity_resolution::{apply_entity_consolidation, EntityAliasBook};
 use lattice_core::temporal::stamp_temporal_fact;
 use lattice_core::{CoreError, LocalEmbeddingModel};
@@ -16,8 +14,6 @@ fn encode_f32_le(vec: &[f64]) -> Vec<u8> {
     out
 }
 
-/// Seed a realistic Brain SQLite store indexed with the real [`LocalEmbeddingModel`]
-/// (`lattice-local-hash-v1`), entity resolution consolidation, and temporal supersession.
 pub fn build_production_grounded_eval_store(
     workspace_id: &str,
 ) -> Result<(Connection, Vec<SeparatedEvalCase>), CoreError> {

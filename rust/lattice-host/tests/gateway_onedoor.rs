@@ -1,35 +1,3 @@
-//! The One Door itself: boot the whole product router and prove two things.
-//!
-//! 1. **Every mounted family answers here.** One representative request per
-//!    family — the first happy record in that family's committed HTTP fixture —
-//!    reaches a native handler rather than falling through to the 404 the
-//!    gateway answers for a path nobody mounted. Bodies are not compared: each
-//!    family already replays its own fixtures byte-for-byte in its own crate.
-//!    What *this* suite owns is the question those suites cannot ask, because
-//!    they mount one router each: **is it all mounted at once, on the same
-//!    paths, without a collision?**
-//!
-//! 2. **Nothing leaks to the worker.** The fake worker records every request it
-//!    receives, and the assertion is that each one is on the committed
-//!    allowlist — the product routes are answered here now, and the only things
-//!    that may cross the hop are the worker's own surface plus the compute
-//!    seams a request legitimately triggers (`/worker/embed` while a turn is
-//!    indexed, `/worker/render/*` while a document is built, and so on).
-//!
-//! 3. **Nothing *names* a path the worker no longer serves.** (1) and (2) are
-//!    dynamic: they fire one representative request per fixture family, so a
-//!    stranded seam call on a branch no fixture reaches is invisible to them —
-//!    which is exactly how two live `POST /knowledge-graph/ingest` clients
-//!    survived v11.6.0. [`no_source_file_names_a_stranded_worker_path`] is the
-//!    static half: it reads every `rust/*/src/**/*.rs` and refuses any
-//!    worker-request path literal that is neither on the committed allowlist
-//!    nor on an explicit, reasoned exemption list.
-//!
-//! The store, the agent workspace and the knowledge vault are all temporary.
-//! That is not hygiene, it is a precondition: `GraphWriter::open` bootstraps a
-//! schema and several of these routes write, so a suite that took the ambient
-//! configuration would be editing the Brain of whoever ran it.
-
 mod common;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -45,21 +13,8 @@ use lattice_host::gateway::product;
 use lattice_host::gateway::GatewayState;
 use serde_json::Value;
 
-/// Calls that still cross to the worker on a path the worker no longer serves.
-///
-/// Empty: the three W3b leftovers now write through `GraphWriter`.
-/// `intents::clear` → `ingest_event`; `garden_api::process` and
-/// `browser_api::ingest_current_tab` → native ingest plus the W5 extract/embed
-/// chain. A new entry is a regression.
 const KNOWN_STRANDED_SEAM_CALLS: [&str; 0] = [];
 
-/// Fixture-recorded routes that no longer exist anywhere (v11.8.0).
-///
-/// `(method, path, why)`. The HTTP fixtures are a frozen record of what the
-/// Python surface answered while it existed, so they still carry these; the
-/// product does not. Probing them below asserts the front door's **own** 404
-/// rather than skipping, so "deleted" stays a checked fact: if one were
-/// re-mounted, or the proxy allowlist regrew it, this fails.
 const DELETED_ROUTES: &[(&str, &str, &str)] = &[(
     "GET",
     "/api/capture/voice/status",
@@ -67,7 +22,6 @@ const DELETED_ROUTES: &[(&str, &str, &str)] = &[(
      reports per call whether this machine heard anything",
 )];
 
-/// The committed HTTP fixtures, one file per work package.
 const FIXTURE_FILES: [&str; 9] = [
     "workspace.json",
     "admin.json",
@@ -80,7 +34,6 @@ const FIXTURE_FILES: [&str; 9] = [
     "memory_brain.json",
 ];
 
-/// One request to try, taken from a fixture record.
 #[derive(Debug, Clone)]
 struct Probe {
     family: String,
@@ -99,16 +52,10 @@ fn fixtures_dir() -> PathBuf {
         .join("http")
 }
 
-/// A path a probe can actually be issued for.
-///
-/// Fixture paths carry masking tokens (`@id`, `@ts`) where the capture had a
-/// live identifier. Those records describe a *body*, not a route, and issuing
-/// them would test the tokeniser rather than the mount map.
 fn is_literal(path: &str) -> bool {
     path.starts_with('/') && !path.contains('@') && !path.contains('{')
 }
 
-/// The first happy record of every family in one fixture file.
 fn probes_from(file: &str) -> Vec<Probe> {
     let raw = std::fs::read_to_string(fixtures_dir().join(file))
         .unwrap_or_else(|err| panic!("{file}: {err}"));
@@ -125,8 +72,6 @@ fn probes_from(file: &str) -> Vec<Probe> {
         if first.contains_key(&family) {
             continue;
         }
-        // The platform captures label the branch; the retrieval ones do not, and
-        // there "happy" is the 2xx/3xx answer.
         let happy = match record.get("branch").and_then(Value::as_str) {
             Some(branch) => branch == "happy",
             None => (200..400).contains(&record["status"].as_u64().unwrap_or(0)),
@@ -167,7 +112,6 @@ fn probes_from(file: &str) -> Vec<Probe> {
     first.into_values().collect()
 }
 
-/// A gateway with the whole product mounted, over throwaway state.
 async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
     let scratch = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("onedoor")
@@ -179,8 +123,6 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
     for dir in [&data_dir, &agent_root, &brain_dir] {
         std::fs::create_dir_all(dir).expect("scratch");
     }
-    // `default_brain_dir()` reads the environment, and its fallback is
-    // `~/.ltcai-brain` — the user's real knowledge vault.
     std::env::set_var("LATTICEAI_BRAIN_DIR", &brain_dir);
 
     let config = RuntimeConfig::resolve(
@@ -193,14 +135,9 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
         worker_origin: worker.origin(),
         runs_dir: scratch.join("rust_agent_runs"),
         client: Some(client()),
-        // Scratch for the same reason `LATTICEAI_BRAIN_DIR` is: the loop's
-        // default proposal store is `$HOME/.ltcai/workspace_os.json`, which is
-        // the Review Center of whoever runs this suite.
         proposals: Some(std::sync::Arc::new(
             lattice_agent::kernel::proposals::JsonProposalStore::new(scratch.join("proposals")),
         )),
-        // `OneDoorState` binds the sink over the registry it opens under
-        // `data_dir`, which is scratch here for the same reason.
         hooks: None,
         external: None,
     };
@@ -212,9 +149,6 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
         loop_config,
     )
     .expect("the product state must assemble over a scratch directory");
-    // v11.7.0 F-BC: the product binds the hooks registry into the loop, so a
-    // user `pre_tool` hook fires for a native tool. Unbound, every hook in
-    // `hooks.json` would be silently inert for everything the loop writes.
     assert!(
         product.loop_config.hooks.is_some(),
         "the agent loop must reach the hooks registry the product mounted"
@@ -230,7 +164,6 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
     (TestGateway::start_with_state(state).await, scratch)
 }
 
-/// The body the gateway answers for a path nothing mounted.
 async fn is_unmounted(response: reqwest::Response) -> bool {
     if response.status() != reqwest::StatusCode::NOT_FOUND {
         return false;
@@ -292,8 +225,6 @@ async fn every_mounted_family_answers_and_nothing_leaks_to_the_worker() {
                 probe.method,
                 probe.path,
             );
-            // A refusal is fine — an empty scratch Brain answers plenty of them.
-            // What must not happen is "nobody is home".
             assert_ne!(
                 status,
                 reqwest::StatusCode::METHOD_NOT_ALLOWED,
@@ -384,7 +315,6 @@ async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
     let (gateway, _scratch) = one_door(&worker, "shell").await;
     let http = common::client_no_redirect();
 
-    // The SPA bookmark redirects are the shell's, and they carry the query.
     let redirect = http
         .get(gateway.url("/chat?ref=bookmark"))
         .send()
@@ -399,7 +329,6 @@ async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
         Some("/app#/chat?ref=bookmark"),
     );
 
-    // `GET /agents` is one path two crates could have claimed; exactly one does.
     let agents = http
         .get(gateway.url("/agents"))
         .send()
@@ -414,8 +343,6 @@ async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
         Some("/app#/agents"),
     );
 
-    // …and `GET /plugins/sdk`, the one page redirect the contract gives to a
-    // feature family, is served by that family.
     let sdk = http
         .get(gateway.url("/plugins/sdk"))
         .send()
@@ -423,7 +350,6 @@ async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
         .expect("plugins sdk");
     assert_eq!(sdk.status(), 308);
 
-    // A path neither the gateway nor the worker owns.
     let nowhere = http
         .get(gateway.url("/definitely-not-a-route"))
         .send()
@@ -446,8 +372,6 @@ async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
 
 #[test]
 fn the_mount_table_declares_every_family_exactly_once() {
-    // The same property `product::mount_table`'s own unit test asserts, restated
-    // here because this is the suite a reader opens when a route goes missing.
     let mut seen: BTreeSet<(&str, &str)> = BTreeSet::new();
     for (_, rows) in product::mount_table() {
         for (method, path) in rows {

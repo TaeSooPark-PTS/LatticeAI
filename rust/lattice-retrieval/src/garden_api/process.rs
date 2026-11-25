@@ -1,5 +1,3 @@
-//! The two garden HTTP handlers and the `process()` write.
-
 use std::path::Path;
 
 use axum::extract::{Request, State};
@@ -17,10 +15,8 @@ use crate::memory_api::shared::{body_opt_str, body_required_str, json_body, ok_j
 
 use super::vault;
 
-/// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[("POST", "/garden"), ("GET", "/garden/tree")];
 
-/// The mountable router for `latticeai/api/garden.py`.
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/garden", post(garden_put))
@@ -193,8 +189,6 @@ async fn embed_texts_via_seam(
     Some((model_id, dim, values))
 }
 
-/// Plain-window chunks (1200 / 160). lattice-retrieval cannot depend on
-/// lattice-ingest; this is the legacy `_chunks` walk the engine already hashes.
 fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
     const SIZE: usize = 1200;
     const OVERLAP: usize = 160;
@@ -250,7 +244,6 @@ fn attach_chunk_embeddings(
     chunks
 }
 
-/// `_ingest_note` — native `GraphWriter` ingest with W5 extract/embed enrichment.
 async fn ingest_note(state: &BrainState, saved: &Saved) -> Vec<(&'static str, Value)> {
     let Some(graph) = state.graph().cloned() else {
         return vec![

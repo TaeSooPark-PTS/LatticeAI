@@ -1,13 +1,3 @@
-"""wp12 coverage — the user-supplied callable provider and the shared batch path.
-
-``CustomEmbeddingProvider`` resolves a dotted ``module:callable`` reference at
-first use, so the whole file works against a throwaway module injected into
-``sys.modules``; nothing is written to disk and no real package is imported.
-The same provider is the cheapest way to drive the shared
-``_NetworkEmbeddingProvider.embed_batch`` contract — truncation, the
-dimension lock, and the L2 normalization of ordinary, zero, and missing rows.
-"""
-
 from __future__ import annotations
 
 import math
@@ -46,9 +36,6 @@ def _rows(*vectors):
         return [list(v) for v in vectors]
 
     return _embed_texts
-
-
-# ── target resolution ────────────────────────────────────────────────────────
 
 
 def test_the_target_may_come_from_the_config_or_from_the_environment(monkeypatch):
@@ -108,8 +95,6 @@ def test_the_dotted_form_is_accepted_and_the_callable_is_loaded_once(monkeypatch
 
     assert prov.embed_batch(["alpha"]) == [[1.0, 0.0]]
 
-    # once resolved the callable is held, so losing the module does not break
-    # an already-running index build
     monkeypatch.delitem(sys.modules, TARGET_MODULE)
     assert prov.embed_batch(["beta"]) == [[1.0, 0.0]]
 
@@ -146,9 +131,6 @@ def test_health_reports_an_unresolvable_target(monkeypatch):
     assert "custom embedding target unavailable" in health["detail"]
 
 
-# ── the shared batch contract ────────────────────────────────────────────────
-
-
 def test_an_empty_batch_short_circuits_before_the_callable(monkeypatch):
     def _never(texts):
         raise AssertionError("the callable must not be invoked for an empty batch")
@@ -167,9 +149,7 @@ def test_rows_are_normalized_and_the_dimension_is_locked_to_the_real_model(monke
 
     assert [round(x, 6) for x in vectors[0]] == [0.6, 0.8]
     assert math.isclose(sum(x * x for x in vectors[0]), 1.0, rel_tol=1e-9)
-    # a zero vector has no direction: normalizing it would divide by zero
     assert vectors[1] == [0.0, 0.0]
-    # a row the callable declined to produce is padded to the locked dimension
     assert vectors[2] == [0.0, 0.0]
     assert prov.dim == 2
 

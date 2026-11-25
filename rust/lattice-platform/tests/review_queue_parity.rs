@@ -1,12 +1,3 @@
-//! The review-proposals surface: fixture replay for the four Python modules
-//! `review_proposals.json` captured, plus the OpenAPI contract they compose.
-//!
-//! These were five test binaries — four of them a single `replay_family` call
-//! each — all recompiling the same 25kB harness. They are one binary now, with
-//! every test function kept as it was.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod review_queue_harness;
 

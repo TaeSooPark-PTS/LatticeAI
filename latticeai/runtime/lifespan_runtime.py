@@ -1,11 +1,3 @@
-"""FastAPI lifespan assembly for worker startup and shutdown tasks.
-
-Two background tasks, both about the one thing this process holds that a
-restart would lose: the loaded model. The telegram bridge and the local
-knowledge watcher used to start here too — both are product surfaces
-``lattice-host`` owns now, and neither had anything to do with inference.
-"""
-
 from __future__ import annotations
 
 import os
@@ -36,7 +28,7 @@ async def _autoload_public_model(public_model: str, model_router: Any) -> None:
     try:
         msg = await model_router.load_model(model_id)
         print(f"✅ {msg}")
-    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:  # pragma: no cover - startup diagnostics
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
         print(f"⚠️ Public model autoload failed: {e}")
 
 
@@ -53,7 +45,7 @@ async def _autoload_local_model(
         await model_router.load_model(
             local_model, draft_model_id=local_draft_model or None
         )
-    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:  # pragma: no cover - startup diagnostics
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
         print(f"⚠️ Local model autoload failed: {e}")
 
 
@@ -88,7 +80,6 @@ def build_lifespan_runtime(
     local_server_processes: Dict[str, Any],
     logger: Any,
 ) -> Dict[str, Any]:
-    """Create lifespan and background task helpers for the FastAPI app."""
 
     import asyncio
 
@@ -123,11 +114,10 @@ def build_lifespan_runtime(
                 TypeError,
                 KeyError,
                 AttributeError,
-            ) as e:  # pragma: no cover - background diagnostics
+            ) as e:
                 logger.warning("Idle model unload failed: %s", e)
 
     def spawn(coro, *, name: str):
-        """Fire-and-forget asyncio task that logs exceptions instead of swallowing them."""
 
         task = asyncio.create_task(coro, name=name)
 
@@ -153,7 +143,7 @@ def build_lifespan_runtime(
             ValueError,
             TypeError,
             AttributeError,
-        ) as e:  # pragma: no cover - startup diagnostics
+        ) as e:
             print(f"⚠️ Startup sequence failed: {e}")
         try:
             yield

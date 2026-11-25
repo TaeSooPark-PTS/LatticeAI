@@ -146,7 +146,6 @@ describe("MultiHopSynthesisView", () => {
       ["t1", "Two Hop Target"],
     ]);
 
-    // Filter to 2+ hops -> 1-hop Conflict Target hides; filter to conflicts -> Two Hop Target hides; filter all -> both return.
     const { fireEvent } = await import("@testing-library/react");
     fireEvent.click(getByTestId("synthesis-filter-multiHop"));
     expect(queryByText("Conflict Target")).toBeNull();

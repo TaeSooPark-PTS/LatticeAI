@@ -59,7 +59,6 @@ describe("evaluateAnalysis", () => {
   });
 
   it("is unavailable with probe_failed on partial failure with no model data", () => {
-    // Only sysinfo succeeded; the model-bearing endpoints failed.
     const outcome = evaluateAnalysis({
       analysis: { setup: null, recommendations: null, models: null, sysinfo: {} },
       endpoints: { setup: false, recommendations: false, models: false, sysinfo: true },
@@ -150,7 +149,7 @@ describe("buildRecommendations", () => {
     expect(faster).toMatchObject({ id: "qwen-8b", role: "faster", reason: "faster", engine: "local_gguf", externalHost: "ollama" });
     expect(advanced).toMatchObject({ id: "llama-70b", role: "advanced", reason: "advanced", externalHost: "example.com" });
     expect(best!.externalHost).toBe("huggingface");
-    expect(best!.estimatedDownloadMinutes).toBe(73); // 8GB at ~15 Mbps
+    expect(best!.estimatedDownloadMinutes).toBe(73);
     expect(faster!.downloadSize).toBe("2GB");
     expect(advanced!.downloadSize).toBe("40GB");
     expect(best!.parameterBillions).toBe(26);
@@ -172,7 +171,7 @@ describe("buildRecommendations", () => {
       models: { recommended: [{ id: "z", name: "Zeta" }, { id: "g12", name: "Gemma 12B" }] },
     });
     expect(byName[0]!.id).toBe("g12");
-    expect(byName[1]!.id).toBe("z"); // second-choice fallback, no qwen/8b/7b match
+    expect(byName[1]!.id).toBe("z");
 
     const byPosition = buildRecommendations({
       models: { recommended: [{ id: "alpha", name: "Alpha" }, { id: "beta", name: "Beta" }] },
@@ -213,7 +212,6 @@ describe("buildRecommendations", () => {
     const supported = new Map(
       buildRecommendations({ models: { recommended: rows } }).map((model) => [model.id, model.supported]),
     );
-    // The role picker returns three; check via toRecommendedModel for the rest.
     expect(supported.get("s1")).toBe(true);
     for (const row of rows.slice(1)) {
       expect(toRecommendedModel(row).supported).toBe(false);
@@ -256,9 +254,7 @@ describe("toRecommendedModel", () => {
     expect(model.downloadRequired).toBe(true);
     expect(model.downloadSize).toBe("");
     expect(model.estimatedDownloadMinutes).toBeNull();
-    // With no source fields at all, no external host can be claimed.
     expect(toRecommendedModel({ model_id: "m", download_required: true }).externalHost).toBe("");
-    // A bare separator survives the protocol strip as itself.
     expect(toRecommendedModel({ id: "x", download_required: true, provider: "/" }).externalHost).toBe("/");
   });
 });
@@ -268,11 +264,11 @@ describe("size and scale estimators", () => {
     expect(parseDownloadMegabytes("8GB")).toBe(8192);
     expect(parseDownloadMegabytes("512MB")).toBe(512);
     expect(parseDownloadMegabytes("1.5TB")).toBe(1.5 * 1024 * 1024);
-    expect(parseDownloadMegabytes("8")).toBe(8192); // bare numbers assume gigabytes
+    expect(parseDownloadMegabytes("8")).toBe(8192);
     expect(parseDownloadMegabytes("")).toBeNull();
     expect(parseDownloadMegabytes("abc")).toBeNull();
     expect(parseDownloadMegabytes("0GB")).toBeNull();
-    expect(parseDownloadMegabytes("..B")).toBeNull(); // dots match but do not parse
+    expect(parseDownloadMegabytes("..B")).toBeNull();
   });
 
   it("estimates minutes with a floor of one and null for unknown sizes", () => {
@@ -357,7 +353,6 @@ describe("naming helpers", () => {
     expect(recFromCatalog.id).toBe("google/embeddinggemma-2");
     expect(recFromCatalog.role).toBe("embedding");
 
-    // Profile and x86_64 fallback path (non-Apple Silicon)
     const recX86 = recommendedEmbeddingModel({
       recommendations: {
         profile: { ram_gb: 32, apple_silicon: false },
@@ -367,7 +362,6 @@ describe("naming helpers", () => {
     expect(recX86.loadId).toBe("google/embeddinggemma-2");
     expect(recX86.size).toBe("1.5GB");
 
-    // Profile and x86_64 constrained fallback path (<8GB RAM)
     const recX86Low = recommendedEmbeddingModel({
       setup: { environment: { ram_gb: 4, arch: "x86_64" } },
     });
@@ -375,7 +369,6 @@ describe("naming helpers", () => {
     expect(recX86Low.loadId).toBe("google/embeddinggemma-300m");
     expect(recX86Low.size).toBe("0.3GB");
 
-    // Catalog matches by category, task, and name pattern
     const recByCategory = recommendedEmbeddingModel({
       models: {
         catalog: [{ id: "custom-emb-cat", name: "Custom", category: "embedding" }],
@@ -428,7 +421,6 @@ describe("naming helpers", () => {
     });
     expect(recFromRootRam.id).toBe("google/embeddinggemma-2");
 
-    // Apple Silicon unconstrained (no explicit embedding_recommendation)
     const recMacUnconstrained = recommendedEmbeddingModel({
       setup: { environment: { ram_gb: 16, arch: "arm64", mlx: true } },
     });
@@ -436,7 +428,6 @@ describe("naming helpers", () => {
     expect(recMacUnconstrained.loadId).toBe("mlx-community/embeddinggemma-2-4bit");
     expect(recMacUnconstrained.size).toBe("0.4GB");
 
-    // models.embedding_recommendation and setup.recommendations.embedding_recommendation
     const recFromModels = recommendedEmbeddingModel({
       models: {
         embedding_recommendation: {
@@ -479,8 +470,6 @@ describe("naming helpers", () => {
     const model = fallbackModel();
     expect(model.supported).toBe(true);
     expect(model.role).toBe("best");
-    // The smallest current catalog entry, so it runs on the widest range
-    // of machines when the probes told us nothing about this one.
     expect(model.loadId).toBe("mlx-community/gemma-4-e2b-it-4bit");
   });
 

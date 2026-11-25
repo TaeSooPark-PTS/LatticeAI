@@ -1,26 +1,11 @@
-//! `local_write` — the home-sandbox writer.
-//!
-//! The only native tool that writes **outside** the agent workspace, which is
-//! exactly why it is the one with its own denylist: `local_write` is gated by
-//! human approval (`auto_approve=False`, sandbox `home`) and refuses the system
-//! prefixes outright. Both rules are ported here, and the prefix list arrives as
-//! data from the policy table rather than being declared a second time.
-
 use serde_json::{json, Map, Value};
 
 use crate::tools::args;
 use crate::tools::files::{file_size, io_error};
 use crate::tools::sandbox::{resolve_soft, ToolError};
 
-/// `LOCAL_MAX_FILE_BYTES` — 2 MB, ten times the workspace cap.
 pub const LOCAL_MAX_FILE_BYTES: u64 = 2_000_000;
 
-/// `Path(value).expanduser()`.
-///
-/// `~` comes from `$HOME`. `~user` needs the password database, which this
-/// crate does not read; Python would expand it, so the literal path is kept and
-/// resolved as-is — a stated deviation that can only ever make the target *less*
-/// surprising, never more privileged.
 pub fn expanduser(value: &str) -> std::path::PathBuf {
     if value == "~" || value.starts_with("~/") {
         if let Some(home) = std::env::var_os("HOME") {
@@ -34,7 +19,6 @@ pub fn expanduser(value: &str) -> std::path::PathBuf {
     std::path::PathBuf::from(value)
 }
 
-/// `Path(path).expanduser().resolve()` — absolute, symlinks followed.
 fn absolute(value: &str) -> std::path::PathBuf {
     let expanded = expanduser(value);
     let candidate = if expanded.is_absolute() {
@@ -47,19 +31,12 @@ fn absolute(value: &str) -> std::path::PathBuf {
     resolve_soft(&candidate)
 }
 
-/// Whether the resolved target sits under a blocked system prefix.
-///
-/// `normalized == prefix.rstrip("/") or normalized.startswith(prefix)` — the
-/// equality catches the directory itself, the prefix match catches everything
-/// under it, and `/etcetera` matches neither because the prefix keeps its
-/// trailing slash.
 pub fn is_blocked(normalized: &str, prefixes: &[String]) -> bool {
     prefixes.iter().any(|prefix| {
         normalized == prefix.trim_end_matches('/') || normalized.starts_with(prefix.as_str())
     })
 }
 
-/// `local_write(path, content)`.
 pub fn local_write(prefixes: &[String], args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let content = args::optional_str(args, "content", "")?;
@@ -81,11 +58,6 @@ pub fn local_write(prefixes: &[String], args: &Map<String, Value>) -> Result<Val
     }))
 }
 
-/// `local_write` confined strictly inside an isolated user/workspace root.
-///
-/// Relative paths and `~/` resolve inside `workspace.root()`; any attempt to
-/// target an external absolute path, traverse with `..`, or follow a symlink
-/// outside the isolated root is rejected.
 pub fn local_write_confined(
     workspace: &crate::tools::sandbox::Workspace,
     prefixes: &[String],
@@ -126,7 +98,6 @@ pub fn local_write_confined(
     }))
 }
 
-/// `except PermissionError as exc: raise ToolError(f"쓰기 권한 없음: {exc}")`.
 fn permission_error(error: std::io::Error) -> ToolError {
     if error.kind() == std::io::ErrorKind::PermissionDenied {
         ToolError::tool(format!("쓰기 권한 없음: {error}"))
@@ -195,7 +166,6 @@ mod tests {
                 .message,
             "내용이 너무 큽니다."
         );
-        // 600 KB is refused by the workspace writer and accepted here.
         let medium = "x".repeat(600_000);
         assert!(local_write(&[], &args(json!({"path": path, "content": medium}))).is_ok());
     }
@@ -213,8 +183,6 @@ mod tests {
     #[test]
     fn a_tilde_expands_from_home() {
         let dir = tempfile::tempdir().expect("tempdir");
-        // `std::env::set_var` is process-wide; this test only reads HOME through
-        // `expanduser`, so it compares against the live value instead.
         let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
         match home {
             Some(home) if !home.as_os_str().is_empty() => {

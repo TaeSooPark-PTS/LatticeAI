@@ -23,7 +23,6 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "danger"> = {
   high: "danger",
 };
 
-/** Catalog copy is served localized; pick the field for the active language. */
 function optionLabel(option: NetworkBoundaryOption, language: Language): string {
   return language === "ko" ? option.label_ko || option.label : option.label;
 }
@@ -37,19 +36,6 @@ function optionWarning(option: NetworkBoundaryOption, language: Language): strin
   return warning || "";
 }
 
-/**
- * The network boundary dial (v10.1.1).
- *
- * The contracts and the API shipped in 10.1.0, but nothing in the app could
- * reach them — the dial existed only for whoever called `/api/network-boundary`
- * by hand. This is that control.
- *
- * Two things make it different from the autonomy dial next to it. It answers
- * "may knowledge leave this machine" rather than "may this tool run", so the
- * two are set independently. And it can show the user *the actual memories*
- * a question would send, before anything is sent — a promise about data
- * leaving the machine is worth less than a list of what leaves.
- */
 export function NetworkBoundaryPanel() {
   const qc = useQueryClient();
   const language = useAppStore((state) => state.language);
@@ -77,8 +63,6 @@ export function NetworkBoundaryPanel() {
   const preview = useMutation({
     mutationFn: (message: string) => latticeApi.previewCloudContext(message),
   });
-  // Held-back ids are tracked locally so the struck-through row is immediate.
-  // The server is the source of truth — a re-preview reflects what it stored.
   const [excluded, setExcluded] = React.useState<string[]>([]);
   const markNode = useMutation({
     mutationFn: (input: { nodeId: string; localOnly: boolean }) =>
@@ -96,13 +80,8 @@ export function NetworkBoundaryPanel() {
   const data: NetworkBoundaryState | undefined = state.data?.ok ? state.data.data : undefined;
   const catalog = data?.catalog ?? [];
   const active = data?.mode ?? "";
-  // Open showing what is actually in force, not an empty form.
   const draft = selected ?? active;
   const draftOption = catalog.find((option) => option.id === draft);
-  // The ack box exists only for a *different* mode that demands an
-  // acknowledgement, so carry that option itself: rendering from it keeps the
-  // warning copy tied to the mode that needs it, with no impossible
-  // "ack box without an option" state to guard against.
   const ackOption = draftOption?.requires_ack && draft !== active ? draftOption : undefined;
   const needsAck = ackOption !== undefined;
   const blocked = needsAck && !acknowledged;
@@ -228,9 +207,6 @@ export function NetworkBoundaryPanel() {
           </Badge>
         ) : null}
 
-        {/* Transparency before consent: the user can name a question and see the
-            exact memories it would send. Available in local_only too — you
-            should be able to look before you decide, not only after. */}
         <div className="space-y-2 rounded-md border border-border p-3">
           <p className="text-xs font-medium">{t(language, "system.network.preview.title")}</p>
           <p className="text-xs text-muted-foreground">
@@ -282,10 +258,6 @@ export function NetworkBoundaryPanel() {
                       tokens: previewData.token_estimate,
                     })}
                   </p>
-                  {/* The toggle belongs here, on the exact items the user is
-                      looking at, rather than buried in a memory browser. This
-                      is the moment they can judge whether a specific memory
-                      should ever leave. */}
                   <ul className="space-y-0.5">
                     {previewData.titles.map((title, index) => {
                       const nodeId = previewData.node_ids[index];
@@ -329,8 +301,6 @@ export function NetworkBoundaryPanel() {
           ) : null}
         </div>
 
-        {/* Write-back policy. Only meaningful once cloud is permitted, so it
-            stays hidden in local_only rather than offering dead switches. */}
         {data.allows_cloud ? (
           <div className="space-y-2 rounded-md border border-border p-3" data-testid="network-boundary-policy">
             <CloudProviderStatusRow

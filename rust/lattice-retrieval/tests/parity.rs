@@ -1,12 +1,3 @@
-//! Python↔Rust parity for the Phase-1 search engines, over the committed fixture.
-//!
-//! Same database, same queries, same golden files the Python engines produced.
-//! Comparison is exact; the shared plumbing lives in `common`. The goldens are
-//! **frozen** — see `rust/fixtures/golden/FROZEN.md`; if one of them and this
-//! crate disagree, the engine changed.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod common;
 

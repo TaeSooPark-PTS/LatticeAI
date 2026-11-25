@@ -73,10 +73,10 @@ describe("MemoryRings", () => {
     const { container } = renderRings({ ...populated, concepts: [] });
     const orbit = container.querySelectorAll(".brain-orbit-field .brain-concentric-ring");
     expect(orbit).toHaveLength(4);
-    expect(orbit[0]!.className).toContain("is-populated"); // now: 2 conversations
-    expect(orbit[1]!.className).toContain("is-populated"); // memories: 3 durable
-    expect(orbit[2]!.className).toContain("is-dormant"); // topics: none
-    expect(orbit[3]!.className).toContain("is-populated"); // graph: 4 relationships
+    expect(orbit[0]!.className).toContain("is-populated");
+    expect(orbit[1]!.className).toContain("is-populated");
+    expect(orbit[2]!.className).toContain("is-dormant");
+    expect(orbit[3]!.className).toContain("is-populated");
 
     const memoriesLabel = screen.getByRole("button", { name: "기억 미리 보기 · 3개" });
     expect(memoriesLabel.className).toContain("is-populated");
@@ -96,7 +96,6 @@ describe("MemoryRings", () => {
     expect(ringButton.getAttribute("aria-expanded")).toBe("true");
     expect(ringButton.className).toContain("is-active");
 
-    // Durable fragments sort agent-generated work to the front.
     const items = peek.querySelectorAll("li");
     expect(items[0]!.textContent).toBe("Agent 정리 노트");
     expect(items).toHaveLength(3);
@@ -104,7 +103,6 @@ describe("MemoryRings", () => {
     await userEvent.click(screen.getByRole("button", { name: "이 층 자세히 보기" }));
     expect(onOpenDepth).toHaveBeenCalledWith(2);
 
-    // Clicking the same ring again toggles the peek closed.
     await userEvent.click(ringButton);
     expect(container.querySelector("#brain-ring-peek")).toBeNull();
     expect(ringButton.getAttribute("aria-expanded")).toBe("false");
@@ -114,11 +112,10 @@ describe("MemoryRings", () => {
     const { container, unmount } = renderRings({ ...populated });
     await userEvent.click(screen.getByRole("button", { name: "그래프 미리 보기 · 4개" }));
     const peek = container.querySelector("#brain-ring-peek") as HTMLElement;
-    expect(peek.querySelector("ul")).toBeNull(); // graph ring never lists items
+    expect(peek.querySelector("ul")).toBeNull();
     expect(peek.textContent).toContain("4개의 연결이 이 층에 있습니다.");
     unmount();
 
-    // Dormant "now" ring explains what would fill it.
     const dormant = renderRings({});
     await userEvent.click(screen.getByRole("button", { name: "지금 미리 보기 · 0개" }));
     expect(dormant.container.querySelector("#brain-ring-peek")?.textContent).toContain(
@@ -148,8 +145,6 @@ describe("MemoryRings", () => {
 
   it("hands the orb interaction to onExploreBrain and derives depth from the score when unset", async () => {
     const onExploreBrain = vi.fn();
-    // depth 0 is outside the typed range but reachable from raw readiness data;
-    // the orb then derives its depth from the score instead.
     const { container } = renderRings({
       ...populated,
       depth: 0 as BrainDepth,

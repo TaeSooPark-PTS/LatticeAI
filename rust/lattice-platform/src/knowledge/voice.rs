@@ -1,43 +1,18 @@
-//! Voice-capture family.
-//!
-//! `POST /api/capture/voice` is native since W3b: this module stores the memo
-//! and asks the worker's `POST /worker/asr` for the words.
-//!
-//! `GET /api/capture/voice/status` was the family's other half and was
-//! KEEP_WORKER — a capability probe answered inside the interpreter holding
-//! the transcriber. v11.8.0 deleted it: no surface ever called it, and
-//! `/worker/asr` already reports per call whether it heard anything. It is
-//! therefore neither mounted here nor on the worker, and it is off the
-//! gateway's proxy allowlist. Its `voice_capture.py` HTTP fixtures stay in
-//! `rust/fixtures/http/tools_misc.json` as the frozen record of what the route
-//! answered while it existed.
-
-/// Routes this crate must **not** claim — they stay on the worker allowlist.
-/// Empty since v11.8.0: the one entry was the status probe, now deleted
-/// outright. Kept as a declared, empty table so the parity test still asserts
-/// the family claims nothing it should not.
 pub const KEEP: &[(&str, &str)] = &[];
 
-/// Native mounts. Spec still lives in worker_keep.json.
 pub const MOUNTED: &[(&str, &str)] = &[("POST", "/api/capture/voice")];
 
-/// Voice capture state.
 #[derive(Clone, Default)]
 pub struct VoiceState {
-    /// Auth.
     pub auth: Option<std::sync::Arc<lattice_auth::AuthState>>,
-    /// Native writer.
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
-    /// Worker compute (`/worker/asr`).
     pub seam: Option<lattice_core::worker::WorkerSeamClient>,
 }
 
-/// Empty router — host-compatible. Prefer [`router_with`] once wired.
 pub fn router() -> axum::Router {
     router_with(VoiceState::default())
 }
 
-/// Native voice router — the whole surviving family.
 pub fn router_with(state: VoiceState) -> axum::Router {
     use axum::routing::post;
     axum::Router::new()
@@ -73,7 +48,6 @@ async fn capture_voice(
         .unwrap_or("")
         .trim()
         .to_string();
-    // Multipart audio → base64 for `/worker/asr`. JSON tests send `audio_b64`.
     let audio_b64 = if let Some(value) = parsed.as_ref() {
         value
             .get("audio_b64")
@@ -158,8 +132,6 @@ async fn capture_voice(
         return json_response(StatusCode::SERVICE_UNAVAILABLE, &body, None);
     }
 
-    // User-provided text is the memo. ASR text is only a fallback, and an
-    // unavailable transcriber must not wipe a memo the caller already wrote.
     let memo = if provided_text.is_empty() {
         asr_text
     } else {

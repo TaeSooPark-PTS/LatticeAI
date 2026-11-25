@@ -1,18 +1,3 @@
-/**
- * The app shell: which screen the hash selects, and whether the "더보기" menu
- * behaves like a dialog.
- *
- * `App.tsx` had no test at all, which is a strange gap for the file that
- * decides what every user sees. The routing table is covered by
- * `routes.test.ts`, but nothing checked that App *reads* it — a route could be
- * correct in `routes.ts` and still land on the wrong screen here. And the menu
- * is a focus trap written by hand: escape, click-outside, focus restore and
- * Tab wrapping are four behaviours a keyboard user depends on and a render
- * test would never notice were missing.
- *
- * Every page is lazy, so each one is stubbed: this file is about the shell's
- * decisions, not about re-testing the pages that have their own suites.
- */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -29,8 +14,6 @@ vi.mock("@/components/ProductFlow", () => ({
   readProductFlowComplete: () => true,
 }));
 vi.mock("@/features/brain/BrainHome", () => ({
-  // The home is the only thing that drives the Brain's mood, so the stub
-  // exposes that callback rather than standing in as an inert box.
   BrainHome: ({
     brainState,
     intensity,
@@ -96,11 +79,6 @@ function renderApp(hash: string, api: Parameters<typeof stubApi>[0] = {}) {
   );
 }
 
-/**
- * jsdom lays nothing out, so every element reports zero size and the shell's
- * "is this actually rendered?" filter drops all of them. Hand back one rect so
- * the focus trap sees the menu items a browser would.
- */
 function withLaidOutElements() {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue(
     [{}] as unknown as DOMRectList,
@@ -164,15 +142,11 @@ describe("which screen the hash selects", () => {
   });
 
   it("treats a hash that is not a path as no route at all", async () => {
-    // `#section` is a document anchor, not a screen. Reading it as one would
-    // put the shell on a page nobody asked for.
     renderApp("#not-a-path");
     expect(await screen.findByTestId("page-brain-home")).toBeTruthy();
   });
 
   it("keeps the memory nav lit for the knowledge tabs and the Brain nav otherwise", async () => {
-    // Both land on the same page component, so the only visible difference is
-    // which primary nav entry claims to be current.
     const graph = renderApp("#/knowledge-graph");
     await screen.findByTestId("page-brain");
     expect(screen.getAllByRole("link", { current: "page" })[0]!.textContent).toContain("Memory");
@@ -213,9 +187,6 @@ describe("which screen the hash selects", () => {
   });
 
   it("gives the admin console no shell chrome to escape from", async () => {
-    // The console is a separate surface, not a tab: rendering it inside the
-    // product nav would offer a way back into the app that bypasses its own
-    // "back to Brain" control.
     renderApp("#/admin/users");
     await screen.findByTestId("page-admin");
     expect(screen.queryByRole("navigation")).toBeNull();
@@ -231,8 +202,6 @@ describe("theme and language reach the document", () => {
   });
 
   it("keeps the document language in step with the chosen one", async () => {
-    // Assistive tech reads this attribute to pick a voice; a Korean UI
-    // announced as English is unusable, and it is invisible on screen.
     useAppStore.setState({ language: "ko" });
     renderApp("#/brain");
     await screen.findByTestId("page-brain-home");
@@ -249,8 +218,6 @@ describe("the more menu behaves like a dialog", () => {
   async function openMenu() {
     renderApp("#/brain");
     await screen.findByTestId("page-brain-home");
-    // Two copies of the trigger exist — topbar and mobile nav — and CSS picks
-    // which one shows. Either drives the same menu, so drive the first.
     const trigger = screen.getAllByRole("button", { name: "Open menu" })[0]!;
     fireEvent.click(trigger);
     return trigger;
@@ -311,8 +278,6 @@ describe("the more menu keeps the keyboard inside it", () => {
 
   it("moves focus to the first management link when it opens", async () => {
     await openMenuWithLayout();
-    // The close button comes first in the DOM, but the point of opening the
-    // menu is the list of destinations — that is where a keyboard lands.
     await waitFor(() =>
       expect(document.activeElement?.className).toContain("brain-more-nav-item"));
   });
@@ -354,9 +319,6 @@ describe("the more menu keeps the keyboard inside it", () => {
   });
 
   it("does not try to trap focus when nothing in the menu is rendered", async () => {
-    // Without the layout shim every element reports zero size, which is what a
-    // browser reports for the copy of the nav that CSS has hidden. Tab must
-    // then fall through to the browser rather than focusing an invisible node.
     renderApp("#/brain");
     await screen.findByTestId("page-brain-home");
     fireEvent.click(screen.getAllByRole("button", { name: "Open menu" })[0]!);
@@ -371,8 +333,6 @@ describe("the more menu keeps the keyboard inside it", () => {
 
   it("closes from the menu's own close button", async () => {
     const dialog = await openMenuWithLayout();
-    // Both the trigger and the menu's own X answer to "Close menu"; this is
-    // the one inside the dialog.
     const close = screen.getAllByRole("button", { name: "Close menu" })
       .find((button) => dialog.contains(button))!;
 
@@ -383,8 +343,6 @@ describe("the more menu keeps the keyboard inside it", () => {
 
   it("closes when a management destination is chosen, without stealing focus back", async () => {
     const dialog = await openMenuWithLayout("#/models");
-    // The screen the menu is on is marked as current in both copies of the
-    // management list, so the menu never claims you are somewhere else.
     const current = screen.getAllByRole("link", { current: "page" });
     expect(current.some((link) => link.className.includes("brain-more-nav-item"))).toBe(true);
 
@@ -393,8 +351,6 @@ describe("the more menu keeps the keyboard inside it", () => {
     fireEvent.click(settings);
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    // Closing this way must not yank focus back to the trigger — the reader is
-    // on their way to another screen.
     expect(document.activeElement).not.toBe(screen.getAllByRole("button", { name: "Open menu" })[0]);
   });
 
@@ -438,11 +394,9 @@ describe("shell chrome", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "brain thinking" }));
     expect(screen.getByTestId("page-brain-home").dataset.brainState).toBe("thinking");
-    // No intensity was named, so the previous one stands.
     expect(screen.getByTestId("page-brain-home").dataset.intensity).toBe("0.58");
 
     fireEvent.click(screen.getByRole("button", { name: "brain louder" }));
-    // 4 is out of range; the orb never goes past full.
     expect(screen.getByTestId("page-brain-home").dataset.intensity).toBe("1");
   });
 });
@@ -457,7 +411,6 @@ describe("the VS Code link indicator", () => {
   }
 
   it("stays out of everyday mode entirely", async () => {
-    // "VS Code" is a word a non-technical owner has no use for.
     await openMenuIn("basic");
     expect(screen.queryByText("VS Code")).toBeNull();
   });

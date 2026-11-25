@@ -1,5 +1,3 @@
-//! Shared replay harness for the R1 workspace families.
-
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -67,8 +65,6 @@ impl FixtureGraph {
 
 impl GraphReads for FixtureGraph {
     fn stats(&self) -> Option<Value> {
-        // Two setup snapshots were taken against an empty graph; later reads
-        // see the populated fixture stats (workspace_os / indexing).
         if self.stats_calls.fetch_add(1, Ordering::SeqCst) < 2 {
             return Some(json!({
                 "db_path": "/tmp/knowledge_graph.sqlite",
@@ -116,9 +112,6 @@ impl GraphReads for FixtureGraph {
     }
 
     fn window(&self, _limit: usize) -> Option<Value> {
-        // Setup takes two snapshots against an empty graph (the fixture's
-        // captured metadata is node_count=0). Later creates see a populated
-        // window, matching the capture after the generator ingested a few nodes.
         let seen = self.windows.fetch_add(1, Ordering::SeqCst);
         if seen < 2 {
             return Some(json!({"nodes": [], "edges": []}));
@@ -146,7 +139,6 @@ mod seed;
 pub use install::Install;
 
 pub(crate) const SKIP: &[(&str, &str)] = &[
-    // Full-app audit/timeline feeds; isolated install cannot reproduce 50–76 events.
     ("workspace_time_machine", "happy"),
     ("workspace_audit_timeline", "happy"),
 ];

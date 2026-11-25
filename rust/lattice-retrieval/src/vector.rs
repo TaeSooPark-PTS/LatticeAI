@@ -1,20 +1,3 @@
-//! Port of `vector_search` (`graph/retrieval_vector/search.py`).
-//!
-//! Default env is the exact scan. The candidate cap is the part worth reading
-//! twice: when it bites, the rows kept are the most recently *indexed* ones —
-//! recency, not similarity — so the answer is partial recall, and the `recall`
-//! block says so instead of hiding it.
-//!
-//! `LATTICEAI_VECTOR_INDEX=hnsw` asks the worker sidecar for `k*8` candidates
-//! and re-scores them exactly (`hnsw+rescore`). Any failure falls back to this
-//! scan and names the reason. Golden suites pin the default env.
-//!
-//! When the env is the default `brute` *and* the store has at least
-//! [`HNSW_AUTO_MIN_ROWS`] vectors *and* a worker origin is bound, search tries
-//! the sidecar first. A miss falls through to this scan with the original
-//! `brute` index block, so goldens (small fixtures, no worker) stay byte-
-//! identical.
-
 use lattice_core::pytext::{citation_locator, clean_text, round6, safe_loads, truncate_chars};
 use lattice_core::read::{vector_row_from, VectorRow, VECTOR_ROW_SELECT};
 use lattice_core::{CoreError, LocalEmbeddingModel};
@@ -29,23 +12,13 @@ pub use crate::vector_alignment::{
     VectorProviderStatus, VectorQueryInput, VectorSearchOptions,
 };
 
-/// `LATTICEAI_VECTOR_MAX_CANDIDATES`.
 pub const VECTOR_MAX_CANDIDATES_ENV: &str = "LATTICEAI_VECTOR_MAX_CANDIDATES";
-/// `LATTICEAI_VECTOR_INDEX`.
 pub const VECTOR_INDEX_ENV: &str = "LATTICEAI_VECTOR_INDEX";
-/// `search.DEFAULT_VECTOR_MAX_CANDIDATES`.
 pub const DEFAULT_VECTOR_MAX_CANDIDATES: i64 = 10_000;
-/// `search.VECTOR_MAX_CANDIDATES_CEILING`.
 pub const VECTOR_MAX_CANDIDATES_CEILING: i64 = 500_000;
-/// `vector_index.brute_force.BRUTE_FORCE_BACKEND`.
 pub const BRUTE_FORCE_BACKEND: &str = "bruteforce-cosine";
-/// Row count at which default brute search tries the HNSW sidecar first.
-///
-/// Below this the exact scan is cheap and golden-pinned. Above it, a bound
-/// worker sidecar is asked for candidates and the rows are re-scored exactly.
 pub const HNSW_AUTO_MIN_ROWS: i64 = 512;
 
-/// `vector_index.BackendSelection` for the backends this crate can honour.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendSelection {
     pub requested: String,
@@ -57,7 +30,6 @@ pub struct BackendSelection {
 }
 
 impl BackendSelection {
-    /// `BackendSelection.as_dict()` — including the derived `honored` flag.
     pub fn as_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("requested".into(), Value::String(self.requested.clone()));
@@ -88,7 +60,6 @@ fn brute(requested: &str, detail: Option<String>) -> BackendSelection {
     }
 }
 
-/// True when the operator explicitly pinned exact scan (`LATTICEAI_VECTOR_INDEX=brute` or `bruteforce`).
 pub fn explicit_bruteforce_pinned() -> bool {
     let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
     matches!(
@@ -97,10 +68,6 @@ pub fn explicit_bruteforce_pinned() -> bool {
     )
 }
 
-/// `vector_index.resolve_vector_index`.
-///
-/// `hnsw` is honoured via worker sidecar or native Rust HNSW; `brute`/`bruteforce`
-/// pins the exact scan. `quantized` stays unimplemented.
 pub fn resolve_vector_index() -> BackendSelection {
     let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
     let name = raw.trim().to_lowercase();
@@ -137,7 +104,6 @@ pub fn resolve_vector_index() -> BackendSelection {
     }
 }
 
-/// `_configured_vector_max_candidates` — `None` means "scan everything".
 pub fn configured_max_candidates() -> Option<i64> {
     let raw = std::env::var(VECTOR_MAX_CANDIDATES_ENV).unwrap_or_default();
     if raw.trim().is_empty() {
@@ -152,7 +118,6 @@ pub fn configured_max_candidates() -> Option<i64> {
     Some(value.min(VECTOR_MAX_CANDIDATES_CEILING))
 }
 
-/// `_vector_candidate_cap` — never scan fewer rows than the caller will receive.
 pub fn candidate_cap(limit: i64) -> Option<i64> {
     configured_max_candidates().map(|cap| cap.max(limit))
 }
@@ -167,7 +132,6 @@ pub(crate) fn recall_report(
     recall_report_custom(backend, cap, total, scanned, approx_detail, true)
 }
 
-/// Same shape as [`recall_report`]; `recency_cut` is the brute-scan wording.
 pub(crate) fn recall_report_custom(
     backend: &str,
     cap: Option<i64>,
@@ -215,7 +179,6 @@ fn opt_json(value: &Option<String>) -> Value {
         .unwrap_or(Value::Null)
 }
 
-/// `_VectorSearchMixin._vector_match` — one scored row → one match.
 pub fn vector_match(row: &VectorRow, score: f64) -> Map<String, Value> {
     let is_chunk = row.item_type.as_deref() == Some("chunk");
     let summary = if is_chunk && truthy(&row.chunk_text) {
@@ -297,7 +260,6 @@ pub fn vector_match(row: &VectorRow, score: f64) -> Map<String, Value> {
     item
 }
 
-/// Whether this search should ask the HNSW sidecar before the exact scan.
 pub fn should_try_hnsw(selection: &BackendSelection, candidates_total: i64) -> bool {
     if selection.requested == "hnsw" && selection.name == "hnsw" {
         return true;
@@ -308,7 +270,6 @@ pub fn should_try_hnsw(selection: &BackendSelection, candidates_total: i64) -> b
         && crate::vector_hnsw::hnsw_worker_is_bound()
 }
 
-/// `KnowledgeGraphStore.vector_search(query, limit=…, min_score=…)`.
 pub fn vector_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -323,8 +284,6 @@ pub fn vector_search(
     let backend = selection.backend.clone();
 
     if query.is_empty() {
-        // No query means no index was consulted, so there is nothing to report:
-        // the empty return deliberately carries no `index` block.
         let mut out = Map::new();
         out.insert("query".into(), Value::String(query));
         out.insert("matches".into(), Value::Array(Vec::new()));
@@ -391,8 +350,6 @@ pub fn vector_search(
 
     let recall = recall_report(&backend, cap, candidates_total, rows.len() as i64, None);
 
-    // Rows are walked in index order (not score order) so the stable sort below
-    // sees the same input ordering the Python scan produces.
     let mut scored: Vec<Map<String, Value>> = Vec::new();
     for row in &rows {
         let stored = model.decode(&row.embedding, row.embedding_dim.map(|d| d as usize));
@@ -422,7 +379,6 @@ pub fn vector_search(
     Ok(Value::Object(out))
 }
 
-/// `(score, updated_at or "")` — the sort key of `_vector_search_scan`.
 pub(crate) fn sort_key(item: &Map<String, Value>) -> (f64, String) {
     (
         item.get("score").and_then(Value::as_f64).unwrap_or(0.0),
@@ -585,7 +541,6 @@ mod tests {
         let (_dir, conn, model) = vector_db();
         let out = vector_search(&conn, &model, "ranking", 30, 0.95).unwrap();
         assert!(out["matches"].as_array().unwrap().is_empty());
-        // A limit of 1 still scans both rows but returns one.
         let out = vector_search(&conn, &model, "ranking", 1, 0.0).unwrap();
         assert_eq!(out["matches"].as_array().unwrap().len(), 1);
         assert_eq!(out["recall"]["candidates_scanned"], 2);

@@ -1,8 +1,3 @@
-//! Knowledge Graph 1-hop & 2-hop structural expansion (GraphRAG).
-//!
-//! Uses [`super::sidecar::Bm25SidecarIndex`] for O(1) / O(deg) edge adjacency,
-//! wikilink, hashtag, and title lookups without re-scanning node text.
-
 use std::collections::{HashMap, HashSet};
 
 use lattice_core::{CoreError, NodeRow};
@@ -20,24 +15,15 @@ use super::scoring::{
 };
 use super::sidecar::{detect_edge_columns, Bm25SidecarIndex};
 
-/// Configuration for Knowledge Graph structural neighborhood traversal & boosting.
 #[derive(Debug, Clone)]
 pub struct GraphRagConfig {
-    /// Maximum traversal depth (1 or 2 hops; defaults to 2).
     pub max_hops: usize,
-    /// Number of top seed hits from BM25F / Vector to expand from.
     pub max_seeds: usize,
-    /// Maximum expanded neighbor nodes to admit.
     pub max_neighbors: usize,
-    /// Per-node fan-out cap preventing high-degree hub explosion during traversal (P1.3).
     pub max_fanout_per_node: usize,
-    /// Total edge budget per graph expansion query (P1.3).
     pub max_edges_visited: usize,
-    /// Decay factor for 1-hop neighbors.
     pub hop1_decay: f64,
-    /// Decay factor for 2-hop neighbors (and shared concept/entity/wikilink/tag bridges).
     pub hop2_decay: f64,
-    /// Include `superseded`/`deprecated` neighbors (down-ranked when true; excluded when false).
     pub include_historical: bool,
 }
 
@@ -56,7 +42,6 @@ impl Default for GraphRagConfig {
     }
 }
 
-/// Structural graph evidence for a node in the Knowledge Graph.
 #[derive(Debug, Clone)]
 pub struct GraphStructuralHit {
     pub node: NodeRow,
@@ -187,9 +172,6 @@ fn record_implicit_link(
     );
 }
 
-/// Expand seed nodes using the pre-tokenized [`Bm25SidecarIndex`] and cached graph adjacency.
-/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges using a pre-synced
-/// [`Bm25SidecarIndex`] mutable cache.
 pub fn expand_knowledge_graph_with_sidecar(
     conn: &Connection,
     seeds: &[(String, f64)],
@@ -204,8 +186,6 @@ pub fn expand_knowledge_graph_with_sidecar(
     expand_knowledge_graph_with_snapshot(conn, seeds, sidecar, scope, cfg)
 }
 
-/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges using an immutable
-/// [`Bm25SidecarIndex`] snapshot (safe for concurrent readers without any write locks).
 pub fn expand_knowledge_graph_with_snapshot(
     conn: &Connection,
     seeds: &[(String, f64)],
@@ -371,8 +351,6 @@ pub fn expand_knowledge_graph_with_snapshot(
         frontier_ids = next_frontier;
     }
 
-    // Fetch only node rows referenced by edges that are not already in the sidecar cache,
-    // applying SQL workspace and lifecycle filters before loading.
     let mut fetched_nodes: HashMap<String, (NodeRow, KnowledgeLifecycleStatus)> = HashMap::new();
     let missing_ids: Vec<String> = raw_scores
         .keys()
@@ -421,7 +399,6 @@ pub fn expand_knowledge_graph_with_snapshot(
         }
     }
 
-    // Link nodes via cached implicit [[wikilinks]] and #tags (no text re-scanning!)
     let mut seed_wikilinks: HashMap<String, Vec<(String, f64)>> = HashMap::new();
     let mut seed_tags: HashMap<String, Vec<(String, f64)>> = HashMap::new();
     for (seed_id, &strength) in &seed_strength {
@@ -610,9 +587,6 @@ pub fn expand_knowledge_graph_with_snapshot(
     Ok(hits)
 }
 
-/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges (`RELATES_TO`,
-/// `MENTIONS`, `PART_OF`, etc.), shared Concept/Entity bridge nodes, `[[wikilinks]]`,
-/// and `#tags`, returning structurally scored nodes ordered by `graph_score`.
 pub fn expand_knowledge_graph(
     conn: &Connection,
     seeds: &[(String, f64)],

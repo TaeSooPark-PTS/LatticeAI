@@ -1,6 +1,3 @@
-//! v13.0.0 — Atomic single-transaction review mutations & reversible one-click
-//! folder reorganization undo.
-
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -57,7 +54,6 @@ gpu,120
     )
     .unwrap();
 
-    // Stage a forward folder reorganization proposal.
     let created = state
         .create(&NewReviewItem {
             title: "폴더 정리 제안: inbox".into(),
@@ -77,7 +73,6 @@ gpu,120
         })
         .expect("stage reorganization proposal");
 
-    // Creating 1 review item emitted exactly 1 timeline event in 1 atomic transaction.
     assert_eq!(sink_count.load(Ordering::SeqCst), 1);
 
     let forward_id = created["id"].as_str().expect("forward proposal id");
@@ -90,8 +85,6 @@ gpu,120
     assert!(inbox.join("topics/architecture/rfc.md").is_file());
     assert!(inbox.join("topics/finance/budget.csv").is_file());
 
-    // An undo proposal was automatically staged and linked in both `undo_proposal_id`
-    // and the approved item's `provenance.undo_proposal_id`.
     let undo_id = applied["undo_proposal_id"]
         .as_str()
         .expect("auto-staged undo_proposal_id")
@@ -102,8 +95,6 @@ gpu,120
     );
     assert_eq!(applied["moves"]["undo_proposal_id"], json!(undo_id));
 
-    // Approving the undo proposal restores both files to their original paths
-    // and does NOT stage an infinite undo-of-undo proposal.
     let rolled_back = change_proposals::apply_proposal(&state, &undo_id, &user, Some("personal"))
         .await
         .expect("apply one-click undo proposal");
@@ -114,8 +105,6 @@ gpu,120
     assert!(!inbox.join("topics/architecture/rfc.md").exists());
     assert!(!inbox.join("topics/finance/budget.csv").exists());
 
-    // Verify workspace_os state contains all 4 timeline events cleanly (create forward,
-    // create undo, approve forward, approve undo).
     let doc = state.store().load_state();
     let timeline = doc["timeline"].as_array().expect("timeline array");
     assert_eq!(timeline.len(), 4);

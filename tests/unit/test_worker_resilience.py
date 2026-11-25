@@ -1,5 +1,3 @@
-"""Unit tests for stateless Python worker timeout isolation and idempotency."""
-
 from __future__ import annotations
 
 import asyncio
@@ -124,7 +122,6 @@ def test_timeout_and_fault_isolation_keep_worker_healthy(
         assert resolve_compute_timeout_s() == pytest.approx(0.05)
 
         app, _ = _build_test_app()
-        # Second install call is a safe no-op returning existing store.
         assert (
             install_worker_compute_resilience(app) is app.state.worker_idempotency_store
         )
@@ -157,7 +154,6 @@ def test_timeout_and_fault_isolation_keep_worker_healthy(
             )
             assert boom_idem.status_code == 503
 
-            # Subsequent fast requests still succeed cleanly.
             monkeypatch.setenv("LATTICEAI_WORKER_COMPUTE_TIMEOUT_S", "invalid-float")
             assert resolve_compute_timeout_s() == pytest.approx(60.0)
             ok = await client.post("/worker/embed", json={"text": "recovered"})
@@ -265,7 +261,6 @@ def test_leader_cancellation_releases_inflight_and_slow_body_stream_times_out(
             with pytest.raises(asyncio.CancelledError):
                 await task
 
-            # Wait a tick for middleware BaseException handler to release inflight slot.
             await asyncio.sleep(0.01)
             assert len(app.state.worker_idempotency_store._inflight) == 0
 

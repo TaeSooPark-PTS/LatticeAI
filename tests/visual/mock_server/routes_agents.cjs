@@ -1,10 +1,3 @@
-/**
- * Hooks, the agent runtime and registry, marketplace/plugins/skills,
- * workflows and their automation recipes, memory panels, and MCP.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const { json } = require("./http.cjs");
 const { graphNodes, graphEdges, workspaceOs } = require("./fixtures.cjs");
 

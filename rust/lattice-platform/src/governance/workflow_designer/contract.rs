@@ -1,12 +1,8 @@
-//! Workflow-run contract projection.
-
 use lattice_auth::pyjson::OrderedMap;
 use serde_json::{json, Value};
 
 use super::time::now_iso;
 use super::TERMINAL_STATUSES;
-
-// ── run contract ─────────────────────────────────────────────────────────────
 
 pub(crate) fn workflow_run_contract(run: &OrderedMap) -> OrderedMap {
     let run_id = run

@@ -1,5 +1,3 @@
-"""Pure runtime helpers extracted from ltcai_cli entrypoint."""
-
 from __future__ import annotations
 
 import os
@@ -7,8 +5,6 @@ from pathlib import Path
 
 from latticeai.core.module_probe import module_available
 
-#: Historical name. ``cli.entrypoint`` imports it from here and the suite
-#: monkeypatches it there, so the binding has to exist on this module.
 _has_module = module_available
 
 

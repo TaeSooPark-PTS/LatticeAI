@@ -1,29 +1,3 @@
-//! The worker seam, from the gateway's side.
-//!
-//! Since v11.6.0 Wave 3, `lattice-host` is the product server and owns all
-//! SQLite and state-file writes natively (`GraphWriter`, `WorkspaceOsStore`).
-//! The Python worker keeps only stateless compute — LLM inference, the document
-//! parser/render matrix, entity/triple extraction, ASR, and embedding
-//! production. Everything a Rust route needs from that compute box goes over
-//! loopback HTTP, and this is the client every crate uses to make the call.
-//!
-//! It is deliberately shapeless: `post_json`, `get_json`, `stream_sse`, plus
-//! opt-in `post_idempotent_json` for stateless compute calls that carry an
-//! idempotency key across transient worker restarts.
-//!
-//! ## Design rules
-//!
-//! * **No implicit retries on `post_json`.** A drain tick backs off, a chat
-//!   turn fails the turn, an admin read shows an error — callers that want
-//!   bounded retry over stateless compute opt into [`WorkerSeamClient::post_idempotent_json`]
-//!   with an explicit [`WorkerRetryPolicy`] and idempotency key.
-//! * **No authentication of its own.** A deployment with auth on supplies the
-//!   credential via [`WorkerSeamClient::with_header`]; nothing here invents one.
-//! * **No JSON feature on reqwest.** The workspace pins reqwest without it (the
-//!   proxy streams bytes and never deserialises), so bodies are serialised and
-//!   parsed with `serde_json` by hand — the same way `lattice-jobs` and
-//!   `lattice-ingest` do it.
-
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -31,50 +5,31 @@ use bytes::Bytes;
 use futures_core::Stream;
 use serde_json::Value;
 
-/// How long a request/response round trip may take before it is abandoned.
-///
-/// Matches `lattice_ingest::worker::DEFAULT_TIMEOUT`: the slowest thing behind
-/// this seam is a document parse or an embedding batch, and both are seconds,
-/// not minutes.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// How long the connect phase may take.
-///
-/// Short, because the worker is on loopback: a connect that has not completed
-/// in five seconds is a worker that is not there, and waiting the full request
-/// timeout to learn that just delays the honest answer.
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Bytes of an error body kept for the message. Enough to read a FastAPI
-/// `detail`, short enough for a log line.
 const ERROR_BODY_CHARS: usize = 400;
 
-/// Why a seam call did not produce an answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkerSeamError {
-    /// The HTTP client could not be built.
     Client(String),
-    /// The request never completed — worker down, or the timeout elapsed.
-    Transport { path: String, detail: String },
-    /// The worker answered, and said no.
-    Rejected {
-        /// The seam path asked for.
+    Transport {
         path: String,
-        /// HTTP status.
-        status: u16,
-        /// Body, truncated.
         detail: String,
     },
-    /// The worker answered 2xx with something that was not JSON.
-    Malformed { path: String, detail: String },
+    Rejected {
+        path: String,
+        status: u16,
+        detail: String,
+    },
+    Malformed {
+        path: String,
+        detail: String,
+    },
 }
 
 impl WorkerSeamError {
-    /// The status the worker answered, when it answered at all.
-    ///
-    /// Callers that mirror the worker's refusal back to their own client (a
-    /// 403 for a 403 rather than a blanket 502) need this, and reading it out
-    /// of the message would be parsing our own prose.
     pub fn status(&self) -> Option<u16> {
         match self {
             WorkerSeamError::Rejected { status, .. } => Some(*status),
@@ -82,7 +37,6 @@ impl WorkerSeamError {
         }
     }
 
-    /// The seam path this failure is about, when it is about one.
     pub fn path(&self) -> Option<&str> {
         match self {
             WorkerSeamError::Client(_) => None,
@@ -92,9 +46,6 @@ impl WorkerSeamError {
         }
     }
 
-    /// Whether the failure represents a transient worker unavailability
-    /// (transport drop/timeout or 429/502/503/504 overload/restart) suitable
-    /// for bounded idempotent retry.
     pub fn is_transient(&self) -> bool {
         match self {
             WorkerSeamError::Transport { .. } => true,
@@ -106,14 +57,10 @@ impl WorkerSeamError {
     }
 }
 
-/// Bounded retry policy for stateless idempotent worker compute endpoints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorkerRetryPolicy {
-    /// Maximum additional retry attempts after the initial call (`0` = single attempt).
     pub max_retries: usize,
-    /// Base backoff before the first retry; doubles on each attempt up to `max_backoff`.
     pub initial_backoff: Duration,
-    /// Upper bound on per-attempt sleep duration.
     pub max_backoff: Duration,
 }
 
@@ -148,10 +95,6 @@ impl std::fmt::Display for WorkerSeamError {
 
 impl std::error::Error for WorkerSeamError {}
 
-/// An HTTP client pointed at one worker origin.
-///
-/// Cheap to clone — the underlying `reqwest::Client` is an `Arc` around a
-/// connection pool, so cloning shares the pool rather than opening a second one.
 #[derive(Debug, Clone)]
 pub struct WorkerSeamClient {
     client: reqwest::Client,
@@ -161,11 +104,6 @@ pub struct WorkerSeamClient {
 }
 
 impl WorkerSeamClient {
-    /// A client with its own connection pool.
-    ///
-    /// `no_proxy()` is load-bearing for the same reason it is in the host: a
-    /// machine-wide `HTTP_PROXY` must never intercept loopback traffic to our
-    /// own worker.
     pub fn new(origin: impl AsRef<str>) -> Result<Self, WorkerSeamError> {
         let client = reqwest::Client::builder()
             .no_proxy()
@@ -175,8 +113,6 @@ impl WorkerSeamClient {
         Ok(Self::with_client(client, origin))
     }
 
-    /// A client reusing an existing pool — the gateway's, so loopback
-    /// connections are not duplicated per crate.
     pub fn with_client(client: reqwest::Client, origin: impl AsRef<str>) -> Self {
         Self {
             client,
@@ -186,32 +122,24 @@ impl WorkerSeamClient {
         }
     }
 
-    /// Attach a header to every call — the auth seam.
     pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(name.into(), value.into());
         self
     }
 
-    /// Change the per-request timeout.
-    ///
-    /// It applies to [`WorkerSeamClient::post_json`] and
-    /// [`WorkerSeamClient::get_json`] only — see [`WorkerSeamClient::stream_sse`].
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
-    /// The worker origin, without a trailing slash.
     pub fn origin(&self) -> &str {
         &self.origin
     }
 
-    /// The per-request timeout in force.
     pub fn timeout(&self) -> Duration {
         self.timeout
     }
 
-    /// The absolute URL for a seam path.
     pub fn url(&self, path: &str) -> String {
         if path.starts_with('/') {
             format!("{}{path}", self.origin)
@@ -220,7 +148,6 @@ impl WorkerSeamClient {
         }
     }
 
-    /// `POST {origin}{path}` with a JSON body, answered as JSON.
     pub async fn post_json(&self, path: &str, body: &Value) -> Result<Value, WorkerSeamError> {
         let payload =
             serde_json::to_vec(body).map_err(|error| WorkerSeamError::Client(error.to_string()))?;
@@ -232,10 +159,6 @@ impl WorkerSeamClient {
         read_json(request, path).await
     }
 
-    /// `POST {origin}{path}` for stateless compute endpoints (`/worker/extract`,
-    /// `/worker/embed`, `/worker/render/*`), deriving a deterministic SHA-256
-    /// `x-lattice-idempotency-key` from `(path, body)` and applying bounded
-    /// retry via [`Self::post_idempotent_json`].
     pub async fn post_idempotent_compute(
         &self,
         path: &str,
@@ -245,9 +168,6 @@ impl WorkerSeamClient {
             .await
     }
 
-    /// Like [`Self::post_idempotent_compute`], with a caller-supplied retry policy
-    /// (for interactive paths such as query-time embedding that coalesce via
-    /// `x-lattice-idempotency-key` without multi-attempt backoff).
     pub async fn post_idempotent_compute_with_policy(
         &self,
         path: &str,
@@ -265,8 +185,6 @@ impl WorkerSeamClient {
         self.post_idempotent_json(path, &key, body, policy).await
     }
 
-    /// `POST {origin}{path}` with an explicit `x-lattice-idempotency-key` header
-    /// and bounded retry on transient worker failures (`is_transient()`).
     pub async fn post_idempotent_json(
         &self,
         path: &str,
@@ -301,10 +219,6 @@ impl WorkerSeamClient {
         }
     }
 
-    /// `GET {origin}{path}`, answered as JSON.
-    ///
-    /// `path` may carry a query string; it is forwarded verbatim, so the caller
-    /// owns escaping exactly as it does when it builds any other URL.
     pub async fn get_json(&self, path: &str) -> Result<Value, WorkerSeamError> {
         let request = self
             .request(reqwest::Method::GET, path)
@@ -312,16 +226,6 @@ impl WorkerSeamClient {
         read_json(request, path).await
     }
 
-    /// `POST {origin}{path}` and hand back the response before its body is read.
-    ///
-    /// **No total timeout is applied.** An SSE response is meant to stay open;
-    /// `reqwest`'s per-request timeout covers the whole exchange *including*
-    /// the body, so setting it here would cut a healthy stream off at 30 s. The
-    /// connect timeout still bounds "is the worker there at all", and the
-    /// caller ends the stream by dropping it.
-    ///
-    /// A non-2xx status is still an error — a 401 arriving as an event stream
-    /// would otherwise reach the browser as an empty, successful-looking chat.
     pub async fn stream_sse(
         &self,
         path: &str,
@@ -361,29 +265,20 @@ impl WorkerSeamClient {
     }
 }
 
-/// A streaming response the worker has already accepted.
-///
-/// Kept whole rather than reduced to bytes because an SSE passthrough has to
-/// mirror the upstream's headers too — `content-type`, and whatever the worker
-/// says about buffering. `lattice-host`'s proxy learned that the hard way
-/// (`gateway/proxy.rs`, `X-Accel-Buffering`).
 #[derive(Debug)]
 pub struct SseUpstream {
     response: reqwest::Response,
 }
 
 impl SseUpstream {
-    /// The status the worker answered — always a success, by construction.
     pub fn status(&self) -> reqwest::StatusCode {
         self.response.status()
     }
 
-    /// The upstream response headers, for a passthrough to copy.
     pub fn headers(&self) -> &reqwest::header::HeaderMap {
         self.response.headers()
     }
 
-    /// The upstream `content-type`, when it sent a readable one.
     pub fn content_type(&self) -> Option<&str> {
         self.response
             .headers()
@@ -391,16 +286,10 @@ impl SseUpstream {
             .and_then(|value| value.to_str().ok())
     }
 
-    /// The body as a chunk stream, for `axum::body::Body::from_stream`.
-    ///
-    /// Nothing is buffered: chunks arrive as the worker flushes them, which is
-    /// the whole point of an event stream and the property the 11.5.x proxy
-    /// tests pin with a real gap between events.
     pub fn into_byte_stream(self) -> impl Stream<Item = Result<Bytes, reqwest::Error>> {
         self.response.bytes_stream()
     }
 
-    /// The raw response, for a caller that wants everything at once.
     pub fn into_response(self) -> reqwest::Response {
         self.response
     }
@@ -435,8 +324,6 @@ async fn read_json(request: reqwest::RequestBuilder, path: &str) -> Result<Value
     })
 }
 
-/// Truncate on character boundaries — a byte slice would panic on the Korean
-/// half of a worker error message (recorded lesson, v11.5.0).
 fn truncate(text: &str, max: usize) -> String {
     if text.chars().count() <= max {
         return text.to_string();
@@ -453,7 +340,6 @@ mod tests {
         let client = WorkerSeamClient::new("http://127.0.0.1:4825/").expect("client");
         assert_eq!(client.origin(), "http://127.0.0.1:4825");
         assert_eq!(client.url("/health"), "http://127.0.0.1:4825/health");
-        // A path without a leading slash is still a path, not a suffix.
         assert_eq!(client.url("health"), "http://127.0.0.1:4825/health");
         let bare = WorkerSeamClient::new("  http://127.0.0.1:4825  ").expect("client");
         assert_eq!(bare.origin(), client.origin());
@@ -501,7 +387,6 @@ mod tests {
 
     #[test]
     fn truncation_counts_characters_not_bytes() {
-        // 3 bytes per glyph: a byte-slicing truncate would panic here.
         assert_eq!(truncate("한국어", 10), "한국어");
         assert_eq!(truncate("한국어입니다", 3), "한국어…");
     }
@@ -566,7 +451,6 @@ mod tests {
         assert_eq!(ok["ok"], true);
         assert_eq!(hits.load(Ordering::SeqCst), 2);
 
-        // Non-transient 400 must fail immediately without burning retries.
         let err = client
             .post_idempotent_json(
                 "/worker/embed",

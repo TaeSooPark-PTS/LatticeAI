@@ -96,9 +96,6 @@ async fn clear_writes_the_audit_event_through_graph_writer() {
     assert_eq!(count, 1);
 }
 
-/// A state with a Brain, an agent workspace and **no worker** — the shape
-/// that used to make `ingest_generated` return `None` and, with a worker,
-/// made it post into a route that no longer exists.
 fn brain_state(
     dir: &Path,
 ) -> (
@@ -203,7 +200,6 @@ async fn a_generated_file_is_written_through_the_graph_writer() {
         .unwrap();
     assert_eq!(provenance, 1);
 
-    // Writing the same file again is the same node, reported as such.
     let again = ingest_generated(
         &state,
         "메모.md",
@@ -223,22 +219,18 @@ async fn without_a_brain_or_with_the_gate_off_nothing_is_claimed() {
     let (state, _graph) = brain_state(dir.path());
     std::fs::write(state.config.agent_root.join("a.md"), b"x").unwrap();
 
-    // Gate off: no ingest, and no `brain_ingest` key for a client to read.
     let mut off = state.clone();
     off.config.ingest_generated = false;
     assert!(ingest_generated(&off, "a.md", "x", None, None, None)
         .await
         .is_none());
 
-    // No Brain bound: the same silence, rather than a "failed" receipt for
-    // something that was never attempted.
     let mut brainless = state.clone();
     brainless.graph = None;
     assert!(ingest_generated(&brainless, "a.md", "x", None, None, None)
         .await
         .is_none());
 
-    // A file that is not on disk is a named failure, not a false "ok".
     let missing = ingest_generated(&state, "gone.md", "x", None, None, None)
         .await
         .expect("receipt");

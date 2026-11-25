@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Brain shell chrome, the command board, and the first-screen / hero /
-// living-brain copy that greets someone on the Brain home surface.
 export const brainHomeCopy: NamespaceCopy = {
   ko: {
     "brain.level": "단계",

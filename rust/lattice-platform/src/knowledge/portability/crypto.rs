@@ -1,15 +1,3 @@
-//! Cryptographic framing, key derivation, authenticated encryption, and
-//! archive path-safety validation for `.latticebrain` archives and sealed
-//! subgraph shares.
-//!
-//! Uses only workspace-locked crates (`sha2`, `ed25519-dalek`, `base64`,
-//! `getrandom`, `zip`):
-//! - RFC 7914 `scrypt` over `Sha256` PBKDF2 + Salsa20/8 for passphrase archives.
-//! - RFC 7748 Curve25519 (`X25519`) Montgomery ECDH + RFC 5869 HKDF-SHA256 for
-//!   `recipient_public_key` sealed-box archives.
-//! - Encrypt-then-MAC authenticated stream cipher (`SHA256-CTR` + `HMAC-SHA256`)
-//!   with constant-time MAC verification before decryption.
-
 use std::collections::HashSet;
 use std::io::{Cursor, Read, Write};
 
@@ -47,7 +35,6 @@ const MAC_DOMAIN: &[u8] = b"latticebrain.mac.v1";
 const CTR_DOMAIN: &[u8] = b"latticebrain.ctr.v1";
 const HKDF_INFO_SEALED: &[u8] = b"x25519-hkdf-sha256-aes256gcm";
 
-/// Parsed metadata and checksums from an encrypted `.latticebrain` outer container.
 pub(crate) struct EncryptedArchiveEnvelope {
     pub(crate) header: Value,
     pub(crate) manifest: Value,
@@ -55,7 +42,6 @@ pub(crate) struct EncryptedArchiveEnvelope {
     pub(crate) outer_entries: Vec<String>,
 }
 
-/// Decrypted archive artifact returned after MAC + checksum + path validation.
 pub(crate) struct DecryptedArchive {
     pub(crate) header: Value,
     pub(crate) manifest: Value,
@@ -63,8 +49,6 @@ pub(crate) struct DecryptedArchive {
     pub(crate) signature_verified: bool,
     pub(crate) outer_entries: Vec<String>,
 }
-
-// ── Authenticated stream cipher (Encrypt-then-MAC) ───────────────────────────
 
 fn xor_keystream(enc_key: &[u8; 32], nonce: &[u8; 16], data: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(data.len());
@@ -123,10 +107,6 @@ fn header_mac_binding(header: &Value) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("Failed to encode archive header binding: {e}"))
 }
 
-// ── Archive Entry Safety (Path Traversal & Symlink Rejection) ────────────────
-
-/// Validate one archive entry path strictly against directory traversal,
-/// absolute paths, drive letters, backslashes, NUL bytes, and overly deep paths.
 pub(crate) fn validate_archive_entry_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("Archive entry has an empty path.".into());
@@ -154,15 +134,12 @@ pub(crate) fn validate_archive_entry_name(name: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Detect POSIX symlink entries (`S_IFLNK = 0o120000`) inside a ZIP archive.
 pub(crate) fn is_zip_symlink<R: Read>(entry: &zip::read::ZipFile<'_, R>) -> bool {
     entry
         .unix_mode()
         .is_some_and(|mode| (mode & 0o170_000) == 0o120_000)
 }
 
-/// Scan every entry in an already-opened ZIP archive and reject path traversal
-/// or symlinks before reading or extracting anything.
 pub(crate) fn validate_zip_entries<R: Read + std::io::Seek>(
     archive: &mut zip::ZipArchive<R>,
 ) -> Result<Vec<String>, String> {
@@ -193,8 +170,6 @@ pub(crate) fn validate_zip_entries<R: Read + std::io::Seek>(
     Ok(names)
 }
 
-// ── .latticebrain Outer Container Write / Inspect / Verify & Decrypt ─────────
-
 pub(crate) enum EncryptionMode<'a> {
     Passphrase(&'a str),
     RecipientPublicKey { public_key_b64: &'a str },
@@ -221,7 +196,6 @@ pub(crate) fn seal_and_write_archive(
     let created_at = http_reply::now_iso_utc();
     let plaintext_sha = sha256_hex(plaintext);
 
-    // Ensure manifest carries checksums + metadata cleanly.
     let mut checksums = manifest
         .get("checksums")
         .and_then(Value::as_object)
@@ -683,7 +657,6 @@ pub(crate) fn verify_and_decrypt_archive(
         }
     }
 
-    // Validate inner payload ZIP entries against path traversal / symlinks if it's a ZIP.
     if plaintext.starts_with(b"PK") {
         let cursor = Cursor::new(&plaintext);
         let mut inner_zip = zip::ZipArchive::new(cursor)

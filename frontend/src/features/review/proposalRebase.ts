@@ -1,26 +1,12 @@
 import { latticeApi } from "@/api/client";
 import { isRecord } from "@/lib/utils";
 
-// Client-side rebase for change proposals whose approval hit the 409
-// base-changed guard (backend 9.9.0). The backend intentionally offers no
-// rebase endpoint — its contract is "reject and re-propose against the
-// current base" — so this module implements exactly that flow with the
-// surfaces that exist today:
-//
-//   1. read the staged proposal      GET  /api/proposals/{id}
-//   2. re-read the current file      GET  /tools/download?path=…
-//   3. stage a fresh proposal        POST /automation/reviews (source
-//      change_proposal, with a new base_sha256 snapshot + recomputed diff)
-//   4. retire the conflicted one     POST /api/proposals/{id}/reject
-//
-// When the file already contains the staged content the old proposal is
-// simply retired ("already_applied") without creating a new one.
 
 export type RebaseOutcome = "rebased" | "already_applied";
 
-const MAX_DIFF_LINES = 400; // mirrors the backend _MAX_DIFF_LINES cap
-const SMALL_TIER_DIFF_LINES = 40; // mirrors _SMALL_TIER_DIFF_LINES
-const MAX_DIFF_INPUT_LINES = 400; // LCS guard: beyond this, emit a coarse diff
+const MAX_DIFF_LINES = 400;
+const SMALL_TIER_DIFF_LINES = 40;
+const MAX_DIFF_INPUT_LINES = 400;
 
 function utf8Bytes(text: string): number {
   return new TextEncoder().encode(text).length;
@@ -35,10 +21,6 @@ async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
-// Display-oriented unified-style diff (headers + "-"/"+" lines, unchanged
-// lines omitted). Uses an LCS walk for inputs up to MAX_DIFF_INPUT_LINES per
-// side; larger files fall back to a coarse remove-all/add-all listing. The
-// result feeds ProposalDiff, which colors by the leading character.
 export function unifiedDiffLines(before: string, after: string, path: string): string[] {
   const header = [`--- a/${path}`, `+++ b/${path}`];
   const beforeLines = before.length ? before.split("\n") : [];
@@ -50,7 +32,6 @@ export function unifiedDiffLines(before: string, after: string, path: string): s
       ...afterLines.map((line) => `+${line}`),
     ].slice(0, MAX_DIFF_LINES);
   }
-  // LCS table (bottom-up) → walk emitting removals/additions.
   const rows = beforeLines.length;
   const cols = afterLines.length;
   const table: Uint32Array[] = Array.from({ length: rows + 1 }, () => new Uint32Array(cols + 1));
@@ -101,7 +82,6 @@ export async function rebaseProposal(itemId: string): Promise<RebaseOutcome> {
   const baseExists = current.ok;
   const currentContent = current.ok ? current.data.content : "";
 
-  // The drift already produced the desired end state → just retire the item.
   if (kind === "file_update" && baseExists && currentContent === staged) {
     await latticeApi.rejectProposal(itemId, "rebase: content already applied");
     return "already_applied";
@@ -126,9 +106,6 @@ export async function rebaseProposal(itemId: string): Promise<RebaseOutcome> {
       tier: kind === "file_delete" ? "large" : diff.length <= SMALL_TIER_DIFF_LINES ? "small" : "large",
       before_bytes: utf8Bytes(currentContent),
       after_bytes: utf8Bytes(nextContent),
-      // Fresh conflict-check snapshot. When WebCrypto is unavailable the base
-      // fields are omitted entirely (legacy apply-as-reviewed) instead of
-      // staging a wrong/empty hash that could never be approved.
       ...(baseSha || !baseExists ? { base_exists: baseExists, base_sha256: baseSha } : {}),
     },
     provenance: {

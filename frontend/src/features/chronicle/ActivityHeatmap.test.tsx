@@ -8,11 +8,6 @@ import "@/i18n/chronicle";
 import { ActivityHeatmap } from "./ActivityHeatmap";
 import { buildHeatmap, buildTimeline } from "./chronicleModel";
 
-/**
- * The grid is the second way to choose a day, so its cells have to be reachable
- * without a mouse and have to say which date they are. A coloured `div` would
- * look identical in a screenshot and be invisible to everything else.
- */
 
 const SERIES: ChronicleSeriesPoint[] = [
   { date: "2026-06-01", sources: 1, entities: 0, connections: 0, conversations: 0 },
@@ -34,7 +29,6 @@ describe("ActivityHeatmap", () => {
   it("renders one button per recorded day and nothing for the padding", () => {
     render();
     const cells = screen.getAllByTestId("chronicle-heatmap-cell");
-    // Five calendar days between 06-01 and 06-05; the rest of the week is padding.
     expect(cells).toHaveLength(5);
     expect(screen.getByRole("group", { name: "날짜별 활동" })).toBeTruthy();
   });
@@ -42,7 +36,6 @@ describe("ActivityHeatmap", () => {
   it("names each cell with its date and what landed on it", () => {
     render();
     expect(screen.getByRole("button", { name: "2026-06-03, 10가지" })).toBeTruthy();
-    // A day inside the span with nothing on it says so rather than going unnamed.
     expect(screen.getByRole("button", { name: "2026-06-05, 쌓인 것 없음" })).toBeTruthy();
   });
 

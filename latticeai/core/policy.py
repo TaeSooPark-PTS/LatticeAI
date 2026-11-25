@@ -1,5 +1,3 @@
-"""Enforced community RBAC policy for Lattice AI."""
-
 from __future__ import annotations
 
 from typing import Dict, Set

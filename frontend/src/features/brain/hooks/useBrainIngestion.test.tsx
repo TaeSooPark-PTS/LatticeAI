@@ -9,14 +9,6 @@ import { fail, ok, stubApi } from "@/test/renderPage";
 import type { BrainReadiness, KnowledgeGraphModel, MemoryFragment } from "../types";
 import { useBrainIngestion } from "./useBrainIngestion";
 
-/**
- * Everything that feeds the Brain: files, folders, notes, web pages and the
- * begin/complete/fail ingestion state machine with its emergence events.
- *
- * The folder picker is mocked at the module boundary — it probes the desktop
- * shell and `window.showDirectoryPicker`, which is environment, not behaviour
- * under test. `browserFolderNameFromFiles` stays real.
- */
 
 const { pickFolderMock } = vi.hoisted(() => ({ pickFolderMock: vi.fn() }));
 vi.mock("@/lib/folderPicker", async (importOriginal) => {

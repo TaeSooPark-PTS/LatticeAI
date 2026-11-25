@@ -1,25 +1,13 @@
-//! Port of `lattice_brain/graph/retrieval_policy.py` + the query-class
-//! heuristics and weight table it composes from `lattice_brain/graph/fusion.py`.
-//!
-//! Two details decide behaviour and are easy to get backwards: classification
-//! runs on the **original** query (so a rewrite can never change the class), and
-//! `recency_half_life_days` is non-`None` for exactly one class — it is the
-//! signal that age decay applies there and nowhere else.
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
 
 use crate::build_pattern as build;
 
-/// `LATTICEAI_QUERY_REWRITE` — anything falsy disables rewriting entirely.
 pub const QUERY_REWRITE_ENV: &str = "LATTICEAI_QUERY_REWRITE";
-/// `retrieval_policy.RECENCY_HALF_LIFE_DAYS`.
 pub const RECENCY_HALF_LIFE_DAYS: f64 = 14.0;
-/// A filler strip only applies when at least this many characters survive.
 const MIN_REMAINDER_CHARS: usize = 4;
 
-/// The resolved policy for one query.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Policy {
     pub query_class: String,
@@ -70,7 +58,6 @@ fn patterns() -> &'static Patterns {
     })
 }
 
-/// `fusion.classify_query` — code → recency → person → fact, in that order.
 pub fn classify_query(query: &str) -> &'static str {
     let text = query.trim();
     if text.is_empty() {
@@ -90,7 +77,6 @@ pub fn classify_query(query: &str) -> &'static str {
     "fact"
 }
 
-/// The vector share for a class — `fusion.DEFAULT_FUSION_WEIGHTS[cls]["alpha"]`.
 pub fn class_alpha(query_class: &str) -> f64 {
     match query_class {
         "code" => 0.35,
@@ -100,21 +86,10 @@ pub fn class_alpha(query_class: &str) -> f64 {
     }
 }
 
-/// The three-channel weights for a class — the `keyword`/`vector`/`graph`
-/// columns of `fusion.DEFAULT_FUSION_WEIGHTS`, in that fixed order.
-///
-/// `alpha` above and these are the same table read by two different fusion
-/// layers: the graph-layer hybrid blends two channels with `alpha`, the service
-/// layer sums three with these. The `fact` row is deliberately identical to
-/// `search_service.DEFAULT_HYBRID_WEIGHTS`, which is why a fact-class query and
-/// a pinned-default caller get the same answer.
 pub fn class_weights(query_class: &str) -> [(&'static str, f64); 3] {
     match query_class {
-        // Code recall lives on exact identifiers → lexical dominates.
         "code" => [("keyword", 0.55), ("vector", 0.25), ("graph", 0.20)],
-        // Person questions are relationship questions → the graph leads.
         "person" => [("keyword", 0.30), ("vector", 0.30), ("graph", 0.40)],
-        // Recency wants fresh literal hits over semantic neighbours.
         "recency" => [("keyword", 0.45), ("vector", 0.35), ("graph", 0.20)],
         _ => [("keyword", 0.35), ("vector", 0.40), ("graph", 0.25)],
     }
@@ -128,7 +103,6 @@ fn rewrite_enabled() -> bool {
     !matches!(raw.as_str(), "0" | "false" | "no" | "off")
 }
 
-/// `retrieval_policy.rewrite_query` → `(rewritten, rules)`.
 pub fn rewrite_query(query: &str) -> (String, Vec<String>) {
     let text = query.trim();
     if text.is_empty() {
@@ -145,8 +119,6 @@ pub fn rewrite_query(query: &str) -> (String, Vec<String>) {
         rules.push("collapse_whitespace".to_string());
     }
     if classify_query(&original) == "code" {
-        // Exact identifiers and filenames ARE the retrieval signal for code
-        // questions; whitespace collapse is the only permitted normalization.
         return (rewritten, rules);
     }
     for (name, pattern) in [
@@ -163,7 +135,6 @@ pub fn rewrite_query(query: &str) -> (String, Vec<String>) {
     (rewritten, rules)
 }
 
-/// `retrieval_policy.resolve_policy` for the default (un-overridden) tables.
 pub fn resolve_policy(query: &str) -> Policy {
     let original = query.trim().to_string();
     let (rewritten, rules) = rewrite_query(query);
@@ -211,7 +182,6 @@ mod tests {
         assert_eq!(classify_query("담당자 누구"), "person");
         assert_eq!(classify_query("김지원 님이"), "person");
         assert_eq!(classify_query("a@b.co"), "person");
-        // A code signal beats a recency word, and recency beats a person word.
         assert_eq!(classify_query("어제 버그"), "code");
         assert_eq!(classify_query("어제 누구"), "recency");
     }
@@ -223,7 +193,6 @@ mod tests {
         assert_eq!(class_alpha("person"), 0.45);
         assert_eq!(class_alpha("recency"), 0.50);
         assert_eq!(class_alpha("nonsense"), 0.60);
-        // The three-channel row for `fact` IS `DEFAULT_HYBRID_WEIGHTS`.
         assert_eq!(
             class_weights("fact"),
             [("keyword", 0.35), ("vector", 0.40), ("graph", 0.25)]
@@ -253,11 +222,9 @@ mod tests {
         let (text, rules) = rewrite_query("온보딩 체크리스트 좀 알려줘");
         assert_eq!(text, "온보딩 체크리스트");
         assert_eq!(rules, vec!["strip_filler_ko"]);
-        // Code queries only ever get whitespace collapse.
         let (text, rules) = rewrite_query("vector_search()   please");
         assert_eq!(text, "vector_search() please");
         assert_eq!(rules, vec!["collapse_whitespace"]);
-        // A strip that would leave under four characters is refused.
         let (text, rules) = rewrite_query("abc 좀 알려줘");
         assert_eq!(text, "abc 좀 알려줘");
         assert!(rules.is_empty());
@@ -284,7 +251,6 @@ mod tests {
         assert_ne!(fact, policy);
         assert!(format!("{fact:?}").contains("query_class"));
 
-        // An all-filler query rewrites to nothing, so the original is searched.
         let empty = resolve_policy("");
         assert_eq!(empty.search_query, "");
         assert_eq!(empty.query_class, "fact");

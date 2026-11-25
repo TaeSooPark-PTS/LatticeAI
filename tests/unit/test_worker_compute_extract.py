@@ -1,9 +1,3 @@
-"""Tests for the `/worker/extract` pure-compute seam.
-
-Split from ``tests/unit/test_worker_compute.py`` to keep each test module
-cohesive and well below the 1,000-line ceiling.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -32,7 +26,6 @@ def _open_seam(monkeypatch):
 
 @pytest.fixture
 def _rules_only(monkeypatch):
-    """Pin extraction to the rule fallback so two calls in one test agree."""
     monkeypatch.setattr(
         "lattice_brain.graph._kg_common.extraction.ENABLE_LLM_EXTRACTION",
         False,
@@ -53,7 +46,6 @@ def _client() -> TestClient:
 
 
 def _python_extract(text: str, kind: str) -> Dict[str, Any]:
-    """The literal composition ingest_* makes after calling the extractors."""
     from lattice_brain.graph._kg_common import (
         _classify_node_type,
         _extract_concepts,
@@ -93,7 +85,6 @@ def _python_extract(text: str, kind: str) -> Dict[str, Any]:
 
 
 def test_extract_returns_the_structures_ingestion_consumes(_rules_only):
-    """Parity with the call sites ingest_message / ingest_document use."""
     client = _client()
     text = (
         "Lattice AI uses Graph RAG.\n"
@@ -161,7 +152,6 @@ def test_extract_kind_is_case_and_space_insensitive(_rules_only):
 
 
 def test_extract_maps_a_thin_triple_the_way_the_write_path_does(monkeypatch):
-    """``weight or 1.0`` and empty context/evidence are the ingest mapping."""
     import lattice_brain.graph._kg_common as kg
 
     monkeypatch.setattr(kg, "_extract_concepts", lambda text, limit=12: ["A", "B"])

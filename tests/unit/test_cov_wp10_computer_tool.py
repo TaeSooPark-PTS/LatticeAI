@@ -1,12 +1,3 @@
-"""Coverage for the desktop-control tool module (latticeai/tools/computer.py).
-
-Nothing here may touch a real screen, mouse, keyboard, or process: every
-platform seam is replaced.  ``pyautogui`` is injected as a fake module through
-``sys.modules`` so the "optional dependency present" branches execute on a
-headless CI box that will never have it installed, ``subprocess`` is swapped
-for a recorder, and the screenshot temp file is redirected into ``tmp_path``.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -22,7 +13,6 @@ from latticeai.tools import ToolError, computer
 PNG_BYTES = b"\x89PNG\r\n\x1a\nfake-capture"
 
 
-# ── fakes ────────────────────────────────────────────────────────────────────
 class _Completed:
     def __init__(self, returncode: int = 0, stderr: bytes = b""):
         self.returncode = returncode
@@ -78,10 +68,7 @@ def _fake_pyautogui(calls, *, size=(1920, 1080)):
 
 
 def _enable_pyautogui(monkeypatch, calls, *, size=(1920, 1080)):
-    """Import a fake pyautogui through the module's real init path."""
     module = _fake_pyautogui(calls, size=size)
-    # Recorded before _init_computer_use() mutates them, so monkeypatch's
-    # teardown restores the process-wide "no pyautogui installed" state.
     monkeypatch.setattr(computer, "_CU_AVAILABLE", False)
     monkeypatch.setattr(computer, "_pyautogui", None)
     monkeypatch.setitem(sys.modules, "pyautogui", module)
@@ -96,12 +83,10 @@ def _disable_pyautogui(monkeypatch):
 
 @pytest.fixture()
 def screenshot_tmpdir(monkeypatch, tmp_path):
-    """Keep computer_screenshot()'s NamedTemporaryFile inside tmp_path."""
     monkeypatch.setattr(computer.tempfile, "tempdir", str(tmp_path))
     return tmp_path
 
 
-# ── optional-dependency init ─────────────────────────────────────────────────
 def test_init_computer_use_arms_failsafe_when_pyautogui_imports():
     calls = []
     with pytest.MonkeyPatch.context() as monkeypatch:
@@ -112,13 +97,11 @@ def test_init_computer_use_arms_failsafe_when_pyautogui_imports():
         assert module.FAILSAFE is True
         assert module.PAUSE == 0.25
 
-    # Undone: the headless process is back to "pyautogui unavailable".
     assert computer._CU_AVAILABLE is False
     assert computer._pyautogui is None
 
 
 def test_init_computer_use_stays_unavailable_when_the_backend_is_broken(monkeypatch):
-    """A pyautogui that cannot arm itself (no DISPLAY) leaves CU switched off."""
 
     class _BrokenBackend:
         def __setattr__(self, name, value):
@@ -134,7 +117,6 @@ def test_init_computer_use_stays_unavailable_when_the_backend_is_broken(monkeypa
     assert computer._pyautogui is None
 
 
-# ── computer_screenshot ──────────────────────────────────────────────────────
 def test_screenshot_uses_screencapture_on_darwin(monkeypatch, screenshot_tmpdir):
     calls = []
     _disable_pyautogui(monkeypatch)
@@ -154,7 +136,7 @@ def test_screenshot_uses_screencapture_on_darwin(monkeypatch, screenshot_tmpdir)
     assert result["format"] == "png"
     assert result["bytes"] == len(PNG_BYTES)
     assert (result["screen_width"], result["screen_height"]) == (0, 0)
-    assert not Path(cmd[-1]).exists()  # temp capture is always removed
+    assert not Path(cmd[-1]).exists()
 
 
 def test_screenshot_reports_screencapture_failure(monkeypatch, screenshot_tmpdir):
@@ -220,11 +202,10 @@ def test_screenshot_survives_temp_cleanup_failure(monkeypatch, screenshot_tmpdir
 
     assert result["bytes"] == len(PNG_BYTES)
     leftover = Path(calls[0][0][-1])
-    assert leftover.exists()  # cleanup failed and was swallowed, not raised
+    assert leftover.exists()
     leftover.unlink()
 
 
-# ── pointer / keyboard actions ───────────────────────────────────────────────
 @pytest.mark.parametrize(
     "action",
     [
@@ -339,7 +320,6 @@ def test_drag_moves_to_the_origin_before_dragging(monkeypatch):
     assert result == {"action": "drag", "from": [1, 2], "to": [3, 4]}
 
 
-# ── status / vision ──────────────────────────────────────────────────────────
 def test_status_reports_unavailable_without_pyautogui(monkeypatch):
     _disable_pyautogui(monkeypatch)
 

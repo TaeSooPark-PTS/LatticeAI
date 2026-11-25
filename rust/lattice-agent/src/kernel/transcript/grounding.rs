@@ -1,16 +1,3 @@
-//! Deterministic transcript grounding checks for agent answers (P1.1).
-//!
-//! Catches two failure modes observed on 2B/8GB-tier local models without
-//! introducing any per-model branches:
-//!
-//! 1. **Unread target file**: the user asks to inspect, explain, check, or
-//!    answer from a named file (not a file creation task) and the model emits
-//!    a fluent answer without ever reading or searching that file.
-//! 2. **Hallucinated citations / backticked symbols**: the answer cites a
-//!    `path.ext:line` never touched on the transcript, or claims a backticked
-//!    code identifier (`>= 4` chars, non-path) when answering about a read
-//!    file whose content and tool outputs never mention that identifier.
-
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
@@ -212,7 +199,6 @@ fn collect_transcript_evidence_blob(transcript: &[Value]) -> (BTreeSet<String>, 
     (touched_basenames, combined, read_count)
 }
 
-/// Returns `Some(reason)` when `said` makes file/symbol claims ungrounded in `transcript`.
 pub fn answer_has_ungrounded_claims(
     said: &str,
     request: &str,
@@ -225,8 +211,6 @@ pub fn answer_has_ungrounded_claims(
     let evidence_lower = evidence_blob.to_ascii_lowercase();
     let req_files = extract_named_files(request);
 
-    // 1. Request explicitly asked to inspect/read/explain a named file, yet no
-    //    executing step ever read, wrote, or matched that file.
     if !req_files.is_empty() && request_asks_file_inspection(request) {
         for (req_file, _) in &req_files {
             let base = basename_lower(req_file);
@@ -237,7 +221,6 @@ pub fn answer_has_ungrounded_claims(
         }
     }
 
-    // 2. Answer cites an explicit `file.ext:line` never touched on transcript.
     let req_basenames: BTreeSet<String> =
         req_files.iter().map(|(f, _)| basename_lower(f)).collect();
     for (cited_file, cited_line) in extract_named_files(said) {
@@ -250,9 +233,6 @@ pub fn answer_has_ungrounded_claims(
         }
     }
 
-    // 3. When answering an inspection question about a read file, reject
-    //    backticked code symbols (`snake_case` / `camelCase` / `UPPER_CONST`)
-    //    that appear in neither the user's prompt nor any tool output.
     if read_count > 0 && !req_basenames.is_empty() && request_asks_file_inspection(request) {
         let req_lower = request.to_ascii_lowercase();
         const SAFE_GENERIC_TOKENS: &[&str] = &[

@@ -1,5 +1,3 @@
-"""Unit tests for cross-platform oMLX / GGUF / Ollama / llama.cpp setup and Qwen3.8-27B-4bit."""
-
 from __future__ import annotations
 
 import types
@@ -86,7 +84,6 @@ def test_omlx_serve_args_tuned_by_ram_memory_pressure_and_env(monkeypatch) -> No
     assert args_32[args_32.index("--hot-cache-max-size") + 1] == "2GB"
     assert args_32[args_32.index("--max-concurrent-requests") + 1] == "2"
 
-    # Concurrent-app memory pressure on 32GB Mac (only 17GB reclaimable for 16.1GB 27B weights)
     args_tight = omlx_serve_args(ram_gb=32.0, available_ram_gb=17.0, model_size_gb=16.1)
     assert args_tight[args_tight.index("--memory-guard") + 1] == "safe"
     assert args_tight[args_tight.index("--hot-cache-max-size") + 1] == "1GB"
@@ -120,7 +117,6 @@ def test_cross_platform_installers_for_macos_windows_and_linux() -> None:
     lin_sys = types.SimpleNamespace(platform="linux", executable="/usr/bin/python3")
     lin_plat = types.SimpleNamespace(machine=lambda: "x86_64")
 
-    # macOS oMLX: brew when available, GitHub release universal2 wheel fallback when brew is absent
     cmd_brew = resolve_engine_installer(
         "omlx",
         ENGINE_INSTALLERS,
@@ -138,7 +134,6 @@ def test_cross_platform_installers_for_macos_windows_and_linux() -> None:
     )
     assert "jundot/omlx/releases/latest" in cmd_wheel[2]
 
-    # Windows: winget for Ollama & LM Studio & llama.cpp, pip fallback for llama.cpp
     cmd_win_ollama = resolve_engine_installer(
         "ollama",
         ENGINE_INSTALLERS,
@@ -173,7 +168,6 @@ def test_cross_platform_installers_for_macos_windows_and_linux() -> None:
             which_fn=lambda _b: None,
         )
 
-    # Linux: curl script for Ollama, pip fallback for llama.cpp
     cmd_lin_ollama = resolve_engine_installer(
         "ollama",
         ENGINE_INSTALLERS,
@@ -204,7 +198,6 @@ def test_cross_platform_installers_for_macos_windows_and_linux() -> None:
 def test_cross_platform_one_way_model_routing_and_xet_download(
     tmp_path, monkeypatch
 ) -> None:
-    # Non-Apple-Silicon hosts automatically remap Qwen3.8-27B-4bit onto Ollama or installed llama.cpp
     monkeypatch.setattr(loading_mod, "is_apple_silicon", lambda: False)
     monkeypatch.setattr(loading_mod, "engine_installed", lambda eng: eng == "llamacpp")
     routed_id, routed_eng = loading_mod.resolve_cross_platform_model_request(
@@ -229,7 +222,6 @@ def test_cross_platform_one_way_model_routing_and_xet_download(
         == "omlx"
     )
 
-    # Auto confirmation token wiring for one-way consented engine install
     captured = {}
     monkeypatch.setattr(
         status_mod,
@@ -246,7 +238,6 @@ def test_cross_platform_one_way_model_routing_and_xet_download(
     status_mod.install_engine("omlx", state=ModelRuntimeState())
     assert captured["token"] == "tok-123"
 
-    # HF Xet high-performance env enabled automatically on download
     monkeypatch.delenv("HF_XET_HIGH_PERFORMANCE", raising=False)
     _call_hf_hub_download(
         lambda **kw: str(tmp_path / kw["filename"]),

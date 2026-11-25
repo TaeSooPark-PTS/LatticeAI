@@ -1,15 +1,6 @@
 import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
-/**
- * Copy for the 연대기 (Chronicle) screen.
- *
- * The whole screen is a rearrangement of facts the Brain already stored, so the
- * words never claim more than that: no "분석", no "요약", no verb that would
- * suggest a model ran. Basic mode is the default reader here, so the vocabulary
- * stays at the level of a calendar — 자료 / 개념 / 연결 / 대화 — and every
- * machine token (`fact_superseded`, `web_url`) is spelled out as a sentence.
- */
 export const chronicleCopy: NamespaceCopy = {
   ko: {
     "chronicle.kicker": "기억의 연대기",
@@ -171,5 +162,4 @@ export const chronicleCopy: NamespaceCopy = {
   },
 };
 
-// Route-scoped: registered when the Chronicle page's lazy chunk loads.
 registerCopy(chronicleCopy);

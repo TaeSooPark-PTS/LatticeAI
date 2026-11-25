@@ -1,24 +1,3 @@
-"""Tool lifecycle dispatch — the one path every tool call takes.
-
-(lattice_brain/runtime/hooks.py)
-책임: HookContext/Result, dispatch_tool (pre_tool → execute → post_tool).
-상위: api/agent_worker_seam, api/tools.
-
-v3.2.0 made lifecycle hooks first-class: a persisted registry under
-``data_dir/hooks.json``, ordering, enable flags, built-in descriptions and a
-subprocess runner for user hooks. All of that is platform state, and v11.6.0
-moved platform state into ``lattice-host`` — the registry, its HTTP surface
-(``/api/hooks/*``) and the built-in runners (which bound to the audit log and
-the sensitivity classifier) went with it.
-
-What a stateless compute worker still needs is the *shape* of a dispatch, so
-the seam that runs a tool runs it through the same three steps the product path
-does. :func:`dispatch_tool` with ``hooks=None`` — which is what the worker
-passes, because it holds no registry — is a transparent pass-through, and
-:class:`HookContext` / :class:`HookResult` remain the contract a bound runner
-would be handed.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -28,20 +7,10 @@ from ..utils import now_iso as _now
 
 LOGGER = logging.getLogger(__name__)
 
-# Hook statuses a dispatch can record.
 HOOK_STATUSES = ("ok", "blocked", "error", "skipped", "advisory")
 
 
 class HookContext:
-    """Mutable execution context handed to every hook in a dispatch.
-
-    A bound hook runner may inspect or modify :attr:`payload` (e.g. redact
-    secrets in place), attach data via :meth:`set`, or halt a pending action
-    with :meth:`block`. Blocking is honoured for the ``pre_*`` kinds that gate
-    real work (a blocked ``pre_run`` stops the agent run; a blocked ``pre_tool``
-    stops the tool call).
-    """
-
     __slots__ = (
         "kind",
         "event",
@@ -102,8 +71,6 @@ class HookContext:
 
 
 class HookResult:
-    """The outcome of running a single hook (one entry in a dispatch)."""
-
     __slots__ = (
         "hook_id",
         "name",
@@ -136,7 +103,7 @@ class HookResult:
         self.hook_id = hook_id
         self.name = name
         self.kind = kind
-        self.status = status  # ok | blocked | error | skipped | advisory
+        self.status = status
         self.detail = detail
         self.output = output
         self.duration_ms = duration_ms
@@ -171,15 +138,6 @@ def dispatch_tool(
     workspace_id: Optional[str] = None,
     source: str = "",
 ) -> Any:
-    """Run a tool through the shared ``pre_tool`` → execute → ``post_tool`` lifecycle.
-
-    This is the single tool-dispatch path so every caller (the HTTP ``/tools/*``
-    routes, the single-agent runtime in :mod:`latticeai.core.agent`, and the
-    workflow tool node) fires the same hooks. A blocking ``pre_tool`` hook raises
-    :class:`PermissionError`; a tool error still fires ``post_tool`` (status
-    ``error``) before re-raising. With ``hooks=None`` it is a transparent
-    pass-through, so the tool path is unchanged when hooks are absent.
-    """
     if hooks is None:
         return run_fn()
     try:

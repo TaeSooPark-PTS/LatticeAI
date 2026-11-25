@@ -1,18 +1,12 @@
-//! Review-item persistence ports and standalone `workspace_os.json` store for
-//! [`super`] (`proposals`).
-
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-/// The file the review items live in (`lattice_core::db::state_files::WORKSPACE_OS`).
 const WORKSPACE_OS_FILE: &str = "workspace_os.json";
-/// The workspace a review item belongs to when the caller names none.
 const DEFAULT_WORKSPACE_ID: &str = "personal";
 
-/// One review item to create — `ReviewQueueService.create`'s arguments.
 #[derive(Debug, Clone)]
 pub struct NewReviewItem {
     pub title: String,
@@ -25,73 +19,31 @@ pub struct NewReviewItem {
     pub workspace_id: Option<String>,
 }
 
-/// Where a staged proposal is persisted.
-///
-/// `create` answers the **stored item**, id included, because the loop puts
-/// that id on the transcript and in the audit trail: "제안으로 저장했습니다"
-/// with no id is a claim the user cannot check.
 pub trait ProposalStore: std::fmt::Debug + Send + Sync {
-    /// Append one review item; `Err` is a staging failure, never a panic.
     fn create(&self, item: &NewReviewItem) -> Result<Value, String>;
 }
 
-/// The one owner of `workspace_os.json`, when this process has one.
-///
-/// The same inversion [`ProposalStore`] already uses, one level down. A
-/// `JsonProposalStore` is *correct standalone* and *wrong in the product*: it
-/// appends to the JSON file alone, while `lattice_platform`'s
-/// `WorkspaceOsStore` reads the `workspace_os_state` SQLite row first and
-/// rewrites the file from it. So a proposal staged through the JSON store in a
-/// process that also runs the Review Center is invisible to it and is
-/// overwritten by its next save.
-///
-/// Injecting the right store at every construction site means every future
-/// construction site has to remember (there are five today, and
-/// `LoopDeps::new`'s default is reached whenever a `LoopConfig` leaves
-/// `proposals: None`). Installing the owner once makes it true by
-/// construction instead: with a writer installed, [`JsonProposalStore`] stops
-/// being a second writer and becomes a *shape* — it still builds the review
-/// item, and the owner performs the write.
 pub trait DocumentWriter: Send + Sync {
-    /// Load, apply `body`, save — under the owner's write lock.
     fn mutate(&self, body: &mut dyn FnMut(&mut Value)) -> Result<(), String>;
 }
 
 static DOCUMENT_WRITER: std::sync::OnceLock<Arc<dyn DocumentWriter>> = std::sync::OnceLock::new();
 
-/// Name the process's `workspace_os.json` owner. The first call wins.
-///
-/// A later call is refused (`false`) rather than swapping the document under a
-/// run that is mid-stage, the same rule
-/// `lattice_retrieval::memory_api::wsos::install_state_writer` follows.
 pub fn install_document_writer(writer: Arc<dyn DocumentWriter>) -> bool {
     DOCUMENT_WRITER.set(writer).is_ok()
 }
 
-/// The installed owner, if the host wired one.
 pub fn document_writer() -> Option<&'static Arc<dyn DocumentWriter>> {
     DOCUMENT_WRITER.get()
 }
 
-/// The standalone store: `<data_dir>/workspace_os.json`.
-///
-/// Byte-compatible with `lattice_platform::governance::review_queue` — see the module
-/// docs, and [`DocumentWriter`] for what happens when the Review Center is in
-/// this process too.
 #[derive(Debug, Clone)]
 pub struct JsonProposalStore {
     data_dir: PathBuf,
-    /// One writer at a time. Appending is read-modify-write over a whole
-    /// document, so two runs staging at once would otherwise keep whichever
-    /// wrote last and silently drop the other's proposal. Shared across clones;
-    /// it does not cover a second *process* (nor did Python's store), and it is
-    /// unused when a [`DocumentWriter`] is installed — that lock is the
-    /// document owner's, and is the only one the platform respects.
     lock: Arc<Mutex<()>>,
 }
 
 impl JsonProposalStore {
-    /// A store over an explicit data directory.
     pub fn new(data_dir: impl Into<PathBuf>) -> Self {
         Self {
             data_dir: data_dir.into(),
@@ -99,7 +51,6 @@ impl JsonProposalStore {
         }
     }
 
-    /// `LATTICEAI_DATA_DIR`, or `$HOME/.ltcai` — [`crate::kernel::runs::default_runs_dir`]'s rule.
     pub fn from_env() -> Self {
         let configured = std::env::var("LATTICEAI_DATA_DIR").unwrap_or_default();
         if !configured.trim().is_empty() {
@@ -112,7 +63,6 @@ impl JsonProposalStore {
         Self::new(base)
     }
 
-    /// The document this store appends to.
     pub fn state_path(&self) -> PathBuf {
         self.data_dir.join(WORKSPACE_OS_FILE)
     }
@@ -121,12 +71,9 @@ impl JsonProposalStore {
 impl ProposalStore for JsonProposalStore {
     fn create(&self, item: &NewReviewItem) -> Result<Value, String> {
         if item.title.trim().is_empty() {
-            // `WorkspaceReviewItems.create_review_item`'s own ValueError.
             return Err("title is required".into());
         }
         if let Some(writer) = document_writer() {
-            // The owner holds its lock across the load and the save, so the id
-            // scan and the append below cannot be raced by a review action.
             let mut stored: Option<Value> = None;
             writer.mutate(&mut |state: &mut Value| {
                 let built = build_review_item(item, &existing_ids(state));
@@ -161,7 +108,6 @@ impl ProposalStore for JsonProposalStore {
     }
 }
 
-/// Every review-item id already in the document — the collision set.
 fn existing_ids(state: &Value) -> Vec<String> {
     state
         .get("review_items")
@@ -174,7 +120,6 @@ fn existing_ids(state: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// One review item, exactly as `lattice_platform::governance::review_queue` builds it.
 fn build_review_item(item: &NewReviewItem, existing: &[String]) -> Value {
     let now = now_iso();
     let user_email = item
@@ -204,7 +149,6 @@ fn build_review_item(item: &NewReviewItem, existing: &[String]) -> Value {
     })
 }
 
-/// `review-{_json_hash([title, source, kind, user_email, now, seq?])[:16]}`.
 fn review_id(item: &NewReviewItem, user_email: &Value, now: &str, seq: Option<u32>) -> String {
     let mut parts = vec![
         json!(item.title),
@@ -235,7 +179,6 @@ fn read_state(path: &Path) -> Value {
     default_workspace_os()
 }
 
-/// The document `GovernanceState::open` starts from when there is no file.
 fn default_workspace_os() -> Value {
     let now = now_iso();
     json!({
@@ -265,12 +208,6 @@ fn default_workspace_os() -> Value {
     })
 }
 
-/// `save_workspace_os`: stamp the version and `updated_at`, then replace.
-///
-/// The SQLite mirror `lattice-platform` also writes is **not** written here —
-/// this crate has no SQLite dependency, and a store that mirrored half of the
-/// pair would be worse than one that mirrors none. It is the reason the
-/// in-process Review Center must inject its own store; the module docs say so.
 fn write_state(path: &Path, state: &mut Value) -> Result<(), String> {
     if let Some(object) = state.as_object_mut() {
         object.insert("version".into(), json!(crate::VERSION));
@@ -280,7 +217,6 @@ fn write_state(path: &Path, state: &mut Value) -> Result<(), String> {
     atomic_write(path, &format!("{text}\n"))
 }
 
-/// Temp file + rename, as `lattice_auth::atomic::write_text` (its owner).
 fn atomic_write(path: &Path, text: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
@@ -298,7 +234,6 @@ fn atomic_write(path: &Path, text: &str) -> Result<(), String> {
     })
 }
 
-/// `now_iso()` — naive, second resolution, no offset (the store's format).
 fn now_iso() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -311,7 +246,6 @@ fn now_iso() -> String {
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}")
 }
 
-/// Howard Hinnant's `civil_from_days`, as `lattice_platform::governance::review_queue` uses.
 fn civil_from_days(mut days: i64) -> (i32, u32, u32) {
     days += 719_468;
     let era = if days >= 0 { days } else { days - 146_096 } / 146_097;

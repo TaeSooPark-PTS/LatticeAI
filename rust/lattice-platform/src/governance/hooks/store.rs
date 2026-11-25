@@ -10,7 +10,6 @@ use crate::governance::review_queue::now_iso;
 
 use super::*;
 
-/// In-memory + disk hooks registry, shared across requests.
 #[derive(Clone)]
 pub struct HooksStore {
     path: PathBuf,
@@ -25,7 +24,6 @@ struct HooksInner {
 }
 
 impl HooksStore {
-    /// Open (or start) `hooks.json` + `hooks_runs.json` under `data_dir`.
     pub fn open(data_dir: impl Into<PathBuf>) -> Self {
         let data_dir = data_dir.into();
         let path = data_dir.join(state_files::HOOKS);
@@ -58,7 +56,6 @@ impl HooksStore {
         }
     }
 
-    /// Seed the run log the way the Python setup's `/tools/write_file` calls do.
     pub fn seed_write_file_runs(
         &self,
         fixture_hook_id: &str,
@@ -66,7 +63,6 @@ impl HooksStore {
         writes_after: usize,
     ) {
         let mut inner = self.inner.lock().expect("hooks lock");
-        // Newest first (appendleft). Seed oldest first then push_front.
         let mut records = Vec::new();
         for _ in 0..writes_before {
             records.extend(write_file_pre_runs(None));
@@ -483,13 +479,6 @@ impl HooksStore {
         entry
     }
 
-    /// `_record_run` — newest first, bounded, persisted.
-    ///
-    /// The bound is Python's `run_log_limit=100` (`deque(maxlen=…)`), which the
-    /// port had dropped while `POST /api/hooks/run` was the only producer. It
-    /// is load-bearing now that [`super::sink::NativeHookSink`] records a run
-    /// per native tool call: without it `hooks_runs.json` would grow for the
-    /// life of the install.
     pub(crate) fn record_run(&self, entry: Value) {
         let mut inner = self.inner.lock().expect("hooks lock");
         inner.runs.push_front(entry);
@@ -500,7 +489,6 @@ impl HooksStore {
     }
 }
 
-/// `HooksRegistry(run_log_limit=100)`.
 pub(crate) const RUN_LOG_LIMIT: usize = 100;
 
 fn materialize(inner: &HooksInner) -> Vec<Value> {
@@ -544,7 +532,6 @@ fn materialize(inner: &HooksInner) -> Vec<Value> {
                 .and_then(Value::as_str)
                 .map(|s| !s.trim().is_empty())
                 .unwrap_or(false);
-            // Platform binds a runner for brain-event-triggers at boot.
             let executable = has_command
                 || custom.get("id").and_then(Value::as_str) == Some(BRAIN_EVENT_TRIGGERS);
             obj.insert("executable".into(), json!(executable));

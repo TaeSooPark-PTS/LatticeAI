@@ -1,7 +1,4 @@
-/*
- * v11.7.0 stage-2 page chrome — memory graph explorer, capture dropzone,
- * library/system/act/review/admin extras. Token-only, no glass, unlayered.
- */
+
 
 .product-page .page-title,
 .product-page .brain-layer-header h1,
@@ -53,7 +50,7 @@
   line-height: var(--lt-leading-body);
 }
 
-/* ── Memory graph explorer ───────────────────────────────────────────── */
+
 
 .graph-explorer {
   display: grid;
@@ -282,7 +279,7 @@
   }
 }
 
-/* ── Capture dropzone ─────────────────────────────────────────────────── */
+
 
 .capture-dropzone {
   display: flex;
@@ -319,8 +316,7 @@
   color: hsl(var(--primary));
 }
 
-/* Folder health — override the older conversation-sheet look without
-   editing UX1's 19-agent-steps.css. */
+
 .folder-memory-health {
   display: flex;
   flex-direction: column;
@@ -345,7 +341,7 @@
   color: hsl(var(--warning-ink));
 }
 
-/* ── Review center ───────────────────────────────────────────────────── */
+
 
 .review-inbox {
   display: grid;
@@ -421,7 +417,7 @@
   color: hsl(var(--success));
 }
 
-/* ── System tab groups + autonomy dials ──────────────────────────────── */
+
 
 .system-tab-groups {
   display: flex;
@@ -569,7 +565,7 @@
   font-weight: 600;
 }
 
-/* ── Admin statement ─────────────────────────────────────────────────── */
+
 
 .admin-metrics-statement {
   display: flex;

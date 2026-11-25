@@ -73,9 +73,6 @@ export function useBrainIngestion({
     return () => window.clearTimeout(timer);
   }, [emergenceEvents]);
 
-  // `stage` is always a mid-flight stage here ("indexing" from completeIngestion);
-  // terminal stages are written by resolveEmergence/failIngestion below, which
-  // stamp completedAt themselves.
   const setStage = React.useCallback((sourceType: IngestionSourceType, stage: IngestionPipelineStage) => {
     setIngestionStates((previous) => {
       const current = previous[sourceType];
@@ -186,7 +183,6 @@ export function useBrainIngestion({
       qc.invalidateQueries({ queryKey: ["graph"] }),
       qc.invalidateQueries({ queryKey: ["memoryBrainProof"] }),
       qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] }),
-      // Freshness + background jobs may have moved after an ingest completes.
       qc.invalidateQueries({ queryKey: ["vectorFreshness"] }),
       qc.invalidateQueries({ queryKey: ["ingestionJobs"] }),
     ]);
@@ -250,9 +246,6 @@ export function useBrainIngestion({
     triggerBrainRecall();
   }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
-  // The folder button used to call the desktop-only picker, so in a browser it
-  // resolved to null and the button did nothing. Route through the shared
-  // picker, which falls back to reading the directory in the browser.
   const pickFolder = React.useCallback(async () => {
     const selection = await pickFolderSelection();
     if (selection.kind === "cancelled") return;
@@ -272,8 +265,6 @@ export function useBrainIngestion({
       return;
     }
 
-    // No server-side path to watch here — the browser hands us the files, so
-    // each one goes in as a document and the folder tile reports the batch.
     setMemoryFeedback(t(language, "brain.ingest.folder.reading"));
     onBrainChange("recalling", 0.84);
     beginIngestion("folder", folderName);

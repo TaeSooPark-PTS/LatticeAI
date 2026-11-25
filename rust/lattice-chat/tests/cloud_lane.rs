@@ -1,8 +1,3 @@
-//! Hybrid cloud lane: mock OpenAI-compatible HTTP + the status contract.
-//!
-//! No real provider is contacted. The adapter is pointed at a loopback axum
-//! server that speaks Chat Completions SSE.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -493,7 +488,6 @@ async fn disk_configured_api_key_e2e_verifies_bearer_and_strips_local_only_nodes
         data.path().join("knowledge_graph_blobs"),
     )
     .expect("graph");
-    // Seed one shareable node and one sensitive local_only node.
     let _ = graph
         .upsert_nodes(&[
             lattice_core::graph_write::types::NodeSpec {
@@ -547,7 +541,6 @@ async fn disk_configured_api_key_e2e_verifies_bearer_and_strips_local_only_nodes
     .with_graph(graph);
     let (origin, token) = serve_chat(state, &auth).await;
 
-    // 1. Live /api/cloud/status probes GET /v1/models with Bearer key.
     let status_body: Value = serde_json::from_str(
         &client()
             .get(format!("{origin}/api/cloud/status"))
@@ -564,7 +557,6 @@ async fn disk_configured_api_key_e2e_verifies_bearer_and_strips_local_only_nodes
     assert_eq!(status_body["verified"], true);
     assert_eq!(status_body["mode"], "api_key");
 
-    // 2. End-to-end /chat completion streams via api_key and never leaks local_only nodes.
     let chat_body: Value = serde_json::from_str(
         &client()
             .post(format!("{origin}/chat"))

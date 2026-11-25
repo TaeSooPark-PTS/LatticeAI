@@ -1,11 +1,3 @@
-"""Cross-platform engine adapter registry, hardware RAM/pressure probes, and one-way installers.
-
-Centralizes platform-specific engine installation (macOS Homebrew + zero-Homebrew oMLX wheel
-fallback, Windows Winget + pip fallbacks, Linux official install script + pip fallbacks),
-real-time available memory detection, and hardware-tuned CLI arguments for ``omlx`` and
-``llama.cpp`` so macOS, Windows, and Linux users get one-click setup and download.
-"""
-
 from __future__ import annotations
 
 import ctypes
@@ -27,8 +19,6 @@ from latticeai.services.model_errors import ModelRuntimeError
 
 @dataclass(frozen=True, slots=True)
 class EngineAdapter:
-    """Declarative metadata for a local inference engine."""
-
     id: str
     display_name: str
     apple_silicon_only: bool = False
@@ -153,7 +143,6 @@ def _windows_memory_status_gb() -> Optional[tuple[float, float]]:
 
 
 def host_ram_gb() -> float:
-    """Return installed physical RAM in GiB across macOS, Linux, and Windows."""
     win_mem = _windows_memory_status_gb()
     if win_mem is not None and win_mem[0] > 0:
         return win_mem[0]
@@ -168,7 +157,6 @@ def host_ram_gb() -> float:
 
 
 def host_available_ram_gb(total_ram_gb: Optional[float] = None) -> float:
-    """Return reclaimable/available RAM in GiB to guard against concurrent-app memory pressure."""
     win_mem = _windows_memory_status_gb()
     if win_mem is not None and win_mem[1] > 0:
         return win_mem[1]
@@ -224,7 +212,6 @@ def omlx_serve_args(
     available_ram_gb: Optional[float] = None,
     model_size_gb: float = 16.1,
 ) -> List[str]:
-    """Return hardware- and memory-pressure-tuned CLI flags for ``omlx serve``."""
     effective_ram = float(ram_gb) if ram_gb is not None else host_ram_gb()
     if available_ram_gb is not None:
         effective_avail = float(available_ram_gb)
@@ -299,7 +286,6 @@ def llamacpp_serve_args(
     ram_gb: Optional[float] = None,
     port: int = 8080,
 ) -> List[str]:
-    """Return cross-platform hardware-tuned CLI flags for ``llama-server`` (Windows/Linux/macOS)."""
     effective_ram = float(ram_gb) if ram_gb is not None else host_ram_gb()
     ctx_size = (os.getenv("LATTICEAI_LLAMACPP_CTX_SIZE") or "").strip()
     if not ctx_size:
@@ -341,7 +327,6 @@ def default_local_engine_for_host(
     sys_mod: Any = _sys,
     platform_mod: Any = _platform,
 ) -> str:
-    """Pick the best local runtime for this OS/architecture for zero-config one-way setup."""
     is_mac_arm = (
         apple_silicon
         if apple_silicon is not None
@@ -360,7 +345,6 @@ def default_local_engine_for_host(
 
 
 def _omlx_wheel_fallback_script(python_exe: str) -> str:
-    """Install official jundot/omlx macOS universal2 wheel into ~/.omlx/venv when Homebrew is absent."""
     return (
         "set -euo pipefail; "
         'mkdir -p "$HOME/.omlx/bin"; '
@@ -490,7 +474,6 @@ def resolve_engine_installer(
     platform_mod: Any = _platform,
     which_fn: Callable[[str], Optional[str]] = _shutil.which,
 ) -> List[str]:
-    """Resolve an OS-appropriate one-way install command for ``engine``."""
     if engine not in installers:
         raise ModelRuntimeError(status_code=400, detail="지원하지 않는 엔진입니다.")
 
@@ -551,7 +534,6 @@ async def smoke_test_loaded_model(
     api_key_override: Optional[str] = None,
     model_router: Any = None,
 ) -> Dict[str, Any]:
-    """Run a lightweight post-load chat smoke test for local engines (skipping cloud models)."""
     _ = api_key_override
     try:
         import asyncio

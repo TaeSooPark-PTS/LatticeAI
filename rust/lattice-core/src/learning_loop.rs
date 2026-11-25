@@ -1,11 +1,3 @@
-//! User-Feedback Knowledge Learning Loop (P1.7).
-//!
-//! Records user corrections for entity links, facts, relationships, and citations
-//! with `pending` / `confirmed` / `rejected` epistemic states, complete before/after
-//! JSON audit history, selective re-indexing triggers, and a hard-enforced local-only
-//! policy preventing user corrections from ever being uploaded for external model
-//! training.
-
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -18,7 +10,6 @@ fn utc_now_iso() -> String {
     SystemClock.now_iso()
 }
 
-/// Target kind of a user knowledge correction.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CorrectionTargetKind {
@@ -51,7 +42,6 @@ impl CorrectionTargetKind {
     }
 }
 
-/// Epistemic review status of a user correction.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CorrectionStatus {
@@ -81,7 +71,6 @@ impl CorrectionStatus {
     }
 }
 
-/// Request payload to record a user knowledge correction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordCorrectionRequest {
     pub workspace_id: String,
@@ -94,7 +83,6 @@ pub struct RecordCorrectionRequest {
     pub after_snapshot: Value,
 }
 
-/// Persisted knowledge correction with full audit lineage and training-upload isolation flag.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct KnowledgeCorrectionRecord {
     pub correction_id: String,
@@ -114,7 +102,6 @@ pub struct KnowledgeCorrectionRecord {
     pub reverted_at: Option<String>,
 }
 
-/// Ensure the `knowledge_corrections` table exists.
 pub fn ensure_learning_loop_schema(conn: &Connection) -> Result<(), CoreError> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS knowledge_corrections (
@@ -140,7 +127,6 @@ pub fn ensure_learning_loop_schema(conn: &Connection) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// Invariant guard: user corrections are NEVER eligible for external model training uploads.
 pub fn assert_external_training_upload_forbidden(
     record: &KnowledgeCorrectionRecord,
 ) -> Result<(), CoreError> {
@@ -188,7 +174,6 @@ fn node_effective_workspace(conn: &Connection, node_id: &str) -> Result<Option<S
     }))
 }
 
-/// Verify that a correction target (node ID or edge ID) exists and belongs to `workspace_id`.
 pub fn verify_correction_target_workspace(
     conn: &Connection,
     workspace_id: &str,
@@ -255,8 +240,6 @@ pub fn verify_correction_target_workspace(
     }
 }
 
-/// Record a user correction without overwriting raw source provenance, optionally
-/// applying confirmed updates to FTS5 / node metadata and triggering selective re-indexing.
 pub fn record_knowledge_correction(
     conn: &mut Connection,
     req: &RecordCorrectionRequest,
@@ -352,7 +335,6 @@ fn apply_confirmed_correction_and_selective_reindex(
                 let mut meta: Value =
                     serde_json::from_str(&old_meta_raw).unwrap_or_else(|_| json!({}));
                 if let Some(obj) = meta.as_object_mut() {
-                    // Never overwrite original raw provenance; attach correction overlay only.
                     obj.insert("verification_status".to_string(), json!("confirmed"));
                     obj.insert("last_correction_id".to_string(), json!(correction_id));
                     obj.insert("last_corrected_at".to_string(), json!(now));
@@ -366,7 +348,6 @@ fn apply_confirmed_correction_and_selective_reindex(
                     "UPDATE nodes_v2 SET label = ?2, summary = ?3, attrs = ?4, updated_at = ?5 WHERE id = ?1",
                     params![target_id, new_title, new_summary, meta_str, now],
                 );
-                // Selective FTS5 re-index for ONLY this target node.
                 let _ = tx.execute(
                     "DELETE FROM node_fts WHERE node_id = ?1",
                     params![target_id],
@@ -398,7 +379,6 @@ fn apply_confirmed_correction_and_selective_reindex(
     }
 }
 
-/// Transition a pending correction to `confirmed` or `rejected` (applying selective re-index on confirm).
 pub fn update_correction_status(
     conn: &mut Connection,
     correction_id: &str,
@@ -407,8 +387,6 @@ pub fn update_correction_status(
     update_correction_status_inner(conn, None, correction_id, new_status)
 }
 
-/// Workspace-scoped variant of [`update_correction_status`]: verifies that both
-/// `correction_id` and its target belong to `workspace_id`.
 pub fn update_correction_status_in_workspace(
     conn: &mut Connection,
     workspace_id: &str,
@@ -469,7 +447,6 @@ fn update_correction_status_inner(
         .ok_or_else(|| CoreError::InvalidRequest("correction missing after update".to_string()))
 }
 
-/// Revert a confirmed correction using its recorded `before_snapshot` and selectively re-index.
 pub fn revert_knowledge_correction(
     conn: &mut Connection,
     correction_id: &str,
@@ -477,8 +454,6 @@ pub fn revert_knowledge_correction(
     revert_knowledge_correction_inner(conn, None, correction_id)
 }
 
-/// Workspace-scoped variant of [`revert_knowledge_correction`]: verifies that both
-/// `correction_id` and its target belong to `workspace_id`.
 pub fn revert_knowledge_correction_in_workspace(
     conn: &mut Connection,
     workspace_id: &str,
@@ -529,7 +504,6 @@ fn revert_knowledge_correction_inner(
         .ok_or_else(|| CoreError::InvalidRequest("correction missing after revert".to_string()))
 }
 
-/// Load a single correction record.
 pub fn load_correction(
     conn: &Connection,
     correction_id: &str,
@@ -548,7 +522,6 @@ pub fn load_correction(
     .map_err(Into::into)
 }
 
-/// List corrections scoped strictly to `workspace_id` (and optional status filter).
 pub fn list_corrections(
     conn: &Connection,
     workspace_id: &str,
@@ -654,7 +627,6 @@ mod tests {
         assert!(!rec.external_training_upload_allowed);
         assert!(assert_external_training_upload_forbidden(&rec).is_ok());
 
-        // Raw source_uri provenance must remain untouched.
         let meta_raw: String = conn
             .query_row(
                 "SELECT metadata_json FROM nodes WHERE id = 'fact-1'",
@@ -666,7 +638,6 @@ mod tests {
         assert_eq!(meta["source_uri"], "file:///orig.md");
         assert_eq!(meta["verification_status"], "confirmed");
 
-        // Selective FTS5 re-index must reflect updated text.
         let fts_hits: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM node_fts WHERE node_fts MATCH 'Bob'",
@@ -676,7 +647,6 @@ mod tests {
             .unwrap();
         assert_eq!(fts_hits, 1);
 
-        // Revert restores before_snapshot.
         let reverted = revert_knowledge_correction(&mut conn, &rec.correction_id).unwrap();
         assert_eq!(reverted.status, CorrectionStatus::Rejected);
         assert!(reverted.reverted_at.is_some());
@@ -687,7 +657,6 @@ mod tests {
             .unwrap();
         assert_eq!(restored_summary, "Alice leads Project X");
 
-        // Cross-workspace target mutation and status/revert must be rejected.
         let cross_create = record_knowledge_correction(
             &mut conn,
             &RecordCorrectionRequest {

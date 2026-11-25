@@ -1,10 +1,3 @@
-//! `GET /api/index/{queue,status}` — the auth branches replayed, and the
-//! mounted route table checked against the committed fragment.
-//!
-//! Two test binaries collapsed into one.
-
-// ── replay ──
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -137,7 +130,6 @@ async fn index_reads_replay_auth_denials_and_serve_200() {
     assert!(body.get("status").is_some());
     assert!(body.get("storage").is_some());
 
-    // Fixture cases we explicitly do not claim.
     let root = fixture();
     for case in root["cases"].as_array().unwrap() {
         if case["family"].as_str() != Some("index_jobs") {
@@ -163,8 +155,6 @@ async fn json_of(response: reqwest::Response) -> Value {
     let text = response.text().await.unwrap();
     serde_json::from_str(&text).unwrap_or_else(|err| panic!("not JSON ({err}): {text}"))
 }
-
-// ── the committed contract ──
 
 fn fragment() -> Value {
     let path: PathBuf = [
@@ -201,8 +191,6 @@ fn mounted_index_routes_are_in_the_committed_contract() {
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
     for (method, path) in lattice_jobs::index_api::MOUNTED {
-        // W3b: POST drain/rebuild are native product routes. Their spec stays
-        // in worker_keep.json so fragment byte-composition stays identical.
         if *path == "/api/index/drain" || *path == "/api/index/rebuild" {
             continue;
         }
@@ -212,9 +200,6 @@ fn mounted_index_routes_are_in_the_committed_contract() {
             "{key} is not in knowledge_search.json"
         );
     }
-    // GET queue/status live in knowledge_search.json. POST drain/rebuild are
-    // now native (W3b) but their spec stays in worker_keep.json so fragment
-    // byte-composition stays identical.
     let native: Vec<_> = lattice_jobs::index_api::MOUNTED
         .iter()
         .copied()

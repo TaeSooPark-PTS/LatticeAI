@@ -1,11 +1,3 @@
-//! Automation intelligence (`latticeai/api/automation_intelligence.py`).
-//!
-//! Suggestion / install surface over the workspace-OS workflow store (and,
-//! when present, `triggers_state.json`). Question mining reads
-//! `conversation_messages` (empty in the seeded sandbox, so happy-path
-//! fixtures still pin `questions_scanned: 0`). Live runs go through the
-//! workflow executor.
-
 use crate::governance::review_queue;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -25,7 +17,6 @@ use crate::governance::review_queue::{
 };
 use crate::governance::workflow_designer::{self, ToolContext};
 
-/// Mounted (method, axum-path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/activity/runs"),
     ("POST", "/api/automation/install"),
@@ -36,7 +27,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/automations/runs/combined"),
 ];
 
-/// The automation intelligence router.
 pub fn router(state: GovernanceState) -> Router {
     Router::new()
         .route("/api/automation/patterns", get(automation_patterns))

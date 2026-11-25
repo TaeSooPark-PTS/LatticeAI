@@ -110,7 +110,6 @@ describe("FilePreviewModal", () => {
     const frame = document.querySelector<HTMLIFrameElement>(".file-preview-frame")!;
     expect(frame.getAttribute("sandbox")).toBe("");
     expect(frame.getAttribute("srcdoc")).toContain("Content-Security-Policy");
-    // The sandbox footnote renders only for HTML previews.
     expect(document.querySelector(".file-preview-foot")).toBeTruthy();
   });
 
@@ -239,11 +238,9 @@ describe("FilePreviewModal", () => {
     const buttons = dialog.querySelectorAll("button");
     expect(buttons.length).toBe(2);
 
-    // Forward Tab from the last focusable wraps back to the first.
     (buttons[buttons.length - 1] as HTMLElement).focus();
     await userEvent.tab();
     expect(document.activeElement).toBe(buttons[0]);
-    // Shift+Tab from the first wraps to the last.
     await userEvent.tab({ shift: true });
     expect(document.activeElement).toBe(buttons[buttons.length - 1]);
 

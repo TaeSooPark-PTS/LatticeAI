@@ -1,10 +1,3 @@
-//! MCP / skills / plugin-directory family (v11.6.0, WP-R8).
-//!
-//! Port of `latticeai/api/mcp.py`. Custom MCP entries live in
-//! `custom_mcps.json` (I1 `state_files`). Remote catalogs default to the
-//! canned offline cache the HTTP fixtures captured; a live fetch is optional
-//! and never fails a request.
-
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -43,7 +36,6 @@ use handlers::{
     mcp_install, mcp_installed, mcp_recommend, mcp_registry_refresh, mcp_tools,
 };
 use protocol::mcp_jsonrpc;
-// ── MCP family ─────────────────────────────────────────────────────────────
 
 pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/mcp"),
@@ -66,8 +58,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/mcp/call"),
 ];
 
-/// Streamable-HTTP MCP JSON-RPC. Also listed first in [`MOUNTED`] so the
-/// OpenAPI product contract names the path the gateway actually serves.
 pub const STREAMABLE: &[(&str, &str)] = &[("POST", "/mcp")];
 
 pub const CANNED_REMOTE_MCPS: &str = r#"[{"id":"fixture-mcp","name":"Fixture MCP","description":"Canned MCP used by the HTTP fixture generator.","install_mode":"npm","category":"test","package":"fixture-mcp","source":"fixture","capabilities":["search"]},{"id":"fixture-connector","name":"Fixture Connector","description":"Canned connector so /mcp/connectors/{id} has a hit.","install_mode":"connector","category":"connector","source":"fixture","connector_url":"https://example.test/connector"}]"#;

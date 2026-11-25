@@ -1,25 +1,7 @@
-//! Origin normalisation and the forwarded-authority rule.
-//!
-//! Ports `normalize_origin` / `_same_site` from `latticeai/core/csrf.py` and
-//! `peer_may_forward` / `effective_host` from `latticeai/core/http_origin.py`.
-//! `normalize_origin` leans on `urllib.parse.urlsplit`, so the parsing rules
-//! that decide what counts as a scheme, an authority and a port are reproduced
-//! here rather than approximated — a looser parser would accept an origin the
-//! Python guard rejects, which is the direction that costs something.
-//!
-//! One deliberate divergence, recorded because it is observable: `urlsplit`
-//! *raises* on an unbalanced-bracket authority (`http://[::1`) and
-//! `normalize_origin` does not catch that, so Python answers 500. Here it
-//! resolves to `None`, which the CSRF policy reads as an unusable origin and
-//! refuses with 403. Both refuse; only the status differs.
-
 use std::net::IpAddr;
 
-/// A normalised origin: `(scheme, host, port)` with the default port folded to
-/// `None`, exactly the tuple the Python policy compares.
 pub type Origin = (String, String, Option<u16>);
 
-/// Ports that carry no information because they are implied by the scheme.
 fn default_port(scheme: &str) -> Option<u16> {
     match scheme {
         "http" | "ws" => Some(80),
@@ -28,10 +10,6 @@ fn default_port(scheme: &str) -> Option<u16> {
     }
 }
 
-/// `"HTTP://Localhost:80/x"` → `("http", "localhost", None)`.
-///
-/// `None` for anything unusable: empty, the literal `"null"` an opaque origin
-/// sends, a value with no host, or a malformed port.
 pub fn normalize_origin(value: Option<&str>) -> Option<Origin> {
     let raw = value?;
     if raw.is_empty() {
@@ -44,7 +22,6 @@ pub fn normalize_origin(value: Option<&str>) -> Option<Origin> {
     let owned = if candidate.contains("//") {
         candidate.to_string()
     } else {
-        // A bare authority ("example.com:4825") — the `Host` header shape.
         format!("//{candidate}")
     };
     let (scheme, netloc) = split_scheme_and_netloc(&owned)?;
@@ -55,8 +32,6 @@ pub fn normalize_origin(value: Option<&str>) -> Option<Origin> {
     let port = match port_text {
         None => None,
         Some(text) => {
-            // Python: `int(port)` when the text is ASCII digits, else ValueError
-            // → `normalize_origin` returns None. Out-of-range likewise raises.
             if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
                 return None;
             }
@@ -73,10 +48,7 @@ pub fn normalize_origin(value: Option<&str>) -> Option<Origin> {
     Some((scheme, host, port))
 }
 
-/// `urlsplit`'s scheme rule plus its `//authority` rule, and nothing else.
 fn split_scheme_and_netloc(url: &str) -> Option<(String, String)> {
-    // `urlsplit` removes tab/CR/LF anywhere and strips C0 controls and spaces
-    // from both ends before it parses.
     let cleaned: String = url
         .chars()
         .filter(|character| !matches!(character, '\t' | '\r' | '\n'))
@@ -100,8 +72,6 @@ fn split_scheme_and_netloc(url: &str) -> Option<(String, String)> {
         }
     }
     if !rest.starts_with("//") {
-        // No authority at all: `urlsplit` leaves netloc empty and `hostname`
-        // is then None.
         return Some((scheme, String::new()));
     }
     let after = &rest[2..];
@@ -110,13 +80,11 @@ fn split_scheme_and_netloc(url: &str) -> Option<(String, String)> {
     let open = netloc.contains('[');
     let close = netloc.contains(']');
     if open != close {
-        // `urlsplit` raises "Invalid IPv6 URL"; unusable either way.
         return None;
     }
     Some((scheme, netloc.to_string()))
 }
 
-/// `SplitResult._hostinfo`: strip userinfo, unwrap brackets, split the port.
 fn host_and_port(netloc: &str) -> Option<(String, Option<String>)> {
     let hostinfo = match netloc.rfind('@') {
         Some(index) => &netloc[index + 1..],
@@ -139,9 +107,7 @@ fn host_and_port(netloc: &str) -> Option<(String, Option<String>)> {
             None => (hostinfo.to_string(), None),
         },
     };
-    // Python treats an empty port string as "no port".
     let port = port.filter(|text| !text.is_empty());
-    // A scoped IPv6 zone keeps its case; the address does not.
     let host = match host.split_once('%') {
         Some((address, zone)) => format!("{}%{}", address.to_ascii_lowercase(), zone),
         None => host.to_ascii_lowercase(),
@@ -149,11 +115,6 @@ fn host_and_port(netloc: &str) -> Option<(String, Option<String>)> {
     Some((host, port))
 }
 
-/// Host+port equality, comparing scheme only when both sides state one.
-///
-/// The `Host` header has no scheme, and a TLS-terminating proxy speaks `http`
-/// to us while the browser reports `https`; comparing the authority is what
-/// answers "this page came from this server" in both deployments.
 pub fn same_site(left: &Origin, right: &Origin) -> bool {
     if left.1 != right.1 || left.2 != right.2 {
         return false;
@@ -164,7 +125,6 @@ pub fn same_site(left: &Origin, right: &Origin) -> bool {
     true
 }
 
-/// One entry of the trusted-proxy allowlist: an address plus a prefix length.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IpNetwork {
     address: IpAddr,
@@ -172,9 +132,6 @@ pub struct IpNetwork {
 }
 
 impl IpNetwork {
-    /// `ipaddress.ip_network(value, strict=False)` for the shapes we accept:
-    /// a bare address, or `address/prefix`. Anything else is skipped, as the
-    /// Python loader skips entries it cannot parse.
     pub fn parse(value: &str) -> Option<Self> {
         let text = value.trim();
         if text.is_empty() {
@@ -199,7 +156,6 @@ impl IpNetwork {
         Some(Self { address, prefix })
     }
 
-    /// Whether `candidate` falls inside this network.
     pub fn contains(&self, candidate: &IpAddr) -> bool {
         match (self.address, candidate) {
             (IpAddr::V4(network), IpAddr::V4(probe)) => {
@@ -226,10 +182,6 @@ fn prefix_match(network: &[u8], probe: &[u8], prefix: u8) -> bool {
     network[full] & mask == probe[full] & mask
 }
 
-/// Whether `X-Forwarded-*` from this direct peer may be believed.
-///
-/// Loopback, or a member of the configured allowlist. An unparseable or absent
-/// peer is not trusted.
 pub fn peer_may_forward(peer: Option<&str>, trusted_proxies: &[IpNetwork]) -> bool {
     let Some(peer) = peer else {
         return false;
@@ -249,12 +201,10 @@ pub fn peer_may_forward(peer: Option<&str>, trusted_proxies: &[IpNetwork]) -> bo
         .any(|network| network.contains(&address))
 }
 
-/// The first entry of a possibly comma-joined forwarded header.
 fn first(value: Option<&str>) -> &str {
     value.unwrap_or("").split(',').next().unwrap_or("").trim()
 }
 
-/// The authority the client aimed at: the forwarded one when believable.
 pub fn effective_host(
     host: Option<&str>,
     forwarded_host: Option<&str>,
@@ -397,7 +347,6 @@ mod tests {
         let v6 = IpNetwork::parse("fe80::/10").unwrap();
         assert!(v6.contains(&"fe80::1".parse().unwrap()));
         assert!(!v6.contains(&"2001::1".parse().unwrap()));
-        // Mixed families never match.
         assert!(!v6.contains(&"10.0.0.1".parse().unwrap()));
     }
 

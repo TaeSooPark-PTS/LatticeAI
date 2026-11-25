@@ -224,11 +224,9 @@ describe("BrainGovernanceHub & 5 dedicated Brain UI panels", () => {
       }),
     );
 
-    // Third call exercises !res.ok branch.
     fireEvent.click(screen.getByTestId("integrity-dry-run-btn"));
     await waitFor(() => expect(repairSpy).toHaveBeenCalledTimes(3));
 
-    // Switch to healthy empty state.
     checkSpy.mockResolvedValueOnce(EMPTY_HEALTHY_INTEGRITY);
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     await waitFor(() =>
@@ -434,7 +432,6 @@ describe("BrainGovernanceHub & 5 dedicated Brain UI panels", () => {
       expect(screen.getByTestId("confirm-correction-corr:1")).toBeInTheDocument(),
     );
 
-    // Confirm, Reject, and Revert buttons.
     fireEvent.click(screen.getByTestId("confirm-correction-corr:1"));
     await waitFor(() => expect(statusSpy).toHaveBeenCalledWith("corr:1", { status: "confirmed" }));
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
@@ -442,7 +439,6 @@ describe("BrainGovernanceHub & 5 dedicated Brain UI panels", () => {
     fireEvent.click(screen.getByTestId("revert-correction-corr:2"));
     await waitFor(() => expect(revertSpy).toHaveBeenCalledWith("corr:2"));
 
-    // Select kind, submit with summary, and switch list to empty on refetch.
     listSpy.mockResolvedValue({
       ok: true,
       status: 200,
@@ -462,7 +458,6 @@ describe("BrainGovernanceHub & 5 dedicated Brain UI panels", () => {
     fireEvent.click(screen.getByTestId("correction-submit-btn"));
     await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1));
 
-    // Empty submit guard + submit with no afterSummary and ok: false.
     const form = screen.getByTestId("correction-submit-btn").closest("form")!;
     fireEvent.submit(form);
     expect(createSpy).toHaveBeenCalledTimes(1);

@@ -1,5 +1,3 @@
-"""Network status probe (no shell, short timeouts)."""
-
 from __future__ import annotations
 
 import re
@@ -23,7 +21,6 @@ def _run_network_command(parts: List[str], timeout: int = 5) -> str:
 
 
 def network_status() -> Dict[str, Any]:
-    """현재 Mac의 내부 IP, 외부 IP, 주요 네트워크 정보를 반환합니다."""
     local_ips: Dict[str, str] = {}
     for interface in ["en0", "en1", "bridge100"]:
         value = _run_network_command(["ipconfig", "getifaddr", interface])

@@ -1,5 +1,3 @@
-"""Document generation (docx/xlsx/pptx/pdf) and extraction (read_document)."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,9 +24,6 @@ def _safe_filename(name: str, suffix: str) -> str:
     return safe or f"artifact{suffix}"
 
 
-#: tool name → (output directory, enforced suffix). The creators below are the
-#: only writers, so this table is the single source of truth for "where does
-#: this document actually land?".
 _DOCUMENT_TOOL_TARGETS: Dict[str, Tuple[str, str]] = {
     "create_docx": (DOCUMENT_OUTPUT_DIR, ".docx"),
     "create_xlsx": (SPREADSHEET_OUTPUT_DIR, ".xlsx"),
@@ -38,16 +33,6 @@ _DOCUMENT_TOOL_TARGETS: Dict[str, Tuple[str, str]] = {
 
 
 def document_output_target(tool_name: str, filename: str) -> Optional[str]:
-    """Workspace-relative path ``tool_name`` will write ``filename`` to.
-
-    Governance needs this: the creators sanitize the caller's ``filename``
-    into their own output directory, so an "does the target already exist?"
-    check against the raw argument looks at a path nothing ever writes — and
-    the fail-closed overwrite guard would silently never fire.
-
-    Returns ``None`` for tools that write wherever the caller points them, so
-    callers fall back to the raw argument.
-    """
     entry = _DOCUMENT_TOOL_TARGETS.get(tool_name)
     if entry is None:
         return None
@@ -119,7 +104,6 @@ def _read_pptx(target: Path, meta: Dict[str, Any]) -> str:
 
 
 def read_document(path: str) -> Dict[str, Any]:
-    """Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files."""
     target = Path(path).expanduser().resolve()
     if not target.exists():
         raise ToolError(f"파일이 없습니다: {path}")
@@ -146,10 +130,6 @@ def read_document(path: str) -> Dict[str, Any]:
     elif ext == ".pptx":
         text = _read_pptx(target, meta)
     elif ext in {".html", ".htm"}:
-        # A web page read verbatim is markup, not text: the graph filled up
-        # with `<div class=…>` and the contents of every `<script>`. The
-        # conversion keeps the page's headings as `#` lines so a fact
-        # extracted from it can still say which section it came from.
         try:
             from latticeai.tools.markup import html_to_text
 
@@ -164,5 +144,5 @@ def read_document(path: str) -> Dict[str, Any]:
 
     meta["chars"] = len(text)
     meta["preview"] = text[:500]
-    meta["content"] = text[:50_000]  # 50K char cap for context
+    meta["content"] = text[:50_000]
     return meta

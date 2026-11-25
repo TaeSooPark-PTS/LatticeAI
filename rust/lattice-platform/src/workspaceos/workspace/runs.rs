@@ -1,30 +1,10 @@
-//! Agent runs and workflows — the two record kinds this family writes.
-//!
-//! Port of the slice of `core/workspace_runs.py` these routes reach:
-//! `list_agents`, `record_agent_run`, `create_workflow`, `list_workflows` and
-//! `record_workflow_event`. The rest of that module (workflow *runs*, handoff
-//! replay, run reconciliation) belongs to the automation and realtime families.
-//!
-//! Two things here are easy to get wrong and are pinned by tests:
-//!
-//! * **A simulation run never enters the knowledge graph.** `/workspace/agents/
-//!   runs` has no `mode` field, so every run it records is a simulation — replay
-//!   scaffolding, not an experience — and the record says so in `graph_skipped`
-//!   rather than silently carrying a null node id.
-//! * **The contract envelope is written after the run is stored**, then patched
-//!   back in. Python does the same two-phase write, and the returned body is the
-//!   patched one.
-
 use serde_json::{json, Map, Value};
 
 use super::pyutil::{json_hash_prefix, listify, now_iso, py_dumps};
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// The contract family every observability record in the product carries.
 pub const CONTRACT_FAMILY: &str = "agent-run-contract/v1";
-/// The agent-run schema under that family.
 pub const AGENT_RUN_SCHEMA: &str = "agent-run-contract/v1";
-/// Statuses `AgentRunContract.is_terminal` treats as finished.
 pub const TERMINAL_STATUSES: [&str; 8] = [
     "ok",
     "retried_ok",
@@ -36,10 +16,8 @@ pub const TERMINAL_STATUSES: [&str; 8] = [
     "done",
 ];
 
-/// How many runs `list_agents` answers with.
 const RUN_WINDOW: usize = 100;
 
-/// `list_agents` — the roster plus the most recent runs, newest first.
 pub fn list_agents(store: &WorkspaceOsStore, workspace_id: Option<&str>) -> Value {
     let state = store.load_state();
     let mut runs = WorkspaceOsStore::scoped(listify(state.get("agent_runs")), workspace_id);
@@ -53,29 +31,17 @@ pub fn list_agents(store: &WorkspaceOsStore, workspace_id: Option<&str>) -> Valu
     })
 }
 
-/// What `record_agent_run` is asked to store.
 #[derive(Debug, Clone, Default)]
 pub struct AgentRunRequest {
-    /// Which agent ran.
     pub agent_id: String,
-    /// The lifecycle status it finished in.
     pub status: String,
-    /// The goal it was given.
     pub input: String,
-    /// What it produced (truncated to 1,000 characters when stored).
     pub output: String,
-    /// The step timeline, replayed onto the workspace timeline.
     pub timeline: Vec<Value>,
-    /// Related node ids.
     pub relationships: Vec<Value>,
-    /// `"simulation"` from this route; a real run comes from the agent family.
     pub mode: String,
 }
 
-/// `record_agent_run`.
-///
-/// `graph` carries the seam's answer for a **non-simulation** run; a simulation
-/// ignores it entirely, which is why the route may pass `None`.
 pub fn record_agent_run(
     store: &WorkspaceOsStore,
     request: &AgentRunRequest,
@@ -114,8 +80,6 @@ pub fn record_agent_run(
         "created_at": now,
     });
     if mode == "simulation" {
-        // Simulated runs are replay scaffolding, not experiences — they must
-        // never enter the knowledge graph as real provenance.
         run["graph_node_id"] = Value::Null;
         run["graph_skipped"] = json!("simulation runs are not recorded in the knowledge graph");
     } else {
@@ -170,7 +134,6 @@ pub fn record_agent_run(
     Ok(run)
 }
 
-/// `run_record_contract(run, runtime=…)` — the family envelope for one run.
 pub fn run_record_contract(run: &Value, runtime: &str) -> Value {
     let timeline = listify(run.get("timeline"));
     let retries = listify(run.get("retry_history")).len();
@@ -237,35 +200,27 @@ pub fn run_record_contract(run: &Value, runtime: &str) -> Value {
     })
 }
 
-// ── workflows ───────────────────────────────────────────────────────────────
-
-/// A workflow decided but not yet written.
 #[derive(Debug, Clone)]
 pub struct WorkflowPlan {
-    /// The record as it will be stored, before the graph outcome is attached.
     pub workflow: Value,
 }
 
 impl WorkflowPlan {
-    /// The workflow id, for the ingest metadata.
     pub fn id(&self) -> &str {
         self.workflow
             .get("id")
             .and_then(Value::as_str)
             .unwrap_or_default()
     }
-    /// The name, which is the ingest title.
     pub fn name(&self) -> &str {
         self.workflow
             .get("name")
             .and_then(Value::as_str)
             .unwrap_or_default()
     }
-    /// The workspace the ingest should be tagged with.
     pub fn workspace_id(&self) -> Option<&str> {
         self.workflow.get("workspace_id").and_then(Value::as_str)
     }
-    /// The steps, for the ingest metadata.
     pub fn steps(&self) -> Value {
         self.workflow
             .get("steps")
@@ -274,7 +229,6 @@ impl WorkflowPlan {
     }
 }
 
-/// Decide the workflow `create_workflow` will write.
 pub fn plan_workflow(
     store: &WorkspaceOsStore,
     name: &str,
@@ -306,7 +260,6 @@ pub fn plan_workflow(
     }
 }
 
-/// Write the planned workflow, carrying whatever the graph seam answered.
 pub fn commit_workflow(
     store: &WorkspaceOsStore,
     plan: WorkflowPlan,
@@ -339,7 +292,6 @@ pub fn commit_workflow(
     Ok(workflow)
 }
 
-/// `list_workflows(query, workspace_id)` — newest first, substring-filtered.
 pub fn list_workflows(store: &WorkspaceOsStore, query: &str, workspace_id: Option<&str>) -> Value {
     let state = store.load_state();
     let mut workflows = WorkspaceOsStore::scoped(listify(state.get("workflows")), workspace_id);
@@ -363,7 +315,6 @@ pub fn list_workflows(store: &WorkspaceOsStore, query: &str, workspace_id: Optio
     json!({"workflows": workflows})
 }
 
-/// `record_workflow_event`.
 pub fn record_workflow_event(
     store: &WorkspaceOsStore,
     workflow_id: &str,
@@ -398,7 +349,6 @@ pub fn record_workflow_event(
     Ok(workflow)
 }
 
-/// The steps a `POST /workspace/vscode/send` records, as Python builds them.
 pub fn vscode_steps(
     action: &str,
     file_path: Option<&str>,
@@ -411,7 +361,6 @@ pub fn vscode_steps(
     ]
 }
 
-/// The metadata a `POST /workspace/vscode/send` records.
 pub fn vscode_metadata(file_path: Option<&str>, language: Option<&str>, preview: &str) -> Value {
     let mut metadata = Map::new();
     metadata.insert(
@@ -493,7 +442,6 @@ mod tests {
         assert_eq!(contract["artifacts"][0]["workspace_id"], json!("personal"));
         assert_eq!(contract["id"], run["id"]);
 
-        // The stored copy carries the same contract.
         let listing = list_agents(&store, None);
         assert_eq!(listing["runs"][0]["contract"]["id"], run["id"]);
     }
@@ -657,7 +605,6 @@ mod tests {
             .as_array()
             .unwrap()
             .is_empty());
-        // Newest first.
         assert_eq!(
             list_workflows(&store, "", None)["workflows"][0]["name"],
             json!("Beta")
@@ -681,7 +628,6 @@ mod tests {
             record_workflow_event(&store, "workflow-missing", "x", &json!({})).unwrap_err(),
             StoreError::NotFound("workflow-missing".into())
         );
-        // A non-object payload normalises to `{}`.
         let updated = record_workflow_event(&store, &id, "y", &json!("nope")).unwrap();
         assert_eq!(updated["events"][2]["payload"], json!({}));
     }

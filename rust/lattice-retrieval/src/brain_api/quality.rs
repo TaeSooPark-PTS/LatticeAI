@@ -1,24 +1,3 @@
-//! `lattice_brain/quality.py` — the dormant quality layer these routes wire up.
-//!
-//! Only the two managers the Brain Intelligence service actually constructs are
-//! here: [`MemoryQuality`] (`MemoryQualityManager`) and [`EdgeQuality`]
-//! (`GraphEdgeQualityManager`), plus the two public signature helpers the graph
-//! layer shares with them so memory-level and graph-level dedupe agree by
-//! construction. The BM25 scorer, the fusion, the reranker, the context
-//! assembler and the benchmark runner in that file are reachable from no route
-//! in this family and are deliberately not carried over.
-//!
-//! Two details decide answers rather than shapes:
-//!
-//! * `detect_conflicts` appends its markers in a fixed order — the negation
-//!   sweep over every candidate first, then the pairwise sweep in `(i, j)`
-//!   order, touching *both* sides. The contradiction surface reads
-//!   `candidate.conflicts` positionally to decide which memory is `left`, so a
-//!   different append order is a different answer.
-//! * `compute_quality_metrics` reads `edge.get("confidence", 0.5)` — the
-//!   default applies to an **absent key**, so an edge that carries an explicit
-//!   `0.0` confidence is scored at zero, not at the default.
-
 use std::collections::{BTreeSet, HashMap};
 
 use lattice_auth::OrderedMap;
@@ -27,13 +6,11 @@ use sha2::{Digest, Sha256};
 
 use super::pyutil::{self, round_to};
 
-/// `_SIGNATURE_STOPWORDS`, verbatim.
 const SIGNATURE_STOPWORDS: [&str; 21] = [
     "a", "an", "and", "for", "i", "is", "it", "mode", "the", "to", "user", "users", "does", "do",
     "not", "like", "likes", "prefer", "prefers", "want", "wants",
 ];
 
-/// `MemoryQualityManager._NEGATION_PATTERNS`.
 const NEGATION_PATTERNS: [&str; 8] = [
     "not",
     "does not",
@@ -45,12 +22,10 @@ const NEGATION_PATTERNS: [&str; 8] = [
     "반대",
 ];
 
-/// `MemoryQualityManager._POSITIVE_PATTERNS`.
 const POSITIVE_PATTERNS: [&str; 9] = [
     "prefers", "prefer", "likes", "like", "wants", "want", "좋아", "선호", "원해",
 ];
 
-/// `detect_temporal_contradictions`'s negation vocabulary.
 const TEMPORAL_NEGATIONS: [&str; 7] = [
     "not ",
     "반대",
@@ -61,7 +36,6 @@ const TEMPORAL_NEGATIONS: [&str; 7] = [
     "사용하지",
 ];
 
-/// `quality.dedupe_key` — sha256 over the normalised head plus a length bucket.
 pub fn dedupe_key(content: &str) -> String {
     let normalised = pyutil::head(&pyutil::normalised_words(&content.to_lowercase()), 200);
     let bucket = content.chars().count() / 50;
@@ -72,13 +46,6 @@ pub fn dedupe_key(content: &str) -> String {
     pyutil::head(&hex, 16)
 }
 
-/// `quality.content_signature` — stopword-filtered tokens over three characters.
-///
-/// A `BTreeSet` rather than a hash set: Python's `set` iteration order is
-/// seed-dependent, so the co-occurrence index built out of it has no order a
-/// port could reproduce. Sorted order is the one deterministic choice, and it
-/// changes only the tie order of equally similar pairs — never the set of
-/// pairs, whose counts are order-independent.
 pub fn content_signature(content: &str) -> BTreeSet<String> {
     pyutil::word_tokens(&content.to_lowercase())
         .into_iter()
@@ -86,7 +53,6 @@ pub fn content_signature(content: &str) -> BTreeSet<String> {
         .collect()
 }
 
-/// `_jaccard` — zero for an empty side, never a division by zero.
 pub fn jaccard(left: &BTreeSet<String>, right: &BTreeSet<String>) -> f64 {
     if left.is_empty() || right.is_empty() {
         return 0.0;
@@ -98,23 +64,17 @@ pub fn jaccard(left: &BTreeSet<String>, right: &BTreeSet<String>) -> f64 {
     left.intersection(right).count() as f64 / union as f64
 }
 
-/// `MemoryCandidate` — the four fields the conflict scan reads.
 #[derive(Debug, Clone)]
 pub struct MemoryCandidate {
-    /// `m["id"]`, already stringified by the caller.
     pub id: String,
-    /// `m["content"]`.
     pub content: String,
-    /// The markers `detect_conflicts` appended, in order.
     pub conflicts: Vec<String>,
 }
 
-/// `MemoryQualityManager`, as the Brain Intelligence service uses it.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct MemoryQuality;
 
 impl MemoryQuality {
-    /// `extract_candidates` — one candidate per row, in row order.
     pub fn extract_candidates(rows: &[Value]) -> Vec<MemoryCandidate> {
         rows.iter()
             .map(|row| MemoryCandidate {
@@ -125,7 +85,6 @@ impl MemoryQuality {
             .collect()
     }
 
-    /// `detect_conflicts` — negation sweep, then the pairwise sweep, in order.
     pub fn detect_conflicts(candidates: &mut [MemoryCandidate]) {
         for candidate in candidates.iter_mut() {
             let lowered = candidate.content.to_lowercase();
@@ -179,7 +138,6 @@ impl MemoryQuality {
         }
     }
 
-    /// `dedupe` — the first candidate per signature survives.
     pub fn dedupe(candidates: &[MemoryCandidate]) -> Vec<String> {
         let mut seen: BTreeSet<String> = BTreeSet::new();
         let mut kept = Vec::new();
@@ -192,11 +150,6 @@ impl MemoryQuality {
         kept
     }
 
-    /// `detect_temporal_contradictions` — positives then negatives, flagged.
-    ///
-    /// Fires only when both groups exist *and* the rows carry more than one
-    /// distinct timestamp; a single-instant batch cannot contradict itself in
-    /// time.
     pub fn detect_temporal_contradictions(rows: &[Value]) -> Vec<Value> {
         let mut positives: Vec<&Value> = Vec::new();
         let mut negatives: Vec<&Value> = Vec::new();
@@ -233,7 +186,6 @@ impl MemoryQuality {
     }
 }
 
-/// `m.get("timestamp") or m.get("created_at") or 0`, as a set member.
 fn stamp_key(row: &Value) -> String {
     for key in ["timestamp", "created_at"] {
         if let Some(value) = row.get(key) {
@@ -267,13 +219,10 @@ fn is_positive(content: &str) -> bool {
         .any(|pattern| lowered.contains(pattern))
 }
 
-/// `GraphEdgeQualityManager`, on the two methods this family calls.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct EdgeQuality;
 
 impl EdgeQuality {
-    /// `detect_duplicate_edges` — the ids of every repeat of a
-    /// `(source, target, type)` triple after the first.
     pub fn detect_duplicate_edges(edges: &[Value]) -> Vec<String> {
         let mut seen: HashMap<String, ()> = HashMap::new();
         let mut duplicates = Vec::new();
@@ -291,7 +240,6 @@ impl EdgeQuality {
         duplicates
     }
 
-    /// `compute_quality_metrics` — averages plus the duplicate rate.
     pub fn compute_quality_metrics(edges: &[Value]) -> OrderedMap {
         let mut out = OrderedMap::new();
         if edges.is_empty() {
@@ -340,7 +288,6 @@ mod tests {
         assert_eq!(dedupe_key("Alpha  fusion"), dedupe_key("alpha fusion"));
         assert_ne!(dedupe_key("alpha fusion"), dedupe_key("beta fusion"));
         assert_eq!(dedupe_key("").len(), 16);
-        // The length bucket is coarse: 50 characters apart is a different key.
         assert_ne!(dedupe_key("a"), dedupe_key(&"a".repeat(60)));
     }
 

@@ -25,7 +25,7 @@ const catalog = [
   option("strict", "low"),
   option("trusted", "medium"),
   option("bypass", "high", { requires_ack: true, warning: "risky", warning_ko: "위험합니다" }),
-  option("serverside", "mystery"), // unknown id → server copy, unknown risk → fallback dot
+  option("serverside", "mystery"),
 ];
 
 const modeState = (mode = "strict") => ok({ mode, catalog });
@@ -43,7 +43,7 @@ describe("BrainQuickControls", () => {
     expect(dial).toBeTruthy();
 
     const strict = screen.getByTestId("quick-mode-strict");
-    expect(strict.textContent).toContain("먼저 물어보기"); // localized by id, not server copy
+    expect(strict.textContent).toContain("먼저 물어보기");
     expect(strict.getAttribute("aria-checked")).toBe("true");
     expect(strict.className).toContain("is-active");
     expect(strict.querySelector(".brain-quick-dot")?.className).toContain("is-low");
@@ -53,8 +53,6 @@ describe("BrainQuickControls", () => {
     expect(trusted.querySelector(".brain-quick-dot")?.className).toContain("is-medium");
     expect(screen.getByTestId("quick-mode-bypass").querySelector(".brain-quick-dot")?.className).toContain("is-high");
 
-    // A mode the client copy tables don't know falls back to the server label
-    // and the medium risk dot.
     const serverside = screen.getByTestId("quick-mode-serverside");
     expect(serverside.textContent).toContain("serverside 라벨");
     expect(serverside.querySelector(".brain-quick-dot")?.className).toContain("is-medium");
@@ -85,11 +83,10 @@ describe("BrainQuickControls", () => {
     await waitFor(() =>
       expect(vi.mocked(latticeApi.setPermissionMode)).toHaveBeenCalledWith("trusted", false),
     );
-    // Success invalidates the state query → a second fetch.
     await waitFor(() =>
       expect(vi.mocked(latticeApi.permissionMode).mock.calls.length).toBeGreaterThan(1),
     );
-    expect(screen.queryByRole("status")).toBeNull(); // no error line on success
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("interposes the confirmation for a requires_ack mode and applies only after consent", async () => {
@@ -125,7 +122,6 @@ describe("BrainQuickControls", () => {
 
     const error = await screen.findByRole("status");
     expect(error.textContent).toBe("금지된 모드입니다");
-    // onSuccess bails on !ok → the risky confirmation stays for another try.
     expect(screen.getByTestId("quick-mode-confirm")).toBeTruthy();
   });
 

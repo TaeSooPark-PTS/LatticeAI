@@ -1,5 +1,3 @@
-"""Curated recommended and legacy entries for the Model Capability Registry."""
-
 from __future__ import annotations
 
 from typing import List
@@ -12,22 +10,7 @@ from .model_capability_types import (
     VerificationStatus,
 )
 
-# ── Curated registry ──────────────────────────────────────────────────────────
-# Every field below was measured against the public HF REST API on 2026-08-10:
-# repo existence, gated flag, library_name/tags, config ``model_type``, sibling
-# file list and the exact byte sum of those siblings (``size`` and
-# ``download_size_gb``). Nothing here was inferred from a model card, and no
-# weights were downloaded to produce it — re-run
-# ``scripts/verify_hf_model_registry.py`` to re-measure.
-#
-# Repo ids are stored in the Hub's own canonical casing (the API echoes the
-# canonical id even when queried with different case, e.g. requesting
-# ``gemma-4-12b-it-4bit`` answers with ``gemma-4-12B-it-4bit``). Storing the
-# canonical form keeps the download path, the on-disk cache directory and the
-# catalog key identical.
-
 _REGISTRY: List[ModelCapability] = [
-    # ── Ultralight tier (≤8GB RAM) ───────────────────────────────────────────
     ModelCapability(
         id="mlx-community/LFM2.5-2.6B-4bit",
         hf_repo_id="mlx-community/LFM2.5-2.6B-4bit",
@@ -101,7 +84,6 @@ _REGISTRY: List[ModelCapability] = [
         recommended_default=True,
         display_priority=10,
     ),
-    # ── Light tier (16GB RAM) ────────────────────────────────────────────────
     ModelCapability(
         id="mlx-community/gemma-4-e4b-it-4bit",
         hf_repo_id="mlx-community/gemma-4-e4b-it-4bit",
@@ -137,7 +119,6 @@ _REGISTRY: List[ModelCapability] = [
         ),
         display_priority=15,
     ),
-    # ── Mid tier (24GB RAM) ──────────────────────────────────────────────────
     ModelCapability(
         id="mlx-community/gemma-4-12B-it-4bit",
         hf_repo_id="mlx-community/gemma-4-12B-it-4bit",
@@ -210,7 +191,6 @@ _REGISTRY: List[ModelCapability] = [
         recommended_default=True,
         display_priority=20,
     ),
-    # ── General-purpose ──────────────────────────────────────────────────────
     ModelCapability(
         id="mlx-community/gpt-oss-20b-MXFP4-Q8",
         hf_repo_id="mlx-community/gpt-oss-20b-MXFP4-Q8",
@@ -247,7 +227,6 @@ _REGISTRY: List[ModelCapability] = [
         ),
         display_priority=30,
     ),
-    # ── MoE tier (32GB+ RAM) ─────────────────────────────────────────────────
     ModelCapability(
         id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
         hf_repo_id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
@@ -388,7 +367,6 @@ _REGISTRY: List[ModelCapability] = [
         ),
         display_priority=65,
     ),
-    # ── Large tier (48GB+ RAM) ───────────────────────────────────────────────
     ModelCapability(
         id="mlx-community/Qwen3.8-27B-4bit",
         hf_repo_id="mlx-community/Qwen3.8-27B-4bit",
@@ -499,13 +477,6 @@ _REGISTRY.extend(
     build_embedding_capabilities(ModelCapability, HardwareProfile, VerificationStatus)
 )
 
-
-# ── Recognised-only entries (LEGACY) ──────────────────────────────────────────
-# Superseded generations that are still on the Hub and still loadable. They are
-# deliberately absent from ENGINE_MODEL_CATALOG, from the recommendation tiers
-# and from every download path — their only job is to keep a model somebody
-# already downloaded identifiable (name, family, size, runtime profile) instead
-# of surfacing as an unknown blob. Verified on 2026-08-10 like the rest.
 
 _LEGACY_REGISTRY: List[ModelCapability] = [
     ModelCapability(

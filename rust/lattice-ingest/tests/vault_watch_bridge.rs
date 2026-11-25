@@ -1,22 +1,3 @@
-//! The vault-watch bridge, end to end over real sockets.
-//!
-//! `bridge_wired: false` was the honest answer for two releases: detection had
-//! been testable since v11.5.0 (`crate::watch`) and the native note write since
-//! v11.7.0 (`crate::worker::NoteIngestor`), but nothing joined them. This suite
-//! is the proof that they are joined, and it asks the three questions that
-//! matter:
-//!
-//! 1. **Does a change in a watched folder reach the Brain?** Not "did a scan
-//!    run" — did a `Document` node with the note's provenance appear in SQLite.
-//! 2. **Did it get there natively?** The stand-in worker mounts
-//!    `POST /knowledge-graph/ingest` *and answers 200*, so a delegation would
-//!    look like a success from the client side. It must be requested zero times.
-//! 3. **Does enabling a watch re-ingest what was already there?** It must not:
-//!    `enable()` is consent, and the baseline is taken at that moment.
-//!
-//! The watched vault is a tempdir of its own, never the data directory — a
-//! scanner pointed at the data directory would ingest `users.json`.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -32,7 +13,6 @@ use lattice_core::worker::WorkerSeamClient;
 use lattice_ingest::local_files_api::{self, LocalApprovals, LocalFilesState};
 use serde_json::{json, Value};
 
-/// A one-page PDF. Magic `%PDF` only — the stand-in worker mocks the parse.
 const TINY_PDF: &[u8] = b"%PDF-1.1\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Size 2>>\n%%EOF\n";
 
 #[derive(Clone, Default)]
@@ -55,8 +35,6 @@ impl SeamLog {
     }
 }
 
-/// The compute seams the enrich chain uses, plus the retired write door as a
-/// tripwire that answers 200 so "nobody asked" has to be asserted.
 async fn stand_in_worker(seams: SeamLog) -> String {
     let app = Router::new()
         .route(
@@ -238,7 +216,6 @@ impl Install {
         json_of(response).await
     }
 
-    /// The probe → approve → enable dance the route requires.
     async fn enable(&self, vault: &Path) -> Value {
         let path = vault.to_string_lossy().into_owned();
         let probe = client()
@@ -307,14 +284,11 @@ async fn json_of(response: reqwest::Response) -> Value {
 #[tokio::test]
 async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker_to_write() {
     let data = tempfile::tempdir().expect("data");
-    // The vault is its own directory. Pointed at `data`, a scanner would find
-    // `users.json` and cheerfully ingest the password file.
     let vault = tempfile::tempdir().expect("vault");
     std::fs::write(vault.path().join("onboarding.md"), "welcome to lattice\n").unwrap();
     std::fs::write(vault.path().join("회의록.md"), "회의 기록\n").unwrap();
     let install = boot(data.path()).await;
 
-    // Before anything is enabled the bridge says so honestly.
     let idle = install.get_watch().await;
     assert_eq!(idle["enabled_count"], 0);
     assert_eq!(idle["polling"], false);
@@ -323,7 +297,6 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
         "the poller delivers through NoteIngestor; this said false while nothing did"
     );
 
-    // ── enable is consent, not ingestion ───────────────────────────────────
     let enabled = install.enable(vault.path()).await;
     assert_eq!(enabled["status"], "ok");
     assert_eq!(enabled["already_watching"], false);
@@ -355,7 +328,6 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
     assert_eq!(after["polling"], true, "a poller is live for this install");
     assert_eq!(after["watches"].as_array().map(Vec::len), Some(1));
 
-    // ── a change flows ─────────────────────────────────────────────────────
     std::fs::write(
         vault.path().join("decisions.md"),
         "# 결정\n\n리트리벌 가중치를 0.7로 올린다.\n",
@@ -375,13 +347,11 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
     assert_eq!(scan["failed"], 0);
     assert_eq!(scan["removed"], 0);
 
-    // …natively. The tripwire answers 200, so this has to be asserted.
     assert_eq!(
         install.seams.count("/knowledge-graph/ingest"),
         0,
         "the watch write is native; a request here is the v11.6.0 strand returning"
     );
-    // The binary half is F-ING's parse seam, composed with rather than bypassed.
     assert_eq!(
         install.seams.count("/worker/parse"),
         1,
@@ -416,7 +386,6 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
         .unwrap_or_default()
         .starts_with("watch_"));
 
-    // The PDF carries the parsed text, not its bytes.
     let (_, pdf_metadata) = documents
         .iter()
         .find(|(title, _)| title == "report.pdf")
@@ -447,7 +416,6 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
         "the shared enrich chain chunked them for retrieval"
     );
 
-    // ── the status route now reports the scan ──────────────────────────────
     let scanned = install.get_watch().await;
     let entry = &scanned["watches"][0];
     assert!(entry["last_scan_at"].as_str().is_some());
@@ -455,12 +423,10 @@ async fn a_watched_vault_delivers_notes_into_the_brain_and_never_asks_the_worker
     assert_eq!(entry["last_result"]["status"], "ok");
     assert_eq!(entry["tracked_files"], 4);
 
-    // ── a second scan with nothing new is a no-op, not a re-ingest ─────────
     let again = local_files_api::scan_watches(&install.state).await;
     assert_eq!(again["watches"][0]["ingested"], 0, "{again}");
     assert_eq!(install.documents().len(), documents.len());
 
-    // ── disable stops the poller and forgets the snapshot ──────────────────
     let removed = client()
         .delete(format!(
             "{}/api/ingestion/watch?path={}",
@@ -521,7 +487,6 @@ async fn a_vault_that_vanishes_is_a_counted_failure_not_a_dead_poller() {
     assert_eq!(report["status"], "ok", "the pass completed");
     assert_eq!(report["watches"][0]["status"], "failed", "{report}");
     assert!(report["watches"][0]["detail"].as_str().is_some());
-    // …and the failure is visible on the status route rather than swallowed.
     let entry = &install.get_watch().await["watches"][0];
     assert_eq!(entry["last_result"]["status"], "failed");
 }
@@ -531,8 +496,6 @@ async fn a_deleted_watched_file_is_pruned_from_the_graph() {
     let data = tempfile::tempdir().expect("data");
     let vault = tempfile::tempdir().expect("vault");
     let install = boot(data.path()).await;
-    // Enable is consent, not ingest: files added after the baseline are the
-    // ones this scan delivers, and the one we then delete is the prune case.
     install.enable(vault.path()).await;
     std::fs::write(vault.path().join("keep.md"), "남는다\n").unwrap();
     std::fs::write(vault.path().join("gone.md"), "사라진다\n").unwrap();
@@ -720,7 +683,6 @@ async fn semantic_watched_edit_reembeds_only_changed_chunks_via_two_phase_sync()
     );
 }
 
-/// Percent-encode a filesystem path for a query string. Small on purpose.
 fn urlencode(value: &str) -> String {
     let mut out = String::new();
     for byte in value.bytes() {

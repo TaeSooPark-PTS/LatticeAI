@@ -1,19 +1,3 @@
-//! Port of the service layer's single channels and graph channel
-//! (`latticeai/services/search_service.py`).
-//!
-//! The graph layer answers "what matches"; this layer answers "what does the
-//! product show". It re-shapes every lane into one match contract
-//! (`id`/`node_id`/`item_type`/`sources`/`source_scores`) and adds the graph
-//! channel, which is not a search at all: it is a keyword search whose hits are
-//! then *expanded* through the graph, scored by how they were reached.
-//!
-//! Two behaviours here are easy to "improve" and must not be. The final sort is
-//! Python's stable `sorted(..., reverse=True)` with **no** id tie-break, so
-//! equally scored nodes keep the order they were discovered in — the insertion
-//! order of a dict. And a traversal that fails is an empty neighbourhood, not an
-//! error: an expansion is an enrichment, and a broken one may not cost the user
-//! the answer they asked for.
-
 use std::collections::{BTreeSet, HashMap};
 
 use lattice_core::pytext::{clean_text, round6, truncate_chars};
@@ -27,17 +11,13 @@ use crate::keyword::search as graph_keyword_search;
 use crate::shape::{py_str, truthy};
 use crate::vector::vector_search as graph_vector_search;
 
-/// Who is asking, in the only terms the read path cares about.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Scope {
-    /// `None` is the unscoped local-owner path; a set is a membership filter.
     pub allowed_workspaces: Option<BTreeSet<String>>,
-    /// Whether NULL-workspace legacy rows count as visible.
     pub include_legacy_global: bool,
 }
 
 impl Scope {
-    /// Construct a single-workspace scope excluding legacy NULL-workspace rows.
     pub fn for_workspace(workspace_id: impl Into<String>) -> Self {
         let mut allowed = BTreeSet::new();
         allowed.insert(workspace_id.into());
@@ -52,7 +32,6 @@ impl Scope {
     }
 }
 
-/// `search_service._clean` — collapse whitespace, then cut to 1,000 characters.
 pub fn clean(value: Option<&Value>) -> String {
     let text = match value {
         Some(Value::String(text)) => text.clone(),
@@ -62,7 +41,6 @@ pub fn clean(value: Option<&Value>) -> String {
     truncate_chars(&clean_text(&text), 1000)
 }
 
-/// `node.get("metadata") or {}` — a falsy metadata blob becomes an empty object.
 fn metadata_of(item: &Value) -> Value {
     match item.get("metadata") {
         Some(value) if truthy(value) => value.clone(),
@@ -74,7 +52,6 @@ fn field(item: &Value, key: &str) -> Value {
     item.get(key).cloned().unwrap_or(Value::Null)
 }
 
-/// `SearchService._scope` — drop matches the caller may not read, by `id`.
 pub(crate) fn scope_matches(
     conn: &Connection,
     matches: Vec<Value>,
@@ -94,7 +71,6 @@ pub(crate) fn scope_matches(
     )
 }
 
-/// `SearchService.keyword_search` — the lexical lane in the service contract.
 pub fn keyword_search(
     conn: &Connection,
     query: &str,
@@ -197,16 +173,12 @@ fn format_vector_service_payload(
         "matches".into(),
         Value::Array(scope_matches(conn, matches, scope)?),
     );
-    // Honest recall passthrough: the graph layer scores a capped slice of a large
-    // index and says so. Dropping it would turn "partial recall" into "these are
-    // all the matches" at the API boundary.
     if let Some(recall) = payload.get("recall").filter(|value| value.is_object()) {
         result.insert("recall".into(), recall.clone());
     }
     Ok(Value::Object(result))
 }
 
-/// `SearchService.vector_search` — the vector lane in the service contract.
 pub fn vector_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -219,7 +191,6 @@ pub fn vector_search(
     format_vector_service_payload(conn, query, &payload, scope)
 }
 
-/// Provider-aligned, SQL-scoped vector search for service & HTTP endpoints.
 pub fn vector_search_aligned_service(
     conn: &Connection,
     query_input: crate::vector::VectorQueryInput<'_>,
@@ -239,16 +210,10 @@ pub fn vector_search_aligned_service(
     format_vector_service_payload(conn, query, &payload, scope)
 }
 
-/// Everything `graph_search` accepts beyond the query.
 #[derive(Debug, Clone)]
 pub struct GraphSearchOptions {
-    /// Result cap; clamps to `1..=100` (`0` means Python's default of 30).
     pub limit: i64,
-    /// How far to expand around each direct hit; clamps to `0..=3`. **`0` means
-    /// the default of 1** (Python spells it `int(expand_depth or 1)`); pass a
-    /// negative depth to turn expansion off.
     pub expand_depth: i64,
-    /// Who is asking.
     pub scope: Scope,
 }
 
@@ -262,7 +227,6 @@ impl Default for GraphSearchOptions {
     }
 }
 
-/// One accumulating candidate — the value side of Python's `by_id` dict.
 struct Candidate {
     id: String,
     node_type: Value,
@@ -288,8 +252,6 @@ impl Accumulator {
         }
     }
 
-    /// `add_node` — first sighting creates the row, every sighting raises the
-    /// score to its maximum and appends one more reason it is here.
     fn add(&mut self, node: &Value, score: f64, reason: &str, edge: Option<&Value>) {
         let node_id = node
             .get("id")
@@ -336,11 +298,6 @@ impl Accumulator {
     }
 }
 
-/// `edge.get("from") or (edge.get("source") or {}).get("id")`.
-///
-/// A traversal edge carries flat `from`/`to`; a relationship carries nested
-/// `source`/`target` objects. One accessor reads both, and the `or` chain means
-/// an explicitly empty `from` falls through to the nested id.
 fn edge_end(edge: &Value, flat: &str, nested: &str) -> Value {
     if let Some(value) = edge.get(flat).filter(|value| truthy(value)) {
         return value.clone();
@@ -351,8 +308,6 @@ fn edge_end(edge: &Value, flat: &str, nested: &str) -> Value {
         .unwrap_or(Value::Null)
 }
 
-/// `SearchService.graph_search` — direct hits, their relationships, and the
-/// neighbourhood around each, merged by maximum score.
 pub fn graph_search(
     conn: &Connection,
     query: &str,
@@ -364,8 +319,6 @@ pub fn graph_search(
         options.limit
     }
     .clamp(1, 100);
-    // `max(0, min(int(expand_depth or 1), 3))`: as in `traverse`, a zero is
-    // Python-falsy and therefore means "one hop", not "no expansion".
     let expand_depth = if options.expand_depth == 0 {
         1
     } else {
@@ -402,7 +355,6 @@ pub fn graph_search(
             continue;
         }
         let seed = item.get("id").and_then(Value::as_str).unwrap_or_default();
-        // An expansion that cannot run costs the enrichment, never the answer.
         let neighbourhood = traverse(
             conn,
             seed,
@@ -443,7 +395,6 @@ pub fn graph_search(
         }
     }
 
-    // Stable, score-descending, no id tie-break: discovery order survives a tie.
     let mut candidates = accumulator.order;
     candidates.sort_by(|a, b| {
         b.score
@@ -542,9 +493,7 @@ mod tests {
         assert_eq!(first["node_id"], first["id"]);
         assert_eq!(first["summary"], "about ranking");
         assert_eq!(out["matches"][1]["score"], json!(0.5));
-        // A NULL summary becomes "", never null.
         assert_eq!(out["matches"][1]["summary"], "");
-        // Scoping drops the rows the caller may not read.
         let w2: BTreeSet<String> = ["w2".to_string()].into_iter().collect();
         let scoped = keyword_search(
             &conn,
@@ -588,7 +537,6 @@ mod tests {
         assert_eq!(first["score"], json!(1.0));
         assert_eq!(first["source_scores"]["graph"], json!(1.0));
         assert_eq!(first["graph_context"][0]["reason"], "direct_match");
-        // The neighbour arrives through the edge that connects it.
         let reasons: Vec<&str> = out["matches"]
             .as_array()
             .unwrap()
@@ -603,7 +551,6 @@ mod tests {
     #[test]
     fn expansion_depth_and_limits_clamp_rather_than_fail() {
         let (_dir, conn) = graph();
-        // Negative turns expansion off; zero is Python-falsy and means "one hop".
         let flat = graph_search(
             &conn,
             "ranking",
@@ -669,7 +616,6 @@ mod tests {
         assert_eq!(accumulator.order.len(), 1);
         assert_eq!(accumulator.order[0].score, 0.9);
         assert_eq!(accumulator.order[0].graph_context.len(), 2);
-        // A later, lower score never lowers the maximum.
         accumulator.add(&json!({"id": "x"}), 0.1, "neighbor_expansion", None);
         assert_eq!(accumulator.order[0].score, 0.9);
     }

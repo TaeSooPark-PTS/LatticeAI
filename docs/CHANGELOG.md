@@ -6,6 +6,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.1.2] - 2026-11-25 — Living Synthesis
+
+### Changed
+- **Repository-Wide Comment & Suppression Removal:**
+  - Stripped all human-written comments, docstrings, JSDoc, and suppression directives across Python, TypeScript/JavaScript, Rust, Shell, CSS, and HTML source files, preserving only required shebangs and `/// <reference ... />` directives.
+  - Resolved all surfaced Ruff, mypy, TypeScript, and Clippy issues directly in source code without weakening any global lint or type-check configuration.
+- **Permanent No-Comments Gate (`scripts/check_no_comments.mjs`, `package.json`, `.github/workflows/ci.yml`):**
+  - Added `npm run check:no-comments` using `@babel/parser`, Python `ast` + `tokenize`, and Rust/Shell/CSS/HTML lexers, wired into `npm run lint` and CI.
+  - Updated `AGENTS.md`, `CONTRIBUTING.md`, and Korean mirrors with the permanent no-comments rule.
+
 ## [14.1.1] - 2026-11-25 — Living Synthesis
 
 ### Changed

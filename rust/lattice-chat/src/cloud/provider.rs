@@ -1,17 +1,3 @@
-//! Dual-mode cloud credentials: an API key, or a locally-authenticated CLI.
-//!
-//! Resolution order is the product contract:
-//!
-//! 1. `<data_dir>/cloud_provider.json`
-//! 2. `LATTICEAI_CLOUD_API_KEY` (+ optional base URL / model) → `api_key`
-//! 3. CLI autodetect: `agy` then `grok`, on `PATH` and `~/.local/bin`
-//! 4. none
-//!
-//! `api_key` talks to an OpenAI-compatible HTTP endpoint. `cli_oauth` spawns
-//! a local CLI whose OAuth subscription is already on the machine — it never
-//! sees an API key and never dials `api.openai.com` / `api.x.ai` /
-//! `generativelanguage.googleapis.com` itself.
-
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -26,33 +12,23 @@ use super::{
     DEFAULT_CLOUD_MODEL,
 };
 
-/// File name under the data dir.
 pub const CLOUD_PROVIDER_FILE: &str = "cloud_provider.json";
 
-/// How long a CLI cloud turn may run before it is killed.
 pub const CLI_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// How long `{bin} --version` is allowed to take for the status chip.
 const VERSION_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// Default Gemini model for the Antigravity CLI.
 pub const AGY_DEFAULT_MODEL: &str = "gemini-3.7-flash";
-/// Default xAI model for the `grok` CLI.
 pub const GROK_DEFAULT_MODEL: &str = "grok-4.6";
 
-/// Wire / status value for the credential mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CloudMode {
-    /// OpenAI-compatible HTTP, key from env or the provider file.
     ApiKey,
-    /// Locally-authenticated CLI (`agy`, `grok`, or a configured binary).
     CliOauth,
-    /// Nothing configured.
     None,
 }
 
 impl CloudMode {
-    /// The SPA / status-route token.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::ApiKey => "api_key",
@@ -71,25 +47,17 @@ impl CloudMode {
     }
 }
 
-/// What `GET /api/cloud/status` answers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CloudStatus {
-    /// Whether a turn could actually be sent.
     pub configured: bool,
-    /// `api_key` | `cli_oauth` | `none`.
     pub mode: CloudMode,
-    /// `gemini` / `xai` / `openai_compatible` / …
     pub provider: Option<String>,
-    /// The model a turn would name.
     pub model: Option<String>,
-    /// Extra, cheap detail (CLI name + version when obtainable).
     pub detail: Option<String>,
-    /// `GET /models` probe for `api_key` mode. `None` when not applicable.
     pub verified: Option<bool>,
 }
 
 impl CloudStatus {
-    /// The UI contract object.
     pub fn to_value(&self) -> Value {
         json!({
             "configured": self.configured,
@@ -101,7 +69,6 @@ impl CloudStatus {
         })
     }
 
-    /// Nothing is wired.
     pub fn none() -> Self {
         Self {
             configured: false,
@@ -114,22 +81,15 @@ impl CloudStatus {
     }
 }
 
-/// Inputs the resolver reads. Tests pass a snapshot so they never touch the
-/// process environment (and never race other tests that do).
 #[derive(Debug, Clone, Default)]
 pub struct ResolveInput {
-    /// `LATTICEAI_CLOUD_API_KEY`.
     pub api_key: Option<String>,
-    /// `LATTICEAI_CLOUD_BASE_URL`.
     pub base_url: Option<String>,
-    /// `LATTICEAI_CLOUD_MODEL`.
     pub model: Option<String>,
-    /// Directories to search for `agy` / `grok`, in order. Empty → real PATH.
     pub path_dirs: Vec<PathBuf>,
 }
 
 impl ResolveInput {
-    /// Read the live process environment and `PATH` / `~/.local/bin`.
     pub fn from_env() -> Self {
         let read = |name: &str| {
             std::env::var(name)
@@ -146,7 +106,6 @@ impl ResolveInput {
     }
 }
 
-/// One configured cloud backend.
 #[derive(Debug, Clone)]
 pub struct CloudProvider {
     mode: CloudMode,
@@ -161,33 +120,27 @@ enum CloudBackend {
     Cli(CliSpec),
 }
 
-/// How to spawn one CLI turn.
 #[derive(Debug, Clone)]
 struct CliSpec {
     bin: PathBuf,
-    /// Template args; `{prompt}`, `{model}`, `{effort}` are substituted.
     args: Vec<String>,
     effort: String,
     timeout: Duration,
 }
 
 impl CloudProvider {
-    /// The provider name the SPA chip and the egress record carry.
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// The model a turn will send.
     pub fn model(&self) -> &str {
         &self.model
     }
 
-    /// `api_key` / `cli_oauth`.
     pub fn mode(&self) -> CloudMode {
         self.mode
     }
 
-    /// Whether a turn can actually be sent.
     pub fn configured(&self) -> bool {
         match &self.backend {
             CloudBackend::Http(adapter) => adapter.configured(),
@@ -195,9 +148,6 @@ impl CloudProvider {
         }
     }
 
-    /// Status payload. CLI mode adds `{bin} --version`. API-key mode probes
-    /// `GET /models` (no completion) and fail-closes when the provider is
-    /// unreachable or the key is rejected.
     pub async fn status(&self) -> CloudStatus {
         match &self.backend {
             CloudBackend::Http(adapter) => match adapter.probe_models().await {
@@ -229,12 +179,10 @@ impl CloudProvider {
         }
     }
 
-    /// Resolve from `<data_dir>/cloud_provider.json`, then env, then CLIs.
     pub fn resolve(data_dir: &Path) -> Option<Self> {
         Self::resolve_with(data_dir, &ResolveInput::from_env())
     }
 
-    /// [`Self::resolve`] over an explicit snapshot.
     pub fn resolve_with(data_dir: &Path, input: &ResolveInput) -> Option<Self> {
         match from_file(data_dir, input) {
             FileResolution::Configured(provider) => return Some(provider),
@@ -247,7 +195,6 @@ impl CloudProvider {
         detect_cli(&input.path_dirs)
     }
 
-    /// Point an HTTP adapter at a specific endpoint (tests).
     pub fn api_key(adapter: OpenAiCompatibleAdapter, provider: impl Into<String>) -> Self {
         let model = adapter.default_model().to_string();
         Self {
@@ -258,7 +205,6 @@ impl CloudProvider {
         }
     }
 
-    /// A CLI runner, for tests that hand a fake executable.
     pub fn cli_oauth(
         bin: impl Into<PathBuf>,
         args: Vec<String>,
@@ -279,11 +225,6 @@ impl CloudProvider {
         }
     }
 
-    /// Stream one turn. Each non-empty piece is handed to `on_piece`.
-    ///
-    /// HTTP mode yields tokens as they arrive. CLI mode yields the whole
-    /// stdout as one piece. `on_piece` returning `false` means the client
-    /// hung up.
     pub async fn stream(
         &self,
         system: &str,
@@ -307,7 +248,6 @@ impl CloudProvider {
     }
 }
 
-/// HYBRID system prompt + the minimal context slice + the question.
 pub fn compose_prompt(system: &str, user: &str, context: &str) -> String {
     let mut parts = vec![system.trim().to_string()];
     if !context.trim().is_empty() {
@@ -320,7 +260,6 @@ pub fn compose_prompt(system: &str, user: &str, context: &str) -> String {
     parts.join("\n\n")
 }
 
-/// Directories `agy` / `grok` are looked up in.
 pub fn default_search_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if let Ok(path) = std::env::var("PATH") {
@@ -572,7 +511,6 @@ fn detect_cli(path_dirs: &[PathBuf]) -> Option<CloudProvider> {
     })
 }
 
-/// Look up `name` in `dirs`. The first executable wins.
 pub fn find_bin(name: &str, dirs: &[PathBuf]) -> Option<PathBuf> {
     for dir in dirs {
         let candidate = dir.join(name);

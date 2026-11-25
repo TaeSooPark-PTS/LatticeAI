@@ -1,9 +1,3 @@
-//! Setup wizard install-item execution (SSE frames, no fake "complete").
-//!
-//! brew/pip/uv stay manual unless the request names the item in
-//! `execute`. The command that then runs is re-derived here from the
-//! item id and a closed verb — never the client-supplied string.
-
 use std::collections::HashSet;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -13,10 +7,8 @@ use serde_json::{json, Map, Value};
 
 use super::SetupState;
 
-/// How long a consented brew/pip/uv invocation may run.
 const EXECUTE_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Captured stdout/stderr from a consented invocation.
 #[derive(Debug, Clone)]
 pub struct RunnerOutput {
     pub stdout: String,
@@ -24,11 +16,9 @@ pub struct RunnerOutput {
     pub code: i32,
 }
 
-/// Test seam for consented brew/pip/uv execution.
 pub type InstallRunner =
     Arc<dyn Fn(&AllowlistedCommand) -> Result<RunnerOutput, String> + Send + Sync>;
 
-/// A brew/pip/uv invocation the plan itself produced.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AllowlistedCommand {
     pub program: String,
@@ -320,8 +310,6 @@ fn classify_install_action(
     }
 }
 
-/// Re-derive the command the plan would have generated for this item.
-/// Client `command` / `cmd` strings are ignored.
 fn derived_allowlisted(
     atype: &str,
     action: Option<&Map<String, Value>>,
@@ -376,7 +364,6 @@ fn is_safe_package(id: &str) -> bool {
         && !id.contains("..")
 }
 
-/// Strict allowlist: brew/pip/pip3/uv with install or --version only.
 pub fn is_allowlisted(cmd: &AllowlistedCommand) -> bool {
     let program = cmd.program.as_str();
     let args: Vec<&str> = cmd.args.iter().map(String::as_str).collect();

@@ -1,11 +1,3 @@
-//! Network boundary dial + hybrid policy — native port of
-//! `latticeai/api/network_boundary.py`.
-//!
-//! The dial is stored in `<data_dir>/network_boundary.json` and the policy in
-//! `<data_dir>/hybrid_policy.json` — the same files Python reads and writes.
-//! The one graph write here (`set_node_sensitivity`) is native: it calls
-//! [`lattice_core::graph_write::GraphWriter`] directly.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -27,7 +19,6 @@ use stores::network_mode_catalog;
 pub(crate) use stores::TokenBudget;
 pub use stores::{BoundaryStore, PolicyStore};
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/network-boundary"),
     ("POST", "/api/network-boundary"),
@@ -50,7 +41,6 @@ pub(crate) const HARD_BLOCK_NODE_TYPES: &[&str] = &[
 pub(crate) const HARD_BLOCK_METADATA_FLAGS: &[&str] =
     &["do_not_share", "local_only", "private", "sensitive"];
 
-/// Router state.
 #[derive(Clone)]
 pub struct NetworkBoundaryState {
     pub auth: Arc<AuthState>,
@@ -85,7 +75,6 @@ impl NetworkBoundaryState {
     }
 }
 
-/// Build the network-boundary router.
 pub fn router(state: NetworkBoundaryState) -> Router {
     Router::new()
         .route(
@@ -447,10 +436,6 @@ async fn set_node_sensitivity(
             Err(err) => detail(StatusCode::BAD_GATEWAY, &err.to_string()),
         }
     } else {
-        // No native writer ⇒ no graph, so there is no node to mark. The
-        // `/worker/graph/mutate` delegation this used to fall back to was
-        // retired in v11.6.0; `GraphWriter::set_node_sensitivity` above is the
-        // only writer of `local_only`.
         detail(StatusCode::NOT_FOUND, "node not found")
     }
 }

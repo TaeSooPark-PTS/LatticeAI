@@ -1,27 +1,6 @@
-//! The response shape `hybrid_search` has to produce, and the Python
-//! truthiness it is built on.
-//!
-//! Split out of `hybrid.rs` so the pipeline file stays readable: everything here
-//! is a pure function over JSON, everything there is the order of operations.
-//! `truthy` is the one to read twice — Python's `or` chains treat `0`, `""` and
-//! `{}` as absent, and this codebase has repeatedly been bitten by a score of
-//! `0.0` disappearing because Rust would have called it `Some(0.0)`.
-//!
-//! [`haystack`] and [`json_opt`] live here for the same reason: both are the
-//! shape a `NodeRow` takes on the way into an answer, both were written twice
-//! (`keyword.rs` and `docgen.rs`), and both encode a Python detail — `None`
-//! formatting as the four characters `None`, `NULL` becoming `null` rather
-//! than a missing key — that must not be re-derived per call site.
-
 use lattice_core::read::NodeRow;
 use serde_json::{Map, Value};
 
-/// Python's `f"{row['title']} {row['summary']} {row['metadata_json']}".lower()`.
-///
-/// A NULL column formats as the four characters `None` in Python, and both the
-/// keyword re-score and the document-generation term match search *that*
-/// haystack — so a port that skipped the NULL, or wrote an empty string for it,
-/// would score differently on every row with a missing summary.
 pub fn haystack(row: &NodeRow) -> String {
     fn field(value: &Option<String>) -> &str {
         value.as_deref().unwrap_or("None")
@@ -35,7 +14,6 @@ pub fn haystack(row: &NodeRow) -> String {
     .to_lowercase()
 }
 
-/// An optional column as JSON: the string, or `null`.
 pub fn json_opt(value: &Option<String>) -> Value {
     value
         .as_ref()
@@ -43,12 +21,9 @@ pub fn json_opt(value: &Option<String>) -> Value {
         .unwrap_or(Value::Null)
 }
 
-/// `fusion.DEFAULT_EXPANSION_CAP` — reported even while expansion is off.
 pub const DEFAULT_EXPANSION_CAP: i64 = 5;
-/// Node types that make a result set more than prose (`retrieval.signals`).
 pub const MULTIMODAL_NODE_TYPES: [&str; 2] = ["Image", "ImageText"];
 
-/// `_parent_node_id` — chunk hits dedupe to the content node they came from.
 pub fn parent_node_id(item: &Map<String, Value>) -> String {
     if item.get("type").and_then(Value::as_str) == Some("Chunk") {
         if let Some(Value::Object(meta)) = item.get("metadata") {
@@ -170,13 +145,6 @@ pub fn multimodal_signal(matches: &[Value]) -> Option<Value> {
     Some(Value::Object(map))
 }
 
-/// `retrieval.signals.context_quality_signal` — the honest four-key block.
-///
-/// Two rules are easy to get backwards and both are load-bearing: zero nodes
-/// *collapses* the mode to `"none"` no matter what the caller claimed, and a
-/// caller-supplied `reason` is dropped again when the context turns out not to
-/// be limited — the field says "here is what is thin about this", so it may not
-/// survive a context that is fine.
 pub fn context_quality_signal(
     mode: &str,
     nodes: i64,
@@ -206,8 +174,6 @@ pub fn context_quality_signal(
         "reason".into(),
         reason.map(Value::String).unwrap_or(Value::Null),
     );
-    // Present only when there is something to report: an all-text answer keeps
-    // the four-key shape existing consumers pin.
     if let Some(multimodal) = multimodal {
         signal.insert("multimodal".into(), multimodal);
     }
@@ -299,10 +265,8 @@ mod tests {
             lexical["reason"],
             "벡터 검색을 사용할 수 없어 키워드 검색 결과만 사용했습니다"
         );
-        // A hybrid answer resting on one node is thin, and says so.
         let thin = context_quality_signal("hybrid", 1, None, None);
         assert_eq!(thin["reason"], "그래프 기반 컨텍스트가 제한적입니다");
-        // An unrecognised mode degrades to lexical_only rather than being echoed.
         assert_eq!(
             context_quality_signal("guess", 2, None, None)["mode"],
             "lexical_only"

@@ -1,21 +1,3 @@
-//! `/rust/ingest/*` — two routes, both of which refuse to write anything.
-//!
-//! * `GET /rust/ingest/plan` answers **what would be ingested** for a folder:
-//!   which files survive the filter chain, which strategy each one routes to,
-//!   and how many chunks it would produce. Nothing is stored, nothing is sent
-//!   to the worker, and the answer is the same on the tenth call as the first.
-//! * `POST /rust/ingest/chunk` exposes the pure chunker: text in, chunks with
-//!   provenance and ids out. Its response shape is deliberately the shape of
-//!   the parity goldens, so an operator can diff a live answer against the
-//!   committed fixture without reformatting either.
-//!
-//! Neither route touches the knowledge graph, the filesystem beyond reading,
-//! or the worker. Writing stays with the Python worker (see
-//! [`crate::worker`]), and a dry run that could write would not be one.
-//!
-//! Mounting: [`router`] returns a stateless `Router` with absolute paths, so a
-//! host merges it and nothing else has to know these routes exist.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -34,19 +16,13 @@ use crate::pystr::{decode_utf8_ignore, py_strip};
 use crate::strategy::chunk_strategy_for;
 use crate::watch::{walk_folder, WatchConfig};
 
-/// `GET /rust/ingest/plan`.
 pub const PLAN_PATH: &str = "/rust/ingest/plan";
-/// `POST /rust/ingest/chunk`.
 pub const CHUNK_PATH: &str = "/rust/ingest/chunk";
 
-/// Limits for the dry-run surface.
 #[derive(Debug, Clone)]
 pub struct IngestApiConfig {
-    /// How many files a plan may describe before it reports truncation.
     pub max_plan_files: usize,
-    /// Longest text the chunk route will accept, in characters.
     pub max_chunk_chars: usize,
-    /// The filter chain a plan applies.
     pub watch: WatchConfig,
 }
 
@@ -60,7 +36,6 @@ impl Default for IngestApiConfig {
     }
 }
 
-/// The `/rust/ingest/*` router. Read-only by construction.
 pub fn router(config: IngestApiConfig) -> Router {
     Router::new()
         .route(PLAN_PATH, get(plan))
@@ -76,15 +51,11 @@ fn bad_request(field: &str, detail: impl Into<String>) -> Response {
         .into_response()
 }
 
-/// Expand a leading `~`, the one thing `Path::new` does not do and
-/// `Path.expanduser()` does.
 fn expand_user(raw: &str) -> PathBuf {
     let home = std::env::var_os("HOME").map(PathBuf::from);
     expand_user_with(raw, home.as_deref())
 }
 
-/// [`expand_user`] with the home directory passed in, so a test needs no
-/// process-wide environment mutation to pin it.
 fn expand_user_with(raw: &str, home: Option<&Path>) -> PathBuf {
     match (raw.strip_prefix('~'), home) {
         (Some(rest), Some(home)) if rest.is_empty() || rest.starts_with('/') => {
@@ -102,7 +73,6 @@ fn parse_bool(raw: &str) -> Option<bool> {
     }
 }
 
-/// `GET /rust/ingest/plan?path=…&recursive=…&limit=…`
 async fn plan(
     State(config): State<Arc<IngestApiConfig>>,
     Query(params): Query<HashMap<String, String>>,
@@ -147,7 +117,6 @@ async fn plan(
     }
 }
 
-/// The dry run itself. Synchronous — call it on a blocking task.
 fn build_plan(
     root: &Path,
     config: &WatchConfig,
@@ -176,8 +145,6 @@ fn build_plan(
         entry.insert("bytes".into(), Value::from(file.size));
         entry.insert("strategy".into(), Value::from(strategy));
         if is_document_extension(&file.extension) {
-            // Document extraction is the worker's job (parser matrix, OCR); a
-            // chunk count guessed from raw PDF bytes would be a made-up number.
             entry.insert("chars".into(), Value::Null);
             entry.insert("chunks".into(), Value::Null);
             entry.insert(
@@ -219,7 +186,6 @@ fn build_plan(
     }))
 }
 
-/// `POST /rust/ingest/chunk` — the pure chunker, exposed.
 async fn chunk(State(config): State<Arc<IngestApiConfig>>, body: Option<Json<Value>>) -> Response {
     let Some(Json(body)) = body else {
         return bad_request("body", "expected a JSON object");
@@ -346,9 +312,7 @@ mod tests {
             PathBuf::from("/abs/notes")
         );
         assert_eq!(expand_user_with("rel", home), PathBuf::from("rel"));
-        // No HOME at all: the tilde stays literal rather than becoming "/".
         assert_eq!(expand_user_with("~/notes", None), PathBuf::from("~/notes"));
-        // The real reader agrees with the helper on an absolute path.
         assert_eq!(expand_user("/abs"), PathBuf::from("/abs"));
     }
 

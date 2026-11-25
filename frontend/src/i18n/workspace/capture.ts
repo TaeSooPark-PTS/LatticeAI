@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Capture: the intake station, local folders and their health, browser
-// capture, and the pipeline that runs over what arrives.
 export const workspaceCaptureCopy: NamespaceCopy = {
   ko: {
     "capture.station.aria": "자료 추가",
@@ -72,9 +70,6 @@ export const workspaceCaptureCopy: NamespaceCopy = {
     "capture.pipeline.refresh": "기억 새로고침",
     "capture.pipeline.description": "수집한 자료를 Lattice가 다시 확인해야 할 때 검색을 새로고침합니다.",
     "capture.pipeline.rebuild": "검색 준비 다시 하기",
-    // This tab used to print two raw API payloads. It now answers the only
-    // question someone actually has here — "where did my file get to?" — as
-    // three named steps, and keeps the payloads for advanced mode.
     "capture.pipeline.journey.title": "넣은 자료가 기억이 되기까지",
     "capture.pipeline.journey.detail": "자료를 넣으면 아래 세 단계를 거쳐, 대화에서 바로 찾아 쓸 수 있는 기억이 됩니다.",
     "capture.pipeline.journey.aria": "자료가 기억이 되는 3단계",

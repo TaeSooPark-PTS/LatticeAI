@@ -1,21 +1,5 @@
-//! The curator's *decision* half — the part that is pure.
-//!
-//! Port of the three functions `curate_noise` calls out to in
-//! `lattice_brain/graph/curator.py`: the relation-verb dictionary, the plan
-//! that renames free-string verbs onto it, and the document-frequency rule that
-//! decides which heuristic concept nodes are graph noise.
-//!
-//! These live here rather than crossing the worker seam because they are
-//! arithmetic over rows this engine already has in hand — no model, no parser,
-//! no corpus beyond the `edges`/`nodes` tables. The curator's *other* half
-//! (topic extraction, clustering, promotion scoring in
-//! `auto_build_graph_overlay`) is genuinely NLP and stays in the worker; it
-//! reaches [`super::GraphWriter::curate`] as
-//! [`super::types::CuratorOverlay`].
-
 use serde_json::{Map, Value};
 
-/// `curator.RELATION_VERB_GROUPS` — canonical label → its aliases.
 const RELATION_VERB_GROUPS: &[(&str, &[&str])] = &[
     (
         "created",
@@ -89,19 +73,13 @@ const RELATION_VERB_GROUPS: &[(&str, &[&str])] = &[
     ),
 ];
 
-/// `curator._JOSA_SUFFIXES`, already in `sorted(key=len, reverse=True)` order.
-///
-/// Python's sort is stable, so suffixes of equal length keep their literal
-/// order — which is why this is written out rather than sorted at runtime.
 const JOSA_SUFFIXES: [&str; 41] = [
-    // three syllables
     "으로는",
     "에서는",
     "에서의",
     "에게서",
     "이라는",
     "이라고",
-    // two syllables, in the literal's own order
     "라는",
     "라고",
     "으로",
@@ -121,7 +99,6 @@ const JOSA_SUFFIXES: [&str; 41] = [
     "에도",
     "께서",
     "이란",
-    // one syllable
     "은",
     "는",
     "이",
@@ -140,8 +117,6 @@ const JOSA_SUFFIXES: [&str; 41] = [
     "란",
 ];
 
-/// `curator.build_relation_verb_index` — `{alias → canonical}`, canonicals map
-/// to themselves.
 pub fn build_relation_verb_index() -> Vec<(String, String)> {
     let mut index: Vec<(String, String)> = Vec::new();
     for (canonical, aliases) in RELATION_VERB_GROUPS {
@@ -168,7 +143,6 @@ fn lookup<'a>(index: &'a [(String, String)], key: &str) -> Option<&'a str> {
         .map(|(_, value)| value.as_str())
 }
 
-/// `curator._strip_josa` — drop a trailing Korean particle, if any.
 fn strip_josa(token: &str) -> String {
     if !token
         .chars()
@@ -186,7 +160,6 @@ fn strip_josa(token: &str) -> String {
     token.to_string()
 }
 
-/// `curator.normalize_relation_verb` — identity for anything unknown.
 pub fn normalize_relation_verb(verb: &str, index: &[(String, String)]) -> String {
     let raw = verb.trim();
     if raw.is_empty() {
@@ -203,11 +176,6 @@ pub fn normalize_relation_verb(verb: &str, index: &[(String, String)]) -> String
     raw.to_string()
 }
 
-/// `curator._V4_ENUM_LABEL_RE` — `^[A-Z][A-Z0-9_]*$`.
-///
-/// The v4 write door mints SCREAMING_SNAKE_CASE enum labels; those are schema
-/// taxonomy and must never be rewritten by a verb dictionary aimed at pre-v4
-/// free strings.
 fn is_v4_enum_label(label: &str) -> bool {
     let mut chars = label.chars();
     match chars.next() {
@@ -217,8 +185,6 @@ fn is_v4_enum_label(label: &str) -> bool {
     chars.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
 }
 
-/// `curator.plan_relation_normalization` — `{observed → canonical}`, in the
-/// order the observed types arrived (Python builds an insertion-ordered dict).
 pub fn plan_relation_normalization(
     edge_types: &[String],
     index: &[(String, String)],
@@ -236,7 +202,6 @@ pub fn plan_relation_normalization(
     plan
 }
 
-/// One concept row as `curate_noise` assembles it before deciding.
 #[derive(Debug, Clone)]
 pub struct ConceptStat {
     pub id: String,
@@ -246,19 +211,12 @@ pub struct ConceptStat {
     pub heuristic: bool,
 }
 
-/// `curator.plan_concept_noise_reduction`'s verdict.
 #[derive(Debug, Clone, Default)]
 pub struct NoisePlan {
     pub remove: Vec<Value>,
     pub keep: Vec<Value>,
 }
 
-/// `curator.plan_concept_noise_reduction`.
-///
-/// Three rules, in Python's order: user-created nodes are untouchable whatever
-/// their stats; below the frequency floor is noise; and — only once the corpus
-/// is big enough to mean anything — a concept in more than `max_df_ratio` of
-/// the documents separates nothing.
 pub fn plan_concept_noise_reduction(
     concepts: &[ConceptStat],
     total_docs: i64,
@@ -339,7 +297,6 @@ mod tests {
     #[test]
     fn josa_is_stripped_only_when_two_syllables_survive() {
         assert_eq!(strip_josa("생성함을"), "생성함");
-        // "은" would leave one character, so the token is left alone.
         assert_eq!(strip_josa("것은"), "것은");
         assert_eq!(strip_josa("mentions"), "mentions");
     }

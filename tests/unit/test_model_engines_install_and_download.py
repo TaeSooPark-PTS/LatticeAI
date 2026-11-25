@@ -1,5 +1,3 @@
-"""Unit tests for engine installation, smoke tests, and Hugging Face model downloads."""
-
 from __future__ import annotations
 
 import asyncio
@@ -115,7 +113,6 @@ def test_install_engine_denied_error_and_ollama_daemon(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(
         model_engines.subprocess, "run", lambda *a, **k: _Done(0, "ok", "")
     )
-    # first run is install; second is probe — already up
     calls = {"n": 0}
 
     def run_seq(*_a, **_k):
@@ -365,7 +362,6 @@ def test_download_hf_model_missing_hub_and_uncached(tmp_path: Path, monkeypatch)
         ready_state["ok"] = True
         return False
 
-    # first call inside download_hf_model is the cache check (False), last is post-check
     checks = {"n": 0}
 
     def ready_flip(*_a, **_k):
@@ -377,7 +373,6 @@ def test_download_hf_model_missing_hub_and_uncached(tmp_path: Path, monkeypatch)
     assert result["cached"] is False
     assert seen
 
-    # llamacpp gguf selection + no-gguf
     ggufs = [
         {"name": "model-q3_k_m.gguf", "size": 3},
         {"name": "model-q4_k_m.gguf", "size": 4},
@@ -398,7 +393,6 @@ def test_download_hf_model_missing_hub_and_uncached(tmp_path: Path, monkeypatch)
     with pytest.raises(ModelRuntimeError):
         download_mod.download_hf_model("org/m", provider="llamacpp")
 
-    # tqdm import failure still downloads
     def bad_import(name, *a, **k):
         if name.startswith("tqdm"):
             raise ImportError("no tqdm")

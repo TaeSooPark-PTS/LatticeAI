@@ -1,31 +1,15 @@
-//! Table and state-file ownership map — extracted from `db.rs`.
-
-/// Which runtime is allowed to write a table or file after v11.6.0.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Owner {
-    /// Rust writes it. The worker must not, once the family is ported.
     RustPlatform,
-    /// The Python worker is the single writer. Rust reads it directly and
-    /// changes it only by delegating over a seam.
-    ///
-    /// No table in [`TABLES`] carries this any more (v11.6.0 §W3b flipped
-    /// the last seventeen); `telegram_chats.json` in [`state_files`] still
-    /// does, and the variant stays so handing something back is a row
-    /// change rather than a re-derivation.
     Worker,
-    /// Nobody writes it as such: a view, an FTS index, or a shadow table
-    /// maintained as a side effect of whoever owns the base table. Rust
-    /// reads it; Rust must never write it.
     SharedRead,
 }
 
 impl Owner {
-    /// Whether a Rust crate may open a write connection for this.
     pub fn rust_may_write(self) -> bool {
         matches!(self, Owner::RustPlatform)
     }
 
-    /// Stable name for logs, docs and test failure messages.
     pub fn as_str(self) -> &'static str {
         match self {
             Owner::RustPlatform => "RUST_PLATFORM",
@@ -35,32 +19,18 @@ impl Owner {
     }
 }
 
-/// One row of the map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TableOwnership {
-    /// The database file, relative to the data directory.
     pub file: &'static str,
-    /// The table or view name.
     pub table: &'static str,
-    /// Who may write it.
     pub owner: Owner,
-    /// The Python module that creates/writes it today — the evidence.
     pub written_by: &'static str,
-    /// Anything a porter would otherwise get wrong.
     pub note: &'static str,
 }
 
-/// The only SQLite file in the product.
-///
-/// Named `knowledge_graph.sqlite` for historical reasons; it has carried
-/// non-graph platform tables (`workspace_os_state`, `conversation_messages`)
-/// since long before v11.6.0, which is why ownership is per table and not
-/// per file.
 pub const GRAPH_DB: &str = "knowledge_graph.sqlite";
 
-/// Every table and view, with its writer.
 pub const TABLES: &[TableOwnership] = &[
-    // ── the Brain: Rust is the single writer (v11.6.0 §W3b) ──────────
     TableOwnership {
         file: GRAPH_DB,
         table: "nodes",
@@ -180,7 +150,6 @@ pub const TABLES: &[TableOwnership] = &[
         written_by: "lattice_brain/storage/sqlite.py",
         note: "written by StorageEngine.initialize(); GraphWriter deliberately does not create it, so it is absent on a Rust-built store",
     },
-    // ── projections: read-only for everybody ─────────────────────────
     TableOwnership {
         file: GRAPH_DB,
         table: "node_fts",
@@ -202,7 +171,6 @@ pub const TABLES: &[TableOwnership] = &[
         written_by: "lattice_brain/graph/projection/v2_schema.py",
         note: "VIEW over edges_v2",
     },
-    // ── platform state that happens to live in the same file ─────────
     TableOwnership {
         file: GRAPH_DB,
         table: "workspace_os_state",
@@ -233,10 +201,6 @@ pub const TABLES: &[TableOwnership] = &[
     },
 ];
 
-/// The table's owner, or `None` when the map does not know it.
-///
-/// `None` is a finding, not a default: a table the product has and this map
-/// does not is exactly what `tests/db_write_ownership.rs` fails on.
 pub fn owner_of(table: &str) -> Option<Owner> {
     TABLES
         .iter()
@@ -244,87 +208,48 @@ pub fn owner_of(table: &str) -> Option<Owner> {
         .map(|row| row.owner)
 }
 
-/// Whether a Rust crate may write this table.
-///
-/// Unknown tables answer `false` — the safe direction, since the unknown
-/// half of this product is the Brain.
 pub fn rust_may_write(table: &str) -> bool {
     owner_of(table).is_some_and(Owner::rust_may_write)
 }
 
-/// Every table Rust owns.
 pub fn rust_owned() -> impl Iterator<Item = &'static TableOwnership> {
     TABLES.iter().filter(|row| row.owner.rust_may_write())
 }
 
-/// Durable state that is not SQLite: the JSON/JSONL files and directories
-/// under the data directory.
-///
-/// They are in this module because they answer the same question the table
-/// map answers, and a Wave-2 crate that reaches for `users.json` needs the
-/// same "may I write this" verdict it needs for a table.
 pub mod state_files {
     use super::Owner;
 
-    /// One durable file or directory under the data directory.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct StateStore {
-        /// Name under the data directory.
         pub name: &'static str,
-        /// Who may write it.
         pub owner: Owner,
-        /// The Python module that owns it today.
         pub written_by: &'static str,
     }
 
-    /// Accounts and roles.
     pub const USERS: &str = "users.json";
-    /// Login sessions.
     pub const SESSIONS: &str = "sessions.json";
-    /// Invite tokens.
     pub const INVITATIONS: &str = "invitations.json";
-    /// Audit events (the `.jsonl` sibling is the append log).
     pub const AUDIT_LOG: &str = "audit_log.json";
-    /// Process-level audit trail.
     pub const PROCESS_AUDIT: &str = "process_audit.jsonl";
-    /// VPC settings.
     pub const VPC_CONFIG: &str = "vpc_config.json";
-    /// SSO/OIDC settings.
     pub const SSO_CONFIG: &str = "sso_config.json";
-    /// Hook registry.
     pub const HOOKS: &str = "hooks.json";
-    /// Hook run history.
     pub const HOOKS_RUNS: &str = "hooks_runs.json";
-    /// Pending tool approvals.
     pub const PERMISSION_QUEUE: &str = "permission_queue.json";
-    /// The autonomy dial.
     pub const PERMISSION_MODE: &str = "permission_mode.json";
-    /// Registered agents.
     pub const AGENT_REGISTRY: &str = "agent_registry.json";
-    /// User-added MCP servers.
     pub const CUSTOM_MCPS: &str = "custom_mcps.json";
-    /// Onboarding funnel counters.
     pub const FUNNEL_METRICS: &str = "funnel_metrics.json";
-    /// Automation trigger state.
     pub const TRIGGERS_STATE: &str = "triggers_state.json";
-    /// Workspace/org state, runs, snapshot index, skills, workflows.
     pub const WORKSPACE_OS: &str = "workspace_os.json";
-    /// Flat chat message log.
     pub const CHAT_HISTORY: &str = "chat_history.json";
-    /// One JSON file per project session.
     pub const PROJECT_SESSIONS: &str = "project_sessions";
-    /// Workspace snapshot tree.
     pub const WORKSPACE_SNAPSHOTS: &str = "workspace_snapshots";
-    /// Workspace export tree.
     pub const WORKSPACE_EXPORTS: &str = "workspace_exports";
-    /// Graph blob payloads.
     pub const KNOWLEDGE_GRAPH_BLOBS: &str = "knowledge_graph_blobs";
-    /// This device's signing key for peer sync.
     pub const DEVICE_IDENTITY: &str = "device_identity.key";
-    /// Telegram chat allowlist.
     pub const TELEGRAM_CHATS: &str = "telegram_chats.json";
 
-    /// Every non-SQLite store, with its writer.
     pub const STATE_FILES: &[StateStore] = &[
         StateStore {
             name: USERS,
@@ -443,7 +368,6 @@ pub mod state_files {
         },
     ];
 
-    /// The store's owner, or `None` when the map does not know the name.
     pub fn owner_of(name: &str) -> Option<Owner> {
         STATE_FILES
             .iter()

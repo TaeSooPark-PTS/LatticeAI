@@ -1,16 +1,3 @@
-//! Port of `SearchService.hybrid_search` — the three-channel service fusion.
-//!
-//! Not the same algorithm as the graph layer's two-channel `alpha` blend
-//! (`hybrid.rs`): here each channel contributes `weight × max(its own score,
-//! 1/rank)` and the contributions are **summed**, so a node three channels agree
-//! on outranks a node one channel loves.
-//!
-//! The load-bearing asymmetry is what `weights` means. Passing it pins the
-//! fusion *and* opts out of the retrieval policy entirely — no query rewrite, no
-//! recency decay — while leaving it out asks the policy for all three. A caller
-//! who "just wanted to nudge the graph channel" therefore also turns off the
-//! decay, and that is the documented behaviour, not an accident to smooth over.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_core::pytext::{parse_iso, recency_score, round6};
@@ -25,35 +12,21 @@ use crate::policy::{class_weights, resolve_policy};
 use crate::service::{graph_search, keyword_search, vector_search, GraphSearchOptions, Scope};
 use crate::shape::{truthy, DEFAULT_EXPANSION_CAP};
 
-/// `search_service.DEFAULT_HYBRID_WEIGHTS` — the base every explicit weight map
-/// is merged over, and (not by coincidence) the `fact` row of the class table.
 pub const DEFAULT_HYBRID_WEIGHTS: [(&str, f64); 3] =
     [("keyword", 0.35), ("vector", 0.40), ("graph", 0.25)];
 
-/// The three channels, in the order the fusion loop walks them. The order is
-/// observable: floating-point addition is not associative, so a different walk
-/// is a different score in the last bits.
 const CHANNELS: [&str; 3] = ["keyword", "vector", "graph"];
 
-/// Everything the service hybrid accepts beyond the query.
 #[derive(Debug, Clone)]
 pub struct ServiceHybridOptions {
-    /// Final result cap; `max(1, min(limit, 100))`.
     pub limit: i64,
-    /// Per-channel fetch depths.
     pub keyword_limit: i64,
     pub vector_limit: i64,
     pub graph_limit: i64,
-    /// `None` asks the retrieval policy; `Some` pins the fusion and disables
-    /// both the query rewrite and the recency decay.
     pub weights: Option<Map<String, Value>>,
-    /// Who is asking.
     pub scope: Scope,
-    /// The wall clock the recency decay reads, as naive epoch seconds.
     pub now_secs: f64,
-    /// Precomputed semantic query embedding from `POST /worker/embed` (`kind="query"`).
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
-    /// Reason semantic query embedding degraded (so hybrid falls back to lexical + graph).
     pub semantic_degraded: Option<String>,
 }
 
@@ -73,15 +46,12 @@ impl Default for ServiceHybridOptions {
     }
 }
 
-/// One fused row: the first channel's match object, plus the fusion bookkeeping.
 struct Fused {
     item: Map<String, Value>,
     score: f64,
     sources: Vec<String>,
     source_scores: Map<String, Value>,
     graph_context: Option<Vec<Value>>,
-    /// 1-based position in each channel that returned this row. Read only when
-    /// `LATTICEAI_FUSION_RRF` is on; collecting it always costs one push.
     ranks: Vec<usize>,
 }
 
@@ -89,13 +59,6 @@ fn weights_value(weights: &Map<String, Value>, source: &str) -> f64 {
     weights.get(source).and_then(Value::as_f64).unwrap_or(0.0)
 }
 
-/// Append the one-hop neighbours of the strongest hits, when the gate is on.
-///
-/// Returns the `graph_expansion` block, or `None` when the gate is off — the
-/// caller only adds the key when there is something true to say. A neighbour
-/// row carries the *seed's* shape (`sources`, `source_scores`) deliberately
-/// left empty and a `via` block instead: it was not found by any channel, and
-/// claiming a channel score for it would be an invented number.
 fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<Value>, CoreError> {
     if !expansion_enabled() || matches.is_empty() {
         return Ok(None);
@@ -154,7 +117,6 @@ fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<
     Ok(Some(report.as_json(DEFAULT_EXPANSION_CAP)))
 }
 
-/// `SearchService.hybrid_search`.
 fn node_row_to_item(node: &lattice_core::read::NodeRow) -> Map<String, Value> {
     let mut item = Map::new();
     item.insert("id".into(), Value::String(node.id.clone()));
@@ -231,8 +193,6 @@ pub fn service_hybrid_search(
         }
     };
 
-    // Every channel is scoped at the source, so out-of-scope rows never enter
-    // the fusion set; the fused result is re-scoped below regardless.
     let scope = &options.scope;
     let vector_payload = if let Some(ovr) = options.query_embedding.as_ref() {
         crate::service::vector_search_aligned_service(
@@ -314,9 +274,6 @@ pub fn service_hybrid_search(
                         score: 0.0,
                         sources: Vec::new(),
                         source_scores: Map::new(),
-                        // Python's `{**result}` aliases the source list, so the
-                        // extend below doubles it for a node this channel
-                        // introduced. See the comment at the extend.
                         graph_context: result
                             .get("graph_context")
                             .and_then(Value::as_array)
@@ -342,21 +299,12 @@ pub fn service_hybrid_search(
                 .filter(|value| truthy(value))
                 .and_then(Value::as_array)
             {
-                // `current.setdefault("graph_context", []).extend(...)`. When the
-                // row was created from this very result, `current["graph_context"]`
-                // IS `result["graph_context"]`, and `list.extend(itself)` doubles
-                // it. Reproduced, not repaired: the doubled reasons are what the
-                // product returns today for a graph-only hit.
                 let existing = fused.graph_context.get_or_insert_with(Vec::new);
                 existing.extend(incoming.iter().cloned());
             }
         }
     }
 
-    // Rank fusion, when the gate is on. The three channels score in three
-    // different units — a normalized cosine, a `1/rank`, a graph-walk weight —
-    // and a weighted sum of those is arithmetic across units. RRF sums
-    // `1/(60 + position)` instead, which only ever compares positions.
     let use_bm25_graphrag = crate::bm25::bm25f_graphrag_enabled();
     let rescue_empty = !use_bm25_graphrag && order.is_empty() && !search_query.trim().is_empty();
     if use_bm25_graphrag || rescue_empty {
@@ -429,9 +377,6 @@ pub fn service_hybrid_search(
         }
     }
 
-    // Recency-class age decay: dampen into [0.5, 1.0] so old-but-relevant items
-    // sink without ever being zeroed. An unparseable stamp keeps 1.0 — unknown
-    // age is not evidence of staleness.
     if let Some(half_life) = recency_half_life {
         for fused in order.iter_mut() {
             let stamp = fused.item.get("updated_at").and_then(Value::as_str);
@@ -470,9 +415,6 @@ pub fn service_hybrid_search(
         .collect();
     let mut matches = crate::service::scope_matches(conn, matches, scope)?;
     matches.truncate(options.limit.clamp(1, 100) as usize);
-    // One-hop expansion, when the gate is on. After the cut, so a neighbour is
-    // never in a position a real hit wanted; each lands at half its seed's
-    // score carrying the edge it was reached by.
     let expansion = expand_matches(conn, &mut matches)?;
     for (index, item) in matches.iter_mut().enumerate() {
         let Some(item) = item.as_object_mut() else {
@@ -509,8 +451,6 @@ pub fn service_hybrid_search(
     let mut report = Map::new();
     report.insert("query".into(), Value::String(query.to_string()));
     report.insert("mode".into(), Value::String("hybrid".into()));
-    // Both blocks are additive and appear only when their gate is on, so the
-    // default payload is byte-for-byte what the goldens recorded.
     if use_rrf {
         report.insert("fusion_strategy".into(), Value::String("rrf".into()));
     }
@@ -528,7 +468,6 @@ pub fn service_hybrid_search(
     Ok(Value::Object(report))
 }
 
-/// `search_service._result_key` — `id`, else `node_id`, else nothing.
 fn result_key(result: &Value) -> String {
     for key in ["id", "node_id"] {
         if let Some(value) = result.get(key).filter(|value| truthy(value)) {
@@ -613,7 +552,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(out["query_class"], Value::Null);
-        // Merged over the defaults, not replacing them.
         assert_eq!(
             out["weights"],
             json!({"keyword": 0.35, "vector": 0.4, "graph": 1.0})
@@ -633,7 +571,6 @@ mod tests {
         let score = first["score"].as_f64().unwrap();
         assert!(score > 0.4, "three channels must add up, got {score}");
         assert_eq!(out["mode"], "hybrid");
-        // Channels echo their honesty blocks without their matches.
         assert!(out["channels"]["vector"].get("matches").is_none());
         assert_eq!(out["channels"]["vector"]["embedding_dim"], 384);
         assert_eq!(out["channels"]["graph"]["expand_depth"], 1);

@@ -1,30 +1,3 @@
-//! What the gateway mounts besides its own routes and the reverse proxy.
-//!
-//! Four crates hand back router factories, and this module is the one place
-//! that decides where each of them lands and what state it needs. Keeping that
-//! decision here rather than in [`super::build_router`] means the mount map is
-//! one screen of code that can be read against the plan:
-//!
-//! | Route family | Crate | Answered by |
-//! |---|---|---|
-//! | `/rust/search/{hybrid,keyword,vector}` | `lattice-host` (P1) | [`super::search`] |
-//! | `/rust/search/service-hybrid`, `/rust/graph/*`, `/rust/history*`, `/rust/context/assemble` | `lattice-retrieval` | `lattice_retrieval::router` |
-//! | `/rust/ingest/{plan,chunk}` | `lattice-ingest` | `lattice_ingest::router` |
-//! | `/rust/agent/{preflight,exec,contract}` | `lattice-agent` | `lattice_agent::surface::router` |
-//! | `/rust/agent/{run,resume,approvals}` | `lattice-agent` | `lattice_agent::surface::router` |
-//! | `/host/jobs`, `/host/jobs/tick` | `lattice-jobs` | `lattice_jobs::router` |
-//!
-//! The three P1 lanes stay with `lattice-host`: `lattice-retrieval`'s router
-//! does not claim them (its own search path is `service-hybrid`, the
-//! three-channel service fusion, which is a different engine), and the P1
-//! handlers are the ones the committed hybrid goldens are asserted through.
-//! Moving them would mean re-proving parity to gain nothing.
-//!
-//! Everything here is additive: a mount that cannot be prepared (no agent
-//! workspace, no scheduler wired) is simply absent, and the gateway's namespace
-//! guard answers 404 for it rather than proxying a `/rust/*` path to the worker
-//! under a name that promised a native answer.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -35,23 +8,12 @@ use lattice_agent::tools::sandbox::Workspace;
 use lattice_ingest::IngestApiConfig;
 use lattice_jobs::{parse_flag, Scheduler, SchedulerConfig};
 
-/// Environment variable naming the agent workspace root — Python's
-/// `LATTICEAI_AGENT_ROOT`, read by `latticeai.tools.AGENT_ROOT`.
 pub const AGENT_ROOT_ENV: &str = "LATTICEAI_AGENT_ROOT";
 
-/// Environment variable that switches the background jobs timer off.
 pub const JOBS_ENV: &str = "LATTICEAI_JOBS";
 
-/// Directory the supervised worker is given as its agent root, relative to
-/// `~/.ltcai` (see `supervisor::worker_env`).
 const DESKTOP_AGENT_ROOT: [&str; 2] = ["desktop-runtime", "agent_workspace"];
 
-/// The agent workspace root, resolved from values the caller already read.
-///
-/// The order is the one the product enforces at runtime: an explicit
-/// `LATTICEAI_AGENT_ROOT` wins (it is what the operator — or this very host —
-/// hands the worker), then the desktop runtime root the supervisor pins, and
-/// finally Python's own last resort, the relative `agent_workspace`.
 pub fn resolve_agent_root(env_value: Option<&str>, home: Option<&Path>) -> PathBuf {
     let configured = env_value.map(str::trim).unwrap_or("");
     if !configured.is_empty() {
@@ -66,7 +28,6 @@ pub fn resolve_agent_root(env_value: Option<&str>, home: Option<&Path>) -> PathB
     }
 }
 
-/// [`resolve_agent_root`] against this process's environment.
 pub fn default_agent_root() -> PathBuf {
     let env_value = std::env::var(AGENT_ROOT_ENV).ok();
     let home = std::env::var_os("HOME")
@@ -75,27 +36,14 @@ pub fn default_agent_root() -> PathBuf {
     resolve_agent_root(env_value.as_deref(), home.as_deref())
 }
 
-/// Whether the background jobs timer should run, from a raw env value.
-///
-/// Parsed exactly as `latticeai/core/config.py` parses its own booleans (via
-/// `lattice_jobs::parse_flag`), and **on** unless someone says otherwise: the
-/// gap this closes is a backlog nobody drains.
 pub fn jobs_enabled(raw: Option<&str>) -> bool {
     parse_flag(raw, true)
 }
 
-/// [`jobs_enabled`] against this process's environment.
 pub fn jobs_enabled_from_env() -> bool {
     jobs_enabled(std::env::var(JOBS_ENV).ok().as_deref())
 }
 
-/// A scheduler for `worker_origin`, sharing the host's HTTP client so the
-/// loopback connection pool is not duplicated.
-///
-/// Environment-configured (`LATTICEAI_JOBS_INTERVAL`,
-/// `LATTICEAI_JOBS_AUTORESUME`). Building it does not start it: the timer only
-/// runs once someone calls [`Scheduler::spawn`], and `/host/jobs` reports
-/// `enabled: false` until then.
 pub fn scheduler(worker_origin: &str, client: reqwest::Client) -> Arc<Scheduler> {
     Arc::new(Scheduler::with_client(
         SchedulerConfig::from_env(worker_origin),
@@ -103,14 +51,6 @@ pub fn scheduler(worker_origin: &str, client: reqwest::Client) -> Arc<Scheduler>
     ))
 }
 
-/// The same scheduler, draining the embedding queue **natively**.
-///
-/// Without a writer the tick is `POST {worker}/api/index/drain`, which is what
-/// it was until v11.6.0 §W3b moved the drain into `lattice_jobs::index_api`.
-/// The worker no longer serves that path, so an unbound scheduler now spends
-/// every minute failing a request and backing off — visible in the log,
-/// invisible in the product, and the queue never drains. Handing it the writer
-/// points `tick()` at the native drain instead.
 pub fn scheduler_with_graph(
     worker_origin: &str,
     client: reqwest::Client,
@@ -121,31 +61,6 @@ pub fn scheduler_with_graph(
     )
 }
 
-/// The loop orchestrator's configuration: where its AI worker listens, where
-/// paused runs are stored, and the client to reach the worker with.
-///
-/// The worker origin is the gateway's own (`StatusProvider::worker_origin`), so
-/// the loop talks to the very worker this host supervises — the one that was
-/// handed `LATTICEAI_AGENT_TOOL_SEAM=1` and is therefore the only worker whose
-/// seam endpoints answer at all.
-///
-/// `proposals` is the store a paused-for-approval run stages into. The loop's
-/// own default (`JsonProposalStore`) appends to `workspace_os.json` directly,
-/// which is wrong whenever `lattice_platform`'s Review Center is mounted in
-/// this process: the document has an owner there — `WorkspaceOsStore`, whose
-/// `load_state` reads the `workspace_os_state` SQLite row *before* the file —
-/// so a JSON-only append is invisible to it and is overwritten by its next
-/// save. The caller therefore names the writer: the product hands the very
-/// `GovernanceState` the Review Center routes were built from
-/// ([`super::GatewayState::agent_loop_config`]), and a host with no product
-/// mounted has no owner to disagree with and hands the JSON store.
-///
-/// v11.7.0 added a second, lower guard for the same hazard —
-/// `OneDoorState::open` installs `lattice_agent::kernel::proposals::DocumentWriter`,
-/// so a `JsonProposalStore` built *anywhere* in a process that has an owner
-/// writes through it. Naming the store here is still right (it is what makes
-/// the id the loop reports the Review Center's own); the install is what makes
-/// forgetting to harmless.
 pub fn agent_loop_config(
     worker_origin: &str,
     client: reqwest::Client,
@@ -156,32 +71,16 @@ pub fn agent_loop_config(
         runs_dir: lattice_agent::kernel::runs::default_runs_dir(),
         client: Some(client),
         proposals: None,
-        // The hooks registry is the product's, so `OneDoorState` binds it —
-        // a host with no `/api/hooks` mounted has no registry to fire through.
         hooks: None,
-        // Same argument for the skills / MCP catalog (v12.0.0): what is
-        // installed on this machine is the product's to know, so
-        // `OneDoorState` binds it and a bare host offers a run its own tools.
         external: None,
     }
     .with_proposals(proposals)
 }
 
-/// The agent kernel **and loop** routes, or `None` when this machine has no
-/// workspace to judge paths against.
-///
-/// `Workspace::new` creates and canonicalises the root; a failure means the
-/// directory cannot exist (permissions, a file in the way), and mounting
-/// routes that would answer every path question wrongly is worse than not
-/// mounting them.
 pub fn agent_router(root: &Path, config: LoopConfig) -> Option<Router> {
     agent_router_parts(root, config, true)
 }
 
-/// [`agent_router`], optionally omitting the loop half.
-///
-/// The product's `agents::router` already merges `loop_router` at
-/// `/rust/agent/{run,resume,approvals}`. Mounting it again here panics.
 pub fn agent_router_parts(root: &Path, config: LoopConfig, include_loop: bool) -> Option<Router> {
     match Workspace::new(root) {
         Ok(workspace) => Some(if include_loop {
@@ -199,12 +98,6 @@ pub fn agent_router_parts(root: &Path, config: LoopConfig, include_loop: bool) -
     }
 }
 
-/// Every mounted native router, merged into one.
-///
-/// `db` is the knowledge graph the retrieval routes read, `agent_root` the
-/// workspace the kernel judges paths against, `agent` the loop orchestrator's
-/// configuration, and `jobs` the scheduler whose status routes are exposed
-/// (absent ⇒ `/host/jobs` is not mounted at all).
 pub fn native_router(
     db: PathBuf,
     agent_root: &Path,
@@ -214,7 +107,6 @@ pub fn native_router(
     native_router_parts(db, agent_root, agent, jobs, true)
 }
 
-/// [`native_router`], with the loop omitted when the product already mounts it.
 pub fn native_router_parts(
     db: PathBuf,
     agent_root: &Path,
@@ -280,7 +172,6 @@ mod tests {
         assert!(!jobs_enabled(Some("0")));
         assert!(!jobs_enabled(Some("false")));
         assert!(!jobs_enabled(Some("off")));
-        // Unparseable falls back to the default, as `_bool` does in Python.
         assert!(jobs_enabled(Some("perhaps")));
         let _ = jobs_enabled_from_env();
     }
@@ -295,9 +186,6 @@ mod tests {
         assert_eq!(scheduler.config().worker_origin, "http://127.0.0.1:4825");
     }
 
-    /// A loop config whose run store *and* proposal store are throwaway
-    /// directories, so a test can never read or write the real ones — §P1c §5
-    /// found a suite staging into the developer's own Review Center.
     fn test_loop_config(dir: &Path) -> LoopConfig {
         LoopConfig {
             runs_dir: dir.join("rust_agent_runs"),
@@ -338,11 +226,6 @@ mod tests {
         );
     }
 
-    /// The integrator item from §P1c: a config built here must carry the store
-    /// the caller named, never fall back to the loop's `JsonProposalStore`
-    /// default. `proposals: None` is what selects that default, so `is_some()`
-    /// is the whole assertion — and the store it carries is the caller's, which
-    /// is what makes the product's Review Center see a staged proposal.
     #[test]
     fn the_loop_stages_into_the_store_the_caller_named() {
         let dir = tempfile::tempdir().expect("tempdir");

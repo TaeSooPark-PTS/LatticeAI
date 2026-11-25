@@ -1,25 +1,9 @@
-/* ============================================================================
- * Lattice AI — Static-shell Design Tokens  v3.3.1
- *
- * 이 파일은 정적 서버 렌더링/legacy shell CSS의 색·면·테두리·그림자·포커스
- * 출처다. React SPA(/app)는 frontend/src/styles/tokens.css의 HSL triple
- * 토큰을 별도로 소비한다.
- *   :root                      → 라이트 테마 값
- *   :root[data-lt-theme="dark"] → 동일 토큰명의 다크 값
- *   @media (prefers-color-scheme: dark) → 사용자가 명시 선택 안 했을 때 OS 추종
- *
- * 컴포넌트 CSS 는 항상 var(--token) 만 사용한다. 따라서 이 파일의 값만 바꾸면
- * 전체 UI 가 자연스럽게 전환된다. (컴포넌트별 다크 오버라이드 / !important 금지)
- *
- * 토큰 카테고리(요청 범위): background · surface · card · sidebar · modal · table ·
- *   graph · text · muted-text · border · accent · success · warning · danger ·
- *   input · overlay · shadow · focus-ring
- * ========================================================================== */
+
 
 :root {
   color-scheme: light;
 
-  /* ── Brand raw scale (불변, 테마 무관 기준점) ───────────────────────────── */
+  
   --lt-color-primary-100: #dfe7ff;
   --lt-color-primary-200: #c8d6ff;
   --lt-color-primary-400: #7f9cff;
@@ -31,11 +15,9 @@
   --lt-color-accent-amber: #c77d16;
   --lt-color-accent-pink:  #c33fb3;
 
-  /* ╔══════════════════════════════════════════════════════════════════════╗
-     ║  SEMANTIC TOKENS — LIGHT (neutral workspace palette)                 ║
-     ╚══════════════════════════════════════════════════════════════════════╝ */
+  
 
-  /* background / surfaces */
+  
   --bg:          #f5f7fb;
   --bg-soft:     #edf1f7;
   --surface:     #ffffff;
@@ -53,19 +35,19 @@
   --app-bg:
     linear-gradient(180deg, #f8faff 0%, #eef3fa 48%, #f5f7fb 100%);
 
-  /* text */
+  
   --text:        #1e2430;
-  --muted:       #526071;   /* muted-text */
+  --muted:       #526071;   
   --faint:       #7a8798;
   --text-muted:  var(--muted);
 
-  /* border / line */
+  
   --border:        rgba(30, 36, 48, 0.12);
   --border-strong: rgba(30, 36, 48, 0.22);
   --line:          rgba(30, 36, 48, 0.09);
   --line-strong:   rgba(30, 36, 48, 0.18);
 
-  /* accent */
+  
   --accent:       #3b63f4;
   --accent-2:     #0e9f91;
   --accent-3:     #c77d16;
@@ -73,29 +55,29 @@
   --accent-soft:  rgba(59, 99, 244, 0.11);
   --accent-deep:  #2f4fd0;
 
-  /* status */
+  
   --success: #0d8f70;
   --warning: #a45f07;
   --danger:  #bf3e2f;
 
-  /* graph */
+  
   --graph-bg:   #f8faff;
   --graph-grid: rgba(59, 99, 244, 0.09);
   --graph-pill: rgba(255, 255, 255, 0.92);
 
-  /* shadow */
+  
   --shadow:    0 18px 48px rgba(30, 36, 48, 0.11);
   --shadow-sm: 0 8px 20px rgba(30, 36, 48, 0.08);
 
-  /* focus ring */
+  
   --focus-ring: rgba(59, 99, 244, 0.56);
 
-  /* ── 구조 토큰(색 아님) ─────────────────────────────────────────────── */
+  
   --radius:    14px;
   --radius-sm: 8px;
   --content-width: 900px;
 
-  /* ── 레거시/별칭 — 코드가 참조하는 모든 변수를 의미 토큰으로 매핑 ──────── */
+  
   --ink:        var(--text);
   --blue:       var(--accent);
   --green:      var(--success);
@@ -111,7 +93,7 @@
   --panel-strong: var(--surface);
   --glow-green: 0 0 34px rgba(15, 159, 143, 0.14);
   --glow-blue:  0 0 34px rgba(37, 99, 235, 0.14);
-  /* PPT reference 스킨 별칭 */
+  
   --ref-purple:   var(--accent);
   --ref-purple-2: var(--accent-2);
   --ref-indigo:   #2563eb;
@@ -123,8 +105,7 @@
   --ref-card:     var(--card);
   --ref-shadow:   var(--shadow);
 
-  /* ── --lt-* 별칭 (workspace.css / platform.css 가 참조) — LIGHT ──────────
-     순환참조를 피하려 구체값으로 둔다(소비자가 --bg 등을 --lt-* 로 재정의해도 안전). */
+  
   --lt-bg:        #f5f7fb;
   --lt-surface:   #ffffff;
   --lt-surface-2: #eef2f7;
@@ -137,13 +118,11 @@
   --lt-accent-2:  #0e9f91;
   --lt-shadow-md: 0 18px 48px rgba(30, 36, 48, 0.11);
 
-  /* ── 모션 / 타이포 ─────────────────────────────────────────────────── */
+  
   --lt-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ╔════════════════════════════════════════════════════════════════════════╗
-   ║  SEMANTIC TOKENS — DARK (값만 교체, 같은 토큰명)                          ║
-   ╚════════════════════════════════════════════════════════════════════════╝ */
+
 :root[data-lt-theme="dark"] {
   color-scheme: dark;
 
@@ -211,7 +190,7 @@
   --glow-blue:  0 0 34px rgba(125, 211, 252, 0.18);
 }
 
-/* OS 다크 추종 — 사용자가 명시적으로 라이트를 고르지 않은 경우에만 */
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-lt-theme="light"]):not([data-lt-theme="dark"]) {
     color-scheme: dark;
@@ -239,7 +218,7 @@
   }
 }
 
-/* ── 전역 폴리시 ───────────────────────────────────────────────────────── */
+
 ::selection { background: var(--accent-soft); color: var(--text); }
 
 :focus-visible {

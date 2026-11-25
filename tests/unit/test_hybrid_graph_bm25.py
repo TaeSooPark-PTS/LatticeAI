@@ -1,7 +1,3 @@
-"""Unit tests for upgraded FallbackTextEmbedder (multi-scale subword n-grams + CJK bigrams)
-and Hybrid BM25F + Vector + Knowledge Graph retrieval capabilities.
-"""
-
 from __future__ import annotations
 
 import json
@@ -41,19 +37,16 @@ def test_fallback_text_embedder_extracts_cjk_bigrams_korean_stems_and_char_ngram
             "지식그래프에서 하이브리드 검색을 수행하는 retrieving_engine"
         )
     )
-    # Korean particle stripping ("에서", "을") + character bigrams + trigrams
     assert "stem:지식그래프" in features
     assert "ko2:지식" in features
     assert "ko2:그래" in features
     assert "ko2:래프" in features
     assert "stem:검색" in features
-    # Subword splitting & 3..5-grams on ASCII identifiers
     assert "tok:retrieving" in features
     assert "tok:engine" in features
     assert any(k.startswith("g3:") for k in features)
     assert any(k.startswith("g4:") for k in features)
     assert any(k.startswith("g5:") for k in features)
-    # Word bigrams across adjacent content stems
     assert any(k.startswith("bi:") for k in features)
 
 
@@ -62,7 +55,6 @@ def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity()
 ):
     embedder = FallbackTextEmbedder(dim=768)
 
-    # Korean morphological / particle / spacing variations
     q_ko = embedder.embed("지식 그래프에서 하이브리드 검색을 최적화하는 방법")
     rel_ko = embedder.embed("지식그래프 하이브리드 검색 성능 최적화 가이드")
     unrel_ko = embedder.embed("회계 분기별 세금 신고서 양식 제출 안내")
@@ -74,7 +66,6 @@ def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity()
     )
     assert sim_ko_rel > sim_ko_unrel + 0.30
 
-    # English morphological inflections (retrieving vs retrieval, indexing vs index)
     q_en = embedder.embed("retrieving documents from the vector index")
     rel_en = embedder.embed("document retrieval with vector indexing")
     unrel_en = embedder.embed("css animation keyframe button border radius")

@@ -1,10 +1,3 @@
-//! Feature switchboard — native (v11.6.0, WP-R2).
-//!
-//! Port of `latticeai/api/features.py` + `latticeai/services/feature_toggles.py`.
-//! Persistence is `<data_dir>/feature_toggles.json` (same filename Python
-//! uses). The file is not in I1's `state_files` map; the service has always
-//! owned that path.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -171,7 +164,7 @@ const CATALOG: &[Definition] = &[
         id: "vector_backend",
         kind: Kind::Choice,
         env_var: "LATTICEAI_VECTOR_INDEX",
-        default: Value::String(String::new()), // overwritten to "brute" in resolve()
+        default: Value::String(String::new()),
         caution: false,
         parent: None,
         choices: VECTOR_CHOICES,
@@ -545,20 +538,15 @@ async fn set_feature(
 }
 
 fn parse_feature_value(bytes: &[u8]) -> Result<Value, Response> {
-    // Required `value: Union[bool, str]`. `parse_model` only accepts strings,
-    // so we do the union ourselves and reuse its 422 shape for missing/type.
     match serde_json::from_slice::<Value>(bytes) {
         Ok(Value::Object(map)) => match map.get("value") {
             None => {
-                // Field required — same envelope as FastAPI.
                 let _ = parse_model(b"{}", &[required("value")]);
                 Err(parse_model(b"{}", &[required("value")]).unwrap_err())
             }
             Some(Value::Bool(b)) => Ok(json!(*b)),
             Some(Value::String(s)) => Ok(json!(s)),
             Some(other) => {
-                // Treat a number/null as a string so coerce can refuse it
-                // with the 400 invalid-value message (fixture: "not-a-bool").
                 if other.is_null() {
                     Err(parse_model(
                         &serde_json::to_vec(&json!({"value": other})).unwrap_or_default(),

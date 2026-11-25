@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.1.2 — Living Synthesis (2026-11-25)
+
+모든 추적 소스 파일에 저장소 전역 무주석(zero-comments) 표준을 적용했습니다: OS/컴파일러 필수 지시문(`#!/usr/bin/env ...` 및 `/// <reference ... />`)을 제외한 모든 인라인 주석, 블록 주석, 독스트링, JSDoc 및 억제 지시문(`# noqa`, `# type: ignore`, `// @ts-expect-error`, `// eslint-disable`, `/* @vite-ignore */` 등)을 제거하고, 전역 설정 완화 없이 소스 코드 자체를 리팩터링해 모든 린트·타입 체크·Clippy·테스트를 통과시켰습니다. 또한 `npm run check:no-comments` (`scripts/check_no_comments.mjs`)를 `npm run lint`와 `.github/workflows/ci.yml`에 영구 게이트로 추가하고 `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러에 정책을 명시했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.1.2.md](./releases/RELEASE_NOTES_v14.1.2.md).
+
+빌드 산출물은 `dist/ltcai-14.1.2-py3-none-any.whl`, `dist/ltcai-14.1.2.tar.gz`, `ltcai-14.1.2.tgz`, `dist/ltcai-14.1.2.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg` 입니다.
+
 ## v14.1.1 — Living Synthesis (2026-11-25)
 
 Python 포매팅, 복잡도 전역 강제, 서버 i18n 래칫, 컨테이너 권한 위생에 대한 제로 기술 부채(zero-technical-debt) 패스를 완료했습니다: 전체 Python 파일 219개를 전용 포매팅 커밋(`55ba57c381a433066fd94434c3a6250c4a1beb59`)으로 `ruff format .` 정렬하고 `.git-blame-ignore-revs`에 기록했으며 `npm run lint:python`과 CI에 `ruff format --check .`를 연동했습니다. `create_models_router`(`latticeai/api/models.py`)와 `create_worker_compute_router`(`latticeai/api/worker_compute.py`)를 모듈 수준 헬퍼로 분해하고 `pyproject.toml`의 모든 `"C901"` 파일별 예외를 제거해 McCabe `max-complexity = 20`을 예외 없이 전역 강제하며 `/worker/extract` 테스트를 `tests/unit/test_worker_compute_extract.py`로 분리했습니다. `worker_compute_render.py`와 `worker_resilience.py`를 `NON_ROUTER_HELPERS`에 명시 등록하고 `scripts/check_server_i18n.mjs`가 미분류 `latticeai/api/*.py` 모듈 추가 시 즉시 실패(`exit 1`, `0 unclaimed`)하도록 잠갔으며, `Dockerfile`의 `lattice-host` 바이너리 복사에 `--chown=lattice:lattice --chmod=0755`를 명시했습니다.

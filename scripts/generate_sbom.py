@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Generate CycloneDX SBOMs for the Python and npm dependency trees.
-
-Thin, dependency-light wrapper so the same artifacts can be produced locally
-and in CI (.github/workflows/dependency-audit.yml). Python SBOM uses pip-audit
-(``pip install pip-audit``); npm SBOM uses ``npm sbom`` (npm >= 9).
-
-Usage:
-    .venv/bin/python scripts/generate_sbom.py --out-dir dist/sbom
-Each generator is best-effort: a missing tool is reported, not fatal, so one
-ecosystem's absence never blocks the other.
-"""
 
 from __future__ import annotations
 

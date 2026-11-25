@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-// Guards the initial JavaScript payload of the /app SPA so heavy features stay
-// behind lazy boundaries. It measures the entry chunk plus its transitive
-// STATIC import closure (what a browser must download before first paint),
-// gzips each file, and fails if the total exceeds the budget.
-//
-// The dynamic import() chunks (pages, onboarding, conversation home, command
-// palette) are intentionally excluded — they are fetched on demand.
-//
-// The check builds into an isolated temp dir so it reads Vite's rich manifest
-// (with `isEntry`/`imports`) without clobbering the production `static/app`
-// manifest, which `build_frontend_assets.mjs` rewrites into a flat runtime map.
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
@@ -19,22 +8,7 @@ const repo = join(import.meta.dirname, "..");
 const outDir = join(repo, "node_modules", ".cache", "bundle-budget");
 const manifestPath = join(outDir, "asset-manifest.json");
 
-// Budget for the initial static JS closure, in gzipped bytes. Set below the
-// pre-split baseline (632.9 kB raw / ~180 kB gzip single chunk) to lock in the
-// code-splitting win and catch regressions that pull heavy code back onto the
-// first-paint path. Raise it only with a deliberate, reviewed reason.
-//
-// 9.9.8 raised this to 152 KiB because `frontend/src/i18n/*` was one synchronous
-// table, so every route's copy sat in the entry chunk and the tree had ~0.7 KiB
-// of headroom left. 9.9.9 fixed the cause instead: namespaces register on
-// import and each lazy route pulls only the copy it reads, which dropped the
-// initial closure from 150.0 KiB to ~99 KiB gzip. The ceiling is back at its
-// original 150 KiB with real headroom underneath it again.
-//
-// `scripts/check_i18n_namespace_coverage.mjs` guards the split — it fails if a
-// module reads a key whose namespace its chunk never imports, which would
-// otherwise render the raw key instead of translated text.
-const INITIAL_JS_GZIP_BUDGET = 153_600; // 150 KiB
+const INITIAL_JS_GZIP_BUDGET = 153_600;
 
 function build() {
   rmSync(outDir, { recursive: true, force: true });

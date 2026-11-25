@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, PauseCircle, Play, ShieldCheck, Workflow } from "lucide-react";
@@ -25,10 +23,6 @@ const runsSubTabs: Array<{ id: RunsSubTab; labelKey: string }> = [
   { id: "runs", labelKey: "act.tab.runsHistory" },
 ];
 
-// The hero now names whichever panel is open, so every tab needs its own pair.
-// A Record rather than a chain of ternaries: the chain's final `else` quietly
-// captioned the permissions panel "가드레일 및 안전 규칙", and adding a tab would
-// have kept inheriting that. This way the type checker asks for the copy.
 const heroCopy: Record<ActTab, { titleKey: string; copyKey: string }> = {
   runs: { titleKey: "act.title.runs", copyKey: "act.copy.runs" },
   agents: { titleKey: "act.title.goals", copyKey: "act.copy.goals" },

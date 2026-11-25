@@ -1,5 +1,3 @@
-//! Router factory, shared state, and the mounted-route table.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -16,9 +14,6 @@ use super::handlers_more;
 use super::service::{IdentityFn, WorkspaceService};
 use super::store::WorkspaceOsStore;
 
-/// Mounted (method, path) pairs — axum 0.7 spelling. Greedy `{node_id:path}`
-/// is `/*node_id`. Page shells (`GET /workspace`, `GET /onboarding`) live
-/// with [`crate::shell::ui_redirects`].
 pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/workspace/activate"),
     ("GET", "/workspace/agents"),
@@ -76,30 +71,17 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/workspace/workflows/:workflow_id/events"),
 ];
 
-/// Everything a workspace handler needs.
 #[derive(Clone)]
 pub struct WorkspaceState {
-    /// Process-wide auth.
     pub auth: Arc<AuthState>,
-    /// Native Workspace OS store.
     pub store: Arc<WorkspaceOsStore>,
-    /// Graph seam + providers.
     pub deps: WorkspaceDeps,
-    /// In-process VS Code presence.
     pub vscode: VsCodePresence,
-    /// Data directory (audit log, chat history).
     pub data_dir: PathBuf,
-    /// Worker seam — used by onboarding to fill the same probe + catalog
-    /// `/models/recommendations` and `/setup/scan` already serve.
     pub worker: Option<WorkerSeamClient>,
 }
 
 impl WorkspaceState {
-    /// Open the store under `data_dir` and attach default (graph-absent) deps.
-    ///
-    /// `shared`, not `open`: every family that writes this document must hold
-    /// the same handle, and the Review Center / marketplace / designer reach
-    /// the store through the same registry (v11.7.0 §F-A).
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         let data_dir = data_dir.as_ref().to_path_buf();
         Self {
@@ -112,19 +94,16 @@ impl WorkspaceState {
         }
     }
 
-    /// Replace the default providers / seam.
     pub fn with_deps(mut self, deps: WorkspaceDeps) -> Self {
         self.deps = deps;
         self
     }
 
-    /// Point onboarding at the worker the host already supervises.
     pub fn with_worker(mut self, worker: WorkerSeamClient) -> Self {
         self.worker = Some(worker);
         self
     }
 
-    /// The resolver other families (and this one) hand to I2.
     pub fn resolver(&self) -> WorkspaceService {
         let auth = Arc::clone(&self.auth);
         let resolve: IdentityFn =
@@ -139,7 +118,6 @@ impl FromRef<WorkspaceState> for Arc<AuthState> {
     }
 }
 
-/// Router factory. The integrator merges this onto the gateway.
 pub fn router(state: WorkspaceState) -> Router {
     Router::new()
         .route("/workspace/os", get(handlers_core::os_summary))

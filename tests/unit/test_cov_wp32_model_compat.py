@@ -1,13 +1,3 @@
-"""wp32 coverage — model compatibility: family detection, the Gemma 4 runtime
-signal, output post-processing, and smoke-test classification.
-
-Every runtime probe goes through ``module_probe.module_available``, whose
-``importlib.util.find_spec`` is patched
-per test: the MLX stack is darwin-only, so a test that asked the real
-interpreter would pass on a laptop and skip on CI. Patching the probe makes
-each branch execute identically everywhere.
-"""
-
 from __future__ import annotations
 
 import json
@@ -41,17 +31,11 @@ def _find_spec(*available):
     return fake_find_spec
 
 
-# ── family detection ────────────────────────────────────────────────────────
-
-
 def test_family_detection_handles_empty_ids_and_provider_prefixes():
     assert detect_model_family("") == "unknown"
     assert detect_model_family("ollama:meta-llama-3.1-8b") == "llama"
     assert detect_model_family("local_mlx:gemma-4-12b-it") == "gemma"
     assert detect_model_family("some-unlabelled-model") == "unknown"
-
-
-# ── module probing / local model type ───────────────────────────────────────
 
 
 def test_module_probe_reports_false_for_a_module_whose_parent_is_missing():
@@ -72,9 +56,6 @@ def test_local_model_type_survives_an_unreadable_config(tmp_path):
     (tmp_path / "config.json").write_text("{ not json", encoding="utf-8")
 
     assert _local_model_type(str(tmp_path)) is None
-
-
-# ── Gemma 4 runtime compatibility ───────────────────────────────────────────
 
 
 def test_compatibility_normalizes_the_engine_and_strips_the_load_prefix(monkeypatch):
@@ -144,9 +125,6 @@ def test_a_supported_model_reports_a_plain_load_failure(monkeypatch):
     assert len(detail["recovery_guidance"]) == 3
 
 
-# ── post-processing ─────────────────────────────────────────────────────────
-
-
 def test_role_token_stripping_leaves_empty_text_alone():
     assert strip_role_tokens("") == ""
     assert strip_role_tokens("assistant: <|im_end|>hello") == "hello"
@@ -156,7 +134,6 @@ def test_trim_after_user_marker_cuts_the_hallucinated_next_turn():
     assert trim_after_user_marker("") == ""
     assert trim_after_user_marker("답은 4입니다.\nuser: 그럼 5는?") == "답은 4입니다."
     assert trim_after_user_marker("정답.<|user|>다음") == "정답."
-    # a marker at position 0 is not a trailing turn, so nothing is cut
     assert trim_after_user_marker("<|user|>only") == "<|user|>only"
 
 
@@ -178,9 +155,6 @@ def test_fast_postprocess_keeps_going_when_a_postprocessor_raises(monkeypatch):
     assert out == "hello"
 
 
-# ── smoke classification ────────────────────────────────────────────────────
-
-
 def test_smoke_classification_rejects_missing_and_leaking_responses():
     assert classify_smoke_response(None) == ("failed", "empty response")
     assert classify_smoke_response("   ") == ("failed", "empty response")
@@ -192,7 +166,6 @@ def test_smoke_classification_rejects_missing_and_leaking_responses():
 
 
 def test_smoke_classification_rejects_an_essay():
-    # Distinct sentences, so the only thing wrong with it is the length.
     essay = " ".join("항목 번호 {0} 확인.".format(index) for index in range(1, 400))
     assert len(essay) > 4000
 
@@ -219,9 +192,6 @@ def test_smoke_classification_flags_a_long_but_valid_answer_as_degraded():
     assert "response longer than expected" in reason
 
 
-# ── generation parameters ───────────────────────────────────────────────────
-
-
 def test_normalize_generation_params_applies_only_non_none_overrides():
     profile = {
         "temperature": 0.2,
@@ -243,7 +213,7 @@ def test_normalize_generation_params_applies_only_non_none_overrides():
         "stop": ["</s>"],
     }
     assert overridden["temperature"] == 0.7
-    assert overridden["max_tokens"] == 2048  # None never overrides
+    assert overridden["max_tokens"] == 2048
     assert overridden["stop"] == ["<|end|>"]
 
 
@@ -259,6 +229,5 @@ def test_get_stop_sequences_reads_the_cached_family_profile(model_id, expected_f
     stops = get_stop_sequences(model_id, "local_mlx")
 
     assert stops[0] == expected_first
-    # a copy, so a caller cannot mutate the cached profile
     stops.append("mutated")
     assert "mutated" not in get_stop_sequences(model_id, "local_mlx")

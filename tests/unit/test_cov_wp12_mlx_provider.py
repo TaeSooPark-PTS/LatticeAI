@@ -1,15 +1,3 @@
-"""wp12 coverage — the MLX provider against an injected fake mlx runtime.
-
-``mlx``/``mlx_embeddings`` are Apple-Silicon-only optional dependencies, so the
-real ones would make these paths untestable on the Linux coverage leg (and
-would download model weights on macOS). Both are injected into ``sys.modules``
-per test via ``monkeypatch.setitem``, with just the surface the provider
-touches: ``load`` → ``(model, tokenizer)``, ``mx.array``, ``mx.mean`` and the
-``ndim``/``__getitem__``/``tolist`` trio. The pooled means below are real
-arithmetic, so the asserted vectors are the ones the provider would produce
-from a genuine encoder with the same output.
-"""
-
 from __future__ import annotations
 
 import math
@@ -26,8 +14,6 @@ from latticeai.core.embedding_providers import (
 
 
 class _FakeTensor:
-    """The slice of the ``mx.array`` surface ``_embed_raw`` actually uses."""
-
     def __init__(self, data):
         self._data = data
 
@@ -77,7 +63,6 @@ class _FakeTokenizer:
 
 
 def _install_mlx(monkeypatch, load_fn):
-    """Put fake ``mlx`` and ``mlx_embeddings`` packages in ``sys.modules``."""
     utils = types.ModuleType("mlx_embeddings.utils")
     utils.load = load_fn
     package = types.ModuleType("mlx_embeddings")
@@ -126,10 +111,8 @@ def test_a_three_dimensional_encoder_output_is_mean_pooled_over_the_tokens(monke
 
     vectors = prov.embed_batch(["alpha", "beta"])
 
-    # mean over the token axis is [2.0, 0.0]; embed_batch L2-normalizes it
     assert vectors == [[1.0, 0.0], [1.0, 0.0]]
     assert tokenizer.seen == ["alpha", "beta"]
-    # the model is loaded once and then cached for the life of the provider
     assert calls == ["bge-m3"]
     assert prov.dim == 2
     assert prov.model_id == "mlx:bge-m3:2"
@@ -147,15 +130,12 @@ def test_a_tuple_encoder_output_uses_its_first_element_and_a_flat_row(monkeypatc
 
     assert [round(x, 6) for x in vectors[0]] == [0.6, 0.8]
     assert math.isclose(sum(x * x for x in vectors[0]), 1.0, rel_tol=1e-9)
-    # the encoder answered in 2 dimensions, so the index identity follows it
-    # instead of staying frozen at the width nobody measured
     assert prov.dim == 2
     assert prov.model_id == "mlx:e5-large:2"
 
 
 def test_a_pooled_row_that_is_a_scalar_is_reported_as_unavailable(monkeypatch):
     def _model(tokens):
-        # a 1-D output: indexing it yields a scalar, not a vector
         return _FakeTensor([7.5, 8.5])
 
     _install_mlx(monkeypatch, _loader(_model, _FakeTokenizer(), []))

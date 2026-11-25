@@ -1,10 +1,3 @@
-//! `lattice-host` — opt-in front door.
-//!
-//! Starts the loopback gateway on the public port and supervises the Python
-//! worker on an internal free port behind it. Nothing else in the product
-//! changes when this binary is not running: the existing entry points (the
-//! `ltcai` CLI, a browser pointed straight at the worker) keep working.
-
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -146,8 +139,6 @@ fn log(message: &str) {
     eprintln!("lattice-host: {message}");
 }
 
-/// Gateway port: explicit flag wins, else the configured preference, and a
-/// busy port is scanned past rather than fatal.
 fn choose_gateway_port(options: &Options, probe: &dyn HostProbe) -> Result<u16, String> {
     let preferred = options
         .port
@@ -155,8 +146,6 @@ fn choose_gateway_port(options: &Options, probe: &dyn HostProbe) -> Result<u16, 
     find_free_port(preferred, DEFAULT_SCAN_ATTEMPTS, &[]).map_err(|err| err.to_string())
 }
 
-/// Worker port: behind the gateway on its own free port (the front-door
-/// topology), unless pinned.
 fn choose_worker_port(
     options: &Options,
     probe: &dyn HostProbe,
@@ -195,11 +184,6 @@ async fn shutdown_signal() {
     log("shutdown signal received");
 }
 
-/// Whether the jobs timer runs: the flag wins, then the environment.
-///
-/// A worker this process did not start is not this process's to drive, so
-/// `--no-spawn` also means "no timer" — the routes still mount and still say
-/// `enabled: false`, which is the honest reading of "manual only".
 fn jobs_should_run(options: &Options, env_value: Option<&str>) -> bool {
     !options.no_jobs && !options.no_spawn && mounts::jobs_enabled(env_value)
 }
@@ -242,8 +226,6 @@ async fn run(options: Options) -> Result<(), String> {
 
     let mut config = SupervisorConfig::new(worker_port).with_system_dirs(&*probe);
     config.supervise = !options.no_spawn;
-    // The worker sits behind this gateway, so it is told to trust the gateway's
-    // origin for cookie-authenticated writes (plan §2a).
     config.gateway_port = Some(gateway_port);
     let agent_root = config.agent_root();
     let supervisor = Supervisor::with_probe(config, Arc::clone(&probe))
@@ -272,10 +254,6 @@ async fn run(options: Options) -> Result<(), String> {
     if let Some(root) = agent_root {
         state = state.with_agent_root(root);
     }
-    // One Door: this process serves the product. Fatal on purpose — a front
-    // door that came up without the platform behind it would answer 404 for
-    // every product route and look like a routing bug rather than a machine
-    // that cannot open its own data directory.
     let state = state
         .open_product()
         .map_err(|err| format!("cannot assemble the product surface: {err}"))?;
@@ -285,12 +263,6 @@ async fn run(options: Options) -> Result<(), String> {
         lattice_host::gateway::allowlist::Allowlist::shared().len(),
     ));
 
-    // The scheduler is built either way so `/host/jobs` always answers; only
-    // the timer is conditional, and `enabled` in that payload *is* "the timer
-    // is running". It is built *after* the product state because it needs that
-    // state's graph writer: the drain is native now, and a scheduler without
-    // the writer would keep asking the worker for a route the worker no longer
-    // serves.
     let graph = state
         .product()
         .ok_or_else(|| "product surface missing after open_product".to_string())?

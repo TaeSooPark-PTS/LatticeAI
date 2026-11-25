@@ -1,5 +1,3 @@
-//! Concrete step runners (tool, notification, graph, output) for [`super`].
-
 use std::path::{Path, PathBuf};
 
 use lattice_core::db::tables::GRAPH_DB;
@@ -180,7 +178,6 @@ pub(super) fn execute_output(
         .or_else(|| step.get("value"))
         .cloned()
         .unwrap_or(json!("output recorded"));
-    // An output that names the review inbox is a notification.
     let review_inbox = config.get("review_queue").and_then(Value::as_bool) == Some(true)
         || config
             .get("value")
@@ -207,7 +204,6 @@ pub(super) fn execute_output(
     })
 }
 
-/// Resolve the data dir that owns this store (parent of `workspace_os.json`).
 pub(crate) fn store_data_dir(store: &WorkflowStore) -> PathBuf {
     store
         .path

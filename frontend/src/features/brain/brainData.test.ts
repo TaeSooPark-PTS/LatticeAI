@@ -175,14 +175,12 @@ describe("brainData parsers", () => {
   });
 
   it("joins the payload-level brain_ingest verdict onto created files", () => {
-    // Single-file path: one dict, applied to the only file.
     const single = agentPayloadFiles({
       created_files: [{ path: "out/page.html", filename: "page.html", bytes: 10 }],
       brain_ingest: { status: "ok", node_id: "doc:1", chunk_count: 2, duplicate: false },
     });
     expect(single[0]!.brainIngest).toEqual({ status: "ok" });
 
-    // Bundle path: list keyed by path; unknown statuses stay silent.
     const bundle = agentPayloadFiles({
       created_files: [
         { path: "site/index.html", filename: "index.html", bytes: 10 },
@@ -198,7 +196,6 @@ describe("brainData parsers", () => {
     expect(bundle[1]!.brainIngest).toBeUndefined();
     expect(bundle[2]!.brainIngest).toBeUndefined();
 
-    // A single dict never fans out across multiple files.
     const ambiguous = agentPayloadFiles({
       created_files: [
         { path: "a.html", filename: "a.html", bytes: 1 },
@@ -208,7 +205,6 @@ describe("brainData parsers", () => {
     });
     expect(ambiguous.every((file) => file.brainIngest === undefined)).toBe(true);
 
-    // Absent field → unknown → nothing.
     expect(agentPayloadFiles({
       created_files: [{ path: "c.html", filename: "c.html", bytes: 1 }],
     })[0]!.brainIngest).toBeUndefined();
@@ -354,18 +350,13 @@ describe("currentModelName", () => {
   });
 
   it("names the brain from the loaded pool when nothing is current", () => {
-    // model_id-only row → tidied id.
     expect(currentModelName({ loaded: [{ model_id: "mlx/loaded-x-4bit" }] })).toBe("Loaded X");
-    // Display name straight from the row.
     expect(currentModelName({ loaded_models: [{ name: "친근한 모델" }] })).toBe("친근한 모델");
-    // Loaded id resolved through the catalog pools.
     expect(currentModelName({
       loaded: [{ id: "pretty-id" }],
       models: [{ id: "pretty-id", display_name: "Pretty Model" }],
     })).toBe("Pretty Model");
-    // Label repeating the id falls through to the tidied id.
     expect(currentModelName({ loaded: [{ id: "same", display_name: "same" }] })).toBe("Same");
-    // Rows with no identity at all cannot name anything.
     expect(currentModelName({ loaded: [{}] })).toBe("local mind");
     expect(currentModelName({ loaded: [{ name: "   " }] })).toBe("local mind");
     expect(currentModelName(null)).toBe("local mind");
@@ -406,7 +397,6 @@ describe("buildMemoryFragments", () => {
     expect(fragments.map((fragment) => fragment.id)).toEqual([
       "m1", "m2", "recent-memory-2", "m4", "workspace", "mystery", "memory-2", "c1", "c2",
     ]);
-    // Whitespace collapses in derived titles; the tier id translates.
     expect(fragments[0]).toMatchObject({ title: "긴 내용 줄바꿈", kind: "Note", tags: ["agent-synthesis"], agentGenerated: true });
     expect(fragments[1]!.agentGenerated).toBe(true);
     expect(fragments[2]).toMatchObject({ title: "Distillation", agentGenerated: true });
@@ -447,7 +437,6 @@ describe("brainData parser edges", () => {
     ]).map((summary) => [summary.id, summary.updatedAt]));
     expect(byId.get("sec")).toBe(1_700_000_000_000);
     expect(byId.get("msec")).toBe(1_700_000_000_123);
-    // The unparseable primary key falls through to the next timestamp key.
     expect(byId.get("hex")).toBe(1_700_000_000_000);
     expect(byId.get("never")).toBeUndefined();
   });
@@ -473,11 +462,9 @@ describe("brainData parser edges", () => {
 
     expect(graph.nodes.map((node) => node.id)).toEqual(["b", "a", "prefix:c"]);
     expect(graph.nodes[0]).toMatchObject({ label: "베타", importance: 1, createdAt: Date.parse("2026-08-01T00:00:00Z") });
-    // Zero importance takes the midpoint; metadata supplies summary and time.
     expect(graph.nodes[1]).toMatchObject({ importance: 0.5, summary: "메타 요약", createdAt: 1_700_000_000_000 });
     expect(graph.nodes[2]).toMatchObject({ label: "c", type: "Concept" });
     expect(graph.nodes[2]!.createdAt).toBeUndefined();
-    // The zero-score edge survives with the default weight — never dropped.
     expect(graph.edges).toEqual([
       { id: "edge-0", source: "a", target: "b", label: "Relates", weight: 1 },
       { id: "e-7", source: "a", target: "prefix:c", label: "Supports", weight: 0.4 },
@@ -493,7 +480,6 @@ describe("brainData parser edges", () => {
     });
     expect(evidence.nodeIds.sort()).toEqual(["doc:1", "doc:2", "doc:3", "doc:4"]);
     expect(evidence).toMatchObject({ chunkCount: 2, duplicate: true, provenanceId: "prov-1" });
-    // duplicate:false must persist — a falsy verdict is still a verdict.
     expect(extractIngestionEvidence({ duplicate: false }).duplicate).toBe(false);
     expect(extractIngestionEvidence(null)).toEqual({ nodeIds: [], chunkCount: 0 });
   });
@@ -689,7 +675,6 @@ describe("buildBrainProof shapes", () => {
       activeModel: "Gemma", brainOwner: "brain", capability: false,
       survivesModelSwitch: true, proven: true, contextStore: "workspace",
     });
-    // The explicit has_durable_evidence beats the derived count.
     expect(proof.proofs).toMatchObject({ durableItems: 4, hasDurableEvidence: false, vectorItems: 6 });
     expect(proof.recall.items[0]).toMatchObject({ source: "Note Source", confidence: "low", locator: "p.3" });
     expect(proof.recall.items.map((item) => item.confidence)).toEqual(["low", "medium", "low", "high"]);
@@ -809,7 +794,6 @@ describe("agentPayloadFiles joins", () => {
     expect(files[0]).toMatchObject({ previewable: true, repaired: true });
     expect(files[1]).toMatchObject({ filename: "b.css", bytes: 0 });
     expect(files[1]!.previewable).toBeUndefined();
-    // A degenerate empty path still yields a stable (empty) filename.
     expect(files[2]!.filename).toBe("");
     expect(agentPayloadFiles({})).toEqual([]);
   });

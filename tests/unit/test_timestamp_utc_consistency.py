@@ -1,5 +1,3 @@
-"""Regression tests for Rust <-> Python UTC timestamp consistency (v14.1.0)."""
-
 from __future__ import annotations
 
 import os
@@ -34,7 +32,6 @@ def restore_tz():
 def test_local_now_and_now_iso_are_utc_under_non_utc_timezones(
     monkeypatch: pytest.MonkeyPatch, restore_tz: None, tz_name: str
 ) -> None:
-    """Python's local_now()/now_iso() must emit offset-free UTC matching Rust's SystemClock."""
     _set_tz(monkeypatch, tz_name)
 
     before = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -45,7 +42,6 @@ def test_local_now_and_now_iso_are_utc_under_non_utc_timezones(
     assert stamp_dt.tzinfo is None
     assert before <= stamp_dt <= after
 
-    # Offset-free YYYY-MM-DDTHH:MM:SS matching Rust's SystemClock::now_iso().
     assert len(stamp_iso) == 19
     assert "+" not in stamp_iso and not stamp_iso.endswith("Z")
 
@@ -62,7 +58,6 @@ def test_local_now_and_now_iso_are_utc_under_non_utc_timezones(
 def test_now_iso_matches_rust_iso_seconds_for_and_utc_now_iso(
     monkeypatch: pytest.MonkeyPatch, restore_tz: None
 ) -> None:
-    """now_iso() matches the offset-free prefix of utc_now_iso() even on UTC+9."""
     _set_tz(monkeypatch, "Asia/Seoul")
 
     naive_iso = now_iso()
@@ -79,7 +74,6 @@ def test_now_iso_matches_rust_iso_seconds_for_and_utc_now_iso(
 def test_recency_score_and_stat_mtime_have_no_9h_skew_under_utc_plus_9(
     monkeypatch: pytest.MonkeyPatch, restore_tz: None
 ) -> None:
-    """Freshly written UTC stamps and file mtimes score ~1.0 recency under UTC+9."""
     _set_tz(monkeypatch, "Asia/Seoul")
 
     fresh_naive_utc = now_iso()
@@ -87,5 +81,4 @@ def test_recency_score_and_stat_mtime_have_no_9h_skew_under_utc_plus_9(
     assert _recency_score(fresh_naive_utc) > 0.999
     assert _recency_score(fresh_aware_utc) > 0.999
 
-    # Known epoch 2026-08-01T00:00:00Z matches Rust's clock::iso_seconds_for(1_785_542_400).
     assert _safe_iso_from_stat_mtime(1_785_542_400) == "2026-08-01T00:00:00"

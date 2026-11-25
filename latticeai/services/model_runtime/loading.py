@@ -1,12 +1,3 @@
-"""Model identity, engine readiness, and the load entrypoints.
-
-The path from a string a user clicked to a loaded model: resolve engine
-aliases into one canonical identity, make sure the engine that identity needs
-is installed, then hand off to ``latticeai.services.model_loading`` for the
-load itself (blocking and streaming forms) and to
-``latticeai.services.model_engines`` for the post-load smoke test.
-"""
-
 from __future__ import annotations
 
 from typing import Any, AsyncIterator, Dict, Optional
@@ -74,7 +65,6 @@ def resolve_cross_platform_model_request(
     model_id: str,
     engine: Optional[str] = None,
 ) -> tuple[str, Optional[str]]:
-    """Auto-route Apple-Silicon-only MLX/oMLX catalog IDs onto Ollama/llama.cpp on Windows & Linux."""
     engine_hint = (engine or "").strip().lower()
     if engine_hint == "auto":
         chosen = default_local_engine_for_host(engine_installed_fn=engine_installed)
@@ -166,11 +156,6 @@ def build_model_resolution(
     user_email: Optional[str] = None,
     display_name: Optional[str] = None,
 ) -> _ModelResolution:
-    """피드백 #1/#2 공용 ModelResolution 생성기.
-
-    사용자가 클릭한 input_id + engine 힌트를 받아 모든 단계가 공유할
-    canonical identity를 만든다.
-    """
     normalized = normalize_local_model_request(input_id, engine)
     return _ModelResolution.from_request(
         normalized,
@@ -190,9 +175,6 @@ async def _smoke_test_loaded_model(
     api_key_override: Optional[str] = None,
     state: ModelRuntimeState,
 ) -> Dict[str, Any]:
-    # Delegated to model_engines for server decomp
-    # Absolute since v11.3.0: this file moved one level down into the
-    # model_runtime package, so ``.model_engines`` would resolve inside it.
     from latticeai.services.model_engines import (
         _smoke_test_loaded_model as _impl_smoke,
     )

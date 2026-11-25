@@ -1,68 +1,31 @@
-//! The four things chat asks the Python AI worker for.
-//!
-//! Plan §설계 결정 6: the pipeline is Rust-orchestrated, but token generation
-//! never moves and the Brain keeps one writer. Wave 2.5 §W3a removed the fifth
-//! call — `POST /worker/chat/record-turn` — by making the whole redact → audit →
-//! store → ingest chain native ([`crate::turn`]). v11.7.0 removed the sixth,
-//! `POST /knowledge-graph/ingest`: the worker stopped serving product routes in
-//! v11.6.0, so every chat-generated file was being posted into a 404 while the
-//! reply still said `brain_ingest: {"status": "ok"}`. That write is native now
-//! ([`crate::intents`]). What is left is compute this process cannot do:
-//!
-//! | seam | why it is not native |
-//! |---|---|
-//! | `POST /worker/llm/stream` | MLX runs in that process. `/agent/llm` is buffered, and a buffered completion is not a chat stream. |
-//! | `POST /worker/embed` | the embedding provider lives there, and it — not a native guess — is the authority on which `(model_id, dim)` the vector index is filed under (W2 §1). |
-//! | `GET /models` | the loaded-model table of the in-process MLX runtime (KEEP_WORKER). |
-//!
-//! Every path this module names is on `rust/fixtures/worker_allowlist.json`,
-//! and `lattice-host`'s `no_source_file_names_a_stranded_worker_path` is the
-//! gate that keeps it that way. There is deliberately **no** `record_turn` and
-//! no `ingest` method here any more; their absence is the point.
-
 use std::time::Duration;
 
 use lattice_core::worker::{SseUpstream, WorkerSeamClient, WorkerSeamError};
 use serde_json::{json, Value};
 
-/// `POST /worker/llm/stream` — the streaming completion seam.
 pub const LLM_STREAM_PATH: &str = "/worker/llm/stream";
-/// `POST /worker/embed` — W2's pure-compute embedding seam.
 pub const EMBED_PATH: &str = "/worker/embed";
-/// `GET /models` — which models this worker actually holds.
 pub const MODELS_PATH: &str = "/models";
 
-/// What `POST /worker/embed` answered (W2 §1).
-///
-/// `dim` and `model_id` are read *after* the provider ran, so they describe the
-/// index identity that actually exists rather than one guessed before the call.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EmbedReply {
-    /// One vector per input text, in order.
     pub vectors: Vec<Vec<f64>>,
-    /// The width the provider returned.
     pub dim: usize,
-    /// The id every vector must be filed under.
     pub model_id: String,
 }
 
-/// Which models the worker holds right now (`GET /models`).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ModelSnapshot {
-    /// `loaded` — every model id cached in that process.
     pub loaded: Vec<String>,
-    /// `current` — the default the router answers with.
     pub current: Option<String>,
 }
 
 impl ModelSnapshot {
-    /// `LLMRouter.loaded_model_ids.__contains__`.
     pub fn is_loaded(&self, model_id: &str) -> bool {
         self.loaded.iter().any(|id| id == model_id)
     }
 }
 
-/// The chat seam, over loopback HTTP.
 #[derive(Debug, Clone)]
 pub struct ChatWorker {
     client: WorkerSeamClient,
@@ -76,41 +39,31 @@ fn text(value: Option<&Value>) -> Option<String> {
 }
 
 impl ChatWorker {
-    /// A seam client with its own connection pool.
     pub fn new(origin: impl AsRef<str>) -> Result<Self, WorkerSeamError> {
         Ok(Self {
             client: WorkerSeamClient::new(origin)?,
         })
     }
 
-    /// A seam client sharing the gateway's pool.
     pub fn with_client(client: reqwest::Client, origin: impl AsRef<str>) -> Self {
         Self {
             client: WorkerSeamClient::with_client(client, origin),
         }
     }
 
-    /// The underlying seam client, for a caller that needs another path.
     pub fn client(&self) -> &WorkerSeamClient {
         &self.client
     }
 
-    /// Where this client posts.
     pub fn origin(&self) -> &str {
         self.client.origin()
     }
 
-    /// Cap the non-streaming calls. The stream is deliberately uncapped.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.client = self.client.with_timeout(timeout);
         self
     }
 
-    /// `GET /models` → the loaded table.
-    ///
-    /// A worker that cannot answer leaves the snapshot **empty**, which makes
-    /// `POST /chat` refuse with `no_model_loaded` rather than stream from a
-    /// model nobody confirmed exists.
     pub async fn models(&self) -> Result<ModelSnapshot, WorkerSeamError> {
         let payload = self.client.get_json(MODELS_PATH).await?;
         Ok(ModelSnapshot {
@@ -127,12 +80,6 @@ impl ChatWorker {
         })
     }
 
-    /// `POST /worker/embed` — vectors for texts, plus the index identity.
-    ///
-    /// `kind` is `"passage"` for anything being written (the seam clamps each
-    /// text to 50 000 characters, which is the write path's own clamp) and
-    /// `"query"` for a search. The reply's `dim`/`model_id` are the authority:
-    /// a vector filed under anything else is a vector `similarity()` will refuse.
     pub async fn embed(&self, texts: &[String], kind: &str) -> Result<EmbedReply, WorkerSeamError> {
         let body = json!({"texts": texts, "kind": kind});
         let payload = self
@@ -170,7 +117,6 @@ impl ChatWorker {
         })
     }
 
-    /// `POST /worker/llm/stream` — the token stream, unbuffered.
     #[allow(clippy::too_many_arguments)]
     pub async fn llm_stream(
         &self,
@@ -193,7 +139,6 @@ impl ChatWorker {
         self.client.stream_sse(LLM_STREAM_PATH, &body).await
     }
 
-    /// `POST /worker/llm/stream` with ``mode=document``.
     #[allow(clippy::too_many_arguments)]
     pub async fn document_stream(
         &self,
@@ -216,45 +161,29 @@ impl ChatWorker {
     }
 }
 
-/// One frame off the wire, before anybody interprets its payload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataFrame {
-    /// The concatenated `data:` lines of one frame.
     Payload(String),
-    /// The literal `[DONE]` sentinel.
     Done,
 }
 
-/// One frame of the seam's stream, as the chat pipeline reads it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LlmFrame {
-    /// A token (or several) of the answer.
     Text(String),
-    /// The worker reported a failure mid-stream.
     Error(String),
-    /// `data: [DONE]` — the stream is over.
     Done,
 }
 
-/// Split an SSE byte stream into frames, keeping whatever is incomplete.
-///
-/// Frames are separated by a blank line, and the `[DONE]` sentinel is matched
-/// **before** anything tries to parse the payload as JSON — exactly as every
-/// client's reader does. Non-`data:` lines (`event:`, `:` comments, `id:`) are
-/// skipped: this reader is used for the worker seam and for an OpenAI-compatible
-/// provider, and neither names its data frames.
 #[derive(Debug, Default)]
 pub struct FrameReader {
     buffer: String,
 }
 
 impl FrameReader {
-    /// A reader with an empty buffer.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Feed bytes; get back every frame that completed, uninterpreted.
     pub fn push_data(&mut self, chunk: &[u8]) -> Vec<DataFrame> {
         self.buffer.push_str(&String::from_utf8_lossy(chunk));
         let mut frames = Vec::new();
@@ -267,13 +196,11 @@ impl FrameReader {
         frames
     }
 
-    /// Flush whatever the producer sent without a trailing blank line.
     pub fn finish_data(&mut self) -> Option<DataFrame> {
         let rest = std::mem::take(&mut self.buffer);
         Self::split(&rest)
     }
 
-    /// [`Self::push_data`], with the payloads read as the chat seam's shape.
     pub fn push(&mut self, chunk: &[u8]) -> Vec<LlmFrame> {
         self.push_data(chunk)
             .into_iter()
@@ -281,7 +208,6 @@ impl FrameReader {
             .collect()
     }
 
-    /// [`Self::finish_data`], with the payload read as the chat seam's shape.
     pub fn finish(&mut self) -> Option<LlmFrame> {
         self.finish_data().and_then(Self::interpret)
     }
@@ -308,8 +234,6 @@ impl FrameReader {
         Some(DataFrame::Payload(data))
     }
 
-    /// A malformed payload is skipped rather than ending the stream: a frame
-    /// that does not parse is not a failed answer.
     fn interpret(frame: DataFrame) -> Option<LlmFrame> {
         let DataFrame::Payload(payload) = frame else {
             return Some(LlmFrame::Done);
@@ -318,8 +242,6 @@ impl FrameReader {
         if let Some(error) = text(parsed.get("error")) {
             return Some(LlmFrame::Error(error));
         }
-        // `text` is the seam's field, `chunk` the product stream's: accepting
-        // both means a caller can point the pipeline at either without a shim.
         text(parsed.get("text"))
             .or_else(|| text(parsed.get("chunk")))
             .map(LlmFrame::Text)
@@ -388,9 +310,7 @@ mod tests {
         let mut reader = FrameReader::new();
         let frames = reader.push(b": comment\n\ndata: not json\n\ndata: {\"error\":\"boom\"}\n\n");
         assert_eq!(frames, vec![LlmFrame::Error("boom".into())]);
-        // A frame with neither text nor error yields nothing at all.
         assert!(reader.push(b"data: {\"other\":1}\n\n").is_empty());
-        // The product stream's own field name is accepted too.
         assert_eq!(
             reader.push(b"data: {\"chunk\":\"c\"}\n\n"),
             vec![LlmFrame::Text("c".into())]
@@ -402,7 +322,6 @@ mod tests {
         let mut reader = FrameReader::new();
         assert!(reader.push(b"data: {\"text\":\"tail\"}").is_empty());
         assert_eq!(reader.finish(), Some(LlmFrame::Text("tail".into())));
-        // Multi-line data joins with a newline, as the SSE spec says.
         let mut reader = FrameReader::new();
         assert_eq!(
             reader.push(b"data: {\"text\":\n data: \"two\"}\n\n"),

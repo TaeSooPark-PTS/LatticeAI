@@ -1,21 +1,3 @@
-//! Document-generation intent, prompts and per-conversation sessions.
-//!
-//! Ports `latticeai/core/document_generator.py`'s detector, prompt builders and
-//! session, plus the preparation half of `api/chat_documents.py`'s coordinator.
-//! The retrieval half is `lattice_retrieval::retrieve_context_for_generation`,
-//! which is already proven against goldens — this module composes it, it does
-//! not re-implement it.
-//!
-//! **Screenshot ingestion is a stated gap.** `extract_screenshot_context` shells
-//! out to `tesseract` after decoding the image with PIL. What is ported here is
-//! the honest fallback: the size line from the image header and the
-//! "ocr: unavailable" line. See [`screenshot_context`].
-//!
-//! The session store keys on `(user_email, workspace_id, conversation_id)` with
-//! `"default"` for an unnamed conversation, exactly as Python does — which means
-//! two browser tabs in one conversation share a follow-up document, and that is
-//! the shipped behaviour.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
@@ -23,12 +5,9 @@ use std::sync::{Mutex, OnceLock};
 use fancy_regex::Regex;
 use serde_json::{json, Value};
 
-/// Maximum persisted conversation document sessions kept on disk.
 const MAX_PERSISTED_SESSIONS: usize = 256;
-/// State file persisted inside `<data_dir>` when bound.
 pub const SESSIONS_FILE_NAME: &str = "chat_document_sessions.json";
 
-/// `DOCUMENT_GENERATION_SYSTEM_PROMPT`, `{graph_context}` still in place.
 pub const DOCUMENT_SYSTEM_PROMPT: &str = "당신은 사용자의 개인 AI 지식 어시스턴트 Lattice AI입니다.
 사용자의 기존 지식 기반을 활용하여 고품질 문서를 생성합니다.
 
@@ -43,7 +22,6 @@ pub const DOCUMENT_SYSTEM_PROMPT: &str = "당신은 사용자의 개인 AI 지�
 
 {graph_context}";
 
-/// `DOCUMENT_GENERATION_FOLLOWUP_PROMPT`.
 pub const DOCUMENT_FOLLOWUP_PROMPT: &str =
     "당신은 사용자의 개인 AI 지식 어시스턴트 Lattice AI입니다.
 이전에 생성한 문서를 사용자의 요청에 따라 수정/보완합니다.
@@ -57,7 +35,6 @@ pub const DOCUMENT_FOLLOWUP_PROMPT: &str =
 
 위 문서를 사용자의 요청에 따라 수정하세요. 기존 스타일과 톤을 유지하세요.";
 
-/// What `build_document_system_prompt` substitutes when there is no context.
 pub const NO_KNOWLEDGE_BASE: &str =
     "(사용 가능한 지식 기반이 없습니다. 일반 지식을 활용하여 작성합니다.)";
 
@@ -89,10 +66,6 @@ fn intent_patterns() -> &'static Vec<Regex> {
     })
 }
 
-/// `detect_document_intent` — one strong signal, or two weak ones.
-///
-/// The length floor counts **characters**: `len(message) < 5` on a `str`, so
-/// four Hangul syllables are four, not twelve.
 pub fn detect_document_intent(message: &str) -> bool {
     if message.chars().count() < 5 {
         return false;
@@ -110,7 +83,6 @@ pub fn detect_document_intent(message: &str) -> bool {
         >= 2
 }
 
-/// `build_document_system_prompt`.
 pub fn document_system_prompt(graph_context: &str) -> String {
     let filled = if graph_context.is_empty() {
         NO_KNOWLEDGE_BASE
@@ -120,7 +92,6 @@ pub fn document_system_prompt(graph_context: &str) -> String {
     DOCUMENT_SYSTEM_PROMPT.replace("{graph_context}", filled)
 }
 
-/// `build_followup_system_prompt`.
 pub fn followup_system_prompt(graph_context: &str, previous_document: &str) -> String {
     let context = if graph_context.is_empty() {
         "(없음)"
@@ -137,12 +108,6 @@ pub fn followup_system_prompt(graph_context: &str, previous_document: &str) -> S
         .replace("{previous_document}", previous)
 }
 
-/// `DocumentGenerationSession`, for every conversation at once.
-///
-/// Process-local and unbounded, exactly like the Python `self._sessions` dict
-/// on the coordinator: the follow-up prompt is the whole feature, and a session
-/// that expired between two messages would silently turn a revision into a new
-/// document.
 type SessionKey = (String, String, String);
 type SessionValue = (String, String);
 
@@ -153,13 +118,10 @@ pub struct DocumentSessions {
 }
 
 impl DocumentSessions {
-    /// An empty in-memory store (tests and ephemeral runtimes).
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Durable session store backed by `<data_dir>/chat_document_sessions.json`.
-    /// Falls back cleanly to in-memory when `data_dir` is empty.
     pub fn with_data_dir(data_dir: &Path) -> Self {
         if data_dir.as_os_str().is_empty() {
             return Self::new();
@@ -272,7 +234,6 @@ impl DocumentSessions {
         )
     }
 
-    /// `session.get_system_prompt(graph_markdown)`.
     pub fn system_prompt(
         &self,
         user_email: Option<&str>,
@@ -298,10 +259,6 @@ impl DocumentSessions {
         }
     }
 
-    /// `session.update(context, document, conversation_id)`.
-    ///
-    /// Releases the mutex guard before performing any disk persistence so
-    /// concurrent readers/writers are never blocked behind filesystem I/O.
     pub fn update(
         &self,
         user_email: Option<&str>,
@@ -340,7 +297,6 @@ impl DocumentSessions {
         }
     }
 
-    /// How many conversations are remembered — for a caller that wants to know.
     pub fn len(&self) -> usize {
         self.sessions
             .lock()
@@ -348,25 +304,19 @@ impl DocumentSessions {
             .len()
     }
 
-    /// Whether nothing is remembered yet.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }
 
-/// What `DocumentGenerationCoordinator.prepare` decided.
 #[derive(Debug, Clone, Default)]
 pub struct DocumentPreparation {
-    /// Whether the message reads as a document request.
     pub is_document: bool,
-    /// The prompt context, enriched with the knowledge-graph block.
     pub context: String,
-    /// The retrieval payload, when there was one.
     pub retrieval: Option<Value>,
 }
 
 impl DocumentPreparation {
-    /// `retrieval["context_markdown"]`.
     pub fn graph_markdown(&self) -> String {
         crate::pyvalue::field(
             self.retrieval.as_ref().unwrap_or(&Value::Null),
@@ -374,7 +324,6 @@ impl DocumentPreparation {
         )
     }
 
-    /// `retrieval["sources"]`.
     pub fn sources(&self) -> Vec<Value> {
         self.retrieval
             .as_ref()
@@ -384,7 +333,6 @@ impl DocumentPreparation {
             .unwrap_or_default()
     }
 
-    /// `retrieval["context_quality"]`, when the retrieval reported one.
     pub fn context_quality(&self) -> Option<&Value> {
         self.retrieval
             .as_ref()
@@ -392,7 +340,6 @@ impl DocumentPreparation {
             .filter(|quality| crate::pyvalue::truthy(quality))
     }
 
-    /// `retrieval["trace"]`, the context-assembly trace.
     pub fn assembly_trace(&self) -> Option<&Value> {
         self.retrieval
             .as_ref()
@@ -401,10 +348,6 @@ impl DocumentPreparation {
     }
 }
 
-/// `DocumentGenerationCoordinator.prepare`.
-///
-/// A retrieval failure is logged and skipped in Python; here it is simply not
-/// attached, and the turn continues with the context it already had.
 pub fn prepare(
     conn: Option<&rusqlite::Connection>,
     message: &str,
@@ -448,15 +391,6 @@ pub fn prepare(
     prepared
 }
 
-/// `extract_screenshot_context`, minus OCR.
-///
-/// **Stated gap.** The Python original decodes the image with Pillow and, when
-/// `tesseract` is on `PATH`, shells out to it twice (`kor+eng`, then `eng`) and
-/// attaches up to 4,000 characters of extracted text. Neither dependency is in
-/// this workspace, and inventing a second OCR would make the two runtimes
-/// disagree about what the model was shown. What is reproduced is the block's
-/// shape and its honest "no OCR here" line, plus the image dimensions read from
-/// the PNG/JPEG/GIF headers — which is what the size line reports.
 pub fn screenshot_context(image_data: &str) -> String {
     if image_data.is_empty() {
         return String::new();
@@ -465,7 +399,6 @@ pub fn screenshot_context(image_data: &str) -> String {
     match decode_dimensions(image_data) {
         Some((width, height)) => {
             lines.push(format!("- image_size: {width}x{height}"));
-            // Pillow's `.convert("RGB")` means the mode line is always RGB.
             lines.push("- image_mode: RGB".to_string());
         }
         None => {
@@ -478,7 +411,6 @@ pub fn screenshot_context(image_data: &str) -> String {
     lines.join("\n")
 }
 
-/// Width and height from a base64 (optionally data-URL) PNG, GIF or JPEG.
 fn decode_dimensions(image_data: &str) -> Option<(u32, u32)> {
     let payload = image_data
         .split_once("base64,")
@@ -503,7 +435,6 @@ fn decode_dimensions(image_data: &str) -> Option<(u32, u32)> {
                 continue;
             }
             let marker = bytes[index + 1];
-            // SOF0..SOF15, excluding the four non-frame markers in the range.
             if (0xC0..=0xCF).contains(&marker) && !matches!(marker, 0xC4 | 0xC8 | 0xCC) {
                 let height = u16::from_be_bytes([bytes[index + 5], bytes[index + 6]]);
                 let width = u16::from_be_bytes([bytes[index + 7], bytes[index + 8]]);
@@ -516,7 +447,6 @@ fn decode_dimensions(image_data: &str) -> Option<(u32, u32)> {
     None
 }
 
-/// Standard base64, the alphabet a data URL uses.
 fn base64_decode(text: &str) -> Option<Vec<u8>> {
     let value_of = |byte: u8| -> Option<u32> {
         Some(match byte {
@@ -561,7 +491,6 @@ mod tests {
     fn one_strong_signal_or_two_weak_ones() {
         assert!(detect_document_intent("write a summary of Q3"));
         assert!(detect_document_intent("전략서를 만들어 주세요"));
-        // Two weak patterns: a document noun and an action verb.
         assert!(detect_document_intent("리포트를 정리해 줘"));
         assert!(!detect_document_intent("hello there friend"));
     }
@@ -590,13 +519,10 @@ mod tests {
         let second = sessions.system_prompt(Some("a@x"), None, Some("c1"), "KG");
         assert!(second.contains("## 이전 문서"));
         assert!(second.contains("the document"));
-        // A fresh context falls back to the remembered one.
         let third = sessions.system_prompt(Some("a@x"), None, Some("c1"), "");
         assert!(third.contains("KG"));
-        // Another conversation is another session.
         let other = sessions.system_prompt(Some("a@x"), None, Some("c2"), "KG");
         assert!(other.contains("## 사용자의 지식 기반"));
-        // An unnamed conversation is the "default" bucket, shared.
         sessions.update(None, None, None, "K", "D");
         assert!(sessions
             .system_prompt(None, None, Some(""), "K")
@@ -661,7 +587,6 @@ mod tests {
         assert!(prepared.is_document);
         assert!(prepared.retrieval.is_some());
         assert!(prepared.context.starts_with("base"));
-        // A non-document message never retrieves at all.
         let plain = prepare(Some(&conn), "hi", "base", None, 0.0);
         assert!(!plain.is_document);
         assert!(plain.retrieval.is_none());
@@ -669,7 +594,6 @@ mod tests {
 
     #[test]
     fn a_screenshot_block_reports_the_size_and_the_missing_ocr() {
-        // 1×1 PNG, the fixture's own image_data payload.
         let png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         let block = screenshot_context(&format!("data:image/png;base64,{png}"));
         assert!(block.starts_with("[SCREENSHOT INGESTION]"));
@@ -690,7 +614,6 @@ mod tests {
         assert_eq!(decode_dimensions(&base64_encode(b"nope")), None);
     }
 
-    /// Encoder for the tests only — the product never encodes base64.
     fn base64_encode(bytes: &[u8]) -> String {
         const ALPHABET: &[u8; 64] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

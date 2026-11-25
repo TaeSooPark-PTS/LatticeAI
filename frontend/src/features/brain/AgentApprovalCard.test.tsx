@@ -50,7 +50,6 @@ describe("parseApprovalPayload", () => {
   it("rejects payloads without a resumable token", () => {
     expect(parseApprovalPayload({ status: "awaiting_approval", run_id: "run-9" })).toBeNull();
     expect(parseApprovalPayload({ status: "ok" })).toBeNull();
-    // A token without a run id is just as unusable.
     expect(parseApprovalPayload({ status: "awaiting_approval", approval: { token: "tok" } })).toBeNull();
     expect(
       parseApprovalPayload({ status: "awaiting_approval", run_id: 7 as never, approval: { token: "tok" } }),
@@ -173,8 +172,6 @@ describe("AgentApprovalCard", () => {
     await userEvent.click(screen.getByTestId("approval-approve"));
     await waitFor(() => expect(onResolved).toHaveBeenCalledWith({ kind: "expired" }));
 
-    // The parent persists the status on the message; the card then renders
-    // the honest "expired — ask again" note instead of live actions.
     rerender(
       <AgentApprovalCard
         language="ko"
@@ -198,13 +195,11 @@ describe("AgentApprovalCard", () => {
     const textarea = screen.getByTestId("approval-edit-textarea") as HTMLTextAreaElement;
     expect(textarea.value).toContain("write_file");
 
-    // Broken JSON never leaves the card.
     fireEvent.change(textarea, { target: { value: "not json" } });
     await userEvent.click(screen.getByTestId("approval-edit-run"));
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(resume).not.toHaveBeenCalled();
 
-    // Valid JSON goes through as edited_plan.
     fireEvent.change(textarea, { target: { value: '{"goal": "edited", "steps": []}' } });
     await userEvent.click(screen.getByTestId("approval-edit-run"));
     await waitFor(() => expect(onResolved).toHaveBeenCalled());
@@ -238,7 +233,6 @@ describe("AgentApprovalCard", () => {
       <AgentApprovalCard language="ko" approval={pendingApproval({ plan: null })} onResolved={() => {}} />,
     );
     await userEvent.click(screen.getByTestId("approval-edit"));
-    // Without a normalized plan the editor seeds from the summary.
     const textarea = screen.getByTestId("approval-edit-textarea") as HTMLTextAreaElement;
     expect(textarea.value).toContain("1. write_file → page.html");
 
@@ -259,7 +253,6 @@ describe("AgentApprovalCard", () => {
     await userEvent.click(screen.getByTestId("approval-edit"));
     await userEvent.click(screen.getByTestId("approval-edit-run"));
     expect(screen.getByTestId("approval-edit-run").textContent).toContain("실행 중");
-    // A second press while busy is ignored.
     fireEvent.click(screen.getByTestId("approval-edit-run"));
     expect(latticeApi.resumeAgentApproval).toHaveBeenCalledTimes(1);
     release({ ok: true, status: 200, source: "live", data: { status: "ok" } });

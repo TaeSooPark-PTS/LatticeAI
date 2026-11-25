@@ -1,7 +1,4 @@
-/* ── One-glance living Brain home ─────────────────────────────────────
-   The empty home is a single organism-like stage: knowledge enters from
-   the left, the living Brain holds the center, and real graph structure
-   grows to the right. Primary controls share one compact command deck. */
+
 
 .brain-chat-home-card.is-empty-home {
   position: relative;
@@ -19,8 +16,7 @@
   padding: 1rem 0 1.25rem;
 }
 
-/* The model notice rides inside the hero as a status pill since 10.10.0 —
-   see .brain-model-missing in experience/home-dock.css. */
+
 
 .brain-knowledge-flow {
   display: grid;
@@ -134,13 +130,7 @@
 
 .brain-flow-canvas {
   height: 100%;
-  /* The hero flexes to fill the one-viewport grid, but its row is
-     `minmax(0, 1fr)` while the sibling rows take their content height first.
-     On a ~760px-tall window that starved this canvas to ~85px, and because it
-     clips (`overflow: hidden`) the absolutely positioned source column
-     (`top: 2rem; bottom: 2rem`), the floating graph nodes, and the model
-     banner collapsed into an unreadable pile. Keep a floor: under it the page
-     scrolls, which beats shredding the hero. */
+  
   min-height: 19rem;
   border-radius: 24px;
   background:

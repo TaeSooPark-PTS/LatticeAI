@@ -1,11 +1,3 @@
-//! Versioned 320-Query RAG Evaluation Dataset Loader & Real-vs-Fixture Evaluator (P0.1).
-//!
-//! Loads `datasets/rag_eval_v1.json`, validates schema & category coverage across all
-//! 9 mandatory categories, executes retrieval-only evaluation strictly enforcing
-//! workspace boundaries and superseded-document exclusion, and supports live OpenAI-
-//! compatible local/cloud LLM evaluation while explicitly marking unavailable/skipped
-//! real-model runs (never pretending a fixture stub is a real LLM).
-
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -59,18 +51,16 @@ pub struct VersionedRagDataset {
     pub queries: Vec<RagEvalDatasetQuery>,
 }
 
-/// Optional live-model evaluation endpoint (local omlx/Ollama/llama.cpp or cloud API).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveModelTarget {
     pub model_id: String,
     pub model_version: String,
     pub provider: String,
-    pub execution_location: String, // "local" or "cloud"
+    pub execution_location: String,
     pub endpoint_url: Option<String>,
     pub api_key: Option<String>,
 }
 
-/// Machine-readable report for the versioned 320-query RAG benchmark.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionedDatasetEvalReport {
     pub metadata: EvalRunMetadata,
@@ -104,8 +94,6 @@ pub fn load_versioned_dataset(path: &Path) -> Result<VersionedRagDataset, CoreEr
     Ok(ds)
 }
 
-/// Evaluate retrieval-only quality, workspace isolation, and superseded exclusion
-/// over a [`VersionedRagDataset`], recording explicit execution mode & skipped live-model status.
 pub fn evaluate_versioned_dataset_retrieval(
     dataset: &VersionedRagDataset,
     live_target: Option<&LiveModelTarget>,

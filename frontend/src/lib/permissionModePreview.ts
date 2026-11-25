@@ -2,15 +2,6 @@ import type { PermissionModeOption, PermissionModeState } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { permissionModeLabel, permissionModeSummary } from "@/lib/permissionCopy";
 
-/**
- * Capability flags the server documents on GET /api/permission-mode for the
- * three catalog ids. There is no dry-run endpoint: this is the same contract
- * the current-mode payload already carries, applied to the selected catalog
- * id so the UI can render a comparison before POST.
- *
- * Unknown ids return null — the preview then shows only catalog copy
- * (summary / risk / ack) and says so.
- */
 export type ModeFlags = {
   proposal_first: boolean;
   workspace_writes_auto: boolean;

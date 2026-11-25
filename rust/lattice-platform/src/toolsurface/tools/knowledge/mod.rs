@@ -1,5 +1,3 @@
-//! Knowledge garden and Obsidian vault tools.
-
 mod hybrid;
 #[cfg(test)]
 mod tests;

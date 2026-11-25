@@ -5,14 +5,10 @@ import { t, type Language } from "@/i18n";
 
 export type ReviewAction = "approve" | "dismiss" | "snooze" | "unsnooze" | "run_now";
 
-// Structured feedback for a review action so the UI never has to guess the
-// tone from message text: the caller records success/failure explicitly.
 export type ReviewFeedback = {
   tone: "success" | "error";
   message: string;
   detail?: string;
-  // True when a change-proposal approval hit the 409 base-changed guard —
-  // the card then offers the "re-read & re-apply" (rebase) recovery flow.
   conflict?: boolean;
 };
 
@@ -77,8 +73,6 @@ export function reviewSourceDetail(language: Language, provenance: Record<string
   return reviewSourceLabel(language, source);
 }
 
-// Human labels for governance metadata. Unknown values fall back to the raw
-// string so new backend classes still show something meaningful.
 const REVIEW_RISK_LABEL_KEYS: Record<string, string> = {
   read: "review.risk.read",
   write: "review.risk.write",

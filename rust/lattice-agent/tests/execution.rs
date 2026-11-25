@@ -1,12 +1,3 @@
-//! Native execution: the same commands Python ran, with the same answers, plus
-//! the containment properties a golden cannot express.
-//!
-//! The goldens pin *what* a read-only command returns. The rest of this file
-//! pins what the sandbox does around it: a symlink escape is actually attempted
-//! against a file that really exists outside the workspace and really is
-//! refused; the timeout really kills a child that would otherwise hang forever;
-//! and the child really sees a replaced environment rather than the parent's.
-
 mod common;
 
 use std::collections::BTreeMap;
@@ -70,7 +61,6 @@ async fn every_execution_matches_its_python_golden() {
                 case["result_cwd"], result.cwd
             ));
         }
-        // stderr is pinned only where it is identical on macOS and Linux.
         if let Some(stderr) = case.get("stderr").and_then(|value| value.as_str()) {
             if result.stderr != stderr {
                 failures.push(format!(
@@ -110,8 +100,6 @@ async fn the_output_cap_keeps_the_tail_and_says_so() {
 async fn a_symlink_escape_is_attempted_and_refused() {
     let dir = tempfile::tempdir().expect("tempdir");
     let workspace = workspace(&dir);
-    // The escape target really exists and really is readable — otherwise this
-    // test would pass against a workspace with nothing to steal.
     let secret = dir.path().join("outside_secret.txt");
     assert_eq!(
         std::fs::read_to_string(&secret).expect("the secret must exist"),
@@ -121,7 +109,6 @@ async fn a_symlink_escape_is_attempted_and_refused() {
 
     let err = validate(&workspace, "cat escape_link", None).expect_err("must refuse");
     assert_eq!(err.message, "Path escapes the agent workspace: escape_link");
-    // And the file-tool sandbox refuses the same link by the same rule.
     assert_eq!(
         workspace
             .resolve("escape_link")
@@ -129,7 +116,6 @@ async fn a_symlink_escape_is_attempted_and_refused() {
             .message,
         "Path escapes the agent workspace."
     );
-    // A link that stays inside is not collateral damage.
     let inside = validate(&workspace, "cat inside_link", None).expect("inside link is fine");
     let result = execute(&workspace, &inside, Duration::from_secs(30))
         .await
@@ -141,8 +127,6 @@ async fn a_symlink_escape_is_attempted_and_refused() {
 async fn the_timeout_kills_a_command_that_would_hang_forever() {
     let dir = tempfile::tempdir().expect("tempdir");
     let workspace = workspace(&dir);
-    // A FIFO with no writer blocks `cat` in open(2) — indefinitely, and without
-    // spinning, which is exactly the shape a timeout has to survive.
     let fifo = workspace.root().join("blocking_fifo");
     let made = std::process::Command::new("mkfifo")
         .arg(&fifo)
@@ -204,7 +188,6 @@ async fn the_child_environment_is_replaced_not_extended() {
         "the program is the resolved binary, not the bare name"
     );
 
-    // And a real child really observes it: `env` prints what it was given.
     let Some(env_binary) = which("env") else {
         eprintln!("env(1) not on the safe PATH — skipping the observed-environment half");
         return;
@@ -266,7 +249,6 @@ async fn a_missing_binary_is_reported_instead_of_pretending_to_run() {
     let dir = tempfile::tempdir().expect("tempdir");
     let workspace = workspace(&dir);
     if which("rg").is_some() {
-        // rg is installed here, so the honest branch is the running one.
         let validated = validate(&workspace, "rg alpha notes", None).expect("valid");
         let result = execute(&workspace, &validated, Duration::from_secs(30))
             .await

@@ -1,6 +1,3 @@
-//! Multi-hop Knowledge Graph reasoning chains, bridge concept discovery, and
-//! neighborhood contradiction/supersession synthesis (v13.0.0).
-
 use std::collections::{BTreeMap, HashMap};
 
 use lattice_core::{round6, NodeRow};
@@ -10,10 +7,8 @@ use serde_json::{json, Value};
 use super::graph_rag::GraphStructuralHit;
 use super::sidecar::Bm25SidecarIndex;
 
-/// Maximum reasoning chains emitted in a single GraphRAG response.
 pub const MAX_REASONING_PATHS: usize = 16;
 
-/// Raw candidate chain tracked during 1-hop and 2-hop frontier expansion.
 #[derive(Debug, Clone)]
 pub struct CandidateChain {
     pub seed_id: String,
@@ -24,7 +19,6 @@ pub struct CandidateChain {
     pub score: f64,
 }
 
-/// Resolved, human-readable multi-hop reasoning path from a query seed to a target node.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ReasoningPath {
     pub seed_id: String,
@@ -39,7 +33,6 @@ pub struct ReasoningPath {
     pub is_contradiction: bool,
 }
 
-/// Bridge concept/entity summary connecting direct seeds to 2-hop discoveries.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct BridgeConcept {
     pub id: String,
@@ -48,7 +41,6 @@ pub struct BridgeConcept {
     pub bridged_targets: usize,
 }
 
-/// Conflicting or superseding edge surfaced in the retrieved neighborhood.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct NeighborhoodConflict {
     pub source_id: String,
@@ -58,7 +50,6 @@ pub struct NeighborhoodConflict {
     pub relation: String,
 }
 
-/// Return true if a relation label represents epistemic conflict or supersession.
 pub fn is_conflict_or_supersede_relation(rel: &str) -> bool {
     matches!(
         rel.trim().to_ascii_uppercase().as_str(),
@@ -66,8 +57,6 @@ pub fn is_conflict_or_supersede_relation(rel: &str) -> bool {
     )
 }
 
-/// Update `best_chains` if `candidate` improves on the existing chain for `target_id`
-/// (preferring higher path score, then fewer hops, then lexicographic determinism).
 pub fn record_best_chain(
     best_chains: &mut HashMap<String, CandidateChain>,
     candidate: CandidateChain,
@@ -124,7 +113,6 @@ fn resolve_title_and_type(
     (id.to_string(), "Node".to_string())
 }
 
-/// Convert a [`CandidateChain`] into a resolved [`ReasoningPath`].
 pub fn resolve_reasoning_path(
     chain: &CandidateChain,
     final_score: f64,
@@ -158,8 +146,6 @@ pub fn resolve_reasoning_path(
     }
 }
 
-/// Build the structured multi-hop `reasoning_paths` list and `synthesis` block
-/// from ranked results and expanded graph hits.
 pub fn build_multi_hop_synthesis(
     direct_hits: usize,
     multi_hop_hits: usize,

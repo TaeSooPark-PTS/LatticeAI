@@ -117,9 +117,6 @@ fn a_request_with_no_manifest_is_complete_by_construction() {
 
 #[test]
 fn a_file_the_request_named_as_its_destination_is_declared() {
-    // The gate that used to be structurally unreachable: no manifest is
-    // inferred once the message names a filename, so `complete` was true
-    // over a run that wrote nothing at all.
     let request = "README.md 첫 문단을 요약해 notes/summary.md로 저장해줘";
     let none = requirement_coverage(request, &[], &actions());
     assert_eq!(none["complete"], false);
@@ -138,8 +135,6 @@ fn a_file_the_request_named_as_its_destination_is_declared() {
 
 #[test]
 fn a_request_that_marks_no_destination_declares_nothing_new() {
-    // The conservative half — and what keeps the frozen coverage rows and
-    // the compact trajectory byte-identical.
     for request in [
         "make a note",
         "index.html 소개 페이지 만들어줘",
@@ -149,7 +144,6 @@ fn a_request_that_marks_no_destination_declares_nothing_new() {
         assert_eq!(coverage["files"]["declared"], json!([]), "{request}");
         assert_eq!(coverage["complete"], true, "{request}");
     }
-    // A manifest request is unchanged: the manifest is still the source.
     let manifest = requirement_coverage("todo 앱 html css js 만들어줘", &[], &actions());
     assert_eq!(
         manifest["missing_files"],
@@ -171,7 +165,6 @@ fn a_counted_fact_is_read_back_out_of_the_transcript_only() {
         count_from_transcript(&[json!({"result": {"matches": 7}})]).as_deref(),
         Some("7개")
     );
-    // The newest countable fact wins; a step with no result is skipped.
     assert_eq!(
         count_from_transcript(&[
             json!({"result": {"items": [1]}}),
@@ -183,9 +176,6 @@ fn a_counted_fact_is_read_back_out_of_the_transcript_only() {
     );
 }
 
-/// `count` used to be a bare substring test, which fires on four ordinary
-/// English words. Harmless while it only offered a default; not harmless
-/// once [`answer_owes_a_count`] can hold a run back on it.
 #[test]
 fn a_count_question_is_the_whole_word_and_not_a_fragment_of_another() {
     assert!(request_asks_for_a_count("count the files"));
@@ -201,7 +191,6 @@ fn a_count_question_is_the_whole_word_and_not_a_fragment_of_another() {
             "{innocent} asked for no number"
         );
     }
-    // The Korean markers are unaffected: their neighbours are Hangul.
     assert!(request_asks_for_a_count("이 폴더의 파일 개수를 알려줘"));
     assert!(request_asks_for_a_count("파일이 몇 개 있어?"));
 }
@@ -271,11 +260,6 @@ fn an_answer_owes_a_count_only_when_one_was_asked_for_and_none_was_given() {
     );
 }
 
-/// The `qwen05b:S3` defect, at the level it was caused: `list_dir` had
-/// succeeded at step two with a real `items` array, and the gate concluded
-/// the count was already reported because the answer quoted a tmp path
-/// containing `501` and `0de64199`. "Contains a digit" is not "carries the
-/// count that was asked for".
 #[test]
 fn a_digit_inside_a_path_is_not_the_count_that_was_asked_for() {
     let listed = vec![json!({
@@ -296,7 +280,6 @@ pass8_r2/home_qwen05b/agent_workspace";
         format!("{quoted_path} (2개)"),
         "and the fact the tool returned is restored"
     );
-    // A real report of the same fact is left exactly as the model said it.
     for answered in ["파일이 2개 있습니다", "there are 2 files", "(2)"] {
         assert!(
             !answer_owes_a_count(answered, request, &listed),
@@ -304,14 +287,9 @@ pass8_r2/home_qwen05b/agent_workspace";
         );
         assert_eq!(complete_a_count(answered, request, &listed), answered);
     }
-    // A number that is not the counted one does not discharge the question.
     assert!(answer_owes_a_count("파일이 9개 있습니다", request, &listed));
 }
 
-/// The release-gating defect: a count surfaced from a tool the question was
-/// not about. `mcp.grep` failed; `list_dir` happened to succeed; the answer
-/// would have been "2개" and `DONE` to a question about how many matches
-/// there were.
 #[test]
 fn a_count_must_come_from_the_tool_the_question_is_about() {
     let request = "워크스페이스에서 LatticeAI를 mcp.grep으로 찾아주고, 찾은 개수를 알려줘";
@@ -336,15 +314,12 @@ fn a_count_must_come_from_the_tool_the_question_is_about() {
         answer_owes_a_count("검색했습니다", request, &mixed),
         "…and the run is held for review rather than answered with a number"
     );
-    // The same transcript with the named tool succeeding: attributable, and
-    // the number is that tool's, not the listing's.
     let mut searched = mixed.clone();
     searched.push(json!({
         "action": "mcp.grep", "args": {"pattern": "LatticeAI"},
         "result": {"matches": [{"line": 1}], "files_with_matches": 1},
     }));
     assert_eq!(attributed_count(request, &searched).as_deref(), Some("1개"));
-    // A request that names no tool keeps the rule it always had.
     assert_eq!(
         attributed_count("이 폴더에 파일이 몇 개야", &mixed).as_deref(),
         Some("2개")
@@ -429,7 +404,6 @@ fn budgets_read_the_environment_with_floors() {
     assert_eq!(PhaseBudgets::default().execute_tokens, 4096);
     assert_eq!(TranscriptBudget::default().window, 8);
     assert_eq!(env_int("LATTICEAI_AGENT_DEFINITELY_UNSET", 9), 9);
-    // `from_env` with nothing set is the default record.
     assert_eq!(PhaseBudgets::from_env(), PhaseBudgets::default());
     assert_eq!(TranscriptBudget::from_env(), TranscriptBudget::default());
 }
@@ -437,7 +411,6 @@ fn budgets_read_the_environment_with_floors() {
 #[test]
 fn a_phase_budget_is_held_between_one_action_and_what_the_seam_will_serve() {
     let key = "LATTICEAI_AGENT_EXECUTE_TOKENS";
-    // Every default is already inside the band and passes through unchanged.
     let default = PhaseBudgets::default();
     for tokens in [
         default.plan_tokens,
@@ -447,18 +420,14 @@ fn a_phase_budget_is_held_between_one_action_and_what_the_seam_will_serve() {
     ] {
         assert_eq!(clamp_phase_tokens(key, tokens as i64), tokens);
     }
-    // The floor: one action's worth, never zero or negative.
     assert_eq!(clamp_phase_tokens(key, 0), MIN_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, -5), MIN_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, 127), MIN_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, 128), 128);
-    // The ceiling. Without it, `=20000` reached the worker and every
-    // execute phase came back 422 `agent_seam.max_tokens_out_of_range`.
     assert_eq!(clamp_phase_tokens(key, 8192), MAX_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, 8193), MAX_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, 20_000), MAX_PHASE_TOKENS);
     assert_eq!(clamp_phase_tokens(key, i64::MAX), MAX_PHASE_TOKENS);
-    // A floor above the ceiling would make `clamp` panic rather than clamp.
     const { assert!(MIN_PHASE_TOKENS < MAX_PHASE_TOKENS) };
 }
 
@@ -476,10 +445,6 @@ fn creates() -> BTreeSet<String> {
 
 #[test]
 fn a_run_that_never_said_anything_still_has_an_answer_on_its_transcript() {
-    // The two live 2B runs this exists for: the requested file was written,
-    // the executor was stopped by the loop guard before it reached `final`,
-    // and the run reported "처리 중 문제가 발생했습니다" over work that was
-    // on disk. Nothing here is invented — every word comes off a step.
     let wrote = vec![json!({"state": "EXECUTING", "action": "write_file",
          "args": {"path": "notes/hello.md"},
          "result": {"path": "notes/hello.md", "bytes": 59}})];
@@ -488,9 +453,6 @@ fn a_run_that_never_said_anything_still_has_an_answer_on_its_transcript() {
         Some("notes/hello.md 파일을 저장했습니다.")
     );
 
-    // No file, but a search that established something: the count is the
-    // deliverable of a counting question, and an apology reports neither
-    // the search nor its result.
     let searched = vec![json!({"state": "EXECUTING", "action": "mcp.grep",
          "args": {"pattern": "LatticeAI"},
          "result": {"matches": [{"line": 1}, {"line": 2}], "files_scanned": 4}})];
@@ -499,9 +461,6 @@ fn a_run_that_never_said_anything_still_has_an_answer_on_its_transcript() {
         Some("mcp.grep 실행 결과: matches 2개 / 2 matches")
     );
 
-    // And a run that established nothing has nothing to say, which is the
-    // honest answer rather than a sentence about a step that told us
-    // nothing. `final` and `parse_error` are never the delivery.
     let nothing = vec![
         json!({"state": "EXECUTING", "action": "todo_write", "result": {}}),
         json!({"state": "EXECUTING", "action": "final"}),
@@ -512,7 +471,6 @@ fn a_run_that_never_said_anything_still_has_an_answer_on_its_transcript() {
 
 #[test]
 fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped() {
-    // 1. Live qwen05b_S1_a1 shape: write_file(notes/hello.md, 14B) + "I did nothing."
     let s1_step = vec![json!({
         "state": "EXECUTING",
         "action": "write_file",
@@ -524,7 +482,6 @@ fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped(
         "notes/hello.md 파일을 작성했습니다 (14B)."
     );
 
-    // Live qwen05b_S2_a1 shape: write_file(notes/summary.md, 319B) + "I did nothing."
     let s2_step = vec![json!({
         "state": "EXECUTING",
         "action": "write_file",
@@ -536,7 +493,6 @@ fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped(
         "notes/summary.md 파일을 작성했습니다 (319B)."
     );
 
-    // Live qwen05b_S4_a1 shape: write_file(notes/review_note.md, 648B) + "I did nothing."
     let s4_step = vec![json!({
         "state": "EXECUTING",
         "action": "write_file",
@@ -548,13 +504,11 @@ fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped(
         "notes/review_note.md 파일을 작성했습니다 (648B)."
     );
 
-    // Korean bare negation dropped
     assert_eq!(
         complete_created_files("아무것도 하지 않았습니다.", &s1_step, &creates()),
         "notes/hello.md 파일을 작성했습니다 (14B)."
     );
 
-    // 2. An answer that already names the file passes through byte-identical (idempotent)
     let named_full = "The file notes/hello.md was successfully written to disk.";
     assert_eq!(
         complete_created_files(named_full, &s1_step, &creates()),
@@ -566,27 +520,23 @@ fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped(
         named_base
     );
 
-    // 3. Negation with extra text: facts go first, extra text follows
     let extra_negation = "I did nothing. Please check.";
     assert_eq!(
         complete_created_files(extra_negation, &s1_step, &creates()),
         "notes/hello.md 파일을 작성했습니다 (14B).\n\nI did nothing. Please check."
     );
 
-    // Non-negation model text without file name is not a negation, so it passes through
     let other_text = "작업을 완료했습니다.";
     assert_eq!(
         complete_created_files(other_text, &s1_step, &creates()),
         other_text
     );
 
-    // 4. No files created -> untouched (byte-identical passthrough)
     assert_eq!(
         complete_created_files("I did nothing.", &[], &creates()),
         "I did nothing."
     );
 
-    // Multiple files created: joined sentences for bare negation
     let multi_step = vec![
         json!({
             "state": "EXECUTING",

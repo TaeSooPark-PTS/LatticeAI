@@ -28,7 +28,6 @@ fn an_absolute_plan_path_is_offered_the_short_way() {
         Some("notes/hello.md".to_string()),
         "the same file, said in four tokens instead of a hundred characters"
     );
-    // A path outside the workspace is left exactly as the plan wrote it.
     ctx.plan = json!({"steps": [{"action": "write_file", "args": {"path": "/etc/hosts"}}]})
         .as_object()
         .expect("plan")
@@ -41,10 +40,6 @@ fn an_absolute_plan_path_is_offered_the_short_way() {
 
 #[tokio::test]
 async fn a_model_that_only_copies_the_example_is_demoted_into_guided() {
-    // The live 2B: probed as `compact`, then spent its whole format budget
-    // replying with the prompt's own worked example. The probe asked a toy
-    // question; the run is better evidence, and the loop is allowed to act on
-    // it — downward only.
     let example = format!(
         r#"{{"thoughts": "t", "action": "write_file", "args": {{"path": "notes/hello.md", "content": {}}}}}"#,
         serde_json::to_string(crate::prompts::WRITE_EXAMPLE_CONTENT).expect("json")
@@ -53,15 +48,12 @@ async fn a_model_that_only_copies_the_example_is_demoted_into_guided() {
     for _ in 0..6 {
         script.push(&example);
     }
-    // …and then the guided micro-turns it is demoted into.
     script.push("1");
     script.push("notes/hello.md");
     script.push("진짜 인사말입니다.");
     script.push("3");
     script.push("메모를 만들었습니다");
     let mut harness = harness(&script).await;
-    // Measured, not injected: demotion corrects a *measurement*, so a caller
-    // that stated the dial keeps it.
     harness.runtime.deps.agent_profile = None;
     harness.runtime.deps.probe = Some(crate::kernel::probe::ProbeConfig::new(
         harness.data_dir.join("probe"),
@@ -84,7 +76,6 @@ async fn a_model_that_only_copies_the_example_is_demoted_into_guided() {
         "the demotion is on the record: {:?}",
         ctx.trace.events
     );
-    // And verification now runs under the dial the executor finished in.
     assert!(harness.runtime.profile(None).decomposed);
 }
 
@@ -118,9 +109,6 @@ async fn an_injected_profile_is_never_demoted() {
 
 #[test]
 fn a_finished_plan_puts_finishing_first_and_stops_re_offering_the_write() {
-    // The live 0.5B wrote its file, was offered `write_file` as row one again,
-    // answered "1" again, and spent the rest of the run being stopped by the
-    // loop guard instead of finishing.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["read_file".into(), "write_file".into()];
@@ -130,7 +118,6 @@ fn a_finished_plan_puts_finishing_first_and_stops_re_offering_the_write() {
         .expect("plan")
         .clone();
 
-    // Before the write: the plan leads, `final` is last.
     let names: Vec<String> = runtime
         .step_catalog(&ctx)
         .iter()
@@ -139,7 +126,6 @@ fn a_finished_plan_puts_finishing_first_and_stops_re_offering_the_write() {
     assert_eq!(names.first().map(String::as_str), Some("write_file"));
     assert_eq!(names.last().map(String::as_str), Some("final"));
 
-    // After it: nothing is pending, so finishing leads.
     ctx.transcript.push(json!({
         "state": "EXECUTING", "action": "write_file",
         "args": {"path": "notes/hello.md"},
@@ -165,10 +151,6 @@ fn a_finished_plan_puts_finishing_first_and_stops_re_offering_the_write() {
 
 #[test]
 fn the_plans_own_action_is_row_one_and_the_alphabet_decides_nothing() {
-    // The live 0.5B defect this exists to stop: with the policy table in
-    // alphabetical order `build_project` was row one, and a model that answers
-    // "1" when unsure ran it fifteen times against a plan that said
-    // `write_file`.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec![
@@ -181,7 +163,6 @@ fn the_plans_own_action_is_row_one_and_the_alphabet_decides_nothing() {
     ];
     let mut ctx = crate::kernel::state::AgentRunContext::new();
 
-    // With no plan, the file-work core leads and `build_project` does not.
     let names: Vec<String> = runtime
         .step_catalog(&ctx)
         .iter()
@@ -191,7 +172,6 @@ fn the_plans_own_action_is_row_one_and_the_alphabet_decides_nothing() {
     assert_eq!(names[1], "read_file", "{names:?}");
     assert_eq!(names.last().map(String::as_str), Some("final"));
 
-    // With a plan, the plan leads.
     ctx.plan = json!({"steps": [{"action": "run_command", "args": {}}]})
         .as_object()
         .expect("plan")
@@ -207,8 +187,6 @@ fn the_plans_own_action_is_row_one_and_the_alphabet_decides_nothing() {
 
 #[tokio::test]
 async fn the_same_call_failing_twice_stops_the_run_instead_of_spinning() {
-    // Fifteen identical failing dispatches is what the first live 0.5B run
-    // produced. Two is the ceiling now.
     let script: Vec<&str> = ["1", "../escape.md", "x"]
         .iter()
         .cycle()
@@ -271,8 +249,6 @@ fn the_menu_is_capped_and_still_carries_the_plan_and_final() {
 
 #[tokio::test]
 async fn the_guided_verdict_is_a_closed_question_and_still_needs_evidence() {
-    // PASS over a run that did nothing is not a completion, however cheaply the
-    // verdict was obtained.
     let mut harness = harness(&["PASS", "the file was written"]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
     let mut ctx = harness.context();
@@ -318,7 +294,6 @@ async fn a_guided_fail_asks_for_another_attempt_with_the_reason_as_the_correctio
 
 #[tokio::test]
 async fn the_verdict_examples_placeholder_reason_is_never_shown_as_a_reason() {
-    // A live 2B returned the example's every field, placeholder included.
     let copied = format!(
         r#"{{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "{}", "corrections": []}}"#,
         crate::prompts::VERDICT_REASON_PLACEHOLDER
@@ -347,8 +322,8 @@ async fn the_verdict_examples_placeholder_reason_is_never_shown_as_a_reason() {
 #[tokio::test]
 async fn an_unreadable_verdict_word_falls_through_to_the_json_critic() {
     let mut harness = harness(&[
-        "hmm, hard to say",   // no verdict word
-        "still hard to say",  // and none on the re-ask either
+        "hmm, hard to say",
+        "still hard to say",
         r#"{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok", "corrections": []}"#,
     ])
     .await;
@@ -377,15 +352,10 @@ async fn an_unreadable_verdict_word_falls_through_to_the_json_critic() {
     );
 }
 
-/// The menu turn's fix, on its twin. A model whose first eight tokens are a
-/// reasoning preamble produced no verdict word in four live runs and the work
-/// it had really done ended `UNAVAILABLE`. The re-ask buys room and drops the
-/// line stop, and the answer's position is forced by a prefix carrying neither
-/// word.
 #[tokio::test]
 async fn a_verdict_turn_that_produced_no_word_is_re_asked_with_room() {
     let mut harness = harness(&[
-        "Thinking Process: the user asked", // the preamble, and the budget gone
+        "Thinking Process: the user asked",
         "PASS",
         "파일을 만들었습니다",
     ])
@@ -462,15 +432,8 @@ async fn an_empty_path_answer_takes_the_plans_own_file() {
     );
 }
 
-// ── v12.0.0 fix round: the menu turn, the evidence, and the ranking ─────────
-
 #[tokio::test]
 async fn the_menu_turn_is_prefilled_and_a_re_ask_is_a_different_question() {
-    // The gemma-4-e2b defect, twelve times out of twelve: eight tokens, a
-    // newline stop, no prefill — the model spent the whole budget on
-    // `Thinking Process:` and the parser never saw a digit. Three identical
-    // turns followed, because at temperature zero an identical question has an
-    // identical answer.
     let mut harness = harness(&[
         "Thinking Process:",
         "Thinking Process:",
@@ -503,8 +466,6 @@ async fn the_menu_turn_is_prefilled_and_a_re_ask_is_a_different_question() {
             json!(crate::prompts::guided::MENU_ANSWER_PREFIX),
             "every menu turn puts the answer's opening in the model's mouth"
         );
-        // Each step restarts the cap, so the first turn of every three is the
-        // cheap ask and the two after it are the re-asks.
         if index % 3 == 0 {
             assert_eq!(
                 turn["body"]["max_tokens"],
@@ -553,16 +514,12 @@ fn a_result_digest_only_ever_reads_a_field_the_tool_wrote() {
         result_digest(&json!({"path": "a.md"})).as_deref(),
         Some("a.md")
     );
-    // Nothing countable: the row stays the bare `ok` it always was.
     assert_eq!(result_digest(&json!({"ok": true})), None);
     assert_eq!(result_digest(&json!({})), None);
 }
 
 #[tokio::test]
 async fn the_closed_question_is_shown_the_count_and_the_answer() {
-    // The S3 defect: `- list_dir: ok` is not enough to answer "was the count
-    // reported?", so three models answered FAIL over a list_dir that had
-    // returned two real entries.
     let mut harness = harness(&["PASS", "the folder was listed"]).await;
     harness.runtime.deps.agent_profile = Some(GUIDED);
     harness.request.message = "이 폴더의 파일 개수를 알려줘".into();
@@ -595,8 +552,6 @@ async fn the_closed_question_is_shown_the_count_and_the_answer() {
 
 #[test]
 fn a_planned_read_that_already_succeeded_is_not_offered_again() {
-    // The live 2B read README.md, was offered the read as row one again, and
-    // never reached the write it was asked for.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["read_file".into(), "write_file".into()];
@@ -638,10 +593,6 @@ fn a_planned_read_that_already_succeeded_is_not_offered_again() {
 
 #[test]
 fn a_request_that_declared_no_file_may_finish_once_its_search_ran() {
-    // The other direction, and the live 0.5B that lost a whole run to it: the
-    // planner invented a `write_file` step for "find the word and tell me how
-    // many", so `final` stayed off row one and the model answered "1" into the
-    // invented write until the budget ran out.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["grep".into(), "write_file".into()];
@@ -671,14 +622,8 @@ fn a_request_that_declared_no_file_may_finish_once_its_search_ran() {
     );
 }
 
-// ── round 1: the exit, the answer, and the body ────────────────────────────
-
 #[test]
 fn a_row_name_inside_a_paragraph_is_not_a_choice() {
-    // The regression this exists to stop, and the whole reason three live 0.5B
-    // cells ended on turn one: the re-asked menu turn buys sixty-four tokens
-    // and drops the line stop, so a model that will not commit answers with
-    // prose — and `final` is an ordinary English word that happens to be a row.
     let catalog =
         crate::tools::catalog::native_entries(&["write_file".to_string(), "read_file".to_string()]);
     assert_eq!(
@@ -690,7 +635,6 @@ answer depends on whether the file already exists in the workspace.",
         None,
         "a paragraph is not an answer, whatever words it contains"
     );
-    // A reply that really names a row still is one, however it is dressed.
     let write = catalog
         .iter()
         .position(|entry| entry.name == "write_file")
@@ -705,18 +649,12 @@ answer depends on whether the file already exists in the workspace.",
         .expect("final")
         + 1;
     assert_eq!(named_choice("final", &catalog), Some(finish));
-    // Whole tokens only: a longer word that contains a row name is not it.
     assert_eq!(named_choice("finalize the document", &catalog), None);
-    // Two rows named is no choice, as it always was.
     assert_eq!(named_choice("write_file or read_file", &catalog), None);
 }
 
 #[test]
 fn a_run_that_owes_a_declared_file_is_not_offered_the_exit() {
-    // Three live 0.5B cells, and every one of them a request that named a
-    // destination file: the first menu turn resolved to `final`, nothing was
-    // written, and the run reported itself finished. `final` was already ranked
-    // last; last is still a row.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["write_file".into(), "read_file".into(), "list_dir".into()];
@@ -756,9 +694,6 @@ fn a_run_that_owes_a_declared_file_is_not_offered_the_exit() {
 
 #[test]
 fn a_request_that_named_no_file_keeps_its_exit_from_the_first_turn() {
-    // The other direction, stated so the guard can never widen into one: a
-    // question is finished when it is answered, and holding `final` back for a
-    // run that owes no file would strand every count and every search.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["write_file".into(), "list_dir".into()];
@@ -777,11 +712,6 @@ fn a_request_that_named_no_file_keeps_its_exit_from_the_first_turn() {
 
 #[test]
 fn a_planners_invented_path_does_not_outlive_the_file_the_user_asked_for() {
-    // The live 2B: handed `인사말을 notes/hello.md 파일로 저장해줘` its planner
-    // wrote `write_file notes.md`. The run wrote the file the *request* named,
-    // the plan's invented path stayed pending for ever, `write_file` stayed row
-    // one, the model answered "1" again and the loop guard ended a run whose
-    // deliverable had been on disk since step one.
     let (_dir, workspace) = crate::kernel::agentloop::harness::workspace();
     let mut runtime = crate::kernel::agentloop::harness::runtime(workspace);
     runtime.deps.tool_names = vec!["write_file".into(), "read_file".into()];
@@ -806,16 +736,13 @@ fn a_planners_invented_path_does_not_outlive_the_file_the_user_asked_for() {
 
 #[tokio::test]
 async fn a_body_turn_that_answers_with_its_own_reasoning_is_re_asked_differently() {
-    // The live gemma-4-e2b: three body turns, three enumerated
-    // `Thinking Process:` monologues, 2,371 bytes of the model talking to
-    // itself written into the user's greeting file.
     let mut harness = harness(&[
-        "1", // menu → write_file
+        "1",
         "notes/hello.md",
         "Thinking Process:\n\n1.  **Analyze the Request:** the user wants a greeting.\n\
 2.  **Determine the Action:** I cannot actually create files.",
         "안녕하세요, 반갑습니다.",
-        "1", // menu → final (the declared file now exists)
+        "1",
         "저장했습니다.",
     ])
     .await;
@@ -832,7 +759,6 @@ async fn a_body_turn_that_answers_with_its_own_reasoning_is_re_asked_differently
     let written = std::fs::read_to_string(harness.root.join("notes/hello.md")).expect("file");
     assert_eq!(written.trim(), "안녕하세요, 반갑습니다.", "{written:?}");
 
-    // And the re-ask was a different question, or it was the first ask replayed.
     let bodies: Vec<String> = harness
         .worker
         .calls
@@ -863,9 +789,6 @@ async fn a_body_turn_that_answers_with_its_own_reasoning_is_re_asked_differently
 
 #[tokio::test]
 async fn a_body_that_is_only_ever_reasoning_is_still_written_rather_than_lost() {
-    // The floor under the re-ask. A model that cannot do better on any turn has
-    // still produced the only text there is, and turning a poor file into a
-    // missing one is worse for the user and for the run's own coverage.
     let preamble = "Thinking Process:\n\n1.  **Analyze:** the user wants a greeting.";
     let mut harness = harness(&[
         "1",

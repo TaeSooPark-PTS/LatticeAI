@@ -1,5 +1,3 @@
-"""Unit tests for PC-tailored embedding recommendation, public mirrors, and quantized fallbacks."""
-
 from __future__ import annotations
 
 from latticeai.services.embedding_recommendation import (

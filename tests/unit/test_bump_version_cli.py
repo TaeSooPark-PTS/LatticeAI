@@ -1,5 +1,3 @@
-"""Unit tests for the modular ``scripts/bump_version`` CLI package and subcommands."""
-
 from __future__ import annotations
 
 import hashlib
@@ -130,11 +128,8 @@ def test_openapi_subcommand_writes_and_updates_sha256_index(tmp_path, monkeypatc
 
     monkeypatch.setattr(targets, "REPO", tmp_path)
 
-    # Check fails against 2.1.0 before bump
     assert cli.main(["openapi", "2.1.0", "--check"]) == 1
-    # Bump succeeds
     assert cli.main(["openapi", "2.1.0"]) == 0
-    # Idempotent second run and check pass
     assert cli.main(["openapi", "2.1.0"]) == 0
     assert cli.main(["openapi", "2.1.0", "--check"]) == 0
 
@@ -294,7 +289,6 @@ def test_markers_subcommand_updates_current_release_and_preserves_history(
     release_text = (tmp_path / "RELEASE.md").read_text(encoding="utf-8")
     assert "## v2.4.0 — Deep Vector" in release_text
     assert "dist/ltcai-2.4.0-py3-none-any.whl" in release_text
-    # Historical section in RELEASE.md must remain untouched
     assert "## v0.9.0 — Prior Release" in release_text
     assert "dist/ltcai-0.9.0-py3-none-any.whl" in release_text
 
@@ -338,7 +332,6 @@ def test_default_bump_handles_core_targets_and_missing_fields(tmp_path, monkeypa
     assert lock_data["version"] == "1.5.0"
     assert lock_data["packages"][""]["version"] == "1.5.0"
 
-    # Corrupt package.json so "version" key is missing -> bump returns 1
     (tmp_path / "package.json").write_text(
         json.dumps({"name": "ltcai"}) + "\n", encoding="utf-8"
     )

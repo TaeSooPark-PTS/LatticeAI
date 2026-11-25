@@ -1,11 +1,3 @@
-//! The `POST /chat` pipeline: auth → intents → context → worker tokens → persist.
-//!
-//! Port of `latticeai/api/chat.py`'s handler. Token generation never moves;
-//! this module asks the worker for them over `/worker/llm/stream` and reframes
-//! the bytes. History writes are native as of Wave 2.5 §W3a — every
-//! `persist_entry` here runs [`crate::turn::write_chat_turn`], which redacts
-//! before anything else sees the text, so the stored copy is the redacted one.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::body::Bytes;
@@ -30,14 +22,10 @@ use crate::intents::{self, current_url, direct_file_action, no_model_response, H
 use crate::state::ChatState;
 
 mod answers;
-// `pub(crate)` for `collect_completion`: the file-generation branch asks the
-// same seam for a whole reply instead of a stream, and a second collector would
-// be a second set of frame-reader edge cases.
 pub(crate) mod model;
 
 use model::run_model_turn;
 
-/// `POST /chat`.
 pub async fn chat(
     State(state): State<ChatState>,
     headers: HeaderMap,
@@ -149,10 +137,6 @@ pub async fn chat(
         .await;
     };
     if file_intent {
-        // `direct_file_action` answered `None`, which means the request reads as
-        // a file action but names no file this surface can infer — "파일 하나
-        // 만들어줘" with no type, no name and no recognised project. Generating
-        // *something* would be inventing the request; this says so instead.
         return error_body(400, "chat.file_generation_failed", &headers, &[]);
     }
 
@@ -269,7 +253,6 @@ fn language_of(headers: &HeaderMap) -> &'static str {
 }
 
 pub(crate) fn file_path_count(message: &str) -> usize {
-    // Port of the auto-read detector: `(?:^|[\s\'"(])((~|/[\w.])[^\s\'")\]]*)`.
     let mut count = 0usize;
     let bytes = message.as_bytes();
     let mut index = 0usize;

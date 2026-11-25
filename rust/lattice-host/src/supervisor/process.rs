@@ -1,9 +1,3 @@
-//! Spawning and signalling the worker process.
-//!
-//! Graceful shutdown is SIGTERM first (so the worker can close its SQLite
-//! handles and flush logs), SIGKILL only after the grace period. On non-unix
-//! targets there is no SIGTERM, so both paths collapse to the std kill.
-
 use std::path::Path;
 use std::process::Stdio;
 
@@ -12,20 +6,15 @@ use tokio::process::{Child, Command};
 use super::command::{HostProbe, WorkerCommand};
 use super::worker_env::{log_paths, open_log, worker_env};
 
-/// Result of asking a process to stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignalOutcome {
-    /// The signal was delivered.
     Delivered,
-    /// The process was already gone.
     Gone,
-    /// Signalling is not supported on this platform.
     Unsupported,
 }
 
 #[cfg(unix)]
 fn raw_signal(pid: u32, signal: i32) -> SignalOutcome {
-    // SAFETY: kill(2) with a pid we spawned; no memory is touched.
     let rc = unsafe { libc::kill(pid as libc::pid_t, signal) };
     if rc == 0 {
         SignalOutcome::Delivered
@@ -34,47 +23,36 @@ fn raw_signal(pid: u32, signal: i32) -> SignalOutcome {
     }
 }
 
-/// Ask the process to terminate (SIGTERM on unix).
 #[cfg(unix)]
 pub fn terminate(pid: u32) -> SignalOutcome {
     raw_signal(pid, libc::SIGTERM)
 }
 
-/// Kill the process outright (SIGKILL on unix).
 #[cfg(unix)]
 pub fn force_kill(pid: u32) -> SignalOutcome {
     raw_signal(pid, libc::SIGKILL)
 }
 
-/// Whether the process is still alive (`kill(pid, 0)` on unix).
 #[cfg(unix)]
 pub fn is_alive(pid: u32) -> bool {
     raw_signal(pid, 0) == SignalOutcome::Delivered
 }
 
-/// Ask the process to terminate. Not supported off unix.
 #[cfg(not(unix))]
 pub fn terminate(_pid: u32) -> SignalOutcome {
     SignalOutcome::Unsupported
 }
 
-/// Kill the process outright. Not supported off unix.
 #[cfg(not(unix))]
 pub fn force_kill(_pid: u32) -> SignalOutcome {
     SignalOutcome::Unsupported
 }
 
-/// Liveness check. Always `true` off unix (we cannot tell).
 #[cfg(not(unix))]
 pub fn is_alive(_pid: u32) -> bool {
     true
 }
 
-/// Spawn the worker with the pinned environment and log redirection.
-///
-/// `gateway_port` is passed straight through to
-/// [`worker_env`](super::worker_env::worker_env): `Some` when this worker sits
-/// behind the gateway, `None` for the direct topology.
 pub fn spawn_worker(
     command: &WorkerCommand,
     port: u16,
@@ -126,7 +104,6 @@ pub fn spawn_worker(
             cmd.stdout(Stdio::null()).stderr(Stdio::null());
         }
     }
-    // Nothing outlives the supervisor: if the host dies, so does the worker.
     cmd.kill_on_drop(true);
     cmd.spawn()
 }
@@ -174,9 +151,6 @@ mod tests {
         );
     }
 
-    /// The front-door unblocker, observed in the *spawned process* rather than
-    /// only in the environment vector: the worker binds its own port and is
-    /// told to trust the gateway's origin.
     #[tokio::test]
     async fn a_fronted_worker_process_receives_the_gateway_trusted_origins() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -262,9 +236,6 @@ mod tests {
         assert!(!status.success(), "signalled child does not exit cleanly");
     }
 
-    /// Wait until the child has actually reached the point where it is
-    /// signal-ready. Signalling a process that has not finished `exec` yet
-    /// tests nothing (the default disposition would kill it).
     async fn wait_for_marker(marker: &std::path::Path) {
         for _ in 0..500 {
             if marker.exists() {
@@ -296,7 +267,6 @@ mod tests {
         let pid = child.id().expect("pid");
         wait_for_marker(&marker).await;
         assert_eq!(terminate(pid), SignalOutcome::Delivered);
-        // Still alive: the trap swallowed SIGTERM.
         tokio::time::sleep(Duration::from_millis(150)).await;
         assert!(child.try_wait().expect("try_wait").is_none());
         assert_eq!(force_kill(pid), SignalOutcome::Delivered);
@@ -308,8 +278,6 @@ mod tests {
 
     #[test]
     fn signalling_a_dead_pid_reports_gone() {
-        // PID 0 means "the whole process group" for kill(2); use a pid that
-        // cannot exist instead.
         assert_eq!(terminate(u32::MAX / 2), SignalOutcome::Gone);
         assert!(!is_alive(u32::MAX / 2));
     }

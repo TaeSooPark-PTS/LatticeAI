@@ -1,11 +1,3 @@
-//! The Self-Model's write side — native (v11.7.0+).
-//!
-//! Governance invariants:
-//! * **Extraction never writes.** [`propose`] raises review proposals via [`crate::brain_api::desk`].
-//! * **[`apply`] is the only path from proposal to node**, writing only after approval.
-//! * **Direct user ownership.** [`upsert`] and [`delete`] edit the user's own profile directly.
-//! * **Deterministic.** Ordered first-person pattern table; refusals carry `SelfModelError.code`.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use fancy_regex::Regex;
@@ -18,22 +10,15 @@ use crate::brain_api::desk;
 use crate::memory_api::shared::{BrainState, SeamRefusal};
 use crate::self_model::{kind_label, SELF_ID_PREFIX, SELF_ROOT_ID};
 
-/// `SELF_MODEL_KIND` — the review-queue kind a candidate fact is filed under.
 pub const SELF_MODEL_KIND: &str = "self_model_fact";
 
-/// `_MAX_FACT_CHARS`.
 const MAX_FACT_CHARS: usize = 120;
 
-/// `_TRAILING` — stripped from **both** ends, as Python's `str.strip(chars)` does.
 const TRAILING: &str = " .。!?！？,、;:\n\t\"'\u{201c}\u{201d}\u{2018}\u{2019}()[]{}";
 
-/// `CONTRADICTION_RESOLUTIONS`, in `_stamp_resolution`'s branch order.
 const KEEP_OLD: &str = "keep_old";
 const REPLACE: &str = "replace";
 
-/// `FACT_NODE_TYPES` — fact kind → the graph node type it becomes.
-///
-/// `Decision` is the existing node type, deliberately reused.
 pub fn node_type_for(kind: &str) -> Option<&'static str> {
     match kind {
         "preference" => Some("Preference"),
@@ -45,25 +30,18 @@ pub fn node_type_for(kind: &str) -> Option<&'static str> {
     }
 }
 
-/// `_normalize` — collapse whitespace, strip the trailing set, cap at 120
-/// **characters** (Python slices code points, not bytes).
 pub fn normalize(text: &str) -> String {
     let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let trimmed = collapsed.trim_matches(|c| TRAILING.contains(c));
     trimmed.chars().take(MAX_FACT_CHARS).collect()
 }
 
-/// `fact_id` — the same statement always lands on the same node.
 pub fn fact_id(kind: &str, text: &str) -> String {
     let digest = Sha256::digest(format!("{kind}|{}", text.to_lowercase()).as_bytes());
     let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
     format!("{SELF_ID_PREFIX}{kind}:{}", &hex[..12])
 }
 
-/// `_PATTERNS` — `(kind, pattern, confidence, signal)`.
-///
-/// The order fixes the order candidates are produced in, and every capture is
-/// the named group `v`. `(?i)` is Python's `re.IGNORECASE`.
 fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
     static TABLE: std::sync::OnceLock<Vec<(&'static str, Regex, f64, &'static str)>> =
         std::sync::OnceLock::new();
@@ -118,8 +96,6 @@ fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
                 "en_always_preference",
             ),
             (
-                // The frequency word stays inside the capture: "회고를 씁니다"
-                // is a sentence, "매일 회고를 씁니다" is a habit.
                 "habit",
                 r"(?P<v>(?:매일|매주|매달|아침마다|항상|늘|평소)\s*[^\n.。!?]+)",
                 0.65,
@@ -193,13 +169,6 @@ fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
     })
 }
 
-/// `extract_self_model` — candidate facts found in `text`.
-///
-/// Pure and deterministic: deduplicated on the fact id (which is
-/// `(kind, lowercased text)`), then ordered by `(kind, text)`. There is no
-/// `refiner` here: the optional model pass Python allowed had no caller in the
-/// Rust port and a model that can rewrite a candidate's wording is a feature,
-/// not a port detail.
 pub fn extract(text: &str, source: &str) -> Vec<Value> {
     let mut found: BTreeMap<String, Value> = BTreeMap::new();
     let mut order: Vec<String> = Vec::new();
@@ -213,8 +182,6 @@ pub fn extract(text: &str, source: &str) -> Vec<Value> {
             cursor = if whole.end() > whole.start() {
                 whole.end()
             } else {
-                // A zero-width match cannot advance on its own; step one
-                // character, the way `finditer` does.
                 next_boundary(text, whole.end())
             };
             let Some(group) = captures.name("v") else {
@@ -272,9 +239,6 @@ fn next_boundary(text: &str, from: usize) -> usize {
     index
 }
 
-/// `_write_fact` — the root (if needed), the fact node, and the `PART_OF` edge.
-// Eight parameters because `_write_fact` takes eight; the port keeps the
-// original's argument list so the two can be read side by side.
 #[allow(clippy::too_many_arguments)]
 fn write_fact(
     graph: &GraphWriter,
@@ -348,17 +312,6 @@ fn object_of(value: Value) -> Map<String, Value> {
     value.as_object().cloned().unwrap_or_default()
 }
 
-/// A refusal whose detail **is** `SelfModelError.code`, and nothing else.
-///
-/// Two readers, and they disagree about how much slack they allow:
-/// `self_model::seam_error` looks for a code *inside* the detail, but
-/// `routes::self_model_apply` calls `self_model::message_id` on the whole
-/// string — an exact match — to tell "this item is not a proposal" from "there
-/// is no such item". A detail of `"not_a_proposal: review item … is not a
-/// Self-Model proposal"` satisfies the first and fails the second, and the
-/// route then answers 404 about a review item that exists. So the code travels
-/// alone; the sentence a person reads comes from the message catalog, in their
-/// language, which is why Brain Core raised codes rather than prose.
 fn refusal(status: u16, code: &str) -> SeamRefusal {
     SeamRefusal {
         status,
@@ -366,12 +319,6 @@ fn refusal(status: u16, code: &str) -> SeamRefusal {
     }
 }
 
-/// A storage failure, which is not one of the codes.
-///
-/// Deliberately prefixed with `self_model`: `routes::self_model_apply` reads a
-/// code-less detail as "the review item is not there" *unless* it names the
-/// family, and reporting a disk error as a missing item would send someone
-/// looking in the wrong place.
 fn internal(error: impl std::fmt::Display) -> SeamRefusal {
     SeamRefusal {
         status: 500,
@@ -379,7 +326,6 @@ fn internal(error: impl std::fmt::Display) -> SeamRefusal {
     }
 }
 
-/// `upsert_self_model_fact` — add or correct one fact directly.
 fn upsert(graph: &GraphWriter, args: &Value) -> Result<Value, SeamRefusal> {
     let kind = args
         .get("kind")
@@ -406,7 +352,6 @@ fn upsert(graph: &GraphWriter, args: &Value) -> Result<Value, SeamRefusal> {
     )
 }
 
-/// `delete_self_model_fact` — remove one fact permanently.
 fn delete(graph: &GraphWriter, args: &Value, now: &str) -> Result<Value, SeamRefusal> {
     let node_id = args
         .get("node_id")
@@ -424,11 +369,8 @@ fn delete(graph: &GraphWriter, args: &Value, now: &str) -> Result<Value, SeamRef
     Ok(json!({"status": "ok", "id": node_id, "deleted_at": now}))
 }
 
-/// One row of a contradiction resolution's plan:
-/// `(node_id, valid_from, valid_to, superseded_by)`.
 type TemporalEdit<'a> = (&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>);
 
-/// `_stamp_resolution` — the validity stamps one contradiction resolution writes.
 fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamRefusal> {
     let older = args
         .get("older_id")
@@ -443,8 +385,6 @@ fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamR
         .get("resolution")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    // `(node_id, valid_from, valid_to, superseded_by)` — the caller validated
-    // `resolution`, so the third arm is `keep_both_temporal`.
     let plan: Vec<TemporalEdit<'_>> = match resolution {
         KEEP_OLD => vec![(newer, None, Some(moment), Some(older))],
         REPLACE => vec![
@@ -461,8 +401,6 @@ fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamR
         let updated = graph
             .stamp_node_validity(node_id, valid_from, valid_to, superseded_by)
             .map_err(internal)?;
-        // Key order is Python's: `node_id`, then the fields this arm supplied,
-        // then `updated`.
         let mut stamp = Map::new();
         stamp.insert("node_id".into(), json!(node_id));
         if let Some(value) = valid_to {
@@ -480,7 +418,6 @@ fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamR
     Ok(Value::Array(applied))
 }
 
-/// `propose_self_model` — one review proposal per newly-noticed fact.
 async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal> {
     let text = args.get("text").and_then(Value::as_str).unwrap_or_default();
     let source = args
@@ -503,7 +440,6 @@ async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal>
         .max(0) as usize;
     let candidates = extract(text, source);
 
-    // Facts already in the subgraph are never proposed again.
     let scope: Option<BTreeSet<String>> = workspace_id
         .clone()
         .map(|workspace| [workspace].into_iter().collect());
@@ -522,10 +458,6 @@ async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal>
         .filter(|fact| !known.contains(fact.get("id").and_then(Value::as_str).unwrap_or_default()))
         .collect();
 
-    // The desk reads and writes `workspace_os.json` (and, with an owner
-    // installed, its SQLite row), so the whole `ProposalDesk` loop runs off the
-    // reactor — a proposal raised on the request thread would stall every other
-    // request behind a file write (v10.9.0).
     let fresh_facts: Vec<Value> = fresh.iter().map(|fact| (*fact).clone()).collect();
     let already_known = candidates.len() - fresh.len();
     let desk_state = state.clone();
@@ -592,16 +524,12 @@ async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal>
     }))
 }
 
-/// `apply_self_model_proposal` — approve one proposal, then write its fact.
 fn apply(state: &BrainState, graph: &GraphWriter, args: &Value) -> Result<Value, SeamRefusal> {
     let item_id = args
         .get("item_id")
         .and_then(Value::as_str)
         .unwrap_or_default();
     let workspace_id = args.get("workspace_id").and_then(Value::as_str);
-    // `except (KeyError, FileNotFoundError)` in the router turns a detail that
-    // names no code into "review item not found", so an absent item reports
-    // only its id.
     let Some(item) = desk::load_review_item(state, item_id, workspace_id) else {
         return Err(SeamRefusal {
             status: 404,
@@ -625,8 +553,6 @@ fn apply(state: &BrainState, graph: &GraphWriter, args: &Value) -> Result<Value,
     if node_type_for(&kind).is_none() || text.is_empty() {
         return Err(refusal(400, "empty_proposal"));
     }
-    // Gated twice, the way `resolve_contradiction` is: nothing is written
-    // until the approve has returned.
     let status = desk::approve_item(state, item_id);
     let workspace = workspace_id.or_else(|| item.get("workspace_id").and_then(Value::as_str));
     let node = write_fact(
@@ -651,11 +577,6 @@ fn apply(state: &BrainState, graph: &GraphWriter, args: &Value) -> Result<Value,
     }))
 }
 
-/// Run one Self-Model / contradiction write on the native engine.
-///
-/// The SQLite halves run on `spawn_blocking`; `propose` is already async
-/// because it reads the subgraph through [`BrainState::read`] and writes review
-/// items through the desk.
 pub async fn dispatch(
     state: &BrainState,
     graph: &GraphWriter,

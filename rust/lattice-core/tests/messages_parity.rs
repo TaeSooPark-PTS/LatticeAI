@@ -1,11 +1,3 @@
-//! Python↔Rust message-catalog parity.
-//!
-//! `scripts/gen_messages_catalog_fixture.py` dumps every id the live Python
-//! catalog renders in both languages, plus a `resolve_language` vector table
-//! that walks every branch of the Python function. This test is the Rust half:
-//! if a wording, interpolation, envelope key, or Accept-Language branch
-//! drifts, it fails here rather than on a migrated route.
-
 use std::path::PathBuf;
 
 use lattice_core::messages::{http_error, resolve_language, text};

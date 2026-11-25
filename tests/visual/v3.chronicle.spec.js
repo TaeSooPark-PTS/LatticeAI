@@ -1,14 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const { trackPageErrors, bypassProductFlow } = require("./v3_helpers");
 
-// 연대기 — the screen that shows the Brain its own history.
-//
-// The release screenshot of this route is only worth publishing if the screen
-// is populated, and "populated" here means four separate things that fail
-// independently: a curve with a handle on it, a grid with clickable days, a
-// day's story split into named groups, and — only when the handle is in the
-// past — the rewind panel reading `as-of`. The mock server serves a fixed
-// eight-week history so all four are deterministic.
 
 async function openChronicle(page, { mode = "basic" } = {}) {
   await bypassProductFlow(page, { mode });
@@ -20,17 +12,12 @@ test("the chronicle renders a populated history, not an empty state", async ({ p
   const errors = trackPageErrors(page);
   await openChronicle(page);
 
-  // The growth curve drew something: an empty `d` is what a broken series looks
-  // like, and it is invisible in a screenshot because the panel still has its
-  // frame, its title and its axis labels.
   const area = page.locator(".chronicle-growth-area");
   await expect(area).toHaveAttribute("d", /^M .+ L /);
 
-  // The grid has real days in it.
   const cells = page.getByTestId("chronicle-heatmap-cell");
   expect(await cells.count()).toBeGreaterThan(30);
 
-  // And the day's story is grouped the way a person reads it.
   const story = page.getByTestId("chronicle-day");
   await expect(story).toBeVisible();
   for (const group of ["자료", "새로 생긴 개념", "나눈 대화", "달라진 사실"]) {
@@ -45,10 +32,8 @@ test("the time handle is a named, keyboard-operable slider", async ({ page }) =>
 
   const slider = page.getByRole("slider", { name: "시점 고르기" });
   await expect(slider).toBeVisible();
-  // It opens on the most recent day, so `aria-valuenow` sits at the maximum.
   const max = await slider.getAttribute("aria-valuemax");
   await expect(slider).toHaveAttribute("aria-valuenow", max);
-  // The announced value is the state of the Brain that day, not a bare index.
   await expect(slider).toHaveAttribute("aria-valuetext", /\d{4}-\d{2}-\d{2}/);
 
   const before = await page.getByTestId("chronicle-scrubber-date").textContent();
@@ -62,8 +47,6 @@ test("standing in the past shows the Brain as it was, and a way back to now", as
   const errors = trackPageErrors(page);
   await openChronicle(page);
 
-  // No rewind panel while the handle is on the latest day: "the Brain as it was
-  // right now" would be a panel saying nothing.
   await expect(page.getByTestId("chronicle-rewind")).toHaveCount(0);
 
   await page.getByRole("slider", { name: "시점 고르기" }).focus();
@@ -72,8 +55,6 @@ test("standing in the past shows the Brain as it was, and a way back to now", as
   const rewind = page.getByTestId("chronicle-rewind");
   await expect(rewind).toBeVisible();
   await expect(page.getByTestId("chronicle-rewind-entities")).toHaveText("148");
-  // The one sentence that keeps the screen from contradicting itself: this
-  // count includes documents, the curve's "개념" lane does not.
   await expect(rewind).toContainText("세는 방식이 달라요");
   await expect(rewind.getByRole("button", { name: /Lattice Workspace/ })).toBeVisible();
 

@@ -1,5 +1,3 @@
-//! Permissions, registry, diagnostics, and document-create tools.
-
 use std::collections::BTreeSet;
 
 use axum::extract::State;

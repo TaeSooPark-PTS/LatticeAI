@@ -1,5 +1,3 @@
-//! Cross-tier memory reports (`manager`, `inspect`, `tiers`).
-
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -9,7 +7,6 @@ use super::snapshot::{brain_readiness, json, source_row, sum_counts, Snapshot};
 use super::{TIERS, WORKSPACE_KINDS};
 use crate::memory_api::wsos;
 
-/// `MemoryManagerMixin.manager` — the report every other surface rests on.
 pub fn manager(snapshot: &Snapshot, graph_enabled: bool, now: &str) -> OrderedMap {
     let node_total = snapshot
         .stats
@@ -19,9 +16,6 @@ pub fn manager(snapshot: &Snapshot, graph_enabled: bool, now: &str) -> OrderedMa
         .stats
         .as_ref()
         .and_then(|stats| sum_counts(stats.get("edges")));
-    // `vector_counts` is not a key `index_status()` produces, and neither are
-    // `indexed` / `ready` — so a live store answers `None` here. Reproduced as
-    // it is, not as it reads: the Vector row's `count` is genuinely null.
     let vector_total: Option<i64> = snapshot.index.as_ref().and_then(|index| {
         match index.get("vector_counts").and_then(Value::as_object) {
             Some(counts) => Some(counts.values().filter_map(Value::as_i64).sum()),
@@ -69,9 +63,6 @@ pub fn manager(snapshot: &Snapshot, graph_enabled: bool, now: &str) -> OrderedMa
             "Conversation Memory",
             Value::from(snapshot.scoped_conversations.len() as i64),
             conv_bytes,
-            // The durable conversation store is always wired in this build, so
-            // the tier is `ok` even with nothing in it — the JSON-file fallback
-            // is the only branch that could read `empty`.
             "ok",
             "Historical interaction memory from chat.",
             None,
@@ -178,7 +169,6 @@ pub fn manager(snapshot: &Snapshot, graph_enabled: bool, now: &str) -> OrderedMa
     out
 }
 
-/// `_manager_recent_memories` — the first `limit` of workspace + project.
 fn recent_memories(snapshot: &Snapshot, limit: usize) -> Value {
     let mut rows = Vec::new();
     for item in snapshot
@@ -232,12 +222,10 @@ fn recent_memories(snapshot: &Snapshot, limit: usize) -> Value {
     Value::Array(rows)
 }
 
-/// `str(item.get(key) or "")` — the reading Python takes everywhere here.
 pub fn text_or<'a>(item: &'a Value, key: &str, default: &'a str) -> &'a str {
     item.get(key).and_then(Value::as_str).unwrap_or(default)
 }
 
-/// `item.get(key) or fallback` on a string field.
 pub fn nonempty_or(item: &Value, key: &str, fallback: &str) -> String {
     item.get(key)
         .and_then(Value::as_str)
@@ -246,7 +234,6 @@ pub fn nonempty_or(item: &Value, key: &str, fallback: &str) -> String {
         .to_string()
 }
 
-/// `MemoryRecallMixin.tiers`.
 pub fn tiers() -> OrderedMap {
     let mut out = OrderedMap::new();
     out.insert(
@@ -265,7 +252,6 @@ pub fn tiers() -> OrderedMap {
     out
 }
 
-/// `MemoryRecallMixin.inspect` — `None` for a source the service does not know.
 pub fn inspect(snapshot: &Snapshot, source: &str, limit: i64) -> Option<OrderedMap> {
     let cap = limit.max(0) as usize;
     let mut out = OrderedMap::new();

@@ -29,8 +29,6 @@ use super::*;
 pub(super) const GRAPH_EXPORT_ENTRY: &str = "graph_export.json";
 pub(super) const SQLITE_ENTRY: &str = "knowledge_graph.sqlite";
 
-// ── Encrypted .latticebrain Archive Handlers ────────────────────────────────
-
 pub(crate) async fn encrypted_archive(
     State(state): State<PortabilityState>,
     headers: HeaderMap,
@@ -262,8 +260,6 @@ pub(super) fn missing_archive(path: &str) -> Response {
         &format!("Brain archive not found: {path}"),
     )
 }
-
-// ── Archive Creation, Inspection, Verification & Restore Implementation ──────
 
 fn build_and_write_encrypted_archive(
     state: &PortabilityState,
@@ -605,7 +601,6 @@ fn execute_archive_restore(
         return Ok(map);
     }
 
-    // Create automatic pre-restore backup before any mutation.
     let exports = state.exports_dir();
     std::fs::create_dir_all(&exports).map_err(|e| e.to_string())?;
     let pre_restore_path = exports.join(format!("kg-pre-restore-{}.zip", stamp()));
@@ -616,7 +611,6 @@ fn execute_archive_restore(
         match apply_decrypted_payload(state, &decrypted.plaintext, &decrypted.manifest, mode) {
             Ok(res) => res,
             Err(err) => {
-                // Attempt rollback from pre-restore backup so DB is never left half-restored.
                 if pre_restore_path.exists() {
                     let _ = restore_backup_zip(state, &pre_restore_path, false);
                 }

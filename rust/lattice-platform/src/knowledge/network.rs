@@ -1,10 +1,3 @@
-//! Peer network sync — native port of `latticeai/api/network.py`.
-//!
-//! `POST /network/receive` authenticates paired devices by Ed25519 signature
-//! (no session). Everything else is a signed-in user; pairing and push are
-//! owner actions (`require_admin`). Device identity lives in
-//! `device_identity.key`, the same state file Python uses.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -27,7 +20,6 @@ use sha2::{Digest, Sha256};
 
 use crate::http_reply::{detail, json_ok, missing_fields, now_iso_utc, parse_json_object};
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/network/identity"),
     ("GET", "/network/peers"),
@@ -43,12 +35,6 @@ const HEADER_TIMESTAMP: &str = "x-lattice-timestamp";
 const HEADER_NONCE: &str = "x-lattice-nonce";
 const HEADER_SIGNATURE: &str = "x-lattice-signature";
 
-/// Router state: auth, the data dir, and the native graph writer.
-///
-/// There is no worker seam here any more: a received bundle is imported by
-/// [`lattice_core::graph_write::GraphWriter::import_graph_data`], and the
-/// `/worker/graph/mutate` delegation that used to stand behind it was retired
-/// with the Python write door in v11.6.0.
 #[derive(Clone)]
 pub struct NetworkState {
     pub auth: Arc<AuthState>,
@@ -76,7 +62,6 @@ impl NetworkState {
     }
 }
 
-/// Build the peer-network router.
 pub fn router(state: NetworkState) -> Router {
     Router::new()
         .route("/network/identity", get(network_identity))
@@ -241,10 +226,6 @@ async fn network_receive(
                     Err(err) => detail(StatusCode::BAD_GATEWAY, &err.to_string()),
                 }
             } else {
-                // No native writer ⇒ no graph on this install. There is no
-                // second writer to ask: the worker's `/worker/graph/mutate`
-                // seam was retired in v11.6.0 and every import lands in
-                // `GraphWriter::import_graph_data` above.
                 detail(
                     StatusCode::BAD_REQUEST,
                     "Invalid Knowledge Graph export artifact.",
@@ -255,7 +236,6 @@ async fn network_receive(
     }
 }
 
-/// Installation Ed25519 keypair. Private key never leaves the machine.
 pub struct DeviceIdentity {
     signing: SigningKey,
     storage: &'static str,
@@ -342,7 +322,6 @@ impl DeviceIdentity {
     }
 }
 
-/// `brain_peers.json` — the same pairing file Python writes.
 pub struct PeerRegistry {
     path: PathBuf,
     seen_nonces: Mutex<HashMap<String, f64>>,
@@ -417,8 +396,6 @@ impl PeerRegistry {
         Ok(peer)
     }
 
-    /// Drop a peer. `None` is "no such peer" — the one failure, so there is
-    /// nothing for an error type to carry.
     pub fn remove_peer(&self, peer_id: &str) -> Option<OrderedMap> {
         let peers = self.load();
         let kept: Vec<OrderedMap> = peers

@@ -1,12 +1,3 @@
-"""Runtime hooks for the knowledge graph package.
-
-Supports scoped dependency injection via :func:`llm_router_scope` (backed by a
-``ContextVar``) for multi-instance and isolated testing, while keeping the
-process-level :func:`set_llm_router` / :func:`get_llm_router` contract and
-exposing :func:`require_llm_router` for callers that need an explicit
-initialization guard.
-"""
-
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -33,7 +24,6 @@ def get_llm_router() -> Optional[Any]:
 
 
 def require_llm_router() -> Any:
-    """Return the active LLM router or raise ``RuntimeError`` if uninitialized."""
     router = get_llm_router()
     if router is None:
         raise RuntimeError(
@@ -44,7 +34,6 @@ def require_llm_router() -> Any:
 
 @contextmanager
 def llm_router_scope(router_instance: Any) -> Iterator[Any]:
-    """Bind a scoped LLM router for the duration of a ``with`` block."""
     token = _scoped_llm_router.set(router_instance)
     try:
         yield router_instance

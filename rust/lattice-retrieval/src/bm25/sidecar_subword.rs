@@ -1,6 +1,3 @@
-//! Subword embedding cache, memory footprint accounting, and edge-adjacency sync
-//! methods on [`super::Bm25SidecarIndex`].
-
 use std::collections::HashMap;
 
 use lattice_core::{CoreError, FallbackTextEmbedder, NodeRow};
@@ -40,7 +37,6 @@ fn dot_f32_f64(doc_vec: &[f32], query_vec: &[f64]) -> f64 {
 }
 
 impl Bm25SidecarIndex {
-    /// Clone only the requested `NodeRow` entries by id (O(|ids|), avoiding full-corpus clone).
     pub fn clone_nodes_by_ids(&self, ids: &[String]) -> HashMap<String, NodeRow> {
         let mut out = HashMap::with_capacity(ids.len());
         for id in ids {
@@ -51,7 +47,6 @@ impl Bm25SidecarIndex {
         out
     }
 
-    /// True if all active documents already have cached subword embeddings.
     pub fn subword_ready(&self) -> bool {
         self.docs
             .iter()
@@ -59,8 +54,6 @@ impl Bm25SidecarIndex {
             .all(|doc| doc.subword_embedding.is_some())
     }
 
-    /// Precompute subword fallback embeddings ONLY for nodes missing one (incremental on change).
-    /// Returns the number of newly computed node embeddings.
     pub fn ensure_subword_embeddings(&mut self) -> usize {
         if self.subword_ready() {
             return 0;
@@ -80,7 +73,6 @@ impl Bm25SidecarIndex {
         computed
     }
 
-    /// Compute subword cosine similarities only for the specified seed `ids`.
     pub fn subword_similarity_for_ids(
         &self,
         query_vec: &[f64],
@@ -104,7 +96,6 @@ impl Bm25SidecarIndex {
         out
     }
 
-    /// Score cached subword embeddings without cloning the corpus; clones only the top `limit` hits.
     pub fn score_subword_query(
         &self,
         query_vec: &[f64],
@@ -140,7 +131,6 @@ impl Bm25SidecarIndex {
             .collect()
     }
 
-    /// Estimate approximate resident memory footprint in bytes for cache eviction accounting.
     pub fn estimated_memory_bytes(&self) -> usize {
         let mut bytes = std::mem::size_of::<Self>();
         bytes += self.docs.capacity() * std::mem::size_of::<Option<SidecarDoc>>();
@@ -176,7 +166,6 @@ impl Bm25SidecarIndex {
         bytes
     }
 
-    /// Sync in-memory graph edge adjacency cache from SQLite `edges` when changed.
     pub fn sync_edges_from_conn(&mut self, conn: &Connection) -> Result<(), CoreError> {
         let token = conn_sync_token(conn, 0, false)?;
         if self.edges_sync_token.as_ref() == Some(&token) {

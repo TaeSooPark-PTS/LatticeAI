@@ -1,23 +1,3 @@
-//! A whole run driven by a ~2B local model, end to end.
-//!
-//! Every trajectory in `trajectories.json` runs `standard`: Python's generator
-//! never passed an `executing_model`, so `profile_for_model(None)` answered
-//! `standard` for all ten and the `compact` dial — the shorter window, the
-//! earlier escalation, the direct-path fallback — was pinned only by unit
-//! tests of its parts. Nothing proved the parts composed.
-//!
-//! This is that proof, for the model the product actually recommends at the
-//! 8GB tier. The reasoner is scripted with the two replies a 2B model really
-//! sends — prose wrapped around a fenced action, then a tool-call tag around
-//! an object the token limit cut off — and the run has to reach `DONE` with
-//! the file on disk **without** the direct-path fallback firing. The fallback
-//! is the honest last resort; a release where it is the *usual* path is a
-//! release where tool calling does not work.
-//!
-//! The case lives in `rust/fixtures/agent_loop/golden/trajectories_compact.json`
-//! and is a **native** record, not a Python one — there is no Python loop left
-//! to record one. `FROZEN.md` says so beside it.
-
 mod common;
 
 use common::{loop_deps, loop_golden, loop_request, start_replay_worker};
@@ -65,8 +45,6 @@ async fn a_two_billion_parameter_model_drives_the_loop_to_done() {
     let mut runtime = Runtime::new(loop_deps(&server, workspace.clone()));
     let mut request = loop_request(case["message"].as_str().expect("message"));
     request.executing_model = case["executing_model"].as_str().map(String::from);
-    // The dial is derived, never injected: this asserts the *model id* reaches
-    // the compact profile, which is the whole of the v11.9.0 §1 fix.
     assert_eq!(
         runtime.profile(request.executing_model.as_deref()).name,
         "compact",
@@ -91,15 +69,12 @@ async fn a_two_billion_parameter_model_drives_the_loop_to_done() {
         "transcript: {}",
         serde_json::to_string_pretty(&ctx.transcript).unwrap_or_default()
     );
-    // The file, byte for byte. A run that reached DONE without it would be the
-    // exact dishonesty the verify gate exists to prevent.
     let path = case["file"]["path"].as_str().expect("path");
     assert_eq!(
         std::fs::read_to_string(workspace.root().join(path)).expect("the file must exist"),
         case["file"]["content"].as_str().expect("content"),
     );
 
-    // Each reply needed the rung the case says it needed, in order.
     let repairs: Vec<Value> = ctx
         .trace
         .events
@@ -116,9 +91,6 @@ async fn a_two_billion_parameter_model_drives_the_loop_to_done() {
         "the parse rungs that fired differ"
     );
 
-    // The fallback did not fire, and neither did a parse failure: the model
-    // stayed on contract because the prompt finally told it what the contract
-    // was, and the parse chain read what it sent back.
     assert!(
         ctx.transcript
             .iter()
@@ -140,9 +112,6 @@ async fn a_two_billion_parameter_model_drives_the_loop_to_done() {
 
 #[tokio::test]
 async fn the_compact_run_is_told_the_contract_it_is_being_held_to() {
-    // The other half of the same fix: what the model was actually sent. A run
-    // whose executor prompt is blank cannot be said to have "failed to follow
-    // the format".
     let case = compact_case();
     let dir = scratch("prompt");
     let workspace = Workspace::new(dir.join("agent_workspace")).expect("workspace");
@@ -179,7 +148,6 @@ async fn the_compact_run_is_told_the_contract_it_is_being_held_to() {
         "{executor}"
     );
     assert!(executor.contains("<!doctype html>"), "{executor}");
-    // Compact: no prose preamble, no conversation block, no written-files hint.
     assert!(!executor.contains("You are the executor"), "{executor}");
     assert!(!executor.contains("Recent conversation:"), "{executor}");
     let second = asks.get(2).expect("a second executor turn");

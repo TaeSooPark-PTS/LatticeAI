@@ -1,9 +1,3 @@
-//! Project-session CRUD — native port of `latticeai/api/project_sessions.py`.
-//!
-//! Storage is the same on-disk contract Python serves today: one JSON file per
-//! session under `<data_dir>/project_sessions/`. A live install migrates in
-//! place.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -22,7 +16,6 @@ use lattice_core::db::RuntimeConfig;
 use lattice_core::messages;
 use serde_json::{json, Value};
 
-/// Mounted (method, path) pairs — the OpenAPI contract assertion table.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/projects"),
     ("POST", "/api/projects"),
@@ -36,7 +29,6 @@ const SESSION_ID_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrst
 const PROJECT_STATUSES: &[&str] = &["active", "archived"];
 const MAX_TODOS: usize = 100;
 
-/// What the router needs: auth + the data dir that holds `project_sessions/`.
 #[derive(Clone)]
 pub struct ProjectSessionsState {
     pub auth: Arc<AuthState>,
@@ -56,7 +48,6 @@ impl ProjectSessionsState {
     }
 }
 
-/// Build the project-session router.
 pub fn router(state: ProjectSessionsState) -> Router {
     Router::new()
         .route("/api/projects", get(list_projects).post(create_project))
@@ -233,8 +224,6 @@ fn email_or_none(email: &str) -> Option<&str> {
     }
 }
 
-/// Authenticated callers default to the personal workspace, matching the
-/// product's workspace gate when no `X-Workspace-Id` is sent.
 fn workspace_of(headers: &HeaderMap) -> Option<String> {
     lattice_auth::workspace_scope_from_request(headers, None).or_else(|| Some("personal".into()))
 }
@@ -259,7 +248,6 @@ fn parse_create(bytes: &[u8]) -> Result<(String, String), Response> {
     }
 }
 
-/// `(title, goal, status)` — each present only when the PATCH body named it.
 type UpdateFields = (Option<String>, Option<String>, Option<String>);
 
 fn parse_update(bytes: &[u8]) -> Result<UpdateFields, Response> {
@@ -569,7 +557,6 @@ fn civil_utc(secs: u64) -> String {
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}")
 }
 
-/// Howard Hinnant's civil-from-days, days since 1970-01-01.
 fn civil_from_days(days: i64) -> (i32, u32, u32) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;

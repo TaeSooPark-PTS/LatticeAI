@@ -135,7 +135,6 @@ export function RecommendationScreen({
         </div>
       </header>
 
-      {/* Hero card is the main star of the screen */}
       {items[0] ? (
         <section className="ritual-primary-hero-card" aria-labelledby="recommend-primary-name">
           <div className="ritual-hero-topline">
@@ -174,7 +173,6 @@ export function RecommendationScreen({
         </section>
       ) : null}
 
-      {/* Other choices are collapsed in <details> by default */}
       {items.length > 1 ? (
         <details className="ritual-alternatives-details">
           <summary id="recommend-alternatives" className="ritual-alternatives-title cursor-pointer">

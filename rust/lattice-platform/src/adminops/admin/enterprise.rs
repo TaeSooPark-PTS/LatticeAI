@@ -1,5 +1,3 @@
-//! Community-edition enterprise stubs and product hardening.
-
 use std::path::Path;
 
 use lattice_auth::OrderedMap;
@@ -142,15 +140,6 @@ pub fn default_product_hardening(
     default_product_hardening_probed(data_dir, host, port, auth_required, &which)
 }
 
-/// [`default_product_hardening`] with the executable probe injected.
-///
-/// `python_available` / `docker_available` are the only two fields in this
-/// document that read the *machine* rather than the configuration, so they are
-/// the only two a replay test cannot control: the Python oracle recorded them
-/// on a developer laptop that had both installed, and a CI container without
-/// Docker then fails the fixture over a host property rather than over
-/// anything the handler does. Tests supply their own probe here; production
-/// goes through [`default_product_hardening`], which passes [`which`].
 pub fn default_product_hardening_probed(
     data_dir: &Path,
     host: &str,
@@ -348,8 +337,6 @@ fn which(name: &str) -> bool {
         .unwrap_or(false)
 }
 
-// ── P3 Tenant Isolation & Organization Governance Contracts ──────────────────
-
 const ORG_POLICIES_FILE: &str = "org_governance_policies.json";
 const DEFAULT_TENANT_SCOPE: &str = "personal";
 const SENSITIVE_AUDIT_KEYS: &[&str] = &[
@@ -470,7 +457,6 @@ pub fn save_org_governance_policy(
     Ok(stored)
 }
 
-/// Enforce strict workspace/tenant isolation boundary and audit any violation.
 pub fn validate_tenant_scope(
     data_dir: &Path,
     actor_workspace: Option<&str>,

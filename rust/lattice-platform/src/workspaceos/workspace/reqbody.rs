@@ -1,63 +1,32 @@
-//! Request bodies for this family's fourteen pydantic models.
-//!
-//! `lattice_auth::body::parse_model` covers a flat model of strings, which is
-//! every model in `api/auth.py`. The workspace models are not flat: they carry
-//! `Dict`, `List[Dict]`, `bool` and `int` fields with defaults, so they need a
-//! validator that knows those shapes. The *report* is the same contract —
-//! FastAPI's `{"detail": [{"type", "loc", "msg", "input"}, …]}`, one entry per
-//! bad field in **field-declaration order** — because `friendlyError` in
-//! `frontend/src/api/base.ts` reads it.
-//!
-//! What is pinned by fixtures is the `missing` entry, and it is reproduced
-//! exactly (including `input` being the whole body). The wrong-*type* entries
-//! use pydantic v2's type names (`string_type`, `dict_type`, `list_type`,
-//! `bool_type`, `int_type`) and its messages; no fixture records one, so they
-//! are stated as a best-faith match rather than a proven one.
-
 use axum::http::StatusCode;
 use axum::response::Response;
 use lattice_auth::response::json_response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Map, Value};
 
-/// What a model field accepts, and what it falls back to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
-    /// `str` — required, no default.
     RequiredStr,
-    /// `str = "<default>"`.
     StrDefault(&'static str),
-    /// `Optional[str] = None`.
     OptionalStr,
-    /// `Dict = {}`.
     Dict,
-    /// `Optional[Dict] = None`.
     OptionalDict,
-    /// `List[...] = []`.
     List,
-    /// `bool = <default>`.
     Bool(bool),
-    /// `Optional[bool] = None`.
     OptionalBool,
-    /// `int = <default>`.
     Int(i64),
 }
 
-/// One declared field of a model.
 #[derive(Debug, Clone, Copy)]
 pub struct Field {
-    /// The field name, which is also its `loc` tail.
     pub name: &'static str,
-    /// What it accepts.
     pub kind: Kind,
 }
 
-/// Declare one field.
 pub const fn field(name: &'static str, kind: Kind) -> Field {
     Field { name, kind }
 }
 
-/// A validated body: every declared field, defaulted where absent.
 #[derive(Debug, Clone, Default)]
 pub struct Body {
     values: Map<String, Value>,
@@ -65,12 +34,10 @@ pub struct Body {
 }
 
 impl Body {
-    /// A string field. Absent/`null` reads as its default (`""` for optionals).
     pub fn str(&self, name: &str) -> &str {
         self.values.get(name).and_then(Value::as_str).unwrap_or("")
     }
 
-    /// An optional string: `None` when the caller sent nothing or `null`.
     pub fn opt_str(&self, name: &str) -> Option<&str> {
         self.values
             .get(name)
@@ -78,12 +45,10 @@ impl Body {
             .filter(|text| !text.is_empty() || self.sent.iter().any(|key| key == name))
     }
 
-    /// The raw value of a field, defaulted.
     pub fn value(&self, name: &str) -> Value {
         self.values.get(name).cloned().unwrap_or(Value::Null)
     }
 
-    /// A `Dict` field.
     pub fn dict(&self, name: &str) -> Value {
         match self.values.get(name) {
             Some(Value::Object(map)) => Value::Object(map.clone()),
@@ -91,7 +56,6 @@ impl Body {
         }
     }
 
-    /// A `List` field.
     pub fn list(&self, name: &str) -> Vec<Value> {
         match self.values.get(name) {
             Some(Value::Array(items)) => items.clone(),
@@ -99,7 +63,6 @@ impl Body {
         }
     }
 
-    /// A `bool` field.
     pub fn bool(&self, name: &str) -> bool {
         self.values
             .get(name)
@@ -107,21 +70,16 @@ impl Body {
             .unwrap_or(false)
     }
 
-    /// An `int` field.
     pub fn int(&self, name: &str) -> i64 {
         self.values.get(name).and_then(Value::as_i64).unwrap_or(0)
     }
 
-    /// Whether the caller sent this key at all (an explicit `null` counts).
     pub fn present(&self, name: &str) -> bool {
         self.sent.iter().any(|key| key == name)
     }
 }
 
-/// Parse and validate one request body against a model's fields.
 pub fn parse(bytes: &[u8], fields: &[Field]) -> Result<Body, Response> {
-    // An empty body is `{}` to FastAPI only when every field has a default;
-    // otherwise it reports the missing ones, which is what this does anyway.
     let parsed: Value = if bytes.is_empty() {
         json!({})
     } else {
@@ -231,11 +189,6 @@ fn coerce(kind: Kind, supplied: Option<&Value>) -> Result<Option<Value>, Refusal
     }
 }
 
-/// `{"detail": [{"type": "missing", "loc": ["query", name], …}]}`.
-///
-/// The one query-parameter model in this family (`q` on the memory search) is
-/// declared without a default, so FastAPI reports it exactly like a body field
-/// except that `loc` starts at `"query"` and `input` is `null`.
 pub fn missing_query_parameter(name: &str) -> Response {
     errors(&[problem(
         "missing",

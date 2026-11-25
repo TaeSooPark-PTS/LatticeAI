@@ -1,22 +1,6 @@
-/* ── 10.10.0: the quiet station's new furniture ──────────────────────────
-   Four instruments, one philosophy: the canvas holds the composer; everything
-   else is an affordance that blooms on demand.
 
-     1. the stats badge   — "기억 · 주제" as a chip; the summary graph lives in
-                            its hover/click popover (.brain-hero-stats)
-     2. the + menu        — 문서 · 이미지 · 파일 · 폴더 · 노트 · 웹 fold behind
-                            one Add control on the composer (.brain-attach)
-     3. the model pill    — "모델 준비 필요" as a status pill with the one
-                            accented CTA (.brain-model-missing, reshaped)
-     4. the dock          — 대화 · 통계 · 기억 지도 on a rail that opens a
-                            drawer, left on desktop, bottom on touch widths
-                            (.brain-home-dock, .brain-home-drawer)
 
-   Loads after home-simple.css and before responsive.css: it owns these four
-   components everywhere they appear, and home-simple stays the authority on
-   the station's bones. */
 
-/* ── 1. the stats badge ─────────────────────────────────────────────────── */
 
 .brain-hero-stats {
   position: relative;
@@ -164,7 +148,7 @@
   }
 }
 
-/* ── 2. the + menu ──────────────────────────────────────────────────────── */
+
 
 .brain-attach {
   position: relative;
@@ -241,11 +225,9 @@
   }
 }
 
-/* ── 3. the model pill ──────────────────────────────────────────────────── */
 
-/* Reshapes the banner in styles.css into a status pill: auto width, no rule
-   line, the full sentence on the tooltip/accessible name. The CTA inside it is
-   one of the two places on the home allowed to wear the accent. */
+
+
 .brain-model-missing {
   width: auto;
   max-width: 100%;
@@ -277,13 +259,12 @@
   margin: 0;
 }
 
-/* In a live conversation the pill floats centred above the composer instead of
-   spanning it. */
+
 .has-messages .brain-model-missing {
   margin: 0.4rem auto 0;
 }
 
-/* ── 4. the dock and its drawer ─────────────────────────────────────────── */
+
 
 .brain-home-dock {
   position: relative;
@@ -349,9 +330,7 @@
   color: hsl(var(--primary));
 }
 
-/* The rail stays in the reading path — a labeled continuity bar under the
-   composer, not a floating column on the canvas edge. A side rail was easy
-   to miss; "지난 대화" in the flow is the one-interaction resume. */
+
 
 .brain-home-dock-rail > button:focus-visible {
   outline: none;
@@ -480,12 +459,7 @@
   color: hsl(var(--foreground));
 }
 
-/* A flex column, not a grid: as grid rows inside this portaled scroll
-   container, the nested-grid panels (.brain-care-panel family — themselves
-   `display: grid` with `overflow: hidden` and a backdrop-filter) resolved
-   their rows to 2px and clipped their own buttons unreachable. Flex sizes
-   every panel by its content; `flex: none` keeps the last one from being
-   squashed when the column runs long. */
+
 .brain-home-drawer-body {
   display: flex;
   flex: 1;
@@ -500,8 +474,7 @@
   flex: none;
 }
 
-/* The panels inside were drawn for the old insights popover; the same width
-   discipline applies in the drawer. */
+
 .brain-home-drawer-body .brain-rings {
   border-radius: var(--experience-radius);
   background: hsl(var(--muted) / 0.28);
@@ -541,17 +514,12 @@
   background: hsl(var(--muted));
 }
 
-/* Short screens: the drawer keeps its own scroll, the head stays pinned. */
+
 .brain-home-drawer-head {
   flex: none;
 }
 
-/* ── 5. the 기능 drawer: the opt-in switchboard ─────────────────────────────
-   One column of rows, each a sentence and a switch. No card chrome per row —
-   the drawer already is the surface, and ten bordered cards would read as ten
-   competing decisions. Jade is the *only* colour that moves: it appears on the
-   track of a switch that is on, and nowhere else, so a glance down the column
-   answers "what is on here" without reading a word. */
+
 
 .brain-features-panel {
   display: flex;
@@ -600,8 +568,7 @@
   box-shadow: inset 0 1px 0 hsl(var(--border) / 0.34);
 }
 
-/* A sub-switch is indented and hung off a hairline, so "this belongs to the
-   one above" is structural rather than something the copy has to say twice. */
+
 .brain-feature-row.is-child {
   padding-left: 1.55rem;
   position: relative;
@@ -653,9 +620,7 @@
   line-height: 1.5;
 }
 
-/* The caution line is a quiet amber note, not an alarm: this is a setting a
-   person may well want, and shouting at them about it is how warnings stop
-   being read. */
+
 .brain-feature-caution {
   display: flex;
   align-items: flex-start;
@@ -685,8 +650,7 @@
   cursor: pointer;
 }
 
-/* Busy is a cursor, never `disabled`: disabling blurs the button and takes the
-   drawer's Escape handler with it. */
+
 .brain-features-panel[aria-busy="true"] .brain-feature-switch {
   cursor: progress;
 }
@@ -774,8 +738,7 @@
   color: hsl(var(--foreground));
 }
 
-/* Shown, disabled, with the reason in the tooltip — an option that is hidden
-   is a mystery, and one that looks live is a lie. */
+
 .brain-feature-choices > button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -866,16 +829,13 @@
   opacity: 0.5;
 }
 
-/* Touch widths: the switch keeps its size, the copy gets the rest, and the
-   choice pills wrap under their row rather than squeezing the sentence. */
+
 @media (max-width: 560px) {
   .brain-feature-row {
     flex-wrap: wrap;
   }
 
-  /* `flex: 1 1 100%`, not `flex: none`: a `none` box sizes to its max-content
-     row, so the pills never reach their own `flex-wrap` and the whole group
-     hangs past the drawer's edge. Given the full row they wrap as intended. */
+  
   .brain-feature-choices {
     flex: 1 1 100%;
     justify-content: flex-start;

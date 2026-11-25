@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""Deterministic retrieval & HNSW sidecar benchmark baseline gate.
-
-Measures offline recall@10 and p95 query/incremental-refresh latency on a
-synthetic normalized embedding corpus so CI catches recall drops or latency
-regressions before release.
-"""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
-import random
 import sqlite3
 import struct
 import sys
@@ -24,7 +18,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from latticeai.core.vector_index.sidecar import (  # noqa: E402
+from latticeai.core.vector_index.sidecar import (
     query_sidecar,
     reset_sidecar_cache,
 )
@@ -39,8 +33,12 @@ MAX_QUERY_P95_MS = 50.0
 MAX_INCREMENTAL_REFRESH_MS = 250.0
 
 
-def _unit_vec(rng: random.Random, dim: int) -> List[float]:
-    raw = [rng.gauss(0.0, 1.0) for _ in range(dim)]
+def _unit_vec(seed: int, dim: int) -> List[float]:
+    raw: List[float] = []
+    for i in range(dim):
+        digest = hashlib.sha256(f"{seed}:{i}".encode("utf-8")).digest()
+        val = int.from_bytes(digest[:8], "big") / float(1 << 64)
+        raw.append(val * 2.0 - 1.0)
     norm = math.sqrt(sum(v * v for v in raw)) or 1.0
     return [v / norm for v in raw]
 
@@ -54,7 +52,6 @@ def _dot(a: List[float], b: List[float]) -> float:
 
 
 def run_benchmark() -> Dict[str, Any]:
-    rng = random.Random(42)  # noqa: S311
     with tempfile.TemporaryDirectory() as tmp:
         db_path = Path(tmp) / "knowledge_graph.sqlite"
         conn = sqlite3.connect(str(db_path))
@@ -77,7 +74,7 @@ def run_benchmark() -> Dict[str, Any]:
         rows = []
         for idx in range(CORPUS_SIZE):
             item_id = f"doc-{idx:04d}"
-            vec = _unit_vec(rng, DIM)
+            vec = _unit_vec(idx, DIM)
             vectors[item_id] = vec
             rows.append(
                 (
@@ -111,7 +108,7 @@ def run_benchmark() -> Dict[str, Any]:
         build_ms = (time.perf_counter() - build_t0) * 1000.0
         backend = build_report.get("index", "none")
 
-        query_vecs = [_unit_vec(rng, DIM) for _ in range(QUERIES)]
+        query_vecs = [_unit_vec(CORPUS_SIZE + idx, DIM) for idx in range(QUERIES)]
         latencies_ms: List[float] = []
         recalls: List[float] = []
 
@@ -155,11 +152,10 @@ def run_benchmark() -> Dict[str, Any]:
                     / float(TOP_K)
                 )
 
-        # Incremental insert + delete refresh timing when hnswlib is installed
         inc_ms = 0.0
         inc_mode = "skipped_no_hnswlib"
         if backend == "hnsw":
-            new_vec = _unit_vec(rng, DIM)
+            new_vec = _unit_vec(CORPUS_SIZE + QUERIES, DIM)
             conn.execute(
                 "INSERT INTO vector_embeddings VALUES (?, 'node', ?, ?, ?, ?, 'hash-new', '{}', '2026-11-17T01:00:00')",
                 ("doc-new", "doc-new", _pack_f32(new_vec), DIM, MODEL_ID),

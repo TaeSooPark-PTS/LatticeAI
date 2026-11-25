@@ -1,5 +1,3 @@
-//! `POST /api/evidence/actions`.
-
 use axum::extract::{Request, State};
 use axum::response::Response;
 use axum::routing::post;
@@ -9,10 +7,8 @@ use crate::memory_api::shared::{body_str, body_str_list, json_body, ok_json, Bra
 
 use super::service;
 
-/// The (method, path) table this family mounts, in axum spelling.
 pub const MOUNTED: &[(&str, &str)] = &[("POST", "/api/evidence/actions")];
 
-/// The mountable router for `latticeai/api/evidence_actions.py`.
 pub fn router(state: BrainState) -> Router {
     Router::new()
         .route("/api/evidence/actions", post(actions))

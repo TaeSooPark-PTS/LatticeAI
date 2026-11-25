@@ -1,20 +1,5 @@
-//! Two Python primitives the ported chat code leans on constantly.
-//!
-//! `lattice-retrieval` has its own copies (`shape::truthy` / `shape::py_str`)
-//! but they are `pub` on a crate whose semantics are the retrieval layer's;
-//! these are chat's, they are four lines each, and having them here means the
-//! chat port never has to reason about which crate's definition it imported.
-//!
-//! * [`truthy`] is `bool(value)` — empty string, empty list, `0`, `null` and
-//!   `false` are all falsy. Chat asks it about a *value that may legitimately
-//!   be zero*, so `unwrap_or` defaults are wrong wherever this is right.
-//! * [`text`] is `str(value)` for the shapes JSON can hold: a string is itself
-//!   (**not** quoted), everything else renders the way `json.dumps` would,
-//!   which is what the Python code's f-strings produce for scalars.
-
 use serde_json::Value;
 
-/// `bool(value)`.
 pub fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -26,7 +11,6 @@ pub fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `str(value)` for JSON scalars — a string stays unquoted.
 pub fn text(value: &Value) -> String {
     match value {
         Value::String(text) => text.clone(),
@@ -35,7 +19,6 @@ pub fn text(value: &Value) -> String {
     }
 }
 
-/// The string at `key`, or `""` — the reading every optional field gets.
 pub fn field(value: &Value, key: &str) -> String {
     value
         .get(key)

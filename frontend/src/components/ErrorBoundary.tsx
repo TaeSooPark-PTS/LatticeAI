@@ -7,11 +7,8 @@ export type ErrorSurface = "route" | "panel";
 
 type ErrorBoundaryProps = {
   children: React.ReactNode;
-  /** Route-level pages vs. a single lazy panel inside a page. */
   surface?: ErrorSurface;
-  /** Changing this remounts a recovered tree after navigation. */
   resetKey?: string | number;
-  /** Defaults to the Vite dev flag. Tests pass it to cover both branches. */
   showDetails?: boolean;
 };
 
@@ -25,13 +22,6 @@ export function shouldShowErrorDetails(explicit?: boolean, env?: { DEV?: boolean
   return Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
 }
 
-/**
- * Contains a render exception so one panel cannot blank the whole route.
- *
- * Failures are never swallowed: `componentDidCatch` always writes
- * `console.error`. The fallback is calm, token-styled, and offers 다시 시도
- * to reset. Stack details stay collapsed and only open in dev.
- */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 
@@ -123,7 +113,6 @@ export function PanelLoader({ language }: { language: Language }) {
   );
 }
 
-/** A lazy panel: its own boundary so a throw cannot blank the rest of the page. */
 export function LazyPanel({
   children,
   language,
@@ -144,7 +133,6 @@ export function LazyPanel({
   );
 }
 
-/** A lazy route page: its own boundary so a throw cannot blank the shell. */
 export function LazyRoute({
   children,
   language: _language,

@@ -1,5 +1,3 @@
-//! 3-Way Hybrid Retrieval combining BM25F + Dense/Subword Vector + Knowledge Graph RRF.
-
 use std::collections::{HashMap, HashSet};
 
 use lattice_auth::OrderedMap;
@@ -18,7 +16,6 @@ use super::graph_rag::{expand_knowledge_graph_with_snapshot, GraphRagConfig, Gra
 use super::scoring::{Bm25fParams, Bm25fScoredNode};
 use super::sidecar_cache::with_bm25_sidecar_full_snapshot;
 
-/// Optional external semantic query embedding (e.g. from `/worker/embed` `embeddinggemma-2`).
 #[derive(Debug, Clone)]
 pub struct QueryVectorOverride {
     pub model_id: String,
@@ -26,7 +23,6 @@ pub struct QueryVectorOverride {
     pub is_hash_fallback: bool,
 }
 
-/// Options for 3-Way Hybrid BM25F + Vector + Knowledge Graph RRF search.
 #[derive(Debug, Clone)]
 pub struct GraphRagOptions {
     pub limit: i64,
@@ -41,9 +37,7 @@ pub struct GraphRagOptions {
     pub graph_config: GraphRagConfig,
     pub scope: Scope,
     pub now_secs: f64,
-    /// When false (default), retired (`superseded`/`deprecated`) nodes are excluded.
     pub include_historical: bool,
-    /// Optional provider query embedding matching `vector_embeddings` semantic models.
     pub query_embedding: Option<QueryVectorOverride>,
 }
 
@@ -68,9 +62,6 @@ impl Default for GraphRagOptions {
     }
 }
 
-/// Execute genuine 3-way **BM25F + Vector + Knowledge Graph Hybrid Retrieval (GraphRAG)**
-/// with Reciprocal Rank Fusion (RRF), CJK bigram/stem BM25F scoring, subword fallback
-/// vector similarity, and 1-hop/2-hop Knowledge Graph structural expansion.
 pub fn hybrid_bm25_vector_graph_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -102,7 +93,6 @@ pub fn hybrid_bm25_vector_graph_search(
     let snapshot =
         with_bm25_sidecar_full_snapshot(conn, &options.scope, 5_000, include_historical)?;
 
-    // 1. Channel 1: Calibrated Field-Weighted Okapi BM25F (via lock-free sidecar snapshot)
     let mut bm25_hits =
         snapshot.score_with_options(&effective_query, &options.bm25_params, include_historical);
     bm25_hits.truncate(options.bm25_limit.max(1) as usize);
@@ -112,7 +102,6 @@ pub fn hybrid_bm25_vector_graph_search(
         .unwrap_or(1.0)
         .max(1e-6);
 
-    // 2. Channel 2: Provider-Aligned Dense Vector Search + Cached Subword Fallback
     let query_input = match options.query_embedding.as_ref() {
         Some(ovr) => VectorQueryInput::Precomputed {
             model_id: &ovr.model_id,
@@ -166,7 +155,6 @@ pub fn hybrid_bm25_vector_graph_search(
         }
     }
 
-    // Augment or fall back using cached subword embeddings inside `snapshot` (zero corpus clone).
     let subword_embedder = FallbackTextEmbedder::default();
     let q_sub_vec = subword_embedder.embed(&effective_query);
     if q_sub_vec.iter().any(|v| *v != 0.0) {
@@ -206,7 +194,6 @@ pub fn hybrid_bm25_vector_graph_search(
         .unwrap_or(1.0)
         .max(1e-6);
 
-    // 3. Channel 3: Knowledge Graph 1-Hop & 2-Hop Structural Expansion
     let mut seed_map: HashMap<String, f64> = HashMap::new();
     for (rank, hit) in bm25_hits
         .iter()
@@ -270,7 +257,6 @@ pub fn hybrid_bm25_vector_graph_search(
         &extra_graph_nodes,
     );
 
-    // 4. 3-Way Reciprocal Rank Fusion (RRF) + Calibrated Normalized Score Blend
     let k = options.rrf_k.max(1) as f64;
     let w_sum = (options.bm25_weight + options.vector_weight + options.graph_weight).max(1e-6);
     let w_bm25 = options.bm25_weight / w_sum;
@@ -421,7 +407,6 @@ pub fn hybrid_bm25_vector_graph_search(
         let query_lower = effective_query.trim().to_lowercase();
         let title_lower = c.node.title.as_deref().unwrap_or("").to_lowercase();
         let summary_lower = c.node.summary.as_deref().unwrap_or("").to_lowercase();
-        // P1.3: Lightweight deterministic phrase/coverage reranker with transparent score explanation.
         let rerank_boost = if !query_lower.is_empty() && query_lower.len() >= 3 {
             if title_lower.contains(&query_lower) {
                 0.08
@@ -590,7 +575,6 @@ pub fn hybrid_bm25_vector_graph_search(
     Ok(serde_json::to_value(out).unwrap_or(Value::Null))
 }
 
-/// Run inverted-index BM25F scoring and sidecar-cached GraphRAG expansion using one lock-free snapshot.
 pub fn score_and_expand_with_sidecar(
     conn: &Connection,
     scope: &Scope,

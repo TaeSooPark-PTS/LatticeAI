@@ -1,26 +1,12 @@
-//! The local-indexing dashboard and the per-source watch controls.
-//!
-//! Port of `core/workspace_indexing.py`. Reads come from the knowledge-graph
-//! reader; the three controls **write** graph state (`set_local_source_watch`,
-//! `remove_local_source`) and therefore go over the worker seam, so they live
-//! here as request builders and the handler awaits the seam.
-//!
-//! The graph is machine-global shared state, not per-workspace: two workspaces
-//! on one install see the same indexed folders. That is stated in
-//! `WorkspaceService.SHARED_GLOBAL_AREAS` and is why none of these three
-//! controls takes a workspace scope.
-
 use serde_json::{json, Value};
 
 use super::deps::GraphReads;
 use super::pyutil::listify;
 
-/// The watcher block used when no watcher is attached.
 pub fn no_watcher() -> Value {
     json!({"available": false, "active": {}})
 }
 
-/// `build_indexing_dashboard(graph, watcher_status)`.
 pub fn build_dashboard(graph: Option<&dyn GraphReads>, watcher_status: Option<Value>) -> Value {
     let watcher = watcher_status.unwrap_or_else(no_watcher);
     let Some(graph) = graph else {
@@ -115,22 +101,18 @@ fn truthy(value: Option<&Value>) -> bool {
     }
 }
 
-/// The answer `pause` builds once the seam and the watcher have replied.
 pub fn pause_answer(source: Value, watch: Value) -> Value {
     json!({"status": "ok", "source": source, "watch": watch})
 }
 
-/// The `watch` block a paused source gets with no watcher attached.
 pub fn stopped_without_watcher(source_id: &str) -> Value {
     json!({"stopped": false, "source_id": source_id})
 }
 
-/// The `watch` block a resumed source gets with no watcher attached.
 pub fn not_watching(source_id: &str) -> Value {
     json!({"watching": false, "source_id": source_id})
 }
 
-/// The source record the resume path hands the watcher, if the graph knows it.
 pub fn source_by_id(graph: Option<&dyn GraphReads>, source_id: &str) -> Option<Value> {
     let sources = listify(
         graph?
@@ -143,7 +125,6 @@ pub fn source_by_id(graph: Option<&dyn GraphReads>, source_id: &str) -> Option<V
         .find(|item| item.get("id").and_then(Value::as_str) == Some(source_id))
 }
 
-/// `remove_source`'s answer: `{"status": "ok", **result}`.
 pub fn remove_answer(result: Value) -> Value {
     let mut merged = serde_json::Map::new();
     merged.insert("status".into(), json!("ok"));
@@ -231,7 +212,6 @@ mod tests {
         assert_eq!(source["include_ocr"], json!(false));
         assert_eq!(dashboard["totals"]["success"], json!(4));
         assert_eq!(dashboard["totals"]["failed"], json!(6));
-        // No `local_sources` in stats ⇒ the count of sources.
         assert_eq!(dashboard["totals"]["local_sources"], json!(1));
     }
 

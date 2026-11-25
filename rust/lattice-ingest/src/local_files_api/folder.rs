@@ -1,9 +1,3 @@
-//! Folder ingest: walk, fingerprint-skip, write, report.
-//!
-//! Split out of ``ingest.rs`` so the HTTP handlers stay under the line
-//! budget and the skip machinery has one home. Unchanged files never reach
-//! parse / extract / embed.
-
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -17,7 +11,6 @@ use crate::fingerprint::{self, SkipDecision};
 use crate::watch::{walk_folder, ScannedFile, WatchConfig};
 use crate::worker::{NoteIngestor, NoteSubmission};
 
-/// What one folder pass produced.
 pub(super) struct FolderOutcome {
     pub ingested: usize,
     pub duplicate: usize,

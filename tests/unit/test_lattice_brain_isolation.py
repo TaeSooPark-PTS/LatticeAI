@@ -1,13 +1,3 @@
-"""lattice_brain independence guarantees (v4.4.0 physical extraction).
-
-Two contracts, each enforced in a clean subprocess so the result cannot be
-polluted by other tests that already imported ``latticeai``:
-
-1. Importing every ``lattice_brain`` module never imports ``latticeai``.
-2. The keep-set compute surface is usable in isolation — embedder, chunking,
-   multi-modal facts, the ingestion probe — without FastAPI.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -44,7 +34,6 @@ def _run(code: str) -> subprocess.CompletedProcess:
 
 
 def test_lattice_brain_never_imports_latticeai():
-    """Fails if any lattice_brain module imports latticeai."""
     proc = _run(
         """
         import importlib
@@ -78,7 +67,6 @@ def test_lattice_brain_never_imports_latticeai():
 
 
 def test_lattice_brain_usable_in_isolation(tmp_path):
-    """Exercises the remaining compute surface with latticeai imports blocked."""
     proc = _run(
         f"""
         import sys

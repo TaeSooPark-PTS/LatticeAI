@@ -31,7 +31,6 @@ describe("AgentStepTimeline", () => {
     const timeline = screen.getByTestId("agent-step-timeline");
 
     expect(timeline.textContent).toContain("5단계 진행 중");
-    // Tool rows show "label + action · basename" from data, not copy.
     expect(timeline.textContent).toContain("write_file · notes.html");
     expect(timeline.textContent).toContain("read_file · a.txt");
     expect(timeline.textContent).toContain("not found");
@@ -65,7 +64,6 @@ describe("AgentStepTimeline", () => {
     expect(timeline.tagName).toBe("DETAILS");
     expect(timeline.open).toBe(false);
     expect(timeline.querySelector("summary")?.textContent).toContain("5단계 실행됨");
-    // The list is still in the DOM, ready to expand.
     expect(timeline.querySelectorAll(".brain-step-item").length).toBe(5);
   });
 
@@ -98,7 +96,6 @@ describe("AgentStepTimeline", () => {
     expect(timeline.textContent).toContain("상태 변경");
     expect(timeline.textContent).toContain("변경 되돌림");
     expect(timeline.textContent).toContain("계획 수립");
-    // Unknown backend additions degrade to the neutral step label.
     expect(timeline.textContent).toContain("단계");
   });
 

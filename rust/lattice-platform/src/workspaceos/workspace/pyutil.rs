@@ -1,36 +1,12 @@
-//! The Python helpers the Workspace OS store is written on top of.
-//!
-//! Port of `latticeai/core/workspace_os_utils.py` plus the two time helpers it
-//! borrows from `lattice_brain.utils`. None of these are interesting on their
-//! own; every one of them decides the exact bytes of a stored record, so they
-//! live together and are tested against the Python behaviour rather than
-//! against what a Rust author would reach for.
-//!
-//! The three that would silently diverge if written from instinct:
-//!
-//! * [`now_iso`] emits **offset-free UTC** (`YYYY-MM-DDTHH:MM:SS`), matching
-//!   both `lattice_core::graph_write::clock::SystemClock::now_iso` and Python's
-//!   `lattice_brain.utils.now_iso()`. Unifying both runtimes on offset-free UTC
-//!   keeps string-sorted timelines consistent across all host timezones.
-//! * [`py_dumps`] reproduces `json.dumps`'s *default* separators (`", "` and
-//!   `": "`), not the compact ones a REST body uses. `_json_hash` feeds its
-//!   output to sha256, so a missing space changes every generated id.
-//! * [`deep_merge`] keeps the **default's** key order and only appends keys the
-//!   loaded document adds — the shape `load_state` depends on.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
-/// Offset-free UTC timestamp (`YYYY-MM-DDTHH:MM:SS`), matching `lattice_brain.utils.now_iso()`.
 pub fn now_iso() -> String {
     iso_seconds_for(naive_local_secs_now())
 }
 
-/// The same stamp, for a caller-supplied UTC epoch second.
-///
-/// Split out so tests can pin the clock without a global.
 pub fn iso_seconds_for(secs: i64) -> String {
     let (year, month, day) = civil_from_days(secs.div_euclid(86_400));
     let time_of_day = secs.rem_euclid(86_400);
@@ -42,7 +18,6 @@ pub fn iso_seconds_for(secs: i64) -> String {
     )
 }
 
-/// Now, as UTC seconds since the epoch (`lattice_brain.utils.local_now()`).
 fn naive_local_secs_now() -> i64 {
     let utc = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -55,7 +30,6 @@ fn naive_local_secs(utc_secs: i64) -> Option<i64> {
     lattice_core::graph_write::clock::naive_local_secs(utc_secs)
 }
 
-/// Howard Hinnant's `civil_from_days`: days since 1970-01-01 → `(y, m, d)`.
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let shifted = days + 719_468;
     let era = shifted.div_euclid(146_097);
@@ -74,13 +48,6 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
     (year + i64::from(month <= 2), month, day)
 }
 
-/// `json.dumps(value, ensure_ascii=False, sort_keys=…)` with Python's
-/// **default** separators.
-///
-/// `serde_json::to_string` writes `,` and `:`; CPython writes `, ` and `: `
-/// unless `separators=` says otherwise. Only two call sites care, and both of
-/// them are contracts: `_json_hash` (record ids) and `list_workflows`'s
-/// substring query over the serialized steps.
 pub fn py_dumps(value: &Value, sort_keys: bool) -> String {
     let mut out = String::new();
     write_value(&mut out, value, sort_keys);
@@ -106,9 +73,6 @@ fn write_value(out: &mut String, value: &Value, sort_keys: bool) {
         }
         Value::Object(map) => {
             out.push('{');
-            // `json.dumps(..., sort_keys=True)` sorts; without it, insertion
-            // order is kept (this crate now compiles with `preserve_order`
-            // unified from lattice-retrieval).
             let mut entries: Vec<_> = map.iter().collect();
             if sort_keys {
                 entries.sort_by(|left, right| left.0.cmp(right.0));
@@ -126,7 +90,6 @@ fn write_value(out: &mut String, value: &Value, sort_keys: bool) {
     }
 }
 
-/// `ensure_ascii=False` string escaping: only the characters JSON requires.
 fn write_py_string(out: &mut String, text: &str) {
     out.push('"');
     for ch in text.chars() {
@@ -143,7 +106,6 @@ fn write_py_string(out: &mut String, text: &str) {
     out.push('"');
 }
 
-/// `_json_hash` — sha256 over the sorted, default-separator dump.
 pub fn json_hash(value: &Value) -> String {
     let payload = py_dumps(value, true);
     Sha256::digest(payload.as_bytes())
@@ -152,16 +114,10 @@ pub fn json_hash(value: &Value) -> String {
         .collect()
 }
 
-/// The first `n` characters of [`json_hash`] — how every id is built.
 pub fn json_hash_prefix(value: &Value, n: usize) -> String {
     json_hash(value).chars().take(n).collect()
 }
 
-/// `_safe_slug` — the workspace-id and snapshot-file name maker.
-///
-/// Python's `str.isalnum()` is Unicode-aware (a Hangul syllable is alphanumeric
-/// and survives), and so is Rust's `char::is_alphanumeric`; the two agree on
-/// every character reachable through a workspace name.
 pub fn safe_slug(raw: &str) -> String {
     let replaced: String = raw
         .trim()
@@ -183,7 +139,6 @@ pub fn safe_slug(raw: &str) -> String {
     value.chars().take(96).collect()
 }
 
-/// `_deep_merge(default, loaded)`.
 pub fn deep_merge(default: &Value, loaded: Option<&Value>) -> Value {
     match (default, loaded) {
         (Value::Object(base), Some(Value::Object(over))) => {
@@ -203,7 +158,6 @@ pub fn deep_merge(default: &Value, loaded: Option<&Value>) -> Value {
     }
 }
 
-/// `_listify` — a list, or an empty one when the value is anything else.
 pub fn listify(value: Option<&Value>) -> Vec<Value> {
     match value {
         Some(Value::Array(items)) => items.clone(),
@@ -211,7 +165,6 @@ pub fn listify(value: Option<&Value>) -> Vec<Value> {
     }
 }
 
-/// `_listify`, borrowed rather than cloned.
 pub fn listify_ref(value: Option<&Value>) -> &[Value] {
     match value {
         Some(Value::Array(items)) => items.as_slice(),
@@ -219,12 +172,10 @@ pub fn listify_ref(value: Option<&Value>) -> &[Value] {
     }
 }
 
-/// `str(value or "")` for a JSON field that Python stringifies.
 pub fn as_str(value: Option<&Value>) -> &str {
     value.and_then(Value::as_str).unwrap_or_default()
 }
 
-/// A `Value` read as Python's truthiness for the `x or default` idiom.
 pub fn or_empty_object(value: Option<&Value>) -> Value {
     match value {
         Some(Value::Object(map)) if !map.is_empty() => Value::Object(map.clone()),
@@ -287,7 +238,6 @@ mod tests {
             deep_merge(&default, Some(&loaded)),
             json!({"a": 1, "nested": {"x": 1, "y": 9, "z": 3}, "extra": true})
         );
-        // `loaded is None` keeps the default — the `if loaded is None` arm.
         assert_eq!(deep_merge(&json!({"a": 1}), None), json!({"a": 1}));
         assert_eq!(deep_merge(&json!(1), Some(&json!(2))), json!(2));
     }
@@ -305,7 +255,6 @@ mod tests {
     fn the_stamp_reads_the_way_isoformat_does() {
         assert_eq!(iso_seconds_for(0), "1970-01-01T00:00:00");
         assert_eq!(iso_seconds_for(1_786_000_000), "2026-08-06T07:06:40");
-        // A real stamp is 19 characters and parses back.
         let stamp = now_iso();
         assert_eq!(stamp.len(), 19, "{stamp}");
         assert!(lattice_core::parse_iso(Some(&stamp)).is_some());

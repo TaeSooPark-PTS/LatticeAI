@@ -53,8 +53,6 @@ fn without_a_watch_id_the_key_is_absent_rather_than_null() {
     let request = note.content_request(None, None);
     assert!(request.metadata.get("watch_id").is_none());
     assert_eq!(request.source_uri.as_deref(), Some("/root/a.txt"));
-    // An empty attribution is as absent as a missing one, so a watcher with
-    // no signed-in user never writes `owner: ""` onto a node.
     let empty = note.content_request(Some(""), Some(""));
     assert_eq!(empty.owner, None);
     assert_eq!(empty.workspace_id, None);
@@ -73,9 +71,6 @@ async fn a_markdown_note_lands_with_its_outline_as_graph_structure() {
     let dir = tempfile::tempdir().expect("tempdir");
     let graph = writer(dir.path());
     let ingestor = NoteIngestor::new(graph.clone());
-    // Each section is over `MARKDOWN_MIN_SECTION_CHARS` (200) on purpose:
-    // the chunker merges a section shorter than that forward into the next
-    // one, and a merged chunk carries only the *first* section's heading.
     let body = format!(
         "# 아키텍처\n\n{}\n\n## 저장소\n\n{}\n",
         "머리말입니다. 이 문단은 절 하나가 자기 청크를 갖도록 충분히 깁니다. ".repeat(6),
@@ -115,24 +110,17 @@ async fn a_markdown_note_lands_with_its_outline_as_graph_structure() {
         .collect();
     assert_eq!(titles, ["아키텍처", "저장소"], "one node per heading");
 
-    // `edges.type` holds the *canonical* taxonomy value; the label the
-    // writer was handed rides in `metadata.legacy_label` when the two
-    // differ. `part_of` and `has_chunk` are canonical already.
-    //
-    // The top-level section belongs to the document…
     assert!(
         rows.iter()
             .any(|(title, kind, to)| title == "아키텍처" && kind == "PART_OF" && *to == document),
         "{rows:?}"
     );
-    // …the subsection hangs off its parent section, not off the document…
     let parent = crate::sections::section_id(&document, "아키텍처", None);
     assert!(
         rows.iter()
             .any(|(title, kind, to)| title == "저장소" && kind == "PART_OF" && *to == parent),
         "{rows:?}"
     );
-    // …and each section points at the chunks it covers.
     for section in ["아키텍처", "저장소"] {
         assert!(
             rows.iter().any(|(title, kind, to)| title == section
@@ -247,8 +235,6 @@ fn errors_say_what_went_wrong_in_words() {
 async fn a_note_lands_in_the_brain_with_no_worker_in_reach() {
     let dir = tempfile::tempdir().expect("tempdir");
     let graph = writer(dir.path());
-    // No seam bound at all: the point of the fix is that an unreachable
-    // worker costs the note its concepts, never its place in the Brain.
     let ingestor = NoteIngestor::new(graph.clone());
     assert!(ingestor.seam().is_none());
     let note = NoteSubmission::from_watched_file(
@@ -300,7 +286,6 @@ async fn a_note_lands_in_the_brain_with_no_worker_in_reach() {
         .expect("read");
     assert_eq!(provenance, 1, "a watched note carries where it came from");
 
-    // Re-scanning the same file is idempotent and says so.
     let again = ingestor
         .ingest_note(&note, Some("owner@lattice.test"), Some("personal"))
         .await
@@ -314,8 +299,6 @@ async fn a_note_lands_in_the_brain_with_no_worker_in_reach() {
     assert_eq!(json["duplicate"], false);
     assert_eq!(json["provenance_id"], json!(receipt.provenance_id));
     assert_eq!(json["indexed"], receipt.indexed);
-    // The note is chunked by the *same* helper the upload door uses, so it
-    // is retrievable by passage and not only as one whole document.
     assert!(receipt.chunk_count >= 1, "{receipt:?}");
     assert_eq!(json["chunk_count"], receipt.chunk_count);
     let chunks: i64 = graph
@@ -371,7 +354,6 @@ async fn a_bad_worker_origin_is_named_rather_than_swallowed() {
         wired.seam().map(WorkerSeamClient::timeout),
         Some(DEFAULT_TIMEOUT)
     );
-    // …and a note still lands while that origin refuses every connection.
     let note = NoteSubmission::from_watched_file(dir.path(), "n.md", "본문", None);
     let receipt = wired
         .ingest_note(&note, None, None)

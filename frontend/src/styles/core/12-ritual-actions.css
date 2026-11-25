@@ -1,13 +1,4 @@
-/* The call to action keeps its arrow on the same line as its label; the time
-   estimate beside it is the part that may wrap.
 
-   `display` has to be restated here. A second `.ritual-model-choose` block
-   further down this file re-declares it as `inline-block`, and at equal
-   specificity the later one wins — so the arrow, which Tailwind's preflight
-   makes a block-level <svg>, took a line of its own. `white-space: nowrap`
-   cannot pull it back up: it governs line breaking between inline boxes, and
-   a block-level child is not one. Making this an actual flex container is
-   what puts the label and the arrow on one line. */
 .ritual-model-card.is-compact .ritual-model-choose,
 .ritual-model-card.is-compact .ritual-model-warning {
   display: inline-flex;
@@ -24,8 +15,7 @@
   cursor: default;
 }
 
-/* Back on one side, skip on the other — `.ritual-action-row` centres its
-   children, so the split needs its own modifier rather than a utility. */
+
 .ritual-action-row.is-split {
   justify-content: space-between;
 }

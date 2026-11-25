@@ -1,18 +1,5 @@
-//! When the next tick is due.
-//!
-//! One rule, kept in its own file because it is the part a reader will want to
-//! check by hand: a successful tick is followed by the configured interval, and
-//! each consecutive failure doubles that delay up to a cap. A worker that is
-//! down therefore costs one request a minute for a minute, then one every two,
-//! four, eight … up to one every ten minutes — instead of a request a minute
-//! forever against something that is not answering.
-//!
-//! The reset is on *success*, not on elapsed time: a worker that answers once
-//! has proven the thing the backoff was waiting for.
-
 use std::time::Duration;
 
-/// Doubling delay with a floor at the interval and a ceiling at the cap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Backoff {
     interval: Duration,
@@ -21,10 +8,6 @@ pub struct Backoff {
 }
 
 impl Backoff {
-    /// A backoff sitting at its healthy delay.
-    ///
-    /// A cap below the interval would mean "back off to sooner than normal";
-    /// it is raised to the interval so the delay can never shrink on failure.
     pub fn new(interval: Duration, cap: Duration) -> Self {
         Self {
             interval,
@@ -33,27 +16,22 @@ impl Backoff {
         }
     }
 
-    /// The delay before the next tick.
     pub fn delay(&self) -> Duration {
         self.current
     }
 
-    /// The healthy delay, whatever the current one is.
     pub fn interval(&self) -> Duration {
         self.interval
     }
 
-    /// Whether the delay is currently stretched by failures.
     pub fn is_backing_off(&self) -> bool {
         self.current > self.interval
     }
 
-    /// A tick answered: back to the configured interval.
     pub fn succeeded(&mut self) {
         self.current = self.interval;
     }
 
-    /// A tick failed: double the delay, never past the cap.
     pub fn failed(&mut self) {
         let doubled = self.current.checked_mul(2).unwrap_or(self.cap);
         self.current = doubled.min(self.cap);

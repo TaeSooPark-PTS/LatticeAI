@@ -1,5 +1,3 @@
-//! Chat history, VPC, and SSO config helpers.
-
 use std::path::Path;
 
 use lattice_auth::OrderedMap;
@@ -11,7 +9,6 @@ use super::internal::now_iso;
 const DEFAULT_WORKSPACE_ID: &str = "personal";
 const SSO_CALLBACK_PATH: &str = "/auth/sso/callback";
 
-/// Read `chat_history.json` (array, or `{messages|items|history: [...]}`).
 pub fn load_chat_history(data_dir: &Path) -> Vec<Value> {
     let path = data_dir.join(state_files::CHAT_HISTORY);
     let Ok(text) = std::fs::read_to_string(&path) else {

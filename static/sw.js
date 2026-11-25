@@ -1,10 +1,6 @@
-// Lattice Service Worker — PWA install + offline shell for the /app SPA.
-// Strategy: precache the Vite app bundle from its asset manifest,
-// cache-first for static assets, network-only for everything dynamic.
-const CACHE = "lattice-v1411";
+const CACHE = "lattice-v1412";
 const MANIFEST_URL = "/static/app/asset-manifest.json";
 
-// Non-manifest assets the shell needs offline.
 const SHELL = [
   "/app",
   MANIFEST_URL,
@@ -31,17 +27,13 @@ async function precache() {
     const entry = manifest.entrypoints || {};
     manifestPaths = [entry.app, ...Object.values(manifest.assets || {})]
       .filter(Boolean);
-  } catch (err) {
-    // Offline install: shell precache below still applies.
-  }
+  } catch (err) {}
   const unique = [...new Set([...SHELL, ...manifestPaths])];
   await Promise.all(unique.map(async (path) => {
     try {
       const res = await fetch(path, { cache: "no-cache" });
       if (res.ok) await cache.put(path, res);
-    } catch (err) {
-      // Missing one asset must not abort install; it just isn't offline-ready.
-    }
+    } catch (err) {}
   }));
 }
 
@@ -67,7 +59,6 @@ self.addEventListener("fetch", (e) => {
     url.pathname === "/manifest.json";
 
   if (isStatic) {
-    // Hashed filenames make cache-first safe; unhashed files revalidate.
     e.respondWith(
       caches.match(e.request).then((hit) =>
         hit ||
@@ -82,7 +73,6 @@ self.addEventListener("fetch", (e) => {
   }
 
   if (url.pathname === "/app" || url.pathname.startsWith("/app/")) {
-    // SPA shell: network-first so updates land, cache fallback for offline.
     e.respondWith(
       fetch(e.request)
         .then((res) => {
@@ -95,6 +85,4 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Everything else (APIs, auth, realtime) is dynamic: network only —
-  // serving stale API responses would fabricate state.
 });

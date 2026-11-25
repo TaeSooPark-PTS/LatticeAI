@@ -3,12 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { useGlobalFileDrop } from "./useGlobalFileDrop";
 
-/**
- * Full-viewport drag-and-drop capture. jsdom has no native DragEvent, so each
- * test dispatches a plain Event carrying the `dataTransfer` shape the handler
- * reads — which is also what lets the non-file and no-dataTransfer branches be
- * driven precisely.
- */
 
 type FakeTransfer = { types?: string[]; files?: File[]; dropEffect?: string };
 
@@ -37,7 +31,6 @@ describe("useGlobalFileDrop", () => {
     dispatch(dragEvent("dragenter", filesTransfer()));
     expect(result.current).toBe(true);
 
-    // Entering a child fires another dragenter; leaving it must not clear.
     dispatch(dragEvent("dragenter", filesTransfer()));
     dispatch(dragEvent("dragleave", filesTransfer()));
     expect(result.current).toBe(true);
@@ -53,7 +46,6 @@ describe("useGlobalFileDrop", () => {
     dispatch(dragEvent("dragenter", { types: ["text/plain"] }));
     expect(result.current).toBe(false);
 
-    // No dataTransfer at all (jsdom default, or a synthetic drag).
     dispatch(dragEvent("dragenter"));
     expect(result.current).toBe(false);
 
@@ -74,9 +66,6 @@ describe("useGlobalFileDrop", () => {
   });
 
   it("survives a dataTransfer the DOM types allow to be null on a later read", () => {
-    // TS types every `event.dataTransfer` read as nullable, and the type-check
-    // helper cannot narrow the handler's later reads — so the handler re-guards.
-    // Drive that defensive branch with a transfer that vanishes after the check.
     renderHook(() => useGlobalFileDrop(vi.fn()));
     const reads: Array<FakeTransfer | null> = [filesTransfer(), null];
     const event = new Event("dragover", { cancelable: true });

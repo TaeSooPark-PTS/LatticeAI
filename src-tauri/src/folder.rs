@@ -1,13 +1,3 @@
-//! The native folder picker behind the `select_folder` command.
-//!
-//! Runs off the main/async thread via `tokio::task::spawn_blocking`, executes
-//! `/usr/bin/osascript` by absolute path on macOS, and distinguishes OS errors
-//! (`Err`) from explicit user cancellation (`Ok(None)`).
-
-/// Ask the user for a directory.
-/// - `Ok(Some(path))` when a folder was selected
-/// - `Ok(None)` when the user canceled or the platform has no native picker
-/// - `Err(message)` when invoking the OS picker failed unexpectedly
 #[cfg(target_os = "macos")]
 pub async fn select_folder() -> Result<Option<String>, String> {
     tokio::task::spawn_blocking(|| {
@@ -40,7 +30,6 @@ pub async fn select_folder() -> Result<Option<String>, String> {
     .map_err(|err| format!("folder picker task failed: {err}"))?
 }
 
-/// No native picker outside macOS; the frontend falls back to manual path input.
 #[cfg(not(target_os = "macos"))]
 pub async fn select_folder() -> Result<Option<String>, String> {
     Ok(None)

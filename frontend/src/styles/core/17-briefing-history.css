@@ -1,4 +1,4 @@
-/* Past conversations: the Brain's memory of previous chats, resumable in place. */
+
 .brain-history-panel {
   width: 100%;
   max-width: 640px;
@@ -305,7 +305,7 @@
   }
 }
 
-/* Onboarding Environment Scan Banner */
+
 .ritual-scan-banner {
   display: flex;
   align-items: center;
@@ -359,7 +359,7 @@
   box-shadow: 0 0 8px hsl(var(--warning));
 }
 
-/* Active Chat Layout Redesign */
+
 .brain-chat-home-card.has-messages {
   display: flex;
   flex-direction: column;
@@ -441,7 +441,7 @@
   padding: 1rem;
 }
 
-/* Animations */
+
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -452,7 +452,7 @@
   to { transform: rotate(0deg); }
 }
 
-/* ── Command Center (v9.5.0): palette + daily briefing ─────────────── */
+
 
 .command-palette-backdrop {
   position: fixed;

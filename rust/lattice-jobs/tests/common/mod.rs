@@ -1,9 +1,3 @@
-//! A pure-Rust fake worker, style-matched to `lattice-host/tests/common`.
-//!
-//! Pure Rust on purpose: CI must not need a Python interpreter to prove that
-//! the scheduler calls the right endpoint with the right body and behaves when
-//! the answer is a 500.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -13,7 +7,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 
-/// One request as the fake worker saw it.
 #[derive(Debug, Clone)]
 pub struct RecordedRequest {
     pub method: String,
@@ -42,8 +35,6 @@ impl RecordedRequest {
     }
 }
 
-/// What the fake worker answers. Every field is swappable mid-test, which is
-/// how "the worker fell over, then came back" is expressed.
 #[derive(Debug, Clone)]
 pub struct Behaviour {
     pub drain_status: u16,
@@ -78,7 +69,6 @@ impl Default for Behaviour {
     }
 }
 
-/// A minimal HTTP/1.1 server standing in for the Python worker.
 pub struct FakeWorker {
     addr: SocketAddr,
     behaviour: Arc<Mutex<Behaviour>>,
@@ -87,12 +77,10 @@ pub struct FakeWorker {
 }
 
 impl FakeWorker {
-    /// Bind an ephemeral loopback port and start serving the defaults.
     pub async fn start() -> Self {
         Self::start_with(Behaviour::default()).await
     }
 
-    /// Same, with a chosen behaviour.
     pub async fn start_with(behaviour: Behaviour) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
@@ -117,7 +105,6 @@ impl FakeWorker {
         format!("http://{}", self.addr)
     }
 
-    /// Mutate what the worker answers from now on.
     pub fn set(&self, change: impl FnOnce(&mut Behaviour)) {
         let mut behaviour = self.behaviour.lock().expect("behaviour");
         change(&mut behaviour);
@@ -127,7 +114,6 @@ impl FakeWorker {
         self.requests.lock().expect("requests").clone()
     }
 
-    /// Every request whose path is exactly `path`.
     pub fn requests_to(&self, path: &str) -> Vec<RecordedRequest> {
         self.requests()
             .into_iter()
@@ -139,7 +125,6 @@ impl FakeWorker {
         self.requests_to(path).len()
     }
 
-    /// Stop listening; further connections are refused.
     pub fn shutdown(self) {
         self.handle.abort();
     }
@@ -269,7 +254,6 @@ async fn respond(stream: &mut TcpStream, status: u16, body: &str) {
     let _ = stream.flush().await;
 }
 
-/// An HTTP client that never consults system proxies.
 pub fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .no_proxy()
@@ -277,13 +261,11 @@ pub fn client() -> reqwest::Client {
         .expect("test client")
 }
 
-/// Parse a response body as JSON (reqwest is pinned without its `json` feature).
 pub async fn json(response: reqwest::Response) -> serde_json::Value {
     let text = response.text().await.expect("response body");
     serde_json::from_str(&text).unwrap_or_else(|err| panic!("not JSON ({err}): {text}"))
 }
 
-/// Poll `condition` until it is true or `deadline` elapses.
 pub async fn wait_until<F>(deadline: Duration, mut condition: F) -> bool
 where
     F: FnMut() -> bool,
@@ -298,7 +280,6 @@ where
     condition()
 }
 
-/// A `vector_jobs` fixture built with the Python DDL, verbatim.
 pub fn queue_fixture(dir: &std::path::Path, rows: &[(&str, &str)]) -> std::path::PathBuf {
     let path = dir.join("knowledge_graph.sqlite");
     let conn = rusqlite::Connection::open(&path).expect("open fixture");
@@ -325,7 +306,6 @@ pub fn queue_fixture(dir: &std::path::Path, rows: &[(&str, &str)]) -> std::path:
     path
 }
 
-/// The jobs list payload for `GET /api/ingestion/jobs`.
 pub fn jobs_payload(jobs: &[(&str, &str, u64, u64)]) -> String {
     let entries: Vec<String> = jobs
         .iter()

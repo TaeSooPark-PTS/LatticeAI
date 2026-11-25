@@ -1,14 +1,10 @@
-//! HTML distillation, untrusted prompt-injection sanitization, and search response parsing.
-
 use fancy_regex::Regex;
 use serde_json::Value;
 
 use super::parse_http_url;
 
-/// Replacement marker inserted when an indirect prompt-injection phrase is redacted.
 pub const REDACTED_INJECTION_MARKER: &str = "[redacted-prompt-injection-attempt]";
 
-/// LLM control / frame tokens stripped from untrusted web text.
 const LLM_CONTROL_TOKENS: &[&str] = &[
     "<|im_start|>",
     "<|im_end|>",
@@ -23,8 +19,6 @@ const LLM_CONTROL_TOKENS: &[&str] = &[
     "</tool_call>",
 ];
 
-/// Indirect prompt-injection directives redacted from untrusted web text.
-/// Longer super-phrases appear first so they match as a single unit.
 const PROMPT_INJECTION_DIRECTIVES: &[&str] = &[
     "ignore all previous instructions",
     "ignore all prior instructions",
@@ -37,7 +31,6 @@ const PROMPT_INJECTION_DIRECTIVES: &[&str] = &[
     "exfiltrate",
 ];
 
-/// Distilled representation of an HTML document.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DistilledPage {
     pub title: String,
@@ -163,7 +156,6 @@ fn collapse_whitespace_line(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Distill raw HTML into clean structured text, page title, and up to 15 `[text](url)` links.
 pub fn distill_html_to_text(html: &str, base_url: &str) -> DistilledPage {
     let cleaned_html = strip_html_comments_and_raw_blocks(html);
 
@@ -176,7 +168,6 @@ pub fn distill_html_to_text(html: &str, base_url: &str) -> DistilledPage {
         }
     }
 
-    // Extract up to 15 links `[text](url)`
     let mut links: Vec<String> = Vec::new();
     if let Ok(link_re) = Regex::new(r"(?is)<a\b([^>]*)>(.*?)</a>") {
         let mut pos = 0;
@@ -210,7 +201,6 @@ pub fn distill_html_to_text(html: &str, base_url: &str) -> DistilledPage {
         }
     }
 
-    // Remove `<head>...</head>` now that `<title>` has been extracted
     let body_html = if let Ok(head_re) = Regex::new(r"(?is)<head\b[^>]*>.*?</head>") {
         head_re.replace_all(&cleaned_html, "\n").into_owned()
     } else {
@@ -337,8 +327,6 @@ fn strip_all_tags(fragment: &str) -> String {
     out
 }
 
-/// Strip LLM control/frame tokens and redact indirect prompt-injection directives.
-/// Returns `(sanitized_text, redacted_count)`.
 pub fn sanitize_untrusted_web_text(text: &str) -> (String, usize) {
     let mut current = text.to_string();
     let mut count = 0usize;
@@ -413,7 +401,6 @@ fn unwrap_ddg_url(href: &str) -> String {
     decoded_href
 }
 
-/// Extract `(title, url, snippet)` tuples from DuckDuckGo HTML search output.
 pub fn parse_duckduckgo_html(html: &str, max_results: usize) -> Vec<(String, String, String)> {
     let cleaned = strip_html_comments_and_raw_blocks(html);
     let mut items: Vec<(String, String, String)> = Vec::new();

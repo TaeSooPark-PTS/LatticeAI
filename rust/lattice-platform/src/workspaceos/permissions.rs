@@ -1,9 +1,3 @@
-//! Local permission request and approval routes.
-//!
-//! Port of `latticeai/api/permissions.py`. In-memory approvals plus
-//! `<data_dir>/permission_queue.json`. Discord notify is best-effort and
-//! skipped when no webhook/bot is configured.
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -22,7 +16,6 @@ use lattice_auth::AuthState;
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/permissions/approve/:token"),
     ("POST", "/permissions/deny/:token"),
@@ -38,65 +31,38 @@ const ACTION_LABELS: &[(&str, &str)] = &[
 
 const TTL_SECONDS: f64 = 5.0 * 60.0;
 
-/// A minted local-files token the `/permissions/*` routes can redeem.
-///
-/// Folder ingest (and `/local/{list,read,write}`) keep their table in
-/// `lattice-ingest::LocalApprovals`. The product UI approves those tokens
-/// here, so this process holds one extra table rather than two that cannot
-/// see each other.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalTokenSnapshot {
-    /// Canonical path the probe bound.
     pub path: String,
-    /// `list` / `read` / `write`.
     pub action: String,
-    /// Owner identity (empty for the trusted local owner).
     pub user_email: String,
-    /// First eight characters of the raw token — the Act inbox key.
     pub token_hint: String,
 }
 
-/// Status of a local-files token, including expiry.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalTokenStatus {
-    /// Snapshot fields the status/deny responses echo.
     pub snapshot: LocalTokenSnapshot,
-    /// Whether the token has already been approved.
     pub approved: bool,
-    /// Unix seconds; the router compares this with now.
     pub expires_at: f64,
 }
 
-/// One pending row for `/permissions/pending`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalTokenPending {
-    /// Act-inbox key (the 8-char hint).
     pub hint: String,
-    /// Canonical path.
     pub path: String,
-    /// `list` / `read` / `write`.
     pub action: String,
-    /// Owner identity.
     pub user_email: String,
-    /// Already approved or still waiting.
     pub approved: bool,
-    /// Remaining TTL, seconds.
     pub expires_in: i64,
 }
 
-/// The local-files approval table, as the permissions router sees it.
 pub trait LocalTokenTable: Send + Sync {
-    /// Mark the token approved. `None` if it is missing or expired.
     fn approve_record(&self, token: &str) -> Option<LocalTokenSnapshot>;
-    /// Drop the token. `None` if it was never minted (or already gone).
     fn deny_record(&self, token: &str) -> Option<LocalTokenSnapshot>;
-    /// Look up without mutating. Expired records are still returned.
     fn status_of(&self, token: &str) -> Option<LocalTokenStatus>;
-    /// Non-expired records, for the Act inbox.
     fn pending_records(&self) -> Vec<LocalTokenPending>;
 }
 
-/// Shared permission state used by local-file and knowledge routers.
 #[derive(Clone)]
 pub struct PermissionGateway {
     approvals: Arc<Mutex<HashMap<String, Map<String, Value>>>>,
@@ -106,7 +72,6 @@ pub struct PermissionGateway {
 }
 
 impl PermissionGateway {
-    /// Open the gateway rooted at `data_dir`.
     pub fn open(data_dir: &Path) -> Self {
         Self {
             approvals: Arc::new(Mutex::new(HashMap::new())),
@@ -119,17 +84,14 @@ impl PermissionGateway {
         }
     }
 
-    /// SHA-256 hex of a token, matching Python `sha256_hex`.
     pub fn token_hash(token: &str) -> String {
         sha256_hex(token)
     }
 
-    /// First eight characters of the token, or empty.
     pub fn token_hint(token: &str) -> String {
         token.chars().take(8).collect()
     }
 
-    /// `normalize_local_path_for_approval`.
     pub fn normalize_path(path: &str) -> String {
         let expanded = expanduser(path);
         std::fs::canonicalize(&expanded)
@@ -138,7 +100,6 @@ impl PermissionGateway {
             .into_owned()
     }
 
-    /// Seed an approval the way `local_permission_response` does.
     pub fn request(&self, path: &str, action: &str, user_email: &str, content: &str) -> Value {
         let normalized = Self::normalize_path(path);
         let token = token_urlsafe(24);
@@ -211,7 +172,6 @@ impl PermissionGateway {
         }
     }
 
-    /// Resolve a full token or its 8-char hint.
     pub fn resolve_key(&self, token_or_hint: &str) -> Result<String, Response> {
         let direct = Self::token_hash(token_or_hint);
         let approvals = self
@@ -322,19 +282,14 @@ fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
 }
 
-/// State the permissions router needs.
 #[derive(Clone)]
 pub struct PermissionsState {
-    /// Process-wide auth.
     pub auth: Arc<AuthState>,
-    /// Shared gateway (also handed to local-file families).
     pub gateway: PermissionGateway,
-    /// Folder-ingest / `/local/*` tokens minted in `LocalApprovals`.
     pub local_tokens: Option<Arc<dyn LocalTokenTable>>,
 }
 
 impl PermissionsState {
-    /// Build from auth + data dir.
     pub fn new(auth: Arc<AuthState>, data_dir: &Path) -> Self {
         Self {
             auth,
@@ -343,7 +298,6 @@ impl PermissionsState {
         }
     }
 
-    /// Redeem `LocalApprovals` tokens through this router.
     pub fn with_local_tokens(mut self, table: Arc<dyn LocalTokenTable>) -> Self {
         self.local_tokens = Some(table);
         self
@@ -356,7 +310,6 @@ impl axum::extract::FromRef<PermissionsState> for Arc<AuthState> {
     }
 }
 
-/// Router factory.
 pub fn router(state: PermissionsState) -> Router {
     Router::new()
         .route("/permissions/pending", get(pending))

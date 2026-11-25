@@ -1,14 +1,3 @@
-"""The local transcriber port (v9.9.7; capability report retired in v11.8.0).
-
-Review follow-up: "음성/모바일 캡처 루프 — 로컬 우선을 해치지 않는 선에서, 짧은
-음성 메모 → 바로 Brain 인제스트". The two house rules left to verify here are the
-ones about honesty: a missing transcriber never invents a transcript, and an
-empty transcript is treated as no text. ``GET /api/capture/voice/status`` and
-``VoiceCaptureService.status()`` are gone — the route had no caller, and what
-the port can do is reported per call by ``POST /worker/asr``
-(``tests/unit/test_worker_compute.py``).
-"""
-
 from __future__ import annotations
 
 import sys

@@ -39,7 +39,6 @@ function mockGraphNode(data: unknown, ok = true, error?: string, status = ok ? 2
 }
 
 beforeAll(() => {
-  // jsdom has no scrollIntoView; the marker only needs it to exist.
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -92,11 +91,9 @@ describe("AnswerProofCard", () => {
     expect(screen.getByText(/qwen/).textContent).toContain("qwen");
     expect(screen.getByTestId("citation-locator").textContent).toBe("가이드 > 2장 · p.4");
     expect(screen.getByText("3분기 예산은 1억")).toBeTruthy();
-    // Confidence pill plus at most four matched terms.
     expect(document.querySelector(".brain-citation-confidence.is-high")).toBeTruthy();
     expect(document.querySelectorAll(".brain-citation-why mark").length).toBe(4);
     expect(screen.queryByText("다섯째")).toBeNull();
-    // No evidence action row without a callback.
     expect(screen.queryByTestId("evidence-actions-open")).toBeNull();
   });
 
@@ -112,7 +109,6 @@ describe("AnswerProofCard", () => {
       />,
     );
     expect(screen.queryByTestId("citation-locator")).toBeNull();
-    // Empty snippet falls back to the original query.
     expect(screen.getByText("예산이 얼마였지")).toBeTruthy();
     expect(screen.getByText("저장된 기억에서 직접 찾음")).toBeTruthy();
   });
@@ -125,7 +121,6 @@ describe("AnswerProofCard", () => {
       screen.getByText("아직 연결된 출처가 없습니다. 기억이 인덱싱되면 여기에 표시됩니다."),
     ).toBeTruthy();
     expect(document.querySelector(".brain-answer-proof-count")).toBeNull();
-    // Even with a callback there is nothing to act on.
     expect(screen.queryByTestId("evidence-actions-open")).toBeNull();
   });
 
@@ -334,7 +329,6 @@ describe("SourceChunkModal", () => {
     unmount();
     release({ ok: true, status: 200, source: "live", data: { node: { title: "유령", summary: "x" } } });
     await Promise.resolve();
-    // Nothing to assert visually — the guard just must not warn or crash.
     expect(screen.queryByTestId("source-chunk-modal")).toBeNull();
   });
 
@@ -429,7 +423,6 @@ describe("InlineCitationMarkers", () => {
     render(<InlineCitationMarkers language="ko" proof={proof()} messageId="io-없음" />);
     const marker = screen.getByRole("button", { name: "출처 1로 이동" });
     await userEvent.click(marker);
-    // No matching row: focus stays on the marker instead of jumping away.
     expect(document.activeElement).toBe(marker);
   });
 });

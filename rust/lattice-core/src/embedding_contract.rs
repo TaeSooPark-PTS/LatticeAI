@@ -1,18 +1,9 @@
-//! Explicit index contract describing how embeddings in the Brain were produced.
-//!
-//! Mirrors Python `latticeai.core.embedding_providers.EmbeddingIndexContract`
-//! so ingest, storage, and retrieval share one source of truth for provider,
-//! model identity, revision, dimensionality, normalization, and asymmetric modes.
-
 use serde::{Deserialize, Serialize};
 
 use crate::db::CoreError;
 
-/// Default contract version for `EmbeddingIndexContract`.
 pub const DEFAULT_INDEX_VERSION: u32 = 1;
-/// Canonical vector normalization identifier.
 pub const NORMALIZATION_L2: &str = "l2";
-/// Default instruction mode for symmetric/unprefixed models.
 pub const DEFAULT_EMBEDDING_MODE: &str = "raw";
 
 fn default_normalization() -> String {
@@ -27,11 +18,6 @@ fn default_index_version() -> u32 {
     DEFAULT_INDEX_VERSION
 }
 
-/// Explicit index contract describing how embeddings in the Brain were produced.
-///
-/// Mirrors Python `latticeai.core.embedding_providers.EmbeddingIndexContract`
-/// so ingest, storage, and retrieval share one source of truth for provider,
-/// model identity, revision, dimensionality, normalization, and asymmetric modes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmbeddingIndexContract {
     pub provider: String,
@@ -54,7 +40,6 @@ pub struct EmbeddingIndexContract {
 }
 
 impl EmbeddingIndexContract {
-    /// Whether `model_id` names one of Lattice's offline hash/fallback models.
     pub fn is_hash_model_id(model_id: &str) -> bool {
         let lower = model_id.trim().to_ascii_lowercase();
         lower.is_empty()
@@ -63,7 +48,6 @@ impl EmbeddingIndexContract {
             || lower.starts_with("lattice-fallback-")
     }
 
-    /// Infer the provider family from a canonical `<provider>:<model>:<dim>` id.
     pub fn infer_provider(model_id: &str) -> String {
         if Self::is_hash_model_id(model_id) {
             return "hash".to_string();
@@ -77,7 +61,6 @@ impl EmbeddingIndexContract {
         "semantic".to_string()
     }
 
-    /// Infer `(passage_mode, query_mode)` from a model identifier when explicit modes are absent.
     pub fn infer_modes(model_id: &str) -> (String, String) {
         let lower = model_id.to_ascii_lowercase();
         if lower.contains("embeddinggemma") {
@@ -95,7 +78,6 @@ impl EmbeddingIndexContract {
         }
     }
 
-    /// Construct an explicit offline hash fallback contract.
     pub fn from_hash(model_id: impl Into<String>, dimension: usize) -> Self {
         let model_id = model_id.into();
         let revision = if model_id.starts_with("lattice-fallback-subword-v2") {
@@ -117,7 +99,6 @@ impl EmbeddingIndexContract {
         }
     }
 
-    /// Construct a contract for a real semantic embedding provider.
     pub fn from_semantic(
         provider: impl Into<String>,
         model_id: impl Into<String>,
@@ -149,7 +130,6 @@ impl EmbeddingIndexContract {
         }
     }
 
-    /// Construct from a `(provider, model_id, dimension)` triple, inferring fallback vs semantic.
     pub fn from_parts(
         provider: Option<&str>,
         model_id: impl Into<String>,
@@ -168,7 +148,6 @@ impl EmbeddingIndexContract {
         }
     }
 
-    /// True if this contract describes an offline hash fallback rather than a semantic model.
     pub fn is_hash_fallback(&self) -> bool {
         self.provider.eq_ignore_ascii_case("hash")
             || self.grade.eq_ignore_ascii_case("fallback")
@@ -176,12 +155,10 @@ impl EmbeddingIndexContract {
             || Self::is_hash_model_id(&self.model_id)
     }
 
-    /// True if this contract describes a genuine semantic embedding model.
     pub fn is_semantic(&self) -> bool {
         self.semantic && !self.is_hash_fallback()
     }
 
-    /// Validate that `vector` is non-empty, finite, and matches `self.dimension`.
     pub fn validate_vector(&self, vector: &[f64]) -> Result<(), CoreError> {
         if self.dimension == 0 {
             return Err(CoreError::InvalidRequest(
@@ -205,7 +182,6 @@ impl EmbeddingIndexContract {
         Ok(())
     }
 
-    /// True when two contracts describe the exact same vector space.
     pub fn is_compatible_with(&self, other: &Self) -> bool {
         if self.model_id != other.model_id || self.dimension != other.dimension {
             return false;
@@ -221,7 +197,6 @@ impl EmbeddingIndexContract {
         true
     }
 
-    /// True when adopting `self` against an existing `other` index requires reindexing.
     pub fn requires_reindex(&self, existing: &Self) -> bool {
         !self.is_compatible_with(existing)
     }

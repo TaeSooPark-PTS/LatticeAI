@@ -16,26 +16,8 @@ use ui_resolve::find_ui_element_center;
 pub(in crate::kernel::agentloop) use ui_resolve::{
     cap_lean_action_names_for, find_request_ui_element_center, url_from_transcript,
 };
-/// The sentence appended to a not-found error against the request's own output
-/// file. Also the idempotence marker: a step already carrying it is not steered
-/// twice.
 pub(super) const WRITE_TARGET_STEER: &str = "그 파일은 아직 없습니다";
 
-/// Whether a tool error says the thing an argument named **is not there**.
-///
-/// A class, not a sentence, and deliberately read off the message rather than
-/// off a tool table: the tools that answer this way are spread across this
-/// crate, `lattice-platform` and the Python worker, and each says it in its own
-/// words (`File does not exist.`, `Directory does not exist.`, `Working
-/// directory does not exist.`). What they have in common is the only thing the
-/// repair below needs to know — the call was well-formed and the *place* was
-/// wrong — so the recogniser is the phrase, in the languages the product speaks.
-///
-/// Nothing acts on this alone: [`Runtime::repair_with_documented_default`] also
-/// requires the tool to document a default for the argument, and
-/// [`Runtime::steer_to_write_target`] also requires the request to have named
-/// the path as an output. A false positive here changes a message, never a
-/// permission.
 pub(super) fn not_found_error(error: &str) -> bool {
     let lowered = error.to_lowercase();
     lowered.contains("does not exist")
@@ -45,7 +27,6 @@ pub(super) fn not_found_error(error: &str) -> bool {
         || error.contains("찾을 수 없")
 }
 
-/// The tool error the step just recorded carries, if it failed at all.
 pub(super) fn last_step_error(ctx: &AgentRunContext) -> Option<String> {
     let step = ctx.transcript.last()?;
     if step.get("state").and_then(Value::as_str) != Some(AgentState::Executing.as_str()) {
@@ -58,12 +39,6 @@ pub(super) fn last_step_error(ctx: &AgentRunContext) -> Option<String> {
     .then(|| error.to_string())
 }
 
-/// Every `action|args` this run has already been refused, spelled exactly as
-/// [`failing_dispatch_signature`] and [`super::fallback`] spell one.
-///
-/// One spelling for the whole crate: `serde_json`'s object is a `BTreeMap`, so
-/// the rendering is key-order independent and two callers comparing the same
-/// call always agree.
 pub(super) fn failed_signatures(ctx: &AgentRunContext) -> BTreeSet<String> {
     ctx.transcript
         .iter()
@@ -76,13 +51,6 @@ pub(super) fn failed_signatures(ctx: &AgentRunContext) -> BTreeSet<String> {
         .collect()
 }
 
-/// `action|args` of the step just recorded, when it was a **tool** failure.
-///
-/// Deliberately not every failure. A copied example and an invented action name
-/// are format failures with an owner already — they spend the parse budget a
-/// few lines below — and counting them twice would shorten a run for a reason
-/// that is already being counted. What is left is the case nothing was watching:
-/// a real action, really dispatched, that the tool or a gate refused.
 pub(super) fn failing_dispatch_signature(ctx: &AgentRunContext) -> Option<String> {
     let step = ctx.transcript.last()?;
     if step.get("state").and_then(Value::as_str) != Some(AgentState::Executing.as_str()) {
@@ -100,13 +68,6 @@ pub(super) fn failing_dispatch_signature(ctx: &AgentRunContext) -> Option<String
     Some(format!("{action}|{args}"))
 }
 
-/// Whether these arguments are the prompt's worked example, verbatim.
-///
-/// Both fields are compared against [`crate::prompts`]' own constants, and the
-/// *content* alone is enough — a model that copied the body but invented a path
-/// still wrote our text into the user's workspace, which is the harm. The path
-/// is checked too so a reply that copied only the path is caught before the
-/// sandbox has to answer for it.
 pub(super) fn copies_the_example(args: &Map<String, Value>) -> bool {
     let field = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or_default();
     field("content") == crate::prompts::WRITE_EXAMPLE_CONTENT
@@ -114,7 +75,6 @@ pub(super) fn copies_the_example(args: &Map<String, Value>) -> bool {
         || crate::prompts::guided::contains_owned_instruction(field("content"))
 }
 
-/// Whether the step just recorded named a tool this run does not have.
 pub(super) fn last_step_unknown_action(ctx: &AgentRunContext) -> bool {
     ctx.transcript.last().is_some_and(|step| {
         step.get("error")
@@ -123,7 +83,6 @@ pub(super) fn last_step_unknown_action(ctx: &AgentRunContext) -> bool {
     })
 }
 
-/// Whether the step just recorded was refused for copying our own text.
 pub(super) fn last_step_copied_the_example(ctx: &AgentRunContext) -> bool {
     ctx.transcript.last().is_some_and(|step| {
         step.get("error")
@@ -133,38 +92,6 @@ pub(super) fn last_step_copied_the_example(ctx: &AgentRunContext) -> bool {
 }
 
 impl Runtime {
-    /// **The place was wrong, and the tool documents the right one** (v12.0.0).
-    ///
-    /// The round-3 fill covers the argument that is *absent*; this covers the
-    /// argument that is present and wrong, which is the shape two live cells
-    /// took. Handed `이 폴더에 … list_dir로 확인하고`, a 0.5B answered the path
-    /// turn with `path/scratchpad/…` (our own workspace line, continued) and a
-    /// 2B answered it with `file_list.txt` (a filename its planner had invented).
-    /// Both dispatched, both were told `Directory does not exist.`, both sent
-    /// the identical call again, and both runs ended in `LOOP_DETECTED` over a
-    /// listing `list_dir(path=".")` would have returned at step one.
-    ///
-    /// So: one retry, with the value the tool's own signature documents
-    /// ([`crate::tools::catalog::defaulted_arg`]), and four conditions that keep
-    /// it off everything else —
-    ///
-    /// * the call **reached the tool** and the tool answered with a
-    ///   not-found-class error ([`not_found_error`]). A gate refusal, a
-    ///   proposal, or any other failure is not an argument problem;
-    /// * the tool **documents a literal default** for one of its arguments. No
-    ///   value is invented here, ever: this is the same string
-    ///   `fill_documented_defaults` would have supplied had the model said
-    ///   nothing at all;
-    /// * the stated value **differs** from that default, so a call that already
-    ///   used the default and still failed is never sent twice;
-    /// * the repaired `action|args` is **not already on the transcript with an
-    ///   error against it** — the round-3 rule from [`super::fallback`], applied
-    ///   to the live loop. A repaired call is a different call and runs; a
-    ///   second failure is left to the ordinary repeat floor, which halts.
-    ///
-    /// The repair is recorded on the step it produced (`arg_repair`) and named
-    /// in a correction, because a run that silently changed the model's
-    /// argument would be a run whose transcript no longer says what happened.
     pub(super) async fn repair_with_documented_default(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -231,26 +158,6 @@ Retried once with the value {original} documents for {arg}: {default:?}."
         }
     }
 
-    /// **The file the request asked us to write is not a file to read**
-    /// (v12.0.0).
-    ///
-    /// A live 0.5B consulted `skill.code_review`, then read
-    /// `notes/review_note.md` — the file the request had asked it to *create* —
-    /// three times, was told `File does not exist.` three times, and halted.
-    /// The tool's message is correct and useless: it answers "is this file
-    /// here", when the fact the run needs is "this one is yours to make".
-    ///
-    /// Only the harness can say that, because only the harness read the
-    /// request: the target comes from
-    /// [`crate::parse::inference::requested_output_paths`], the same declared
-    /// outputs `requirement_coverage` holds the run to at VERIFY, so the menu,
-    /// the critic and this sentence cannot disagree about which file was asked
-    /// for. The tool's own words are kept and the steer is appended after them
-    /// — nothing is hidden, and a read that failed for any other reason, or
-    /// against any path the request did not name as an output, is untouched.
-    ///
-    /// It steers and never acts: no file is created here. The model still
-    /// chooses `write_file` and still authors what goes in it.
     pub(super) fn steer_to_write_target(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -312,26 +219,6 @@ Call write_file with that path and the content you write."
         );
     }
 
-    /// **A skill the request names by name is consulted, first** (v12.0.0).
-    ///
-    /// The contract is stated in `ARCHITECTURE.md` and is one sentence: naming
-    /// an installed skill in the request *is* the instruction to read it, so the
-    /// harness carries that instruction out deterministically and then hands
-    /// control straight back. It is the same shape a slash-command has in any
-    /// agent: the user named the thing, so the thing happens.
-    ///
-    /// This is not the harness choosing. It chooses no tool, writes nothing and
-    /// decides nothing about the task — a skill's result is its `SKILL.md`, which
-    /// is guidance in front of the model for the following steps. A live
-    /// gemma-4-e2b handed `code_review 스킬을 참고해서 …` planned `write_file`
-    /// directly and never consulted the named skill on any of three attempts, so
-    /// the instruction the user actually gave was the one thing the run ignored.
-    ///
-    /// Three conditions, all required: the request names a **skill row this run
-    /// offers** (so nothing is consulted that was not installed and named),
-    /// nothing has executed yet (it is the *first* step or it does not happen —
-    /// a resumed or retried run is never re-injected), and the skill has not
-    /// already been read this run.
     pub(super) async fn consult_named_skill(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -370,16 +257,6 @@ Call write_file with that path and the content you write."
         .await;
     }
 
-    /// Refuse one call for a required argument nothing could supply, and say so
-    /// in a sentence the next turn can act on.
-    ///
-    /// The error text is the harness's own and is deliberately the same string
-    /// on every dial — a `compact` run and a `guided` run that make the same
-    /// mistake must read the same correction, or the probe's choice of dial
-    /// silently changes what a model is told. The correction is deduped, so a
-    /// model repeating itself does not fill the correction budget with one
-    /// sentence; the step stays on the transcript either way, which is what the
-    /// repeated-failure floor counts.
     pub(super) fn refuse_incomplete_call(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -431,9 +308,6 @@ Send it again with that argument's value."
         StepFlow::Continue
     }
 
-    /// Resolve `element_id` or an element label/title against the most recent
-    /// `computer_ui_inspect` result on `ctx.transcript` into `(x, y)` center
-    /// coordinates for `computer_click`, `computer_scroll`, and `computer_move`.
     pub(super) fn resolve_ui_element_coords(
         &self,
         ctx: &AgentRunContext,
@@ -497,14 +371,6 @@ Send it again with that argument's value."
         None
     }
 
-    /// Run one host-catalog entry: an MCP tool the run does not govern, or a
-    /// skill.
-    ///
-    /// A skill's result is *instructions*, not an effect, and the step records
-    /// it as such — [`super::guided`] and the executor prompt both read the
-    /// text back out of the transcript on the following steps. With no catalog
-    /// injected the answer is a refusal that names the reason, because a model
-    /// that was offered nothing cannot have chosen this.
     pub(super) async fn dispatch_external(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -553,31 +419,12 @@ Send it again with that argument's value."
         StepFlow::Continue
     }
 
-    /// Assemble one executor turn's prompt.
-    ///
-    /// The header is the run's executor prompt — the caller's when it supplied
-    /// one, the profile-shaped built-in ([`crate::prompts`]) when it did not.
-    /// What the loop contributes around it — the plan, the files this run has
-    /// already written, the latest corrections, the bounded transcript — is
-    /// assembled here, in the original's order.
-    ///
-    /// **The compact profile trims two of those, and shortens a third.** The
-    /// transcript window alone never bounded this: by step five a 2B model was
-    /// being handed the plan, every path written so far, the whole recent
-    /// conversation and four steps of 700-character tool output, and the action
-    /// contract at the top was competing with 6–10k tokens of framing. Under
-    /// `lean_context` the written-files hint and the conversation go (the plan
-    /// and the transcript already carry those facts) and each step's result is
-    /// sliced to [`AgentProfile::result_chars`]. Nothing is trimmed for a model
-    /// that can hold the contract — `standard` composes exactly what it did.
     pub(super) fn executor_context(
         &self,
         ctx: &AgentRunContext,
         req: &RunRequest,
         profile: AgentProfile,
     ) -> String {
-        // Only the latest corrections steer the next attempt; stale hints from
-        // earlier retries dilute weak models.
         let active: Vec<String> = ctx
             .corrections
             .iter()
@@ -648,24 +495,6 @@ Send it again with that argument's value."
         )
     }
 
-    /// Every action a JSON turn may choose, **most likely first** (v12.0.0).
-    ///
-    /// Two defects, one list. The executor prompt was built from
-    /// `deps.tool_names` alone — the run's *native* table — so a compact model
-    /// was told in prose that a skill existed and given no action name to call
-    /// it with, and an `mcp.` row it would have seen on the guided menu was not
-    /// on this list at all. The catalog was uniform for one dial out of three.
-    /// A live 2B handed `code_review 스킬을 참고해서 …` never chose
-    /// `skill.code_review`, because as far as its prompt was concerned there was
-    /// no such action; it reached for `build_project` and `run_command` instead
-    /// and spent sixteen steps failing.
-    ///
-    /// And the order was the policy table's, which is alphabetical — the same
-    /// "alphabet is not a ranking" the guided menu already fixed. A row the
-    /// request *names* goes first here for the same reason it goes first there.
-    /// Everything else keeps the catalog's own order, so the list a run reads is
-    /// stable across its steps, and `final` stays last
-    /// ([`crate::prompts::action_list`] owns that).
     pub fn prompt_action_names(&self, request: &str) -> Vec<String> {
         self.prompt_action_names_ranked(request, false)
     }
@@ -715,10 +544,6 @@ Send it again with that argument's value."
         ordered
     }
 
-    /// Copy a path, URL, or search term the *request already named* into a missing
-    /// required argument. Nothing is invented: the same readers the guided
-    /// dial uses ([`guided::term_named_in_request`], [`guided::path_named_in_request`],
-    /// [`guided::url_named_in_request`]).
     pub(super) fn fill_stated_request_args(
         &self,
         ctx: &AgentRunContext,
@@ -800,12 +625,6 @@ Send it again with that argument's value."
         filled
     }
 
-    /// [`prompt_action_names`], capped when the dial cannot hold a long list.
-    ///
-    /// Named rows stay first, `final` stays last, and the cap is the same
-    /// [`crate::kernel::agentloop::guided::MENU_LIMIT`] the numbered menu uses
-    /// — a 2B that is shown forty MCP rows loses the contract the compact
-    /// prefix exists to keep.
     pub fn prompt_action_names_for(
         &self,
         request: &str,
@@ -842,7 +661,6 @@ Send it again with that argument's value."
         )
     }
 
-    /// Loop guard: the same file-create action+args re-issued right after a result.
     pub(super) fn is_repeated_create(
         &self,
         ctx: &AgentRunContext,
@@ -868,12 +686,6 @@ Send it again with that argument's value."
     }
 }
 
-/// Whether the request matches a skill's own "use when" line.
-///
-/// Naming the skill is [`guided::request_names`]. This is the other way a
-/// user asks for one: they describe the situation the skill's `when` field
-/// already named, without repeating `skill.code_review`. A 2B that cannot
-/// hold the catalog name still said the work.
 fn skill_when_invites(
     request: &str,
     entry: &crate::tools::catalog::CatalogEntry,

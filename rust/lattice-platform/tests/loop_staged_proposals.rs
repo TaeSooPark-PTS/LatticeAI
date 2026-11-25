@@ -1,21 +1,3 @@
-//! The other end of the change-proposal pipeline: what the **agent loop**
-//! stages, these routes must list and apply.
-//!
-//! `lattice-agent` cannot depend on this crate, so the loop stages through a
-//! port (`lattice_agent::kernel::proposals::ProposalStore`) that `GovernanceState`
-//! implements. Both crates having tests that pass in isolation proves nothing
-//! about the seam between them — this file is the seam:
-//!
-//! 1. the loop's own governor, with the Review Center's store injected, stages
-//!    a proposal, and `GET /api/proposals` lists it and `POST …/approve`
-//!    applies it to the file on disk;
-//! 2. the loop's *standalone* store (`JsonProposalStore`, for an install with
-//!    no Review Center in process) writes a document `GovernanceState::open`
-//!    reads back without losing the item — the byte-compatibility claim its
-//!    doc comment makes, checked rather than asserted in prose.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod review_queue_harness;
 
@@ -48,7 +30,6 @@ async fn a_loop_staged_proposal_is_listed_and_applied_by_the_review_center() {
     let workspace = Workspace::new(&install.agent_root).expect("workspace");
     std::fs::write(workspace.root().join("loop-staged.md"), "before\n").expect("seed");
 
-    // The loop's governor, with the product's store behind it.
     let verdict = Governor {
         workspace: &workspace,
         store: &install.gov,
@@ -65,13 +46,11 @@ async fn a_loop_staged_proposal_is_listed_and_applied_by_the_review_center() {
         panic!("an overwrite under strict must stage: {verdict:?}");
     };
     let item_id = proposal["id"].as_str().expect("id").to_string();
-    // Staging never writes the file — that is the whole contract.
     assert_eq!(
         std::fs::read_to_string(workspace.root().join("loop-staged.md")).expect("read"),
         "before\n"
     );
 
-    // 1. The Review Center lists it, through the same route the SPA calls.
     let listed = install
         .issue("GET", "/api/proposals", None, "session:owner")
         .await;
@@ -100,7 +79,6 @@ async fn a_loop_staged_proposal_is_listed_and_applied_by_the_review_center() {
     assert_eq!(mine["provenance"]["proposed_by"], json!("agent"));
     assert_eq!(mine["provenance"]["conversation_id"], json!("conv-loop"));
 
-    // 2. Approving it applies the staged content exactly as reviewed.
     let approved = install
         .issue(
             "POST",
@@ -119,8 +97,6 @@ async fn a_loop_staged_proposal_is_listed_and_applied_by_the_review_center() {
         "after\n"
     );
 
-    // 3. …and the base-SHA check the staging wrote is live: a second approve
-    //    of the same proposal is the "already resolved" 400 of this surface.
     let again = install
         .issue(
             "POST",
@@ -167,10 +143,8 @@ async fn a_proposal_staged_against_a_drifted_file_conflicts_with_both_shapes() {
     else {
         panic!("must stage");
     };
-    // Someone edits the file out of band, after both proposals were staged.
     std::fs::write(workspace.root().join("drifts.md"), "drifted\n").expect("drift");
 
-    // The Review Center path answers the structured 409…
     let review_center = install
         .issue(
             "POST",
@@ -203,7 +177,6 @@ async fn a_proposal_staged_against_a_drifted_file_conflicts_with_both_shapes() {
         .expect("hint")
         .contains("거부"));
 
-    // …and `/api/proposals` stringifies the same conflict into its 400.
     let proposals = install
         .issue(
             "POST",
@@ -220,7 +193,6 @@ async fn a_proposal_staged_against_a_drifted_file_conflicts_with_both_shapes() {
         serde_json::from_str::<Value>(&proposals.body).expect("json")["detail"],
         json!("change proposal conflict (file_modified_since_proposal): drifts.md")
     );
-    // Neither refusal touched the file.
     assert_eq!(
         std::fs::read_to_string(workspace.root().join("drifts.md")).expect("read"),
         "drifted\n"
@@ -229,9 +201,6 @@ async fn a_proposal_staged_against_a_drifted_file_conflicts_with_both_shapes() {
 
 #[tokio::test]
 async fn the_standalone_json_store_writes_a_document_governance_state_reads() {
-    // An install with no Review Center in process: the loop stages through
-    // `JsonProposalStore`, and a Review Center opened over that data directory
-    // afterwards must see the item rather than a document it cannot parse.
     let data = tempfile::tempdir().expect("data dir");
     let agent_root = data.path().join("agent_workspace");
     let workspace = Workspace::new(&agent_root).expect("workspace");
@@ -254,7 +223,6 @@ async fn the_standalone_json_store_writes_a_document_governance_state_reads() {
     };
     let staged_id = proposal["id"].as_str().expect("id").to_string();
 
-    // Now the platform opens the same directory and stages one of its own.
     let mut env = std::collections::HashMap::new();
     env.insert(
         "LATTICEAI_DATA_DIR".to_string(),
@@ -303,8 +271,6 @@ async fn the_standalone_json_store_writes_a_document_governance_state_reads() {
         ids.contains(&platform_item["id"].as_str().expect("id")),
         "{ids:?}"
     );
-    // The two writers agree on the shape, which is what "byte-compatible" has
-    // to mean for a store two crates append to.
     let keys = |value: &Value| {
         let mut names: Vec<String> = value.as_object().expect("object").keys().cloned().collect();
         names.sort();
@@ -313,7 +279,6 @@ async fn the_standalone_json_store_writes_a_document_governance_state_reads() {
     assert_eq!(keys(&rows[0]), keys(&rows[1]));
     assert_eq!(rows[0]["status"], json!("pending"));
     assert_eq!(rows[0]["workspace_id"], json!("personal"));
-    // …and the document itself is still the workspace OS, not a fragment.
     for key in ["version", "identity", "active_workspace", "workspaces"] {
         assert!(document.get(key).is_some(), "missing {key}");
     }

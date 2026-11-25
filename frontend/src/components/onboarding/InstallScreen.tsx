@@ -100,7 +100,6 @@ export function InstallScreen({
         </p>
       </header>
 
-      {/* (B) Single visual unit for progress */}
       <section className="ritual-card ritual-install-progress-unit" aria-label={statusText}>
         <div className="ritual-progress w-full">
           <div className="ritual-stage-list">
@@ -156,7 +155,6 @@ export function InstallScreen({
         </div>
       )}
 
-      {/* (C) Folded details */}
       <details className="ritual-install-details">
         <summary className="cursor-pointer py-2 text-sm text-muted-foreground hover:text-foreground">
           {t(language, "flow.install.expectedTitle")} & {t(language, "flow.consent.readyTitle")}
@@ -266,7 +264,6 @@ function friendlyInstallStage(stage: string): InstallStage {
   return "install";
 }
 
-/** Exported for tests: the idle/error fallback is unreachable through the stream mapper. */
 export function percentForStage(stage: InstallStage) {
   if (stage === "install") return 20;
   if (stage === "download") return 55;

@@ -1,7 +1,3 @@
-"""Unit tests for Phase 2 native/Python web harness, SSRF & prompt-injection guards,
-structured computer-use observe-act-verify bridge, and tool registry parity.
-"""
-
 from __future__ import annotations
 
 import json
@@ -30,17 +26,15 @@ from latticeai.tools.web import (
 
 
 class _LocalTestServer:
-    """Ephemeral loopback HTTP server for deterministic web and CU bridge tests."""
-
     def __init__(self) -> None:
         self.act_Payloads: List[Dict[str, Any]] = []
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+            def log_message(self, format: str, *args: Any) -> None:
                 return
 
-            def do_GET(self) -> None:  # noqa: N802
+            def do_GET(self) -> None:
                 if self.path.startswith("/page"):
                     body = (
                         "<html><head><title>Lattice &amp; Web Test</title>"
@@ -125,7 +119,7 @@ class _LocalTestServer:
                     self.send_response(404)
                     self.end_headers()
 
-            def do_POST(self) -> None:  # noqa: N802
+            def do_POST(self) -> None:
                 if self.path.startswith("/ui/act"):
                     length = int(self.headers.get("Content-Length", "0"))
                     body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
@@ -159,9 +153,6 @@ def local_server():
         yield srv
     finally:
         srv.close()
-
-
-# ── SSRF & URL Validation ────────────────────────────────────────────────────
 
 
 def test_validate_web_url_blocks_ssrf_metadata_private_ips_and_bad_schemes(monkeypatch):
@@ -237,9 +228,6 @@ def test_validate_web_url_offline_mode_and_loopback_allow(monkeypatch):
         validate_web_url("http://169.254.169.254/latest/meta-data/")
 
 
-# ── HTML Distillation & Prompt-Injection Sanitization ────────────────────────
-
-
 def test_distill_html_to_text_extracts_structure_and_strips_noise():
     raw_html = """
     <html>
@@ -286,9 +274,6 @@ def test_sanitize_untrusted_web_text_strips_frames_and_redacts_injections():
     assert count >= 7
 
 
-# ── Local HTTP web_fetch and web_search ──────────────────────────────────────
-
-
 def test_web_fetch_and_web_search_over_local_http(monkeypatch, local_server):
     monkeypatch.setenv("LATTICEAI_WEB_ALLOW_LOOPBACK", "1")
     monkeypatch.delenv("LATTICEAI_NETWORK_MODE", raising=False)
@@ -302,7 +287,6 @@ def test_web_fetch_and_web_search_over_local_http(monkeypatch, local_server):
     assert REDACTED_INJECTION_MARKER in fetched["content_excerpt"]
     assert fetched["links"] == [f"[Guide]({local_server.origin}/docs/guide)"]
 
-    # Redirect to metadata endpoint must be blocked fail-closed
     with pytest.raises(ToolError, match="metadata"):
         web_fetch(f"{local_server.origin}/redirect-to-metadata")
 
@@ -330,9 +314,6 @@ def test_parse_duckduckgo_html_unwraps_uddg_links():
     assert parsed == [
         ("Example & Title", "https://example.com/a", "Sample snippet text.")
     ]
-
-
-# ── Computer-Use Observe-Act-Verify Loopback Bridge & Fallback ───────────────
 
 
 def test_computer_bridge_rejects_non_loopback_and_routes_loopback_actions(
@@ -402,9 +383,6 @@ def test_computer_non_bridge_fallback_preserves_existing_behavior(monkeypatch):
     ):
         with pytest.raises(ToolError, match="pyautogui를 사용할 수 없습니다."):
             fn()
-
-
-# ── Tool Registry & Governance Parity ────────────────────────────────────────
 
 
 def test_registry_governance_and_catalog_parity_for_web_and_cu_tools():

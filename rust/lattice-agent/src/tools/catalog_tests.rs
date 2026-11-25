@@ -29,7 +29,6 @@ fn a_prefixed_name_the_run_governs_is_routed_to_the_stricter_chain() {
         resolve("skill.code_review", known),
         Resolved::External("skill.code_review")
     );
-    // An unprefixed name is never external, even if a host offers one.
     assert_eq!(resolve("write_file", known), Resolved::Native("write_file"));
     assert!(is_external_name("mcp.x") && is_external_name("skill.x"));
     assert!(!is_external_name("write_file"));
@@ -49,7 +48,6 @@ fn the_native_entries_carry_the_arguments_the_prompt_advertises() {
         "file content is free-form text, never a JSON string"
     );
     assert_eq!(entries.last().expect("final").name, "final");
-    // An unknown host tool is offered without invented arguments.
     let unknown = native_entries(&names(&["host_thing"]));
     assert!(unknown[0].required.is_empty());
     assert_eq!(unknown[0].signature(), "host_thing");
@@ -71,7 +69,6 @@ fn merging_keeps_final_last_and_drops_a_duplicate_capability() {
         native_entries(&names(&["write_file", "read_file"])),
         vec![
             external("skill.code_review", EntryKind::Skill),
-            // Already native under its bare name — one capability, one row.
             external("mcp.read_file", EntryKind::Mcp),
             external("mcp.remote_search", EntryKind::Mcp),
             external("skill.code_review", EntryKind::Skill),
@@ -89,7 +86,6 @@ fn merging_keeps_final_last_and_drops_a_duplicate_capability() {
         ],
         "natives first, then mcp, then skills, `final` last"
     );
-    // And the order is stable: the same inputs number the same way.
     let again = merge(
         native_entries(&names(&["write_file", "read_file"])),
         vec![
@@ -103,9 +99,6 @@ fn merging_keeps_final_last_and_drops_a_duplicate_capability() {
     );
 }
 
-/// The `gemma2b:S3` regression, at the level it was caused: the catalog
-/// said `path` was required, the tool says `path: str = "."`, and nine live
-/// dispatches were refused for want of an argument nobody had to supply.
 #[test]
 fn an_argument_the_tool_documents_a_default_for_is_filled_and_never_refused() {
     let listing = &native_entries(&names(&["list_dir"]))[0];
@@ -119,14 +112,10 @@ fn an_argument_the_tool_documents_a_default_for_is_filled_and_never_refused() {
     assert_eq!(fill_documented_defaults(listing, &mut args), vec!["path"]);
     assert_eq!(args["path"], json!("."), "the tool's own default, verbatim");
     assert_eq!(missing_required(listing, &args), None);
-    // A value already there is never overwritten by the default.
     let mut given = Map::new();
     given.insert("path".into(), json!("notes"));
     assert!(fill_documented_defaults(listing, &mut given).is_empty());
     assert_eq!(given["path"], json!("notes"));
-    // A value the caller *stated*, blank or not, is the caller's: the tool
-    // has its own answer for one, and replacing it here would replace the
-    // tool's message with ours.
     let mut blank = Map::new();
     blank.insert("path".into(), json!("   "));
     assert!(fill_documented_defaults(listing, &mut blank).is_empty());
@@ -134,9 +123,6 @@ fn an_argument_the_tool_documents_a_default_for_is_filled_and_never_refused() {
     assert_eq!(missing_required(listing, &blank), None);
 }
 
-/// `knowledge_save` derives a title from the note's first line, and
-/// `build_project` has no `command` argument at all — two claims the
-/// catalog made that the tools never agreed with.
 #[test]
 fn an_argument_the_tool_derives_is_asked_for_and_never_insisted_on() {
     let entries = native_entries(&names(&["knowledge_save", "build_project", "run_command"]));
@@ -154,7 +140,6 @@ fn an_argument_the_tool_derives_is_asked_for_and_never_insisted_on() {
     );
     assert_eq!(args.len(), 1, "and nothing was added: {args:?}");
     assert_eq!(missing_required(save, &args), None);
-    // A body it cannot derive anything from is still refused.
     assert_eq!(
         missing_required(save, &Map::new()).as_deref(),
         Some("content")
@@ -162,7 +147,6 @@ fn an_argument_the_tool_derives_is_asked_for_and_never_insisted_on() {
     let build = entry_for(&entries, "build_project").expect("build_project");
     assert_eq!(build.signature(), "build_project");
     assert_eq!(missing_required(build, &Map::new()), None);
-    // …and the tool that really does take one still takes it.
     let run = entry_for(&entries, "run_command").expect("run_command");
     assert_eq!(
         missing_required(run, &Map::new()).as_deref(),
@@ -180,7 +164,6 @@ fn an_argument_with_no_documented_default_is_still_refused() {
     assert_eq!(missing_of("write_file").as_deref(), Some("path"));
     assert_eq!(missing_of("read_file").as_deref(), Some("path"));
     assert_eq!(missing_of("grep").as_deref(), Some("pattern"));
-    // Filling defaults changes none of them: none of these document one.
     for name in ["write_file", "read_file", "grep"] {
         let entry = entry_for(&entries, name).expect(name);
         let mut args = Map::new();
@@ -192,8 +175,6 @@ fn an_argument_with_no_documented_default_is_still_refused() {
     assert_eq!(entry_for(&entries, "no_such_tool"), None);
 }
 
-/// The keyword rule: three live plans carried the right value under the
-/// wrong key, and the harness asked a 0.5B to invent another one.
 #[test]
 fn a_value_the_run_already_computed_is_read_under_the_name_it_was_written_with() {
     let entries = native_entries(&names(&["grep", "write_file"]));
@@ -205,7 +186,6 @@ fn a_value_the_run_already_computed_is_read_under_the_name_it_was_written_with()
     let mut args = Map::new();
     assert_eq!(adopt_named_args(grep, &source, &mut args), vec!["pattern"]);
     assert_eq!(args["pattern"], json!("LatticeAI"));
-    // The argument's own name wins wherever it is present…
     let both: Map<String, Value> = json!({"pattern": "own", "search_term": "other"})
         .as_object()
         .expect("object")
@@ -213,12 +193,10 @@ fn a_value_the_run_already_computed_is_read_under_the_name_it_was_written_with()
     let mut args = Map::new();
     adopt_named_args(grep, &both, &mut args);
     assert_eq!(args["pattern"], json!("own"));
-    // …and a call that already carries a value is never overwritten.
     let mut given = Map::new();
     given.insert("pattern".into(), json!("kept"));
     assert!(adopt_named_args(grep, &source, &mut given).is_empty());
     assert_eq!(given["pattern"], json!("kept"));
-    // Nothing is adopted for an argument with no other spelling in reach.
     let write = entry_for(&entries, "write_file").expect("write_file");
     let mut args = Map::new();
     assert_eq!(

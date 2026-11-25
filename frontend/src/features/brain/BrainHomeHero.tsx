@@ -5,13 +5,6 @@ import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
 import type { BrainReadiness, KnowledgeGraphModel, MemoryFragment } from "./types";
 
-/**
- * The home hero: the Brain itself and a direct invitation to type. What is
- * remembered lives in a compact stats badge that opens a summary popover on
- * hover or click — calm, secondary, never competing with the composer below.
- * Everything graph-shaped stays behind the Brain: click the organism (or the
- * popover's CTA) to open the map.
- */
 export const BrainHomeHero = React.memo(function BrainHomeHero({
   language,
   brainState,
@@ -31,21 +24,14 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   graph: KnowledgeGraphModel;
   relationshipCount: number;
   onExploreBrain: () => void;
-  /** Status indicators (e.g. the model pill) rendered on the hero's right edge. */
   trailing?: React.ReactNode;
 }) {
   const memoryCount = Math.max(readiness.signals.memoryCount, memories.length);
   const conceptCount = Math.max(readiness.signals.conceptCount, graph.nodes.length);
   const empty = memoryCount === 0 && conceptCount === 0;
 
-  // Row layout, gap and padding come from `.brain-home-station > .brain-hero`
-  // in home-simple.css, which is unlayered and outranks Tailwind utilities.
   return (
     <section className="brain-hero" data-testid="brain-knowledge-flow" aria-labelledby="brain-home-title">
-      {/* LivingBrain renders its own button, so this is a sizing wrapper only —
-          a button nested in a button would be invalid. Growth rings are CSS
-          decoration around that wrapper; they read readiness.state the screen
-          already has — no extra fetch. */}
       <div
         className="brain-hero-organism"
         data-growth={readiness.state}
@@ -90,12 +76,6 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   );
 });
 
-/**
- * Compact "기억 13 · 주제 299" badge. The summary graph appears in a popover on
- * hover for pointer users, and on click/focus+Enter for everyone else — the
- * counts stop being a sentence the eye must read and become a place the eye
- * can go.
- */
 export function BrainStatsBadge({
   language,
   memories,
@@ -113,7 +93,6 @@ export function BrainStatsBadge({
   const rootRef = React.useRef<HTMLSpanElement>(null);
   const closeTimer = React.useRef<number | null>(null);
   const popoverId = React.useId();
-  // Hover opens; the click that follows must not immediately toggle it closed.
   const openedAt = React.useRef(0);
 
   const cancelClose = () => {
@@ -127,7 +106,6 @@ export function BrainStatsBadge({
     closeTimer.current = window.setTimeout(() => setOpen(false), 160);
   };
 
-  // Outside click / focus loss closes; Escape is handled on the wrapper below.
   React.useEffect(() => {
     if (!open) return;
     const dismiss = (event: Event) => {

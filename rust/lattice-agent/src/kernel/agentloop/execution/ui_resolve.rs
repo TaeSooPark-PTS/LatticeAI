@@ -1,5 +1,3 @@
-//! UI accessibility element center resolution and lean tool-menu capping.
-
 use serde_json::Value;
 
 use crate::kernel::agentloop::guided;
@@ -154,7 +152,6 @@ pub(super) fn find_ui_element_center(transcript: &[Value], needle: &str) -> Opti
                 _ => None,
             }
         };
-        // 1. Exact ID match.
         for elem in &elements {
             for key in ["id", "element_id", "uid", "ref"] {
                 if field_str(elem, key).is_some_and(|val| val.eq_ignore_ascii_case(needle_trimmed))
@@ -165,7 +162,6 @@ pub(super) fn find_ui_element_center(transcript: &[Value], needle: &str) -> Opti
                 }
             }
         }
-        // 2. Exact label/title/name/text match.
         for elem in &elements {
             for key in [
                 "label",
@@ -183,7 +179,6 @@ pub(super) fn find_ui_element_center(transcript: &[Value], needle: &str) -> Opti
                 }
             }
         }
-        // 3. Case-insensitive substring match against label/title/name/text/id.
         for elem in &elements {
             for key in [
                 "label",
@@ -208,9 +203,6 @@ pub(super) fn find_ui_element_center(transcript: &[Value], needle: &str) -> Opti
     None
 }
 
-/// Resolve a UI element center from the most recent `computer_ui_inspect`
-/// transcript result when `request` names one of the inspected elements'
-/// labels, titles, or IDs.
 pub(in crate::kernel::agentloop) fn find_request_ui_element_center(
     transcript: &[Value],
     request: &str,
@@ -276,8 +268,6 @@ pub(in crate::kernel::agentloop) fn find_request_ui_element_center(
     None
 }
 
-/// Extract the first result URL from the most recent successful `web_search`
-/// step on `transcript`.
 pub(in crate::kernel::agentloop) fn url_from_transcript(transcript: &[Value]) -> Option<String> {
     for step in transcript.iter().rev() {
         if step.get("error").is_some_and(is_truthy) {

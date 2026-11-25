@@ -1,12 +1,3 @@
-//! End-to-End Product Verification Suite for Review Section 16 (16.1 – 16.4).
-//!
-//! Verifies across the real Rust workspace crates (`lattice-core`, `lattice-retrieval`,
-//! `lattice-ingest`, `lattice-chat`, `lattice-agent`, `lattice-host`):
-//! - 16.1 Separated RAG Accuracy (KO/EN Recall@5, MRR, abstention, superseded exclusion, model-swap)
-//! - 16.2 Bi-temporal Knowledge Evolution (Jan -> Mar -> May point-in-time + current + Entity Resolution)
-//! - 16.3 Cloud Boundary Enforcement (`local_only` zero egress, sensitive exclusion, review staging)
-//! - 16.4 Fault Recovery (worker down degradation, mid-indexing restart recovery, approval restart resume)
-
 mod common;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -45,7 +36,6 @@ use serde_json::{json, Map};
 fn section_16_1_rag_accuracy_abstention_superseded_and_model_swap() {
     let report = run_separated_rag_evaluation("personal").expect("separated RAG evaluation");
 
-    // Mixed Korean/English Recall@5 & MRR on real LocalEmbeddingModel (`lattice-local-hash-v1`).
     assert!(
         report
             .embedding_model_id
@@ -86,8 +76,6 @@ fn section_16_2_bitemporal_jan_mar_may_evolution_and_entity_resolution() {
     let store = Arc::new(Store::open(&dir.path().join("knowledge_graph.sqlite")).expect("store"));
     let writer = GraphWriter::open(Arc::clone(&store), dir.path().join("blobs")).expect("writer");
 
-    // Seed Jan decision (Korean entity alias), Mar policy change (English canonical name),
-    // and May scoped exception on a real production GraphWriter schema!
     writer
         .upsert_nodes(&[
             NodeSpec {
@@ -190,7 +178,6 @@ fn section_16_2_bitemporal_jan_mar_may_evolution_and_entity_resolution() {
 
     store
         .with_read_conn(|conn| {
-            // 1. Point-in-time Feb 2026 -> ONLY Jan decision active!
             let feb = query_temporal_timeline(
                 conn,
                 Some("personal"),
@@ -200,7 +187,6 @@ fn section_16_2_bitemporal_jan_mar_may_evolution_and_entity_resolution() {
             assert_eq!(feb.active_facts.len(), 1);
             assert_eq!(feb.active_facts[0].node_id, "dec:jan_2026");
 
-            // 2. Point-in-time Apr 2026 -> Mar active, Jan superseded, May not yet reached!
             let apr = query_temporal_timeline(
                 conn,
                 Some("personal"),
@@ -212,7 +198,6 @@ fn section_16_2_bitemporal_jan_mar_may_evolution_and_entity_resolution() {
             assert_eq!(apr.historical_facts.len(), 1);
             assert_eq!(apr.unreached_facts.len(), 1);
 
-            // 3. Current state -> Mar + May active together; TemporalEvolution + ComplementaryRefinement!
             let current = query_temporal_timeline(conn, Some("personal"), "deploy policy", None)?;
             let active_ids: Vec<&str> = current
                 .active_facts
@@ -279,7 +264,6 @@ data: [DONE]
     std::fs::create_dir_all(&data_dir).expect("data_dir");
     std::fs::create_dir_all(&agent_root).expect("agent_root");
 
-    // Seed public, `local_only`, and `.env` sensitive nodes into the real Brain SQLite DB!
     let store = Arc::new(Store::open(&data_dir.join("knowledge_graph.sqlite")).expect("store"));
     let writer = GraphWriter::open(Arc::clone(&store), data_dir.join("blobs")).expect("writer");
 
@@ -322,7 +306,6 @@ data: [DONE]
         .expect("dotenv doc");
     let _ = writer.write_vectors(&dotenv_doc.node_id);
 
-    // Configure cloud provider, starting STRICTLY in `local_only` mode!
     std::fs::write(
         data_dir.join("cloud_provider.json"),
         json!({
@@ -372,7 +355,6 @@ data: [DONE]
         .with_product(Arc::new(product));
     let gateway = TestGateway::start_with_state(gw_state).await;
 
-    // 1. `local_only` mode -> ZERO outbound calls to cloud endpoint!
     let _resp = client()
         .post(gateway.url("/chat"))
         .header("content-type", "application/json")
@@ -386,7 +368,6 @@ data: [DONE]
         "local_only mode must NEVER make external network calls"
     );
 
-    // 2. Under `cloud_allowed`, verify sensitive (`local_only` + `.env.production`) nodes are stripped!
     let embedder = LocalEmbeddingModel::new(384);
     store
         .with_read_conn(|conn| {
@@ -421,7 +402,6 @@ data: [DONE]
         })
         .expect("context sensitivity check");
 
-    // 3. Cloud expansion NEVER auto-commits to KG (`auto_commit == false`, staged for review)!
     let plan = plan_kg_expansion_rich(&CloudTurnResult {
         user_message: "Rust 아키텍처 알려줘".into(),
         answer_text: "Rust 아키텍처는 로컬 SQLite 하이브리드 검색과 보안 경계를 결합합니다.".into(),
@@ -445,10 +425,9 @@ data: [DONE]
 
 #[tokio::test]
 async fn section_16_4_fault_recovery_worker_down_interrupted_indexing_and_approval_restart() {
-    // --- 16.4A: Python worker offline/unreachable -> Gateway & Seam degrade fast without hanging! ---
     let dead_listener = std::net::TcpListener::bind("127.0.0.1:0").expect("ephemeral port");
     let dead_port = dead_listener.local_addr().expect("addr").port();
-    drop(dead_listener); // Port is guaranteed closed!
+    drop(dead_listener);
     let dead_origin = format!("http://127.0.0.1:{dead_port}");
 
     let seam = WorkerSeamClient::new(&dead_origin)
@@ -474,14 +453,12 @@ async fn section_16_4_fault_recovery_worker_down_interrupted_indexing_and_approv
         "gateway worker seam must never hang when Python worker is down"
     );
 
-    // Local gateway native SQLite search still answers 200 while worker is down!
     let scratch = tempfile::tempdir().expect("tempdir");
     let data_dir = scratch.path().join("data");
     let agent_root = scratch.path().join("agent_workspace");
     std::fs::create_dir_all(&data_dir).expect("data_dir");
     std::fs::create_dir_all(&agent_root).expect("agent_root");
 
-    // Bootstrap empty graph schema before starting read-only gateway search check.
     {
         let boot_store =
             Arc::new(Store::open(&data_dir.join("knowledge_graph.sqlite")).expect("boot store"));
@@ -521,7 +498,6 @@ async fn section_16_4_fault_recovery_worker_down_interrupted_indexing_and_approv
     assert_eq!(search_res.status(), 200);
     gateway.stop().await;
 
-    // --- 16.4B: Mid-indexing interruption + restart recovers with 0 duplicates & 0 lost files! ---
     let vault_dir = scratch.path().join("vault");
     std::fs::create_dir_all(&vault_dir).expect("vault_dir");
     let mut watch_engine = DebouncedWatchEngine::new(
@@ -561,7 +537,6 @@ Third durable note body for recovery.",
     let embedder = LocalEmbeddingModel::new(384);
     let contract = embedder.contract();
 
-    // Crash after indexing ONLY first 2 of the 3 files!
     {
         let store1 =
             Arc::new(Store::open(&data_dir.join("knowledge_graph.sqlite")).expect("store1"));
@@ -587,7 +562,6 @@ Third durable note body for recovery.",
         }
     }
 
-    // Restart process: re-run incremental sync across ALL 3 files!
     let store2 = Arc::new(Store::open(&data_dir.join("knowledge_graph.sqlite")).expect("store2"));
     let writer2 = GraphWriter::open(Arc::clone(&store2), data_dir.join("blobs")).expect("writer2");
     let mut dup_skips = 0usize;
@@ -639,7 +613,6 @@ Third durable note body for recovery.",
         "exact 3 documents with zero duplicates or losses"
     );
 
-    // --- 16.4C: Agent WaitingApproval survives full restart and resumes idempotently! ---
     let wf_dir = scratch.path().join("durable_workflows");
     let output_note = scratch.path().join("approved_summary.md");
     let pre_pause_runs = AtomicUsize::new(0);
@@ -700,7 +673,6 @@ Third durable note body for recovery.",
     };
     assert_eq!(pre_pause_runs.load(Ordering::SeqCst), 1);
 
-    // Restart: brand new DurableWorkflowStore instance reloads state, approves, and finishes!
     let restarted_wf_store = DurableWorkflowStore::new(&wf_dir);
     restarted_wf_store
         .approve_step(

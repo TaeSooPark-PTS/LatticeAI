@@ -1,16 +1,3 @@
-"""The immutable dependency set one model runtime is configured with.
-
-``ModelRuntimeState`` replaced the process-wide module ``STATE`` object: every
-value the runtime needs — router, mode, paths, download/auth policy, the
-app-owned callables — is passed in explicitly and never mutated afterwards, so
-a second ASGI application in the same interpreter cannot inherit the first
-one's credentials or configuration.
-
-Also home to the two consent gates (:func:`_download_block`,
-:func:`_engine_install_block`): presence of a token or a model name never
-authorises network or installer activity on its own.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
@@ -28,8 +15,6 @@ from latticeai.core.model_compat import (
 )
 from latticeai.services.model_errors import ModelRuntimeError
 
-# ``model_loading._get_model_runtime_deps`` imports these private names from
-# this module to preserve the historical model_runtime wiring surface.
 _MODEL_LOADING_COMPAT_EXPORTS = (
     _friendly_model_runtime_error,
     _model_runtime_compatibility,
@@ -47,14 +32,6 @@ def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str
 
 @dataclass(frozen=True, slots=True)
 class ModelRuntimeState:
-    """Immutable application-owned dependencies for one model runtime.
-
-    Upper-case configuration field names intentionally match the long-standing
-    composition-root vocabulary.  Unlike the former module ``STATE`` object,
-    instances are explicit, immutable, and safe to create more than once in a
-    process (for example in isolated tests or multiple ASGI applications).
-    """
-
     router: Any = None
     APP_MODE: str = "local"
     DEFAULT_HOST: str = "127.0.0.1"
@@ -83,7 +60,6 @@ class ModelRuntimeState:
 
 
 def create_model_runtime_state(**deps: Any) -> ModelRuntimeState:
-    """Create an immutable runtime dependency set with strict key validation."""
 
     known = {item.name for item in fields(ModelRuntimeState)}
     unknown = sorted(set(deps) - known)

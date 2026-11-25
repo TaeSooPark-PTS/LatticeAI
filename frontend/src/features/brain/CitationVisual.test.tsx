@@ -52,7 +52,6 @@ describe("multi-modal evidence", () => {
 
     const image = screen.getByRole("img");
     expect(image).toHaveAttribute("src", PIXEL);
-    // The caption doubles as the alt text — it is the honest description.
     expect(image).toHaveAttribute("alt", "회의실에서 찍은 화이트보드");
     expect(screen.getByTestId("citation-caption")).toHaveTextContent(
       "회의실에서 찍은 화이트보드",
@@ -67,7 +66,6 @@ describe("multi-modal evidence", () => {
     expect(screen.getByTestId("citation-caption-absent")).toHaveTextContent(
       "비전 모델이 없어",
     );
-    // Falls back to the filename for alt text rather than inventing a description.
     expect(screen.getByRole("img")).toHaveAttribute("alt", "whiteboard.png 이미지 미리보기");
   });
 
@@ -123,7 +121,6 @@ describe("evidence payload parsing", () => {
       },
     });
 
-    // A remote src would make an evidence card phone home; a non-string is junk.
     expect(proof.recall.items[0]!.thumbnail).toBe("");
     expect(proof.recall.items[1]!.thumbnail).toBe("");
   });
@@ -177,7 +174,6 @@ describe("consent-gated original image serving", () => {
     expect(fullImg).toHaveAttribute("alt", "다이어그램");
     expect(screen.getByTestId("citation-open-original")).toHaveTextContent("원본 닫기");
 
-    // Fallback alt when caption is absent
     fireEvent.click(screen.getByTestId("citation-open-original"));
     await waitFor(() => expect(screen.queryByTestId("citation-original-image")).toBeNull());
   });

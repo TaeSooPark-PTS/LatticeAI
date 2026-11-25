@@ -1,11 +1,3 @@
-//! `lattice-core` — the Brain's read layer and embedding arithmetic in Rust.
-//!
-//! Phase 1 of `docs/v11.4.0_RUST_FOUNDATION_PLAN.md`. Everything here is a 1:1
-//! port of a named Python original; where the two runtimes could legitimately
-//! differ (rounding, float accumulation order, tokenizer boundaries) the Python
-//! behaviour is the contract and the Rust side is bent to match it, never the
-//! other way round. The parity harness in `lattice-retrieval` is what proves it.
-
 pub mod bm25_stats;
 pub mod db;
 pub mod embedding_contract;

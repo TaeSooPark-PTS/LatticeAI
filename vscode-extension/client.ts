@@ -13,7 +13,6 @@ export interface ModelInfo {
   internet_requirement?: string;
 }
 
-/** In-memory bounded, TTL-expiring cache of approval tokens (single-use on retrieval). */
 const MAX_APPROVAL_TOKENS = 256;
 const APPROVAL_TOKEN_TTL_MS = 30 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -57,7 +56,6 @@ export class LatticeAIClient {
     return extra;
   }
 
-  /** Remember a token so List/Approve can resume runs after a pause. */
   cacheApprovalToken(runId: string, token: string): void {
     if (!runId || !token) return;
     const now = Date.now();
@@ -65,7 +63,6 @@ export class LatticeAIClient {
     approvalTokenCache.set(runId, { token, expiresAt: now + APPROVAL_TOKEN_TTL_MS });
   }
 
-  /** Retrieve and immediately consume (single-use) a cached approval token. */
   takeCachedApprovalToken(runId: string): string | undefined {
     const entry = approvalTokenCache.get(runId);
     if (!entry) return undefined;
@@ -78,7 +75,6 @@ export class LatticeAIClient {
     approvalTokenCache.delete(runId);
   }
 
-  // ── Health ────────────────────────────────────────────────────────────────
 
   async health(): Promise<any> {
     return this._get("/health");
@@ -93,7 +89,6 @@ export class LatticeAIClient {
     }
   }
 
-  // ── Models ────────────────────────────────────────────────────────────────
 
   async listModels(): Promise<{ recommended: ModelInfo[]; loaded: string[]; current: string }> {
     return this._get("/models");
@@ -108,18 +103,11 @@ export class LatticeAIClient {
     return this._post("/models/load", { model_id: modelId, adapter_path: adapterPath });
   }
 
-  // `switchModel` lived here and posted to `/models/switch/{model_id}`. Nothing
-  // in this extension ever called it, and v11.8.0 deleted the route for exactly
-  // that reason across every surface — so the method would now be a 404 waiting
-  // for its first caller. `loadModel` switches as part of loading, and that is
-  // what the `ltcai.loadModel` command has always gone through
-  // (`commands.ts` → `syncStatus.loadModelWithProgress` → `client.loadModel`).
 
   async unloadModel(modelId: string): Promise<any> {
     return this._delete(`/models/unload/${encodeURIComponent(modelId)}`);
   }
 
-  // ── Generation ────────────────────────────────────────────────────────────
 
   async generate(
     message: string,
@@ -137,11 +125,6 @@ export class LatticeAIClient {
     return res.response as string;
   }
 
-  /**
-   * Non-streamed /chat, returning the full payload — including the
-   * `grounding` verdict and `context_quality` meta the web app badges.
-   * `generate` above throws that away; recall parity needs it.
-   */
   async chat(
     message: string,
     context?: string,
@@ -175,7 +158,6 @@ export class LatticeAIClient {
     yield* this._streamPost("/chat", body);
   }
 
-  // ── Garden ────────────────────────────────────────────────────────────────
 
   async garden(rawData: string, category?: string): Promise<any> {
     return this._post("/garden", { raw_data: rawData, category });
@@ -185,7 +167,6 @@ export class LatticeAIClient {
     return this._get("/garden/tree");
   }
 
-  // ── Workspace OS ─────────────────────────────────────────────────────────
 
   async sendToWorkspace(payload: {
     action: string;
@@ -215,7 +196,6 @@ export class LatticeAIClient {
     return this._post("/workspace/vscode/status", payload);
   }
 
-  // ── Agent approval (SURFACE_PARITY, v9.9.5) ───────────────────────────────
 
   async runAgent(message: string, opts: {
     human_in_loop?: boolean;
@@ -231,7 +211,6 @@ export class LatticeAIClient {
       executing_model: opts.executing_model,
       reviewing_model: opts.reviewing_model,
     });
-    // Cache tokens for both modern awaiting_approval and legacy waiting_approval.
     const status = String(result?.status || "");
     if (status === "awaiting_approval" || status === "waiting_approval") {
       const runId = String(result?.run_id || result?.context_id || "");
@@ -262,19 +241,12 @@ export class LatticeAIClient {
       approved: payload.approved ?? payload.approve ?? true,
       edited_plan: payload.edited_plan,
     };
-    // API accepts both approve and approved; send both for wire compatibility.
     body.approve = body.approved;
     const result = await this._post("/agent/resume", body);
     if (runId) this.clearCachedApprovalToken(runId);
     return result;
   }
 
-  /**
-   * Live agent run (SURFACE_PARITY v9.9.7). POSTs `/agent` with `stream:true`
-   * and calls `onStep` for every named `agent_step` frame, so the editor
-   * watches the loop work instead of staring at a spinner. Resolves with the
-   * same terminal payload the JSON response returns.
-   */
   async runAgentLive(
     message: string,
     onStep: (step: any) => void,
@@ -309,7 +281,6 @@ export class LatticeAIClient {
     return final;
   }
 
-  // ── Evidence → action (SURFACE_PARITY v9.9.7) ─────────────────────────────
 
   async evidenceActions(question: string, sourceIds: string[], language = "ko"): Promise<any> {
     return this._post("/api/evidence/actions", {
@@ -319,9 +290,6 @@ export class LatticeAIClient {
     });
   }
 
-  // ── Review Center (change proposals, SURFACE_PARITY v9.9.6) ───────────────
-  // The same /api/proposals surface the web Review Center uses: mutations to
-  // existing files are staged, never applied, until a human approves them.
 
   async listProposals(): Promise<any> {
     return this._get("/api/proposals");
@@ -335,14 +303,7 @@ export class LatticeAIClient {
     return this._post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, { reason });
   }
 
-  // ── Capture: folder ingestion (v10.4.0) ───────────────────────────────────
 
-  /**
-   * Ingest a local folder through the same unified pipeline the web Capture
-   * view uses. The endpoint requires the local-read approval dance: without an
-   * approval token it returns a `permission_required` payload, which the
-   * caller surfaces rather than silently retrying.
-   */
   async ingestFolder(payload: {
     path: string;
     recursive?: boolean;
@@ -363,13 +324,11 @@ export class LatticeAIClient {
     return this._get(`/api/ingestion/jobs/${encodeURIComponent(jobId)}`);
   }
 
-  // ── Setup: hardware-derived model recommendation (v10.4.0) ────────────────
 
   async setupScan(): Promise<any> {
     return this._get("/setup/scan");
   }
 
-  // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
   private _get(path: string): Promise<any> {
     return new Promise((resolve, reject) => {
@@ -458,7 +417,6 @@ export class LatticeAIClient {
             try { parsed = JSON.parse(data); } catch { parsed = undefined; }
             const status = res.statusCode ?? 0;
             if (status >= 400) {
-              // A 409 (proposal conflict) or 4xx must not look like success.
               const detail = parsed?.detail ?? parsed?.error ?? data;
               const error: any = new Error(String(detail || `HTTP ${status}`));
               error.status = status;
@@ -477,9 +435,6 @@ export class LatticeAIClient {
     });
   }
 
-  /**
-   * SSE frames from a POST, preserving the `event:` name.
-   */
   private async *_streamEvents(
     path: string,
     body: string
@@ -538,9 +493,7 @@ export class LatticeAIClient {
             } else {
               try {
                 frames.push({ event, data: JSON.parse(payload) });
-              } catch {
-                // Malformed frame is dropped rather than crashing the generator.
-              }
+              } catch {}
             }
             wake();
           }

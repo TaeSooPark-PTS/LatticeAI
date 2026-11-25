@@ -68,17 +68,6 @@ describe("ActionButton", () => {
   });
 });
 
-/**
- * The shared display primitives.
- *
- * Everything on this app's screens is drawn by these: a payload the server
- * shaped for a machine is turned into something a person reads. The failure
- * mode they exist to prevent is a screen that prints `[object Object]`,
- * `undefined`, a raw registry coordinate, or an internal enum — and, in basic
- * mode, one that leaks a field a non-technical owner should never see. Each
- * one is driven here through both modes and both languages, because the copy
- * they pick is the whole behaviour.
- */
 
 type Mode = "basic" | "advanced" | "admin";
 
@@ -223,7 +212,6 @@ describe("ValuePreview", () => {
     expect(text()).toContain("a");
     expect(text()).toContain("Enabled");
     expect(text()).toContain("Disabled");
-    // null has no readable value of its own.
     expect(text()).toContain("-");
     expect(text()).toContain("+3");
   });
@@ -235,8 +223,6 @@ describe("ValuePreview", () => {
   });
 
   it("summarises an object with a value, not with its field names", () => {
-    // Listing the keys read like the value; the one field worth showing is a
-    // state a person can act on.
     renderIn(<ValuePreview value={{ status: null, state: undefined, name: "", title: "준비 완료" }} />);
     expect(text()).toBe("준비 완료");
   });
@@ -246,7 +232,6 @@ describe("ValuePreview", () => {
     expect(text()).toBe("이름");
     nested.unmount();
 
-    // Nothing summarisable is left, so say how much is in there.
     renderIn(<ValuePreview value={{ status: Number.NaN, extra: { deep: 1 }, other: 3 }} />);
     expect(text()).toContain(t("ko", "ui.value.fields", { count: "3" }));
   });
@@ -338,7 +323,6 @@ describe("StructuredView", () => {
     expect(text()).toContain("+1");
     over.unmount();
 
-    // Nothing was left out, so there is no overflow chip to explain.
     renderIn(<StructuredView value={["a", "b"]} limit={2} />);
     expect(text()).not.toContain("+");
   });
@@ -443,12 +427,9 @@ describe("EntityList", () => {
   });
 
   it("prefers the localized role copy over whatever the server called it", () => {
-    // The registry ships English role names; a Korean reader must not be shown
-    // "Researcher" beside a Korean sentence.
     renderIn(<EntityList items={[{ type: "agent:researcher", id: "a1", name: "Researcher" }]} labelPrefix="act.agentRole" />);
     expect(text()).toContain(t("ko", "act.agentRole.researcher"));
     expect(text()).toContain(t("ko", "act.agentRole.researcher.detail"));
-    // A labelled row is already named by its role, so no type badge repeats it.
     expect(text()).not.toContain("Researcher");
   });
 
@@ -469,8 +450,6 @@ describe("EntityList", () => {
 
   it("drops a badge that only repeats the row's own name", () => {
     const { container } = renderIn(<EntityList items={[{ name: "Custom State", type: "custom_state" }]} metaKey="type" />);
-    // Saying "Custom State — Custom State" reads as a rendering fault, not as
-    // a category.
     expect(container.querySelector(".entity-list-row")?.textContent).toBe("Custom State");
   });
 
@@ -612,9 +591,6 @@ describe("Tabs", () => {
   });
 
   it("stays reachable from the keyboard when none of its tabs is selected", () => {
-    // One group of a grouped switcher holds no selection; a roving tabindex
-    // would otherwise put every button at -1 and drop the whole group out of
-    // the Tab order.
     const { buttons } = renderTabs("not-in-this-group");
     expect(buttons.map((button) => button.getAttribute("tabindex"))).toEqual(["0", "-1", "-1"]);
   });

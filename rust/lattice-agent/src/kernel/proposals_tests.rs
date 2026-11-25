@@ -106,7 +106,6 @@ fn an_overwrite_stages_the_payload_the_review_center_applies() {
         staged.provenance["source_detail"],
         json!("agent change governor")
     );
-    // Nothing was written: staging is the whole point.
     assert_eq!(
         std::fs::read_to_string(workspace.root().join("a.md")).expect("read"),
         "old\n"
@@ -125,8 +124,6 @@ fn an_undecidable_edit_falls_through_instead_of_staging_a_guess() {
         workspace_id: None,
         conversation_id: None,
     };
-    // `old_string` absent, not present, and ambiguous — all three are the
-    // same `Silent`, exactly as Python collapses them.
     for call in [
         json!({"path": "a.md", "new_string": "y"}),
         json!({"path": "a.md", "old_string": "zzz", "new_string": "y"}),
@@ -137,7 +134,6 @@ fn an_undecidable_edit_falls_through_instead_of_staging_a_guess() {
             Verdict::Silent
         );
     }
-    // …and `replace_all` makes the ambiguous one decidable again.
     let verdict = governor.review(
         "edit_file",
         &args(json!({"path": "a.md", "old_string": "x", "new_string": "y", "replace_all": true})),
@@ -177,9 +173,6 @@ fn a_store_that_refuses_is_a_failure_not_a_silent_fallthrough() {
 
 #[test]
 fn a_path_outside_the_workspace_is_no_file_and_stages_as_a_create() {
-    // `_snapshot` swallows the sandbox refusal exactly as Python's does,
-    // so the proposal is staged against "no base" rather than crashing the
-    // run. Approving it is what re-checks the path.
     let (_dir, workspace) = workspace();
     let store = Recorder::default();
     let governor = Governor {
@@ -222,15 +215,12 @@ fn the_json_store_writes_the_shape_the_review_center_reads() {
     assert_eq!(document["active_workspace"], json!("personal"));
     assert_eq!(document["review_items"].as_array().expect("rows").len(), 1);
     assert_eq!(document["review_items"][0]["id"], stored["id"]);
-    // A second item appends rather than replacing, and gets its own id
-    // even when every hashed field is identical within the same second.
     let second = store.create(&item).expect("create");
     assert_ne!(second["id"], stored["id"]);
     let document: Value =
         serde_json::from_str(&std::fs::read_to_string(store.state_path()).expect("read"))
             .expect("json");
     assert_eq!(document["review_items"].as_array().expect("rows").len(), 2);
-    // A blank title is the store's own refusal.
     assert!(store
         .create(&NewReviewItem {
             title: "  ".into(),
@@ -241,9 +231,6 @@ fn the_json_store_writes_the_shape_the_review_center_reads() {
 
 #[test]
 fn the_env_store_prefers_the_data_dir_over_home() {
-    // No env mutation: the rule is asserted through the two constructors it
-    // is built from, because a test that sets a process-wide variable races
-    // every other test in the binary.
     assert_eq!(
         JsonProposalStore::new("/tmp/data").state_path(),
         PathBuf::from("/tmp/data/workspace_os.json")

@@ -42,8 +42,6 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
   });
 
   const health = healthQ.data?.ok && isRecord(healthQ.data.data) ? healthQ.data.data : null;
-  // Any failed fetch (thrown, non-ok, or degraded source) is a real error
-  // state — never render zeroed metrics as if the brain were empty.
   const healthUnavailable =
     expanded && !healthQ.isPending && (healthQ.isError || !healthQ.data?.ok || healthQ.data?.source === "unavailable");
   const retryHealth = () => {

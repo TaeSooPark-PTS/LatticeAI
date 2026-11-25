@@ -1,33 +1,3 @@
-//! Durable persistence for paused agent runs.
-//!
-//! A port of `latticeai.core.run_store`. The `awaiting_approval` loop parks a
-//! run until a human says yes, and a restart between pause and resume used to
-//! turn every outstanding approval into a 404. One JSON file per run fixes that
-//! across restarts and across processes.
-//!
-//! The design constraints are the Python ones, and each is load-bearing:
-//!
-//! * **Atomic replace on write** — a half-written record must never be a
-//!   resumable one.
-//! * **Fail-open on save, fail-closed on resume.** A persistence error never
-//!   breaks the pause response; a load error on resume is "run not found".
-//! * **Tokens are never stored in plaintext.** Only the SHA-256 digest is
-//!   written, and resume compares digests.
-//! * **Wall-clock expiry**, because a monotonic deadline does not survive a
-//!   restart.
-//!
-//! ## Where the files live, and why not next to Python's
-//!
-//! `LATTICEAI_AGENT_RUNS_DIR` when set, otherwise `<data dir>/rust_agent_runs`
-//! — deliberately **not** `<data dir>/agent_runs`, which is Python's. The two
-//! stores share a record schema but not a runtime: a run paused by the Python
-//! loop carries a context that only the Python loop can resume (its prompts,
-//! its ports, its in-flight `AgentRequest`), and the same is true in reverse.
-//! Sharing the directory would let either side list, hand out and consume the
-//! other's in-flight runs, and the failure mode is silent — a resume that
-//! restores a context the runtime cannot honour. Separate directories make the
-//! two stores exactly as independent as the two runtimes are.
-
 use std::path::{Path, PathBuf};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -38,20 +8,12 @@ use sha2::{Digest, Sha256};
 use crate::kernel::state::AgentRunContext;
 use crate::kernel::trace::{epoch_now, utc_iso_seconds};
 
-/// Environment override for the store directory.
 pub const RUNS_DIR_ENV: &str = "LATTICEAI_AGENT_RUNS_DIR";
-/// Subdirectory under the data dir. See the module docs for why it is not
-/// `agent_runs`.
 pub const RUNS_DIR_NAME: &str = "rust_agent_runs";
-/// How long an approval token is good for.
 pub const APPROVAL_TTL_SECONDS: f64 = 600.0;
-/// How long an *expired* record is kept so resume can answer 410 with a replan
-/// hint instead of a bare 404.
 pub const RETENTION_SECONDS: f64 = 86_400.0;
-/// The record schema this store writes and reads.
 pub const RECORD_VERSION: u64 = 1;
 
-/// `secrets.token_urlsafe` — `bytes` random bytes, base64url, unpadded.
 pub fn token_urlsafe(bytes: usize) -> std::io::Result<String> {
     let mut buffer = vec![0u8; bytes];
     getrandom::fill(&mut buffer)
@@ -59,13 +21,11 @@ pub fn token_urlsafe(bytes: usize) -> std::io::Result<String> {
     Ok(URL_SAFE_NO_PAD.encode(&buffer))
 }
 
-/// Stable digest used both at save and at resume comparison time.
 pub fn hash_approval_token(token: &str) -> String {
     let digest = Sha256::digest(token.as_bytes());
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// Constant-time comparison, so a resume cannot be brute-forced by timing.
 pub fn token_matches(stored_hash: &str, supplied: &str) -> bool {
     if supplied.is_empty() || stored_hash.is_empty() {
         return false;
@@ -81,8 +41,6 @@ pub fn token_matches(stored_hash: &str, supplied: &str) -> bool {
         == 0
 }
 
-/// `run_id` comes from `token_urlsafe` — validated before any path use so a
-/// crafted id can never traverse out of the store directory.
 fn valid_run_id(run_id: &str) -> bool {
     let length = run_id.len();
     (8..=64).contains(&length)
@@ -91,7 +49,6 @@ fn valid_run_id(run_id: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
-/// The directory this process stores paused runs in.
 pub fn default_runs_dir() -> PathBuf {
     let configured = std::env::var(RUNS_DIR_ENV).unwrap_or_default();
     if !configured.trim().is_empty() {
@@ -109,13 +66,11 @@ pub fn default_runs_dir() -> PathBuf {
     base.join(RUNS_DIR_NAME)
 }
 
-/// One-JSON-file-per-run persistence for paused approval runs.
 #[derive(Debug, Clone)]
 pub struct AgentRunStore {
     root: PathBuf,
 }
 
-/// Everything a pause needs to persist besides the context itself.
 #[derive(Debug, Clone)]
 pub struct PausedRun<'a> {
     pub run_id: &'a str,
@@ -133,7 +88,6 @@ impl AgentRunStore {
         Self { root: root.into() }
     }
 
-    /// The store this process uses by default.
     pub fn from_env() -> Self {
         Self::new(default_runs_dir())
     }
@@ -146,7 +100,6 @@ impl AgentRunStore {
         valid_run_id(run_id).then(|| self.root.join(format!("{run_id}.json")))
     }
 
-    /// Persist a paused run. Best-effort: `false` on any failure.
     pub fn save(&self, run: &PausedRun<'_>, ctx: &AgentRunContext) -> bool {
         let Some(path) = self.path_for(run.run_id) else {
             return false;
@@ -166,8 +119,6 @@ impl AgentRunStore {
         self.write_atomic(&path, &record).is_ok()
     }
 
-    /// `mkstemp` in the store directory, then `os.replace` — a reader either
-    /// sees the old record or the whole new one, never a partial write.
     fn write_atomic(&self, path: &Path, record: &Value) -> std::io::Result<()> {
         std::fs::create_dir_all(&self.root)?;
         let name = path
@@ -194,7 +145,6 @@ impl AgentRunStore {
         }
     }
 
-    /// Raw persisted record, or `None` when missing / corrupt / an invalid id.
     pub fn load(&self, run_id: &str) -> Option<Value> {
         let path = self.path_for(run_id)?;
         let raw = std::fs::read_to_string(path).ok()?;
@@ -202,7 +152,6 @@ impl AgentRunStore {
         (record.is_object() && record.get("run_id") == Some(&json!(run_id))).then_some(record)
     }
 
-    /// Unexpired pending runs (optionally for one user), sorted by run id.
     pub fn pending_summaries(&self, user: Option<&str>) -> Vec<Value> {
         let now = epoch_now();
         let mut names: Vec<PathBuf> = match std::fs::read_dir(&self.root) {
@@ -247,10 +196,6 @@ impl AgentRunStore {
         summaries
     }
 
-    /// Remove long-expired run files; returns how many were removed.
-    ///
-    /// Recently expired records are *kept* for [`RETENTION_SECONDS`] so a
-    /// resume after expiry can still answer 410 with a replan hint.
     pub fn sweep_expired(&self, now_epoch: Option<f64>) -> usize {
         let now = now_epoch.unwrap_or_else(epoch_now);
         let Ok(entries) = std::fs::read_dir(&self.root) else {
@@ -262,7 +207,6 @@ impl AgentRunStore {
             .map(|entry| entry.path())
             .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
         {
-            // An unreadable record is expired garbage, not a record to keep.
             let expires = std::fs::read_to_string(&path)
                 .ok()
                 .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
@@ -276,7 +220,6 @@ impl AgentRunStore {
     }
 }
 
-/// The 410 body a resume after expiry answers with.
 pub fn approval_expired_payload(message: &str) -> Value {
     json!({
         "error": "approval_expired",
@@ -285,7 +228,6 @@ pub fn approval_expired_payload(message: &str) -> Value {
     })
 }
 
-/// `(expires_epoch, expires_at)` for a pause starting now.
 pub fn approval_deadline() -> (f64, String) {
     let expires = epoch_now() + APPROVAL_TTL_SECONDS;
     (
@@ -370,7 +312,6 @@ mod tests {
 
     #[test]
     fn the_digest_is_the_one_hashlib_produces() {
-        // Both read off `hashlib.sha256(...).hexdigest()`.
         assert_eq!(
             hash_approval_token("secret-token"),
             "930bbdc51b6aed5c2a5678fd6e28dee7a05e8a4b643cfc0b4427c3efb86c0d94"
@@ -407,7 +348,6 @@ mod tests {
         std::fs::create_dir_all(store.root()).expect("dir");
         std::fs::write(store.root().join("run-abcdefgh.json"), b"{not json").expect("write");
         assert_eq!(store.load("run-abcdefgh"), None);
-        // A record whose id does not match its filename is not that record.
         std::fs::write(
             store.root().join("run-abcdefgh.json"),
             br#"{"run_id": "run-somethingelse"}"#,
@@ -520,7 +460,6 @@ mod tests {
 
     #[test]
     fn the_store_directory_is_not_pythons() {
-        // Two runtimes must not deserialize each other's in-flight runs.
         let resolved = default_runs_dir();
         assert!(resolved.ends_with(RUNS_DIR_NAME), "{resolved:?}");
         assert!(!resolved.ends_with("agent_runs"));

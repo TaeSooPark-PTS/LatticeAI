@@ -51,19 +51,16 @@ describe("SelfModelPanel", () => {
     expect(screen.queryByTestId("self-model-summary")).toBeNull();
     expect(screen.queryByTestId("self-model-proposals")).toBeNull();
 
-    // Submitting blank form is ignored.
     fireEvent.submit(screen.getByTestId("self-model-input").closest("form")!);
     expect(upsertOk).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByTestId("self-model-kind-select"), { target: { value: "decision" } });
     fireEvent.change(screen.getByTestId("self-model-input"), { target: { value: "  항상 로컬 우선 유지  " } });
 
-    // First attempt fails -> input stays intact so user does not lose text.
     fireEvent.click(screen.getByTestId("self-model-submit"));
     await waitFor(() => expect(upsertOk).toHaveBeenCalledWith("decision", "항상 로컬 우선 유지"));
     expect((screen.getByTestId("self-model-input") as HTMLInputElement).value).toBe("  항상 로컬 우선 유지  ");
 
-    // Second attempt succeeds -> input clears.
     fireEvent.click(screen.getByTestId("self-model-submit"));
     await waitFor(() => expect((screen.getByTestId("self-model-input") as HTMLInputElement).value).toBe(""));
   });
@@ -109,7 +106,6 @@ describe("SelfModelPanel", () => {
     expect(screen.getByText("직접 작성")).toBeTruthy();
     expect(screen.getByText("제안 승인")).toBeTruthy();
 
-    // Approve & Dismiss proposal buttons
     const proposalRow = screen.getByTestId("self-model-proposal-row");
     expect(proposalRow).toHaveTextContent("다크 모드 선호");
     fireEvent.click(screen.getByText("승인 반영"));
@@ -118,11 +114,9 @@ describe("SelfModelPanel", () => {
     fireEvent.click(screen.getByText("거절"));
     await waitFor(() => expect(reviewSpy).toHaveBeenCalledWith("prop-1"));
 
-    // Delete fact
     fireEvent.click(screen.getByRole("button", { name: "삭제 간결한 답변" }));
     await waitFor(() => expect(delSpy).toHaveBeenCalledWith("self:1"));
 
-    // Navigate to Review Center
     fireEvent.click(screen.getByTestId("self-model-open-review"));
     expect(navSpy).toHaveBeenCalledWith("/review");
   });

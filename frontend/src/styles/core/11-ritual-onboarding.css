@@ -1,7 +1,4 @@
-/* Mobile collapse for the onboarding grids. Must live AFTER the base 3-column
-   rules above: the global max-width:720px block is declared earlier in the
-   file, so at equal specificity its overrides lose to these later base rules
-   and the cards stayed cramped at 3 columns on phones. */
+
 @media (max-width: 720px) {
   .ritual-value-grid,
   .ritual-wake-plan,
@@ -317,14 +314,7 @@
   font-size: 0.68rem;
 }
 
-/* ── Onboarding: reorganised login and recommendation ────────────────────
-   These rules are the layout for LoginScreen and RecommendationScreen. They
-   live here, not as Tailwind utilities in the components, because this sheet
-   is unlayered: Tailwind puts utilities in `@layer utilities`, and an
-   unlayered rule beats a layered one regardless of specificity or order. A
-   `p-4` or `justify-between` dropped on a `.ritual-*` element that this file
-   already styles is dead code, and one dropped on a property this file does
-   not set is worse — it stacks silently on top. */
+
 
 .ritual-login {
   display: flex;
@@ -344,14 +334,11 @@
 
 .ritual-recommend {
   width: min(100%, 34rem);
-  /* Without this the 34rem column sat flush against the left edge of the 54rem
-     shell and the screen read as though it had slid sideways: ~180px of dead
-     space down the right, greeting and card visibly off the shell's axis. */
+  
   margin-inline: auto;
 }
 
-/* The greeting stays centred with the rest of the shell; the surfaces under
-   it are left-aligned so the eye has one column to read down. */
+
 .ritual-login > header,
 .ritual-recommend > header {
   text-align: center;
@@ -369,8 +356,7 @@
   font-size: 0.95rem;
 }
 
-/* The one raised surface on the login screen. Everything else is flat, so the
-   form is what the eye lands on without being told. */
+
 .ritual-login-card {
   padding: 1.35rem 1.4rem 1.2rem;
   border: 1px solid hsl(var(--border));
@@ -388,15 +374,13 @@
   gap: 0.7rem;
 }
 
-/* `.ritual-field-label` was a div; it is a real <label> now, and inline
-   labels would sit beside their input. */
+
 .ritual-login-card .ritual-field-label {
   display: block;
   text-align: left;
 }
 
-/* Both reassurances moved below the button and became one footnote block, so
-   nothing sits between the last field and the thing you press. */
+
 .ritual-login-footnotes {
   display: grid;
   gap: 0.25rem;
@@ -412,7 +396,7 @@
   line-height: 1.45;
 }
 
-/* The promise bar in onboarding left column: vertical list with legible typography */
+
 .ritual-promise.is-quiet {
   display: flex;
   flex-direction: column;
@@ -456,7 +440,7 @@
   margin-top: 2px;
 }
 
-/* ── Recommendation: one hero card, then the alternatives ──────────────── */
+
 .ritual-primary-hero-card {
   display: grid;
   gap: 0.4rem;
@@ -526,8 +510,7 @@
   opacity: 0.75;
 }
 
-/* The CTA is inside the card it belongs to, so it carries no stray margin of
-   its own — `.ritual-primary-model-button` used to sit above the list. */
+
 .ritual-primary-hero-card .ritual-primary-model-button {
   min-height: 3rem;
   margin-top: 0.55rem;
@@ -555,8 +538,7 @@
   font-weight: 700;
 }
 
-/* auto-fit rather than a fixed pair: only one alternative may be supported,
-   and a hard two-column rule left a hole beside it. */
+
 .ritual-alt-list {
   display: flex;
   flex-direction: column;

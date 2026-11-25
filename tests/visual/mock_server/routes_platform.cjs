@@ -1,11 +1,3 @@
-/**
- * Workspace OS, the three opt-in dials (features, permission mode, network
- * boundary), permissions and peers. The dial catalogs are captured for the
- * release evidence, so their shape has to be the server's, honesty included.
- *
- * Returns true when this module answered the request; false lets the entry
- * try the next module, in the same order the original if-chain ran.
- */
 const { repoRoot, json } = require("./http.cjs");
 const { appVersion, graphNodes, graphEdges, shortestPath, workspaceOs, snapshots, peers } = require("./fixtures.cjs");
 
@@ -70,12 +62,6 @@ module.exports = function handlePlatform({ req, res, url, pathname }) {
   if (pathname.startsWith("/invitations/") && pathname.endsWith("/accept") && req.method === "POST") return json(res, { invitation: { id: "invite-demo", status: "accepted" } });
   if (pathname === "/realtime/feed") return json(res, { events: [{ id: "evt-1", area: "workflow", event_type: "workflow_started", timestamp: "2026-06-01T12:00:00", payload: { run_id: "wf-run-approval" } }], stats: { events: 1 } });
   if (pathname === "/realtime/presence") return json(res, { presence: [{ client_id: "visual-client", user: "admin@example.com", workspace_id: "personal", last_seen: "2026-06-01T12:00:00" }], stats: { subscribers: 1 } });
-  // The opt-in switchboard (v11.2.0). Same reason as the two dials below: the
-  // 기능 drawer is captured for the release evidence, and a mock without this
-  // route would photograph an empty panel for a feature that works (10.6.0).
-  // The shape is the server's — `source`, `caution`, and an `available: false`
-  // option with its reason all have to be real here or the capture would not
-  // show the honesty this panel exists for.
   if (pathname === "/api/features" || pathname.startsWith("/api/features/")) {
     const features = [
       { id: "allow_multimodal", kind: "toggle", label: "사진·녹음도 기억하기", summary: "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.", default: false, current: true, source: "user", env_var: "LATTICEAI_ALLOW_MULTIMODAL", live: true, restart_required: false, caution: null, parent: null, choices: [] },
@@ -99,9 +85,6 @@ module.exports = function handlePlatform({ req, res, url, pathname }) {
     }
     return json(res, { features, note: "모두 지금 바로 적용됩니다. 다시 시작하지 않아도 됩니다." });
   }
-  // Autonomy dial (v9.9.8). The settings screenshot renders this panel, so the
-  // mock must serve the same catalog shape the real API does — otherwise the
-  // release evidence would show an "unavailable" state for a working feature.
   if (pathname === "/api/permission-mode" || pathname === "/api/permission-mode/catalog") {
     const catalog = [
       { id: "strict", label: "Strict", label_ko: "엄격", summary: "Reads auto; writes and exec need approval or review proposals.", summary_ko: "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.", risk: "low", requires_ack: false },
@@ -120,9 +103,6 @@ module.exports = function handlePlatform({ req, res, url, pathname }) {
       catalog, scope: { user_email: "admin@example.com", workspace_id: null },
     });
   }
-  // Network boundary dial (v10.1.1). Same reason as the autonomy dial above:
-  // the settings screenshot renders this panel, so the mock has to serve the
-  // real catalog shape or the evidence would show a working feature as broken.
   if (pathname.startsWith("/api/network-boundary")) {
     const catalog = [
       { id: "local_only", label: "Local only", label_ko: "로컬만", summary: "Nothing leaves this machine. Answers use local models and the local Brain only.", summary_ko: "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.", risk: "low", requires_ack: false },
@@ -145,8 +125,6 @@ module.exports = function handlePlatform({ req, res, url, pathname }) {
         would_block: null,
       });
     }
-    // POST /api/network-boundary is the mode switch; the panel re-reads state
-    // afterwards, so returning the acknowledged mode is enough.
     const mode = req.method === "POST" ? "cloud_allowed" : "local_only";
     const entry = catalog.find((item) => item.id === mode);
     return json(res, {
@@ -157,10 +135,6 @@ module.exports = function handlePlatform({ req, res, url, pathname }) {
       catalog, scope: { user_email: "admin@example.com", workspace_id: null },
     });
   }
-  // Match latticeai/api/permissions.py _PERMISSION_ACTION_LABELS:
-  // mapped actions use Korean labels; unmapped actions fall back to the raw key.
-  // Capture 09 must exercise both paths so a Korean-label UI regression is not
-  // masked by an English-only mock (and vice versa for the fallback path).
   if (pathname === "/permissions/pending") return json(res, {
     pending: {
       "perm-token": {

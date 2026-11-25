@@ -47,6 +47,7 @@ jobs:
           npm run check:server-i18n
           node scripts/check_release_evidence_bound.mjs
           npm run check:max-file-lines
+          npm run check:no-comments
           npm run docs:check-current
           npm run docs:check-links
           npm run docs:check-languages

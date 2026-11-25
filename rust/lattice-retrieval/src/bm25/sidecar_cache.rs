@@ -1,5 +1,3 @@
-//! Fast inverted-index BM25F scoring and concurrent snapshot sidecar cache pool.
-
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
@@ -22,13 +20,10 @@ pub const MAX_CACHED_SIDECARS: usize = 64;
 pub const DEFAULT_MAX_CACHE_BYTES: usize = 256 * 1024 * 1024;
 
 impl Bm25SidecarIndex {
-    /// Score `query` using the pre-tokenized inverted posting lists and O(1) field lengths.
-    /// Excludes `superseded` / `deprecated` nodes by default (`include_historical = false`).
     pub fn score(&self, query: &str, params: &Bm25fParams) -> Vec<Bm25fScoredNode> {
         self.score_with_options(query, params, false)
     }
 
-    /// Score `query` with explicit control over historical (`superseded`/`deprecated`) inclusion.
     pub fn score_with_options(
         &self,
         query: &str,
@@ -233,8 +228,6 @@ impl CacheEntry {
     }
 }
 
-/// Concurrent snapshot pool with `RwLock` shared reads and both count (`max_entries`)
-/// and memory (`max_bytes`) LRU/cost-aware eviction.
 pub struct SidecarCachePool {
     max_entries: usize,
     max_bytes: usize,
@@ -348,8 +341,6 @@ impl SidecarCachePool {
         }
     }
 
-    /// Return a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot for `(conn, scope)`.
-    /// Concurrent readers acquire only shared read locks and drop all locks before scoring.
     pub fn snapshot_for_conn(
         &self,
         conn: &Connection,
@@ -362,7 +353,6 @@ impl SidecarCachePool {
         let key = cache_key(conn, scope, include_historical);
         let tick = self.next_tick();
 
-        // Fast lock-free-for-scoring concurrent read path.
         if let Some(entry) = {
             let guard = self.entries.read().unwrap_or_else(|e| e.into_inner());
             guard.get(&key).cloned()
@@ -381,7 +371,6 @@ impl SidecarCachePool {
             }
         }
 
-        // Slow incremental write path: blocks only writers to this single cache key.
         let entry = self.acquire_entry(&key);
         let (cloned, bytes) = {
             let mut snap_guard = entry.snapshot.write().unwrap_or_else(|e| e.into_inner());
@@ -401,7 +390,6 @@ impl SidecarCachePool {
         Ok(cloned)
     }
 
-    /// Acquire and incrementally sync a mutable sidecar index (via copy-on-write snapshot).
     pub fn with_mut<R, F>(
         &self,
         conn: &Connection,
@@ -473,7 +461,6 @@ fn cache_key(conn: &Connection, scope: &Scope, include_historical: bool) -> Stri
     )
 }
 
-/// Obtain a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot synced for `(conn, scope)`.
 pub fn with_bm25_sidecar_snapshot(
     conn: &Connection,
     scope: &Scope,
@@ -483,8 +470,6 @@ pub fn with_bm25_sidecar_snapshot(
     global_pool().snapshot_for_conn(conn, scope, max_rows, include_historical, false, false)
 }
 
-/// Obtain a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot with synced edges and
-/// incrementally precomputed subword embeddings.
 pub fn with_bm25_sidecar_full_snapshot(
     conn: &Connection,
     scope: &Scope,
@@ -494,8 +479,6 @@ pub fn with_bm25_sidecar_full_snapshot(
     global_pool().snapshot_for_conn(conn, scope, max_rows, include_historical, true, true)
 }
 
-/// Acquire and incrementally sync the cached `Bm25SidecarIndex` for `(conn, scope)`,
-/// then invoke `f(&mut sidecar)`.
 pub fn with_bm25_sidecar<R, F>(
     conn: &Connection,
     scope: &Scope,
@@ -508,7 +491,6 @@ where
     global_pool().with_mut(conn, scope, max_rows, false, f)
 }
 
-/// Snapshot current cache stats for `(conn, scope)` if cached.
 pub fn cached_sidecar_stats(conn: &Connection, scope: &Scope) -> Option<SidecarCacheStats> {
     global_pool().stats_for(conn, scope)
 }

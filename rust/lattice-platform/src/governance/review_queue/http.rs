@@ -1,5 +1,3 @@
-//! Auth, JSON, and time helpers shared by the R7 families.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::{HeaderMap, StatusCode};
@@ -12,8 +10,6 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 use super::{GovernanceState, DEFAULT_WORKSPACE_ID};
-
-// ── auth / http helpers ───────────────────────────────────────────────────
 
 #[derive(Debug, Default, serde::Deserialize)]
 pub(crate) struct ListQuery {
@@ -212,14 +208,6 @@ fn civil_from_days(mut days: i64) -> (i32, u32, u32) {
     (y as i32, m as u32, d as u32)
 }
 
-/// One parsed ISO-8601 stamp, reduced to the instant it names.
-///
-/// The wall-clock reading with the offset ignored is what a naive
-/// `datetime.fromisoformat` produces; `utc_secs` is that reading with the
-/// offset applied. Folding the two into one field is why an aware
-/// `snoozed_until` can be compared against the naive clock instead of raising
-/// (v11.6.0 answered 500 here). The naive reading and the offset-aware flag are
-/// [`split_offset`]'s business, and that is where they are proven.
 pub(crate) struct ParsedIso {
     pub(crate) utc_secs: i64,
 }
@@ -245,12 +233,6 @@ pub(crate) fn parse_iso(value: &str) -> Option<ParsedIso> {
     })
 }
 
-/// Split `<wall clock>` from its trailing UTC offset: the reading, the offset
-/// in seconds, and whether the stamp carried an offset at all.
-///
-/// `Z` and `+HH:MM` are unambiguous. A trailing `-HH:MM` is only an offset when
-/// the dash sits past the date (index > 9), which is the same guard the naive
-/// parse has always used — `2099-01-01T00:00:00` must not lose its day.
 fn split_offset(value: &str) -> (&str, i64, bool) {
     if let Some(core) = value.strip_suffix('Z').or_else(|| value.strip_suffix('z')) {
         return (core, 0, true);
@@ -267,9 +249,7 @@ fn split_offset(value: &str) -> (&str, i64, bool) {
     let part =
         |range: std::ops::Range<usize>| digits.get(range).and_then(|text| text.parse::<i64>().ok());
     let offset = match digits.len() {
-        // `+HH`
         1 | 2 => digits.parse::<i64>().ok().map(|hours| hours * 3600),
-        // `+HHMM` / `+HH:MM`, and `+HHMMSS`, which Python also accepts.
         4 | 6 => match (part(0..2), part(2..4)) {
             (Some(hours), Some(minutes)) => {
                 Some(hours * 3600 + minutes * 60 + part(4..6).unwrap_or(0))
@@ -278,8 +258,6 @@ fn split_offset(value: &str) -> (&str, i64, bool) {
         },
         _ => None,
     };
-    // An unreadable offset is treated as absent rather than guessed at, so the
-    // stamp still parses as the wall clock it plainly reads as.
     (core, sign * offset.unwrap_or(0), offset.is_some())
 }
 
@@ -309,8 +287,6 @@ pub(crate) fn naive_now_secs() -> i64 {
 
 pub(crate) fn json_hash(value: &Value) -> String {
     let payload = serde_json::to_string(value).unwrap_or_else(|_| "null".into());
-    // Python uses sort_keys=True, ensure_ascii=False. serde_json::to_string
-    // on a Value preserves the Value's own key order (BTreeMap = sorted).
     let digest = Sha256::digest(payload.as_bytes());
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -350,9 +326,6 @@ mod tests {
         parse_iso(text).unwrap_or_else(|| panic!("{text} must parse"))
     }
 
-    /// The naive reading and the offset-aware flag live in [`split_offset`];
-    /// `ParsedIso` keeps only the instant. These two helpers name them so the
-    /// assertions below read the same as when the struct carried all three.
     fn offset_secs(text: &str) -> i64 {
         split_offset(text).1
     }
@@ -365,12 +338,9 @@ mod tests {
     fn a_naive_stamp_reads_as_itself_in_both_readings() {
         let value = parsed("2099-01-01T00:00:00");
         assert!(!aware("2099-01-01T00:00:00"));
-        // No offset to remove, so the instant *is* the wall-clock reading.
         assert_eq!(offset_secs("2099-01-01T00:00:00"), 0);
         assert_eq!(value.utc_secs, 4_070_908_800);
-        // Space separator and fractional seconds, as Python accepts them.
         assert_eq!(parsed("2099-01-01 00:00:00.500").utc_secs, 4_070_908_800);
-        // Minutes only.
         assert_eq!(parsed("2099-01-01T00:00").utc_secs, 4_070_908_800);
     }
 
@@ -381,8 +351,6 @@ mod tests {
         assert_eq!(utc.utc_secs, 4_070_908_800);
         assert_eq!(offset_secs("2099-01-01T00:00:00+00:00"), 0);
 
-        // 09:00 in +09:00 is midnight UTC; 19:00 the previous day in -05:00 is
-        // the same instant. Both used to be a 500 rather than a comparison.
         for text in [
             "2099-01-01T09:00:00+09:00",
             "2099-01-01T09:00:00+0900",
@@ -399,16 +367,12 @@ mod tests {
             assert!(aware(text), "{text}");
             assert_eq!(value.utc_secs, 4_070_908_800, "{text}");
         }
-        // Seconds in the offset, and an hours-only offset.
         assert_eq!(parsed("2099-01-01T00:00:30+000030").utc_secs, 4_070_908_800);
         assert_eq!(parsed("2099-01-01T09:00:00+09").utc_secs, 4_070_908_800);
     }
 
     #[test]
     fn an_unreadable_offset_leaves_the_wall_clock_alone_and_junk_does_not_parse() {
-        // Five digits is not an offset shape; the reading stays the wall clock
-        // rather than becoming a guess, and the stamp does not claim to be
-        // offset-aware when nothing readable said so.
         assert_eq!(parsed("2099-01-01T00:00:00+09000").utc_secs, 4_070_908_800);
         assert_eq!(offset_secs("2099-01-01T00:00:00+09000"), 0);
         assert!(!aware("2099-01-01T00:00:00+09000"));

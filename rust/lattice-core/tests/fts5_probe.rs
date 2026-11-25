@@ -1,4 +1,3 @@
-//! Empirical FTS5 probe.
 #[test]
 fn bundled_sqlite_has_fts5_trigram() {
     let dir = tempfile::tempdir().unwrap();

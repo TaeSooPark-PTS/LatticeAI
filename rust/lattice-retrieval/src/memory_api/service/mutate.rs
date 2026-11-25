@@ -1,5 +1,3 @@
-//! Memory maintenance: prune, compact, and clear planning.
-
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -11,20 +9,13 @@ use super::WORKSPACE_KINDS;
 use crate::memory_api::shared::BrainState;
 use crate::memory_api::wsos;
 
-// ── the mutating half ───────────────────────────────────────────────────────
-
-/// The answer `prune` builds, before it becomes a response body.
 pub struct PruneOutcome {
-    /// Ids that were removed, in the order they were targeted.
     pub removed: Vec<String>,
-    /// Ids the caller asked for but does not own.
     pub skipped: Vec<String>,
-    /// Ids whose deletion failed, with the reason.
     pub failed: Vec<(String, String)>,
 }
 
 impl PruneOutcome {
-    /// `{"removed", "count"}` plus the two optional blocks.
     pub fn to_body(&self) -> OrderedMap {
         let mut out = OrderedMap::new();
         out.insert(
@@ -80,11 +71,6 @@ fn failed_rows(failed: &[(String, String)]) -> Value {
     )
 }
 
-/// `MemoryMaintenanceMixin.prune`, ownership guard included.
-///
-/// The guard is the point: both the explicit-id path and the by-kind path are
-/// intersected with the caller's *own* memories, so a forged id belonging to
-/// someone else is reported `skipped` rather than silently deleted.
 pub fn prune(
     state: &BrainState,
     snapshot: &Snapshot,
@@ -123,11 +109,9 @@ pub fn prune(
     delete_all(state, &targets, skipped)
 }
 
-/// `MemoryMaintenanceMixin.compact` — drop repeats of one `(kind, content)`.
 pub fn compact(state: &BrainState, snapshot: &Snapshot) -> OrderedMap {
     let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
     let mut targets: Vec<String> = Vec::new();
-    // Oldest first, so the first occurrence — the oldest — is the one kept.
     for item in snapshot.owned_memories.iter().rev() {
         let key = (
             nonempty_or(item, "kind", ""),
@@ -182,9 +166,6 @@ fn delete_all(state: &BrainState, targets: &[String], skipped: Vec<String>) -> P
     for id in targets {
         match wsos::delete_memory(state.store(), state.data_dir(), id) {
             Ok(true) => removed.push(id.clone()),
-            // `WorkspaceOSStore.delete_memory` raises FileNotFoundError for an
-            // id that vanished between the read and the write; Python's
-            // `except Exception` files that as a failure, not a silent skip.
             Ok(false) => failed.push((id.clone(), id.clone())),
             Err(error) => failed.push((id.clone(), error.to_string())),
         }
@@ -196,15 +177,11 @@ fn delete_all(state: &BrainState, targets: &[String], skipped: Vec<String>) -> P
     }
 }
 
-/// `MemoryMaintenanceMixin.clear`'s scope router, as a decision.
 pub enum ClearPlan {
-    /// `scope` is one of `WORKSPACE_KINDS` — prune by kind.
     ByKind(String),
-    /// Every other scope is refused with this exact sentence.
     Refused(String),
 }
 
-/// `clear(scope, confirm)` before anything is deleted.
 pub fn clear_plan(scope: &str, confirm: bool) -> ClearPlan {
     if !confirm {
         return ClearPlan::Refused("clear requires confirm=true".to_string());

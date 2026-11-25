@@ -1,14 +1,3 @@
-//! Permission-mode dial — port of `latticeai/api/permission_mode.py`.
-//!
-//! Three routes, one JSON file (`permission_mode.json`). The write is the same
-//! atomic replace Python uses (`<path>.tmp` → rename, mode 0600): a torn
-//! write of this file is how v9.9.8 lost a scope and then applied the wrong
-//! autonomy level to the next agent turn.
-//!
-//! Scope precedence is workspace → user → process default. `set_mode` resolves
-//! the previous value from the already-loaded document (it must not re-enter
-//! the store lock — that deadlock was the other v9.9.8 bug).
-
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -27,7 +16,6 @@ use lattice_core::db::tables::state_files;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-/// Routes this family mounts. Compared to `models_misc.json` by the contract test.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/permission-mode"),
     ("POST", "/api/permission-mode"),
@@ -37,7 +25,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
 const BYPASS_ACK: &str = "bypass mode requires acknowledge_risk=true \
 (YOLO inside the agent workspace; circuit breakers still apply)";
 
-/// What the family needs to serve the dial.
 #[derive(Clone)]
 pub struct PermissionModeState {
     auth: Arc<AuthState>,
@@ -45,12 +32,10 @@ pub struct PermissionModeState {
 }
 
 impl PermissionModeState {
-    /// Point the dial at `data_dir/permission_mode.json`.
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         Self::with_default(auth, data_dir, "strict")
     }
 
-    /// Same, with an explicit process-level default (env `LATTICEAI_PERMISSION_MODE`).
     pub fn with_default(
         auth: Arc<AuthState>,
         data_dir: impl AsRef<Path>,
@@ -63,13 +48,11 @@ impl PermissionModeState {
         }
     }
 
-    /// On-disk path this instance writes.
     pub fn path(&self) -> &Path {
         &self.store.path
     }
 }
 
-/// Router factory. The integrator merges this into the gateway.
 pub fn router(state: PermissionModeState) -> Router {
     Router::new()
         .route("/api/permission-mode", get(get_mode).post(set_mode))
@@ -77,9 +60,6 @@ pub fn router(state: PermissionModeState) -> Router {
         .with_state(state)
 }
 
-// ── catalog / contract (latticeai.core.permission_mode) ──────────────────────
-
-/// Parse user/API/env input; unknown → strict.
 pub fn normalize_mode(value: &str) -> &'static str {
     match value.trim().to_ascii_lowercase().as_str() {
         "strict" | "default" | "manual" => "strict",
@@ -222,8 +202,6 @@ fn mode_contract(mode: &str, user_email: Option<&str>, workspace_id: Option<&str
     body
 }
 
-// ── store ────────────────────────────────────────────────────────────────────
-
 struct ModeStore {
     path: PathBuf,
     default_mode: String,
@@ -254,13 +232,6 @@ impl ModeStore {
         let Ok(data) = serde_json::from_str::<OrderedMap>(&text) else {
             return self.empty();
         };
-        if data.get("default").is_none()
-            && data.get("users").is_none()
-            && data.get("workspaces").is_none()
-        {
-            // A non-object already failed Deserialize. An object missing every
-            // bucket is still a document — fill the holes like Python's setdefault.
-        }
         let mut data = data;
         if data.get("default").is_none() {
             data.insert("default", json!(self.default_mode));
@@ -336,7 +307,6 @@ impl ModeStore {
         }
         let _guard = self.lock.lock().expect("permission_mode lock");
         let mut data = self.read();
-        // Lock-free helper on purpose: calling get() here would re-enter.
         let _previous = self.resolve_from(&data, user_email, workspace_id);
         if let Some(workspace_id) = workspace_id.filter(|value| !value.is_empty()) {
             let mut workspaces = data
@@ -362,8 +332,6 @@ impl ModeStore {
         Ok(self.get(user_email, workspace_id))
     }
 }
-
-// ── handlers ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 struct GetQuery {
@@ -454,7 +422,6 @@ struct SetBody {
 }
 
 fn parse_set_body(bytes: &[u8]) -> Result<SetBody, Response> {
-    // FastAPI/pydantic validation shape, field-declaration order.
     let parsed: Value = match serde_json::from_slice(bytes) {
         Ok(value) => value,
         Err(error) => {

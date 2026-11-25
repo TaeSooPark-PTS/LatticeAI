@@ -1,6 +1,4 @@
 import * as React from "react";
-// Route-scoped copy: importing the namespace registers it into the shared
-// table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { ShieldCheck } from "lucide-react";
 import { Tabs } from "@/components/primitives";
@@ -15,9 +13,6 @@ type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network"
 
 type SystemGroup = "identity" | "data" | "system";
 
-// Seven equal-looking tabs made someone read all seven to find one. They are
-// the same seven destinations, sorted into the three questions people actually
-// arrive with: who am I, where is my data, how does this machine behave.
 const groups: Array<{ id: SystemGroup; labelKey: string }> = [
   { id: "identity", labelKey: "system.group.identity" },
   { id: "data", labelKey: "system.group.data" },

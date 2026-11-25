@@ -1,9 +1,3 @@
-//! Mounted (method, path) set vs `rust/fixtures/openapi/knowledge_search.json`.
-//!
-//! The family is split across three crates. This test owns the retrieval
-//! slice and pins the rest of the fragment as sibling routes so the union
-//! cannot drift without a failing assertion.
-
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -32,7 +26,6 @@ fn to_openapi(path: &str) -> String {
         .join("/")
 }
 
-/// Routes this crate does *not* mount; they live in lattice-jobs / lattice-ingest.
 const SIBLING: &[(&str, &str)] = &[
     ("POST", "/api/browser/ingest-current-tab"),
     ("POST", "/api/browser/read-url"),
@@ -77,7 +70,6 @@ fn mounted_routes_match_the_committed_contract() {
     let mut actual: Vec<String> = lattice_retrieval::search_api::MOUNTED
         .iter()
         .chain(lattice_retrieval::knowledge_graph_api::MOUNTED.iter())
-        // Native (W3b) but the spec stays in worker_keep.json.
         .filter(|(_, path)| *path != "/knowledge-graph/ingest")
         .map(|(m, p)| format!("{m} {}", to_openapi(p)))
         .chain(SIBLING.iter().map(|(m, p)| format!("{m} {p}")))

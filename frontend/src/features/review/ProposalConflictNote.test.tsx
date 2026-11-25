@@ -1,12 +1,3 @@
-/**
- * The 409 recovery surface.
- *
- * When a change proposal is approved after its target file drifted, the
- * backend refuses — correctly — and this note is the only path forward the
- * person is offered. Everything that can go wrong with it is invisible on a
- * screenshot: the button that never disables, the failure that reports
- * "[object Object]", the caches that keep showing the retired proposal.
- */
 
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,7 +11,6 @@ vi.mock("./proposalRebase", () => ({ rebaseProposal: vi.fn() }));
 
 const rebase = vi.mocked(rebaseProposal);
 
-/** A promise this test resolves by hand, to observe the in-flight state. */
 function deferred<T>() {
   let settle!: (value: T) => void;
   const promise = new Promise<T>((resolve) => {
@@ -57,7 +47,6 @@ describe("ProposalConflictNote", () => {
     await screen.findByRole("status");
     expect(rebase).toHaveBeenCalledWith("rev-9");
     expect(screen.getByRole("status").textContent).toContain("새 제안을 만들었어요");
-    // The button is gone: there is nothing left to re-apply.
     expect(screen.queryByRole("button", { name: /다시 읽어서 재적용/ })).toBeNull();
     expect(onResolved).toHaveBeenCalledWith("rebased");
     const keys = invalidate.mock.calls.map((call) => String(call[0]?.queryKey));
@@ -93,7 +82,6 @@ describe("ProposalConflictNote", () => {
     );
     unmount();
 
-    // A thrown non-Error must still read as a sentence, not "[object Object]".
     rebase.mockRejectedValue("network down");
     render();
     await userEvent.click(screen.getByRole("button", { name: /다시 읽어서 재적용/ }));

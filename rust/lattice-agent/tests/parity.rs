@@ -1,32 +1,3 @@
-//! Python↔Rust safety-kernel parity, over the committed decision grid.
-//!
-//! Same tools, same real policies, same argument variants, same goldens the
-//! Python kernel produced. Comparison is **exact** — a `null` that became
-//! `false`, a message whose punctuation drifted, or a breaker that stopped
-//! firing all fail the same way.
-//!
-//! ## The goldens are frozen (v11.8.0)
-//!
-//! There is no generator any more: the Python kernel these were captured from
-//! is gone, and `rust/fixtures/agent/FROZEN.md` records what each file is and
-//! what was removed. Two things changed with the freeze, both recorded there:
-//!
-//! * **`decisions__trusted.json` and `decisions__bypass.json` are deleted.**
-//!   Between them they were 1,404 rows over 11 distinct verdicts, because the
-//!   grid is a cross product of tools and argument variants and the same
-//!   verdict repeats for every row in a class. The mode gating they proved now
-//!   has in-crate unit tests that name one case per verdict — see
-//!   `permission::tests::{trusted,bypass}_reproduces_every_verdict_class_of_the_retired_grid`
-//!   and the `effective_auto_approve` tests in `mode`.
-//! * **`calls.json` and `decisions__strict.json` are trimmed to 171 rows**
-//!   from 702 — one row per distinct
-//!   `(tool, breaker, classification, policy, auto_approve, block_reason,
-//!   stage_proposal)` class. Rows were deleted, never rewritten: the surviving
-//!   171 are byte-identical to the ones the generator emitted.
-//!
-//! `strict` is the mode kept whole because it is the one that gates
-//! everything: its grid is where a missing refusal shows up.
-
 mod common;
 
 use std::collections::BTreeMap;
@@ -52,11 +23,6 @@ use lattice_agent::tools::exec::{sandbox_env, SAFE_EXECUTABLE_PATH};
 use lattice_agent::tools::sandbox::{MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS, MAX_FILE_BYTES};
 use serde_json::{json, Map, Value};
 
-/// The modes whose decision grid is still committed.
-///
-/// The manifest still lists all three, because it records what the Python
-/// generator ran; `the_committed_grids_are_a_subset_of_the_manifests_modes`
-/// keeps the two from drifting apart in the direction that would matter.
 const GOLDEN_MODES: &[&str] = &["strict"];
 
 fn args_of(variant: &str) -> Map<String, Value> {
@@ -77,7 +43,6 @@ fn policy_of(policies: &Value, key: &str) -> ToolPolicy {
     serde_json::from_value(raw.clone()).unwrap_or_else(|err| panic!("policy {key}: {err}"))
 }
 
-/// `(tool, variant)` → the real policy, taken from `calls.json`.
 fn policy_index() -> BTreeMap<(String, String), ToolPolicy> {
     let policies = read_golden("policies.json");
     let calls = read_golden("calls.json");
@@ -143,7 +108,6 @@ fn the_constants_match_the_python_tables() {
         json!(inventory),
         "the mutating-tool inventory is the coverage proof — it may not drift"
     );
-    // Every allow-listed binary is looked up on the fixed PATH and nowhere else.
     assert_eq!(
         manifest()["which_paths"],
         json!([SAFE_EXECUTABLE_PATH]),
@@ -346,10 +310,6 @@ fn every_plan_matches_its_approval_golden() {
 
 #[test]
 fn the_committed_grids_are_a_subset_of_the_manifests_modes() {
-    // The manifest records what the Python generator ran; `GOLDEN_MODES` records
-    // which of those grids is still committed. A mode may leave the second list
-    // (its coverage moves in-crate); a mode that is in neither has quietly lost
-    // both, and a `GOLDEN_MODES` entry with no manifest mode would be a typo.
     let modes: Vec<&str> = manifest()["modes"]
         .as_array()
         .expect("modes")
@@ -367,8 +327,6 @@ fn the_committed_grids_are_a_subset_of_the_manifests_modes() {
         if GOLDEN_MODES.contains(name) {
             continue;
         }
-        // Retired grids: the mode's gating lives in `lattice_agent::kernel::permission`
-        // and `lattice_agent::kernel::mode` unit tests now, one case per verdict class.
         assert!(
             !common::golden_path(&format!("decisions__{name}.json")).exists(),
             "decisions__{name}.json is back — add {name} to GOLDEN_MODES"
@@ -446,8 +404,6 @@ fn every_command_matches_its_validation_golden() {
     let workspace = common::build_tree(dir.path());
     let golden = read_golden("commands.json");
 
-    // The environment the validator hands the child, with the fixture's own
-    // LANG/LC_ALL — the two variables Python inherits rather than invents.
     let env: BTreeMap<String, String> = sandbox_env(
         workspace.root(),
         manifest()["pinned_env"]["LANG"]

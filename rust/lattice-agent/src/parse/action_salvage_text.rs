@@ -1,5 +1,3 @@
-//! ReAct, Python-call, and XML action salvage for [`super`].
-
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
@@ -55,7 +53,6 @@ fn python_call_open() -> &'static Regex {
     compiled(&RE, r"(?<![A-Za-z0-9_.])([A-Za-z_][A-Za-z0-9_.]*)\(")
 }
 
-/// Character cursor shared by the ReAct KV and Python-call parsers.
 struct Cursor {
     chars: Vec<char>,
     at: usize,
@@ -298,8 +295,6 @@ impl Cursor {
         }
     }
 
-    /// Look ahead from current position to see if `key:` or `key=` starts here.
-    /// Avoids misreading `https://` as a key-value pair.
     fn starts_kv_pair(&self) -> bool {
         let mut idx = self.at;
         let Some(first) = self.chars.get(idx).copied() else {
@@ -445,7 +440,6 @@ fn parse_json_object_tolerant(text: &str) -> Option<Map<String, Value>> {
 fn parse_react_input_args(tail: &str) -> Option<Map<String, Value>> {
     let first_line = tail.lines().next().unwrap_or("").trim();
     if first_line.is_empty() {
-        // Multiline fenced/JSON block on subsequent lines.
         let rest = tail.trim_start();
         if let Some(fenced) = fenced_content_block()
             .captures(rest)
@@ -512,7 +506,6 @@ fn match_react_pair<'a>(
     Some((action, &after_header[input_match.end()..]))
 }
 
-/// ReAct `Action: <tool>\nAction Input: <json-or-kv>` and `Tool: <tool>\nInput: <json-or-kv>`.
 pub(super) fn salvage_react_format(text: &str) -> Option<Map<String, Value>> {
     let (action, tail) =
         match_react_pair(text, labeled_action_line(), react_action_input_line())
@@ -521,7 +514,6 @@ pub(super) fn salvage_react_format(text: &str) -> Option<Map<String, Value>> {
     usable_labeled(&action, args)
 }
 
-/// Python keyword-call syntax: `web_fetch(url="...")`, `computer_click(x=420, y=310, button="left")`.
 pub(super) fn salvage_python_call(text: &str) -> Option<Map<String, Value>> {
     for captures in python_call_open().captures_iter(text).flatten() {
         let Some(whole) = captures.get(0) else {
@@ -601,7 +593,6 @@ fn xml_name_tag() -> &'static Regex {
     )
 }
 
-/// A tool call written as XML tags, with no JSON object.
 pub(super) fn salvage_xml_call(text: &str) -> Option<Map<String, Value>> {
     if let Some(captures) = qwen_function_open().captures(text).ok().flatten() {
         let name = captures

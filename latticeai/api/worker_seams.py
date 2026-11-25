@@ -1,42 +1,9 @@
-"""The v11.6.0 worker seams: the two chains a Rust route package delegates.
-
-v11.5.1 gave the Rust loop calls back into Python (``/agent/llm``,
-``/agent/tool``). v11.6.0 moved the *product* routes to ``lattice-host`` as
-well, and two of those routes turn out to need something only this process can
-do:
-
-``GET /worker/sysinfo``
-    The MLX/GPU block of ``/local/sysinfo``. CPU and RAM are ordinary host
-    telemetry that Rust can sample itself; unified-memory usage can only be
-    read from the process that holds the MLX context, which is this one.
-
-``POST /worker/llm/stream``
-    Token generation never moves (plan §설계 결정 6). ``/agent/llm`` is
-    buffered; chat needs the same ``LLMRouter.stream_generate_as`` path
-    framed as SSE so the gateway can pass bytes through. ``mode=document``
-    selects ``stream_generate_document_as``.
-
-``POST /worker/chat/record-turn`` used to live here as a third seam — the
-redact → audit → store → ingest chain behind ``POST /chat``. WP-W3a moved that
-whole chain into ``lattice-chat`` (``rust/lattice-chat/src/turn.rs``) and its
-own tests assert the seam is requested **zero** times; WP-P1 retires it, along
-with the conversation store, the audit sink and the ingestion write door that
-were its only reason to exist in a worker that owns no state.
-
-Both remaining seams are gated by the same switch as ``/agent/tool`` —
-``LATTICEAI_AGENT_TOOL_SEAM=1``, read per request through
-:func:`~latticeai.api.agent_worker_seam._seam_open` so there is one gate, not a
-second one that can drift — and answer 404 with the same message when it is
-off. They are mounted only by the worker profile
-(:func:`latticeai.worker_app.create_worker_app`).
-"""
-
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-import subprocess  # noqa: S404 — one fixed sysctl read, no shell, no user input
+import os
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from fastapi import APIRouter, Request
@@ -51,42 +18,21 @@ from latticeai.core.quiet import quiet
 logger = logging.getLogger(__name__)
 
 
-# ── GPU probe: the MLX half of /local/sysinfo ───────────────────────────────
-
-
 def _mlx_memory() -> Tuple[int, int]:
-    """Active and cached unified memory held by this process's MLX context."""
     import mlx.core as mx
 
     return int(mx.get_active_memory()), int(mx.get_cache_memory())
 
 
 def _total_memory_bytes() -> int:
-    """Installed physical memory, the denominator ``gpu_mem_pct`` is taken of."""
-    import shutil
-
-    sysctl_bin = shutil.which("sysctl") or "/usr/sbin/sysctl"
-    completed = subprocess.run(  # noqa: S603 — fixed argv, no shell
-        [sysctl_bin, "-n", "hw.memsize"],
-        capture_output=True,
-        text=True,
-        timeout=2,
-    )
-    return int(completed.stdout.strip())
+    return int(os.sysconf("SC_PAGE_SIZE")) * int(os.sysconf("SC_PHYS_PAGES"))
 
 
 def probe_gpu_memory() -> Dict[str, Any]:
-    """The GPU block ``/local/sysinfo`` reports, on its own.
-
-    Blocking (one ``sysctl``), so callers hand it to a worker thread. A machine
-    without MLX — every Linux CI box, every Intel Mac — is not an error: it
-    answers ``mlx_available: false`` with zeroes and the reason, which is what
-    "we could not look" honestly looks like.
-    """
     try:
         active, cached = _mlx_memory()
         total = _total_memory_bytes()
-    except Exception as exc:  # noqa: BLE001 — an absent GPU is not a failure
+    except (ImportError, OSError, RuntimeError, ValueError) as exc:
         quiet("MLX unified-memory probe")
         payload = {
             "mlx_available": False,
@@ -110,22 +56,16 @@ def probe_gpu_memory() -> Dict[str, Any]:
 
 
 def _sysinfo_extras() -> Dict[str, Any]:
-    """Additive capability / interpreter facts. Fail closed to empty extras."""
     try:
         from latticeai.api.worker_compute import sysinfo_payload_extras
 
         extras = sysinfo_payload_extras()
-    except Exception:  # noqa: BLE001 — a missing extra must not hide the GPU reading
+    except (ImportError, OSError, RuntimeError, ValueError, TypeError):
         return {}
     return extras if isinstance(extras, dict) else {}
 
 
-# ── request bodies ──────────────────────────────────────────────────────────
-
-
 class LlmStreamRequest(BaseModel):
-    """One streaming completion, in the argument shape ``LLMRouter`` already takes."""
-
     model_id: Optional[str] = None
     message: str
     context: Optional[str] = None
@@ -141,41 +81,25 @@ def create_worker_seams_router(
     enforce_rate_limit: Callable[[str, str], None],
     model_router: Any = None,
 ) -> APIRouter:
-    """The remaining v11.6.0 delegation seams, wired to what the worker holds.
-
-    ``model_router`` is the in-process
-    :class:`~latticeai.models.router.LLMRouter`; absent, the stream seam yields
-    the same ``No model.`` marker the router itself would.
-    """
     router = APIRouter()
 
     def _require_seam(request: Request) -> None:
-        """404 unless the host opened the seam for this worker."""
         if not seam_open():
             raise http_error(404, "agent_seam.disabled", resolve_language(request))
 
     def _admit(request: Request) -> str:
-        """Authenticate and charge this call against the per-step budget."""
         current_user = require_user(request)
         enforce_rate_limit(current_user, SEAM_RATE_BUCKET)
         return str(current_user or "")
 
     @router.get("/worker/sysinfo")
     async def worker_sysinfo(request: Request):
-        """The unified-memory reading only this process can take."""
         _require_seam(request)
         _admit(request)
         return await asyncio.to_thread(probe_gpu_memory)
 
     @router.post("/worker/llm/stream")
     async def worker_llm_stream(req: LlmStreamRequest, request: Request):
-        """Stream one completion over the same path ``ChatService`` uses.
-
-        Frames are ``data: {"text": …}`` (or ``{"error": …}``) plus the
-        terminating ``data: [DONE]`` sentinel. The gateway never content-
-        negotiates on ``Accept``; this seam always answers as an event stream
-        so a VS Code client that sent only ``stream: true`` still parses.
-        """
         _require_seam(request)
         _admit(request)
 
@@ -213,7 +137,7 @@ def create_worker_seams_router(
                         + json.dumps({"text": str(text)}, ensure_ascii=False)
                         + "\n\n"
                     )
-            except Exception as exc:  # noqa: BLE001 — already streaming a 200
+            except (OSError, RuntimeError, ValueError, TypeError, LookupError) as exc:
                 logger.warning("worker llm stream failed: %s", exc)
                 yield (
                     "data: "

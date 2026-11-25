@@ -1,53 +1,16 @@
-//! Schema bootstrap — the DDL `KnowledgeGraphStore.__init__` emits, verbatim.
-//!
-//! Three sources, run in Python's order:
-//!
-//! 1. `graph/store.py::_init_db` — the legacy tables + indexes, then the
-//!    `graph_meta.schema_version` stamp;
-//! 2. `graph/projection/v2_schema.py::_init_v2_schema` — drop the `kgv2_*`
-//!    views, drop a stale projection, `schema.py::SCHEMA_SQL`, recreate the
-//!    views, backfill, normalize `legacy_type`, stamp four `kg_meta` keys and
-//!    `PRAGMA user_version`;
-//! 3. `graph/projection/v2_schema.py::_init_fts` — the trigram FTS index, its
-//!    three triggers on `nodes`, and a one-time backfill.
-//!
-//! The DDL text is copied character for character rather than rewritten. That
-//! is the point: an existing Python-created database must open and be written
-//! with **no migration**, and a fresh Rust-only install must produce a schema a
-//! Python build would accept. `CREATE TABLE IF NOT EXISTS` only agrees on the
-//! first of those if the two texts agree.
-//!
-//! One thing deliberately **not** created: `storage_meta`. It belongs to
-//! `SQLiteEngine.initialize()`, which `KnowledgeGraphStore` never calls — a
-//! real Brain built by Python has no such table, and inventing one here would
-//! be the port adding state the original does not have.
-
 use rusqlite::{Connection, Transaction};
 
 use crate::db::CoreError;
 
-/// `_kg_constants._KG_DB_FORMAT_VERSION`.
 pub const KG_DB_FORMAT_VERSION: i64 = 4;
-/// `_kg_constants._KG_DB_FORMAT_KEY`.
 pub const KG_DB_FORMAT_KEY: &str = "db_format_version";
-/// `_kg_constants._V2_WRITE_MASTER_KEY`.
 pub const V2_WRITE_MASTER_KEY: &str = "v2_write_mastered_at";
-/// `_kg_constants._PROJECTION_VERSION`.
 pub const PROJECTION_VERSION: i64 = 4;
-/// `_kg_constants.GRAPH_SCHEMA_VERSION`.
 pub const GRAPH_SCHEMA_VERSION: i64 = 1;
-/// `schema.KG_SCHEMA_V2_VERSION`.
 pub const KG_SCHEMA_V2_VERSION: i64 = 2;
-/// `schema.EMBED_DIM`'s environment variable.
 pub const EMBED_DIM_ENV: &str = "LATTICEAI_EMBED_DIM";
-/// `schema.EMBED_DIM`'s default.
 pub const DEFAULT_EMBED_DIM: i64 = 1024;
 
-/// `schema.EMBED_DIM` — `int(os.getenv("LATTICEAI_EMBED_DIM", "1024"))`.
-///
-/// Stated deviation: Python raises at import on a malformed value and takes the
-/// process with it. A library cannot do that to its host, so an unparseable
-/// value falls back to the documented default.
 pub fn embed_dim() -> i64 {
     std::env::var(EMBED_DIM_ENV)
         .ok()
@@ -55,7 +18,6 @@ pub fn embed_dim() -> i64 {
         .unwrap_or(DEFAULT_EMBED_DIM)
 }
 
-/// `store.py::_init_db`'s script.
 const LEGACY_SCHEMA_SQL: &str = r#"
                     CREATE TABLE IF NOT EXISTS graph_meta (
                       key TEXT PRIMARY KEY,
@@ -199,7 +161,6 @@ const LEGACY_SCHEMA_SQL: &str = r#"
                     CREATE INDEX IF NOT EXISTS idx_provenance_created ON ingestion_provenance(created_at);
                     "#;
 
-/// `schema.SCHEMA_SQL` — the normalized v2 tables.
 const V2_SCHEMA_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS kg_meta (
   key   TEXT PRIMARY KEY,
@@ -291,7 +252,6 @@ CREATE INDEX IF NOT EXISTS idx_edges_v2_type     ON edges_v2(type);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_legacy   ON edges_v2(legacy_type);
 "#;
 
-/// `v2_schema._V2_VIEWS_SQL` — the reconstruction views.
 const V2_VIEWS_SQL: &str = r#"
         CREATE VIEW IF NOT EXISTS kgv2_nodes AS
           SELECT id,
@@ -312,7 +272,6 @@ const V2_VIEWS_SQL: &str = r#"
           FROM edges_v2;
         "#;
 
-/// `v2_schema._FTS_SQL` — the trigram index and the three triggers on `nodes`.
 const FTS_SQL: &str = r#"
         CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
           node_id UNINDEXED, title, summary, metadata, tokenize='trigram'
@@ -331,7 +290,6 @@ const FTS_SQL: &str = r#"
         END;
         "#;
 
-/// The columns `KGStoreV2._V2_EXPECTED_COLUMNS` says each v2 table must have.
 const EXPECTED_NODES_V2: [&str; 19] = [
     "id",
     "type",
@@ -370,7 +328,6 @@ const EXPECTED_EDGES_V2: [&str; 14] = [
     "superseded_by",
 ];
 
-/// `KGStoreV2._V2_ADDABLE_COLUMNS` — columns that heal in place.
 const ADDABLE_NODES_V2: [(&str, &str); 4] = [
     ("superseded_by", "TEXT"),
     ("valid_from", "TEXT"),
@@ -383,13 +340,6 @@ const ADDABLE_EDGES_V2: [(&str, &str); 3] = [
     ("valid_to", "TEXT"),
 ];
 
-/// `ConversationStore._init_db` / `lattice_chat::turn::CONVERSATION_DDL`.
-///
-/// Not part of Python's `KnowledgeGraphStore.__init__`. The chat writer used
-/// to create this table lazily on the first turn, so a brand-new data dir
-/// 500'd every memory/chronicle reader with `no such table:
-/// conversation_messages`. Bootstrap creates it with the writer's column
-/// list and indexes exactly, `IF NOT EXISTS` throughout.
 const CONVERSATION_SCHEMA_SQL: &str = "
     CREATE TABLE IF NOT EXISTS conversation_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -415,16 +365,6 @@ const CONVERSATION_SCHEMA_SQL: &str = "
       ON conversation_messages(workspace_id);
 ";
 
-/// Bring `conn` up to the current schema, exactly as Python's constructor does.
-///
-/// Idempotent, and a no-op against a database Python already initialised: the
-/// projection version and the `db_format_version` stamp are already current, so
-/// nothing is dropped and nothing is rebuilt.
-///
-/// After the graph DDL, [`ensure_conversation_schema`] creates the platform
-/// conversation table the readers need on a fresh Brain. That table is not
-/// in Python's graph constructor; it is created here so a reader never 500s
-/// waiting for the first chat write.
 pub fn bootstrap(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     guard_db_format(txn)?;
     txn.execute_batch(LEGACY_SCHEMA_SQL)?;
@@ -438,13 +378,11 @@ pub fn bootstrap(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// Idempotent `conversation_messages` + indexes, matching the chat writer.
 pub fn ensure_conversation_schema(txn: &Transaction<'_>) -> Result<(), CoreError> {
     txn.execute_batch(CONVERSATION_SCHEMA_SQL)?;
     Ok(())
 }
 
-/// `store.py::_init_db`'s refusal to open a database from a newer build.
 fn guard_db_format(txn: &Transaction<'_>) -> Result<(), CoreError> {
     let db_format: i64 = txn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     if db_format > KG_DB_FORMAT_VERSION {
@@ -456,13 +394,6 @@ fn guard_db_format(txn: &Transaction<'_>) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// `v2_schema::_init_v2_schema`, in its order.
-///
-/// Stated deviation: Python wraps the whole thing in `try/except` and logs a
-/// warning, leaving `_v2_projection_available = False`. That degradation is
-/// unreachable for a writer — every `_upsert_node` projects with `strict=True`
-/// and would raise on the next write anyway — so a failure here is returned as
-/// an error rather than swallowed into a store that cannot accept a write.
 fn init_v2_schema(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     let stale = projection_version(txn)? != PROJECTION_VERSION;
     txn.execute_batch("DROP VIEW IF EXISTS kgv2_edges; DROP VIEW IF EXISTS kgv2_nodes;")?;
@@ -490,7 +421,6 @@ fn init_v2_schema(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// `KGStoreV2._init_schema_on`.
 fn init_v2_tables(txn: &Transaction<'_>) -> Result<(), CoreError> {
     drop_stale_empty_v2_tables(txn)?;
     rebuild_edges_identity(txn)?;
@@ -506,7 +436,6 @@ fn init_v2_tables(txn: &Transaction<'_>) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// `KGStoreV2._drop_stale_empty_v2_tables` — heal additively, drop only if empty.
 fn drop_stale_empty_v2_tables(txn: &Transaction<'_>) -> Result<(), CoreError> {
     for table in ["edges_v2", "nodes_v2"] {
         if !object_exists(txn, "table", table)? {
@@ -531,7 +460,6 @@ fn drop_stale_empty_v2_tables(txn: &Transaction<'_>) -> Result<(), CoreError> {
         if missing.is_empty() {
             continue;
         }
-        // `for col in sorted(missing & set(addable))`
         let mut healable: Vec<(&str, &str)> = addable
             .iter()
             .copied()
@@ -551,14 +479,10 @@ fn drop_stale_empty_v2_tables(txn: &Transaction<'_>) -> Result<(), CoreError> {
         if count == 0 {
             txn.execute_batch(&format!("DROP TABLE {table}"))?;
         }
-        // A table that is both stale and populated is left untouched, exactly
-        // as Python leaves it (it logs a warning and requires a manual
-        // migration); dropping a populated table is not a port's decision.
     }
     Ok(())
 }
 
-/// `KGStoreV2._rebuild_edges_identity` — the pre-v4 UNIQUE constraint migration.
 fn rebuild_edges_identity(txn: &Transaction<'_>) -> Result<(), CoreError> {
     let sql: Option<String> = txn
         .query_row(
@@ -592,7 +516,6 @@ fn rebuild_edges_identity(txn: &Transaction<'_>) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// `v2_schema::_projection_version` — a fresh database is version 0.
 fn projection_version(txn: &Transaction<'_>) -> Result<i64, CoreError> {
     if !object_exists(txn, "table", "kg_meta")? {
         return Ok(0);
@@ -607,7 +530,6 @@ fn projection_version(txn: &Transaction<'_>) -> Result<i64, CoreError> {
     Ok(stored.and_then(|raw| raw.parse::<i64>().ok()).unwrap_or(0))
 }
 
-/// `(id, type, title, summary, metadata_json, created_at, updated_at)`.
 type LegacyNodeRow = (
     String,
     String,
@@ -618,7 +540,6 @@ type LegacyNodeRow = (
     String,
 );
 
-/// `v2_schema::_backfill_v2_on` — project the authoritative legacy rows into v2.
 fn backfill_v2(txn: &Transaction<'_>, force: bool) -> Result<(), CoreError> {
     let legacy_nodes: i64 = txn.query_row("SELECT COUNT(*) FROM nodes", [], |row| row.get(0))?;
     if legacy_nodes == 0 {
@@ -698,19 +619,12 @@ fn backfill_v2(txn: &Transaction<'_>, force: bool) -> Result<(), CoreError> {
     Ok(())
 }
 
-/// `v2_schema::_normalize_v2_legacy_types` — the pre-11.2.0 convention fix.
 fn normalize_v2_legacy_types(txn: &Transaction<'_>) -> Result<(), CoreError> {
     txn.execute_batch("UPDATE OR IGNORE edges_v2 SET legacy_type='' WHERE legacy_type = type")?;
     txn.execute_batch("UPDATE nodes_v2 SET legacy_type=NULL WHERE legacy_type = ''")?;
     Ok(())
 }
 
-/// `v2_schema::_init_fts` — the trigram index plus its one-time backfill.
-///
-/// Python degrades when FTS5/trigram is missing from the SQLite build and keeps
-/// LIKE search authoritative. `rusqlite`'s bundled build always has it (there is
-/// a `tests/fts5_probe.rs` in this crate that fails loudly otherwise), so the
-/// degrade is kept for shape rather than expected to fire.
 fn init_fts(txn: &Transaction<'_>) -> Result<bool, CoreError> {
     if txn.execute_batch(FTS_SQL).is_err() {
         return Ok(false);
@@ -742,7 +656,6 @@ fn table_columns(txn: &Transaction<'_>, table: &str) -> Result<Vec<String>, Core
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
 
-/// `provenance.schema_versions()` — what an exporter stamps and an importer checks.
 pub fn schema_versions() -> serde_json::Value {
     let mut map = serde_json::Map::new();
     map.insert("graph_schema_version".into(), GRAPH_SCHEMA_VERSION.into());
@@ -753,11 +666,6 @@ pub fn schema_versions() -> serde_json::Value {
     serde_json::Value::Object(map)
 }
 
-/// `provenance.backup_database` — `VACUUM INTO` after a full WAL checkpoint.
-///
-/// Takes a plain connection rather than a transaction because `VACUUM` cannot
-/// run inside one — the same reason Python reaches past its own `_connect()`
-/// helper for this single call.
 pub fn backup_database(conn: &Connection, destination: &std::path::Path) -> Result<(), CoreError> {
     if let Some(parent) = destination.parent() {
         std::fs::create_dir_all(parent).map_err(|err| {

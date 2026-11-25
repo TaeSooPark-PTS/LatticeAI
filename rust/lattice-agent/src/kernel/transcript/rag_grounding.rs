@@ -1,10 +1,3 @@
-//! Grounded RAG evidence extraction, prompt card building, and deterministic
-//! answer verification (Phase 1 adaptive harness).
-//!
-//! Operates purely on transcript `serde_json::Value` steps and extracted
-//! [`EvidencePassage`] slices. Never branches on model names and never touches
-//! the filesystem.
-
 use std::collections::BTreeSet;
 
 use serde_json::{json, Value};
@@ -12,7 +5,6 @@ use serde_json::{json, Value};
 use crate::kernel::state::AgentState;
 use crate::parse::pystr::{char_len, char_slice, is_truthy};
 
-/// One retrieved passage from an evidence-producing tool step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvidencePassage {
     pub tool: String,
@@ -21,7 +13,6 @@ pub struct EvidencePassage {
     pub superseded: bool,
 }
 
-/// Grounding defect classes detected deterministically against evidence passages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GroundingDefect {
     ZeroActiveEvidenceHallucination,
@@ -43,7 +34,6 @@ impl GroundingDefect {
     }
 }
 
-/// Deterministic grounding verification report for an answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GroundingReport {
     pub defects: Vec<GroundingDefect>,
@@ -125,9 +115,6 @@ fn item_superseded(obj: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// Extract evidence passages from successful `knowledge_search`,
-/// `knowledge_graph_search`, `knowledge_graph_context`, `obsidian_search`,
-/// `web_search`, and `web_fetch` transcript steps.
 pub fn extract_evidence_passages(transcript: &[Value]) -> Vec<EvidencePassage> {
     let mut passages = Vec::new();
     for step in transcript {
@@ -237,16 +224,12 @@ pub fn extract_evidence_passages(transcript: &[Value]) -> Vec<EvidencePassage> {
     passages
 }
 
-/// Returns `true` if the transcript contains at least one successful
-/// evidence-tool step.
 pub fn transcript_has_evidence(transcript: &[Value]) -> bool {
     transcript
         .iter()
         .any(|step| is_successful_evidence_step(step).is_some())
 }
 
-/// Whether `answer` is an honest abstention indicating insufficient or missing
-/// evidence (bilingual EN/KO).
 pub fn is_abstention(answer: &str) -> bool {
     let lower = answer.trim().to_lowercase();
     if lower.is_empty() {
@@ -286,7 +269,6 @@ fn has_hangul(text: &str) -> bool {
         .any(|c| ('\u{AC00}'..='\u{D7A3}').contains(&c) || ('\u{3131}'..='\u{318E}').contains(&c))
 }
 
-/// Clean bilingual abstention message matching the request language.
 pub fn abstention_message(request: &str) -> String {
     if has_hangul(request) {
         "제공된 활성 근거에서 해당 질문에 대한 확인 가능한 정보를 찾을 수 없습니다.".to_string()
@@ -295,10 +277,6 @@ pub fn abstention_message(request: &str) -> String {
     }
 }
 
-/// Extract normalized numeric tokens from `text`.
-///
-/// When `skip_answer_formatting` is `true`, skips `[n]` citation markers and
-/// leading markdown list numbers (`1. `, `2) `).
 fn extract_numbers(text: &str, skip_answer_formatting: bool) -> Vec<String> {
     let bytes = text.as_bytes();
     let mut out = Vec::new();
@@ -308,8 +286,6 @@ fn extract_numbers(text: &str, skip_answer_formatting: bool) -> Vec<String> {
             i += 1;
             continue;
         }
-        // Must start on a non-alphanumeric boundary so `v2` or `abc123` isn't split arbitrarily;
-        // allow leading `-` or `$` or whitespace.
         if i > 0 && bytes[i - 1].is_ascii_alphanumeric() {
             while i < bytes.len() && bytes[i].is_ascii_alphanumeric() {
                 i += 1;
@@ -331,13 +307,11 @@ fn extract_numbers(text: &str, skip_answer_formatting: bool) -> Vec<String> {
         }
 
         if skip_answer_formatting {
-            // Skip `[n]` citation markers.
             let inside_brackets =
                 start > 0 && bytes[start - 1] == b'[' && end < bytes.len() && bytes[end] == b']';
             if inside_brackets {
                 continue;
             }
-            // Skip markdown list prefixes at start of line (`1. ` or `1) `).
             let at_line_start = text[..start]
                 .rsplit('\n')
                 .next()
@@ -495,7 +469,6 @@ fn answer_cites_any_source(answer: &str, active: &[&EvidencePassage]) -> bool {
     false
 }
 
-/// Deterministically verify `answer` against retrieved [`EvidencePassage`] items.
 pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> GroundingReport {
     let active: Vec<&EvidencePassage> = passages.iter().filter(|p| !p.superseded).collect();
     let superseded: Vec<&EvidencePassage> = passages.iter().filter(|p| p.superseded).collect();
@@ -510,7 +483,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
     let trimmed = answer.trim();
     let abstained = is_abstention(trimmed);
 
-    // 1. Zero active evidence hallucination.
     if active.is_empty() && !trimmed.is_empty() && !abstained {
         report
             .defects
@@ -520,7 +492,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
             .push("zero active evidence passages but answer asserted content".into());
     }
 
-    // 2. Superseded fact leak: distinctive numbers or quoted tokens found only in superseded passages.
     if !superseded.is_empty() && !trimmed.is_empty() {
         let mut active_nums = BTreeSet::new();
         let mut active_quotes = BTreeSet::new();
@@ -572,7 +543,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
         return report;
     }
 
-    // 3. Numeric mismatch: answer numbers absent from all active passages while active passages contain numbers.
     let active_nums: BTreeSet<String> = active
         .iter()
         .flat_map(|p| extract_numbers(&p.text, false))
@@ -587,7 +557,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
         }
     }
 
-    // 4. Polarity mismatch: conservative check across overlapping sentences/passages.
     let passage_profiles: Vec<(BTreeSet<String>, bool)> = active
         .iter()
         .map(|p| (content_tokens(&p.text), has_negation(&p.text)))
@@ -626,7 +595,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
         }
     }
 
-    // 5. Missing citations: >= 2 active passages with sources, yet answer cites none.
     let sourced_count = active
         .iter()
         .filter(|p| p.source.as_deref().is_some_and(|s| !s.trim().is_empty()))
@@ -641,7 +609,6 @@ pub fn verify_grounded_answer(answer: &str, passages: &[EvidencePassage]) -> Gro
     report
 }
 
-/// Build a bounded prompt card separating active evidence from superseded items.
 pub fn build_evidence_card(passages: &[EvidencePassage], max_chars: usize) -> String {
     let active: Vec<&EvidencePassage> = passages.iter().filter(|p| !p.superseded).collect();
     let superseded: Vec<&EvidencePassage> = passages.iter().filter(|p| p.superseded).collect();

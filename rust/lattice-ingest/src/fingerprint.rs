@@ -1,14 +1,3 @@
-//! Per-file ingest fingerprint: path + size + mtime + content sha256.
-//!
-//! The honest home is ``ingestion_provenance`` (v3.6). A folder file's
-//! absolute path is already ``source_uri``; the stamp and the file-bytes
-//! digest ride in ``metadata_json`` so we do not invent a second table.
-//! sha256 is computed only when size or mtime moved.
-//!
-//! Folder ingest **reports** vanished files and leaves the nodes in place.
-//! The watch poller prunes matching graph nodes through GraphWriter
-//! (`delete_document_tree`) — still one writer, never a second delete door.
-
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -20,37 +9,25 @@ use crate::hashes::file_content_hash;
 use crate::pystr::round3;
 use crate::watch::ScannedFile;
 
-/// ``metadata_json`` key for the on-disk size in bytes.
 pub const META_SIZE: &str = "file_size";
-/// ``metadata_json`` key for ``round(st_mtime, 3)``.
 pub const META_MTIME: &str = "file_mtime";
-/// ``metadata_json`` key for sha256 of the file's bytes.
 pub const META_SHA: &str = "file_sha256";
 
-/// What a previous ingest recorded for one path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredFingerprint {
-    /// Size in bytes.
     pub size: u64,
-    /// ``round(st_mtime, 3)``.
     pub mtime: f64,
-    /// Lowercase hex sha256 of the file bytes.
     pub sha256: String,
 }
 
-/// Whether this file must go through parse / extract / embed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkipDecision {
-    /// Size and mtime match — do not even open the file.
     SkipByStamp,
-    /// Stamp moved but the bytes are the same — skip parse/extract/embed.
     SkipByHash,
-    /// New or changed: the caller must ingest.
     Ingest,
 }
 
 impl StoredFingerprint {
-    /// Parse the three keys out of a provenance ``metadata_json`` object.
     pub fn from_metadata(meta: &Map<String, Value>) -> Option<Self> {
         let size = meta.get(META_SIZE).and_then(Value::as_u64).or_else(|| {
             meta.get(META_SIZE)
@@ -71,34 +48,25 @@ impl StoredFingerprint {
         })
     }
 
-    /// True when the live ``(size, mtime)`` stamp is the one we stored.
     pub fn stamp_matches(&self, size: u64, mtime: f64) -> bool {
         self.size == size && round3(self.mtime) == round3(mtime)
     }
 
-    /// True when the live file-bytes digest is the one we stored.
     pub fn hash_matches(&self, sha256: &str) -> bool {
         self.sha256 == sha256
     }
 }
 
-/// Write the stamp + digest onto a note's provenance metadata.
 pub fn attach(meta: &mut Map<String, Value>, size: u64, mtime: f64, sha256: &str) {
     meta.insert(META_SIZE.into(), json!(size));
     meta.insert(META_MTIME.into(), json!(round3(mtime)));
     meta.insert(META_SHA.into(), json!(sha256));
 }
 
-/// sha256 of the file's raw bytes — the identity half of the fingerprint.
 pub fn hash_bytes(bytes: &[u8]) -> String {
     file_content_hash(bytes)
 }
 
-/// Write a new size/mtime onto an existing provenance row (same bytes).
-///
-/// Skip-by-hash used to return without touching the row, so a `touch` that
-/// did not change the file re-hashed on every later scan. The writer is
-/// still [`GraphWriter`] — metadata only, same row identity.
 pub fn restamp(graph: &GraphWriter, source_uri: &str, size: u64, mtime: f64, sha256: &str) -> bool {
     let mut patch = Map::new();
     attach(&mut patch, size, mtime, sha256);
@@ -107,7 +75,6 @@ pub fn restamp(graph: &GraphWriter, source_uri: &str, size: u64, mtime: f64, sha
         .unwrap_or(false)
 }
 
-/// Latest stored fingerprint for this absolute path, if one exists.
 pub fn lookup(store: &Store, source_uri: &str) -> Option<StoredFingerprint> {
     if source_uri.is_empty() {
         return None;
@@ -137,10 +104,6 @@ pub fn lookup(store: &Store, source_uri: &str) -> Option<StoredFingerprint> {
         .flatten()
 }
 
-/// Decide whether ``file`` can skip the ingest pipeline.
-///
-/// ``bytes`` is ``Some`` only after the caller already opened the file
-/// (stamp moved). Passing ``None`` never hashes.
 pub fn decide(
     stored: Option<&StoredFingerprint>,
     file: &ScannedFile,
@@ -158,9 +121,6 @@ pub fn decide(
     }
 }
 
-/// Provenance ``source_uri``s under ``root`` that are not in ``present``.
-///
-/// Report-only: the caller must not delete the corresponding nodes.
 pub fn missing_under_root(store: &Store, root: &Path, present: &HashSet<String>) -> Vec<String> {
     let root_s = root.display().to_string();
     let prefix = if root_s.ends_with('/') {

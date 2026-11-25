@@ -1,12 +1,3 @@
-"""The vision seam: a real model, an honest absence, and nothing in between.
-
-CI has no CLIP and no VLM, which is exactly the state most installs are in.
-Both branches are driven here — the loaded model through fake ``mlx_clip`` /
-``mlx_vlm`` modules in ``sys.modules``, the unloaded one by leaving them out —
-because the interesting failure is not "the model is missing" but "the product
-quietly behaved as if it weren't".
-"""
-
 from __future__ import annotations
 
 import sys
@@ -17,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from latticeai.core.embedding_providers import (  # noqa: E402
+from latticeai.core.embedding_providers import (
     DEFAULT_VISION_DIM,
     VISION_SPACE_IMAGE,
     VISION_SPACE_SHARED,
@@ -35,8 +26,6 @@ from latticeai.core.embedding_providers import (  # noqa: E402
 
 
 class _Encoder:
-    """The contract a vision module must satisfy: encode_image (+ encode_text)."""
-
     def __init__(self, *, text: bool = True, boom: bool = False):
         self.text = text
         self.boom = boom
@@ -64,17 +53,14 @@ def _install_mlx_clip(monkeypatch, encoder=None, *, load_error: str = "") -> Non
     monkeypatch.setitem(sys.modules, "mlx_clip", module)
 
 
-# ── the model is there ───────────────────────────────────────────────────────
 def test_a_loaded_vision_model_embeds_an_image_and_normalizes_it(monkeypatch):
     _install_mlx_clip(monkeypatch)
     provider = build_vision_provider("mlx", model="clip-vit-base-patch32")
 
-    assert provider.dim == 512  # known width before the first call
+    assert provider.dim == 512
     vector = provider.embed_image("/photos/whiteboard.png")
 
-    # 3-4-5 triangle: normalization is real, not decorative.
     assert vector == pytest.approx([0.6, 0.8])
-    # The index identity follows the width the model actually returned.
     assert provider.dim == 2
     assert provider.model_id == "mlx-vision:clip-vit-base-patch32:2"
     assert provider.metadata()["modality"] == "image"
@@ -85,7 +71,6 @@ def test_an_explicit_dim_pins_the_index_identity_before_any_call(monkeypatch):
     _install_mlx_clip(monkeypatch)
     provider = build_vision_provider("mlx", model="some-private-model", dim=768)
 
-    # No guessing when the caller already knows the width.
     assert provider.dim == 768
     assert provider.model_id == "mlx-vision:some-private-model:768"
 
@@ -114,7 +99,7 @@ def test_a_shared_space_model_may_embed_the_query_too(monkeypatch):
 def test_a_shared_space_without_a_text_tower_says_so(monkeypatch):
     _install_mlx_clip(monkeypatch, _Encoder(text=False))
     provider = build_vision_provider("mlx", model="mystery", space=VISION_SPACE_SHARED)
-    provider._load().encode_text = None  # the module exposes no text encoder
+    provider._load().encode_text = None
 
     with pytest.raises(EmbeddingUnavailable, match="no text encoder"):
         provider.embed_batch(["query"])
@@ -128,7 +113,6 @@ def test_a_text_tower_that_raises_is_reported_not_swallowed(monkeypatch):
         provider.embed_batch(["query"])
 
 
-# ── the model is not there ───────────────────────────────────────────────────
 def test_a_missing_vision_module_is_unavailable_never_a_hash_fallback(monkeypatch):
     monkeypatch.setitem(sys.modules, "mlx_clip", None)
     provider = build_vision_provider("mlx", model="clip-vit-base-patch32")
@@ -176,7 +160,6 @@ def test_a_provider_returning_no_rows_is_a_failure(monkeypatch):
         provider.embed_image("/photos/a.png")
 
 
-# ── resolution ───────────────────────────────────────────────────────────────
 def test_no_configured_vision_provider_is_a_state_not_a_failure():
     resolved = resolve_vision_embedder("")
 
@@ -199,7 +182,6 @@ def test_resolution_can_skip_the_probe(monkeypatch):
     _install_mlx_clip(monkeypatch, load_error="not downloaded")
     resolved = resolve_vision_embedder("mlx", model="clip", probe=False)
 
-    # Not probed means not claimed: available, but health says "unknown".
     assert resolved.available is True
     assert resolved.health["status"] == "unknown"
 
@@ -227,7 +209,6 @@ def test_a_healthy_provider_hands_over_a_one_argument_port(monkeypatch):
     assert resolved.as_dict()["modality"] == "image"
 
 
-# ── the dotted-callable provider ─────────────────────────────────────────────
 def _embed_two(paths):
     return [[0.0, 1.0] for _ in paths]
 
@@ -241,8 +222,8 @@ def test_a_custom_dotted_vision_target_is_loaded_and_used(monkeypatch):
 
     assert provider.embed_image("/photos/a.png") == pytest.approx([0.0, 1.0])
     assert provider.health()["status"] == "ok"
-    assert DEFAULT_VISION_DIM == 512  # the configured default
-    assert provider.dim == 2  # locked to the width the callable really returned
+    assert DEFAULT_VISION_DIM == 512
+    assert provider.dim == 2
 
 
 def test_a_custom_vision_target_is_image_only(monkeypatch):
@@ -296,7 +277,6 @@ def _cfg():
     return _RemoteConfig(model="", extra={"space": "image"})
 
 
-# ── captions: a model said it, or nobody did ─────────────────────────────────
 def _install_mlx_vlm(
     monkeypatch,
     *,
@@ -401,6 +381,5 @@ def test_an_unconfigured_custom_captioner_is_unavailable(monkeypatch):
 
 
 def test_an_mlx_captioner_without_a_model_name_falls_back_to_no_captions():
-    # "mlx" with nothing to load is not a captioner; saying so beats a stub.
     assert type(resolve_vision_captioner("mlx", model="")) is VisionCaptioner
     assert type(resolve_vision_captioner("")) is VisionCaptioner

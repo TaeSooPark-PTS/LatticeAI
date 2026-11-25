@@ -1,12 +1,3 @@
-"""Hugging Face model presence, download, and download progress.
-
-Answers one question — "are the weights actually on this disk?" — and, when
-they are not and the caller has consent, fetches them while emitting a progress
-payload per file. The readiness check is deliberately format-aware: a GGUF
-repo, an MLX 4-bit repo and a vLLM bf16 repo each prove completeness
-differently.
-"""
-
 from __future__ import annotations
 
 import importlib.util
@@ -51,7 +42,6 @@ def _normalize_cancel_key(model_id: Optional[str]) -> str:
 
 
 def request_download_cancel(model_id: Optional[str] = None) -> None:
-    """Signal cooperative cancellation for ``model_id`` (or ``*`` for all in-flight downloads)."""
     key = _normalize_cancel_key(model_id) or "*"
     with _CANCEL_LOCK:
         _CANCELLED_DOWNLOADS.add(key)
@@ -60,7 +50,6 @@ def request_download_cancel(model_id: Optional[str] = None) -> None:
 
 
 def clear_download_cancel(model_id: Optional[str] = None) -> None:
-    """Clear cancellation state before starting a fresh download."""
     with _CANCEL_LOCK:
         if not model_id:
             _CANCELLED_DOWNLOADS.clear()

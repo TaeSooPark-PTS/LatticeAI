@@ -1,38 +1,16 @@
-//! `chunk_strategy_for` — filename / path / URI (+ MIME hint) → strategy.
-//!
-//! The routing rule, in the order Python applies it: strip the query and
-//! fragment, normalise separators, take the last path component, look at its
-//! extension, and only then fall back to the MIME type. Unknown and
-//! extension-less input stays `plain` on purpose — `plain` is the byte-
-//! compatible legacy walk, and guessing `prose` for something that might be a
-//! data dump would move chunk boundaries (and therefore chunk ids) for no
-//! retrieval gain.
-//!
-//! The Python original wraps the whole body in `try/except` and can only
-//! return one of four strings. Rust's type system gives that for free: the
-//! signature takes `&str`, so there is no malformed input left to raise on.
-
 use crate::pystr::py_strip;
 
-/// `_MARKDOWN_CHUNK_EXTENSIONS`.
 pub const MARKDOWN_EXTENSIONS: [&str; 2] = [".md", ".markdown"];
-/// `_CODE_CHUNK_EXTENSIONS`.
 pub const CODE_EXTENSIONS: [&str; 21] = [
     ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".rb", ".c", ".h", ".cpp", ".css",
     ".sh", ".sql", ".vue", ".svelte", ".json", ".yaml", ".yml", ".toml",
 ];
-/// `_PROSE_CHUNK_EXTENSIONS`.
 pub const PROSE_EXTENSIONS: [&str; 9] = [
     ".txt", ".pdf", ".docx", ".doc", ".rtf", ".odt", ".epub", ".html", ".htm",
 ];
 
-/// Route a filename / path / URI (plus an optional MIME hint) to a strategy.
-///
-/// Returns `"markdown"`, `"code"`, `"prose"` or `"plain"`. Case-insensitive,
-/// tolerant of URLs and Windows separators, and never anything else.
 pub fn chunk_strategy_for(filename: &str, content_type: &str) -> &'static str {
     let lowered = py_strip(filename).to_lowercase();
-    // `name.split(sep, 1)[0]` for "?" then "#": everything before the first one.
     let mut name = lowered.as_str();
     for separator in ['?', '#'] {
         name = name.split(separator).next().unwrap_or("");
@@ -40,8 +18,6 @@ pub fn chunk_strategy_for(filename: &str, content_type: &str) -> &'static str {
     let normalised = name.replace('\\', "/");
     let trimmed = normalised.trim_end_matches('/');
     let base = trimmed.rsplit('/').next().unwrap_or("");
-    // `dot > 0` is the same test on byte and character indices: a string's
-    // first character always begins at byte zero.
     let extension = match base.rfind('.') {
         Some(dot) if dot > 0 => &base[dot..],
         _ => "",
@@ -87,8 +63,6 @@ mod tests {
             chunk_strategy_for("https://example.com/docs/guide?v=2#top", ""),
             "plain"
         );
-        // The fragment is stripped before the extension is read, so a `.md`
-        // that only appears after `#` does not count.
         assert_eq!(chunk_strategy_for("https://x/a#b.md", ""), "plain");
     }
 

@@ -5,6 +5,16 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.1.2] - 2026-11-25 — Living Synthesis
+
+### 변경됨
+- **저장소 전역 주석 및 억제 지시문 제거:**
+  - Python, TypeScript/JavaScript, Rust, Shell, CSS, HTML 소스 파일에서 필수 셔뱅 및 `/// <reference ... />` 지시문을 제외한 모든 주석, 독스트링, JSDoc, 억제 지시문을 제거했습니다.
+  - 전역 설정을 완화하지 않고 소스 코드를 직접 수정해 모든 Ruff, mypy, TypeScript, Clippy 검증을 통과했습니다.
+- **영구 무주석 게이트 도입 (`scripts/check_no_comments.mjs`, `package.json`, `.github/workflows/ci.yml`):**
+  - `@babel/parser`, Python `ast` + `tokenize`, Rust/Shell/CSS/HTML 렉서 기반 `npm run check:no-comments`를 `npm run lint` 및 CI에 연동했습니다.
+  - `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러 문서에 영구 무주석 규칙을 반영했습니다.
+
 ## [14.1.1] - 2026-11-25 — Living Synthesis
 
 ### 변경됨

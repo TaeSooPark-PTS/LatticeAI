@@ -1,9 +1,3 @@
-//! Permission-aware façade over the workspace registry.
-//!
-//! Port of `latticeai/services/workspace_service.py`. This is also the
-//! [`lattice_auth::WorkspaceResolver`] the rest of the product hands to
-//! `resolve_workspace_scope` so scoping guards stop being a pass-through.
-
 use std::sync::Arc;
 
 use lattice_auth::WorkspaceResolver;
@@ -14,11 +8,8 @@ use super::memories;
 use super::orgs;
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// How an email (or already-stable `user:…` id) becomes the id membership
-/// records carry.
 pub type IdentityFn = Arc<dyn Fn(Option<&str>) -> Option<String> + Send + Sync>;
 
-/// Permission-aware façade over [`WorkspaceOsStore`].
 #[derive(Clone)]
 pub struct WorkspaceService {
     store: Arc<WorkspaceOsStore>,
@@ -26,7 +17,6 @@ pub struct WorkspaceService {
 }
 
 impl WorkspaceService {
-    /// Wrap a store. `resolve_user` is `Users::user_id_for_email`.
     pub fn new(store: Arc<WorkspaceOsStore>, resolve_user: IdentityFn) -> Self {
         Self {
             store,
@@ -34,12 +24,10 @@ impl WorkspaceService {
         }
     }
 
-    /// The store this façade writes.
     pub fn store(&self) -> &WorkspaceOsStore {
         &self.store
     }
 
-    /// `WorkspaceService._identity`.
     pub fn identity(&self, user_id: Option<&str>) -> Option<String> {
         let user_id = user_id.filter(|value| !value.is_empty())?;
         if user_id.starts_with("user:") {
@@ -66,7 +54,6 @@ impl WorkspaceService {
         )))
     }
 
-    /// `resolve_read_scope` — `None` falls back to the active workspace.
     pub fn resolve_read(
         &self,
         requested: Option<&str>,
@@ -80,7 +67,6 @@ impl WorkspaceService {
         Ok(workspace_id)
     }
 
-    /// `resolve_write_scope`.
     pub fn resolve_write(
         &self,
         requested: Option<&str>,
@@ -94,7 +80,6 @@ impl WorkspaceService {
         Ok(workspace_id)
     }
 
-    /// `authorize_record_read` — a record without `workspace_id` stays public.
     pub fn authorize_record_read(
         &self,
         record: &Value,
@@ -110,7 +95,6 @@ impl WorkspaceService {
         Ok(())
     }
 
-    /// `authorize_memory_delete`.
     pub fn authorize_memory_delete(
         &self,
         record: &Value,
@@ -120,7 +104,6 @@ impl WorkspaceService {
         memories::authorize_delete(&self.store, record, user_id, resolved.as_deref())
     }
 
-    /// `summary` — store summary plus the membership-filtered registry.
     pub fn summary(&self, user_id: Option<&str>) -> Value {
         let mut data = self.store.summary();
         data["workspace_registry"] =
@@ -129,12 +112,10 @@ impl WorkspaceService {
         data
     }
 
-    /// `list_workspaces`.
     pub fn list_workspaces(&self, user_id: Option<&str>) -> Value {
         orgs::list_workspaces(&self.store, self.identity(user_id).as_deref())
     }
 
-    /// `get_workspace` — permission is checked *before* the lookup.
     pub fn get_workspace(
         &self,
         workspace_id: &str,
@@ -144,7 +125,6 @@ impl WorkspaceService {
         orgs::get_workspace(&self.store, workspace_id, self.identity(user_id).as_deref())
     }
 
-    /// `workspace_summary`.
     pub fn workspace_summary(
         &self,
         workspace_id: &str,
@@ -154,7 +134,6 @@ impl WorkspaceService {
         orgs::workspace_summary(&self.store, workspace_id, self.identity(user_id).as_deref())
     }
 
-    /// `create_organization_workspace`.
     pub fn create_organization_workspace(
         &self,
         name: &str,
@@ -169,7 +148,6 @@ impl WorkspaceService {
         )
     }
 
-    /// `update_workspace`.
     pub fn update_workspace(
         &self,
         workspace_id: &str,
@@ -186,7 +164,6 @@ impl WorkspaceService {
         )
     }
 
-    /// `archive_workspace`.
     pub fn archive_workspace(
         &self,
         workspace_id: &str,
@@ -195,7 +172,6 @@ impl WorkspaceService {
         orgs::archive_workspace(&self.store, workspace_id, self.identity(actor).as_deref())
     }
 
-    /// `add_member`.
     pub fn add_member(
         &self,
         workspace_id: &str,
@@ -215,7 +191,6 @@ impl WorkspaceService {
         )
     }
 
-    /// `update_member_role`.
     pub fn update_member_role(
         &self,
         workspace_id: &str,
@@ -235,7 +210,6 @@ impl WorkspaceService {
         )
     }
 
-    /// `remove_member`.
     pub fn remove_member(
         &self,
         workspace_id: &str,
@@ -253,7 +227,6 @@ impl WorkspaceService {
         )
     }
 
-    /// `set_active_workspace`.
     pub fn set_active_workspace(
         &self,
         workspace_id: &str,

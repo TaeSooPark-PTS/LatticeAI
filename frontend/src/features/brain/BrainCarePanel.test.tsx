@@ -22,7 +22,6 @@ const confirmInput = () => screen.getByLabelText("Brain 보관 파일 비밀번�
 const inspectButton = () => screen.getByRole("button", { name: /확인/ });
 const restoreButton = () => screen.getByRole("button", { name: /복원 미리보기/ });
 
-/** The three big care actions render label + detail; the detail is the stable handle. */
 function careButton(detail: string) {
   const match = Array.from(document.querySelectorAll<HTMLButtonElement>("button.brain-care-button")).find(
     (button) => button.querySelector("small")?.textContent === detail,
@@ -70,7 +69,6 @@ describe("BrainCarePanel shell", () => {
   it.each(backupLabels)("labels backup health %j as %s", async (data, expected) => {
     renderCare({ backupHealth: ok(data), graphPortability: ok(null) });
     expect(await screen.findByText(expected)).toBeTruthy();
-    // Non-record portability payload falls back to the format name.
     expect(screen.getByText(".latticebrain")).toBeTruthy();
   });
 });
@@ -125,12 +123,10 @@ describe("BrainCarePanel export/backup flows", () => {
     expect(container.querySelector(".brain-care-result")?.className).toContain("is-error");
     expect(screen.getByText("Brain 관리 작업을 완료하지 못했습니다.")).toBeTruthy();
 
-    // Detail identical to the friendly line is not repeated.
     await userEvent.click(button);
     await waitFor(() => expect(screen.queryByText("디스크가 가득 찼습니다")).toBeNull());
     expect(container.querySelectorAll(".brain-care-result-summary span")).toHaveLength(0);
 
-    // No detail at all keeps only the friendly line.
     await userEvent.click(button);
     await waitFor(() => expect(exportMock).toHaveBeenCalledTimes(3));
     expect(container.querySelectorAll(".brain-care-result-summary span")).toHaveLength(0);
@@ -145,16 +141,13 @@ describe("BrainCarePanel export/backup flows", () => {
     await expand();
     const button = exportButton();
 
-    // Non-record data → generic completion, no path, no contents line.
     await userEvent.click(button);
     await screen.findByText("Brain 관리 작업 완료");
     expect(container.querySelectorAll(".brain-care-result-summary span")).toHaveLength(0);
 
-    // Only edges known → the other counts print as 0, never NaN.
     await userEvent.click(button);
     expect(await screen.findByText("기억 0개 · 연결 3개 · 대화 0개")).toBeTruthy();
 
-    // Only conversations known.
     await userEvent.click(button);
     expect(await screen.findByText("기억 0개 · 연결 0개 · 대화 7개")).toBeTruthy();
     expect(screen.queryByText(/파일:/)).toBeNull();
@@ -195,7 +188,7 @@ describe("BrainCarePanel archive gating", () => {
 
     fireEvent.change(passInput(), { target: { value: STRONG } });
     expect(screen.getByText("비밀번호 강도가 충분합니다.")).toBeTruthy();
-    expect(archiveButton()).toBeDisabled(); // confirm still empty → mismatch
+    expect(archiveButton()).toBeDisabled();
 
     fireEvent.change(confirmInput(), { target: { value: STRONG } });
     expect(screen.queryByText("비밀번호 확인이 일치하지 않습니다.")).toBeNull();
@@ -241,7 +234,6 @@ describe("BrainCarePanel archive gating", () => {
     fireEvent.change(pathInput(), { target: { value: "/tmp/brain.latticebrain" } });
     expect(screen.getByText("보관 파일 경로 형식이 올바릅니다.")).toBeTruthy();
 
-    // Inspect works without a passphrase (unencrypted archives) and sends null.
     expect(inspectButton()).toBeEnabled();
     await userEvent.click(inspectButton());
     await waitFor(() =>
@@ -251,14 +243,12 @@ describe("BrainCarePanel archive gating", () => {
       }),
     );
 
-    // Restore preview still needs a matching passphrase.
     expect(restoreButton()).toBeDisabled();
     fireEvent.change(passInput(), { target: { value: STRONG } });
-    expect(restoreButton()).toBeDisabled(); // mismatch until confirmed
+    expect(restoreButton()).toBeDisabled();
     fireEvent.change(confirmInput(), { target: { value: STRONG } });
     expect(restoreButton()).toBeEnabled();
 
-    // With a passphrase present, inspect forwards it instead of null.
     await userEvent.click(inspectButton());
     await waitFor(() =>
       expect(vi.mocked(latticeApi.brainArchiveInspect)).toHaveBeenLastCalledWith({
@@ -279,7 +269,6 @@ describe("BrainCarePanel archive gating", () => {
     expect(await screen.findByText("복원 예상 결과")).toBeTruthy();
     expect(screen.getByText("미리보기만 실행되어 현재 Brain은 바뀌지 않았습니다.")).toBeTruthy();
 
-    // A filled path also travels with a fresh archive request.
     await userEvent.click(archiveButton());
     await waitFor(() =>
       expect(vi.mocked(latticeApi.brainArchive)).toHaveBeenCalledWith({

@@ -1,9 +1,3 @@
-//! Durable DAG Agent Workflow Engine with per-step checkpoints, idempotency ledger,
-//! crash recovery, approval pause/resume across restarts, cancel/retry, pre-mutation
-//! file rollback, and Knowledge Graph provenance lineage.
-//!
-//! Addresses Review Sections 9.1, 9.2, 15 (P1 — Durable Agent Workflow), and 16.4.
-
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 
@@ -23,10 +17,8 @@ fn sha256_hex(input: &str) -> String {
     hex
 }
 
-/// Subdirectory under `LATTICEAI_DATA_DIR` storing durable workflow checkpoints.
 pub const WORKFLOWS_DIR_NAME: &str = "rust_agent_workflows";
 
-/// Lifecycle status of the overall durable workflow run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkflowStatus {
@@ -40,7 +32,6 @@ pub enum WorkflowStatus {
     RolledBack,
 }
 
-/// Typed classification separating retryable transient errors from permanent/policy failures (P1.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StepErrorKind {
@@ -89,7 +80,6 @@ impl StepErrorKind {
     }
 }
 
-/// Pre-execution blast-radius & reversibility preview attached to destructive/approval gates (P1.5).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ImpactPreview {
     pub affected_paths: Vec<String>,
@@ -100,7 +90,6 @@ pub struct ImpactPreview {
     pub risk_tier: String,
 }
 
-/// Lifecycle status of an individual DAG step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkflowStepStatus {
@@ -113,7 +102,6 @@ pub enum WorkflowStepStatus {
     RolledBack,
 }
 
-/// Specification of one step inside a [`WorkflowSpec`] DAG.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkflowStepSpec {
     pub step_id: String,
@@ -135,7 +123,6 @@ pub struct WorkflowStepSpec {
     pub consulted_node_ids: Vec<String>,
 }
 
-/// Declarative DAG workflow definition.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkflowSpec {
     pub workflow_id: String,
@@ -154,8 +141,6 @@ fn default_true() -> bool {
 }
 
 impl WorkflowSpec {
-    /// Validate DAG integrity: non-empty, unique step IDs, known dependencies, and acyclic.
-    /// Returns a deterministic topological ordering on success.
     pub fn validate_dag(&self) -> Result<Vec<String>, String> {
         if self.workflow_id.trim().is_empty() {
             return Err("workflow_id must not be empty".into());
@@ -228,16 +213,12 @@ impl WorkflowSpec {
     }
 }
 
-/// Ready-to-run frontier wave computed over the DAG.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionWave {
-    /// Independent read-only steps whose dependencies are satisfied and can run concurrently.
     ParallelReadOnly(Vec<String>),
-    /// A mutating or approval-gated step scheduled in isolation.
     SerialStep(String),
 }
 
-/// Cached receipt for an idempotent step execution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StepReceipt {
     pub idempotency_key: String,
@@ -262,7 +243,6 @@ struct PendingStepApproval {
     expires_at: f64,
 }
 
-/// Persisted checkpoint state for one step.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkflowStepState {
     pub spec: WorkflowStepSpec,
@@ -276,7 +256,6 @@ pub struct WorkflowStepState {
     pub updated_at: f64,
 }
 
-/// Persisted durable record of an entire workflow run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkflowRunRecord {
     pub spec: WorkflowSpec,
@@ -290,7 +269,6 @@ pub struct WorkflowRunRecord {
     rollback_snapshots: Vec<FileRollbackSnapshot>,
 }
 
-/// Outcome of advancing a workflow until completion, pause, or failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum WorkflowAdvanceOutcome {
     Completed {
@@ -314,14 +292,12 @@ pub enum WorkflowAdvanceOutcome {
     },
 }
 
-/// Step execution output returned by a host tool/action runner.
 #[derive(Debug, Clone, Default)]
 pub struct StepExecOutput {
     pub value: Value,
     pub generated_artifacts: Vec<String>,
 }
 
-/// Compute a deterministic SHA-256 idempotency key for `(workflow_id, step_id, action, args)`.
 pub fn compute_idempotency_key(
     workflow_id: &str,
     step_id: &str,
@@ -333,7 +309,6 @@ pub fn compute_idempotency_key(
 }
 
 impl WorkflowRunRecord {
-    /// Initialize a validated [`WorkflowRunRecord`] from a [`WorkflowSpec`].
     pub fn from_spec(spec: WorkflowSpec, now_secs: f64) -> Result<Self, String> {
         let _ = spec.validate_dag()?;
         let mut steps = BTreeMap::new();
@@ -367,7 +342,6 @@ impl WorkflowRunRecord {
         })
     }
 
-    /// Reconcile any step left in `Running` due to an abrupt process crash.
     pub fn recover_after_crash(&mut self, now_secs: f64) {
         let mut recovered = false;
         for state in self.steps.values_mut() {
@@ -392,7 +366,6 @@ impl WorkflowRunRecord {
         }
     }
 
-    /// Determine the next ready execution wave over the DAG.
     pub fn next_wave(&self) -> Option<ExecutionWave> {
         let mut ready_ro = Vec::new();
         let mut first_serial: Option<String> = None;
@@ -428,8 +401,6 @@ impl WorkflowRunRecord {
         }
     }
 
-    /// Export Brain provenance payload (`Workflow` node + `USED_BY_AGENT` / `GENERATED_BY` edges)
-    /// linking consulted Knowledge Graph nodes and generated output artifacts.
     pub fn brain_provenance_payload(&self) -> Value {
         let wf_node_id = format!("workflow:{}", self.spec.workflow_id);
         let mut consulted: BTreeSet<String> = BTreeSet::new();
@@ -480,7 +451,6 @@ impl WorkflowRunRecord {
     }
 }
 
-/// Atomic file-backed durable store + execution engine for [`WorkflowRunRecord`]s.
 #[derive(Debug, Clone)]
 pub struct DurableWorkflowStore {
     dir: PathBuf,
@@ -503,7 +473,6 @@ impl DurableWorkflowStore {
         Ok(self.dir.join(format!("workflow_{trimmed}.json")))
     }
 
-    /// Persist a workflow checkpoint atomically via temp file + rename.
     pub fn save(&self, record: &WorkflowRunRecord) -> Result<(), String> {
         std::fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
         let dest = self.path_for(&record.spec.workflow_id)?;
@@ -519,7 +488,6 @@ impl DurableWorkflowStore {
         })
     }
 
-    /// Load a persisted workflow record and automatically reconcile any mid-step crash state.
     pub fn load(
         &self,
         workflow_id: &str,
@@ -541,7 +509,6 @@ impl DurableWorkflowStore {
         Ok(Some(record))
     }
 
-    /// Workspace-scoped load enforcing strict P0.4 cross-workspace isolation.
     pub fn load_scoped(
         &self,
         workflow_id: &str,
@@ -567,7 +534,6 @@ impl DurableWorkflowStore {
         Ok(Some(record))
     }
 
-    /// Export a reproducible, PII/secret-redacted workflow trace bundle (P3.2).
     pub fn export_redacted_trace(
         &self,
         workflow_id: &str,
@@ -587,14 +553,12 @@ impl DurableWorkflowStore {
         }))
     }
 
-    /// Register a new workflow run and persist its initial checkpoint.
     pub fn create(&self, spec: WorkflowSpec, now_secs: f64) -> Result<WorkflowRunRecord, String> {
         let record = WorkflowRunRecord::from_spec(spec, now_secs)?;
         self.save(&record)?;
         Ok(record)
     }
 
-    /// Approve a paused step using constant-time token verification, user match, and TTL check.
     pub fn approve_step(
         &self,
         workflow_id: &str,
@@ -641,7 +605,6 @@ impl DurableWorkflowStore {
         Ok(record)
     }
 
-    /// Cancel an active or paused workflow and mark remaining unfinished steps `Cancelled`.
     pub fn cancel(
         &self,
         workflow_id: &str,
@@ -670,7 +633,6 @@ impl DurableWorkflowStore {
         Ok(record)
     }
 
-    /// Reset a failed step back to `Pending` if within `max_retries`, without re-running completed steps.
     pub fn retry_failed_step(
         &self,
         workflow_id: &str,
@@ -702,8 +664,6 @@ impl DurableWorkflowStore {
         Ok(record)
     }
 
-    /// Drive a workflow forward wave-by-wave, checkpointing BEFORE and AFTER every step,
-    /// enforcing idempotency, approval gates, and deterministic rollback on failure.
     pub fn run_until_yield<F>(
         &self,
         workflow_id: &str,
@@ -735,7 +695,6 @@ impl DurableWorkflowStore {
                 let idem_key = record.steps[&step_id].idempotency_key.clone();
                 let is_approved = record.steps[&step_id].approved;
 
-                // 1. Approval gate: fail-closed pause to disk before any execution!
                 if spec_snapshot.requires_approval && !is_approved {
                     let raw_token = token_urlsafe(24).map_err(|e| e.to_string())?;
                     let expires_at = now_secs + APPROVAL_TTL_SECONDS;
@@ -759,7 +718,6 @@ impl DurableWorkflowStore {
                     });
                 }
 
-                // 2. Idempotency check: if receipt already exists in ledger, replay without re-executing!
                 if let Some(receipt) = record.idempotency_ledger.get(&idem_key).cloned() {
                     if let Some(st) = record.steps.get_mut(&step_id) {
                         st.status = WorkflowStepStatus::Completed;
@@ -772,14 +730,12 @@ impl DurableWorkflowStore {
                     continue;
                 }
 
-                // 3. Pre-mutation file snapshot for rollback safety.
                 if spec_snapshot.mutating {
                     if let Some(target) = &spec_snapshot.rollback_path {
                         capture_rollback_snapshot(&mut record.rollback_snapshots, target);
                     }
                 }
 
-                // 4. Checkpoint `Running` BEFORE invoking external side effect!
                 record.status = WorkflowStatus::Running;
                 if let Some(st) = record.steps.get_mut(&step_id) {
                     st.status = WorkflowStepStatus::Running;
@@ -788,7 +744,6 @@ impl DurableWorkflowStore {
                 }
                 self.save(&record)?;
 
-                // 5. Execute step!
                 match executor(&spec_snapshot) {
                     Ok(exec_out) => {
                         let receipt = StepReceipt {

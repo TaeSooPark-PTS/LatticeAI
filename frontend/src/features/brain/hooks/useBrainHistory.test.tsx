@@ -9,11 +9,6 @@ import { fail, ok, stubApi } from "@/test/renderPage";
 import { useConversationSession } from "../conversationSession";
 import { useBrainHistory } from "./useBrainHistory";
 
-/**
- * Resuming, deleting and listing past conversations — the "지난 대화" surface.
- * The store is the real conversation session, so every assertion about what a
- * resume or delete did reads the same state the Brain home renders.
- */
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({

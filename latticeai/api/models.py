@@ -1,31 +1,3 @@
-"""Model / engine API router — the MLX lifecycle this process owns.
-
-Extracted from ``server_app.py`` in v1.3.0 with the whole ``/models*`` +
-``/engines*`` + ``/setup/set-api-key`` surface. v11.6.0 kept the eight routes
-that are *this interpreter's* business and moved the rest to ``lattice-host``:
-engine installation and cloud-key verification are host operations,
-``/setup/set-api-key`` is account state, and the two catalogue reads
-(``/models/compat-profiles``, ``/models/recommendations``) are product views.
-
-v11.8.0 took three of those eight away, because nothing called them — not the
-Rust surface, not the SPA client, not either extension:
-
-* ``POST /engines/pull-model`` — every caller reaches a download through
-  ``/engines/prepare-model``, which resolves, downloads on consent, loads and
-  smoke-tests in one step. The bare pull was the older door, and with it went
-  this module's only use of ``huggingface_hub`` / ``ollama`` (both still run
-  here, under ``services/model_loading.py``, for the prepare flow).
-* ``POST /models/switch/{model_id:path}`` — ``/models/load`` is what every
-  surface sends, and it switches as part of loading.
-* ``DELETE /models/unload-all`` — unloading is per-model everywhere.
-
-What is left is list, load, unload-one and the two prepare flows.
-
-Mirrors the established router-factory convention: the heavy provider/runtime
-helpers are injected as bound service callables. This module owns the sole
-translation from transport-neutral ``ModelRuntimeError`` failures to HTTP.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -43,13 +15,6 @@ from latticeai.services.model_errors import ModelRuntimeError
 
 
 def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[str, Any]:
-    """Whether the active model can accept image input (VLM).
-
-    Honest, derived signal for the Chat 'Vision Enabled / Disabled' badge: a
-    model is vision-capable only when its compat profile reports
-    ``supports_vision``. The MLX-VLM engine availability is reported too so the
-    UI can explain a disabled badge ("load a vision model" vs "install MLX-VLM").
-    """
     from latticeai.core.model_compat import get_model_profile
 
     current_vision = False
@@ -83,7 +48,6 @@ def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[st
         "current_model": current_model_id,
         "current_supports_vision": current_vision,
         "engine_available": engine_available,
-        # The badge is "enabled" only when a vision-capable model is active.
         "enabled": bool(current_vision),
     }
 
@@ -140,7 +104,6 @@ def _authorize_model_admin(
     request: Request,
     claimed_email: Optional[str] = None,
 ) -> str:
-    """Authenticate model operations and gate host-global state to admins."""
     current_user = deps.require_user(request)
     if deps.require_auth:
         if claimed_email and _normalized_identity(
@@ -158,9 +121,6 @@ def _effective_email(
     current_user: str,
     claimed_email: Optional[str],
 ) -> Optional[str]:
-    # Authenticated callers may only act as their session identity. The
-    # legacy body field remains usable solely in explicit no-auth/local
-    # mode for backward compatibility.
     return current_user if deps.require_auth else claimed_email or current_user or None
 
 
@@ -487,7 +447,6 @@ def _register_model_routes(router: APIRouter, deps: _ModelsRouterDeps) -> None:
             loaded_ids=deps.model_router.loaded_model_ids,
             current_id=deps.model_router.current_model_id,
         )
-        # 5.2.0: surface structured registry info (verified status, hf, hardware, strategies) for UX
         try:
             from latticeai.services.model_catalog import (
                 get_verified_models,
@@ -541,13 +500,10 @@ def _register_model_routes(router: APIRouter, deps: _ModelsRouterDeps) -> None:
             "current": deps.model_router.current_model_id,
             "compat_profiles": deps.list_compat_profiles(),
             "vision": _vision_capability(deps.model_router.current_model_id, engines),
-            # 5.2+ transparent model capability registry
             "registry": {
                 "version": "5.2.0",
                 "verified_count": len(verified),
-                "verified": verified[
-                    :12
-                ],  # compact; full via /models/recommendations or future dedicated
+                "verified": verified[:12],
             },
         }
 

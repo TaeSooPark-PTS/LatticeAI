@@ -1,10 +1,3 @@
-//! Multi-agent runtime + single-agent HTTP loop (v11.6.0, WP-R8).
-//!
-//! `/agents/api/*` is the product AgentRuntime surface. `/agent`,
-//! `/agent/resume` and `/agent/approvals` reuse `lattice-agent` types
-//! (`LoopConfig`, `Workspace`, `AgentRunStore`) and speak the original
-//! Python paths and request/response protocol.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,15 +24,6 @@ use run_handlers::{
     agent_approvals, agent_http, agent_resume, agent_run, agent_run_preview, resolve_skills_dir,
 };
 
-/// Contract table for `mcp_market.json` (excludes GET /agents — I4/ui_redirects,
-/// and the /agent loop — chat family).
-///
-/// `GET /agents` is not merely absent from this table, it is no longer mounted
-/// by this router at all. It is a 308 into the SPA's hash route, it is filed
-/// under `ui_redirects.json` in the committed contract, and `ui_redirects`
-/// serves it with the query string preserved the way `app_redirect(request)`
-/// does — which the copy here did not. Two owners for one path is an axum panic
-/// at boot, so the gateway integration picked the one the contract names.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/agents/api/runtime/status"),
     ("GET", "/agents/api/runtime/health"),
@@ -57,7 +41,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/agents/api/run/preview"),
 ];
 
-/// Extra routes this module serves that live in the chat OpenAPI fragment.
 pub const AGENT_LOOP_MOUNTED: &[(&str, &str)] = &[
     ("POST", "/agent"),
     ("POST", "/agent/resume"),
@@ -390,7 +373,6 @@ async fn runtime_status(State(state): State<AgentsState>, headers: HeaderMap) ->
     );
     body.insert("runs", json!(runs.into_iter().take(25).collect::<Vec<_>>()));
     body.insert("contracts", json!([]));
-    // Rebuild with ordered serialization
     let text = format!(
         "{{\"runtime\":{},\"health\":{},\"roles\":[{}],\"agents\":[{}],\"runs\":{},\"contracts\":[]}}",
         serde_json::to_string(&runtime).unwrap_or_else(|_| "{}".into()),

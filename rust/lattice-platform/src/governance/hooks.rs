@@ -1,10 +1,3 @@
-//! Hooks registry (`latticeai/api/hooks.py`) — native.
-//!
-//! Registration, list, inspect, enable/disable, reorder, and remove write
-//! `hooks.json`. Run history lives in `hooks_runs.json`. A successful hook
-//! *run* (the body of a user command or a bound runner) is delegated to
-//! `POST /agent/tool`; the fixtures only pin the 400/404 selector branches.
-
 use axum::extract::{Path as AxumPath, Query, State};
 use axum::http::HeaderMap;
 use axum::response::Response;
@@ -19,7 +12,6 @@ use crate::governance::review_queue::{
     require_user, string_field, string_field_or, GovernanceState,
 };
 
-/// Mounted (method, axum-path) pairs. `{hook_id:path}` is greedy.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/hooks"),
     ("POST", "/api/hooks/disable"),
@@ -49,8 +41,6 @@ pub(crate) const HOOK_KINDS: &[&str] = &[
 
 pub(crate) const BRAIN_EVENT_TRIGGERS: &str = "user:brain-event-triggers";
 
-/// Built-in hooks after the v3.4.1 kind aliases (`workflow`→`post_workflow`,
-/// `pipeline`→`post_index`).
 pub(crate) fn builtin_hooks() -> Vec<Value> {
     vec![
         json!({
@@ -125,7 +115,6 @@ pub use sink::NativeHookSink;
 pub use store::HooksStore;
 use store::{alias_kind, HooksError};
 
-/// The hooks router. `hooks` is stored on [`HooksState`].
 pub fn router(state: HooksState) -> Router {
     Router::new()
         .route("/api/hooks", get(list_hooks))
@@ -143,29 +132,18 @@ pub fn router(state: HooksState) -> Router {
         .with_state(state)
 }
 
-/// Router state: governance (auth / worker) plus the hooks store.
 #[derive(Clone)]
 pub struct HooksState {
-    /// Shared auth + worker + data dir.
     pub gov: GovernanceState,
-    /// Persisted registry.
     pub hooks: HooksStore,
 }
 
 impl HooksState {
-    /// Build from an existing governance state.
     pub fn new(gov: GovernanceState) -> Self {
         let hooks = HooksStore::open(&gov.data_dir);
         Self { gov, hooks }
     }
 
-    /// Build over a registry somebody else opened.
-    ///
-    /// The host opens **one** [`HooksStore`] and hands it both to these routes
-    /// and to [`NativeHookSink`], for the reason `GovernanceState` is opened
-    /// once: the store keeps `hooks.json` and the run log in memory, so a
-    /// second instance over the same directory would not see the first one's
-    /// writes and would overwrite them on its next save.
     pub fn with_store(gov: GovernanceState, hooks: HooksStore) -> Self {
         Self { gov, hooks }
     }
@@ -408,11 +386,9 @@ async fn dispatch_one(
         .trim()
         .to_string();
     if command.is_empty() {
-        // Advisory / no-op — still recorded.
         let result = state.hooks.record_advisory(hook, req);
         return Ok(json_status_value(result));
     }
-    // Actual execution goes through the worker tool seam.
     if let Some(worker) = state.gov.worker.clone() {
         let payload = json!({
             "tool": "run_hook",

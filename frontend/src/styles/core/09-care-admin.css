@@ -1,4 +1,4 @@
-/* Edge highlight/dim coupled to focus + match state */
+
 .brain-graph-edges line {
   transition: opacity 280ms ease, stroke-width 200ms ease, stroke 200ms ease;
 }

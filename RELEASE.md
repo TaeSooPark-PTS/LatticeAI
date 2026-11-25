@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.1.2 — Living Synthesis (2026-11-25)
+
+Enforced a repository-wide zero-comments standard across all tracked source files: stripped all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives (`# noqa`, `# type: ignore`, `// @ts-expect-error`, `// eslint-disable`, `/* @vite-ignore */`, etc.) while preserving only machine-parsed directives (`#!/usr/bin/env ...` and `/// <reference ... />`); resolved every surfaced lint, type-check, and Clippy issue directly in source code without weakening any global config; added `npm run check:no-comments` (`scripts/check_no_comments.mjs`) to `npm run lint` and `.github/workflows/ci.yml`; and documented the permanent no-comments policy in `AGENTS.md`, `CONTRIBUTING.md`, and their Korean mirrors.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md).
+
+Build artifacts: `dist/ltcai-14.1.2-py3-none-any.whl`, `dist/ltcai-14.1.2.tar.gz`, `ltcai-14.1.2.tgz`, `dist/ltcai-14.1.2.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`.
+
 ## v14.1.1 — Living Synthesis (2026-11-25)
 
 Completed the zero-technical-debt pass across Python formatting, complexity enforcement, server i18n ratcheting, and container hygiene: formatted all 219 Python files with `ruff format .` in a dedicated format-only commit (`55ba57c381a433066fd94434c3a6250c4a1beb59`), recorded it in `.git-blame-ignore-revs` for clean `git blame`, and wired `ruff format --check .` into `npm run lint:python` and CI; decomposed `create_models_router` (`latticeai/api/models.py`) and `create_worker_compute_router` (`latticeai/api/worker_compute.py`) into focused module-level helpers, removed all remaining `"C901"` per-file ignores in `pyproject.toml` so McCabe `max-complexity = 20` is enforced globally with zero exemptions, and split `/worker/extract` tests into `tests/unit/test_worker_compute_extract.py` under the 1,000-line ceiling; audited and registered `worker_compute_render.py` and `worker_resilience.py` in `NON_ROUTER_HELPERS` and tightened `scripts/check_server_i18n.mjs` to fail closed (`exit 1`) on any future unclaimed `latticeai/api/*.py` module (`0 unclaimed`); and added explicit `--chown=lattice:lattice --chmod=0755` to the `lattice-host` binary copy in `Dockerfile`.

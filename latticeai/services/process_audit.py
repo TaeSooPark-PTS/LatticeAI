@@ -1,5 +1,3 @@
-"""Auditable command plans for installer and local process execution."""
-
 from __future__ import annotations
 
 import hashlib
@@ -26,7 +24,7 @@ _SENSITIVE_FLAGS = {
 
 
 class CommandConfirmationError(ValueError):
-    """Raised when a process command lacks the expected execution token."""
+    pass
 
 
 def _default_audit_file() -> Path:
@@ -196,5 +194,4 @@ def append_process_audit_event(
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
     except (OSError, ValueError, TypeError, RuntimeError):
-        # Auditing must never make setup recovery paths unusable.
         return

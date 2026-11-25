@@ -1,15 +1,3 @@
-//! Python↔Rust chunking parity, over the committed goldens.
-//!
-//! Same corpus, same strategies, same files the Python chunker produced.
-//! Comparison is **exact**: every chunk's text, both of its offsets, its
-//! metadata, its id and its two lengths, compared as `serde_json::Value`, so a
-//! drifting boundary, a renamed key and an `int` that became a `float` all fail
-//! the same way.
-//!
-//! The goldens are **frozen** — `rust/fixtures/chunking/FROZEN.md` records what
-//! wrote them, and there is nothing left to regenerate them with. If one of
-//! them and this crate disagree, the chunker changed.
-
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -61,7 +49,6 @@ fn cases() -> &'static Vec<Value> {
     })
 }
 
-/// One golden case, re-derived from the Rust port in the golden's own shape.
 fn rebuild(golden: &Value) -> Value {
     let text = golden["text"].as_str().expect("text");
     let strategy = golden["strategy"].as_str().expect("strategy");
@@ -95,7 +82,6 @@ fn every_chunking_case_matches_its_python_golden() {
     for case in cases() {
         let key = case["key"].as_str().expect("key");
         let golden = read_json(&format!("chunks__{key}.json"));
-        // The manifest and the case file must agree before anything else does.
         for field in ["strategy", "size", "overlap", "source_node_id", "filename"] {
             assert_eq!(golden[field], case[field], "{key}/{field}");
         }
@@ -134,8 +120,6 @@ fn every_chunking_case_matches_its_python_golden() {
     );
 }
 
-/// The corpus must actually reach all four strategies, or "parity" would only
-/// mean "the plain walk still works".
 #[test]
 fn the_corpus_covers_every_strategy_and_the_fallback() {
     let strategies: Vec<&str> = manifest()["strategies"]
@@ -150,7 +134,6 @@ fn the_corpus_covers_every_strategy_and_the_fallback() {
             "{wanted} is not in the corpus"
         );
     }
-    // An unknown label must fall back to plain, and the corpus must prove it.
     let golden = read_json("chunks__unknown_strategy_falls_back.json");
     let text = golden["text"].as_str().expect("text");
     assert_eq!(golden["strategy"], Value::from("sideways"));
@@ -160,12 +143,6 @@ fn the_corpus_covers_every_strategy_and_the_fallback() {
     );
 }
 
-/// The whole reason this port indexes characters: byte offsets would disagree.
-///
-/// Three claims, each proved from the goldens rather than asserted: multibyte
-/// chunks exist, their `start_char` is a character offset (a byte offset would
-/// be larger), and re-slicing the source *by characters* at that offset
-/// reproduces the chunk exactly.
 #[test]
 fn offsets_are_character_offsets_not_byte_offsets() {
     let mut multibyte_cases = 0usize;
@@ -197,8 +174,6 @@ fn offsets_are_character_offsets_not_byte_offsets() {
             let slice: String = cleaned[start..end].iter().collect();
             assert_eq!(slice, text, "{key}: chunk at {start} does not re-slice");
             if multibyte && start > 0 {
-                // The byte offset of the same chunk is strictly larger, so a
-                // byte-indexed port would have produced a different chunk here.
                 let byte_offset: usize = cleaned[..start].iter().map(|c| c.len_utf8()).sum();
                 if byte_offset > start {
                     offsets_that_differ += 1;
@@ -336,9 +311,6 @@ fn the_hash_conventions_match_their_golden() {
     }
 }
 
-/// Chunk ids are pinned per case inside the chunk goldens; this asserts the
-/// convention itself against one recorded value so a changed prefix or digest
-/// length fails with a name instead of thirty-five diffs.
 #[test]
 fn chunk_ids_keep_their_shape() {
     let golden = read_json("chunks__plain_default_long.json");
@@ -360,8 +332,6 @@ fn decode_hex(raw: &str) -> Vec<u8> {
         .collect()
 }
 
-/// The first differing path, so a failure names the chunk instead of dumping
-/// the whole corpus.
 fn first_difference(expected: &Value, got: &Value) -> String {
     let mut trail = Vec::new();
     walk(expected, got, &mut String::new(), &mut trail);

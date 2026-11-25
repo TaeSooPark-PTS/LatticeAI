@@ -3,8 +3,6 @@ use std::sync::{Mutex, OnceLock};
 
 use serde_json::{json, Value};
 
-// ── token guard ─────────────────────────────────────────────────────────────
-
 fn env_int(name: &str, default: i64) -> i64 {
     match std::env::var(name) {
         Ok(raw) => raw
@@ -16,7 +14,6 @@ fn env_int(name: &str, default: i64) -> i64 {
     }
 }
 
-/// `TokenBudget` — soft product guardrails, not a billing meter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenBudget {
     pub max_tokens_per_turn: i64,
@@ -35,7 +32,6 @@ impl Default for TokenBudget {
 }
 
 impl TokenBudget {
-    /// `check_turn` — the refusal reason, or `None` when the turn may run.
     pub fn check_turn(&self, estimated_input_tokens: i64) -> Option<String> {
         if estimated_input_tokens > self.max_tokens_per_turn {
             return Some(format!(
@@ -52,12 +48,10 @@ impl TokenBudget {
         None
     }
 
-    /// `record` — negative and unusable values count as zero.
     pub fn record(&mut self, tokens: i64) {
         self.session_used += tokens.max(0);
     }
 
-    /// `snapshot`.
     pub fn snapshot(&self) -> Value {
         json!({
             "max_tokens_per_turn": self.max_tokens_per_turn,
@@ -68,7 +62,6 @@ impl TokenBudget {
     }
 }
 
-/// Maximum tracked process-local cloud token budget scopes.
 pub const MAX_BUDGET_SCOPES: usize = 4_096;
 
 #[derive(Debug, Default)]
@@ -105,7 +98,6 @@ fn budgets() -> &'static Mutex<BudgetStore> {
     BUDGETS.get_or_init(|| Mutex::new(BudgetStore::default()))
 }
 
-/// `_scope_key(user_email, workspace_id)`.
 pub fn scope_key(user_email: Option<&str>, workspace_id: Option<&str>) -> String {
     format!(
         "{}|{}",
@@ -118,7 +110,6 @@ pub fn scope_key(user_email: Option<&str>, workspace_id: Option<&str>) -> String
     )
 }
 
-/// `budget_for(scope_key)` — a copy of the process-local budget.
 pub fn budget_for(key: &str) -> TokenBudget {
     let key = if key.is_empty() { "global" } else { key };
     let mut guard = budgets()
@@ -127,7 +118,6 @@ pub fn budget_for(key: &str) -> TokenBudget {
     guard.touch_and_get_mut(key).clone()
 }
 
-/// Charge the process-local budget and hand back the new snapshot.
 pub fn record_budget(key: &str, tokens: i64) -> TokenBudget {
     let key = if key.is_empty() { "global" } else { key };
     let mut guard = budgets()
@@ -138,7 +128,6 @@ pub fn record_budget(key: &str, tokens: i64) -> TokenBudget {
     budget.clone()
 }
 
-/// `reset_budget(scope_key)`.
 pub fn reset_budget(key: &str) {
     let key = if key.is_empty() { "global" } else { key };
     budgets()

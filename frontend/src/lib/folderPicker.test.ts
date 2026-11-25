@@ -12,13 +12,6 @@ import {
   type BrowserFileHandle,
 } from "./folderPicker";
 
-/**
- * "Pick a folder" means three different things depending on where Lattice is
- * running, and the whole point of this module is that the Brain home and the
- * Capture page never find out which. The failure mode it exists to prevent is
- * a 폴더 button that silently does nothing, so these tests are written from
- * that angle: for every shell, does the caller get something it can act on?
- */
 
 type MutableWindow = Record<string, unknown>;
 
@@ -79,8 +72,6 @@ describe("shell detection", () => {
   });
 
   it("does not mistake bare Tauri internals on an http page for a desktop shell", () => {
-    // `__TAURI_INTERNALS__` only counts under the `tauri:` protocol; jsdom
-    // serves http, so this is the negative half of that condition.
     shell().__TAURI_INTERNALS__ = {};
     expect(hasDesktopFolderPicker()).toBe(false);
   });
@@ -97,8 +88,6 @@ describe("reading a directory the browser handed us", () => {
   });
 
   it("reads handles that expose entries() instead of values()", async () => {
-    // Both iteration styles exist across browser versions; a handle that only
-    // has `entries()` used to come back as an empty folder.
     const tree = directoryHandle("project", [fileHandle("only.md")], "entries");
     expect((await filesFromBrowserDirectory(tree)).map((f) => f.name)).toEqual(["only.md"]);
   });
@@ -117,9 +106,6 @@ describe("pickFolder", () => {
   });
 
   it("falls through to the browser picker when the desktop dialog is dismissed", async () => {
-    // Dismissing the native dialog is not a failure the user caused, and the
-    // browser route may still work — reporting "unavailable" here would make
-    // the button look broken.
     shell().latticeDesktop = { selectFolder: vi.fn() };
     vi.spyOn(latticeApi, "selectFolder").mockResolvedValue("");
     shell().showDirectoryPicker = vi.fn(async () =>
@@ -152,8 +138,6 @@ describe("pickFolder", () => {
 
 describe("the <input webkitdirectory> fallback", () => {
   it("carries both the standard and the legacy attribute", () => {
-    // React drops unknown camelCase props, and Safari only honours the
-    // lowercase one — a fallback missing either attribute picks a single file.
     expect(browserDirectoryInputProps.webkitdirectory).toBe("");
     expect(browserDirectoryInputProps.directory).toBe("");
   });

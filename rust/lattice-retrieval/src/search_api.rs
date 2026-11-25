@@ -1,40 +1,3 @@
-//! `latticeai/api/search.py`, natively — and the small HTTP kit the other
-//! One Door retrieval families share (WP-R6).
-//!
-//! Thirteen of the module's seventeen routes come here. The four that do not
-//! are the worker's: `POST /api/index/rebuild` and `GET /api/embeddings/
-//! {status,providers}` produce or describe *embeddings*, which is the AI
-//! worker's box (plan §최종 Python 워커 표면), and `GET /api/index/status`
-//! moved next to the queue read in [`lattice_jobs::index_api`] because the SPA
-//! asks for the two together.
-//!
-//! ## Why this module also holds the kit
-//!
-//! `lib.rs` is the integrator's file, so this package cannot add a third
-//! module for the pieces `knowledge_graph_api` needs too. They live here
-//! instead, at the top, and the knowledge-graph module reaches them as
-//! `crate::search_api::…`. They are:
-//!
-//! * [`RetrievalApiState`] — the store, the auth state, the workspace-scope
-//!   resolver and the worker seam, built once by the host;
-//! * [`Query`] / [`Model`] — FastAPI's *report*, not its parser: a missing
-//!   query parameter and a missing body field answer 422 with pydantic's
-//!   `{"detail":[{"type","loc","msg","input"}]}` entries, because
-//!   `frontend/src/api/base.ts` reads that shape;
-//! * [`graph_disabled`] / [`value_error`] / [`ok`] — the three refusals and the
-//!   one success these families answer with.
-//!
-//! ## Scoping
-//!
-//! Python resolves `allowed_workspaces` in one place per router
-//! (`search.py:_guarded`, `knowledge_graph.py:_scoped`) and the rule is
-//! identical in both: `None` — no scoping at all — unless authentication is on
-//! *and* the caller is named, in which case it is the caller's membership set
-//! (`runtime/build_phases/web.py:159`). [`RetrievalApiState::scope_for`]
-//! is that one place here. With no [`AllowedScopes`] wired the answer is always
-//! `None`, which is the documented standalone contract: membership belongs to
-//! `lattice-platform`, not to a retrieval crate.
-
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
@@ -47,10 +10,6 @@ use lattice_core::worker::WorkerSeamClient;
 
 use crate::service::Scope;
 
-// ── the route table ─────────────────────────────────────────────────────────
-
-/// Every `(method, path)` this module mounts, pinned against
-/// `rust/fixtures/openapi/knowledge_search.json` by `tests/search_api_contract.rs`.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/graph"),
     ("GET", "/api/graph/node"),
@@ -67,39 +26,19 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/api/search/vector"),
 ];
 
-/// The literal `runtime/build_phases/foundation.py:468` answers with.
-///
-/// It is a route-body string rather than a `MESSAGES` id in Python too, so it
-/// travels with the routes rather than through `lattice_core::messages` (whose
-/// table this work package does not own — see the wiring note).
 pub const GRAPH_DISABLED_DETAIL: &str =
     "지식 그래프가 비활성화되어 있습니다. LATTICEAI_ENABLE_GRAPH=true 설정 후 다시 시도해 주세요.";
 
-/// `search_service.IMAGE_FUSION_UNAVAILABLE`.
 pub const IMAGE_FUSION_UNAVAILABLE: &str = "no shared-space vision model is configured, so a typed question cannot be scored against image vectors; pictures are still found through their OCR text and captions";
-/// `search_service.IMAGE_FUSION_DISABLED`.
 pub const IMAGE_FUSION_DISABLED: &str = "automatic image fusion is off for this install (LATTICEAI_TEXT_IMAGE_FUSION); the caller may still supply an image vector";
-/// The env var `IMAGE_QUERY_FUSION_GATE` reads.
 pub const TEXT_IMAGE_FUSION_ENV: &str = "LATTICEAI_TEXT_IMAGE_FUSION";
-/// `image_vectors.DEFAULT_IMAGE_FUSION_WEIGHT`.
 pub const DEFAULT_IMAGE_FUSION_WEIGHT: f64 = 0.5;
-/// The gate's `detail`, as `search_service.py:36` declares it.
 pub const IMAGE_FUSION_GATE_DETAIL: &str = "Typed questions can also be scored against the image index when a shared-space vision model is configured.";
 
-// ── state ───────────────────────────────────────────────────────────────────
-
-/// Which workspaces a caller may read.
-///
-/// `PLATFORM.allowed_scopes(user)` in Python. Implemented by
-/// `lattice-platform` (WP-R1); a host that has not wired one gets the
-/// unscoped answer, exactly as a Python install with `workspace_service=None`
-/// does.
 pub trait AllowedScopes: Send + Sync {
-    /// The workspace ids this user is a member of.
     fn allowed_scopes(&self, user: &str) -> BTreeSet<String>;
 }
 
-/// Everything the retrieval route families need, built once by the host.
 #[derive(Clone)]
 pub struct RetrievalApiState {
     auth: Arc<AuthState>,
@@ -122,11 +61,6 @@ impl std::fmt::Debug for RetrievalApiState {
 }
 
 impl RetrievalApiState {
-    /// A state with the graph switched on.
-    ///
-    /// `store == None` is `LATTICEAI_ENABLE_GRAPH=false`: every route that
-    /// touches the Brain answers 404 with [`GRAPH_DISABLED_DETAIL`], which is
-    /// what `_require_graph()` does.
     pub fn new(auth: Arc<AuthState>, store: Option<Arc<Store>>, config: RuntimeConfig) -> Self {
         Self {
             auth,
@@ -138,51 +72,42 @@ impl RetrievalApiState {
         }
     }
 
-    /// Attach the native write engine (W3b).
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// Attach the worker seam the graph *writes* are delegated through.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         crate::vector_hnsw::bind_worker_origin(seam.origin());
         self.seam = Some(seam);
         self
     }
 
-    /// The native writer, when wired.
     pub fn graph(&self) -> Option<&GraphWriter> {
         self.graph.as_ref()
     }
 
-    /// The worker compute seam, when the host bound one.
     pub fn seam(&self) -> Option<&WorkerSeamClient> {
         self.seam.as_ref()
     }
 
-    /// Attach the membership resolver. Without it every read is unscoped.
     pub fn with_scopes(mut self, scopes: Arc<dyn AllowedScopes>) -> Self {
         self.scopes = Some(scopes);
         self
     }
 
-    /// The shared auth state.
     pub fn auth(&self) -> &Arc<AuthState> {
         &self.auth
     }
 
-    /// Where this process's durable state lives.
     pub fn config(&self) -> &RuntimeConfig {
         &self.config
     }
 
-    /// The graph store, or the 404 `_require_graph()` raises.
     pub fn require_graph(&self) -> Result<&Arc<Store>, Response> {
         self.store.as_ref().ok_or_else(graph_disabled)
     }
 
-    /// `_allowed_workspaces_for(user)` — the one scope rule, in one place.
     pub fn scope_for(&self, identity: &Identity) -> Scope {
         Scope {
             allowed_workspaces: self.allowed_workspaces(identity),
@@ -190,7 +115,6 @@ impl RetrievalApiState {
         }
     }
 
-    /// The raw membership set, for callers that need it without a [`Scope`].
     pub fn allowed_workspaces(&self, identity: &Identity) -> Option<BTreeSet<String>> {
         if !self.auth.effective_require_auth() || identity.email.is_empty() {
             return None;
@@ -200,19 +124,12 @@ impl RetrievalApiState {
             .map(|resolver| resolver.allowed_scopes(&identity.email))
     }
 
-    /// `require_user(request)`, with the caller's scope resolved in one step.
     pub fn guard(&self, headers: &HeaderMap) -> Result<(Identity, Scope), Response> {
         let identity = self.auth.require_user(headers)?;
         let scope = self.scope_for(&identity);
         Ok((identity, scope))
     }
 
-    /// `(require_admin or require_user)(request)` — the curate/promotions gate.
-    ///
-    /// Python's `require_admin` is `None` in the standalone router, which is
-    /// why the expression is an `or` rather than a plain call. Here the admin
-    /// guard always exists, and on a loopback owner install it passes for the
-    /// same reason `require_user` does.
     pub fn guard_admin(&self, headers: &HeaderMap) -> Result<Identity, Response> {
         self.auth.require_admin(headers)
     }
@@ -279,7 +196,6 @@ mod tests {
         assert_eq!(query.int_or("limit", 30).unwrap(), 7);
         let korean = Query::parse(Some("q=%ED%9A%8C%EC%9D%98%EB%A1%9D"));
         assert_eq!(korean.raw("q"), Some("회의록"));
-        // A stray `%` is kept rather than swallowed, as `unquote` keeps it.
         assert_eq!(Query::parse(Some("q=100%")).raw("q"), Some("100%"));
     }
 

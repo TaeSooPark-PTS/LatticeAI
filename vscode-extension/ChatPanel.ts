@@ -58,7 +58,6 @@ export class ChatPanel {
           this._panel.webview.postMessage({ type: "context", context });
         }
         
-        // 모델 목록 요청
         if (msg.type === "fetchModels") {
           try {
             const models = await client.listModels();
@@ -67,7 +66,6 @@ export class ChatPanel {
           } catch (e) {}
         }
 
-        // 모델 변경 요청
         if (msg.type === "loadModel") {
           try {
             await client.loadModel(msg.modelId);
@@ -85,7 +83,6 @@ export class ChatPanel {
   }
 
   private _getHtml(): string {
-    // ← 여기서 html 파일 읽기
     const htmlPath = path.join(this._extensionUri.fsPath, "chatPanel.html");
 
     try {

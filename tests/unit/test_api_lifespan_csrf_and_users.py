@@ -1,5 +1,3 @@
-"""Unit tests for API lifespan runtime, CSRF origin guard, and user identity migration."""
-
 from __future__ import annotations
 
 import asyncio
@@ -176,7 +174,6 @@ def test_lifespan_public_local_spawn_and_context(monkeypatch):
         async with runtime["lifespan"](SimpleNamespace()):
             pass
 
-        # rebuild with processes
         runtime2 = build_lifespan_runtime(
             app_mode="local",
             autoload_models=False,
@@ -193,7 +190,6 @@ def test_lifespan_public_local_spawn_and_context(monkeypatch):
         async with runtime2["lifespan"](SimpleNamespace()):
             pass
 
-        # idle loop one iteration then cancel
         idle_rt = build_lifespan_runtime(
             app_mode="local",
             autoload_models=False,
@@ -344,7 +340,6 @@ def test_csrf_normalize_and_policy_branches():
     )
     assert allowed.allowed
 
-    # Host fallback via forwarded host
     via_host = policy.evaluate(
         method="POST",
         origin="https://front.example",

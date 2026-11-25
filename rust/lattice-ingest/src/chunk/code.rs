@@ -1,18 +1,6 @@
-//! The code strategy: segments packed greedily, monsters windowed.
-//!
-//! `_code_segment_spans` + `_code_chunks`. A segment runs from one boundary to
-//! the next, where a boundary is the end of a blank-line run or the start of a
-//! declaration line; segments are then packed until the pack would exceed
-//! `size`, which keeps a short function whole instead of cutting it in half.
-//!
-//! The one escape hatch is a segment longer than `size * 1.5` — a minified
-//! bundle, a generated table — which is windowed like plain text rather than
-//! emitted as one enormous chunk.
-
 use super::{line_starts, make_chunk, plain_windows, Chunk};
 use crate::pystr::is_py_space;
 
-/// `_CODE_BOUNDARY_LINE_RE` — line prefixes that start a new code segment.
 const CODE_DECLARATION_PREFIXES: [&str; 7] = [
     "def ",
     "class ",
@@ -23,10 +11,6 @@ const CODE_DECLARATION_PREFIXES: [&str; 7] = [
     "private ",
 ];
 
-/// `_CODE_BLANK_RUN_RE` (`\n\s*\n`) match ends, non-overlapping and leftmost.
-///
-/// `\s*` is greedy and then backtracks to the last `\n` it swallowed, so a run
-/// of four newlines is one match ending after the fourth, not two matches.
 fn blank_run_ends(cleaned: &[char]) -> Vec<usize> {
     let mut ends = Vec::new();
     let total = cleaned.len();
@@ -60,7 +44,6 @@ fn blank_run_ends(cleaned: &[char]) -> Vec<usize> {
     ends
 }
 
-/// `_CODE_BOUNDARY_LINE_RE` match starts.
 fn declaration_line_starts(cleaned: &[char]) -> Vec<usize> {
     line_starts(cleaned)
         .into_iter()
@@ -79,7 +62,6 @@ fn starts_with(cleaned: &[char], at: usize, prefix: &str) -> bool {
         .all(|(offset, expected)| cleaned.get(at + offset) == Some(&expected))
 }
 
-/// `_code_segment_spans` — contiguous spans between the sorted boundary set.
 fn code_segment_spans(cleaned: &[char]) -> Vec<(usize, usize)> {
     let mut boundaries: std::collections::BTreeSet<usize> =
         [0usize, cleaned.len()].into_iter().collect();
@@ -89,15 +71,12 @@ fn code_segment_spans(cleaned: &[char]) -> Vec<(usize, usize)> {
     ordered.windows(2).map(|pair| (pair[0], pair[1])).collect()
 }
 
-/// `_code_chunks` — greedy packing with a `size * 1.5` hard limit.
 pub(super) fn chunks(cleaned: &[char], size: usize, overlap: usize) -> Vec<Chunk> {
-    // Python's `int(size * 1.5)`; integer division truncates identically.
     let hard_limit = size * 3 / 2;
     let mut out = Vec::new();
     let mut pack: Option<(usize, usize)> = None;
     for (start, end) in code_segment_spans(cleaned) {
         if end - start > hard_limit {
-            // Monster segment: flush the pack, then window it like plain text.
             if let Some((open, close)) = pack.take() {
                 out.push(make_chunk(cleaned, open, close, 0, "code", None));
             }
@@ -151,7 +130,6 @@ mod tests {
         let source = "x = 1\ndef a():\n    pass\nclass B:\n    pass\n";
         let starts = declaration_line_starts(&chars(source));
         assert_eq!(starts, vec![6, 24]);
-        // Only at a line start, and only with the trailing space.
         assert!(declaration_line_starts(&chars("  def a():")).is_empty());
         assert!(declaration_line_starts(&chars("definitely")).is_empty());
     }
@@ -166,7 +144,6 @@ mod tests {
         assert!(produced
             .iter()
             .all(|chunk| chunk.meta.heading_path.is_none()));
-        // Every start_char indexes back into the source exactly.
         let source_chars = chars(&source);
         for chunk in &produced {
             let start = chunk.meta.start_char;

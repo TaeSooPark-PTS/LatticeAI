@@ -1,17 +1,3 @@
-"""v11.2.0 — opt-in gates that can be answered at runtime.
-
-The point of :class:`FeatureGate` is a promise in two directions:
-
-1. **Nothing changes for an untouched install.** Same environment variable,
-   same truthy words, same default — the gate is a drop-in for the frozen
-   ``os.getenv`` read it replaced.
-2. **Something *can* change without a restart.** A bound resolver or an
-   explicit override wins over the environment, which is what a settings screen
-   needs and what a constructor-frozen boolean could never offer.
-
-Both are asserted here, along with the ordering between the four layers.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -21,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from lattice_brain.gates import FALSY, TRUTHY, FeatureGate  # noqa: E402
+from lattice_brain.gates import FALSY, TRUTHY, FeatureGate
 
 ENV = "LATTICEAI_TEST_GATE"
 
@@ -32,7 +18,6 @@ def gate(monkeypatch):
     return FeatureGate(ENV, name="test gate", detail="a gate for tests")
 
 
-# ── the environment layer (the historical behaviour) ─────────────────────────
 @pytest.mark.parametrize("word", sorted(TRUTHY))
 def test_every_truthy_word_this_product_has_ever_accepted_still_works(
     gate, monkeypatch, word
@@ -55,19 +40,16 @@ def test_an_unset_variable_falls_back_to_the_declared_default(gate, monkeypatch)
     assert gate.enabled() is False
     assert gate.source() == "default"
     assert FeatureGate(ENV, default=True).enabled() is True
-    # A word the parser does not know is not a decision either way.
     monkeypatch.setenv(ENV, "maybe")
     assert gate.enabled() is False
     assert gate.source() == "default"
 
 
-# ── the injection layers (what the settings screen will use) ─────────────────
 def test_an_override_beats_the_environment_and_can_be_handed_back(gate, monkeypatch):
     monkeypatch.setenv(ENV, "0")
     gate.set(True)
     assert gate.enabled() is True
     assert gate.source() == "override"
-    # Still reports what the environment alone would have said.
     assert gate.from_env() is False
     gate.set(None)
     assert gate.enabled() is False
@@ -81,8 +63,8 @@ def test_a_bound_resolver_beats_everything_including_an_override(gate, monkeypat
     gate.bind(lambda: next(answers))
 
     assert gate.source() == "resolver"
-    assert gate.enabled() is True  # resolved per call…
-    assert gate.enabled() is False  # …not once at bind time
+    assert gate.enabled() is True
+    assert gate.enabled() is False
 
     gate.reset()
     assert gate.enabled() is False

@@ -1,9 +1,3 @@
-//! Static architectural domain-boundary enforcement (v13.0.0).
-//!
-//! Verifies that the crate and domain layering rules documented in
-//! `rust/lattice-platform/ARCHITECTURE.md` and `rust/lattice-agent/ARCHITECTURE.md`
-//! hold in source code and cannot silently regress.
-
 use std::path::{Path, PathBuf};
 
 fn rust_root() -> PathBuf {
@@ -33,7 +27,6 @@ fn collect_rs_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-/// Strip line comments (`//`, `//!`, `///`) and optionally truncate at `#[cfg(test)]`.
 fn code_lines(source: &str, stop_at_cfg_test: bool) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     for (idx, line) in source.lines().enumerate() {

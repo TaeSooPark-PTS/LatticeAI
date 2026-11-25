@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Review center: the inbox, decisions and risk, proposal diffs, plus the
-// shared retry / error copy those surfaces lean on.
 export const workspaceReviewCopy: NamespaceCopy = {
   ko: {
     "review.inbox.title": "검토함",

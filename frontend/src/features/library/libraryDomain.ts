@@ -11,7 +11,6 @@ export function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-/** Say what the search engine can do, not which provider is wired in. */
 export function embeddingStateLabel(state: unknown, language: Language) {
   const value = String(state || "").toLowerCase();
   if (value === "production") return t(language, "library.embedding.state.production");
@@ -21,7 +20,6 @@ export function embeddingStateLabel(state: unknown, language: Language) {
   return t(language, "library.embedding.state.unknown");
 }
 
-/** Name the machine the way its owner would, not the way `uname` does. */
 export function describeComputer(profile: Record<string, unknown> | undefined, language: Language) {
   const os = String(profile?.os || "").toLowerCase();
   const arch = String(profile?.arch || "").toLowerCase();
@@ -33,11 +31,6 @@ export function describeComputer(profile: Record<string, unknown> | undefined, l
   return t(language, "library.runtime.thisComputer");
 }
 
-/**
- * English sentences the server never localized. A model *name* is short and
- * may legitimately be Latin script; a multi-word English sentence with no
- * Hangul in it is copy that was never translated.
- */
 export function isUntranslatedProse(text: string) {
   if (/[ㄱ-힝]/u.test(text)) return false;
   return text.trim().split(/\s+/).length >= 6;
@@ -168,10 +161,6 @@ export function deriveModelsPanelView(
   };
 }
 
-/**
- * Format the model provenance hierarchy (P2.1 / P2.3):
- * Origin Country → Vendor/Provider → Local PC vs. Internet execution.
- */
 export function formatModelProvenanceChain(
   model: Record<string, unknown>,
   recommendation: Record<string, unknown>,

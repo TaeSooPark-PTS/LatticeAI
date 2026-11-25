@@ -1,5 +1,3 @@
-"""Unit tests for latticeai.core.model_compat (피드백 #3)."""
-
 from latticeai.core.model_compat import (
     classify_smoke_response,
     detect_model_family,
@@ -28,7 +26,7 @@ def test_ensure_profile_caches_per_engine():
     assert any(stop == "<end_of_turn>" for stop in p1.stop)
 
     p2 = ensure_profile("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
-    assert p2 is p1  # cached
+    assert p2 is p1
 
 
 def test_strip_role_tokens_removes_special_markers():
@@ -105,7 +103,6 @@ def test_classify_smoke_failed_on_too_long():
 
 
 def test_classify_smoke_degraded_when_no_answer():
-    # 형식은 멀쩡하지만 기대한 정답(4/네/사)이 없음 → degraded.
     status, reason = classify_smoke_response("잘 모르겠어요.")
     assert status == "degraded"
     assert "expected result" in reason
@@ -113,7 +110,7 @@ def test_classify_smoke_degraded_when_no_answer():
 
 def test_validate_wrapper_treats_degraded_as_chattable():
     ok, _ = validate_smoke_response("잘 모르겠어요.")
-    assert ok is True  # degraded 도 채팅 가능
+    assert ok is True
 
 
 def test_record_smoke_result_explicit_failed_status():

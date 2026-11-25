@@ -1,5 +1,3 @@
-"""Unit tests for latticeai.core.model_resolution (피드백 #1 / #2)."""
-
 import pytest
 
 from latticeai.core.model_resolution import (
@@ -30,7 +28,6 @@ def test_resolution_for_mlx():
     assert r.resolved_model == "mlx-community/gemma-4-12b-it-4bit"
     assert r.download_id == "mlx-community/gemma-4-12b-it-4bit"
     assert r.load_id == "mlx-community/gemma-4-12b-it-4bit"
-    # local_mlx → user suffix 없이
     assert r.expected_current == "mlx-community/gemma-4-12b-it-4bit"
 
 
@@ -63,7 +60,6 @@ def test_gemma4_catalog_alias_can_route_to_gguf_runtime():
 
 
 def test_gemma4_catalog_aliases_do_not_force_mlx_vlm():
-    # Lookups fold case; the value is the Hub's canonical id (capital B).
     aliases = MODEL_ENGINE_ALIASES["mlx-community/gemma-4-12b-it-4bit"]
     assert aliases["local_mlx"] == "mlx-community/gemma-4-12B-it-4bit"
     assert aliases["ollama"] == "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0"

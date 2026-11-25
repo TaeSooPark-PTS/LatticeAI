@@ -1,10 +1,3 @@
-//! Transcript shaping and the deterministic facts the critic is handed.
-//!
-//! Ports of `latticeai.core.agent_helpers`: `_truncate_strings`,
-//! `compact_transcript`, `files_written`, `artifact_checklist`,
-//! `requirement_coverage`, `filter_learnings`, plus the two budget records.
-//! None of these functions touch the filesystem: all checks read `transcript`.
-
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
@@ -22,7 +15,6 @@ pub mod rag_grounding;
 mod summaries;
 pub use summaries::*;
 
-/// Executor/critic prompt shaping caps.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TranscriptBudget {
     pub window: usize,
@@ -40,7 +32,6 @@ impl Default for TranscriptBudget {
     }
 }
 
-/// Per-phase token budgets for the agent loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhaseBudgets {
     pub plan_tokens: u32,
@@ -60,7 +51,6 @@ impl Default for PhaseBudgets {
     }
 }
 
-/// `latticeai.core.config._int`: blank or unparseable falls back to the default.
 fn env_int(key: &str, default: i64) -> i64 {
     match std::env::var(key) {
         Ok(raw) if !raw.trim().is_empty() => raw.trim().parse::<i64>().unwrap_or(default),
@@ -69,7 +59,6 @@ fn env_int(key: &str, default: i64) -> i64 {
 }
 
 impl TranscriptBudget {
-    /// The `from_env` constructor, floors included.
     pub fn from_env() -> Self {
         let default = Self::default();
         let cap = |key: &str, fallback: usize, floor: i64| {
@@ -87,27 +76,10 @@ impl TranscriptBudget {
     }
 }
 
-/// The smallest budget worth asking for — one action's worth of tokens.
 pub const MIN_PHASE_TOKENS: u32 = 128;
 
-/// The largest `max_tokens` the worker's completion seam accepts.
-///
-/// The worker answers `422 agent_seam.max_tokens_out_of_range` above this, and
-/// the loop has no way to explain that refusal: by the time it arrives, the
-/// phase is already running and all the user sees is a step that failed with a
-/// status code. `LATTICEAI_AGENT_EXECUTE_TOKENS=20000` used to break every
-/// execute phase that way. Clamping here turns a misconfiguration into the
-/// largest completion the seam will actually serve, and says so on stderr once,
-/// at startup, where an operator can act on it.
 pub const MAX_PHASE_TOKENS: u32 = 8192;
 
-/// What a configured phase budget actually becomes, and the one warning worth
-/// printing on the way.
-///
-/// Pure apart from the `eprintln!`, so the clamp can be tested without touching
-/// the process environment — `PhaseBudgets::from_env`'s own test asserts that an
-/// unset environment is the default record, and a sibling test that set
-/// variables would race it.
 fn clamp_phase_tokens(key: &str, asked: i64) -> u32 {
     if asked > MAX_PHASE_TOKENS as i64 {
         eprintln!(
@@ -121,9 +93,6 @@ fn clamp_phase_tokens(key: &str, asked: i64) -> u32 {
 }
 
 impl PhaseBudgets {
-    /// The `from_env` constructor. A misconfigured value floors at one action
-    /// ([`MIN_PHASE_TOKENS`]) and is capped at what the worker seam accepts
-    /// ([`MAX_PHASE_TOKENS`]).
     pub fn from_env() -> Self {
         let default = Self::default();
         let cap = |key: &str, fallback: u32| clamp_phase_tokens(key, env_int(key, fallback as i64));
@@ -136,7 +105,6 @@ impl PhaseBudgets {
     }
 }
 
-/// Deep copy with every string capped at `limit` **characters**.
 pub fn truncate_strings(value: &Value, limit: usize) -> Value {
     match value {
         Value::String(text) => {
@@ -196,12 +164,6 @@ fn is_superseded_item(item: &Value) -> bool {
     item.get("is_superseded").and_then(Value::as_bool) == Some(true)
 }
 
-/// Distill a transcript step before placing it in the bounded prompt view:
-/// - Replaces `screenshot_b64` blobs with `"[screenshot omitted: N bytes]"`.
-/// - Filters `is_superseded: true` items from `knowledge_search`,
-///   `knowledge_graph_context`, and `obsidian_search` result lists while
-///   recording `superseded_filtered`.
-/// - Preserves `web_fetch` / `web_search` fields as is.
 pub fn distill_step_result(step: &Value) -> Value {
     let mut distilled = strip_screenshot_b64(step);
     let action = distilled
@@ -233,8 +195,6 @@ pub fn distill_step_result(step: &Value) -> Value {
     distilled
 }
 
-/// Bounded executor view of a transcript: `window` recent steps in full, the
-/// rest reduced to one line each behind a count.
 pub fn compact_transcript(transcript: &[Value], window: usize, result_chars: usize) -> Vec<Value> {
     if transcript.len() <= window {
         return transcript
@@ -296,7 +256,6 @@ fn is_file_create(step: &Value, file_create_actions: &BTreeSet<String>) -> bool 
         .is_some_and(|action| file_create_actions.contains(action))
 }
 
-/// `result["path"] or args["path"]`, as a string, when either is truthy.
 fn written_path(step: &Value) -> Option<String> {
     let from_result = step
         .get("result")
@@ -309,7 +268,6 @@ fn written_path(step: &Value) -> Option<String> {
     from_result.or(from_args).map(py_str)
 }
 
-/// Ordered unique paths of files this run successfully wrote.
 pub fn files_written(transcript: &[Value], file_create_actions: &BTreeSet<String>) -> Vec<String> {
     let mut seen: Vec<String> = Vec::new();
     for step in transcript {
@@ -328,14 +286,12 @@ pub fn files_written(transcript: &[Value], file_create_actions: &BTreeSet<String
     seen
 }
 
-/// A file creation proven by the transcript, with its size in bytes if recorded.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenFile {
     pub path: String,
     pub bytes: Option<u64>,
 }
 
-/// Ordered unique files this run successfully created, with byte size if recorded.
 pub fn proven_created_files(
     transcript: &[Value],
     file_create_actions: &BTreeSet<String>,
@@ -376,10 +332,6 @@ pub fn proven_created_files(
     files
 }
 
-/// Whether an answer is a bare negation contradicting proven work.
-///
-/// Disproven bare negations ("I did nothing.", "아무것도 하지 않았습니다")
-/// are dropped when the transcript proves artifacts were created.
 pub fn is_bare_negation(text: &str) -> bool {
     let cleaned: String = text
         .trim()
@@ -456,7 +408,6 @@ pub fn is_bare_negation(text: &str) -> bool {
     )
 }
 
-/// Whether the answer already mentions this file path or its basename.
 pub fn answer_names_file(answer: &str, path: &str) -> bool {
     if path.is_empty() {
         return false;
@@ -473,7 +424,6 @@ pub fn answer_names_file(answer: &str, path: &str) -> bool {
     false
 }
 
-/// Whether the answer contains a negation phrase contradicting proven work.
 pub fn is_negation_sentence(text: &str) -> bool {
     let hay = text.to_lowercase();
     hay.contains("i did nothing")
@@ -498,20 +448,6 @@ pub fn is_negation_sentence(text: &str) -> bool {
         || hay.contains("작업을 하지 않았")
 }
 
-/// The one fact a successful tool result established, in a few characters.
-///
-/// Shared since v12.0.0, because two callers need the same sentence: the
-/// guided critic's evidence lines, which is where it started, and
-/// [`delivered_answer`] — a run that never reached `final` still did
-/// something, and what it did is a fact this function already knows how to
-/// state. Two implementations of "what did this call establish" would drift
-/// into two different answers to one question.
-///
-/// Deliberately tiny and deliberately **only** what the result itself carries —
-/// a count, a size, a path, a match tally. Nothing here summarises, infers or
-/// rephrases: every branch reads a field the tool wrote, so a digest can never
-/// claim something the run did not do. `None` when the result says nothing
-/// countable, at which point the row stays the bare `ok` it always was.
 pub fn result_digest(result: &Value) -> Option<String> {
     if let Some(items) = result.get("items").and_then(Value::as_array) {
         return Some(format!("항목 {}개 / {} items", items.len(), items.len()));
@@ -549,22 +485,6 @@ pub fn result_digest(result: &Value) -> Option<String> {
         .map(str::to_string)
 }
 
-/// What this run delivered, said in one line, **read only off the transcript**.
-///
-/// `None` when the run wrote no file, which is the honest answer to "what did
-/// you deliver" for a run that delivered nothing. Nothing here summarises,
-/// infers or rephrases: the paths are the ones the file-create steps recorded
-/// with a result, so this sentence can never claim work that did not happen.
-///
-/// It exists because [`crate::kernel::agentloop`]'s "an answer the run already
-/// produced outranks the apology" rule had a hole (v12.0.0): it keys on
-/// `ctx.final_message`, and that string is only ever written by the `final`
-/// action. A run whose executor never reached `final` — stopped by the loop
-/// guard, or by a step budget — therefore had *no* answer to outrank anything
-/// with, and two live 2B runs that had written the requested file, and had it
-/// on disk, ended `FAILED` with "처리 중 문제가 발생했습니다" because a
-/// 0.6-confidence critic said FAIL four times. The work was real; only the
-/// sentence was missing.
 pub fn delivered_answer(
     transcript: &[Value],
     file_create_actions: &BTreeSet<String>,
@@ -573,10 +493,6 @@ pub fn delivered_answer(
     if !written.is_empty() {
         return Some(format!("{} 파일을 저장했습니다.", written.join(", ")));
     }
-    // No file, but something still ran and established something — a count, a
-    // match tally, a size. That is what the run has to report, and reporting it
-    // is the difference between "we searched and found none" and an apology
-    // that mentions neither the search nor the result.
     for step in transcript.iter().rev() {
         if !is_executing(step) {
             continue;
@@ -597,8 +513,6 @@ pub fn delivered_answer(
     None
 }
 
-/// Deterministic artifact facts for the critic: one row per written file with
-/// its sanitize/repair honesty flags.
 pub fn artifact_checklist(
     transcript: &[Value],
     file_create_actions: &BTreeSet<String>,
@@ -627,7 +541,6 @@ pub fn artifact_checklist(
     checklist
 }
 
-/// `Path(path).name` for the `/`-separated paths the loop carries.
 pub fn path_name(path: &str) -> &str {
     path.trim_end_matches('/')
         .rsplit('/')
@@ -638,13 +551,10 @@ pub fn path_name(path: &str) -> &str {
 fn requirement_line() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        // `re.MULTILINE`; `\s` is Unicode whitespace in both engines and `.`
-        // still excludes newlines, which is what bounds a requirement to a line.
         Regex::new(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+(.{3,120})$").expect("ported pattern must compile")
     })
 }
 
-/// Did the run produce what the request actually asked for?
 pub fn requirement_coverage(
     user_message: &str,
     transcript: &[Value],
@@ -655,8 +565,6 @@ pub fn requirement_coverage(
         .iter()
         .map(|path| path_name(path).to_lowercase())
         .collect();
-    // `str(spec.get("path") or "")` — a manifest is our own data, but the
-    // coercion is the original's and costs nothing to keep.
     let mut declared: Vec<String> = crate::parse::inference::infer_project_manifest(user_message)
         .and_then(|manifest| manifest["files"].as_array().cloned())
         .map(|files| {
@@ -669,19 +577,6 @@ pub fn requirement_coverage(
                 .collect()
         })
         .unwrap_or_default();
-    // **The second source of a declared file** (v12.0.0). The manifest is only
-    // ever populated for a multi-file *scaffold* request; `infer_project_manifest`
-    // returns `None` the moment the message names a filename itself, which is
-    // the shape of every single-file request there is. So for
-    // `notes/summary.md로 저장해줘` the declared list was empty, the missing
-    // list was empty, and this function reported `complete: true` over a run
-    // that wrote nothing — the one deterministic gate that outranks a critic's
-    // PASS was unreachable exactly where a weak model needs it.
-    //
-    // Only a filename the request marked as a *destination* is added
-    // ([`crate::parse::inference::requested_output_paths`]), so a file the run
-    // was asked to read stays out and a request that named no destination
-    // declares exactly what it declared before.
     for path in crate::parse::inference::requested_output_paths(user_message) {
         let already = declared
             .iter()
@@ -713,20 +608,6 @@ pub fn requirement_coverage(
     })
 }
 
-/// Does the request ask *how many* of something there are?
-///
-/// Lifted out of [`crate::kernel::agentloop::guided`] in v12.0.0 so both dials
-/// read one rule. A count question's whole deliverable is the number in the
-/// final message, and a model that ran the tool and then answered in prose has
-/// done the work and not reported it — which is a harness gap, not a refusal.
-///
-/// `count` is matched as a **whole word**. As a bare substring it fires on
-/// `account`, `discount`, `countries` and `encounter`, which was harmless while
-/// the only consequence was an offered default — and stops being harmless the
-/// moment a verdict gate keys on it ([`answer_owes_a_count`]): "create an
-/// account page" would have been held back for want of a number nobody asked
-/// for. The Korean markers need no such guard; `개수` and `몇 개` are not
-/// fragments of other words.
 pub fn request_asks_for_a_count(request: &str) -> bool {
     let hay = request.to_lowercase();
     hay.contains("개수")
@@ -735,14 +616,6 @@ pub fn request_asks_for_a_count(request: &str) -> bool {
         || contains_ascii_word(&hay, "count")
 }
 
-/// `word` as a whole ASCII token in `text`, case-insensitively.
-///
-/// One implementation for the two places that needed it — this rule and the
-/// critic's plain-text last rung ([`crate::kernel::agentloop::verification`]),
-/// which had its own byte-identical copy. A word boundary here is
-/// "not an ASCII alphanumeric", which is what keeps `PASS` out of `passed`
-/// and `count` out of `account` while leaving `개수` — where the neighbours are
-/// Hangul, not ASCII — matching as it always did.
 pub fn contains_ascii_word(text: &str, word: &str) -> bool {
     let hay = text.as_bytes();
     let needle = word.as_bytes();
@@ -759,7 +632,6 @@ pub fn contains_ascii_word(text: &str, word: &str) -> bool {
     })
 }
 
-/// Requirement facts for the critic prompt, or `""` when there is nothing.
 pub fn format_requirement_coverage(coverage: &Value) -> String {
     let mut lines: Vec<String> = Vec::new();
     let declared = coverage["files"]["declared"]
@@ -806,7 +678,6 @@ the artifacts, not against the plan:"
     }
 }
 
-/// The artifact checklist as the critic prompt renders it.
 pub fn format_artifact_checklist(checklist: &[Value]) -> String {
     let lines: Vec<String> = checklist
         .iter()
@@ -841,7 +712,6 @@ fn trivial_learning() -> &'static Regex {
     })
 }
 
-/// Drop trivial/duplicate learnings before they enter the brain.
 pub fn filter_learnings(learnings: &[Value]) -> Vec<String> {
     let mut kept: Vec<String> = Vec::new();
     let mut seen: BTreeSet<String> = BTreeSet::new();

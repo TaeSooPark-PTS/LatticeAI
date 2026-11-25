@@ -1,5 +1,3 @@
-//! Git, shell, network, and project script tools.
-
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
@@ -303,9 +301,7 @@ pub(crate) async fn deploy_project(
     .await
 }
 
-/// `BUILD_SCRIPT_NAMES`, sorted. Matches the agent-side allowlist.
 const BUILD_SCRIPT_NAMES: [&str; 4] = ["build", "compile", "test", "typecheck"];
-/// `DEPLOY_SCRIPT_NAMES`, sorted. Matches the agent-side allowlist.
 const DEPLOY_SCRIPT_NAMES: [&str; 11] = [
     "build:exe",
     "build:installer",

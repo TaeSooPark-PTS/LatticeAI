@@ -26,12 +26,6 @@ function ownerEmail(profile: unknown): string | null {
   return typeof candidate === "string" && candidate.trim() ? candidate : null;
 }
 
-/**
- * Discoverable workspace + profile switcher for the Brain shell.
- * Surfaces the active workspace and signed-in owner, and lets the user
- * switch workspace or jump to account/workspace settings without hunting
- * through the Settings tabs.
- */
 export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
   const qc = useQueryClient();
   const workspaceIdState = useAppStore((state) => state.workspaceId);
@@ -47,8 +41,6 @@ export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
     (registry.data?.data as Record<string, unknown> | undefined)?.workspaces,
   );
   const ownerRaw = ownerEmail(profile.data?.data);
-  // Backend seeds a generic "Local User" profile name; show a friendly,
-  // localized label instead of the raw developer default.
   const owner = ownerRaw && /^local\s*user$/i.test(ownerRaw) ? t(language, "shell.profile.you") : ownerRaw;
 
   const activeWorkspace = workspaces.find((row) => workspaceId(row) === workspaceIdState);

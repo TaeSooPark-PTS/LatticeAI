@@ -1,5 +1,3 @@
-//! Binary upload extraction + per-chunk supplied vectors (F-ING).
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;

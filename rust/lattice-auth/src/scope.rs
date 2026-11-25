@@ -1,38 +1,18 @@
-//! "Which workspace is this request talking about?", answered once.
-//!
-//! Port of `latticeai/api/workspace_scope.py`. A caller may name a workspace in
-//! the `X-Workspace-Id` header, the `workspace_id` query parameter, or the
-//! request body; if more than one is present they must **agree**, and
-//! disagreement is a 403 rather than a silent preference — a request that names
-//! two workspaces has no single meaning, and picking one is how a scoped write
-//! lands in the wrong vault.
-//!
-//! Permission is not decided here. A [`WorkspaceResolver`] owns read/write
-//! gating (the Python `WorkspaceService`); with no resolver attached the named
-//! workspace passes through ungated, which is exactly the standalone/embedded
-//! router contract the Python module documents.
-
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 
 use crate::messages::{detail_error, WORKSPACE_MISMATCH_LITERAL};
 
-/// The header a client names a workspace in.
 pub const WORKSPACE_HEADER: &str = "x-workspace-id";
-/// The query parameter, and the body key, that do the same.
 pub const WORKSPACE_PARAM: &str = "workspace_id";
 
-/// Whatever owns workspace membership; `resolve_*` return the scope to use or
-/// the message a `PermissionError` would have carried.
 pub trait WorkspaceResolver: Send + Sync {
-    /// The workspace a read may target.
     fn resolve_read_scope(
         &self,
         requested: Option<&str>,
         user: Option<&str>,
     ) -> Result<Option<String>, String>;
 
-    /// The workspace a write may target.
     fn resolve_write_scope(
         &self,
         requested: Option<&str>,
@@ -49,7 +29,6 @@ fn clean(value: Option<&str>) -> Option<String> {
     }
 }
 
-/// The `workspace_id` value in a raw query string, if present.
 pub fn query_workspace(query: Option<&str>) -> Option<String> {
     let query = query?;
     for pair in query.split('&') {
@@ -61,7 +40,6 @@ pub fn query_workspace(query: Option<&str>) -> Option<String> {
     None
 }
 
-/// Minimal `application/x-www-form-urlencoded` decoding for one value.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
@@ -94,7 +72,6 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// `workspace_scope_from_request`: header first, then query, else `None`.
 pub fn workspace_scope_from_request(headers: &HeaderMap, query: Option<&str>) -> Option<String> {
     let header = clean(
         headers
@@ -104,7 +81,6 @@ pub fn workspace_scope_from_request(headers: &HeaderMap, query: Option<&str>) ->
     header.or_else(|| query_workspace(query))
 }
 
-/// `requested_workspace`: the one workspace this request names, or a 403.
 pub fn requested_workspace(
     headers: &HeaderMap,
     query: Option<&str>,
@@ -135,20 +111,12 @@ pub fn requested_workspace(
     Ok(selectors.into_iter().next())
 }
 
-/// How a route reads the scope: what was asked for, and whether it is a write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeMode {
-    /// Gate on `workspace:read`.
     Read,
-    /// Gate on `workspace:write`.
     Write,
 }
 
-/// `resolve_workspace_scope`: resolve **and authorize** the workspace.
-///
-/// `allow_unscoped_anonymous` preserves the one deliberate exception: a no-auth
-/// local caller that names no workspace keeps its legacy *unscoped* records
-/// instead of being resolved onto the active workspace.
 pub fn resolve_workspace_scope(
     headers: &HeaderMap,
     query: Option<&str>,
@@ -347,7 +315,6 @@ mod tests {
             .unwrap(),
             None
         );
-        // Naming a workspace opts back into resolution.
         assert_eq!(
             resolve_workspace_scope(
                 &HeaderMap::new(),

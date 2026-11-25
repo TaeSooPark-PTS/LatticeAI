@@ -1,13 +1,9 @@
-"""Concurrent model selection must be request-scoped, never process-global."""
-
 import asyncio
 
 from latticeai.models import router as router_mod
 
 
 def _cloud(name: str):
-    # Resolve the class from the live module because the MLX import contract
-    # tests intentionally reload this module during the full suite.
     return router_mod.CloudModel(
         provider="test", model=name, client=object(), cache_key=name
     )

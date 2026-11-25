@@ -1,9 +1,3 @@
-//! Plugin SDK family (v11.6.0, WP-R8).
-//!
-//! Port of `latticeai/api/plugins.py` + `latticeai/core/plugins.py`.
-//! Plugin directory resolution matches `persistence_runtime.py`:
-//! `LATTICEAI_PLUGINS_DIR` or `<base_dir>/plugins`.
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

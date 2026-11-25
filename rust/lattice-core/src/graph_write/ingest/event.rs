@@ -1,5 +1,3 @@
-//! `ingest_event` — an analytics/system event as a first-class node.
-
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -10,10 +8,6 @@ use super::super::GraphWriter;
 use super::IngestOutcome;
 
 impl GraphWriter {
-    /// `ingest_event` — an analytics/system event as a first-class node.
-    ///
-    /// One of the `GRAPH_MUTATION_OPS` additions (WP-R7: review-queue
-    /// `agent_followup` promotion, workspace run and memory writes).
     pub fn ingest_event(&self, request: &IngestEventRequest) -> Result<IngestOutcome, CoreError> {
         let event_type = if request.event_type.is_empty() {
             "Event".to_string()

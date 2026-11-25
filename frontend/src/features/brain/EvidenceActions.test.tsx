@@ -28,7 +28,6 @@ describe("EvidenceActionRow", () => {
     render(
       <EvidenceActionRow language="ko" query="예산" sourceIds={["node-a"]} onUseEvidence={() => {}} />,
     );
-    // Lazy by design: an answer nobody follows up on costs no request.
     expect(spy).not.toHaveBeenCalled();
     await userEvent.click(screen.getByTestId("evidence-actions-open"));
     await waitFor(() => expect(screen.getByTestId("evidence-actions")).toBeTruthy());

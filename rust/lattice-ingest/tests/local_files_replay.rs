@@ -1,11 +1,3 @@
-//! The local-files surface: the auth / probe / approval dance replayed, and
-//! the mounted local-files + browser route table checked against the committed
-//! `knowledge_search.json` fragment.
-//!
-//! Two test binaries collapsed into one.
-
-// ── replay ──
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -119,7 +111,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     let corpus_s = corpus.to_string_lossy().into_owned();
 
-    // Auth denial.
     let denied = client
         .post(format!("{origin}/local/list"))
         .header("content-type", "application/json")
@@ -134,7 +125,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         "로컬 파일 접근은 로그인 세션이 필요합니다."
     );
 
-    // GET /local/list always probes.
     let probe = client
         .get(format!("{origin}/local/list?path={corpus_s}"))
         .header("cookie", format!("session_token={token}"))
@@ -148,7 +138,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
     assert_eq!(body["expires_in"], 300);
     assert!(body["approval_token"].as_str().unwrap().len() > 8);
 
-    // POST probe, then approve, then list.
     let minted = client
         .post(format!("{origin}/local/list"))
         .header("cookie", format!("session_token={token}"))
@@ -188,7 +177,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
     assert!(names.contains(&"ranking-notes.md"));
     assert!(names.contains(&"회의록.md"));
 
-    // Unapproved / missing token.
     let bad = client
         .post(format!("{origin}/local/list"))
         .header("cookie", format!("session_token={token}"))
@@ -215,7 +203,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     assert_eq!(missing.status().as_u16(), 403);
 
-    // Jobs read.
     let jobs = client
         .get(format!("{origin}/api/ingestion/jobs"))
         .header("cookie", format!("session_token={token}"))
@@ -231,7 +218,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     assert_eq!(missing_job.status().as_u16(), 404);
 
-    // Local knowledge reads.
     let sources = client
         .get(format!("{origin}/knowledge-graph/local/sources"))
         .header("cookie", format!("session_token={token}"))
@@ -254,7 +240,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     assert_eq!(roots.status().as_u16(), 200);
 
-    // Folder ingest without path.
     let empty = client
         .post(format!("{origin}/api/ingestion/folder"))
         .header("cookie", format!("session_token={token}"))
@@ -270,7 +255,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     assert_eq!(empty.status().as_u16(), 400);
 
-    // Interop unknown source.
     let interop = client
         .post(format!("{origin}/api/ingestion/interop"))
         .header("cookie", format!("session_token={token}"))
@@ -284,7 +268,6 @@ async fn local_files_replay_auth_probe_and_approval_dance() {
         .unwrap();
     assert_eq!(interop.status().as_u16(), 400);
 
-    // Fixture inventory: we claim these families, minus KEEP multimodal.
     let root = fixture();
     let mut seen = 0;
     for case in root["cases"].as_array().unwrap() {
@@ -328,8 +311,6 @@ async fn json_of(response: reqwest::Response) -> Value {
     serde_json::from_str(&text).unwrap_or_else(|err| panic!("not JSON ({err}): {text}"))
 }
 
-// ── the committed contract ──
-
 fn fragment() -> Value {
     let path: PathBuf = [
         env!("CARGO_MANIFEST_DIR"),
@@ -372,7 +353,6 @@ fn mounted_local_and_browser_routes_are_in_the_committed_contract() {
     ours.sort();
     for key in &ours {
         if key.ends_with("/upload/document") || key.ends_with("/folder/prune") {
-            // W3b native upload; v12 prune is additive and not in the frozen fragment.
             continue;
         }
         assert!(
@@ -533,7 +513,6 @@ async fn native_obsidian_and_interop_ingest_write_directly_through_graph_writer(
     .await;
     assert_eq!(m_res["ingested"], 2);
 
-    // 3. Git repository interop (`git init` with sample file & commits)
     let git_dir = tempfile::tempdir().unwrap();
     let run_git = |args: &[&str]| {
         let status = std::process::Command::new("git")
@@ -634,7 +613,6 @@ async fn unwired_graph_writer_returns_503_consistently() {
         Some(data.path()),
     );
     let permissions = LocalApprovals::new();
-    // Intentionally omit `.with_graph(...)` so GraphWriter is unwired.
     let state =
         LocalFilesState::new(auth, Some(store), runtime).with_permissions(Arc::clone(&permissions));
     let app = local_files_api::router(Arc::new(state));

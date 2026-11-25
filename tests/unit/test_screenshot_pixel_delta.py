@@ -1,14 +1,3 @@
-"""Pin screenshot baseline selection to a release tag — never silent downgrade.
-
-Failure modes (review):
-  1. ``rm -rf output/release/v10.6.2`` used to let the gate quietly pick
-     v10.6.1, inflating the change rate and still reporting PASS.
-  2. Package still at 10.6.3 while tag ``v10.6.3`` exists — prior-tag pin
-     (10.6.2) lets screens identical to the already-shipped release pass,
-     because they still differ from two-releases-ago. Same-name tag must
-     be the baseline, materialized from git (not the on-disk capture dir).
-"""
-
 from __future__ import annotations
 
 import importlib.util
@@ -45,11 +34,6 @@ def test_expected_baseline_version_explicit_pin_wins(delta, monkeypatch):
 
 
 def test_expected_baseline_version_same_name_tag_is_baseline(delta, monkeypatch):
-    """Package version with a matching git tag → that tag, not the prior one.
-
-    Failure mode: package=10.6.3, tags include v10.6.3, pin was v10.6.2 so
-    unreleased WIP that is pixel-identical to shipped 10.6.3 still PASSed.
-    """
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE_VERSION", raising=False)
     monkeypatch.setattr(
         delta,
@@ -61,7 +45,6 @@ def test_expected_baseline_version_same_name_tag_is_baseline(delta, monkeypatch)
 
 
 def test_expected_baseline_version_prior_tag_when_unreleased(delta, monkeypatch):
-    """Bumped package with no same-name tag → immediately prior tag."""
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE_VERSION", raising=False)
     monkeypatch.setattr(
         delta,
@@ -73,7 +56,6 @@ def test_expected_baseline_version_prior_tag_when_unreleased(delta, monkeypatch)
 
 
 def test_expected_baseline_version_live_package_matches_tag_rule(delta, monkeypatch):
-    """Against the real repo: if package version is tagged, baseline is that tag."""
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE_VERSION", raising=False)
     package = json.loads((REPO / "package.json").read_text(encoding="utf-8"))
     version = str(package.get("version") or "")
@@ -92,13 +74,11 @@ def test_expected_baseline_version_live_package_matches_tag_rule(delta, monkeypa
 def test_resolve_baseline_same_name_prefers_git_over_local_dir(
     delta, tmp_path, monkeypatch, capsys
 ):
-    """On-disk output/release/vX may be WIP — same-name baseline uses git show."""
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE_VERSION", raising=False)
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
     monkeypatch.setattr(delta, "_package_version", lambda root: "10.6.3")
     monkeypatch.setattr(delta, "_git_version_tags", lambda root: ["10.6.2", "10.6.3"])
 
-    # Plant a fake local dir that would be the wrong (WIP) baseline.
     local = tmp_path / "output" / "release" / "v10.6.3" / "screenshots"
     local.mkdir(parents=True)
     (local / "01-login.png").write_bytes(b"WIP-not-the-tagged-release")
@@ -124,7 +104,6 @@ def test_resolve_baseline_same_name_prefers_git_over_local_dir(
 def test_resolve_baseline_does_not_silently_downgrade(
     delta, tmp_path, monkeypatch, capsys
 ):
-    """Only v10.6.1 on disk + expect 10.6.2 → None (fail), not v10.6.1."""
     monkeypatch.setenv("LTCAI_SCREENSHOT_BASELINE_VERSION", "10.6.2")
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
 
@@ -157,7 +136,6 @@ def test_resolve_baseline_accepts_exact_expected_dir(
     monkeypatch.setenv("LTCAI_SCREENSHOT_BASELINE_VERSION", "10.6.2")
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
     monkeypatch.setattr(delta, "_extract_baseline_from_git", lambda root, version: None)
-    # Pin forces 10.6.2; package can be anything.
     monkeypatch.setattr(delta, "_package_version", lambda root: "10.6.3")
 
     shots = tmp_path / "output" / "release" / "v10.6.2" / "screenshots"
@@ -173,7 +151,6 @@ def test_resolve_baseline_accepts_exact_expected_dir(
 
 
 def test_main_exits_1_when_expected_baseline_missing(delta, tmp_path, monkeypatch):
-    """rm -rf output/release/v10.6.2 equivalent: exit 1, never PASS."""
     monkeypatch.setenv("LTCAI_SCREENSHOT_BASELINE_VERSION", "10.6.2")
     monkeypatch.delenv("LTCAI_SCREENSHOT_BASELINE", raising=False)
     monkeypatch.setattr(delta, "_extract_baseline_from_git", lambda root, version: None)
@@ -193,19 +170,12 @@ def test_main_exits_1_when_expected_baseline_missing(delta, tmp_path, monkeypatc
 
 
 def test_package_json_wires_screenshot_delta_gate():
-    """The pixel-delta script must be an npm script on the evidence path.
-
-    Failure mode: 12 screenshots copied from the prior release still leave the
-    release pipeline green because nothing invoked the checker.
-    """
     package = json.loads((REPO / "package.json").read_text(encoding="utf-8"))
     scripts = package["scripts"]
     assert "check:screenshot-delta" in scripts
     assert "check_screenshot_pixel_delta.py" in scripts["check:screenshot-delta"]
-    # Must not be on lint (missing baseline → exit 2 false positive on bare checkouts).
     assert "check:screenshot-delta" not in scripts.get("lint", "")
     assert "check_screenshot_pixel_delta" not in scripts.get("lint", "")
-    # Must run after evidence capture (or as part of that script chain).
     evidence = scripts.get("release:evidence", "")
     artifacts = scripts.get("release:artifacts", "")
     wired = (
@@ -221,14 +191,12 @@ def test_package_json_wires_screenshot_delta_gate():
 
 
 def test_capture_script_blocks_tagged_release_overwrite():
-    """capture_release_evidence.mjs must refuse default dir when v{version} is tagged."""
     script = (REPO / "scripts" / "capture_release_evidence.mjs").read_text(
         encoding="utf-8"
     )
     assert "assertNotOverwritingTaggedRelease" in script
     assert "refs/tags/v${version}" in script or "refs/tags/v" in script
     assert "already exists" in script
-    # Guard must run before wipe.
     guard_at = script.index("assertNotOverwritingTaggedRelease()")
     wipe_at = script.index("fs.rmSync(root")
     assert guard_at < wipe_at, "tag guard must run before wiping the evidence dir"
@@ -237,7 +205,6 @@ def test_capture_script_blocks_tagged_release_overwrite():
 def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(
     delta, tmp_path
 ):
-    """Pillow deprecated Image.getdata() in favor of get_flattened_data()."""
     import warnings
 
     from PIL import Image
@@ -247,7 +214,6 @@ def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(
 
     im1 = Image.new("RGB", (4, 4), (0, 0, 0))
     im2 = Image.new("RGB", (4, 4), (0, 0, 0))
-    # Change 4 of 16 pixels (25.0%) above the >8 channel delta threshold.
     for x in range(4):
         im2.putpixel((x, 0), (20, 0, 0))
     im1.save(img_a)

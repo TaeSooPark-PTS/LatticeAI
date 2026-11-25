@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Admin console: health, runtime, retention and log policy, index health,
-// and the operational filters over them.
 export const workspaceAdminCopy: NamespaceCopy = {
   ko: {
     "admin.health.ok": "모든 시스템 정상 작동 중",

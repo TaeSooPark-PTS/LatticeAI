@@ -4,9 +4,6 @@ import { ShieldAlert } from "lucide-react";
 
 import { latticeApi, type PermissionModeOption } from "@/api/client";
 import { t, type Language } from "@/i18n";
-// Shared with the Settings panel so both surfaces name the same dial the same
-// way — see lib/permissionCopy.ts for why the server's own labels are not used
-// directly.
 import {
   permissionModeLabel as optionLabel,
   permissionModeSummary as optionSummary,
@@ -19,15 +16,6 @@ const RISK_DOT: Record<string, string> = {
   high: "is-high",
 };
 
-/**
- * Autonomy and appearance, in reach on the home screen.
- *
- * Both used to live two navigations away in Settings, which is the wrong place
- * for them: how much the agent may do on its own is a decision you revise while
- * working, not a preference you set once. The dial reads its options from
- * `/api/permission-mode` rather than hardcoding them, and a mode the server
- * marks `requires_ack` opens an inline confirmation here instead of failing.
- */
 export function BrainQuickControls({ language }: { language: Language }) {
   const qc = useQueryClient();
   const [pendingRisky, setPendingRisky] = React.useState<string | null>(null);

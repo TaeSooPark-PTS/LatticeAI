@@ -1,5 +1,3 @@
-//! W3b: `POST /worker/graph/mutate` → [`lattice_core::graph_write::GraphWriter`].
-
 use lattice_core::graph_write::types::{
     CurateNoiseRequest, CurateRequest, ImportRequest, IngestEventRequest, RebuildRequest,
 };
@@ -7,8 +5,6 @@ use lattice_core::graph_write::GraphWriter;
 use lattice_core::CoreError;
 use serde_json::{json, Map, Value};
 
-/// Ops the write engine covers (W1 §1 table). Everything else stays local
-/// (Self-Model) or is a 400.
 pub fn is_writer_op(op: &str) -> bool {
     matches!(
         op,
@@ -26,7 +22,6 @@ pub fn is_writer_op(op: &str) -> bool {
     )
 }
 
-/// Run one seam op on the native writer. Blocks; call from `spawn_blocking`.
 pub fn dispatch(graph: &GraphWriter, op: &str, args: &Value) -> Result<Value, CoreError> {
     match op {
         "curate" => {
@@ -120,7 +115,6 @@ pub fn dispatch(graph: &GraphWriter, op: &str, args: &Value) -> Result<Value, Co
     }
 }
 
-/// Map a write-engine error to the HTTP status Python's seam produced.
 pub fn status_for(error: &CoreError) -> u16 {
     match error {
         CoreError::InvalidRequest(_) => 400,

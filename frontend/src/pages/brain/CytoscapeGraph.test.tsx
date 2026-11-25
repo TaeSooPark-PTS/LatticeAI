@@ -6,12 +6,6 @@ import { useAppStore } from "@/store/appStore";
 import { CytoscapeGraph } from "./CytoscapeGraph";
 import type { ExplorerModel, GraphNode } from "./graphExplorer";
 
-/**
- * Cytoscape draws into a real 2D canvas, which jsdom cannot provide. The mock
- * below replays the exact API surface the component touches — construction,
- * tap handlers, zoom clamping, fit, per-element focus classes and destroy — so
- * these tests hold the component's wiring, while pixels stay with Playwright.
- */
 const h = vi.hoisted(() => {
   type TapHandler = { selector?: string; fn: (event: { target: unknown }) => void };
   type FakeCy = {
@@ -102,8 +96,6 @@ vi.mock("cytoscape", () => ({
   }),
 }));
 
-// React ships as ESM here, so its namespace cannot be spied on. A passthrough
-// mock lets one test swap `useRef` while every other test keeps the real hook.
 const refControl = vi.hoisted(() => ({ next: null as null | (() => { current: unknown }) }));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
@@ -166,7 +158,6 @@ describe("CytoscapeGraph", () => {
     expect(cy.options.maxZoom).toBe(1.4);
     expect(cy.zoom()).toBe(1.4);
     expect(cy.centerCalls).toBeGreaterThan(0);
-    // The mount also runs the fit effect once, inside the same clamp.
     expect(cy.fitCalls).toEqual([{ eles: undefined, padding: 32 }]);
     expect(screen.getByTestId("brain-cytoscape").getAttribute("aria-label")).toBe("지도");
   });
@@ -185,10 +176,8 @@ describe("CytoscapeGraph", () => {
     const cy = lastCy();
     cy.tap("node", { id: () => "b" });
     expect(onSelect).toHaveBeenLastCalledWith("b");
-    // A background tap clears the selection…
     cy.tap(undefined, cy);
     expect(onSelect).toHaveBeenLastCalledWith(null);
-    // …but a bubbled tap whose target is an element does not.
     onSelect.mockClear();
     cy.tap(undefined, { not: "the core" });
     expect(onSelect).not.toHaveBeenCalled();
@@ -282,14 +271,14 @@ describe("CytoscapeGraph", () => {
     const host = screen.getByTestId("brain-cytoscape");
     const status = () => screen.getByRole("status").textContent;
 
-    fireEvent.keyDown(host, { key: "ArrowRight" }); // null → 0
+    fireEvent.keyDown(host, { key: "ArrowRight" });
     expect(status()).toBe("노드 A");
     expect(cy.addClassCalls).toContain("a:kb-focus");
-    fireEvent.keyDown(host, { key: "ArrowDown" }); // 0 → 1
+    fireEvent.keyDown(host, { key: "ArrowDown" });
     expect(status()).toBe("노드 B");
-    fireEvent.keyDown(host, { key: "ArrowLeft" }); // 1 → 0
+    fireEvent.keyDown(host, { key: "ArrowLeft" });
     expect(status()).toBe("노드 A");
-    fireEvent.keyDown(host, { key: "ArrowUp" }); // 0 → wraps to 2
+    fireEvent.keyDown(host, { key: "ArrowUp" });
     expect(status()).toBe("노드 C");
     fireEvent.keyDown(host, { key: "Home" });
     expect(status()).toBe("노드 A");
@@ -299,7 +288,6 @@ describe("CytoscapeGraph", () => {
     expect(onSelect).toHaveBeenLastCalledWith("c");
     fireEvent.keyDown(host, { key: " " });
     expect(onSelect).toHaveBeenLastCalledWith("c");
-    // A key with no binding changes nothing.
     fireEvent.keyDown(host, { key: "x" });
     expect(status()).toBe("노드 C");
     fireEvent.keyDown(host, { key: "Escape" });
@@ -338,10 +326,7 @@ describe("CytoscapeGraph", () => {
   });
 
   it("stays inert when the host element is not available", () => {
-    // The effects all guard on refs that React fills before they run, so the
-    // guards can only be exercised by simulating a render where the host ref
-    // never attaches — the exact situation the guards defend against.
-    const poisonedHost = { get current() { return null; }, set current(_value: unknown) { /* swallow */ } };
+    const poisonedHost = { get current() { return null; }, set current(_value: unknown) {} };
     const cyHolder = { current: null };
     let call = 0;
     refControl.next = () => (call++ % 2 === 0 ? poisonedHost : cyHolder);

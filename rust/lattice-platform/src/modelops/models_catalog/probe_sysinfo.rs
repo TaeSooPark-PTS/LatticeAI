@@ -1,5 +1,3 @@
-//! Host hardware, OS, disk, network, and binary probes for [`super`].
-
 use std::path::Path;
 use std::time::Duration;
 
@@ -118,8 +116,6 @@ pub(super) fn disk_free_bytes(path: &Path) -> Option<u64> {
             return None;
         }
         let buf = unsafe { buf.assume_init() };
-        // f_bavail is u64 on Linux but a narrower type on macOS — the cast is
-        // required on one platform and a same-type no-op on the other.
         #[allow(clippy::unnecessary_cast)]
         Some((buf.f_bavail as u64).saturating_mul(buf.f_frsize))
     }
@@ -185,5 +181,3 @@ fn sysctl_n(args: &[&str]) -> Option<String> {
 fn parse_u64_stdout(text: String) -> Option<u64> {
     text.trim().parse().ok()
 }
-
-// ── POST /setup/set-api-key ──────────────────────────────────────────────────

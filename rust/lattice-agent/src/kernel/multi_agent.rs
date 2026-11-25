@@ -1,23 +1,8 @@
-//! Role-Separated, Least-Privilege Multi-Agent Collaboration Engine (P1.6).
-//!
-//! Replaces single-agent role-string stubs with kernel-enforced collaboration:
-//! - Five distinct roles: [`AgentRole::Supervisor`], [`AgentRole::Planner`],
-//!   [`AgentRole::Researcher`], [`AgentRole::Executor`], [`AgentRole::Reviewer`].
-//! - Immutable per-role [`RoleToolScope`] enforced in the kernel (read-only roles
-//!   can never invoke write/edit/exec/delete tools).
-//! - Isolated per-role private scratchpads paired with a validated, redacted,
-//!   provenance-tagged [`SharedBlackboard`].
-//! - Structured [`ConflictRecord`] surfacing & fail-closed escalation when
-//!   high-severity disagreements remain unresolved.
-//! - Hierarchical [`OrchestrationBudget`] (global + per-role caps) and dynamic
-//!   handoff cycle / ping-pong prevention.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Distinct least-privilege collaboration roles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentRole {
@@ -51,7 +36,6 @@ impl AgentRole {
     }
 }
 
-/// Kernel-enforced least-privilege tool allowlist for a role.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleToolScope {
     pub role: AgentRole,
@@ -112,7 +96,6 @@ impl RoleToolScope {
         }
     }
 
-    /// Enforce least-privilege tool access in the kernel before dispatch.
     pub fn check_tool(&self, tool_name: &str) -> Result<(), String> {
         if self.allowed_tools.contains(tool_name) {
             Ok(())
@@ -125,7 +108,6 @@ impl RoleToolScope {
     }
 }
 
-/// Versioned provenance-tagged artifact published to the shared blackboard.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BlackboardArtifact {
     pub artifact_id: String,
@@ -136,7 +118,6 @@ pub struct BlackboardArtifact {
     pub provenance_sources: Vec<String>,
 }
 
-/// Severity of a disagreement surfaced between agents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConflictSeverity {
@@ -145,7 +126,6 @@ pub enum ConflictSeverity {
     High,
 }
 
-/// Resolution status of a multi-agent conflict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConflictResolution {
@@ -154,7 +134,6 @@ pub enum ConflictResolution {
     EscalatedNeedsReview,
 }
 
-/// Disagreement between two role outputs surfaced transparently on the blackboard.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConflictRecord {
     pub conflict_id: String,
@@ -168,7 +147,6 @@ pub struct ConflictRecord {
     pub rationale: Option<String>,
 }
 
-/// Global and per-role execution budgets preventing runaway loops or cost spikes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrchestrationBudget {
     pub max_total_handoffs: usize,
@@ -190,7 +168,6 @@ impl Default for OrchestrationBudget {
     }
 }
 
-/// Outcome of a supervised multi-agent collaboration session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OrchestrationStatus {
@@ -201,7 +178,6 @@ pub enum OrchestrationStatus {
     CycleHalted,
 }
 
-/// Isolated private scratchpad per role + redacted shared blackboard mediated by Supervisor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiAgentSession {
     pub session_id: String,
@@ -212,12 +188,9 @@ pub struct MultiAgentSession {
     pub total_tool_calls: usize,
     pub total_tokens: usize,
     pub tool_calls_by_role: BTreeMap<String, usize>,
-    /// Private scratchpads isolated per role (never leaked directly into another role's instructions).
     private_scratchpads: BTreeMap<String, Vec<String>>,
-    /// Validated, PII/secret-redacted shared blackboard artifacts.
     pub blackboard: Vec<BlackboardArtifact>,
     pub conflicts: Vec<ConflictRecord>,
-    /// Handoff fingerprints `(from, to, fingerprint)` for cycle / ping-pong prevention.
     handoff_counts: HashMap<(AgentRole, AgentRole, String), usize>,
     pub handoff_log: Vec<(AgentRole, AgentRole, String)>,
 }
@@ -245,7 +218,6 @@ impl MultiAgentSession {
         }
     }
 
-    /// Record an isolated private note visible ONLY to `role`.
     pub fn append_private_note(&mut self, role: AgentRole, note: &str) {
         self.private_scratchpads
             .entry(role.as_str().to_string())
@@ -253,7 +225,6 @@ impl MultiAgentSession {
             .push(lattice_core::redact_pii_and_secrets(note));
     }
 
-    /// Read ONLY `role`'s own private scratchpad (strict context isolation).
     pub fn private_notes(&self, role: AgentRole) -> &[String] {
         self.private_scratchpads
             .get(role.as_str())
@@ -261,7 +232,6 @@ impl MultiAgentSession {
             .unwrap_or(&[])
     }
 
-    /// Authorize a tool call for `role` against both least-privilege scope and hierarchical budgets.
     pub fn authorize_tool_call(
         &mut self,
         role: AgentRole,
@@ -293,7 +263,6 @@ impl MultiAgentSession {
         Ok(())
     }
 
-    /// Publish a versioned, PII/secret-redacted artifact onto the shared blackboard.
     pub fn publish_artifact(
         &mut self,
         author_role: AgentRole,
@@ -322,7 +291,6 @@ impl MultiAgentSession {
         artifact
     }
 
-    /// Record a role-to-role handoff while enforcing global budget and cycle/ping-pong prevention.
     pub fn record_handoff(
         &mut self,
         from: AgentRole,
@@ -352,13 +320,10 @@ impl MultiAgentSession {
         Ok(())
     }
 
-    /// Surface a disagreement between two roles on the shared blackboard.
     pub fn surface_conflict(&mut self, conflict: ConflictRecord) {
         self.conflicts.push(conflict);
     }
 
-    /// Supervisor finalization gate: fails closed to `NeedsReview` whenever any
-    /// high-severity conflict remains unresolved.
     pub fn finalize_by_supervisor(&mut self) -> OrchestrationStatus {
         if matches!(
             self.status,
@@ -393,7 +358,6 @@ mod tests {
     fn enforces_least_privilege_isolation_conflicts_budgets_and_cycle_prevention() {
         let mut session = MultiAgentSession::new("sess-1", "ws-1", OrchestrationBudget::default());
 
-        // Least-privilege tool scoping: Researcher & Reviewer cannot write/exec; Executor can.
         assert!(session
             .authorize_tool_call(AgentRole::Researcher, "knowledge_search", 200)
             .is_ok());
@@ -407,7 +371,6 @@ mod tests {
             .authorize_tool_call(AgentRole::Executor, "write_file", 300)
             .is_ok());
 
-        // Context isolation + redacted shared blackboard.
         session.append_private_note(
             AgentRole::Researcher,
             "found secret sk-proj-abcdefghijklmnop1234",
@@ -425,7 +388,6 @@ mod tests {
         assert_eq!(art.version, 1);
         assert_eq!(art.content["owner_email"], "[REDACTED_EMAIL]");
 
-        // Handoff cycle prevention halts repeated Executor <-> Reviewer ping-pong.
         assert!(session
             .record_handoff(AgentRole::Executor, AgentRole::Reviewer, "hash-a")
             .is_ok());
@@ -437,7 +399,6 @@ mod tests {
             .is_err());
         assert_eq!(session.status, OrchestrationStatus::CycleHalted);
 
-        // High-severity unresolved conflict forces fail-closed NeedsReview.
         let mut session2 = MultiAgentSession::new("sess-2", "ws-1", OrchestrationBudget::default());
         session2.surface_conflict(ConflictRecord {
             conflict_id: "conf-1".to_string(),

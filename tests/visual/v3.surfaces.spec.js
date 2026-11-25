@@ -10,9 +10,6 @@ const {
   openShellMenu,
 } = require("./v3_helpers");
 
-// The surfaces a person moves between once the Brain exists: capture, memory,
-// conversation, review, the model library, and the two dials that decide what
-// leaves this machine.
 
 test("sources visibly enter Brain and memory-grounded automation stays user-triggered", async ({ page }) => {
   const errors = trackPageErrors(page);
@@ -97,9 +94,6 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  // The detailed memory visualization stays out of the primary home flow —
-  // it lives in the dock's 기억 지도 drawer — then remains fully interactive
-  // when the user asks to see it.
   await page.getByTestId("brain-dock-map").click();
   await expect(page.getByTestId("brain-home-drawer")).toBeVisible();
   const topicsChip = page.locator(".ring-label-bottom");
@@ -109,12 +103,10 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   await expect(peek).toBeVisible();
   await expect(peek).toContainText("주제");
 
-  // Escape closes the peek and keeps the user on the home surface.
   await page.keyboard.press("Escape");
   await expect(peek).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
 
-  // "Open this layer" from the graph ring hands off to the memory graph view.
   await page.locator(".ring-label-right").click();
   await page.getByRole("button", { name: "이 층 자세히 보기" }).click();
   await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
@@ -127,10 +119,6 @@ test("memory opens with search and can reveal the connections map", async ({ pag
   await page.getByRole("link", { name: "기억", exact: true }).click();
   await expect(page).toHaveURL(/#\/hybrid-search$/);
   await expect(page.getByRole("heading", { name: "기억에서 찾아보세요." })).toBeVisible();
-  // The map is a subview, not a peer of search: it is absent from the tablist,
-  // reached from a named secondary target, and it comes with a way back. Two
-  // tabs, not three, is the load-bearing part — a reordered three-tab strip
-  // still offers a Cytoscape canvas as a first-class choice to a newcomer.
   await expect(page.getByRole("tab")).toHaveCount(2);
   await expect(page.getByRole("tab", { name: "연결 지도" })).toHaveCount(0);
   await page.getByTestId("open-connections-map").click();
@@ -156,24 +144,17 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(page.getByRole("link", { name: "자료", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "기억", exact: true })).toBeVisible();
 
-  // The three management destinations were lifted out of the menu into the
-  // topbar, so they must be reachable without opening anything. Both landmarks
-  // carry the same three links, which is why each side is scoped by name.
   const utilityNav = page.getByRole("navigation", { name: "관리 화면 이동" });
   await expect(utilityNav.getByRole("link", { name: "작업", exact: true })).toBeVisible();
   await expect(utilityNav.getByRole("link", { name: "AI 모델" })).toBeVisible();
   await expect(utilityNav.getByRole("link", { name: "설정" })).toBeVisible();
 
-  // On desktop viewports, management links are directly visible in topbar utility nav.
-  // The popover menu deduplicates these links on desktop viewports.
   await openShellMenu(page);
   const shellMenu = page.getByRole("dialog", { name: "더보기" });
   await expect(shellMenu).toBeVisible();
   await page.getByRole("button", { name: "메뉴 닫기" }).last().click();
   await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
-  // The memory-map hint moved off the reading line into the stats badge's
-  // popover: hover (or click) is the gesture that asks for it.
   await expect(page.locator("body")).not.toContainText("Brain 그림을 누르면 기억 지도를 볼 수 있어요.");
   await page.locator(".brain-hero-stats-badge").click();
   await expect(page.getByTestId("brain-hero-stats-popover")).toBeVisible();
@@ -196,7 +177,6 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(page.getByRole("button", { name: /내보내기/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /백업/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /복원 미리보기/ })).toBeVisible();
-  // The drawer is a modal surface; leave it before speaking to the composer.
   await page.getByRole("button", { name: "Brain 보조 패널 닫기" }).click();
   await expect(page.getByTestId("brain-home-drawer")).toHaveCount(0);
 
@@ -248,9 +228,6 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await page.getByRole("button", { name: "관리자 콘솔 열기" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main.admin-console")).toBeVisible();
-  // Korean UI now titles this screen 관리자 설정 — the English string was the one
-  // untranslated heading left in the product. Matched either way, like the
-  // assertions below it, so the test pins the screen and not the locale.
   await expect(page.locator("body")).toContainText(/Admin Console|관리자 설정/);
   await expect(page.locator("body")).toContainText(/Activity Logs|활동 로그/);
   await expect(page.locator("body")).toContainText(/Security Events|보안 이벤트/);
@@ -321,10 +298,6 @@ test("capture leads with one place to add material, not four equal tabs", async 
   await bypassProductFlow(page, { mode: "basic" });
   await page.goto("/app#/capture");
 
-  // Adding something is one action with three shapes, inside one station. It
-  // used to be three page-level tabs ranked equal with the indexer's status
-  // page, so "connect a folder" — the most valuable thing here — was two tabs
-  // deep and looked like a different screen.
   const station = page.locator(".capture-station");
   await expect(station).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
@@ -333,12 +306,9 @@ test("capture leads with one place to add material, not four equal tabs", async 
   }
   await expect(station.getByTestId("capture-method-files")).toHaveAttribute("aria-pressed", "true");
 
-  // Progress and the material already added drop below it, side by side, and
-  // are on screen without choosing a tab first.
   await expect(page.getByRole("list", { name: "자료가 기억이 되는 3단계" })).toBeVisible();
   await expect(page.locator("body")).toContainText("업로드된 문서");
 
-  // Each way in still has its own deep link and its own controls.
   await station.getByTestId("capture-method-local").click();
   await expect(page).toHaveURL(/#\/my-computer$/);
   await expect(station.getByRole("button", { name: "폴더 선택" })).toBeVisible();
@@ -353,9 +323,6 @@ test("the model library answers which model is running before anything else", as
   await bypassProductFlow(page, { mode: "basic" });
   await page.goto("/app#/models");
 
-  // The question that brings people here was answered by a stat cell partway
-  // down a catalogue. It is the first block on the page now — above the tabs,
-  // so it holds whichever tab is open.
   const active = page.getByTestId("library-active-model");
   await expect(active).toBeVisible();
   await expect(active).toContainText("지금 작동 중인 모델");
@@ -364,15 +331,12 @@ test("the model library answers which model is running before anything else", as
     const card = document.querySelector("[data-testid='library-active-model']");
     const tablist = document.querySelector("[role='tablist']");
     if (!card) return null;
-    // No tablist in plain mode (only one tab survives); the card must still be
-    // the first thing under the page heading.
     if (!tablist) return { cardBeforeTabs: true };
     return { cardBeforeTabs: card.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING ? true : false };
   });
   expect(order).not.toBeNull();
   expect(order.cardBeforeTabs).toBe(true);
 
-  // A model name, never the registry coordinate it is stored under.
   await expect(active).not.toContainText("mlx-community/");
   expect(errors).toEqual([]);
 });
@@ -389,17 +353,12 @@ test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   expect(overflow.horizontal).toBeLessThanOrEqual(1);
   expect(overflow.vertical).toBeLessThanOrEqual(1);
 
-  // The bottom bar is sized from its item count. Trimming the primary nav used
-  // to leave a hard-coded fifth column empty, bunching the tabs to one side.
   const bottomBar = await page.evaluate(() => {
     const nav = document.querySelector(".brain-mobile-nav");
     if (!nav) return null;
     const items = Array.from(nav.children).map((child) => child.getBoundingClientRect());
     return { navWidth: nav.getBoundingClientRect().width, right: items[items.length - 1].right, count: items.length };
   });
-  // A leftover column would strand the last tab a full column short of the
-  // edge; the real gap here is just the bar's own padding. Five since 11.3.0:
-  // the four everyday destinations (대화 · 자료 · 기억 · 연대기) plus 더보기.
   expect(bottomBar.count).toBe(5);
   expect(bottomBar.navWidth - bottomBar.right).toBeLessThan(bottomBar.navWidth / bottomBar.count / 2);
 
@@ -481,13 +440,6 @@ test("past conversations resume with markdown rendering and delete inline", asyn
   expect(errors).toEqual([]);
 });
 
-// The network boundary contracts shipped in 10.1.0 with no way to reach them
-// 11.2.0: every opt-in feature used to be an environment variable and a
-// restart. The switchboard is the reachable half — a dock drawer, not a card,
-// because the home canvas is a one-viewport contract. What this asserts is the
-// part a screenshot cannot: that the panel renders *the server's* catalog,
-// including the honesty that catalog carries (where a value came from, which
-// option is not installed here, which switch sends knowledge off the machine).
 test("the 기능 drawer turns opt-in features on without leaving home", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
@@ -499,14 +451,12 @@ test("the 기능 drawer turns opt-in features on without leaving home", async ({
   const panel = page.locator("section.brain-features-panel");
   await expect(panel).toBeVisible();
 
-  // Rendered from /api/features: labels, order, and kinds are all the server's.
   await expect(page.getByTestId("feature-row-allow_multimodal")).toContainText("사진·녹음도 기억하기");
   await expect(page.locator(".brain-feature-row")).toHaveCount(9);
   const multimodal = page.getByTestId("feature-switch-allow_multimodal");
   await expect(multimodal).toHaveAttribute("role", "switch");
   await expect(multimodal).toHaveAttribute("aria-checked", "true");
 
-  // The three honesty affordances, each on the row it belongs to.
   await expect(page.getByTestId("feature-row-vault_watch")).toContainText("설정으로 켜짐");
   await expect(page.getByTestId("feature-row-brain_network")).toContainText("이 컴퓨터 밖으로");
   await expect(page.getByTestId("feature-row-video_ingest")).toHaveClass(/is-child/);
@@ -514,7 +464,6 @@ test("the 기능 drawer turns opt-in features on without leaving home", async ({
   await expect(hnsw).toBeDisabled();
   await expect(hnsw).toContainText("설치 필요");
 
-  // Jade marks state and nothing else: only the switches that are on carry it.
   const litTracks = await page.evaluate(() => Array.from(
     document.querySelectorAll(".brain-feature-switch"),
   ).map((node) => ({
@@ -526,8 +475,6 @@ test("the 기능 drawer turns opt-in features on without leaving home", async ({
   expect(onColours.size).toBe(1);
   expect([...onColours].some((colour) => offColours.has(colour))).toBe(false);
 
-  // A risk-carrying switch names what turning it on means, then waits for an
-  // ack — the same preview-before-consent pattern as the network boundary.
   await page.getByTestId("feature-switch-brain_network").click();
   await expect(page.getByTestId("feature-preview-brain_network")).toBeVisible();
   await expect(page.getByTestId("feature-preview-brain_network")).toContainText("켜면 이렇게 달라져요");
@@ -536,15 +483,9 @@ test("the 기능 drawer turns opt-in features on without leaving home", async ({
   await expect(page.getByTestId("feature-preview-ack-brain_network")).toBeChecked();
   await expect(page.getByTestId("feature-preview-confirm-brain_network")).toHaveAttribute("aria-disabled", "false");
   await page.getByTestId("feature-preview-confirm-brain_network").click();
-  // The write is confirmed out loud. The mock catalog does not persist the
-  // new value across the refetch that follows, so the switch is not the
-  // source of truth here — the notice is.
   await expect(page.getByTestId("feature-preview-brain_network")).toHaveCount(0);
   await expect(panel.locator(".brain-features-notice")).toHaveText("바뀌었습니다.");
 
-  // Focus-trapped modal: Escape returns to the home it never left.
-  // Confirming the preview unmounts the focused button; put focus back on
-  // the switch so Escape is still heard by the drawer.
   await page.getByTestId("feature-switch-brain_network").focus();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("brain-home-drawer")).toHaveCount(0);
@@ -561,8 +502,6 @@ test("the 기능 drawer stays usable on a phone", async ({ page }) => {
   await expect(page.getByTestId("brain-home-drawer")).toBeVisible();
   await expect(page.getByTestId("feature-switch-allow_multimodal")).toBeVisible();
 
-  // No sideways scroll anywhere, and the switch is a real touch target rather
-  // than a decoration squeezed off the edge by the sentence next to it.
   const overflow = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     drawer: (() => {
@@ -576,37 +515,27 @@ test("the 기능 drawer stays usable on a phone", async ({ page }) => {
   const box = await page.getByTestId("feature-switch-allow_multimodal").boundingBox();
   expect(box.width).toBeGreaterThan(44);
   expect(box.height).toBeGreaterThanOrEqual(24);
-  // The choice pills wrap under their sentence instead of crushing it.
   const pills = await page.getByTestId("feature-choices-vector_backend").boundingBox();
   const row = await page.getByTestId("feature-row-vector_backend").boundingBox();
   expect(pills.x + pills.width).toBeLessThanOrEqual(row.x + row.width + 1);
   expect(errors).toEqual([]);
 });
 
-// from the app — the dial existed only for whoever called the API by hand.
-// This asserts the control is actually on the settings screen and that it
-// refuses to send a cloud switch the server would reject.
 test("the network boundary dial is reachable and gates cloud behind an acknowledgement", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
   await page.goto("/app#/system");
-  // System opens on the account tab; the dials live under 환경설정.
   await page.getByRole("tab", { name: "환경설정" }).click();
 
   const panel = page.getByTestId("network-boundary-panel");
   await expect(panel).toBeVisible();
   await expect(page.getByTestId("network-boundary-active")).toHaveText("로컬만");
 
-  // Both server-served modes render; nothing is hardcoded in the client.
   await expect(page.getByTestId("network-boundary-option-local_only")).toBeVisible();
   await expect(page.getByTestId("network-boundary-option-cloud_allowed")).toBeVisible();
 
-  // While local_only is in force there is nothing to configure about cloud
-  // write-back, so the policy switches stay out of the way.
   await expect(page.getByTestId("network-boundary-policy")).toHaveCount(0);
 
-  // Choosing cloud must not be one click: the server refuses without an ack,
-  // so the button stays disabled until the box is ticked.
   await page.getByTestId("network-boundary-option-cloud_allowed").click();
   await expect(page.getByTestId("network-boundary-apply")).toBeDisabled();
   await page.getByTestId("network-boundary-ack").check();

@@ -1,4 +1,4 @@
-/* ── Change proposals panel (v9.6.0) ────────────────────────────────── */
+
 
 .pending-proposals-list {
   display: grid;
@@ -66,11 +66,9 @@
   color: hsl(var(--fg-muted));
 }
 
-/* ── 9.9.x polish wave: preview modal, drop capture, job reports, conflict
-   rebase, emotional design. All new motion is opt-in via
-   (prefers-reduced-motion: no-preference); static fallbacks stay readable. ── */
 
-/* File card inline preview modal */
+
+
 .file-preview-backdrop {
   position: fixed;
   inset: 0;
@@ -190,7 +188,7 @@
   font-size: 0.68rem;
 }
 
-/* Global drag-and-drop capture overlay (Brain home) */
+
 .brain-drop-overlay {
   position: fixed;
   inset: 0;
@@ -200,7 +198,7 @@
   justify-content: center;
   padding: 1rem;
   background: hsl(var(--scrim));
-  /* Drop events are handled at window level — the overlay is display only. */
+  
   pointer-events: none;
 }
 
@@ -226,7 +224,7 @@
   color: hsl(var(--fg-muted));
 }
 
-/* Folder job completion report card */
+
 .brain-jobs-report {
   display: grid;
   gap: 0.45rem;
@@ -313,7 +311,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Proposal conflict (409) rebase note */
+
 .proposal-conflict-note {
   display: grid;
   gap: 0.4rem;
@@ -374,8 +372,7 @@
   font-size: 0.68rem;
 }
 
-/* Emotional design: one-shot success pulse + knowledge-inflow motes.
-   Both run only when the user allows motion. */
+
 .lattice-inflow {
   display: none;
 }
@@ -438,9 +435,7 @@
   }
 }
 
-/* Reduced-motion audit: silence the remaining always-on animations that the
-   earlier targeted blocks missed (the global kill switch in
-   experience/responsive.css stays as the backstop). */
+
 @media (prefers-reduced-motion: reduce) {
   .brain-organism::after,
   .brain-vital-ring,
@@ -462,11 +457,7 @@
   }
 }
 
-/* ── Interactive plan approval (backlog #2) ─────────────────────────────────
-   Governance surface for awaiting_approval agent runs: warm warning tokens
-   (same family as .brain-agent-state-note) so a paused, permission-seeking
-   run can never be mistaken for a completed one. No animation — the card is
-   a decision point, not a celebration. */
+
 .brain-approval-card {
   display: grid;
   gap: 0.55rem;

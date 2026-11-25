@@ -6,11 +6,6 @@ import { t } from "@/i18n";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { describeComputer, embeddingStateLabel, isUntranslatedProse, LibraryPage } from "./Library";
 
-/**
- * The model library. The thing this screen must never do is imply a model is
- * usable when it is not — the ordering, the state labels and the embedding
- * banner all exist to keep "you can click this" and "this will work" aligned.
- */
 
 const MODELS = {
   models: [
@@ -45,8 +40,6 @@ describe("LibraryPage", () => {
   });
 
   it("never prints a raw registry coordinate as a model name", async () => {
-    // 10.0.0 replaced ids with readable names across the Brain surface; this
-    // panel used to fall straight through to the coordinate.
     render();
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/mlx-community\//);
@@ -67,7 +60,6 @@ describe("LibraryPage", () => {
   it("leads the embedding panel with plain language, not a grade code", async () => {
     render({ embeddingsStatus: ok({ grade: "fallback", provider: "hash", dim: 256, ready: false }) });
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
-    // "Grade: fallback" is developer output; the user needs the consequence.
     const text = document.body.textContent || "";
     if (text.includes("fallback")) {
       expect(text).toMatch(/검색|의미|search|semantic/i);
@@ -81,10 +73,6 @@ describe("LibraryPage", () => {
   });
 
   it("does not translate a server sentence one word at a time", async () => {
-    // The registry ships compatibility prose in English. Swapping terms inside
-    // it put "uses the 이 로컬 모델 형식 로컬 모델 지원 format. The installed
-    // 로컬 모델 지원 모델 지원 does not include that loader…" into a released
-    // README screenshot — readable in neither language.
     render({
       models: ok({
         catalog: [{
@@ -100,31 +88,19 @@ describe("LibraryPage", () => {
         current: null,
       }),
     });
-    // Wait for the card itself: an unresolved panel would pass the negative
-    // assertions below without ever rendering the message under test.
     await waitFor(() => expect(document.body.textContent).toMatch(/Gemma 4 12B/));
     const text = document.body.textContent || "";
-    // Neither the raw English sentence nor a half-substituted hybrid survives.
     expect(text).not.toMatch(/does not include that loader/);
     expect(text).not.toMatch(/The installed/);
     expect(text).toMatch(/이 컴퓨터에서 실행할 수 없어요/);
   });
 
   it("survives a model entry missing half its fields", async () => {
-    // Real registries return partial rows; a missing name must not blank the row.
     render({ models: ok({ models: [{ id: "x/y" }], current: null }) });
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/undefined/);
   });
 
-  /**
-   * "Which model is running, and can I change it?" is the question that brings
-   * people to this screen. It used to be answered by a stat cell partway down a
-   * catalogue, below a hero, a tab strip and a six-step setup track. It is the
-   * first block on the page now — and the alternatives it offers have to be
-   * ones a single click can really switch to, or the card's primary action is a
-   * button that always fails.
-   */
   it("names the running model first, without printing its registry coordinate", async () => {
     render();
     const card = () => screen.getByTestId("library-active-model");
@@ -140,7 +116,6 @@ describe("LibraryPage", () => {
   });
 
   it("a failed request does not become a claim that no model is running", async () => {
-    // The response cannot support that claim. "Could not check" is what is true.
     render({ models: fail("server unavailable", {}) });
     const card = () => screen.getByTestId("library-active-model");
     await waitFor(() => expect(card().textContent).toContain("확인하지 못했어요"));
@@ -153,9 +128,7 @@ describe("LibraryPage", () => {
         catalog: [
           { id: "local/running", name: "Running One", load_available: true },
           { id: "local/ready", name: "Ready One", load_available: true },
-          // On disk, but the installed runtime has no loader for it.
           { id: "local/broken", name: "Broken One", pulled: true, load_available: false, runtime_compatibility: { supported: false } },
-          // Would need a download, which is consent-gated in the catalogue below.
           { id: "local/remote", name: "Remote One", download_required: true, load_available: true },
         ],
         loaded: ["local/running"],
@@ -169,12 +142,6 @@ describe("LibraryPage", () => {
   });
 });
 
-/**
- * Everything below drives the four panels this screen switches between, and
- * the model catalogue's two hardest promises: a button that is offered must be
- * a button that can work, and no server enum, registry coordinate or English
- * sentence may reach a Korean reader unchanged.
- */
 
 describe("library copy helpers", () => {
   it("names what search can do, not which provider is wired in", () => {
@@ -196,8 +163,6 @@ describe("library copy helpers", () => {
   });
 
   it("tells a model name from an English sentence nobody translated", () => {
-    // A name may legitimately be Latin script; a six-word English sentence
-    // with no Hangul in it is copy that was never translated.
     expect(isUntranslatedProse("Gemma 4 26B Instruct")).toBe(false);
     expect(isUntranslatedProse("이 모델은 이 컴퓨터에서 실행할 수 없습니다 아마도")).toBe(false);
     expect(isUntranslatedProse("This model uses a format the runtime cannot load")).toBe(true);
@@ -238,8 +203,6 @@ describe("LibraryPage tabs", () => {
     expect(await screen.findByText(t("ko", "library.connector.mcpTools"))).toBeTruthy();
     mcp.unmount();
 
-    // The tab strip still names every screen, so a hash nobody recognises
-    // leaves the reader with a way forward rather than a dead end.
     renderLibrary({}, {}, "not-a-tab");
     expect(await screen.findByRole("tab", { name: t("ko", "library.tab.models") })).toBeTruthy();
     expect(screen.queryByText(t("ko", "library.models.setup.title"))).toBeNull();
@@ -258,8 +221,6 @@ describe("switching the running model", () => {
         recommended_engine: "local_mlx",
         load_status: "ready",
       },
-      // Nothing but a name: the registry ships rows like this and they must
-      // not become a button that loads "undefined".
       { name: "Anonymous" },
       { id: "local/bare", name: "Bare One", load_available: true },
       { id: "local/refused", name: "Refused One", load_available: true, load_status: "unsupported" },
@@ -272,7 +233,6 @@ describe("switching the running model", () => {
     const loadModel = vi.fn(() => Promise.resolve(ok({})));
     renderLibrary({ models: ok(SWITCHABLE), loadModel });
 
-    // Named from its coordinate, because the registry gave it no name.
     const button = await screen.findByTestId("library-switch-local/spare");
     expect(button.textContent).toContain("Spare");
     await userEvent.click(button);
@@ -286,7 +246,6 @@ describe("switching the running model", () => {
 
     await userEvent.click(await screen.findByTestId("library-switch-local/bare"));
 
-    // No engine at all is the honest answer, not a guessed one.
     await waitFor(() => expect(loadModel).toHaveBeenCalledWith("local/bare", undefined, false));
   });
 
@@ -412,9 +371,6 @@ describe("the model catalogue", () => {
     renderLibrary({ models: ok(CATALOG), modelRecommendations: ok(RECS) });
 
     await screen.findAllByText("Ready One");
-    // Loaded first, then what one click can use, then what is merely on disk —
-    // the catalogue used to arrive in recommendation order, which buried the
-    // one usable model behind five rows whose only button was disabled.
     const names = Array.from(document.querySelectorAll(".text-base.font-semibold"))
       .map((node) => node.textContent)
       .filter((name) => name?.endsWith("One"));
@@ -422,8 +378,6 @@ describe("the model catalogue", () => {
       "Loaded One", "Ready One", "Pulled One", "Remote One", "Broken One", "Fallback One", "Nameless One",
     ]);
 
-    // The registry's own compatibility prose reaches the reader only through
-    // the localized sentence for the situation.
     expect(body()).toContain(t("ko", "library.model.status.unsupported"));
     expect(body()).toContain(t("ko", "library.model.runtimeFallback"));
     expect(body()).toContain(t("ko", "library.model.downloadSize", { size: "4GB" }));
@@ -432,10 +386,8 @@ describe("the model catalogue", () => {
     expect(body()).toContain(t("ko", "library.model.multimodal"));
     expect(body()).toContain(t("ko", "library.model.sourceVerified"));
     expect(body()).toContain(t("ko", "library.model.license", { license: "MIT" }));
-    // A row with only one of the two still shows the one it has.
     expect(body()).toContain("주의만");
     expect(body()).toContain(t("ko", "library.model.license", { license: "Apache-2.0" }));
-    // Alternatives keep their real names for someone who can act on them.
     expect(body()).toContain("MLX Studio");
   });
 
@@ -445,7 +397,6 @@ describe("the model catalogue", () => {
     await screen.findAllByText("Loaded One");
     expect(screen.queryByText("Remote One")).toBeNull();
     expect(body()).toContain(t("ko", "library.model.shortListHint"));
-    // Registry engineering commentary and licence lines stay in advanced mode.
     expect(body()).not.toContain("Tiny but capable vision.");
     expect(body()).not.toContain("MIT");
   });
@@ -457,8 +408,6 @@ describe("the model catalogue", () => {
           id: "local/broken",
           name: "Broken One",
           load_status: "unsupported",
-          // A size that is really a packaging format, and a hardware block
-          // with no RAM figure — neither is copy for an everyday reader.
           size: "4GB gguf",
           hardware: { notes: "Tiny but capable vision." },
           runtime_compatibility: {
@@ -480,7 +429,6 @@ describe("the model catalogue", () => {
     expect(body()).toContain(t("ko", "library.model.needsAttention"));
     expect(body()).toContain(t("ko", "library.model.attentionBeforeLoad"));
     expect(body()).toContain(t("ko", "library.model.compatiblePath"));
-    // "MLX Studio" is a runtime name; in everyday mode it says what it is for.
     expect(body()).toContain(t("ko", "library.model.compatibleAlternative"));
     expect(body()).toContain("Plain Name");
     expect(body()).toContain("plain-alt");
@@ -547,8 +495,6 @@ describe("the model catalogue", () => {
     expect(body()).toContain("Second Profile");
     withProfiles.unmount();
 
-    // In everyday mode a profile with no name of its own is still named for a
-    // person, and its raw coordinate never reaches the screen.
     const basic = renderLibrary({ models: ok({ compat_profiles: [{ model_id: "hidden/id" }] }) }, { mode: "basic" });
     await screen.findByText(t("ko", "library.model.checked"));
     expect(body()).not.toContain("hidden/id");
@@ -559,8 +505,6 @@ describe("the model catalogue", () => {
   });
 
   it("falls back to a neutral status phrase for a status code it doesn't recognise", async () => {
-    // The registry's `load_status` enum grows over time; an unmapped value
-    // must read as neutral copy, not leak the raw server token onto the badge.
     renderLibrary({
       models: ok({ catalog: [{ id: "local/mystery", name: "Mystery One", load_status: "quarantined" }], loaded: [] }),
     });
@@ -570,8 +514,6 @@ describe("the model catalogue", () => {
   });
 
   it("never mistakes a catalogue row with no id for the running model", async () => {
-    // A row missing both `id` and `model_id` stringifies to "" — same as an
-    // absent `current` field — and the two must not coincidentally match.
     renderLibrary({ models: ok({ catalog: [{ name: "Mystery One" }], loaded: [] }) });
     await screen.findByText("Mystery One");
     expect(body()).toContain(t("ko", "library.runtime.noLoaded"));
@@ -617,8 +559,6 @@ describe("preparing a model", () => {
   });
 
   it("still shows a bar and a caption when the stream reports neither", async () => {
-    // A frame with only a stage is common early in a run; the panel must not
-    // print "undefined%" or an empty line where the caption goes.
     const streamModelPrepare = vi.fn((_body: unknown, handlers: Record<string, (event: Record<string, unknown>) => void>) => {
       handlers.onProgress?.({ stage: "engine" });
       return Promise.resolve(ok({}));
@@ -630,7 +570,6 @@ describe("preparing a model", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: t("ko", "library.btn.validateLoad") }));
 
-    // No engine was named anywhere, so the default local one is used.
     await waitFor(() => expect(streamModelPrepare).toHaveBeenCalledWith(
       { model: "local/plain", engine: "local_mlx", allow_download: false },
       expect.anything(),
@@ -641,8 +580,6 @@ describe("preparing a model", () => {
   });
 
   it("explains a failed preparation instead of leaving the row silent", async () => {
-    // The client hands `onError` the friendly message and returns the bare
-    // server payload; the specific message is the one that must survive.
     const streamModelPrepare = vi.fn((_body: unknown, handlers: Record<string, (event: Record<string, unknown>) => void>) => {
       handlers.onError?.({ user_message: "설치 공간이 부족합니다", recovery_guidance: ["공간을 비우세요", "다시 시도하세요"] });
       return Promise.resolve(fail("실패", { code: 507 }));
@@ -673,8 +610,6 @@ describe("preparing a model", () => {
       unloadModel,
     });
 
-    // The runtime summary carries its own unload button above the catalogue;
-    // this is the one on the row itself.
     const unloads = await screen.findAllByRole("button", { name: t("ko", "library.runtime.unload") });
     await userEvent.click(unloads[unloads.length - 1]!);
 
@@ -712,10 +647,6 @@ describe("the runtime summary", () => {
   });
 
   it("uses the row's plain id and the default engine when the registry gave no recommendation", async () => {
-    // No `current` field at all — only `loaded` — so `currentId` is "". The
-    // row itself still carries a real id and must still count as the active
-    // model, and the summary's own unload button must stay keyed off the
-    // top-level `current` field rather than substituting the row's id.
     const streamModelPrepare = vi.fn(() => Promise.resolve(ok({})));
     const unloadModel = vi.fn(() => Promise.resolve(ok({})));
     renderLibrary({
@@ -731,7 +662,6 @@ describe("the runtime summary", () => {
       expect.anything(),
     ));
 
-    // Index 0 is the summary's own button, not the catalogue row's.
     const unload = screen.getAllByRole("button", { name: t("ko", "library.runtime.unload") })[0]!;
     await userEvent.click(unload);
     expect(unloadModel).not.toHaveBeenCalled();
@@ -756,8 +686,6 @@ describe("the runtime summary", () => {
   });
 
   it("does nothing when the loaded model is not in the catalogue", async () => {
-    // The name comes from the id alone, so the buttons are live but have no
-    // catalogue row to act on — they must not throw or invent one.
     const streamModelPrepare = vi.fn(() => Promise.resolve(ok({})));
     const unloadModel = vi.fn(() => Promise.resolve(ok({})));
     renderLibrary({
@@ -777,7 +705,6 @@ describe("the runtime summary", () => {
     await screen.findByText(t("ko", "library.runtime.computer"));
     expect(body()).toContain(t("ko", "library.runtime.noneShort"));
     expect(body()).not.toContain(t("ko", "library.runtime.engine"));
-    // The cache path is a developer detail; everyday mode never shows it.
     expect(body()).not.toContain("캐시");
     basic.unmount();
 
@@ -803,8 +730,6 @@ describe("SkillsPanel", () => {
         skills: [
           { name: "요약", plugin: "core", enabled: true },
           { id: "정리", description: "설명" },
-          // Neither a name, a plugin nor a description: the registry ships
-          // rows this bare too, and the row must key off the id alone.
           { id: "정렬" },
         ],
       }),
@@ -826,7 +751,6 @@ describe("SkillsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: t("ko", "library.skills.disable") }));
     await waitFor(() => expect(skillToggle).toHaveBeenCalledWith("요약", true));
 
-    // "정렬" has no name, so its own toggle must call back with its id.
     const enableButtons = screen.getAllByRole("button", { name: t("ko", "library.skills.enable") });
     await userEvent.click(enableButtons[enableButtons.length - 1]!);
     await waitFor(() => expect(skillToggle).toHaveBeenCalledWith("정렬", false));
@@ -834,7 +758,6 @@ describe("SkillsPanel", () => {
     await userEvent.click(screen.getAllByRole("button", { name: t("ko", "library.skills.install") })[0]!);
     await waitFor(() => expect(skillInstall).toHaveBeenCalledWith("번역", "market"));
 
-    // "요청" has no name and no plugin: installs by id, with no plugin arg.
     const installButtons = screen.getAllByRole("button", { name: t("ko", "library.skills.install") });
     await userEvent.click(installButtons[installButtons.length - 1]!);
     await waitFor(() => expect(skillInstall).toHaveBeenCalledWith("요청", ""));
@@ -878,9 +801,7 @@ describe("MarketplacePanel", () => {
       templates: ok({
         templates: [
           { id: "t1", name: "회의록" },
-          // No name: the button must still be keyed and labeled from the id.
           { id: "t2" },
-          // No id: the reverse — keyed and labeled from the name alone.
           { name: "노트 정리" },
         ],
       }),

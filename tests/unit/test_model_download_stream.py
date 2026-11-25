@@ -1,5 +1,3 @@
-"""Unit tests for real-time model download progress streaming (SSE), speed/ETA, and gated mirror fallbacks."""
-
 from __future__ import annotations
 
 import asyncio

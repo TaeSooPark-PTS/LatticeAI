@@ -46,7 +46,6 @@ describe("formatConversationTime", () => {
     const otherYear = new Date(2025, 5, 15, 9, 30).getTime();
 
     expect(formatConversationTime("ko", today)).toMatch(/09|9/);
-    // Every non-today bucket falls back to a short date, not a clock time.
     for (const stamp of [sameMonthOtherDay, otherMonth, otherYear]) {
       expect(formatConversationTime("ko", stamp)).not.toMatch(/:/);
       expect(formatConversationTime("ko", stamp)).toBeTruthy();
@@ -128,7 +127,6 @@ describe("PastConversationsPanel", () => {
     const first = screen.getByRole("button", { name: t("ko", "brain.history.deleteAria", { title: "대화 1" }) });
     const second = screen.getByRole("button", { name: t("ko", "brain.history.deleteAria", { title: "대화 2" }) });
 
-    // Blur of an unrelated delete button must not clear another row's confirm.
     fireEvent.click(first);
     fireEvent.blur(second);
     expect(first).toHaveAccessibleName(t("ko", "brain.history.deleteConfirm"));

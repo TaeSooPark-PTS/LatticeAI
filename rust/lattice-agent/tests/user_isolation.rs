@@ -1,11 +1,3 @@
-//! Per-user agent root & workspace isolation tests (Review §7.2).
-//!
-//! Verifies that authenticated users receive separate server-derived
-//! `AGENT_ROOT` directories (`users/<sanitized_user_id>`), authorized shared
-//! workspaces map to `workspaces/<sanitized_workspace_id>` while unauthorized
-//! shared workspaces fail closed, and User A cannot read, write, search,
-//! traverse (`..` or symlinks), or shell-execute into User B's files.
-
 use std::sync::Arc;
 
 use lattice_agent::kernel::policy::{default_blocked_write_prefixes, ToolPolicy};
@@ -86,7 +78,6 @@ fn personal_roots_never_collide_and_shared_requires_authorization() {
     );
     assert!(alice.is_confined());
 
-    // Unauthenticated access fails closed when isolation is required.
     let anon = Workspace::for_isolated_scope(&IsolatedRootSpec {
         base_root: base.clone(),
         user_id: None,
@@ -97,7 +88,6 @@ fn personal_roots_never_collide_and_shared_requires_authorization() {
     });
     assert!(anon.is_err());
 
-    // Spoofing a shared workspace without authorization fails closed.
     let spoofed = Workspace::for_isolated_scope(&IsolatedRootSpec {
         base_root: base.clone(),
         user_id: Some("a.b@example.com".into()),
@@ -108,7 +98,6 @@ fn personal_roots_never_collide_and_shared_requires_authorization() {
     });
     assert!(spoofed.is_err());
 
-    // Authorized shared workspace lands under workspaces/..., distinct from users/...
     let shared = Workspace::for_isolated_scope(&IsolatedRootSpec {
         base_root: base,
         user_id: Some("a.b@example.com".into()),
@@ -134,7 +123,6 @@ async fn user_a_cannot_read_write_traverse_symlink_or_exec_user_b_files() {
 
     std::fs::write(ws_b.root().join("secret.txt"), "BOB_TOP_SECRET\n").expect("bob secret");
 
-    // 1. Direct path / `..` traversal from User A's root to User B's root is blocked.
     let rel_to_b = format!(
         "../../users/{}/secret.txt",
         ws_b.root().file_name().unwrap().to_string_lossy()
@@ -144,7 +132,6 @@ async fn user_a_cannot_read_write_traverse_symlink_or_exec_user_b_files() {
         .resolve(&ws_b.root().join("secret.txt").to_string_lossy())
         .is_err());
 
-    // 2. Unix symlink inside User A's root pointing at User B's secret is blocked.
     #[cfg(unix)]
     {
         let link = ws_a.root().join("steal_bob");
@@ -153,7 +140,6 @@ async fn user_a_cannot_read_write_traverse_symlink_or_exec_user_b_files() {
         assert!(validate(&ws_a, "cat steal_bob", None).is_err());
     }
 
-    // 3. Shell execution validation blocks reading/searching User B's directory.
     assert!(validate(
         &ws_a,
         &format!("cat {}", ws_b.root().join("secret.txt").display()),
@@ -168,7 +154,6 @@ async fn user_a_cannot_read_write_traverse_symlink_or_exec_user_b_files() {
     )
     .is_err());
 
-    // 4. NativeTools confined mode blocks `local_write` into User B's directory or `..`.
     let cfg = ToolConfig {
         brain_dir: brain.clone(),
         role: "owner".into(),
@@ -205,7 +190,6 @@ async fn user_a_cannot_read_write_traverse_symlink_or_exec_user_b_files() {
     }
     assert!(!ws_b.root().join("pwned.txt").exists());
 
-    // 5. Vault write (`knowledge_save`) uses CallScope even if args spoof `bob@example.com`.
     let mut vault_args = serde_json::Map::new();
     vault_args.insert("content".into(), json!("alice private note"));
     vault_args.insert("user_email".into(), json!("bob@example.com"));
@@ -266,7 +250,6 @@ async fn isolated_loop_router_enforces_per_user_roots_and_shared_workspace_acl()
     });
     let client = reqwest::Client::new();
 
-    // Bob is denied access to org-eng.
     let resp = client
         .post(format!("{app_origin}/rust/agent/run"))
         .header("content-type", "application/json")
@@ -284,7 +267,6 @@ async fn isolated_loop_router_enforces_per_user_roots_and_shared_workspace_acl()
         .expect("resp");
     assert_eq!(resp.status(), reqwest::StatusCode::FORBIDDEN);
 
-    // Unauthenticated call without user_email is denied.
     let resp_anon = client
         .post(format!("{app_origin}/rust/agent/run"))
         .header("content-type", "application/json")
@@ -300,7 +282,6 @@ async fn isolated_loop_router_enforces_per_user_roots_and_shared_workspace_acl()
         .expect("resp");
     assert_eq!(resp_anon.status(), reqwest::StatusCode::FORBIDDEN);
 
-    // Empty ?user on /rust/agent/approvals returns empty list in isolated mode.
     let resp_approvals = client
         .get(format!("{app_origin}/rust/agent/approvals"))
         .send()

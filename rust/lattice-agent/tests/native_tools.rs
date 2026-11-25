@@ -1,15 +1,3 @@
-//! The native tool set, driven by the loop (v11.6.0, WP-W4).
-//!
-//! One property is worth a whole suite: **no mutating tool reaches
-//! `POST /agent/tool` any more.** The worker here counts every request it gets,
-//! and the sweep below drives the loop once per native tool — all twenty-two of
-//! them, with the real policy table from the loop goldens — asserting that the
-//! count stays zero while the step still lands on the transcript.
-//!
-//! The four document creators are the one exception that proves the split: they
-//! *do* call the worker, at `POST /worker/render/{kind}`, and then write the
-//! bytes here.
-
 mod common;
 
 use std::collections::VecDeque;
@@ -27,7 +15,6 @@ use lattice_agent::tools::{
 };
 use serde_json::{json, Value};
 
-/// A worker that answers completions and **counts** every other call.
 #[derive(Debug, Default)]
 struct CountingWorker {
     completions: Mutex<VecDeque<String>>,
@@ -102,8 +89,6 @@ async fn start_worker() -> Server {
                             .lock()
                             .expect("lock")
                             .push(json!({"kind": kind, "body": body}));
-                        // "RENDERED", base64 — five characters short of a real
-                        // docx and exactly as many bytes as the tool reports.
                         axum::Json(json!({"content_b64": "UkVOREVSRUQ="}))
                     }
                 }
@@ -119,7 +104,6 @@ async fn start_worker() -> Server {
     Server { origin, worker }
 }
 
-/// A host that counts what it was asked to run, around the real one.
 #[derive(Debug)]
 struct CountingHost {
     inner: NativeTools,
@@ -137,7 +121,6 @@ impl ToolHost for CountingHost {
     }
 }
 
-/// A scratch workspace, its brain directory, and a home for local writes.
 fn scratch(name: &str) -> (PathBuf, Workspace) {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("native_tools")
@@ -148,7 +131,6 @@ fn scratch(name: &str) -> (PathBuf, Workspace) {
     (dir, workspace)
 }
 
-/// The real policy table Python ships, from the loop goldens.
 fn policies() -> PolicyTable {
     serde_json::from_value(loop_golden("policies.json")).expect("policy table")
 }
@@ -178,9 +160,6 @@ fn deps(
         policies: table,
         tool_names,
         native,
-        // Scratch, never `from_env()`: these runs are `bypass`, so nothing is
-        // staged, but a default pointing at `$HOME` is one mode flag away from
-        // writing into the developer's own Review Center.
         proposals: Arc::new(lattice_agent::kernel::proposals::JsonProposalStore::new(
             dir.join("data"),
         )),
@@ -202,7 +181,6 @@ fn request() -> RunRequest {
 
 const FINAL: &str = r#"{"action": "final", "message": "done"}"#;
 
-/// One scripted tool call, then `final`.
 fn script(tool: &str, args: &Value) -> Vec<String> {
     vec![
         json!({"thoughts": "t", "action": tool, "args": args}).to_string(),
@@ -210,8 +188,6 @@ fn script(tool: &str, args: &Value) -> Vec<String> {
     ]
 }
 
-/// Every native tool, with arguments that reach it without touching anything
-/// outside the scratch directory.
 fn cases(dir: &std::path::Path) -> Vec<(&'static str, Value)> {
     let local = dir.join("home/local.txt").display().to_string();
     vec![
@@ -228,14 +204,8 @@ fn cases(dir: &std::path::Path) -> Vec<(&'static str, Value)> {
         ("run_command", json!({"command": "pwd"})),
         ("build_project", json!({})),
         ("deploy_project", json!({})),
-        // The two openers are driven down their refusal path on purpose: a test
-        // that spawns `open`/`xdg-open` would launch a real application on the
-        // machine running it. The spawn itself is covered by a unit test.
         ("computer_open_app", json!({"app": "   "})),
         ("computer_open_url", json!({"url": "  "})),
-        // The six pointer tools are deliberately absent: §4b sends them back to
-        // `POST /agent/tool`, and `every_pointer_tool_still_goes_to_the_worker`
-        // below is the assertion that they do.
         ("create_docx", json!({"title": "t", "body": "b"})),
         ("create_xlsx", json!({"rows": [[1, 2]]})),
         ("create_pptx", json!({"title": "t", "slides": []})),
@@ -250,7 +220,6 @@ async fn no_native_tool_reaches_the_worker_and_every_one_of_them_runs() {
 
     for (tool, args) in cases(&PathBuf::from(env!("CARGO_TARGET_TMPDIR"))) {
         let (dir, workspace) = scratch(tool);
-        // Re-derive the arguments against *this* case's directory.
         let args = match tool {
             "local_write" => json!({"path": dir.join("home/local.txt").display().to_string(),
                                     "content": "x"}),
@@ -302,8 +271,6 @@ async fn no_native_tool_reaches_the_worker_and_every_one_of_them_runs() {
     );
 }
 
-/// The other half of §4b: actuation is the worker's, and the loop sends it
-/// there rather than answering a refusal of its own.
 #[tokio::test]
 async fn every_pointer_tool_still_goes_to_the_worker() {
     let server = start_worker().await;
@@ -364,7 +331,6 @@ async fn the_writes_actually_land_where_python_put_them() {
         "hello"
     );
 
-    // …and a document creator writes the worker's bytes into its own directory.
     let (creator_deps, _) = deps(&server, &dir, &workspace, "owner");
     let mut runtime = Runtime::new(creator_deps);
     *server.worker.completions.lock().expect("lock") =
@@ -389,7 +355,6 @@ async fn the_writes_actually_land_where_python_put_them() {
 async fn the_default_role_refuses_the_admin_only_tools_without_calling_anyone() {
     let server = start_worker().await;
     let (dir, workspace) = scratch("role");
-    // No role wired — Python's `_default_get_user_role` answers "user".
     let (deps, dispatched) = deps(&server, &dir, &workspace, "user");
     let mut runtime = Runtime::new(deps);
     *server.worker.completions.lock().expect("lock") =
@@ -440,8 +405,6 @@ async fn a_scoped_knowledge_write_uses_the_servers_scope_not_the_models() {
         path.starts_with(&dir.join("brain").display().to_string()),
         "{path}"
     );
-    // The partition is the run's, so the attacker's claimed scope produced no
-    // directory of its own.
     let scopes = dir.join("brain/.lattice-scopes");
     let partitions = std::fs::read_dir(&scopes)
         .expect("scopes")
@@ -456,8 +419,6 @@ async fn a_blocked_gate_never_reaches_the_native_tools() {
     let (dir, workspace) = scratch("blocked");
     let (deps, dispatched) = deps(&server, &dir, &workspace, "owner");
     let mut runtime = Runtime::new(deps);
-    // `/etc/hosts` is rewritten into a destructive policy by `policy_for`, and
-    // the destructive gate is mode-invariant — `bypass` does not lift it.
     *server.worker.completions.lock().expect("lock") = script(
         "write_file",
         &json!({"path": "/etc/hosts", "content": "127.0.0.1 evil"}),
@@ -483,7 +444,6 @@ async fn a_blocked_gate_never_reaches_the_native_tools() {
 
 #[tokio::test]
 async fn a_compute_tool_still_goes_to_the_worker() {
-    // The other half of the property: `/agent/tool` is not dead, it is *narrow*.
     let server = start_worker().await;
     let (dir, workspace) = scratch("compute");
     let (deps, dispatched) = deps(&server, &dir, &workspace, "owner");

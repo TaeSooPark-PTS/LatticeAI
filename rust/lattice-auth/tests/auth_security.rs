@@ -1,24 +1,3 @@
-//! Replay `rust/fixtures/http/auth_security.json` against the native crate.
-//!
-//! The fixture is a recording of the **real** Python application and the
-//! **real** runtime guard closures (see `scripts/gen_auth_fixtures.py`). This
-//! test is the other half of that contract: for every case it rebuilds the
-//! recorded install — same env, same seeded `users.json` and `sessions.json` —
-//! and asserts the native answer is byte-identical.
-//!
-//! Two kinds of case:
-//!
-//! * `route` — issued over a real loopback socket against
-//!   [`lattice_auth::router_with_csrf`], with `ConnectInfo` wired so the peer
-//!   is what the CSRF policy and the rate-limit key actually see;
-//! * `guard` — calls [`AuthState::require_user`], `require_admin`,
-//!   [`lattice_auth::requested_workspace`] or the token bucket directly, and
-//!   renders the same tiny probe payload the generator recorded.
-//!
-//! Masking is symmetric with the generator and covers exactly two values, both
-//! documented in the fixture's `masks` block: the freshly issued session token
-//! and the logout cookie's live `expires` date.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -32,7 +11,6 @@ use lattice_auth::{
 };
 use serde_json::{json, Value};
 
-/// Response fields the fixture pins.
 const CAPTURED_HEADERS: [&str; 3] = ["content-type", "set-cookie", "retry-after"];
 
 fn fixture() -> Value {
@@ -46,7 +24,6 @@ fn fixture() -> Value {
     serde_json::from_str(&text).expect("fixture is valid JSON")
 }
 
-/// The generator's `mask_cookie`, character for character.
 fn mask_cookie(value: &str) -> String {
     let mut out = value.to_string();
     if let Some(rest) = out.strip_prefix("session_token=") {
@@ -65,7 +42,6 @@ fn mask_cookie(value: &str) -> String {
     out
 }
 
-/// Rebuild the install one case was recorded against.
 fn install(profile: &Value, dir: &Path) -> Arc<AuthState> {
     for (name, seed) in [
         ("users.json", "seed_users"),
@@ -93,8 +69,6 @@ fn install(profile: &Value, dir: &Path) -> Arc<AuthState> {
     let mut config = AuthConfig::from_map(&env, None);
     config.data_dir = dir.to_path_buf();
 
-    // One second after the seeded sessions were minted: live, and below the
-    // sliding-refresh threshold, exactly as when the fixture was recorded.
     let created_at = profile["session_created_at"].as_f64().unwrap_or(0.0);
     AuthState::with_clock(config, Clock::frozen(created_at + 1.0))
 }
@@ -115,8 +89,6 @@ fn header_map(headers: &Value) -> HeaderMap {
     map
 }
 
-// ── route cases ──────────────────────────────────────────────────────────────
-
 async fn serve(app: Router) -> (String, tokio::task::JoinHandle<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -132,7 +104,6 @@ async fn serve(app: Router) -> (String, tokio::task::JoinHandle<()>) {
     (format!("http://{addr}"), handle)
 }
 
-/// Status, captured headers, and the body — the whole comparable answer.
 struct Answer {
     status: u16,
     headers: HashMap<String, String>,
@@ -154,9 +125,6 @@ async fn issue(origin: &str, case: &Value) -> Answer {
         method,
         format!("{origin}{}", request["path"].as_str().expect("path")),
     );
-    // The recording ran behind `base_url="http://127.0.0.1:4825"`; the Host
-    // header feeds the CSRF same-origin fallback, so it is stated rather than
-    // left to the ephemeral test port.
     builder = builder.header("host", "127.0.0.1:4825");
     if let Some(object) = request["headers"].as_object() {
         for (name, value) in object {
@@ -201,8 +169,6 @@ async fn run_route(case: &Value, state: Arc<AuthState>) -> Answer {
     answer
 }
 
-// ── guard cases ──────────────────────────────────────────────────────────────
-
 fn probe_body(identity: &Identity) -> String {
     let mut map = OrderedMap::new();
     map.insert("email", json!(identity.email));
@@ -215,8 +181,6 @@ async fn refusal(response: axum::response::Response) -> Answer {
     let mut headers = HashMap::new();
     for name in CAPTURED_HEADERS {
         if name == "content-type" {
-            // Guard cases record only what the raised `HTTPException` carried;
-            // FastAPI supplies the content type, not the guard.
             continue;
         }
         if let Some(value) = response.headers().get(name) {
@@ -281,8 +245,6 @@ async fn run_guard(case: &Value, state: Arc<AuthState>) -> Answer {
         other => panic!("unknown guard {other}"),
     }
 }
-
-// ── the test ─────────────────────────────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]
 async fn every_recorded_case_replays_byte_for_byte() {
@@ -353,8 +315,6 @@ fn the_fixture_states_what_it_masks() {
     let masks = fixture["masks"].as_object().expect("masks");
     assert!(masks.contains_key("@token"));
     assert!(masks.contains_key("@date"));
-    // Both masks are only ever applied to `Set-Cookie`; nothing in a body is
-    // masked, so a body comparison is a whole-body comparison.
     for case in fixture["cases"].as_array().expect("cases") {
         let body = case["response"]["body"].as_str().unwrap_or_default();
         for mask in masks.keys() {

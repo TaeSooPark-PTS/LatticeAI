@@ -1,10 +1,3 @@
-//! Claim pending `vector_jobs`, embed them, and settle the queue.
-//!
-//! The HTTP handlers in [`super`] decide *whether* to drain and what the
-//! client is told. This module is the write path those handlers (and the
-//! scheduler's native tick) share: claim, optional worker embed, write
-//! vectors, mark `done` / `pending`.
-
 use lattice_core::graph_write::types::SuppliedVector;
 use lattice_core::graph_write::{Clock, GraphWriter, SystemClock};
 use lattice_core::worker::WorkerSeamClient;
@@ -12,7 +5,6 @@ use serde_json::Value;
 
 use super::status;
 
-/// One native drain tick, optionally via the worker embed seam.
 pub(crate) async fn drain_once(
     graph: GraphWriter,
     db: std::path::PathBuf,
@@ -49,7 +41,6 @@ pub(crate) async fn drain_once(
     let supplied = match embed_texts_batched(&seam, &items).await {
         Ok(supplied) => supplied,
         Err(error) => {
-            // Busy or down: put the claim back and tell the scheduler.
             let db = db.clone();
             let claimed = claimed.clone();
             match tokio::task::spawn_blocking(move || release_claim(&db, &claimed)).await {
@@ -69,9 +60,6 @@ pub(crate) async fn drain_once(
         .map_err(|error| error.to_string())
 }
 
-/// Batch `POST /worker/embed` for the collected texts. Concurrent in-flight
-/// requests stay inside [`crate::drain::EMBED_INFLIGHT`] so we do not trip
-/// the worker's `agent_seam` rate bucket (default 60/s).
 async fn embed_texts_batched(
     seam: &WorkerSeamClient,
     items: &[(String, String, String)],
@@ -164,13 +152,6 @@ fn release_claim(db: &std::path::Path, ids: &[String]) -> Result<(), String> {
     }
 }
 
-/// Enqueue `vector_jobs` for nodes still backed by the offline hash fallback
-/// (`lattice-local-hash-v1` or mismatched model) once a semantic
-/// `EmbeddingIndexContract` is active in `graph_meta`.
-///
-/// Keeps existing fallback vectors intact until each node's semantic vectors
-/// commit via `write_vectors_with`, so hybrid recall never drops to zero hits
-/// mid-transition.
 pub fn enqueue_fallback_upgrade_jobs(db: &std::path::Path, batch_cap: usize) -> usize {
     if batch_cap == 0 || !db.exists() {
         return 0;
@@ -240,12 +221,6 @@ pub fn enqueue_fallback_upgrade_jobs(db: &std::path::Path, batch_cap: usize) -> 
     enqueued
 }
 
-/// One native drain tick: claim pending `vector_jobs`, `write_vectors` each.
-///
-/// Claim is an atomic `UPDATE … RETURNING` so two ticks (or two in-flight
-/// POSTs) cannot process the same node. Rows stay `running` until this
-/// function writes `done` / `pending`, which is what makes the concurrent
-/// HTTP fan-out in [`crate::scheduler::Scheduler`] safe.
 pub fn drain_queue(
     graph: &GraphWriter,
     db: &std::path::Path,
@@ -254,10 +229,6 @@ pub fn drain_queue(
     drain_claimed(graph, db, &claim_pending(db, limit), &[])
 }
 
-/// Claim up to `limit` pending jobs, marking them `running`.
-///
-/// An unreadable store or a missing `vector_jobs` table returns an empty
-/// vec — the same "nothing to do" the previous `SELECT` path reported.
 pub fn claim_pending(db: &std::path::Path, limit: usize) -> Vec<String> {
     let Ok(conn) = rusqlite::Connection::open(db) else {
         return Vec::new();
@@ -304,16 +275,11 @@ fn collect_returning(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// Steal `running` rows whose `updated_at` is older than
-/// [`crate::drain::STALE_RUNNING_SECS`]. Comparison is lexicographic ISO-8601
-/// (the format GraphWriter and this crate both write).
 fn recover_stale_running(conn: &rusqlite::Connection) {
     let clock = SystemClock;
     let cutoff_unix = (clock.unix_time() as i64)
         .saturating_sub(crate::drain::STALE_RUNNING_SECS as i64)
         .max(0) as u64;
-    // `now_iso` is naive local. The cutoff is that stamp minus the stale
-    // window on the clock face — good enough to unstick a crashed host.
     let now = clock.now_iso();
     let cutoff = stale_iso_cutoff(&now, cutoff_unix, clock.unix_time() as u64);
     let _ = conn.execute(
@@ -324,9 +290,6 @@ fn recover_stale_running(conn: &rusqlite::Connection) {
 }
 
 fn stale_iso_cutoff(now_iso: &str, cutoff_unix: u64, now_unix: u64) -> String {
-    // Prefer a string that sorts before `now_iso` by the stale window. When
-    // the stamp is `YYYY-MM-DDTHH:MM:SS` we subtract seconds on the clock
-    // face; anything else falls back to `now_iso` itself (no recovery).
     if now_iso.len() < 19 || now_unix < cutoff_unix {
         return now_iso.to_string();
     }
@@ -351,15 +314,12 @@ fn shift_iso_seconds(stamp: &str, delta: i64) -> Option<String> {
             tod % 60
         ));
     }
-    // A two-minute window that crosses midnight: pin to the start of today
-    // so yesterday's abandoned `running` rows still compare as stale.
     if tod < 0 {
         return Some(format!("{date}T00:00:00"));
     }
     Some(format!("{date}T23:59:59"))
 }
 
-/// Finish already-claimed node ids: embed (supplied or native) and settle status.
 pub fn drain_claimed(
     graph: &GraphWriter,
     db: &std::path::Path,
@@ -396,9 +356,6 @@ pub fn drain_claimed(
     outcome
 }
 
-/// `(node_id, item_id, text)` the worker embed seam should see for these nodes.
-///
-/// Same text GraphWriter would hash: the node vector-text plus each chunk.
 pub fn embed_items_for_nodes(
     db: &std::path::Path,
     node_ids: &[String],
@@ -533,7 +490,6 @@ mod tests {
              INSERT INTO vector_jobs VALUES ('n1', 'done', 0, NULL, '2026-11-17T00:00:00', '2026-11-17T00:00:00');",
         )
         .unwrap();
-        // Offline contract -> 0 queued
         assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 0);
 
         let semantic = lattice_core::embedding_contract::EmbeddingIndexContract::from_semantic(
@@ -549,7 +505,6 @@ mod tests {
         drop(conn);
 
         assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 1);
-        // Second call is idempotent while n1 is already pending.
         assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 0);
         assert_eq!(claim_pending(&db, 10), vec!["n1".to_string()]);
     }

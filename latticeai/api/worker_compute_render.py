@@ -1,5 +1,3 @@
-"""Office/PDF binary builders and Pydantic request schemas for worker_compute."""
-
 from __future__ import annotations
 
 import io
@@ -12,14 +10,11 @@ from latticeai.core.quiet import quiet
 from latticeai.tools import _CJK_FONT_CANDIDATES, ToolError
 from latticeai.tools.documents import _body_to_str
 
-# ── document builders: create_* minus the filesystem ────────────────────────
-
 
 def build_docx_bytes(title: str, body: Any) -> bytes:
-    """``tools.documents.create_docx``'s document, returned instead of saved."""
     try:
         from docx import Document
-    except Exception as exc:  # noqa: BLE001 — an absent library is a configuration
+    except Exception as exc:
         raise ToolError(
             "python-docx is not installed. Run `pip install -r requirements.txt`."
         ) from exc
@@ -37,10 +32,9 @@ def build_docx_bytes(title: str, body: Any) -> bytes:
 
 
 def build_xlsx_bytes(rows: Any, sheet_name: str = "Sheet1") -> bytes:
-    """``tools.documents.create_xlsx``'s workbook, returned instead of saved."""
     try:
         from openpyxl import Workbook
-    except Exception as exc:  # noqa: BLE001 — an absent library is a configuration
+    except Exception as exc:
         raise ToolError(
             "openpyxl is not installed. Run `pip install -r requirements.txt`."
         ) from exc
@@ -59,10 +53,9 @@ def build_xlsx_bytes(rows: Any, sheet_name: str = "Sheet1") -> bytes:
 
 
 def build_pptx_bytes(title: str, slides: Any) -> bytes:
-    """``tools.documents.create_pptx``'s deck, returned instead of saved."""
     try:
         from pptx import Presentation
-    except Exception as exc:  # noqa: BLE001 — an absent library is a configuration
+    except Exception as exc:
         raise ToolError(
             "python-pptx is not installed. Run `pip install -r requirements.txt`."
         ) from exc
@@ -93,19 +86,14 @@ def build_pptx_bytes(title: str, slides: Any) -> bytes:
 
 
 def build_pdf_bytes(title: str, body: Any) -> bytes:
-    """``tools.documents.create_pdf``'s PDF, returned instead of saved.
-
-    The CJK font hunt is kept verbatim: without it a Korean document renders as
-    a page of empty boxes, and that is not a cosmetic difference.
-    """
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
         from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.pdfbase.ttfonts import TTFError, TTFont
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-    except Exception as exc:  # noqa: BLE001 — an absent library is a configuration
+    except Exception as exc:
         raise ToolError(
             "reportlab is not installed. Run `pip install reportlab`."
         ) from exc
@@ -118,7 +106,7 @@ def build_pdf_bytes(title: str, body: Any) -> bytes:
             try:
                 pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
                 font_name = "KoreanFont"
-            except Exception:  # noqa: BLE001 — a broken font file is not a failed render
+            except (OSError, RuntimeError, ValueError, LookupError, TTFError):
                 quiet("CJK font registration")
             break
 
@@ -156,73 +144,52 @@ def build_pdf_bytes(title: str, body: Any) -> bytes:
     return buffer.getvalue()
 
 
-# ── request bodies ──────────────────────────────────────────────────────────
-
-
 class EmbedRequest(BaseModel):
-    """Texts in, vectors out. ``kind`` selects the write-path clamp."""
-
     texts: List[str] = Field(default_factory=list)
     kind: str = "passage"
 
 
 class ParseRequest(BaseModel):
-    """One document, by name and by bytes. ``filename`` picks the parser."""
-
     filename: str
     content_b64: str
 
 
 class RenderDocxRequest(BaseModel):
-    """``ToolDocxRequest``, verbatim — W3 forwards its body unchanged."""
-
     title: str = ""
     body: str = ""
     filename: str = "document.docx"
 
 
 class RenderXlsxRequest(BaseModel):
-    """``ToolXlsxRequest``, verbatim."""
-
     rows: List[List] = Field(default_factory=list)
     filename: str = "spreadsheet.xlsx"
     sheet_name: str = "Sheet1"
 
 
 class RenderPptxRequest(BaseModel):
-    """``ToolPptxRequest``, verbatim."""
-
     title: str = ""
     slides: List[Dict] = Field(default_factory=list)
     filename: str = "presentation.pptx"
 
 
 class RenderPdfRequest(BaseModel):
-    """``ToolPdfRequest``, verbatim."""
-
     title: str = ""
     body: str = ""
     filename: str = "document.pdf"
 
 
 class AsrRequest(BaseModel):
-    """One recording. ``filename``/``mime`` only choose the temp suffix."""
-
     audio_b64: str
     mime: Optional[str] = None
     filename: Optional[str] = None
 
 
 class ExtractRequest(BaseModel):
-    """The text one ingest door would hand ``_extract_concepts``."""
-
     text: str = ""
     kind: str = "message"
 
 
 class VectorQueryRequest(BaseModel):
-    """Approximate neighbours from the HNSW sidecar. ``k`` is capped at 200."""
-
     workspace: Optional[str] = None
     embedding_model: str
     embedding_dim: int

@@ -1,5 +1,3 @@
-//! Shared governed dispatch for `POST /mcp` (`tools/call`) and `POST /mcp/call`.
-
 use axum::http::HeaderMap;
 use lattice_auth::Identity;
 use serde_json::{json, Value};
@@ -10,7 +8,6 @@ use crate::toolsurface::tools::shell::run_git_status;
 use crate::toolsurface::tools::{check_governance, ToolExecError, ToolsState};
 use crate::workspaceos::workspace::skills::{self, InstalledSkill};
 
-/// The curated, read-oriented native tools MCP exposes.
 pub const NATIVE_TOOLS: &[NativeTool] = &[
     NativeTool {
         name: "list_dir",
@@ -106,23 +103,6 @@ pub fn parse_skill_name(name: &str) -> Option<&str> {
         .filter(|rest| !rest.is_empty() && !rest.contains('/') && !rest.contains('\\'))
 }
 
-/// Dispatch one `mcp.*` (or bare MCP-native) name for the agent loop.
-///
-/// # Governance contract
-///
-/// This is the same [`check_governance`] `POST /mcp` runs — not a second,
-/// shorter check written for the loop. The kernel's gate chain is a
-/// **superset** of that check, so a name the run already governs never
-/// reaches here (`lattice_agent::tools::catalog::resolve` rewrites it to
-/// the native path). A name the run does *not* govern still cannot bypass
-/// MCP's own check: a governance refusal, an unknown tool, or a missing
-/// [`ToolsState`] all return `Err`, which the catalog turns into a tool
-/// error. There is no ungoverned success path.
-///
-/// Governance is evaluated **before** the `ToolsState` requirement, so a
-/// catalog that has not been handed a tool surface still refuses on the
-/// same grounds `/mcp` would, rather than looking like a configuration
-/// miss.
 pub fn dispatch_for_agent(
     tools: Option<&ToolsState>,
     skills_dir: &std::path::Path,
@@ -144,7 +124,6 @@ pub fn dispatch_for_agent(
     dispatch(tools, skills_dir, identity, &HeaderMap::new(), bare, args)
 }
 
-/// Run a native tool or return a skill prompt asset.
 pub fn dispatch(
     tools: Option<&ToolsState>,
     skills_dir: &std::path::Path,
@@ -233,8 +212,6 @@ mod tests {
 
     #[test]
     fn a_curated_tool_still_hits_governance_without_a_tool_surface() {
-        // knowledge_search is auto-approve=false; a non-owner is refused by
-        // the same check POST /mcp runs, even when ToolsState is absent.
         let member = Identity {
             email: "member@example.com".into(),
             role: "user".into(),

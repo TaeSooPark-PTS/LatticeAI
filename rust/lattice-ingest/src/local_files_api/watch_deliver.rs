@@ -1,6 +1,3 @@
-//! Per-file delivery for watched folders/vaults, including two-phase async
-//! incremental chunk sync for both local-hash and semantic embedding contracts.
-
 use std::path::Path;
 
 use lattice_core::worker::WorkerSeamClient;
@@ -11,23 +8,11 @@ use crate::incremental_sync::{
 use crate::local_files_api::enrich;
 use crate::worker::{NoteIngestor, NoteSubmission};
 
-/// What delivering one watched file did.
 pub(super) enum Delivered {
-    /// Parse / extract / embed ran.
     Ingested,
-    /// Fingerprint (stamp or content hash) said the file is unchanged.
     Skipped,
 }
 
-/// One detected file → one note in the Brain, through the shared enrich chain.
-///
-/// The binary half is F-ING's: a `.pdf` / `.docx` in a watched vault goes
-/// through `POST /worker/parse` exactly as the upload door sends it, so the
-/// note carries the document's text rather than its bytes. A file the seam
-/// cannot read is a named per-file failure, never a failed scan.
-///
-/// Unchanged bytes (mtime/size moved, sha256 did not) skip parse/extract/embed
-/// using the same provenance fingerprint folder ingest records.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn deliver(
     ingestor: &NoteIngestor,
@@ -90,8 +75,6 @@ pub(super) async fn deliver(
         .map_err(|error| error.to_string())
 }
 
-/// Deliver a relocated/moved file using bi-temporal `moved_from_uri` lineage
-/// and cached chunk-vector reuse (P2.2).
 pub(super) async fn deliver_moved_file(
     ingestor: &NoteIngestor,
     seam: Option<&WorkerSeamClient>,
@@ -137,10 +120,6 @@ pub(super) async fn deliver_moved_file(
         .map_err(|error| error.to_string())
 }
 
-/// Two-phase async incremental chunk sync:
-/// 1. `plan_incremental_sync` (blocking SQLite read) collects only uncached texts.
-/// 2. Async `/worker/embed` (for semantic contracts) or local hash embedder computes vectors.
-/// 3. `commit_incremental_sync` (blocking SQLite write) commits atomically & retires stale chunks.
 async fn try_incremental_sync_async(
     ingestor: &NoteIngestor,
     seam: Option<&WorkerSeamClient>,

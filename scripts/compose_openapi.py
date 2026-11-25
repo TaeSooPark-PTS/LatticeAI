@@ -1,58 +1,4 @@
 #!/usr/bin/env python3
-"""Rebuild the OpenAPI contract from committed fragments and prove it exact.
-
-README — what this is, and the one step that flips it on
-========================================================
-
-``frontend/openapi.json`` is the single committed contract and stays that way.
-v11.6.0 moves most of the surface it describes out of Python, so the spec of
-each migrated family lives beside the Rust crates as a committed fragment
-(``rust/fixtures/openapi/<family>.json``, written by
-``scripts/gen_openapi_fragments.py``). This script runs that split backwards:
-
-    envelope + every fragment  ==  frontend/openapi.json,  byte for byte
-
-Byte-for-byte is the whole point. It is compared as *bytes*, not as parsed
-JSON, so a re-ordered key, a changed indent or an ``int`` that became a
-``float`` all fail here instead of surfacing as client drift later.
-
-**Cutover (Wave 3 / WP-P1) — one step, deliberately not taken yet.**
-Today ``scripts/export_openapi.py`` builds the whole FastAPI app and dumps its
-schema; this script only *verifies*. Once the Python app is reduced to the
-worker surface, its schema no longer describes the product, and the pipeline
-flips:
-
-1. Keep ``scripts/export_openapi.py`` exporting the (now worker-only) app, but
-   to a scratch path — it becomes an input, not the contract.
-2. Regenerate ``rust/fixtures/openapi/worker_keep.json`` from that worker spec
-   (``gen_openapi_fragments.py`` still owns the fragment shape); the other
-   fragments are already committed and stop depending on Python entirely.
-   ``info.version`` lives in ``_envelope.json``, so the fragments are
-   regenerated **after** the version bump, never before — the composer refuses
-   a worker spec whose version disagrees with theirs.
-3. Point ``npm run frontend:openapi`` at
-   ``scripts/compose_openapi.py --worker-spec <scratch> --output frontend/openapi.json``
-   followed by ``scripts/generate_openapi_types.mjs``, so the committed
-   contract is the composition rather than a Python dump.
-4. Leave ``scripts/check_openapi_drift.mjs`` exactly as it is: it re-runs the
-   generator into a temp dir and byte-compares. Composition is deterministic,
-   so the gate keeps biting — it now bites on fragment drift too.
-
-Until step 3 lands, ``--worker-spec`` is verification only: it asserts the
-worker app's operations are a **subset** of the ``worker_keep`` fragment, i.e.
-that Python has not grown a route the gateway would have to proxy without a
-contract. That is the cutover's precondition, checkable today. The exception is
-``EXEMPT_WORKER_PATHS``: WP-I6's internal ``/worker/*`` seams are loopback-only
-and stay out of the public contract by design, and FastAPI's own docs
-endpoints describe the schema rather than being surface. Both are named
-explicitly below so nothing else slips through with them.
-
-Usage::
-
-    .venv/bin/python scripts/compose_openapi.py
-    .venv/bin/python scripts/compose_openapi.py --worker-spec /tmp/worker.json
-    .venv/bin/python scripts/compose_openapi.py --output /tmp/composed.json
-"""
 
 from __future__ import annotations
 
@@ -68,14 +14,9 @@ from typing import Any, Dict, List, Mapping, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-# ``scripts`` is not a package, so the generator is loaded by path — the same
-# trick the parity generators and their tests use. Importing it rather than
-# retyping its constants is what keeps *one* serialiser in the pipeline: if the
-# two halves could disagree about ``sort_keys`` or ``indent``, byte-exactness
-# would be a coincidence instead of a property.
 def _load_module(name: str, path: Path) -> Any:
     spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:  # pragma: no cover - packaging accident
+    if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -99,20 +40,10 @@ operation_key = fragments_module.operation_key
 spec_operations = fragments_module.spec_operations
 
 
-#: WP-I6's internal worker seams. The gateway calls them over loopback behind
-#: the seam gate; no client ever does, so they are deliberately absent from the
-#: committed public contract and must not be filed into the ``worker_keep``
-#: fragment. They are exempt from the subset check — and only they are.
 INTERNAL_WORKER_PATHS = frozenset(
     {
-        # ``/worker/chat/record-turn`` was the third state seam. WP-W3a moved
-        # the history chain into lattice-chat and WP-P1 deleted the handler.
         "/worker/sysinfo",
         "/worker/llm/stream",
-        # Wave 2.5 §W2 — the pure-compute seams. Same reasoning: the gateway
-        # calls them over loopback behind the seam gate, and the shapes they
-        # exchange (vectors, document bytes, parsed text) are an internal
-        # protocol between lattice-host and its own worker, not client surface.
         "/worker/embed",
         "/worker/parse",
         "/worker/render/docx",
@@ -120,37 +51,23 @@ INTERNAL_WORKER_PATHS = frozenset(
         "/worker/render/pptx",
         "/worker/render/pdf",
         "/worker/asr",
-        # ``/worker/multimodal/describe`` was here until v11.8.0 deleted the
-        # seam: it described an image for a native ingest nothing ever built.
         "/worker/extract",
-        # v12.0.0 — HNSW sidecar query. Same loopback-only reasoning.
         "/worker/vector/query",
     }
 )
 
-#: FastAPI's own documentation endpoints. They are normally ``include_in_schema
-#: = False`` and never reach ``paths`` (the committed contract has none of
-#: them), but a worker app that turns docs on should not fail this check either
-#: — they describe the schema, they are not product surface.
 DOC_PATHS = frozenset({"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"})
 
-#: Everything a worker spec may serve without a committed contract entry.
 EXEMPT_WORKER_PATHS = INTERNAL_WORKER_PATHS | DOC_PATHS
 
 
 class CompositionError(Exception):
-    """A fragment set that cannot be reassembled into one coherent spec."""
+    pass
 
 
 def read_fragment_set(
     directory: Path,
 ) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]], List[str]]:
-    """Load the envelope and every fragment ``_index.json`` lists.
-
-    Returns ``(envelope, fragments_by_family, problems)``. Recorded sha256 values
-    are checked here: a hand-edited fragment is reported as stale rather than
-    silently composed, because the index is what the Rust tests and CI read.
-    """
     index_path = directory / INDEX_NAME
     if not index_path.is_file():
         raise CompositionError(
@@ -183,7 +100,6 @@ def merge_fragments(
     envelope: Mapping[str, Any],
     fragments: Mapping[str, Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """Reassemble one spec. Raises on a collision rather than picking a winner."""
     spec: Dict[str, Any] = copy.deepcopy(dict(envelope["spec"]))
     paths: Dict[str, Any] = {}
     owner: Dict[str, str] = {}
@@ -218,7 +134,6 @@ def merge_fragments(
 
 
 def diff_report(composed_text: str, committed_text: str, limit: int = 40) -> List[str]:
-    """A readable account of how the composition misses the committed bytes."""
     composed = load_json_text(composed_text)
     committed = load_json_text(committed_text)
     lines: List[str] = []
@@ -273,20 +188,6 @@ def worker_spec_problems(
     worker_fragment: Mapping[str, Any],
     envelope: Mapping[str, Any],
 ) -> List[str]:
-    """Check the worker app against the ``worker_keep`` fragment.
-
-    Two things are asserted. First the subset: every operation the worker app
-    still serves must have a committed contract in the fragment, or the gateway
-    would be proxying a route nothing describes. Second the version: the
-    fragments embed ``info.version``, so a bump that regenerated the worker spec
-    without regenerating the fragments is drift — the same trap that reddens the
-    drift gate when ``npm run frontend:openapi`` runs before the bump.
-
-    ``EXEMPT_WORKER_PATHS`` is the one hole, and it is a named list rather than
-    a pattern: WP-I6's internal seams are loopback-only and seam-gated, so they
-    are product surface for the gateway alone and never enter the committed
-    public contract. Anything else the worker grows still fails here.
-    """
     problems: List[str] = []
     kept = {
         operation_key(method, path)
@@ -321,7 +222,6 @@ def compose(
     spec_path: Path = SPEC_PATH,
     worker_spec_path: Path | None = None,
 ) -> Tuple[str, List[str]]:
-    """Compose, verify, and return ``(composed_text, problems)``."""
     envelope, fragments, problems = read_fragment_set(directory)
     composed_text = canonical_json(merge_fragments(envelope, fragments))
     committed_text = spec_path.read_text(encoding="utf-8")

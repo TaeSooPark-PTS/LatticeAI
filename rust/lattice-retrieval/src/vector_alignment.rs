@@ -1,11 +1,3 @@
-//! Provider/model alignment and SQL-scoped vector search (`vector_search_aligned`).
-//!
-//! Ensures vector search matches stored embeddings against the active provider
-//! `model_id` & dimension (or canonical model family alias when dimensions align),
-//! executes workspace and lifecycle filtering in SQL before `ORDER BY ... LIMIT`,
-//! and explicitly reports `"semantic_provider_match"`, `"hash_fallback"`, or
-//! `"reindex_required"`.
-
 use lattice_core::read::{vector_row_from, VectorRow};
 use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
@@ -15,14 +7,10 @@ use crate::bm25::scoring::{build_workspace_sql_predicate, detect_nodes_v2_schema
 use crate::service::Scope;
 use crate::vector::{candidate_cap, recall_report, resolve_vector_index, sort_key, vector_match};
 
-/// Provider/model alignment verdict for vector search against `vector_embeddings`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VectorProviderStatus {
-    /// Stored vectors match the active non-hash semantic provider model & dimension.
     SemanticProviderMatch,
-    /// Search is executing with deterministic hash fallback embeddings.
     HashFallback,
-    /// Stored embeddings exist under an incompatible model or dimension and require re-indexing.
     ReindexRequired,
 }
 
@@ -36,7 +24,6 @@ impl VectorProviderStatus {
     }
 }
 
-/// Summary of one `(embedding_model, embedding_dim)` group present in `vector_embeddings`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoredEmbeddingSummary {
     pub model_id: String,
@@ -45,7 +32,6 @@ pub struct StoredEmbeddingSummary {
     pub is_hash: bool,
 }
 
-/// Query vector input for [`vector_search_aligned`].
 #[derive(Debug, Clone, Copy)]
 pub enum VectorQueryInput<'a> {
     Model(&'a LocalEmbeddingModel),
@@ -56,7 +42,6 @@ pub enum VectorQueryInput<'a> {
     },
 }
 
-/// Scoped, lifecycle-aware options for [`vector_search_aligned`].
 #[derive(Debug, Clone)]
 pub struct VectorSearchOptions<'a> {
     pub limit: i64,
@@ -76,7 +61,6 @@ impl<'a> Default for VectorSearchOptions<'a> {
     }
 }
 
-/// True when `model_id` identifies a deterministic local hash or subword fallback embedder.
 pub fn is_hash_model_id(model_id: &str) -> bool {
     let lower = model_id.trim().to_ascii_lowercase();
     lower.contains("hash")
@@ -84,9 +68,6 @@ pub fn is_hash_model_id(model_id: &str) -> bool {
         || lower.starts_with("lattice-fallback")
 }
 
-/// Extract canonical model family stem (stripping org prefix and `:dim` / `@rev` suffixes)
-/// so consistent model identifiers (e.g. `google/embeddinggemma-2` vs `embeddinggemma-2:768`)
-/// can align safely when dimensions match.
 pub fn canonical_model_family(model_id: &str) -> String {
     let trimmed = model_id.trim().to_ascii_lowercase();
     let no_org = trimmed.rsplit('/').next().unwrap_or(&trimmed);
@@ -98,7 +79,6 @@ pub fn canonical_model_family(model_id: &str) -> String {
     stem.to_string()
 }
 
-/// Inspect stored `(embedding_model, embedding_dim)` groups in `vector_embeddings`.
 pub fn inspect_stored_embedding_models(
     conn: &Connection,
 ) -> Result<Vec<StoredEmbeddingSummary>, CoreError> {
@@ -389,7 +369,6 @@ fn build_aligned_vector_sql(
     Ok((count_sql, select_sql, count_params, select_params))
 }
 
-/// Provider-aligned, workspace-scoped & lifecycle-aware vector search.
 pub fn vector_search_aligned(
     conn: &Connection,
     query_input: VectorQueryInput<'_>,
@@ -539,7 +518,6 @@ pub fn vector_search_aligned(
             .cloned()
             .collect();
         if filtered.is_empty() {
-            // Workspace/lifecycle filter eliminated top ANN candidates; fall back cleanly to exact scan.
             index_json = selection.as_json();
             all_rows
         } else {

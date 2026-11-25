@@ -1,5 +1,3 @@
-//! Shared replay harness for the six WP-R5 families.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -42,8 +40,6 @@ pub fn cases_for(family: &str) -> Vec<Value> {
 pub struct Install {
     pub origin: String,
     pub token: String,
-    /// What `@today` resolves to. [`CAPTURE_DATE`], never the calendar's answer —
-    /// a replay that moved with the calendar would be a replay of nothing.
     pub today: String,
     _data: tempfile::TempDir,
     _home: tempfile::TempDir,
@@ -52,21 +48,14 @@ pub struct Install {
 }
 
 impl Install {
-    /// The replay install: every clock frozen at the capture.
     pub async fn start() -> Self {
         Self::start_at(capture_utc_secs()).await
     }
 
-    /// A brand-new data dir: GraphWriter bootstrap only, no seeded Brain.
-    ///
-    /// Used to pin the fresh-Brain memory reads that used to 500 on a missing
-    /// `conversation_messages` table.
     pub async fn start_fresh() -> Self {
         Self::boot(capture_utc_secs(), false).await
     }
 
-    /// The same install with the UTC clock moved, for testing what the passage
-    /// of time does to a fixture. Nothing but a test should need this.
     pub async fn start_at(now_utc: f64) -> Self {
         Self::boot(now_utc, true).await
     }
@@ -118,8 +107,6 @@ impl Install {
             .with_seam(seam)
             .with_brain_dir(&brain_dir)
             .with_clock(Arc::new(|| CAPTURE_NOON.to_string()))
-            // The instant the health/hygiene sections measure against. Without
-            // it the briefing fixture expires 45 days after the capture.
             .with_utc_clock(Arc::new(move || now_utc))
             .with_synthesis_pending(15);
 
@@ -154,10 +141,6 @@ impl Install {
         }
     }
 
-    /// The sandbox data directory, holding the *copy* of the seeded store.
-    ///
-    /// Exposed so a test can assert what seeding produced. The committed
-    /// `brain_store.sqlite` is read-only to this harness and stays that way.
     pub fn data_dir(&self) -> &Path {
         self._data.path()
     }
@@ -168,11 +151,6 @@ impl Install {
         }
     }
 
-    /// Issue one fixture case and hand back `(status, content-type, body)`.
-    ///
-    /// Split out of [`Install::replay_one`] so a test can ask what a case
-    /// answers *without* asserting that it matches — which is what a falsifier
-    /// needs, since its whole point is an answer that must differ.
     pub async fn issue(&self, case: &Value) -> (u16, String, String) {
         let name = case["name"].as_str().unwrap_or("?");
         let method = case["method"].as_str().expect("method");
@@ -189,7 +167,6 @@ impl Install {
                             if name.contains("past") {
                                 "2020-01-01T00:00:00".to_string()
                             } else {
-                                // Deliberately not "now": see CAPTURE_END_OF_DAY.
                                 CAPTURE_END_OF_DAY.to_string()
                             }
                         }
@@ -259,8 +236,6 @@ impl Install {
             if expected.is_null() {
                 return;
             }
-            // Synthesize payload field set is still converging on Python's
-            // ProposalDesk extras; pin status. Other brain cases keep bodies.
             if name == "synthesize"
                 || name.starts_with("consolidate")
                 || name.starts_with("brain_proof")

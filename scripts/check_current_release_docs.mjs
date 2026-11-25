@@ -71,8 +71,6 @@ for (const rel of [
   requireIncludes(rel, version);
 }
 
-// The Release Artifact Map in ARCHITECTURE.md must name current-version
-// artifacts exactly — this block drifted silently before 9.9.1.
 requireIncludes("ARCHITECTURE.md", `${version} exact artifact names:`);
 for (const artifact of [
   `dist/ltcai-${version}-py3-none-any.whl`,
@@ -96,9 +94,6 @@ requireIncludes("RELEASE.md", `## v${version} — ${releaseTheme}`);
 requireIncludes("docs/CHANGELOG.md", `## [${version}]`);
 requireIncludes("RELEASE_NOTES.md", `[v${version} - ${releaseTheme}]`);
 requireIncludes("CHANGELOG.md", "starts at v8.0.0");
-// 13.7.0 moved the public release-history floor to 13.0.0 ("v13.0.0+ Only"),
-// pruning pre-v13 release notes from docs/releases/, RELEASE.md,
-// RELEASE_NOTES.md, docs/CHANGELOG.md, README.md, and SECURITY.md.
 requireIncludes("RELEASE_NOTES.md", `13.0.0 through ${version}`);
 requireIncludes("SECURITY.md", `${version.split(".").slice(0, 2).join(".")}.x (latest)`);
 

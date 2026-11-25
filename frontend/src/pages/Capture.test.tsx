@@ -36,7 +36,6 @@ const fileHandle = (name: string) => ({
   getFile: async () => makeFile(name),
 });
 
-/** An array-like `FileList` stand-in jsdom will accept on a file input. */
 function setInputFiles(input: HTMLInputElement, files: File[] | null) {
   const value = files
     ? Object.assign([...files], { item: (i: number) => files[i] ?? null })
@@ -44,12 +43,6 @@ function setInputFiles(input: HTMLInputElement, files: File[] | null) {
   Object.defineProperty(input, "files", { value, configurable: true });
 }
 
-/**
- * The capture screen brings outside material into the Brain. Its honesty
- * requirements are specific: an unscanned folder must not read as "0% indexed",
- * a failed ingest must name its reason, and nothing may claim to have been
- * captured that was not.
- */
 
 const SOURCES = {
   sources: [
@@ -110,15 +103,6 @@ describe("CapturePage", () => {
     expect(document.body.textContent).not.toMatch(/undefined/);
   });
 
-  /**
-   * Adding material is one action, not a choice between four screens.
-   *
-   * File, folder and web used to be three of four page-level tabs, ranked equal
-   * with the indexer's status page — so the highest-value path here, connecting
-   * a folder, sat two tabs deep behind a label naming a *place* rather than a
-   * thing to do. These tests hold the station together: one group of methods at
-   * the top, and the reporting panels always on screen beneath it.
-   */
   it("puts every way of adding material in one station, with no page tablist", async () => {
     render();
     await waitFor(() => expect(screen.getByTestId("capture-method-files")).toBeTruthy());
@@ -127,7 +111,6 @@ describe("CapturePage", () => {
     for (const name of ["파일 올리기", "폴더 연결하기", "웹페이지 저장하기"]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
     }
-    // Toggle buttons, so the chosen one announces itself as pressed.
     expect(screen.getByTestId("capture-method-files").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("capture-method-local").getAttribute("aria-pressed")).toBe("false");
   });
@@ -145,8 +128,6 @@ describe("CapturePage", () => {
   });
 
   it("shows progress and what was already added without choosing a tab first", async () => {
-    // Both used to be tabs of their own, so a person who added a file and
-    // wanted to know where it went had to go looking for the answer.
     render();
     await waitFor(() => expect(document.body.textContent).toContain("업로드된 문서"));
     expect(screen.getByRole("list", { name: "자료가 기억이 되는 3단계" })).toBeTruthy();
@@ -198,14 +179,12 @@ describe("CapturePage file intake", () => {
     await screen.findByText("파일을 놓거나 문서를 선택");
     await userEvent.upload(fileInput(), [makeFile("ok.md"), makeFile("bad.md")]);
 
-    // While the first file is in flight the second still waits its turn.
     await screen.findByText(/내용을 읽어 기억에 넣는 중/);
     expect(screen.getByText(/저장 준비 중/)).toBeTruthy();
 
     await act(async () => { first.resolve(ok({ node_id: "node-1" })); });
     await screen.findByText(/출처 정보와 함께 저장됨 · node-1/);
 
-    // The second file failed, names its reason, and offers a retry.
     await screen.findAllByText(/디스크가 가득 참/);
     await userEvent.click(screen.getByRole("button", { name: /다시 시도/ }));
     await screen.findByText(/출처 정보와 함께 저장됨 · node-7/);
@@ -384,7 +363,6 @@ describe("CapturePage folder intake", () => {
     setInputFiles(dirInput(), [makeFile("a.txt", "Proj/a.txt")]);
     fireEvent.change(dirInput());
     await screen.findByText("Proj 파일을 Brain에 넣었습니다.");
-    // The queue names the file by its path inside the folder.
     expect(screen.getByText("Proj/a.txt")).toBeTruthy();
   });
 
@@ -436,11 +414,6 @@ describe("CapturePage folder intake", () => {
     renderFolder();
     await userEvent.click(await chooseButton());
     const choosing = await screen.findByRole("button", { name: /선택 중/ });
-    // The button is disabled while choosing. Removing the DOM attribute does
-    // not reach `chooseFolder`'s own re-entry guard either: React suppresses
-    // onClick for a disabled control from its own (still-disabled) props,
-    // not the live DOM attribute, so this only proves the picker still opens
-    // once — defense-in-depth on top of that, not evidence the guard ran.
     choosing.removeAttribute("disabled");
     fireEvent.click(choosing);
     expect(picker).toHaveBeenCalledTimes(1);
@@ -514,7 +487,6 @@ describe("CapturePage web intake", () => {
     await userEvent.type(input, "https://ko.example.com/a");
     await userEvent.click(saveButton());
     expect(browserReadUrl).toHaveBeenCalledWith("https://ko.example.com/a");
-    // While the capture runs, both actions wait.
     expect(screen.getByRole("button", { name: /붙여넣기/ }).hasAttribute("disabled")).toBe(true);
     await act(async () => { pending.resolve(ok({ captured: true })); });
     await screen.findByText("웹페이지 저장 요청됨");
@@ -587,7 +559,6 @@ describe("capture helpers", () => {
     );
     expect(journey.steps[0]).toMatchObject({ key: "read", state: "done", count: 5 });
     expect(journey.steps[1]!.state).toBe("working");
-    // The connect stage carries an unknown token, so the fallback applies.
     expect(journey.steps[2]!.state).toBe("done");
     expect(journey.remembered).toBe(9);
     expect(journey.connections).toBe(1);
@@ -610,9 +581,6 @@ describe("capture helpers", () => {
   });
 
   it("readJourney reads per-stage counts as progress when no stage map is sent", () => {
-    // Older builds report the three counts flat, with no `stages` block. A
-    // positive count is the only evidence that stage finished, so each one has
-    // to stand on its own rather than borrowing the read stage's verdict.
     const journey = readJourney({ received: 2, extracted: 3, connected: 4 }, {}, {});
     expect(journey.steps.map((step) => step.state)).toEqual(["done", "done", "done"]);
     expect(journey.steps.map((step) => step.count)).toEqual([2, 3, 4]);
@@ -643,7 +611,6 @@ describe("capture helpers", () => {
       item({ status: "failed", result: result({ ok: false, status: 0, source: "unavailable", data: {} }) }),
       "ko",
     )).toBe("Brain에 들어가기 전에 수집에 실패했습니다.");
-    // A done row whose result vanished still reads as a failure, not a claim.
     expect(uploadResultDetail(item({}), "ko")).toBe("Brain에 들어가기 전에 수집에 실패했습니다.");
     expect(uploadResultDetail(item({ result: result(ok(null)) }), "ko")).toBe("출처 정보와 함께 저장됨");
     expect(uploadResultDetail(item({ result: result(ok({ node_id: "n1" })) }), "ko")).toBe("출처 정보와 함께 저장됨 · n1");
@@ -673,7 +640,6 @@ describe("capture helpers", () => {
     vi.stubGlobal("latticeDesktop", { selectFolder: () => Promise.resolve(null) });
     expect(hasDesktopFolderPicker()).toBe(true);
     vi.unstubAllGlobals();
-    // Internals alone are not enough outside a tauri: origin.
     vi.stubGlobal("__TAURI_INTERNALS__", {});
     expect(hasDesktopFolderPicker()).toBe(false);
   });

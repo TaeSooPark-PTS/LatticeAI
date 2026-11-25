@@ -123,25 +123,21 @@ describe("BrainOverviewPanel", () => {
     expect(featured?.textContent).toContain("Agent 보고서");
     expect(screen.getByText("최근 3")).toBeTruthy();
     expect(screen.getByText("이전 6")).toBeTruthy();
-    expect(screen.queryByText("잘린 7")).toBeNull(); // older slice stops at 6
+    expect(screen.queryByText("잘린 7")).toBeNull();
     expect(screen.getByText("주제 c3")).toBeTruthy();
-    expect(screen.queryByText("주제 c4")).toBeNull(); // column shows at most 3
+    expect(screen.queryByText("주제 c4")).toBeNull();
 
-    // Proof strip: durable count, live model name, store numbers.
     expect(screen.getByText("12개 저장됨")).toBeTruthy();
     expect(screen.getByText("mlx-community/Llama-8B")).toBeTruthy();
     expect(screen.getByText("주제 7개 · 기억 조각 21개")).toBeTruthy();
 
-    // Recall proof leads with the item and its snippet.
     expect(screen.getByText("지난 여행 계획")).toBeTruthy();
     expect(screen.getByText("예산은 120만원으로 잡았음")).toBeTruthy();
 
-    // Readiness strip reflects the model.
     const meter = container.querySelector(".brain-readiness-meter i") as HTMLElement;
     expect(meter.style.width).toBe("60%");
     expect(container.querySelector(".brain-readiness-strip")?.getAttribute("data-state")).toBe("forming");
 
-    // Every surface is a shortcut into the right depth.
     await userEvent.click(screen.getByRole("button", { name: "전체 그래프" }));
     expect(onOpenDepth).toHaveBeenLastCalledWith(5);
     await userEvent.click(featured as HTMLElement);
@@ -153,7 +149,7 @@ describe("BrainOverviewPanel", () => {
     await userEvent.click(screen.getByText("주요 주제").closest("button") as HTMLElement);
     expect(onOpenDepth).toHaveBeenLastCalledWith(3);
     await userEvent.click(screen.getByRole("button", { name: "주제 키우기" }));
-    expect(onOpenDepth).toHaveBeenLastCalledWith(3); // readiness.depth
+    expect(onOpenDepth).toHaveBeenLastCalledWith(3);
     await userEvent.click(screen.getByText("지난 여행 계획").closest("button") as HTMLElement);
     expect(onOpenDepth).toHaveBeenLastCalledWith(2);
   });
@@ -167,7 +163,6 @@ describe("BrainOverviewPanel", () => {
     expect(screen.getByText("주제가 형성되는 중입니다.")).toBeTruthy();
     expect(container.querySelector(".brain-overview-column.is-featured")).toBeNull();
 
-    // No durable proof yet → empty context and the "no fabricated example" note.
     expect(screen.getByText("첫 기억 대기")).toBeTruthy();
     expect(screen.getByText("저장 후 증명됨")).toBeTruthy();
     expect(screen.getByText("첫 대화 후 여기에 다시 꺼낸 기억이 표시됩니다.")).toBeTruthy();
@@ -177,8 +172,6 @@ describe("BrainOverviewPanel", () => {
   });
 
   it("treats proven continuity without recall items as durable-but-indexing", () => {
-    // hasDurableEvidence=false but modelContinuity.proven=true still counts as
-    // durable proof (the || side), so the recall slot says "preparing".
     renderPanel({ proof: proofWith({ proven: true, keeps: true, activeModel: "MLX-4B" }) });
     expect(screen.getByText("12개 저장됨")).toBeTruthy();
     expect(screen.getByText("MLX-4B")).toBeTruthy();

@@ -1,5 +1,3 @@
-"""HNSW sidecar query: missing/stale honesty and add_items refresh."""
-
 from __future__ import annotations
 
 import sqlite3

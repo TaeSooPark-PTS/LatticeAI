@@ -6,11 +6,6 @@ import { useAppStore } from "@/store/appStore";
 import { DownloadConsentPanel } from "./DownloadConsentPanel";
 import { fallbackModel, type RecommendedModel } from "./recommendationModel";
 
-/**
- * The consent panel is an honesty surface: before anything is fetched it has
- * to say how big the download is, where it will live, and which external host
- * it comes from — or admit that a fact is unknown rather than invent one.
- */
 
 function model(overrides: Partial<RecommendedModel> = {}): RecommendedModel {
   return { ...fallbackModel(), ...overrides };
@@ -38,8 +33,6 @@ describe("DownloadConsentPanel", () => {
     render(
       <DownloadConsentPanel model={model({ downloadRequired: true, downloadSize: "", externalHost: "" })} />,
     );
-    // Size and host share the same "checked later" copy in Korean, so both
-    // unknown cells must carry it.
     const unknowns = [t("ko", "flow.consent.sizeUnknown"), t("ko", "flow.consent.externalUnknown")];
     const cells = screen.getAllByText((text) => unknowns.includes(text));
     expect(cells.length).toBeGreaterThanOrEqual(2);

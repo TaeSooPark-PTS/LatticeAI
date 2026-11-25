@@ -38,7 +38,6 @@ export function PipelinePanel() {
                   </div>
                   <div className="capture-journey-step-meta flex items-center justify-between gap-2 mt-3 pt-2 border-t border-border/40 text-xs">
                     <Badge variant="muted" className="capture-journey-count">
-                      {/* readJourney always resolves a numeric count per step. */}
                       {t(language, "ui.value.records", { count })}
                     </Badge>
                     <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
@@ -49,8 +48,6 @@ export function PipelinePanel() {
           </ol>
           {hasPipelineData ? (
             <div className="flex flex-wrap gap-2 text-sm pt-2">
-              {/* journey.extracted / journey.connected are always numbers
-                  (readJourney falls back to the graph totals itself). */}
               <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.extracted) })}</Badge>
               <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connected) })}</Badge>
               <Badge variant={journey.waiting ? "warning" : "muted"}>
@@ -73,8 +70,6 @@ export function PipelinePanel() {
           <ActionButton label={t(language, "capture.pipeline.rebuild")} action={() => latticeApi.rebuildIndex()} invalidate={["index"]} />
         </CardContent>
       </Card>
-      {/* The raw payloads are still one click away — nothing was removed, it
-          just stopped being the first thing on the screen. */}
       {mode === "basic" ? null : (
         <>
           <DataPanel title={t(language, "capture.pipeline.status")} result={index.data}>
@@ -89,11 +84,6 @@ export function PipelinePanel() {
   );
 }
 
-/**
- * What came in, and how the connected folders are doing — the second read, in
- * its own column. The folder health card renders nothing until a folder is
- * connected, so on a first run this column is just the document list.
- */
 export function RecentCapturePanel() {
   const language = useAppStore((state) => state.language);
   const mode = useAppStore((state) => state.mode);
@@ -127,8 +117,6 @@ export function RecentCapturePanel() {
           </div>
         )}
       </DataPanel>
-      {/* Raw folder-permission payload: still here, still one scroll away, but
-          no longer sharing a row with the thing you came to do. */}
       {mode === "basic" ? null : (
         <DataPanel title={t(language, "capture.local.access")} result={agent.data}>
           {(data) => <StructuredView value={data} />}

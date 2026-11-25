@@ -1,18 +1,3 @@
-"""Phases 5-6 of the AI-Worker build: domain singletons and the web shell.
-
-``phase_domain`` runs before ``phase_web`` because the lifespan and the model
-runtime service are both wired against the router it builds.
-
-WP-P1 removed the product half of both phases: the chat service, the garden,
-the telegram mirror, the typed ``AppContext``, the auth/admin/security/static
-routers and the workspace mount all went to ``lattice-host``. What is left is
-the LLM router (the thing this process exists to run), the tool-dispatch
-whitelist, and the FastAPI object with the two middlewares a proxied browser
-write still passes through.
-
-Every heavy import lives *inside* a phase, never at module scope.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -21,13 +6,7 @@ from typing import List
 from latticeai.runtime.runtime_context import RuntimeContext
 
 
-# ── phase 5: domain singletons (must precede the web app) ────────────────────
 def phase_domain(ctx: RuntimeContext) -> None:
-    """The model router and the tool-dispatch policy.
-
-    Separated from ``phase_web`` because the lifespan hooks and the model
-    runtime service are both wired against the router.
-    """
     ctx.enter("domain")
 
     from lattice_brain.graph.runtime import set_llm_router
@@ -40,9 +19,7 @@ def phase_domain(ctx: RuntimeContext) -> None:
     ctx.set(model_router=model_router)
 
 
-# ── phase 6: the web shell ───────────────────────────────────────────────────
 def phase_web(ctx: RuntimeContext) -> None:
-    """Lifespan, the FastAPI application object, the model runtime service."""
     ctx.enter("web")
 
     from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
@@ -97,24 +74,6 @@ def phase_web(ctx: RuntimeContext) -> None:
 
 
 def build_worker_app_shell(ctx: RuntimeContext):
-    """The FastAPI object plus the two middlewares a proxied write still meets.
-
-    Moved here from ``runtime/web_runtime.py`` (deleted with the router
-    registration it existed beside). The static mounts went with it: a worker
-    serves no UI, and the worker profile dropped those mounts anyway.
-
-    Both middlewares are load-bearing on a worker, which is not obvious:
-
-    * **CORS** stays outside the CSRF guard so a rejected request still comes
-      back with the headers a browser needs to surface the 403 rather than an
-      opaque network error.
-    * **The CSRF origin guard** is what makes ``LATTICEAI_CSRF_TRUSTED_ORIGINS``
-      load-bearing for the gateway (v11.6.0 gateway integration §3): a proxied
-      browser write — ``POST /models/load``, ``POST /engines/prepare-model``,
-      ``DELETE /models/unload/{model_id}`` — arrives carrying the browser's
-      session cookie *and* ``Origin: …:{gateway port}``, and without the host's
-      injected trust list this guard would answer 403.
-    """
     from fastapi import FastAPI
 
     from latticeai.core.csrf import CSRFOriginGuardMiddleware, CSRFOriginPolicy
@@ -137,11 +96,6 @@ def build_worker_app_shell(ctx: RuntimeContext):
             f"https://{ctx.DEFAULT_HOST}:{ctx.DEFAULT_PORT}",
         ]
 
-    # An origin that CORS already lets send *credentialed* cross-origin
-    # requests is, by that decision, trusted with the session cookie; listing
-    # it again here would be a second place to forget. The explicit
-    # LATTICEAI_CSRF_TRUSTED_ORIGINS entries are for the reverse-proxy case —
-    # and, since v11.6.0, for the gateway that fronts this worker.
     csrf_allowed_origins: List[str] = [
         *cors_allowed_origins,
         *ctx.CSRF_TRUSTED_ORIGINS,
@@ -153,8 +107,6 @@ def build_worker_app_shell(ctx: RuntimeContext):
         bind_is_loopback=host_is_loopback(ctx.DEFAULT_HOST),
     )
 
-    # Registration order is stack order in reverse: the LAST middleware added
-    # is the OUTERMOST.
     app.add_middleware(CSRFOriginGuardMiddleware, policy=csrf_policy)
     _add_cors(app, cors_allowed_origins)
 

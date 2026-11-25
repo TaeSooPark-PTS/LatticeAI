@@ -36,7 +36,6 @@ pub(crate) fn substitute_symbol_text(text: &mut String, symbols: &HashMap<String
     }
 }
 
-/// Replace `$name` only when it is not a prefix of a longer `$name_suffix`.
 pub(crate) fn replace_symbol(haystack: &str, symbol: &str, replacement: &str) -> String {
     let mut out = String::with_capacity(haystack.len());
     let mut rest = haystack;
@@ -60,15 +59,6 @@ pub(crate) fn replace_symbol(haystack: &str, symbol: &str, replacement: &str) ->
 
 pub(crate) fn rewrite_path_tokens(value: &mut Value, data_dir: &Path) {
     let data = data_dir.to_string_lossy().into_owned();
-    // `/private<HOME>` exists in the fixtures because the Python oracle ran on
-    // macOS, where the per-test temp dir is reached through the `/private`
-    // symlink and every path the handler resolves comes back carrying that
-    // prefix. Prepending the literal string reproduced that only on macOS: on
-    // Linux, where `/tmp` is already canonical, it turned `/tmp/.tmpXXXX` into
-    // `/private/tmp/.tmpXXXX` and four `permissions.py` cases failed on the
-    // machine rather than on the behaviour. Ask the filesystem for the
-    // resolved form instead — byte-identical to the old value on macOS,
-    // and the plain path everywhere else.
     let private_home = std::fs::canonicalize(data_dir)
         .map(|resolved| resolved.to_string_lossy().into_owned())
         .unwrap_or_else(|_| format!("/private{data}"));
@@ -129,9 +119,6 @@ pub(crate) fn values_match(expected: &Value, actual: &Value) -> bool {
             let Some(act) = actual.as_object() else {
                 return false;
             };
-            // Expected keys must match; extra actual keys (audit `contract`, …)
-            // are allowed so a richer native helper does not fail a slimmer
-            // captured envelope.
             exp.iter().all(|(k, ev)| {
                 if k.starts_with('$') {
                     act.values().any(|av| values_match(ev, av))
@@ -144,7 +131,6 @@ pub(crate) fn values_match(expected: &Value, actual: &Value) -> bool {
     }
 }
 
-/// `@id` / `@any` / `@ts` as a substring wildcard inside an otherwise pinned string.
 pub(crate) fn wildcard_match(pattern: &str, actual: &str) -> bool {
     let mut pat = pattern;
     let mut act = actual;

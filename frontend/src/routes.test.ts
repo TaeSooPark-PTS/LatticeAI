@@ -1,11 +1,3 @@
-/**
- * Routing is the one module every surface depends on and nothing tested.
- *
- * `parseHash` decides which page a URL lands on, including the compatibility
- * aliases that keep old bookmarks (`#/hybrid-search`, `#/admin/audit`) working
- * after the v3 shell renamed the primary routes. A silent regression here does
- * not throw — it just quietly sends someone to the wrong page.
- */
 
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -63,18 +55,12 @@ describe("parseHash", () => {
   });
 
   it("lands the Work entry point on the review inbox, not the goal composer", () => {
-    // The Work screen leads with what is waiting on a decision. The nav href
-    // has to agree: pointing it at `agents` would reorder the tab strip while
-    // still opening the screen on the panel that got demoted.
     const work = productShellRoutes.find((route) => route.id === "act");
     setHash(`#/${work?.path}`);
     expect(parseHash()).toMatchObject({ primary: "act", tab: "review" });
   });
 
   it("opens the chronicle from its own path and from the name it was designed under", () => {
-    // The screen has one view, so it names no tab and the page picks its own
-    // starting day. `timeline` is the word the design document uses; keeping it
-    // resolvable costs one alias and saves a dead bookmark.
     expect(parseHashOf("#/chronicle").primary).toBe("chronicle");
     expect(parseHashOf("#/chronicle").tab).toBeUndefined();
     expect(parseHashOf("#/timeline").primary).toBe("chronicle");
@@ -82,8 +68,6 @@ describe("parseHash", () => {
 
   it("resolves a primary route id with no tab of its own", () => {
     setHash("#/memory");
-    // `memory` is both a shell route and an alias; the shell route wins and
-    // leaves the tab unset so the page picks its own default.
     expect(parseHash()).toMatchObject({ primary: "memory", tab: undefined });
   });
 
@@ -96,7 +80,6 @@ describe("parseHash", () => {
     setHash("#/models?engine=ollama");
     const parsed = parseHash();
     expect(parsed).toMatchObject({ primary: "library", tab: "models" });
-    // The raw path is preserved so a page can still read its own query.
     expect(parsed.path).toBe("models?engine=ollama");
   });
 
@@ -130,7 +113,6 @@ describe("go", () => {
 
 describe("route tables", () => {
   it("exposes seven primary shell routes", () => {
-    // Six through 11.2.0; 연대기 is the seventh and the fourth everyday one.
     expect(productShellRoutes).toHaveLength(7);
     expect(productShellRoutes.map((route) => route.id)).toContain("chronicle");
     expect(primaryRoutes).toBe(productShellRoutes);
@@ -155,10 +137,6 @@ describe("route tables", () => {
   });
 
   it("keeps command palette entries resolvable by parseHash", () => {
-    // "Resolvable" was too weak to catch anything: parseHash never returns a
-    // falsy primary, it falls back to `brain`. Every entry named a real screen
-    // and three of them silently landed on the Brain home instead. Assert the
-    // destination is the one the entry names.
     const expected: Record<string, string> = {
       "page-brain": "brain",
       "page-capture": "capture",
@@ -176,9 +154,6 @@ describe("route tables", () => {
   });
 
   it("sends both palette entries for Work to the review inbox the shell opens", () => {
-    // The shell's "작업" link and the palette's carry the same label, so they
-    // have to reach the same panel. They were re-pointed in two different
-    // lists, only one of which the palette read.
     for (const id of ["page-act", "page-review"]) {
       setHash(`#${commandRoutes.find((entry) => entry.id === id)?.target}`);
       expect(parseHash(), id).toMatchObject({ primary: "act", tab: "review" });
@@ -186,20 +161,13 @@ describe("route tables", () => {
   });
 
   it("resolves a <primary>/<tab> path instead of dropping it on the home screen", () => {
-    // The palette and the daily briefing emit this shape. Nothing parsed it, so
-    // `#/act/review` — the one destination this layout promotes — rendered the
-    // Brain home.
     expect(parseHashOf("#/act/review")).toMatchObject({ primary: "act", tab: "review" });
     expect(parseHashOf("#/act/workflows")).toMatchObject({ primary: "act", tab: "workflows" });
     expect(parseHashOf("#/brain/graph")).toMatchObject({ primary: "brain", tab: "graph" });
   });
 
   it("lets a named alias win over the generic <primary>/<tab> form", () => {
-    // `admin/audit` is an alias onto the system screen. Reading it as
-    // primary=admin/tab=audit would break every old admin bookmark, so the
-    // generic branch has to run last.
     expect(parseHashOf("#/admin/audit")).toMatchObject({ primary: "system", tab: "admin" });
-    // A head that is not a primary route still falls back rather than throwing.
     expect(parseHashOf("#/nonsense/deeper")).toMatchObject({ primary: "brain", tab: undefined });
   });
 

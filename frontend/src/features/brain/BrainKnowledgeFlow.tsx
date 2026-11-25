@@ -31,16 +31,6 @@ import type {
   MemoryFragment,
 } from "./types";
 
-// Node cards are centred on their point (`translate(-50%, -50%)`) and are up to
-// 8.2rem wide by 2.75rem tall — roughly 12% of the canvas width and 17% of its
-// height. Two cards therefore only avoid each other when they clear that on at
-// least one axis. The previous layout packed all eight into x 62–94%, i.e. under
-// three card-widths of room, so with real Korean labels they overlapped in a
-// dozen pairs. These rows are 27% apart vertically, which separates every pair
-// across rows no matter their x, and 15–16% apart horizontally within a row.
-// Keep x within 7–93 so a centred card cannot be clipped by the canvas, and y
-// at or under 61 so the bottom row stays clear of the live-status bar, which
-// covers roughly the last 27% of the shortened home canvas.
 const GRAPH_POSITIONS = [
   { x: 62, y: 26 },
   { x: 78, y: 26 },
@@ -53,14 +43,6 @@ const GRAPH_POSITIONS = [
 ] as const;
 
 
-/**
- * A title a person would recognise, or nothing.
- *
- * Generated identifiers (`brain-1782904609263`, bare uuids, `doc_8837261`) reach
- * these slots whenever a conversation or source has no subject yet. They are not
- * titles, so callers should fall through to the next candidate rather than print
- * them.
- */
 function humanTitle(value: unknown): string {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -142,11 +124,6 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
   const emergingNodeIds = React.useMemo(() => new Set(latestEvent?.nodeIds ?? []), [latestEvent]);
   const absorbing = streaming || Boolean(activeIngestion);
   const sourceType = streaming ? "chat" : activeIngestion?.sourceType;
-  // Titles fall back through several sources, and one of them (a conversation
-  // with no subject yet) is a generated id like `brain-1782904609263`. Printing
-  // it told the reader "brain-1782904609263 주변의 기억을 지키는 중", which is
-  // noise wearing the clothes of a title. Skip id-shaped values and keep falling
-  // through to something a person actually wrote.
   const sourceLabel = humanTitle(activeIngestion?.label)
     || humanTitle(latestEvent?.label)
     || humanTitle(brief.focus.title)
@@ -252,12 +229,8 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
           <span className="brain-flow-column-label">{t(language, "brain.flow.graph")}</span>
           <svg className="brain-flow-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             {edges.map((edge, index) => {
-              const source = positionById.get(edge.source);
-              const target = positionById.get(edge.target);
-              /* v8 ignore next -- unreachable: `edges` (above) is already
-                 filtered to entries where positionById.has() is true for both
-                 endpoints, so both lookups always succeed here. */
-              if (!source || !target) return null;
+              const source = positionById.get(edge.source)!;
+              const target = positionById.get(edge.target)!;
               return (
                 <line
                   key={edge.id}
@@ -296,12 +269,8 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
           )}
           <ul className="sr-only">
             {edges.map((edge) => {
-              const source = nodes.find((node) => node.id === edge.source);
-              const target = nodes.find((node) => node.id === edge.target);
-              /* v8 ignore next -- unreachable: `edges` (above) only keeps
-                 entries whose endpoints are in positionById, which is built
-                 from this same `nodes` array, so both finds always succeed. */
-              if (!source || !target) return null;
+              const source = nodes.find((node) => node.id === edge.source)!;
+              const target = nodes.find((node) => node.id === edge.target)!;
               return <li key={`accessible-${edge.id}`}>{source.label} — {edge.label} — {target.label}</li>;
             })}
           </ul>
@@ -363,11 +332,7 @@ export function BrainMemoryAutomation({
   const evidence = brief.evidence.filter((item) => item.value > 0).slice(0, 3);
   const focusTitle = brief.focus.title || t(language, "brain.brief.focus.empty");
   const closeCompactActions = () => {
-    const details = compactDetailsRef.current;
-    /* v8 ignore next -- unreachable: both callers (the details' own onKeyDown
-       and the popover close button) only fire from elements rendered inside
-       this ref'd <details>, so the ref is always attached when called. */
-    if (!details) return;
+    const details = compactDetailsRef.current!;
     details.removeAttribute("open");
     details.querySelector<HTMLElement>("summary")?.focus();
   };

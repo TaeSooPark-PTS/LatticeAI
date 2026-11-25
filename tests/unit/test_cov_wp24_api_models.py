@@ -1,21 +1,3 @@
-"""wp24 coverage — ``latticeai.api.models`` (the /models + /engines router).
-
-Every heavy dependency of this router is an injected service callable, so the
-router is built by its factory with fakes and driven through ``TestClient``.
-The model compat / catalog helpers the handlers import lazily are replaced
-explicitly.
-
-What is asserted is the router's own job — which failures become which status
-code, that identity is taken from the session rather than the body, and that a
-streaming prepare reports its failure as an SSE ``error`` event instead of a
-broken response.
-
-v11.8.0 deleted three routes this file used to drive (``POST
-/engines/pull-model``, ``POST /models/switch/{model_id:path}``, ``DELETE
-/models/unload-all``) because nothing called them; their cases went with them,
-and with the pull went the ``subprocess`` seam this module used to stub.
-"""
-
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Request
@@ -40,7 +22,6 @@ class _FakeModelRouter:
 
 
 def _build(**overrides):
-    """Build the router with recording fakes; overrides replace one dep each."""
     calls: list[tuple] = []
 
     async def prepare_and_load_model(model, _request, **kwargs):
@@ -76,9 +57,6 @@ def _build(**overrides):
     return TestClient(app, raise_server_exceptions=False), calls
 
 
-# ── vision capability ───────────────────────────────────────────────────────
-
-
 def test_vision_is_enabled_only_for_a_vision_capable_current_model(monkeypatch):
     monkeypatch.setattr(
         "latticeai.core.model_compat.get_model_profile",
@@ -111,9 +89,6 @@ def test_vision_degrades_when_the_profile_or_engine_listing_fails(monkeypatch):
     assert payload["current_supports_vision"] is False
     assert payload["engine_available"] is False
     assert payload["enabled"] is False
-
-
-# ── prepare-model ───────────────────────────────────────────────────────────
 
 
 def test_prepare_model_translates_a_model_runtime_error():
@@ -183,7 +158,7 @@ def test_the_prepare_stream_yields_the_service_chunks():
 def test_the_prepare_stream_reports_a_known_failure_as_an_sse_error_event():
     async def failing(_model, _request, **_kwargs):
         raise ModelRuntimeError(status_code=409, detail="confirmation required")
-        yield  # keeps this an async generator
+        yield
 
     client, _calls = _build(prepare_and_load_model_stream=failing)
 
@@ -201,7 +176,7 @@ def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(
 ):
     async def failing(_model, _request, **_kwargs):
         raise RuntimeError("mlx segfault")
-        yield  # keeps this an async generator
+        yield
 
     monkeypatch.setattr(
         "latticeai.core.model_compat.friendly_model_runtime_error",
@@ -216,9 +191,6 @@ def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(
     assert response.status_code == 200
     assert "event: error" in response.text
     assert "repair some/model" in response.text
-
-
-# ── models ──────────────────────────────────────────────────────────────────
 
 
 def test_the_model_listing_survives_a_broken_verified_registry(monkeypatch):
@@ -275,10 +247,8 @@ def test_the_model_listing_reports_engine_options_per_recommendation(monkeypatch
         item["id"]: item for item in client.get("/models").json()["recommended"]
     }
 
-    # The currently loaded model is loadable regardless of engine state.
     assert recommended["mlx-community/loaded-4bit"]["load_status"] == "loaded"
     assert recommended["mlx-community/loaded-4bit"]["unavailable_reason"] is None
-    # An absent model on an uninstalled engine explains itself.
     assert recommended["mlx-community/absent-4bit"]["load_status"] == "unavailable"
     assert (
         "not installed"

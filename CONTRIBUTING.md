@@ -59,7 +59,7 @@ Please include tests covering your changes in every pull request.
 - Use Python 3.11+ syntax
 - Include `from __future__ import annotations` at the top of Python modules
 - Type annotations are recommended
-- Avoid unnecessary comments (write self-documenting code)
+- Never write comments of any kind in source code (including docstrings, JSDoc, and linter/type-checker suppressions). Always fix the underlying code instead.
 - Do not commit local runtime state (`.ltcai/`, `.ltcai-brain/`, logs, session files)
 
 ## Architecture Overview

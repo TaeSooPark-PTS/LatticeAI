@@ -1,5 +1,3 @@
-//! Agents, workflows, skills, VS Code, computer memory, orgs.
-
 use axum::body::Bytes;
 use axum::extract::{Path, Query, RawQuery, State};
 use axum::http::{HeaderMap, StatusCode};

@@ -1,5 +1,3 @@
-//! Unchanged files skip parse/extract/embed; the job report says so.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};

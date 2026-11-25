@@ -1,10 +1,3 @@
-"""wp35: ToolDispatchService policy gates and the module-level façade.
-
-``AGENT_ROOT`` is rebound to ``tmp_path`` for every filesystem test (idiom:
-tests/unit/test_snapshot_rollback_ports.py), so nothing here writes into the
-real agent workspace.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -20,9 +13,6 @@ def _service(role: str = "user") -> td.ToolDispatchService:
         get_user_role=lambda email, users=None: role,
     )
     return service
-
-
-# ── module defaults + registry passthrough ───────────────────────────────────
 
 
 def test_module_default_callables_are_permissive_but_explicit():
@@ -73,9 +63,6 @@ def test_diagnostics_and_manifest_are_registry_passthroughs():
     assert manifest["diagnostics"] == diagnostics
 
 
-# ── role / capability gates ──────────────────────────────────────────────────
-
-
 def test_capability_gate_rejects_a_role_without_the_capability():
     service = _service(role="viewer")
 
@@ -88,7 +75,6 @@ def test_capability_gate_rejects_a_role_without_the_capability():
 
 def test_module_level_facade_delegates_to_the_default_service():
     assert td.get_tool_permission("read_file", {})["risk"] == "low"
-    # list_dir carries no capability and is not admin-only: the gate is a no-op.
     assert td.check_tool_role("list_dir", "u@e.co") is None
 
 

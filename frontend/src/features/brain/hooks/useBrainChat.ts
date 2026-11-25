@@ -57,8 +57,6 @@ export function useBrainChat({
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
   const [proactiveActivities, setProactiveActivities] = React.useState<BrainProactiveActivity[]>([]);
-  // Follows the answer as it streams, but only while the reader is still at
-  // the bottom — scrolling up to re-read must not be undone by the next token.
   const streamRef = useStickyBottom<HTMLDivElement>(messages);
   const abortRef = React.useRef<AbortController | null>(null);
   const recallTimerRef = React.useRef<number | null>(null);
@@ -178,8 +176,6 @@ export function useBrainChat({
               return next;
             });
           },
-          // Live loop progress: `event: agent_step` frames accumulate on the
-          // trailing assistant reply so the step timeline updates in place.
           onAgentStep: (step) => {
             const parsed = parseAgentStepEvent(step);
             if (!parsed) return;
@@ -196,9 +192,6 @@ export function useBrainChat({
             });
           },
           onAgent: (agent) => {
-            // Governed plans pause server-side as awaiting_approval — attach
-            // the resume token to this reply so the inline approval card can
-            // approve/edit/cancel the parked run.
             const approval = parseApprovalPayload(agent);
             if (approval) {
               setMessages((items) => {
@@ -210,18 +203,11 @@ export function useBrainChat({
               });
               return;
             }
-            // artifacts[] carries the per-file preview verdict; keyed by path
-            // so it can be joined back onto created_files defensively.
             const files = agentPayloadFiles(agent);
-            // NEEDS_REVIEW / FAILED must reach the message even when no file
-            // was produced — they render as warnings, never as success.
             const agentState =
               agent.final_state === "NEEDS_REVIEW" || agent.final_state === "FAILED"
                 ? agent.final_state
                 : undefined;
-            // Loop honesty meta + post-hoc transcript. This merge must stay
-            // symmetric with the approval-resume merge in
-            // handleApprovalResolved below.
             const loopSummary = parseLoopSummary(agent.loop);
             const runExplanation = parseRunExplanation(agent.explanation, language);
             const transcriptSteps = parseAgentTranscript(agent.steps);
@@ -233,8 +219,6 @@ export function useBrainChat({
               const next = [...items];
               const current = next[next.length - 1];
               if (current?.role !== "assistant") return items;
-              // Streamed agent_step frames win over the post-hoc transcript —
-              // they carry the same run with richer per-event detail.
               const agentSteps = current.agentSteps?.length
                 ? current.agentSteps
                 : transcriptSteps;
@@ -262,12 +246,8 @@ export function useBrainChat({
         setMessages((items) => replaceTrailingAssistant(items, `${t(language, "brain.unavailable")}: ${result.error}`));
         failIngestion("chat", String(result.error));
       } else {
-        // Honest signaling: surface the additive context_quality meta (from the
-        // trailer or the trace record) on the answer it belongs to.
         const contextQuality = parseContextQuality("contextQuality" in result ? result.contextQuality : null)
           || parseContextQuality(result.trace);
-        // Answer-citation binding verdict (근거 있음/근거 없음) rides the same
-        // trailer; it badges the answer without ever modifying it.
         const grounding = parseGrounding("grounding" in result ? result.grounding : null)
           || parseGrounding(result.trace);
         const hybridContext = parseHybridContext("hybridContext" in result ? result.hybridContext : null);
@@ -323,18 +303,10 @@ export function useBrainChat({
       setMemoryFeedback(aborted ? t(language, "brain.stopped") : null);
       failIngestion("chat", aborted ? "stopped" : error instanceof Error ? error.message : String(error));
     } finally {
-      // `onTrace` parks a 900ms timer that puts the organism back into
-      // "thinking" after a recall pulse. If the answer finished inside that
-      // window the timer still fired, and the Brain sat visibly thinking about
-      // a question it had already answered — until the next keystroke. The
-      // stream ending is the end of thinking, so the timer dies with it.
       if (recallTimerRef.current !== null) {
         window.clearTimeout(recallTimerRef.current);
         recallTimerRef.current = null;
       }
-      // Only this run's controller is cleared. Two sends racing into the same
-      // tick would otherwise leave `stopStreaming` holding nothing while the
-      // second stream ran on.
       if (abortRef.current === controller) abortRef.current = null;
       setStreaming(false);
       for (const key of ["chatHistory", "memoryManager", "graphPreview", "graph", "memoryBrainProof", "memoryBrainBrief"]) {
@@ -343,10 +315,6 @@ export function useBrainChat({
     }
   }
 
-  // Applies an /agent/resume outcome to the paused message. A finished run
-  // merges exactly like a normal agent completion (response text + files via
-  // the shared artifacts join + NEEDS_REVIEW/FAILED warning); every terminal
-  // approval status persists on the message so the card stays honest.
   function handleApprovalResolved(messageIndex: number, resolution: ApprovalResolution) {
     setMessages((items) => {
       const message = items[messageIndex];
@@ -360,8 +328,6 @@ export function useBrainChat({
             ? agent.final_state
             : undefined;
         const response = typeof agent.response === "string" ? agent.response.trim() : "";
-        // Symmetry invariant: this merge mirrors the streaming onAgent merge
-        // (files + agentState + loopSummary + step timeline).
         const loopSummary = parseLoopSummary(agent.loop);
         const runExplanation = parseRunExplanation(agent.explanation, language);
         const transcriptSteps = parseAgentTranscript(agent.steps);
@@ -387,8 +353,6 @@ export function useBrainChat({
           approval: {
             ...message.approval,
             status: resolution.kind,
-            // A 410 expiry may carry the original request back — keep it on
-            // the approval so the card can offer "다시 계획하기".
             ...(resolution.kind === "expired" && resolution.replanMessage
               ? { replanMessage: resolution.replanMessage }
               : {}),

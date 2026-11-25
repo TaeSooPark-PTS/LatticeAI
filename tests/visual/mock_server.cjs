@@ -1,19 +1,8 @@
-/**
- * Lattice AI visual-regression mock server.
- *
- * Playwright's webServer command and `scripts/capture_release_evidence.mjs`
- * both spawn this file by path, so it stays here and stays runnable. What it
- * holds is only the composition: the port, the route modules in order, and the
- * two fallbacks the old if-chain ended with. Route branches and the payloads
- * they return live together in `mock_server/routes_*.cjs`.
- */
 const http = require("http");
 
 const { json, text } = require("./mock_server/http.cjs");
 const { port } = require("./mock_server/fixtures.cjs");
 
-// Order is load-bearing: several modules answer overlapping prefixes, and the
-// first module that says "handled" wins exactly as the first matching `if` did.
 const ROUTES = [
   require("./mock_server/routes_shell.cjs"),
   require("./mock_server/routes_platform.cjs"),

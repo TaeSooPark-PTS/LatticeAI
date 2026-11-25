@@ -1,5 +1,3 @@
-"""Offline unit & schema tests for scripts/benchmark_adaptive_harness.py."""
-
 from __future__ import annotations
 
 import json
@@ -9,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
-import benchmark_adaptive_harness as bench  # noqa: E402
+import benchmark_adaptive_harness as bench
 
 
 def test_task_catalog_has_five_tasks_per_category() -> None:

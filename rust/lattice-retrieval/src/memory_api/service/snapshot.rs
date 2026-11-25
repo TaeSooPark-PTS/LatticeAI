@@ -1,5 +1,3 @@
-//! Snapshot of every memory-tier reading a request needs.
-
 use std::path::Path;
 
 use lattice_auth::OrderedMap;
@@ -10,39 +8,21 @@ use serde_json::Value;
 use crate::memory_api::kg;
 use crate::memory_api::wsos;
 
-/// Everything the memory surfaces read, taken once.
 pub struct Snapshot {
-    /// The Workspace OS document.
     pub state: Value,
-    /// `_workspace_memories(user, workspace_id or "personal")` — the reading
-    /// `manager`, `inspect("workspace")` and the brief all take.
     pub workspace_memories: Vec<Value>,
-    /// `_workspace_memories(user, workspace_id)` — **without** the `"personal"`
-    /// default. `prune` and `compact` use this one, and the difference is the
-    /// ownership guard: defaulting an unscoped delete to Personal would let a
-    /// caller prune a workspace they never named.
     pub owned_memories: Vec<Value>,
-    /// `manager`'s project tier, already branched on `workspace_id is None`.
     pub project_memories: Vec<Value>,
-    /// `_snapshots(workspace_id)`.
     pub snapshots: Vec<Value>,
-    /// `_conversations()` — every conversation, ungrouped by scope.
     pub conversations: Vec<Value>,
-    /// `_scoped_conversations(user, workspace_id)`.
     pub scoped_conversations: Vec<Value>,
-    /// `_kg_stats()`, or `None` when the graph is off or unreadable.
     pub stats: Option<OrderedMap>,
-    /// `_kg_index()`, same rule.
     pub index: Option<OrderedMap>,
-    /// `_file_size(data_dir/workspace_os.json)`.
     pub workspace_bytes: i64,
-    /// `_file_size(data_dir/knowledge_graph.sqlite)` — also the conversation
-    /// store's own `size_bytes()`, because it is the same file.
     pub graph_bytes: i64,
 }
 
 impl Snapshot {
-    /// Take every reading one request needs, on one connection.
     pub fn read(
         conn: &Connection,
         data_dir: &Path,
@@ -67,8 +47,6 @@ impl Snapshot {
         let scoped_conversations = scoped_conversations(&conversations, user_email, workspace_id);
         let db_path = data_dir.join(lattice_core::DB_FILE_NAME);
         let db_display = db_path.display().to_string();
-        // `_kg_stats` / `_kg_index` degrade to None rather than raising: both
-        // tiers are optional and report themselves `unavailable` upstream.
         let (stats, index) = if graph_enabled {
             (
                 kg::stats(conn, &db_display, None).ok(),
@@ -99,11 +77,6 @@ fn file_size(path: &Path) -> i64 {
         .unwrap_or(0)
 }
 
-/// `_conversations()` over the durable store: group `history()` by id.
-///
-/// `dict.setdefault` keeps first-seen order, and a row whose `conversation_id`
-/// column is NULL is filed under the legacy bucket — the same id
-/// `history::group_conversations` uses, so the two views agree.
 pub fn conversations(conn: &Connection) -> Result<Vec<Value>, CoreError> {
     let history =
         crate::history::history(conn, None, None, &crate::history::HistoryScope::owner())?;
@@ -134,7 +107,6 @@ pub fn conversations(conn: &Connection) -> Result<Vec<Value>, CoreError> {
         .collect())
 }
 
-/// `_scoped_conversations` — an anonymous caller sees every conversation.
 pub fn scoped_conversations(
     conversations: &[Value],
     user_email: &str,
@@ -181,7 +153,6 @@ pub(crate) fn sum_counts(counts: Option<&Value>) -> Option<i64> {
         .map(|map| map.values().filter_map(Value::as_i64).sum())
 }
 
-/// `MemoryManagerMixin._brain_readiness`.
 pub fn brain_readiness(
     memory_count: i64,
     concept_count: Option<i64>,

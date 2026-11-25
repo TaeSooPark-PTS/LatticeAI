@@ -1,48 +1,14 @@
-//! The AI-worker seam: the things the loop cannot do natively.
-//!
-//! The kernel decides and (since v11.6.0's WP-W4) writes; the worker infers and
-//! computes. This client is the whole boundary between them, and it is
-//! deliberately three calls wide:
-//!
-//! * `POST /agent/llm` — one completion. No history, no persistence.
-//! * `POST /agent/tool` — one governed tool dispatch, for the **compute-only**
-//!   handlers. The worker keeps its mode-invariant server guards (circuit
-//!   breaker / destructive → 403, fail-closed classification → 409), so a
-//!   preflight bug here cannot become a write there. Every mutating handler is
-//!   native now ([`crate::tools`]) and never reaches this call.
-//! * `POST /worker/render/{docx,xlsx,pptx,pdf}` — the document builders, which
-//!   need python-docx / openpyxl / python-pptx / reportlab. They return **bytes**
-//!   and this side writes the file, so document creation is a compute call with
-//!   a native write rather than a worker-side write.
-//!
-//! `POST /agent/change-proposal` was the fourth until v11.6.0 §P1a retired it
-//! from the worker; staging a proposal is [`crate::kernel::proposals`]' job now, in
-//! this process, so a run's *decisions* and the record of the ones it declined
-//! to make are both native.
-//!
-//! Every failure is an *outcome*, not a panic: a worker that is down, slow or
-//! shouting 403 produces a transcript step that says so. The one exception is
-//! the LLM call, whose failure ends the run — there is no honest way to
-//! continue a reasoning loop without the reasoner.
-
 use base64::Engine;
 use serde_json::{json, Map, Value};
 
-/// The seam is off unless the host injects this into its own worker.
 pub const SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
 
-/// One document the worker built: its bytes, and what it said about them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rendered {
-    /// The file, decoded.
     pub content: Vec<u8>,
-    /// The whole 200 body. W2 §3 puts `filename`, `bytes` and the per-kind
-    /// counts (`rows`, `slides`) at the top level; a nested `meta` object is
-    /// honoured too, so the caller reads one shape either way.
     pub report: Value,
 }
 
-/// A completion could not be obtained.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkerError(pub String);
 
@@ -54,17 +20,12 @@ impl std::fmt::Display for WorkerError {
 
 impl std::error::Error for WorkerError {}
 
-/// What one `/agent/tool` call came back as.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolOutcome {
-    /// `{"result": {...}}` — the tool ran.
     Result(Value),
-    /// `{"error": "..."}`, a 403/409 guard, or a transport failure. The loop
-    /// records the message on the step exactly as Python records `str(exc)`.
     Error(String),
 }
 
-/// One completion request, mirroring `LLMRouter.generate_as`'s arguments.
 #[derive(Debug, Clone)]
 pub struct Completion<'a> {
     pub model_id: Option<&'a str>,
@@ -72,31 +33,10 @@ pub struct Completion<'a> {
     pub context: &'a str,
     pub max_tokens: u32,
     pub temperature: f64,
-    /// Strings that end generation, sent only when non-empty (v11.9.0).
-    ///
-    /// Deliberately **off by default**. A stop string is a knife: `"\n\n"` ends
-    /// a rambling model's chatter and also truncates a `content` field the
-    /// moment it contains a blank line, which is every HTML document. The loop
-    /// uses it in exactly one place — the strict verify re-ask, where the reply
-    /// is one short verdict object and a model that keeps talking after it has
-    /// already cost the run its only retry.
     pub stop: &'a [&'a str],
-    /// Text the completion is **forced to begin with** (v12.0.0).
-    ///
-    /// The cheapest structural guarantee there is: the worker puts these
-    /// characters in the model's mouth (a prefill — they are appended to the
-    /// prompt after the generation marker) and the reply comes back with them
-    /// on the front. A model that starts at `{"thoughts": "` cannot open with a
-    /// markdown fence, a `<|channel|>` frame or a paragraph of enthusiasm,
-    /// which is most of what the repair chain exists to undo.
-    ///
-    /// Empty means what it always meant. The seam guarantees the returned text
-    /// *starts with* the prefix when one is sent, so the caller parses one
-    /// shape whichever backend answered.
     pub prefix: &'a str,
 }
 
-/// The worker seam, over loopback HTTP.
 #[derive(Debug, Clone)]
 pub struct WorkerClient {
     origin: String,
@@ -104,13 +44,10 @@ pub struct WorkerClient {
 }
 
 impl WorkerClient {
-    /// A client with its own connection pool.
     pub fn new(origin: impl AsRef<str>) -> Self {
         Self::with_client(origin, reqwest::Client::new())
     }
 
-    /// A client sharing an existing pool (the host's, so loopback connections
-    /// are not duplicated).
     pub fn with_client(origin: impl AsRef<str>, client: reqwest::Client) -> Self {
         Self {
             origin: origin.as_ref().trim_end_matches('/').to_string(),
@@ -118,7 +55,6 @@ impl WorkerClient {
         }
     }
 
-    /// Where this client posts.
     pub fn origin(&self) -> &str {
         &self.origin
     }
@@ -138,13 +74,10 @@ impl WorkerClient {
             .bytes()
             .await
             .map_err(|err| format!("worker seam {path} response unreadable: {err}"))?;
-        // A worker that answers HTML or nothing is a failure with a body, not a
-        // parse panic: the status still carries the decision.
         let value = serde_json::from_slice::<Value>(&bytes).unwrap_or(Value::Null);
         Ok((status, value))
     }
 
-    /// `POST /agent/llm` → the completion text.
     pub async fn llm(&self, request: Completion<'_>) -> Result<String, WorkerError> {
         let mut body = json!({
             "message": request.message,
@@ -177,7 +110,6 @@ impl WorkerClient {
         }
     }
 
-    /// `POST /agent/tool` → the dispatch result, or the refusal.
     pub async fn tool(
         &self,
         tool: &str,
@@ -204,15 +136,6 @@ impl WorkerClient {
         }
     }
 
-    /// `POST /worker/render/{kind}` → the document bytes the builder produced.
-    ///
-    /// The request body is the tool handler's own argument schema — W2 §3 binds
-    /// it field for field to `ToolDocxRequest` and friends, so the builder is
-    /// the same code reading the same fields. The response carries the file as
-    /// base64 under `content_b64` (`bytes_b64` is accepted as an alias) and its
-    /// counts beside it. A refusal — `{"error": …}`, or a non-2xx such as W2's
-    /// `503 worker_compute.render_unavailable` — comes back as the message, so
-    /// "this worker cannot render 'xlsx'" reaches the transcript.
     pub async fn render(&self, kind: &str, body: Value) -> Result<Rendered, String> {
         let path = format!("/worker/render/{kind}");
         let (status, value) = self.post(&path, body).await?;
@@ -242,7 +165,6 @@ impl WorkerClient {
     }
 }
 
-/// FastAPI puts its refusal text in `detail`; anything else is shown raw.
 fn detail_of(value: &Value) -> String {
     match value.get("detail") {
         Some(detail) => crate::parse::pystr::py_str(detail),
@@ -268,7 +190,6 @@ mod tests {
 
     #[tokio::test]
     async fn an_unreachable_worker_is_an_outcome_not_a_panic() {
-        // Port 1 on loopback refuses immediately; nothing is listening.
         let client = WorkerClient::new("http://127.0.0.1:1");
         let outcome = client.tool("write_file", &Map::new(), None).await;
         match outcome {

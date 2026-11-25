@@ -1,18 +1,3 @@
-//! Python↔Rust parity for the v11.5.0 ports — the knowledge-graph relationship
-//! and traversal reads, the service layer (graph channel + three-channel
-//! fusion), the durable history reads and the context assembler — and the
-//! v11.5.1 document-generation ports beside them: the hybrid document search,
-//! the hop-labelled traversal, and the budgeted context builder (whose golden
-//! carries the sources footnote alongside the contract dict, so both public
-//! entry points are proven by one suite).
-//!
-//! Each suite in the manifest is a list of specs the Python generator ran; this
-//! runs the Rust port on the same spec and compares the whole answer exactly.
-//! The spec rides inside the golden, so there is nothing to keep in sync by hand
-//! — adding a case to the generator makes this suite check it on the next run.
-
-// The shared harness is written for every suite that includes it, so a
-// helper this one does not call still reads as dead in this binary.
 #[allow(dead_code)]
 mod common;
 
@@ -55,8 +40,6 @@ fn flag(spec: &Value, key: &str, default: bool) -> bool {
     spec.get(key).and_then(Value::as_bool).unwrap_or(default)
 }
 
-/// The graph layer's scope: `allowed` absent means no scoping, `legacy` is off
-/// by default (the opposite of the history layer's).
 fn graph_scope(spec: &Value) -> Scope {
     Scope {
         allowed_workspaces: allowed_set(spec.get("allowed")),
@@ -64,7 +47,6 @@ fn graph_scope(spec: &Value) -> Scope {
     }
 }
 
-/// The history layer's scope: `legacy` defaults **on**, as in Python.
 fn history_scope(spec: &Value) -> HistoryScope {
     HistoryScope {
         user_email: opt_text(spec, "user_email"),
@@ -82,7 +64,6 @@ fn scoped_history(conn: &Connection, spec: &Value) -> Vec<Value> {
     history(conn, None, None, &history_scope(spec)).expect("history must not fail on the fixture")
 }
 
-/// The document-generation seed list, as the spec spells it.
 fn node_ids(spec: &Value) -> Vec<String> {
     spec.get("node_ids")
         .and_then(Value::as_array)
@@ -95,7 +76,6 @@ fn node_ids(spec: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// The recent-chat suite's spec, in the shape `build_recent_chat_context` takes.
 fn recent_chat_options(spec: &Value) -> RecentChatOptions {
     RecentChatOptions {
         limit: int(spec, "limit", 10),
@@ -137,7 +117,6 @@ fn run(
             },
         ) {
             Ok(payload) => payload,
-            // Python's two `ValueError`s are recorded, not skipped.
             Err(CoreError::InvalidRequest(message)) => serde_json::json!({"error": message}),
             Err(err) => panic!("traverse failed on the fixture: {err}"),
         },
@@ -244,10 +223,6 @@ fn run(
                 artifacts: spec.get("artifacts").cloned(),
                 knowledge: flag(spec, "knowledge", true),
                 notes: opt_text(spec, "notes"),
-                // 11.5.2: no recent seam. The production assembler supplies
-                // four seams and never this one, so a golden that pinned it
-                // claimed agreement about a path the product does not run.
-                // The transcript itself is pinned by the `recent_chat` suite.
                 recent: None,
                 user_email: opt_text(spec, "user_email"),
                 conversation_id: opt_text(spec, "conversation_id"),

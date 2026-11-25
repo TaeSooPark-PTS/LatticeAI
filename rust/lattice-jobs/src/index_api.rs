@@ -1,41 +1,3 @@
-//! The index surface the SPA reads: `GET /api/index/queue` and
-//! `GET /api/index/status` (WP-R6).
-//!
-//! Two routes, from two Python modules, mounted together because the client
-//! asks for them together — the Indexing panel renders "how much is owed" and
-//! "is the index complete" side by side, and the capture fixture files them as
-//! one family for the same reason.
-//!
-//! * `GET /api/index/queue` — `latticeai/api/index_jobs.py`. Counts
-//!   `vector_jobs`, which [`crate::queue`] has read since v11.5.0.
-//! * `GET /api/index/status` — `latticeai/api/search.py` →
-//!   `KnowledgeGraphStore.index_status()`. The expensive half: it walks every
-//!   embeddable item, re-derives the text each one would be embedded from, and
-//!   compares that hash against the stored vector row.
-//!
-//! Their two siblings under the same prefix stay with the worker:
-//! `POST /api/index/drain` produces embeddings and `POST /api/index/rebuild`
-//! produces all of them. This crate's scheduler already calls the first.
-//!
-//! ## What the native status report can and cannot say
-//!
-//! Everything derived from `knowledge_graph.sqlite` is exact: the source-item
-//! walk, the missing/stale/ready classification, the backlog breakdown, the
-//! recorded embedder fingerprint, the operation history. Two sub-objects
-//! describe the *process* rather than the store, and this one is not the Python
-//! one:
-//!
-//! * `storage.engine.reason` names the Rust gateway's SQLite build instead of
-//!   a missing Python `sqlite_vec` module. Every other field of that block is
-//!   identical, because neither runtime has sqlite-vec loaded and the fallback
-//!   values are the fallback values.
-//! * `storage.vector_index` resolves `LATTICEAI_VECTOR_INDEX` here. The
-//!   optional `hnsw` extra is a Python package, so asking for it from the
-//!   gateway reports the same honest substitution Python reports on a machine
-//!   that has not installed it.
-//!
-//! Both are stated in the wiring note rather than smoothed over.
-
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -53,53 +15,26 @@ use lattice_core::worker::WorkerSeamClient;
 use lattice_core::CoreError;
 use serde_json::{json, Value};
 
-/// Every `(method, path)` this module mounts.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/index/queue"),
     ("GET", "/api/index/status"),
-    // Native (W3b). Spec still lives in worker_keep.json.
     ("POST", "/api/index/drain"),
     ("POST", "/api/index/rebuild"),
 ];
 
-/// `index_jobs.MIN_DRAIN_LIMIT`.
 pub const MIN_DRAIN_LIMIT: i64 = 1;
-/// `index_jobs.MAX_DRAIN_LIMIT`.
 pub const MAX_DRAIN_LIMIT: i64 = 100;
-/// Opt in to batching `POST /worker/embed` during drain.
-///
-/// Off by default: the host always has a seam, and the default provider is
-/// the same hash GraphWriter already runs in-process. Turning this on is
-/// the right call when a real embedding model is wired — one HTTP batch
-/// replaces N serial hashes, and the vectors land via `write_vectors_with`.
 pub const WORKER_EMBED_ENV: &str = "LATTICEAI_JOBS_WORKER_EMBED";
 
-/// `vector_index/selector.VECTOR_INDEX_ENV`.
 pub const VECTOR_INDEX_ENV: &str = "LATTICEAI_VECTOR_INDEX";
-/// `vector_index/selector.DEFAULT_VECTOR_INDEX`.
 pub const DEFAULT_VECTOR_INDEX: &str = "brute";
-/// The rebuild-latency target `index_status` reports itself against.
 pub const TARGET_REBUILD_MS: i64 = 10_000;
 
-/// Why this runtime has no sqlite-vec ANN.
-///
-/// Python's sentence names the missing Python package. The Rust gateway links
-/// the bundled SQLite amalgamation with no loadable extensions at all, so the
-/// cause is different and is said differently — the *fallback* it describes is
-/// the same one, and every other capability field matches.
 pub const SQLITE_VEC_REASON: &str = "sqlite-vec is not linked into the Rust gateway's SQLite build; using real brute-force cosine fallback, not sqlite-vec ANN";
-/// `sqlite.py`'s `honest_fallback`, unchanged — the fallback really is this.
 pub const HONEST_FALLBACK: &str = "Vector search is available through the deterministic brute-force cosine backend. sqlite-vec ANN is unavailable.";
 
-/// A feature gate the host may impose ahead of a route.
-///
-/// `index_jobs.py` calls `gate_read(request)` / `gate_write(request)` before
-/// doing anything. The toggle service that answers them is WP-R2's, so this
-/// crate takes the question as an injected predicate: `None` is an open gate,
-/// which is what every one of these gates answers by default.
 pub type Gate = Arc<dyn Fn(&HeaderMap) -> Option<Response> + Send + Sync>;
 
-/// What the two index routes need.
 #[derive(Clone)]
 pub struct IndexApiState {
     auth: Arc<AuthState>,
@@ -122,7 +57,6 @@ impl std::fmt::Debug for IndexApiState {
 }
 
 impl IndexApiState {
-    /// A state with the graph switched on (or off, with `None`).
     pub fn new(auth: Arc<AuthState>, store: Option<Arc<Store>>, config: RuntimeConfig) -> Self {
         Self {
             auth,
@@ -135,39 +69,31 @@ impl IndexApiState {
         }
     }
 
-    /// Native write engine (W3b).
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// Worker compute seam used for `/worker/embed` during drain.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         self.seam = Some(seam);
         self
     }
 
-    /// Turn on batched `/worker/embed` for this state (tests, or a host that
-    /// already knows a real embedder is wired). [`WORKER_EMBED_ENV`] does the
-    /// same for a production process.
     pub fn with_worker_embed(mut self, on: bool) -> Self {
         self.worker_embed = on;
         self
     }
 
-    /// Impose the host's read gate ahead of both routes.
     pub fn with_read_gate(mut self, gate: Gate) -> Self {
         self.gate_read = Some(gate);
         self
     }
 
-    /// Where the Brain lives.
     pub fn db_path(&self) -> std::path::PathBuf {
         self.config.graph_db_path()
     }
 }
 
-/// The two index routes, mountable by the host.
 pub fn router(state: Arc<IndexApiState>) -> Router {
     Router::new()
         .route("/api/index/queue", get(queue))
@@ -202,10 +128,6 @@ fn ok(value: &Value) -> Response {
     json_response(StatusCode::OK, &body, None)
 }
 
-/// `require_user` → `gate_read` → `_require_pipeline`, in that order.
-///
-/// The order is observable: an anonymous caller is 401 even when the gate is
-/// shut, and a gated caller never learns whether ingestion is configured.
 fn admit(state: &IndexApiState, headers: &HeaderMap) -> Result<(), Response> {
     state.auth.require_user(headers)?;
     if let Some(gate) = state.gate_read.as_ref() {
@@ -222,8 +144,6 @@ fn admit(state: &IndexApiState, headers: &HeaderMap) -> Result<(), Response> {
     Ok(())
 }
 
-// ── GET /api/index/queue ────────────────────────────────────────────────────
-
 async fn queue(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> Response {
     if let Err(refusal) = admit(&state, &headers) {
         return refusal;
@@ -233,9 +153,6 @@ async fn queue(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> R
         Ok(counts) => counts,
         Err(error) => return detail(500, &format!("queue read failed: {error}")),
     };
-    // `_queue_state()`'s three keys, in its order. `read_counts` also carries a
-    // `detail`, which the Python payload has no field for; it is dropped rather
-    // than added, because this body is a client contract.
     let mut payload = OrderedMap::new();
     payload.insert("available", json!(counts.available));
     let mut by_status = OrderedMap::new();
@@ -255,12 +172,7 @@ async fn queue(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> R
     ok(&serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-// ── GET /api/index/status ───────────────────────────────────────────────────
-
 async fn status(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> Response {
-    // `_guarded(request)` authenticates; `index_status` is deliberately absent
-    // from `_ScopedSearchService._SCOPED`, so no workspace filter is applied —
-    // the index is machine-wide and the payload says so.
     if let Err(refusal) = state.auth.require_user(&headers) {
         return refusal;
     }
@@ -276,8 +188,6 @@ async fn status(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> 
         Err(error) => detail(500, &format!("Internal Server Error: {error}")),
     }
 }
-
-// ── POST /api/index/drain + rebuild (W3b native) ────────────────────────────
 
 async fn drain(
     State(state): State<Arc<IndexApiState>>,
@@ -452,8 +362,6 @@ mod tests {
 
     #[test]
     fn the_route_table_includes_native_drain_and_rebuild() {
-        // W3b: drain/rebuild are native product routes. Their OpenAPI spec
-        // still lives in worker_keep.json; the fragment is not moved.
         assert_eq!(MOUNTED.len(), 4);
         assert!(MOUNTED.iter().any(|(_, path)| path.ends_with("/drain")));
         assert!(MOUNTED.iter().any(|(_, path)| path.ends_with("/rebuild")));
@@ -463,8 +371,6 @@ mod tests {
     fn the_source_walk_is_nodes_then_chunks() {
         let (_dir, conn) = store();
         let items = source_items(&conn).unwrap();
-        // `n2` has no summary and no metadata parts, but its title is text, so
-        // it is embeddable; the Chunk-typed node is excluded by the WHERE.
         let ids: Vec<&str> = items.iter().map(|item| item.item_id.as_str()).collect();
         assert_eq!(ids, vec!["n1", "n2", "k1"]);
         assert_eq!(items[0].item_type, "node");
@@ -542,7 +448,6 @@ mod tests {
         assert_eq!(payload["scale"]["coverage_ratio"], json!(1.0));
         assert_eq!(payload["scale"]["coverage_percent"], json!(100.0));
 
-        // Change one item's text and it becomes stale for the stated reason.
         conn.execute("UPDATE nodes SET summary='changed' WHERE id='n1'", [])
             .unwrap();
         let payload = index_status(&conn).unwrap();
@@ -552,7 +457,6 @@ mod tests {
             json!(1)
         );
 
-        // A different recorded model is a *model* change, not a text change.
         conn.execute(
             "UPDATE vector_embeddings SET embedding_model='other' WHERE item_id='n2'",
             [],
@@ -594,7 +498,6 @@ mod tests {
         assert_eq!(payload["embedder"]["recorded"]["dim"], json!(768));
         assert_eq!(payload["embedder"]["stale_embedder"], json!(true));
         assert_eq!(payload["scale"]["full_rebuild_recommended"], json!(true));
-        // A fingerprint without a model_id is no fingerprint at all.
         conn.execute(
             "UPDATE graph_meta SET value='{\"dim\":768}' WHERE key='embedder_fingerprint'",
             [],
@@ -621,7 +524,6 @@ mod tests {
         assert_eq!(budget["last_rebuild_duration_ms"], json!(2500.0));
         assert_eq!(budget["last_items_per_second"], json!(34.0));
         assert_eq!(budget["within_target"], json!(true));
-        // Newest first: the failed one is reported, but the budget skips it.
         let operations = payload["operations"].as_array().unwrap();
         assert_eq!(operations.len(), 2);
         assert_eq!(operations[0]["status"], json!("failed"));
@@ -630,8 +532,6 @@ mod tests {
 
     #[test]
     fn the_vector_index_selection_reports_an_unavailable_backend_honestly() {
-        // The env var is process-global; these three run in one test so they
-        // cannot interleave with another test's reading of it.
         std::env::remove_var(VECTOR_INDEX_ENV);
         let default = vector_index_selection();
         assert_eq!(default["requested"], json!("brute"));

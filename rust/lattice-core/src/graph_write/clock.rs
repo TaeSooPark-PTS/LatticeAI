@@ -1,34 +1,13 @@
-//! The four clock readings the write path takes, behind one seam.
-//!
-//! Python reaches them as free functions (`_now()`, `time.time()`,
-//! `os.getpid()`, `time.perf_counter()`), which is why the golden generator has
-//! to monkey-patch eleven module namespaces to pin them. The Rust side takes
-//! them as a trait instead, so the parity replay configures a clock rather than
-//! rewriting the engine's globals — and so a frozen clock is a *test* fixture
-//! and never a production code path.
-//!
-//! [`SystemClock::now_iso`] and Python's `lattice_brain.utils.now_iso()` both
-//! emit **offset-free UTC** timestamps (`YYYY-MM-DDTHH:MM:SS`, `gmtoff: 0`).
-//! Keeping the offset-free second-precision shape preserves string-comparison
-//! compatibility with existing persisted rows while unifying Rust and Python on
-//! UTC so non-UTC hosts (e.g. UTC+9) never observe timezone skew.
-
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Everything the write engine asks the outside world about time.
 pub trait Clock: Send + Sync + std::fmt::Debug {
-    /// `lattice_brain.utils.now_iso()` — offset-free UTC, second resolution.
     fn now_iso(&self) -> String;
-    /// `time.time()` — seeds `vector_index_operations.id`.
     fn unix_time(&self) -> f64;
-    /// `os.getpid()` — the other half of that seed.
     fn pid(&self) -> u32;
-    /// `time.perf_counter()` — measures `duration_ms`, never stored identity.
     fn perf_counter(&self) -> f64;
 }
 
-/// The real clock.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemClock;
 
@@ -49,9 +28,6 @@ impl Clock for SystemClock {
     }
 
     fn perf_counter(&self) -> f64 {
-        // CPython's `perf_counter` is an arbitrary monotonic origin; only
-        // differences are meaningful, which is exactly what an epoch-relative
-        // reading provides.
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|value| value.as_secs_f64())
@@ -59,13 +35,6 @@ impl Clock for SystemClock {
     }
 }
 
-/// A clock pinned for a parity replay.
-///
-/// `unix_time` walks a recorded sequence, one value per call, because it seeds
-/// a primary key: a clock that stands still would make the second rebuild
-/// collide with the first. Past the end of the sequence it repeats the last
-/// value rather than inventing one — a replay that asks more often than the
-/// recording did has diverged, and should fail on the collision.
 #[derive(Debug)]
 pub struct FrozenClock {
     now: String,
@@ -76,7 +45,6 @@ pub struct FrozenClock {
 }
 
 impl FrozenClock {
-    /// A clock pinned to `now`, handing out `times` in order.
     pub fn new(now: impl Into<String>, times: Vec<f64>, pid: u32, perf: f64) -> Self {
         Self {
             now: now.into(),
@@ -113,7 +81,6 @@ impl Clock for FrozenClock {
     }
 }
 
-/// `lattice_brain.utils.now_iso()` (`YYYY-MM-DDTHH:MM:SS`) for a UTC epoch second.
 pub fn iso_seconds_for(secs: i64) -> String {
     let (year, month, day) = civil_from_days(secs.div_euclid(86_400));
     let time_of_day = secs.rem_euclid(86_400);
@@ -133,7 +100,6 @@ fn naive_local_secs_now() -> i64 {
     naive_local_secs(utc).unwrap_or(utc)
 }
 
-/// Broken-down UTC wall-clock fields for a UTC epoch second.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalWallParts {
     pub year: i32,
@@ -145,9 +111,6 @@ pub struct LocalWallParts {
     pub gmtoff: i64,
 }
 
-/// Convert a UTC epoch second to broken-down UTC wall-clock parts using pure
-/// Rust arithmetic (zero `unsafe`, zero `libc`, identical across Unix and
-/// Windows).
 pub fn local_wall_parts(utc_secs: i64) -> Option<LocalWallParts> {
     let (year, month, day) = civil_from_days(utc_secs.div_euclid(86_400));
     let time_of_day = utc_secs.rem_euclid(86_400);
@@ -163,7 +126,6 @@ pub fn local_wall_parts(utc_secs: i64) -> Option<LocalWallParts> {
     })
 }
 
-/// Format a UTC epoch second as `YYYY-MM-DDTHH:MM:SS` (pure Rust, cross-platform).
 pub fn local_iso_for(utc_secs: i64) -> Option<String> {
     let parts = local_wall_parts(utc_secs)?;
     Some(format!(
@@ -172,22 +134,18 @@ pub fn local_iso_for(utc_secs: i64) -> Option<String> {
     ))
 }
 
-/// Format a UTC epoch second as RFC 3339 (`YYYY-MM-DDTHH:MM:SSZ`).
 pub fn rfc3339_utc_for(utc_secs: i64) -> String {
     format!("{}Z", iso_seconds_for(utc_secs))
 }
 
-/// UTC seconds since epoch for a UTC epoch second (pure Rust, cross-platform).
 pub fn naive_local_secs(utc_secs: i64) -> Option<i64> {
     Some(utc_secs)
 }
 
-/// UTC offset (seconds) for a naive wall-clock timestamp — `0.0` under UTC-canonical timestamps.
 pub fn local_offset_for_naive_wall(_naive_secs: f64) -> f64 {
     0.0
 }
 
-/// Howard Hinnant's `civil_from_days`: days since 1970-01-01 → `(y, m, d)`.
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let shifted = days + 719_468;
     let era = shifted.div_euclid(146_097);
@@ -212,7 +170,6 @@ mod tests {
 
     #[test]
     fn iso_seconds_matches_pythons_isoformat() {
-        // Cross-checked against `datetime.fromtimestamp(…, UTC).isoformat()`.
         assert_eq!(iso_seconds_for(1_785_542_400), "2026-08-01T00:00:00");
         assert_eq!(iso_seconds_for(1_785_931_200), "2026-08-05T12:00:00");
         assert_eq!(iso_seconds_for(0), "1970-01-01T00:00:00");
@@ -253,8 +210,6 @@ mod tests {
         assert_eq!(iso, iso_seconds_for(utc_secs));
         assert_eq!(rfc3339_utc_for(utc_secs), format!("{iso}Z"));
 
-        // SystemClock::now_iso() must match current UTC (within 2s tolerance),
-        // never shifted by a host local offset such as UTC+9.
         let now_stamp = SystemClock.now_iso();
         let candidates: Vec<String> = (-2..=2)
             .map(|delta| iso_seconds_for(utc_secs + delta))

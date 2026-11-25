@@ -1,11 +1,7 @@
-//! Validation, import, and export of workflow definitions.
-
 use lattice_auth::pyjson::OrderedMap;
 use serde_json::{json, Value};
 
 use super::{NODE_TYPES, WORKFLOW_ENGINE_VERSION};
-
-// ── validation / import / export (lattice_brain.workflow) ─────────────────────
 
 pub(crate) fn legacy_steps_from_nodes(nodes: &[Value]) -> Vec<Value> {
     nodes

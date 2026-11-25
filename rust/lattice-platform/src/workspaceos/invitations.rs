@@ -1,8 +1,3 @@
-//! Invitation API: create, list, and accept workspace invitations.
-//!
-//! Port of `latticeai/api/invitations.py` over `latticeai/core/invitations.py`.
-//! State is `<data_dir>/invitations.json`, written atomically, same shape.
-
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -26,7 +21,6 @@ use crate::workspaceos::workspace::reqbody::{self, field, Kind};
 use crate::workspaceos::workspace::store::StoreError;
 use crate::workspaceos::workspace::{WorkspaceService, WorkspaceState};
 
-/// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/invitations"),
     ("POST", "/invitations"),
@@ -42,14 +36,12 @@ const CREATE: &[reqbody::Field] = &[
 
 const ROLES: &[&str] = &["owner", "admin", "member", "viewer"];
 
-/// In-process invitation store over `invitations.json`.
 pub struct InvitationStore {
     path: PathBuf,
     lock: Mutex<()>,
 }
 
 impl InvitationStore {
-    /// Open (or create) the store at `<data_dir>/invitations.json`.
     pub fn open(data_dir: &Path) -> Self {
         Self {
             path: data_dir.join(lattice_core::db::tables::state_files::INVITATIONS),
@@ -77,7 +69,6 @@ impl InvitationStore {
         }
     }
 
-    /// `InvitationStore.list`.
     pub fn list(&self) -> Vec<Value> {
         let _guard = self.lock.lock().unwrap_or_else(|error| error.into_inner());
         let mut data = self.load();
@@ -97,7 +88,6 @@ impl InvitationStore {
         records
     }
 
-    /// `InvitationStore.create`.
     pub fn create(
         &self,
         email: Option<&str>,
@@ -138,7 +128,6 @@ impl InvitationStore {
         published
     }
 
-    /// `InvitationStore.accept`.
     pub fn accept(
         &self,
         token: &str,
@@ -228,7 +217,6 @@ fn expire_if_needed(record: &mut Value) -> bool {
 }
 
 fn add_hours(stamp: &str, hours: i64) -> String {
-    // `stamp` is naive-local `YYYY-MM-DDTHH:MM:SS`. Add hours via the civil clock.
     let Ok(parsed) = chrono_naive_secs(stamp) else {
         return stamp.to_string();
     };
@@ -282,21 +270,15 @@ fn sha256_hex(text: &str) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// State the invitations router needs.
 #[derive(Clone)]
 pub struct InvitationsState {
-    /// Process-wide auth.
     pub auth: Arc<AuthState>,
-    /// Invitation store.
     pub store: Arc<InvitationStore>,
-    /// Workspace service (membership on accept).
     pub workspace: WorkspaceService,
-    /// Data directory for the audit log.
     pub data_dir: PathBuf,
 }
 
 impl InvitationsState {
-    /// Build from a workspace state (shares the registry).
     pub fn from_workspace(workspace: &WorkspaceState) -> Self {
         Self {
             auth: Arc::clone(&workspace.auth),
@@ -313,7 +295,6 @@ impl axum::extract::FromRef<InvitationsState> for Arc<AuthState> {
     }
 }
 
-/// Router factory.
 pub fn router(state: InvitationsState) -> Router {
     Router::new()
         .route(

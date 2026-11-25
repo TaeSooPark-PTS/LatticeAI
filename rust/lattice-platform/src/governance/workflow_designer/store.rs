@@ -1,14 +1,3 @@
-//! The designer's view of `workspace_os.json`.
-//!
-//! Until v11.6.0 this was a **fourth** writer of that document: its own
-//! default document, its own `"11.5.2"` version literal, its own `Mutex` and
-//! its own `dumps_indent2` bytes. A workflow save therefore rewrote every
-//! other branch of the file from a snapshot taken before the Review Center's
-//! last write. It is now a view over the one [`WorkspaceOsStore`] — the
-//! document, the lock, the version stamp and the bytes all belong to it, and
-//! the `OrderedMap` shapes below are only how this module reads and builds its
-//! own records.
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -21,16 +10,12 @@ use super::contract::workflow_run_contract;
 use super::time::{dumps_sorted, json_hash, now_iso};
 use super::{DEFAULT_WORKSPACE_ID, TERMINAL_STATUSES};
 
-// ── store ────────────────────────────────────────────────────────────────────
-
 pub(crate) struct WorkflowStore {
     pub(crate) path: PathBuf,
     os: Arc<WorkspaceOsStore>,
 }
 
 impl WorkflowStore {
-    /// `path` is `<data_dir>/workspace_os.json`; the store is keyed by the
-    /// directory it sits in, so this joins whatever handle already exists.
     pub(crate) fn open(path: PathBuf) -> Self {
         let data_dir = path
             .parent()
@@ -42,10 +27,6 @@ impl WorkflowStore {
         }
     }
 
-    /// The document, in this module's `OrderedMap` shape.
-    ///
-    /// The store's `default_state` is a superset of the document this module
-    /// used to default to, so every key read below is present either way.
     fn load(&self) -> OrderedMap {
         Self::as_ordered(&self.os.load_state())
     }
@@ -54,12 +35,6 @@ impl WorkflowStore {
         serde_json::from_value::<OrderedMap>(state.clone()).unwrap_or_default()
     }
 
-    /// Load, apply, save — under the store's lock.
-    ///
-    /// The body sees the whole document (not just the two workflow keys), so a
-    /// concurrent review or memory write is preserved rather than overwritten
-    /// by a stale snapshot. `version` and `updated_at` are stamped by the
-    /// store, which is why this module no longer carries a version literal.
     fn mutate<T>(&self, body: impl FnOnce(&mut OrderedMap) -> T) -> T {
         let mut produced: Option<T> = None;
         let _: Result<(), StoreError> = self.os.mutate(|state| {
@@ -91,7 +66,6 @@ impl WorkflowStore {
             .collect()
     }
 
-    // Eight parameters because the Python row this writes has eight columns.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn create_workflow(
         &self,
@@ -238,7 +212,6 @@ impl WorkflowStore {
             .collect()
     }
 
-    // Nine parameters because the run row this writes has nine columns.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn record_workflow_run(
         &self,
@@ -388,7 +361,6 @@ impl WorkflowStore {
             .ok_or(())
     }
 
-    /// A notification step lands on the workspace timeline.
     pub(crate) fn record_notification(&self, workspace_id: &str, payload: Value) -> Value {
         self.os
             .record_timeline_event("workflow", "notification", payload, Some(workspace_id))

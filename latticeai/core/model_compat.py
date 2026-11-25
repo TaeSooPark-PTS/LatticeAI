@@ -1,15 +1,3 @@
-"""Lattice AI Model Compatibility Layer.
-
-피드백 #3 (lattice_ai_model_compat_fast_path.txt) 반영.
-
-핵심 원칙:
-- 무거운 호환성 검사는 모델 로드 시 1회만 (Slow Path).
-- 실제 채팅 중에는 캐시된 profile을 사용하는 Fast Path.
-- 답변이 깨졌을 때만 1회 retry하는 Recovery Path.
-
-모든 함수는 안전한 디폴트로 동작하므로 기존 코드를 깨뜨리지 않는다.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,15 +14,11 @@ from latticeai.core.module_probe import module_available as _module_available
 logger = logging.getLogger(__name__)
 
 
-# ── Model family detection ────────────────────────────────────────────────────
-
 FAMILY_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("gemma", re.compile(r"gemma", re.I)),
     ("qwen", re.compile(r"qwen", re.I)),
     ("llama", re.compile(r"\bllama|meta[-_]?llama", re.I)),
     ("claude", re.compile(r"claude", re.I)),
-    # gpt-oss is its own local family with its own chat format, so it must be
-    # matched before the cloud `gpt` pattern rather than falling into it.
     ("gpt_oss", re.compile(r"gpt[-_]?oss", re.I)),
     ("gpt", re.compile(r"gpt[-_]?(?:4|5)|openai", re.I)),
     ("gemini", re.compile(r"gemini", re.I)),
@@ -42,12 +26,6 @@ FAMILY_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("lfm2", re.compile(r"\blfm[-_]?2", re.I)),
 ]
 
-#: HF ``config.json`` ``model_type`` → family code. An id is a name somebody
-#: chose; an architecture is what mlx-lm / mlx-vlm actually dispatches on, so it
-#: is the more reliable signal when we have it. Values here are the architectures
-#: pinned in the model capability registry (11.2.0) plus the ones that came
-#: before, so a model already on disk keeps its profile after its generation
-#: stops being offered.
 ARCHITECTURE_FAMILIES: Dict[str, str] = {
     "gemma2": "gemma",
     "gemma3": "gemma",
@@ -67,16 +45,10 @@ ARCHITECTURE_FAMILIES: Dict[str, str] = {
 
 
 def family_for_architecture(architecture: Optional[str]) -> str:
-    """Map an HF ``model_type`` to a family code (``"unknown"`` when unmapped)."""
     return ARCHITECTURE_FAMILIES.get(str(architecture or "").strip().lower(), "unknown")
 
 
 def detect_model_family(model_id: str, architecture: Optional[str] = None) -> str:
-    """주어진 model_id 문자열에서 family 코드를 추론한다.
-
-    ``architecture`` (HF config ``model_type``) 가 주어지고 알려진 값이면 그것을
-    우선한다 — 로더가 실제로 분기하는 값이기 때문이다.
-    """
     if architecture:
         by_arch = family_for_architecture(architecture)
         if by_arch != "unknown":
@@ -84,7 +56,6 @@ def detect_model_family(model_id: str, architecture: Optional[str] = None) -> st
     if not model_id:
         return "unknown"
     raw = str(model_id)
-    # provider prefix 제거
     if ":" in raw:
         raw = raw.split(":", 1)[1]
     for family, pattern in FAMILY_PATTERNS:
@@ -92,8 +63,6 @@ def detect_model_family(model_id: str, architecture: Optional[str] = None) -> st
             return family
     return "unknown"
 
-
-# ── Family profiles ───────────────────────────────────────────────────────────
 
 DEFAULT_STOP = ["<|im_end|>", "<|endoftext|>", "</s>", "<|user|>", "<|assistant|>"]
 
@@ -137,8 +106,6 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
         "disable_draft": False,
         "postprocess": ["strip_role_tokens"],
     },
-    # gpt-oss speaks the "harmony" response format: the channel markers are
-    # stop sequences, not text, so the reply never has to be salvaged from them.
     "gpt_oss": {
         "family": "gpt_oss",
         "supports_system": True,
@@ -152,7 +119,6 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
         "disable_draft": False,
         "postprocess": ["strip_role_tokens"],
     },
-    # LFM2 uses a ChatML-style template; text only, so no vision claim.
     "lfm2": {
         "family": "lfm2",
         "supports_system": True,
@@ -183,7 +149,6 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
 
 
 def get_model_profile(model_id: str, engine: Optional[str] = None) -> Dict[str, Any]:
-    """주어진 모델/엔진 조합에 대한 기본 호환성 프로파일을 반환한다."""
     family = detect_model_family(model_id)
     base = dict(FAMILY_PROFILES.get(family) or FAMILY_PROFILES["unknown"])
     base["engine"] = (engine or "").strip().lower() or None
@@ -191,8 +156,6 @@ def get_model_profile(model_id: str, engine: Optional[str] = None) -> Dict[str, 
     base.setdefault("stop_sequences", list(DEFAULT_STOP))
     return base
 
-
-# ── Runtime compatibility checks ─────────────────────────────────────────────
 
 GEMMA4_MLX_UNIFIED_MODULE = "mlx_vlm.models.gemma4_unified"
 GEMMA4_MLX_LM_MODULES = ("mlx_lm.models.gemma4", "mlx_lm.models.gemma4_text")
@@ -284,12 +247,6 @@ def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
 def model_runtime_compatibility(
     model_id: str, engine: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Return a lightweight pre-load runtime compatibility signal.
-
-    This intentionally checks only known fast failure modes. The loader and
-    smoke test remain the final authority, but the UI must not present a model
-    as ready when the installed runtime is known to lack its required loader.
-    """
     normalized_engine = (engine or "").strip().lower()
     if normalized_engine in {"", "mlx"}:
         normalized_engine = "local_mlx"
@@ -417,7 +374,6 @@ def model_runtime_compatibility(
             ],
         }
     )
-    # MLX-VLM is absent and the guard above already returned when MLX-LM was too.
     payload["preferred_runtime"] = "MLX-LM fallback"
     return payload
 
@@ -428,7 +384,6 @@ def friendly_model_runtime_error(
     model_id: Optional[str] = None,
     engine: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Convert loader exceptions into end-user recoverable error payloads."""
     raw = str(error or "")
     compat = model_runtime_compatibility(model_id or raw, engine=engine)
     if not compat.get("supported", True):
@@ -465,8 +420,6 @@ def friendly_model_runtime_error(
     }
 
 
-# ── Postprocessing ────────────────────────────────────────────────────────────
-
 BAD_MARKERS = [
     "<|im_start|>",
     "<|im_end|>",
@@ -487,7 +440,6 @@ def strip_role_tokens(text: str) -> str:
     cleaned = text
     for marker in BAD_MARKERS:
         cleaned = cleaned.replace(marker, "")
-    # role: 형태의 prefix 정리
     cleaned = re.sub(r"^\s*(?:user|assistant|system)\s*:\s*", "", cleaned, flags=re.I)
     return cleaned.strip()
 
@@ -495,7 +447,6 @@ def strip_role_tokens(text: str) -> str:
 def trim_after_user_marker(text: str) -> str:
     if not text:
         return text
-    # 모델이 다음 user 발화까지 토해낸 경우 자르기
     for marker in ("<|user|>", "\nuser:", "\nUser:", "### Instruction:"):
         idx = text.find(marker)
         if idx > 0:
@@ -510,7 +461,6 @@ POSTPROCESSORS = {
 
 
 def fast_postprocess(text: str, profile: Dict[str, Any]) -> str:
-    """Fast Path 후처리. 매우 가볍게 동작한다."""
     if not text:
         return text
     out = text
@@ -524,39 +474,24 @@ def fast_postprocess(text: str, profile: Dict[str, Any]) -> str:
     return out
 
 
-# ── Smoke test validation ─────────────────────────────────────────────────────
-
 SMOKE_PROMPT = "한국어로 한 문장만 답해. 2+2는?"
 
 
 def classify_smoke_response(text: Optional[str]) -> Tuple[str, str]:
-    """Smoke test 응답을 ok / degraded / failed 로 분류한다. (item 3-3)
-
-    - failed: 채팅에 쓸 수 없는 수준 (빈 응답, 특수/role 토큰 누출, 심한 반복,
-      과도하게 긴 출력).
-    - degraded: 로드/채팅은 되지만 품질이 일정하지 않음 (가벼운 반복, 기대한
-      정답 없음, 다소 긴 출력).
-    - ok: 형식·정답·길이 모두 정상.
-
-    반환: (status, reason)
-    """
     if text is None:
         return "failed", "empty response"
     raw = str(text).strip()
     if not raw:
         return "failed", "empty response"
 
-    # 1. role / 특수 토큰 누출 → 채팅 형식이 깨진 것이므로 failed.
     for marker in BAD_MARKERS:
         if marker in raw:
             return "failed", f"role token leakage ({marker})"
     if re.search(r"<\|[^|]{0,40}\|>", raw):
         return "failed", "special token leakage"
-    # role marker 줄 출력 (예: "assistant:" 로 시작)
     if re.match(r"^\s*(?:assistant|system|user)\s*:", raw, flags=re.I):
         return "failed", "role marker leakage"
 
-    # 2. 반복 감지.
     sentences = [s.strip() for s in re.split(r"[.!?\n]+", raw) if len(s.strip()) >= 3]
     counts: Dict[str, int] = {}
     for key in sentences:
@@ -564,15 +499,12 @@ def classify_smoke_response(text: Optional[str]) -> Tuple[str, str]:
     max_rep = max(counts.values()) if counts else 0
     if max_rep >= 5:
         return "failed", "severe repetition"
-    # 문자열 단위 폭주 반복 (예: "안녕안녕안녕…", "AAAA…")
     if re.search(r"(.{1,20}?)\1{6,}", raw):
         return "failed", "runaway repetition"
 
-    # 3. 과도하게 긴 출력 → failed.
     if len(raw) > 4000:
         return "failed", "response too long"
 
-    # 4. 여기까지 왔으면 채팅은 가능. degraded 신호를 모은다.
     degraded: List[str] = []
     if max_rep >= 3:
         degraded.append("mild repetition")
@@ -587,15 +519,8 @@ def classify_smoke_response(text: Optional[str]) -> Tuple[str, str]:
 
 
 def validate_smoke_response(text: str) -> Tuple[bool, str]:
-    """하위호환 wrapper. (ok 또는 degraded면 채팅 가능 → True)
-
-    반환: (채팅 가능 여부, reason)
-    """
     status, reason = classify_smoke_response(text)
     return status != "failed", reason
-
-
-# ── Compat cache (Slow Path) ──────────────────────────────────────────────────
 
 
 @dataclass
@@ -613,7 +538,7 @@ class CompatProfile:
     postprocess: List[str]
     loaded: bool = False
     chat_compatible: bool = False
-    quality_status: str = "unknown"  # ok / degraded / failed / unknown
+    quality_status: str = "unknown"
     last_test_error: Optional[str] = None
     validated_at: Optional[float] = None
 
@@ -643,7 +568,6 @@ def lookup_profile(
 
 
 def ensure_profile(model_id: str, engine: Optional[str] = None) -> CompatProfile:
-    """캐시된 프로파일이 있으면 그것을, 없으면 기본값으로 생성한다."""
     cached = lookup_profile(model_id, engine)
     if cached:
         return cached
@@ -673,11 +597,6 @@ def record_smoke_result(
     *,
     status: Optional[str] = None,
 ) -> CompatProfile:
-    """Smoke 결과를 프로필 캐시에 기록한다.
-
-    status 가 주어지면 ok/degraded/failed 3분류를 그대로 저장한다.
-    (하위호환: status 없이 ok bool만 오면 ok→"ok", False→"degraded")
-    """
     profile = ensure_profile(model_id, engine)
     profile.loaded = True
     profile.chat_compatible = bool(ok)
@@ -696,14 +615,10 @@ def list_cached_profiles() -> List[Dict[str, Any]]:
         return [p.to_dict() for p in _COMPAT_CACHE.values()]
 
 
-# ── Public helpers ────────────────────────────────────────────────────────────
-
-
 def normalize_generation_params(
     profile: Dict[str, Any],
     overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Family profile 기반으로 generation parameter를 보정한다."""
     out = {
         "temperature": profile.get("temperature", 0.2),
         "top_p": profile.get("top_p", 0.9),

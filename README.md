@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.1.1 Living Brain walkthrough](output/release/v14.1.1/gifs/v14.1.1-living-brain-walkthrough.gif)
+![v14.1.2 Living Brain walkthrough](output/release/v14.1.2/gifs/v14.1.2-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_14.1.1_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_14.1.2_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -85,15 +85,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v14.1.1/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.1.1/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v14.1.2/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.1.2/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v14.1.1/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.1.1/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v14.1.2/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.1.2/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v14.1.1/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.1.1/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v14.1.2/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.1.2/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v14.1.1/screenshots/13-chronicle.png) | ![Settings](output/release/v14.1.1/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v14.1.2/screenshots/13-chronicle.png) | ![Settings](output/release/v14.1.2/screenshots/08-system.png) |
 
-Full visual index: [output/release/v14.1.1/SCREENSHOT_INDEX.md](output/release/v14.1.1/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.1.1/screenshots/01-login.png), [06-capture.png](output/release/v14.1.1/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.1/screenshots/07-model-library.png)).
+Full visual index: [output/release/v14.1.2/SCREENSHOT_INDEX.md](output/release/v14.1.2/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.1.2/screenshots/01-login.png), [06-capture.png](output/release/v14.1.2/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.2/screenshots/07-model-library.png)).
 
 ---
 
@@ -117,24 +117,24 @@ Full visual index: [output/release/v14.1.1/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **14.1.1 — Living Synthesis**:
+The current release is **14.1.2 — Living Synthesis**:
 
-- **Repository-Wide Python Formatting & Global `C901` Enforcement** — Formatted all 219 Python files with `ruff format .` (recorded in `.git-blame-ignore-revs`), wired `ruff format --check .` into `npm run lint:python` and CI, decomposed `create_models_router` and `create_worker_compute_router`, and removed all remaining `"C901"` per-file ignores in `pyproject.toml` so McCabe `max-complexity = 20` is enforced globally with zero exemptions.
-- **Fail-Closed Server i18n Ratchet & Container Hygiene** — Explicitly classified `worker_compute_render.py` and `worker_resilience.py` in `NON_ROUTER_HELPERS` so `scripts/check_server_i18n.mjs` enforces `0 unclaimed` modules under `latticeai/api/`, and added explicit `--chown=lattice:lattice --chmod=0755` to the `lattice-host` runtime copy in `Dockerfile`.
-- **Built on v14.1.0 Foundation** — Unified Rust ↔ Python offset-free UTC timestamps, fail-fast Tauri production port pinning (`4825`), strict TypeScript 7 `noUncheckedIndexedAccess` at 100% Vitest coverage, PR Playwright visual smoke, and 100% EN↔KO bidirectional documentation parity.
+- **Zero-Comments & Suppression-Free Codebase** — Removed all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives across Python, TypeScript/JavaScript, Rust, Shell, CSS, and HTML source files (preserving only machine-parsed shebangs and `/// <reference ... />`), and resolved every surfaced Ruff, mypy, TypeScript, and Rust Clippy issue directly in source code without weakening any global config.
+- **Permanent No-Comments CI Gate (`scripts/check_no_comments.mjs`)** — Enforces zero comments/docstrings/suppressions across all tracked source files via `npm run check:no-comments` in `npm run lint` and `.github/workflows/ci.yml`, backed by permanent rules in `AGENTS.md`, `CONTRIBUTING.md`, and Korean mirrors.
+- **Built on v14.1.2 Foundation** — Repository-wide `ruff format .` hygiene, global `C901` (`max-complexity = 20`) with zero exemptions, fail-closed `0 unclaimed` server i18n ratchet, unified Rust ↔ Python UTC timestamps, and strict TypeScript 7 `noUncheckedIndexedAccess` at 100% Vitest coverage.
 
 <details>
-<summary>Release notes & exact 14.1.1 distribution artifacts</summary>
+<summary>Release notes & exact 14.1.2 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.1.1.md](docs/releases/RELEASE_NOTES_v14.1.1.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 14.1.1 must use exact filenames:
+Expected artifacts for 14.1.2 must use exact filenames:
 
-- `dist/ltcai-14.1.1-py3-none-any.whl`
-- `dist/ltcai-14.1.1.tar.gz`
-- `ltcai-14.1.1.tgz`
-- `dist/ltcai-14.1.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.1_aarch64.dmg`
+- `dist/ltcai-14.1.2-py3-none-any.whl`
+- `dist/ltcai-14.1.2.tar.gz`
+- `ltcai-14.1.2.tgz`
+- `dist/ltcai-14.1.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -156,6 +156,7 @@ Public release history in this repository covers `v13.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 14.1.2 | Living Synthesis | [RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md) |
 | 14.1.1 | Living Synthesis | [RELEASE_NOTES_v14.1.1.md](docs/releases/RELEASE_NOTES_v14.1.1.md) |
 | 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](docs/releases/RELEASE_NOTES_v14.1.0.md) |
 | 14.0.0 | Living Synthesis | [RELEASE_NOTES_v14.0.0.md](docs/releases/RELEASE_NOTES_v14.0.0.md) |

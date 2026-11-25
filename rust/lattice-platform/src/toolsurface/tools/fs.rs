@@ -1,5 +1,3 @@
-//! Workspace filesystem tools.
-
 use std::path::{Path, PathBuf};
 
 use axum::extract::State;
@@ -121,7 +119,6 @@ pub(crate) fn run_workspace_tree(state: &ToolsState, args: &Value) -> Result<Val
             })
         });
         for child in children {
-            // P0.4: never traverse or expose symlinks escaping the workspace root.
             if let Ok(sym_meta) = std::fs::symlink_metadata(&child) {
                 if sym_meta.file_type().is_symlink() {
                     let ok_inside = std::fs::canonicalize(&child)
@@ -209,7 +206,6 @@ pub(crate) fn run_read_file(state: &ToolsState, args: &Value) -> Result<Value, T
     }
     let text = std::fs::read_to_string(&target)
         .map_err(|_| ToolExecError::Message("File does not exist.".into()))?;
-    // splitlines() drops the trailing empty from a final newline
     let all_lines: Vec<&str> = if text.ends_with('\n') {
         text[..text.len() - 1].split('\n').collect()
     } else {
@@ -304,13 +300,6 @@ pub(crate) async fn write_file(
         Ok(p) => p,
         Err(r) => return r,
     };
-    // v11.7.0: the write-side guarantee reaches this endpoint too. Python
-    // applied `sanitize_write_content` in the agent loop only, so a fenced or
-    // chatty payload posted here was persisted verbatim — the artifact
-    // pipeline's remaining hole, closed. Content that already validates is
-    // returned byte-for-byte, so a hand-authored file is never rewritten, and
-    // the response shape (`{path, bytes}`) is unchanged: `bytes` is what
-    // landed, which is what it always claimed to be.
     let (content, _sanitize) =
         lattice_agent::content::sanitize::sanitize_write_content(path, content, "");
     if content.len() as u64 > MAX_FILE_BYTES {
@@ -705,7 +694,6 @@ fn compile_py_regex(pattern: &str) -> Result<(), String> {
 }
 
 fn regex_is_valid(pattern: &str) -> bool {
-    // Minimal check: unmatched `[` is the fixture case.
     let mut depth = 0i32;
     let mut escape = false;
     for ch in pattern.chars() {
@@ -727,7 +715,6 @@ fn regex_is_valid(pattern: &str) -> bool {
 }
 
 fn line_matches(pattern: &str, line: &str) -> bool {
-    // The captured happy path is a literal "Fixture".
     if let Ok(()) = compile_py_regex(pattern) {
         if pattern
             .chars()

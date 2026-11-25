@@ -1,5 +1,3 @@
-//! Graph canvas, node, context and pipeline-ribbon reads.
-
 use lattice_auth::OrderedMap;
 use lattice_core::pytext::{clean_text, recency_score, round_to, safe_loads};
 use lattice_core::read::{column_json, read_tables};
@@ -11,10 +9,6 @@ use crate::knowledge_graph_api::reads::{filter_scoped, list_documents, stats};
 use crate::knowledge_graph_api::GRAPH_VISIBLE_TYPES;
 use crate::service::Scope;
 
-/// `_GraphViewMixin.graph` — the canvas read, with its importance metrics.
-///
-/// `now` is naive local epoch seconds (`routes::naive_local_now`), because the
-/// stamps it is compared against were written by `datetime.now().isoformat()`.
 pub fn graph_view(
     conn: &Connection,
     limit: i64,
@@ -101,9 +95,6 @@ pub fn graph_view(
         });
     }
 
-    // Degrees over the *returned* edges, which is why a node the window
-    // truncated shows a lower degree than the graph gives it. Python's number,
-    // reproduced rather than corrected.
     let mut degrees: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
     for edge in &edges {
         for key in ["from", "to"] {
@@ -113,9 +104,6 @@ pub fn graph_view(
         }
     }
 
-    // `Topic` is not in the visible list, so the Topic importance branch is
-    // unreachable through this query. The non-Topic formula is the only one
-    // that runs, and it is the only one ported.
     let mut raw_importance: Vec<f64> = Vec::with_capacity(nodes.len());
     let mut type_max: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     for node in nodes.iter_mut() {
@@ -183,13 +171,6 @@ pub fn graph_view(
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `KnowledgeGraphReadsMixin.get_node`.
-///
-/// **One stated divergence.** Python fires `_record_access` here — a write into
-/// `nodes_v2` that feeds `importance_report()`. `nodes_v2` has a single writer
-/// (the worker) and no seam op exposes `touch_node`, so this port reads without
-/// recording. The counter is best-effort bookkeeping Python swallows every
-/// failure of, but it is a real behaviour difference; see the wiring note.
 pub fn get_node(conn: &Connection, node_id: &str, scope: &Scope) -> Result<Value, CoreError> {
     let node_id = node_id.trim();
     if node_id.is_empty() {
@@ -239,14 +220,6 @@ pub fn get_node(conn: &Connection, node_id: &str, scope: &Scope) -> Result<Value
     Ok(value)
 }
 
-/// The context line format, shared by the store method and the router helper.
-///
-/// `knowledge_graph.py:_format_context` and
-/// `retrieval/context.py:context_for_query` build the same line; the router's
-/// copy is the one that runs for a scoped caller, and its only difference is
-/// `" ".join(str(...).split())` where the store uses `re.sub(r"\s+", " ")`.
-/// [`clean_text`] is the store's spelling and matches both on every input a
-/// summary can hold.
 pub fn format_context(matches: &[Value], limit: i64) -> String {
     let take = limit.max(0) as usize;
     matches
@@ -287,7 +260,6 @@ pub fn format_context(matches: &[Value], limit: i64) -> String {
         .join("\n")
 }
 
-/// Python's f-string rendering of a value that may be `None`.
 fn render(value: Option<&Value>) -> String {
     match value {
         None | Some(Value::Null) => "None".into(),
@@ -295,17 +267,12 @@ fn render(value: Option<&Value>) -> String {
     }
 }
 
-/// `GET /knowledge-graph/context`'s body, both scope branches.
 pub fn context_for_query(
     conn: &Connection,
     query: &str,
     limit: i64,
     scope: &Scope,
 ) -> Result<String, CoreError> {
-    // Unscoped, Python calls `context_for_query(q, limit)` with `use_hybrid`
-    // off, which is a lexical search followed by the same formatting. The
-    // topic-candidate fallback only runs when the lexical search finds nothing
-    // — and produces the same line shape from the same columns.
     let payload = crate::keyword::search(
         conn,
         query,
@@ -326,7 +293,6 @@ pub fn context_for_query(
     Ok(format_context(&matches, limit))
 }
 
-/// `_pipeline_stage_view(count, pending)`.
 pub fn stage_view(count: i64, pending: i64) -> Value {
     let count = count.max(0);
     let pending = pending.max(0);
@@ -344,15 +310,6 @@ pub fn stage_view(count: i64, pending: i64) -> Value {
     serde_json::to_value(view).unwrap_or(Value::Null)
 }
 
-/// `GET /knowledge-graph/pipeline/status`.
-///
-/// **One stated divergence.** Python also consults `index_status()` for the
-/// vector backlog. That read belongs to [`lattice_jobs::index_api`] here, and a
-/// retrieval route may not open a second copy of it, so the extraction backlog
-/// falls back to `received - extracted` — which is Python's own documented
-/// fallback when the index cannot answer. Every key stays optional exactly as
-/// Python leaves it: a value that cannot be computed is **absent**, never a
-/// fabricated zero.
 pub fn pipeline_payload(conn: &Connection, scope: &Scope, now: f64) -> Result<Value, CoreError> {
     let mut received: Option<i64> = None;
     let mut extracted: Option<i64> = None;
@@ -436,11 +393,8 @@ pub fn pipeline_payload(conn: &Connection, scope: &Scope, now: f64) -> Result<Va
     Ok(serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
-/// `datetime.now().isoformat(timespec="seconds")` — naive local, no offset.
 pub fn naive_local_iso_seconds() -> String {
     let seconds = crate::routes::naive_local_now().floor() as i64;
-    // The value is naive local epoch seconds, so a plain UTC breakdown of it
-    // reproduces the local wall clock the Python stamp carries.
     let days = seconds.div_euclid(86_400);
     let time = seconds.rem_euclid(86_400);
     let (year, month, day) = civil_from_days(days);
@@ -452,7 +406,6 @@ pub fn naive_local_iso_seconds() -> String {
     )
 }
 
-/// Howard Hinnant's `civil_from_days`, the standard days→(y, m, d) reduction.
 pub fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;

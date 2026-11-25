@@ -27,15 +27,11 @@ type PaletteItem = {
   icon: React.ReactNode;
   target: string;
   focusNodeId?: string;
-  // Optional extra behavior on activation, e.g. asking the briefing panel to
-  // expand itself after navigation. Search behavior stays untouched.
   action?: "open-briefing" | "toggle-language";
 };
 
 type SearchGroup = { kind: string; items: Record<string, unknown>[] };
 
-// Destinations come from the route table, not from a copy kept here: the two
-// drifted apart, and the palette's copy was the one nobody was checking.
 const PAGE_ENTRIES = commandRoutes.map((entry) => {
   const Icon = entry.icon;
   return { ...entry, icon: <Icon className="h-4 w-4" /> as React.ReactNode };
@@ -87,8 +83,6 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
     enabled: open && debouncedQuery.length > 0,
   });
 
-  // Cold-open proactivity: fetch the (cached) briefing once the palette opens
-  // so we can suggest concrete next moves before the user types anything.
   const briefingQ = useQuery({
     queryKey: ["commandBriefing"],
     queryFn: latticeApi.commandBriefing,
@@ -99,8 +93,6 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   const items = React.useMemo<PaletteItem[]>(() => {
     const needle = query.trim().toLowerCase();
 
-    // Before the user types: a small proactive section built from real
-    // briefing data. If the fetch failed, the section simply does not appear.
     const proactive: PaletteItem[] = [];
     if (!needle && briefingQ.data?.ok) {
       const briefing = (briefingQ.data.data || {}) as Record<string, unknown>;
@@ -201,8 +193,6 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   }, [items.length, debouncedQuery]);
 
   const close = React.useCallback(() => setOpen(false), []);
-  // Modal a11y: focus stays trapped in the palette and Escape closes it from
-  // anywhere inside (not just the search input).
   const trapRef = useFocusTrap<HTMLDivElement>(close, open);
 
   const activate = React.useCallback(
@@ -218,8 +208,6 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
       }
       navigateHash(item.target);
       if (item.action === "open-briefing") {
-        // Best effort: an already-mounted briefing panel expands and scrolls
-        // into view; otherwise the user still lands where the briefing lives.
         window.dispatchEvent(new Event("lattice:open-briefing"));
       }
     },
@@ -227,15 +215,7 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   );
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    /* v8 ignore if -- unreachable: useFocusTrap's own native keydown
-       listener sits on the dialog element above this input and calls
-       stopPropagation() for Escape, so React's delegated root listener never
-       dispatches this handler for that key. The trap closes the palette the
-       same way. Kept as defense-in-depth if the trap is ever removed. */
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    } else if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((index) => Math.min(index + 1, Math.max(items.length - 1, 0)));
     } else if (event.key === "ArrowUp") {

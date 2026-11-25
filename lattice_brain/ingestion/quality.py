@@ -1,24 +1,11 @@
-"""Advisory extraction-quality scoring, and the capture CTA built on it.
-
-Pure heuristics over already-extracted text — no model call, no network, and
-deterministic. The score never blocks an ingest; it annotates the result so a
-capture surface can say "this capture is thin" and offer a way to fix it
-instead of silently storing junk.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-# ── Extraction quality heuristics (v9.8.0 A1) ────────────────────────────────
-# Pure heuristics over the extracted text — no model calls, no network. The
-# score is *advisory*: it never blocks an ingest, it only annotates the result
-# so capture surfaces (browser, folder scan) can surface low-quality warnings.
 QUALITY_HIGH_THRESHOLD = 0.7
 QUALITY_LOW_THRESHOLD = 0.4
 QUALITY_LOW_WARNING = "추출 품질이 낮습니다 — 원문 확인을 권장합니다."
 _WEB_SOURCE_TYPES = frozenset({"web_url", "browser_tab"})
-# Standalone short lines that smell like leftover site chrome (nav/menu/footer).
 _BOILERPLATE_LINE_MARKERS = frozenset(
     {
         "home",
@@ -123,14 +110,6 @@ def assess_extraction_quality(
     source_type: Optional[str] = None,
     upstream_confidence: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Score extracted text 0..1 with reasons (pure heuristic, deterministic).
-
-    Signals: text length, whitespace ratio, character/word diversity
-    (repetition), sentence structure, and — for web sources — leftover
-    nav/menu boilerplate. When the upstream extractor supplies its own
-    confidence (``upstream_confidence``), that value wins verbatim: the
-    extractor saw the raw document, this function only sees its output.
-    """
     if upstream_confidence is not None:
         try:
             score = max(0.0, min(1.0, float(upstream_confidence)))
@@ -154,7 +133,6 @@ def assess_extraction_quality(
     lines = [ln.strip() for ln in stripped.splitlines() if ln.strip()]
     words = stripped.split()
 
-    # 1) Length — very short extractions rarely carry recall value.
     if length < 40:
         length_factor = 0.35
         reasons.append("very_short_text")
@@ -166,22 +144,19 @@ def assess_extraction_quality(
     else:
         length_factor = 1.0
 
-    # 2) Sentence structure — prose has sentence-ending punctuation.
     sentence_marks = sum(
         sample.count(mark) for mark in (".", "!", "?", "…", "。", "！", "？")
     )
     if sentence_marks > 0:
         structure_factor = 1.0
     elif length < 200:
-        structure_factor = 0.75  # titles/snippets legitimately lack periods
+        structure_factor = 0.75
     else:
         structure_factor = 0.45
         reasons.append("no_sentence_structure")
 
-    # 3) Diversity — repeated characters/lines/words indicate extraction junk.
     diversity_factor = _score_diversity(sample, lines, words, reasons)
 
-    # 4) Cleanliness — whitespace floods, fragmented lines, site chrome.
     cleanliness_factor = _score_cleanliness(raw, lines, source_type, reasons)
 
     score = length_factor * structure_factor * diversity_factor * cleanliness_factor
@@ -195,10 +170,6 @@ def assess_extraction_quality(
     }
 
 
-# ── capture quality CTA (backlog #9, review §7.2 C) ──────────────────────────
-# Structured verdict over the same extraction-quality schema the rest of the
-# pipeline uses, so capture surfaces (browser extension, read-url) can render
-# an honest "this capture is thin" CTA instead of silently storing junk.
 CAPTURE_SUGGESTIONS_THIN = ["recapture", "paste_manually", "highlight_source"]
 _CAPTURE_REASON_LABELS = {
     "empty_text": "추출된 본문이 비어 있습니다",
@@ -221,15 +192,6 @@ def capture_quality_verdict(
     *,
     source_type: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Structured CTA verdict from a pipeline ``extraction_quality`` dict.
-
-    ``{"status": "thin"|"ok", "reason": str|None, "suggestions": [...],
-    "score": float|None, "level": str|None}``. ``thin`` (level == "low", the
-    same threshold as the ingest warning) carries actionable suggestions —
-    ``recapture`` / ``paste_manually`` / ``highlight_source`` — so the UI can
-    offer the user a way to fix the capture instead of hiding the problem.
-    Deterministic and never raises; ``None`` input yields an honest ``thin``.
-    """
     if not isinstance(extraction_quality, dict):
         return {
             "status": "thin",

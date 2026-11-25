@@ -1,20 +1,3 @@
-//! Organization workspaces: the registry, membership, roles, and activation.
-//!
-//! Port of the organization half of `WorkspaceOSStore` plus
-//! `core/workspace_permissions.py`. Two rules here are load-bearing and are
-//! easy to "fix" into a security hole:
-//!
-//! * **An unknown workspace id answers 403, not 404.** `get_workspace` and
-//!   `workspace_summary` check read permission *before* they look the record
-//!   up, and an unknown id has no members, so it can never grant read. A
-//!   404/403 split would let anyone enumerate which organizations exist on this
-//!   install. The routes therefore carry no not-found arm at all — the service
-//!   cannot reach one.
-//! * **An ownerless organization grants `owner` to an anonymous caller**
-//!   ([`super::state::member_role`]). That is the no-auth local install
-//!   managing what it created, and tightening it locks a desktop user out of
-//!   their own workspace.
-
 use serde_json::{json, Map, Value};
 
 use super::constants::{role_grants, DEFAULT_WORKSPACE_ID, ROLE_PERMISSIONS, WORKSPACE_ROLES};
@@ -22,7 +5,6 @@ use super::pyutil::{listify, now_iso, safe_slug};
 use super::state::{member_role, new_workspace_record, role_matrix};
 use super::store::{StoreError, WorkspaceOsStore};
 
-/// `_workspace_public` — the projection every workspace route answers with.
 pub fn workspace_public(workspace: &Value, user_id: Option<&str>) -> Value {
     let identifier = workspace
         .get("workspace_id")
@@ -65,12 +47,10 @@ fn object_or_empty(value: Option<&Value>) -> Value {
     }
 }
 
-/// The `{role: [permission, …]}` matrix, as `list_workspaces` serializes it.
 pub fn permission_matrix() -> Value {
     role_matrix()
 }
 
-/// One workspace record out of a loaded state document.
 fn workspace_of<'a>(state: &'a Value, workspace_id: &str) -> Option<&'a Value> {
     state
         .get("workspaces")
@@ -78,7 +58,6 @@ fn workspace_of<'a>(state: &'a Value, workspace_id: &str) -> Option<&'a Value> {
         .and_then(|map| map.get(workspace_id))
 }
 
-/// `_load_org` — the record, refusing anything that is not an organization.
 fn load_org<'a>(state: &'a mut Value, workspace_id: &str) -> Result<&'a mut Value, StoreError> {
     let is_org = workspace_of(state, workspace_id)
         .map(|workspace| workspace.get("type").and_then(Value::as_str) == Some("organization"));
@@ -95,8 +74,6 @@ fn load_org<'a>(state: &'a mut Value, workspace_id: &str) -> Result<&'a mut Valu
     }
 }
 
-/// `require_permission` — the message is the one Python's `PermissionError`
-/// carries, and it reaches the client as the 403 detail.
 pub fn require_permission(
     workspace: &Value,
     actor: Option<&str>,
@@ -119,7 +96,6 @@ pub fn require_permission(
     )))
 }
 
-/// `get_member_role` — refuses an unknown workspace, as Python does.
 pub fn get_member_role(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -131,7 +107,6 @@ pub fn get_member_role(
     Ok(member_role(workspace, user_id).map(str::to_string))
 }
 
-/// `has_permission` — an unknown workspace is simply `false`.
 pub fn has_permission(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -141,7 +116,6 @@ pub fn has_permission(
     has_permission_in(&store.load_state(), workspace_id, user_id, permission)
 }
 
-/// The same question, answered against an already-loaded document.
 pub fn has_permission_in(
     state: &Value,
     workspace_id: &str,
@@ -153,7 +127,6 @@ pub fn has_permission_in(
         .is_some_and(|role| role_grants(role, permission))
 }
 
-/// `list_workspaces` — the registry, filtered to what this identity may see.
 pub fn list_workspaces(store: &WorkspaceOsStore, user_id: Option<&str>) -> Value {
     let state = store.load_state();
     let user_id = user_id.filter(|value| !value.is_empty());
@@ -169,8 +142,6 @@ pub fn list_workspaces(store: &WorkspaceOsStore, user_id: Option<&str>) -> Value
             items.push(workspace_public(workspace, user_id));
         }
     }
-    // `sorted(key=(type != "personal", created_at or ""))`: Personal first,
-    // then oldest organization first. Python's sort is stable and so is this.
     items.sort_by(|left, right| {
         let key = |item: &Value| {
             (
@@ -191,7 +162,6 @@ pub fn list_workspaces(store: &WorkspaceOsStore, user_id: Option<&str>) -> Value
     })
 }
 
-/// `get_workspace` — the record, or not-found. Permission is the caller's job.
 pub fn get_workspace(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -203,7 +173,6 @@ pub fn get_workspace(
     Ok(workspace_public(workspace, user_id))
 }
 
-/// `workspace_summary` — the public record plus per-area counts.
 pub fn workspace_summary(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -229,7 +198,6 @@ pub fn workspace_summary(
     Ok(public)
 }
 
-/// `create_organization_workspace` — the id is a slug, de-duplicated by suffix.
 pub fn create_organization_workspace(
     store: &WorkspaceOsStore,
     name: &str,
@@ -276,7 +244,6 @@ pub fn create_organization_workspace(
     Ok(workspace_public(&record, owner_user_id))
 }
 
-/// `update_workspace` — rename and/or merge settings.
 pub fn update_workspace(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -314,7 +281,6 @@ pub fn update_workspace(
     Ok(workspace_public(&record, actor))
 }
 
-/// `archive_workspace` — soft archive. Data is never deleted.
 pub fn archive_workspace(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -340,7 +306,6 @@ pub fn archive_workspace(
     Ok(workspace_public(&record, actor))
 }
 
-/// `add_member` — insert or re-role one identity.
 pub fn add_member(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -383,7 +348,6 @@ pub fn add_member(
     Ok(workspace_public(&record, actor))
 }
 
-/// `update_member_role` — the owner cannot be demoted.
 pub fn update_member_role(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -424,7 +388,6 @@ pub fn update_member_role(
     Ok(workspace_public(&record, actor))
 }
 
-/// `remove_member` — the owner cannot be removed.
 pub fn remove_member(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -475,7 +438,6 @@ pub fn remove_member(
     Ok(workspace_public(&record, actor))
 }
 
-/// `set_active_workspace` — membership is enforced for organizations.
 pub fn set_active_workspace(
     store: &WorkspaceOsStore,
     workspace_id: &str,
@@ -507,7 +469,6 @@ pub fn set_active_workspace(
     Ok(workspace_public(&record, user_id))
 }
 
-/// Every permission a role holds, for callers rendering the matrix.
 pub fn role_permissions() -> &'static [(&'static str, &'static [&'static str])] {
     &ROLE_PERMISSIONS
 }
@@ -545,11 +506,9 @@ mod tests {
         create_organization_workspace(&store, "Team", Some("user:1"), None).unwrap();
         let owner_view = list_workspaces(&store, Some("user:1"));
         assert_eq!(owner_view["workspaces"].as_array().unwrap().len(), 2);
-        // Personal sorts first.
         assert_eq!(owner_view["workspaces"][0]["type"], json!("personal"));
         let stranger = list_workspaces(&store, Some("user:9"));
         assert_eq!(stranger["workspaces"].as_array().unwrap().len(), 1);
-        // No identity at all sees every workspace, with no role in the orgs.
         let anonymous = list_workspaces(&store, None);
         assert_eq!(anonymous["workspaces"].as_array().unwrap().len(), 2);
         assert_eq!(anonymous["workspaces"][1]["your_role"], Value::Null);
@@ -627,7 +586,6 @@ mod tests {
             update_workspace(&store, "org-nope", Some("x"), None, Some("user:1")).unwrap_err(),
             StoreError::NotFound("org-nope".into())
         );
-        // Personal is not an organization, so the org routes refuse it.
         assert_eq!(
             archive_workspace(&store, "personal", Some("user:1")).unwrap_err(),
             StoreError::Value("operation only valid for organization workspaces".into())

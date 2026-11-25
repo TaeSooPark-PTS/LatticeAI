@@ -27,16 +27,12 @@ export function CytoscapeGraph({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   fitSignal: number;
-  // Localized instructions ("arrow keys move, Enter opens…") supplied by the
-  // parent, which owns the i18n context.
   ariaLabel?: string;
 }) {
   const language = useAppStore((state) => state.language);
   const theme = useAppStore((state) => state.theme);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const cyRef = React.useRef<Core | null>(null);
-  // Keyboard cursor over the visible nodes: the canvas itself is focusable and
-  // arrow keys walk the node list, Enter/Space opens the focused node.
   const [kbIndex, setKbIndex] = React.useState<number | null>(null);
   React.useEffect(() => {
     if (!hostRef.current) return;
@@ -160,7 +156,6 @@ export function CytoscapeGraph({
 
   const kbNode = kbIndex !== null ? model.visibleNodes[kbIndex] : undefined;
 
-  // Reflect the keyboard cursor on the canvas: highlight + keep in view.
   React.useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;

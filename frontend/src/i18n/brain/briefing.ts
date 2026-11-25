@@ -1,7 +1,5 @@
 import type { NamespaceCopy } from "../types";
 
-// Today's briefing, the knowledge-flow panel, automation cards, and the
-// proactive suggestions the Brain raises on its own.
 export const brainBriefingCopy: NamespaceCopy = {
   ko: {
     "brain.flow.sources.aria": "Brain으로 들어오는 지식 출처",

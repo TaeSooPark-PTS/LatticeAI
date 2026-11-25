@@ -1,10 +1,3 @@
-"""Coverage for the surviving compute tools.
-
-The two ``/tools/*`` HTTP routes this module also covered went in v11.8.0 with
-``latticeai/api/tools.py``: nothing called them, and the parser behind
-``read_document`` is still exercised through ``POST /worker/parse``.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

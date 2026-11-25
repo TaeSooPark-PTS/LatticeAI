@@ -1,6 +1,3 @@
-//! Selective Knowledge Graph subgraph sharing, X25519 sealed-box archives,
-//! Ed25519 signature verification, and Review Queue staging handlers.
-
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -34,8 +31,6 @@ use super::*;
 const SUBGRAPH_ENTRY: &str = "bundle.json";
 const SHARE_REVIEW_SOURCE: &str = "kg_change_digest";
 const SHARE_REVIEW_KIND: &str = "kg_share_bundle";
-
-// ── Selective Graph Share Handlers ───────────────────────────────────────────
 
 pub(crate) async fn share_status(
     State(state): State<PortabilityState>,
@@ -478,8 +473,6 @@ pub(crate) async fn share_accept(
     AxumPath(item_id): AxumPath<String>,
     body: Bytes,
 ) -> Response {
-    // FastAPI validates the body model before require_admin. An absent body
-    // is 422 loc=["body"] even for an anonymous caller.
     if body.is_empty() {
         return missing_body();
     }

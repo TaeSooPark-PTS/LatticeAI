@@ -1,26 +1,3 @@
-//! What every brain route family needs before it can answer anything.
-//!
-//! One [`BrainState`] carries the four collaborators the Python routers were
-//! handed at composition time — the auth guard closures, the workspace read/
-//! write gate, the knowledge-graph store, and the engine the graph writes run
-//! on — so a handler in any of the six families reaches them the same way. The
-//! response helpers below exist for the same reason: FastAPI's
-//! refusal bodies are a client contract (`frontend/src/api/base.ts` reads
-//! `detail`), and one renderer means they cannot drift between families.
-//!
-//! Two Python details are load-bearing and reproduced exactly:
-//!
-//! * **the gate never answers `None`.** `PlatformRuntime.gate_read` calls
-//!   `WorkspaceService.resolve_read_scope(None, user)`, which falls back to
-//!   `store._active_workspace_id()` — `"personal"` on a fresh install. Handing
-//!   the services `None` instead would take the *other* branch in
-//!   `MemoryService.manager` (project memories become "everything not
-//!   personal") and silently change what the Memory view shows.
-//! * **validation runs before the guard.** FastAPI parses the body/query into
-//!   the pydantic model first, so an anonymous `POST /api/memory/clear {}` is a
-//!   422 about `scope`, not a 401 — `memory_brain.json` case
-//!   `clear_auth_denied` pins it.
-
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -42,23 +19,12 @@ use serde_json::Value;
 
 use super::wsos;
 
-/// Longest body any of these routes accepts, matching the retrieval routes.
 pub const MAX_BODY_BYTES: usize = 4 * 1024 * 1024;
 
-/// `latticeai.core.timeutil.now_iso`, injectable so a test can freeze it.
 pub type NowFn = Arc<dyn Fn() -> String + Send + Sync>;
 
-/// UTC epoch seconds, injectable for the same reason [`NowFn`] is.
-///
-/// [`NowFn`] freezes the stamps a body *prints*; this freezes the ones it
-/// *measures against*. The briefing's health report is the reason it exists:
-/// staleness is `now - 45 days` versus each node's `updated_at`, so a fixture
-/// whose nodes are all stamped on one day grades "excellent" until that day is
-/// 45 days old and then grades "good" — a golden that expires without anyone
-/// touching it.
 pub type UtcNowFn = Arc<dyn Fn() -> f64 + Send + Sync>;
 
-/// `p_reinforce.BRAIN_DIR` — same env fallbacks, evaluated once at construct.
 fn default_brain_dir() -> PathBuf {
     for name in ["LATTICEAI_OBSIDIAN_VAULT_DIR", "LATTICEAI_BRAIN_DIR"] {
         if let Some(value) = std::env::var(name).ok().filter(|v| !v.is_empty()) {
@@ -71,7 +37,6 @@ fn default_brain_dir() -> PathBuf {
         .join(".ltcai-brain")
 }
 
-/// Everything the six brain families read, in one clonable handle.
 #[derive(Clone)]
 pub struct BrainState {
     auth: Arc<AuthState>,
@@ -98,7 +63,6 @@ impl std::fmt::Debug for BrainState {
 }
 
 impl BrainState {
-    /// The state a gateway builds once and clones into every family router.
     pub fn new(auth: Arc<AuthState>, config: RuntimeConfig, store: Arc<Store>) -> Self {
         Self {
             auth,
@@ -115,71 +79,56 @@ impl BrainState {
         }
     }
 
-    /// Override the P-Reinforce vault root (tests pin `HOME` / `LATTICEAI_BRAIN_DIR`).
     pub fn with_brain_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.brain_dir = dir.into();
         self
     }
 
-    /// Seed the in-process synthesis trigger (Python keeps this on the service).
     pub fn with_synthesis_pending(self, pending: i64) -> Self {
         self.synthesis_pending.store(pending, Ordering::Relaxed);
         self
     }
 
-    /// The markdown vault root the garden routes write.
     pub fn brain_dir(&self) -> &Path {
         &self.brain_dir
     }
 
-    /// `SynthesisTrigger.status` for a freshly constructed synthesizer, plus
-    /// any pending count the host (or a test) injected.
     pub fn synthesis_trigger(&self) -> (i64, i64, i64) {
         let threshold = 25;
         let pending = self.synthesis_pending.load(Ordering::Relaxed);
         (threshold, pending, threshold - pending)
     }
 
-    /// Native write engine (W3b). Preferred over [`BrainState::with_seam`].
     pub fn with_graph(mut self, graph: GraphWriter) -> Self {
         self.graph = Some(graph);
         self
     }
 
-    /// The worker seam every graph write is delegated over (plan §2).
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         crate::vector_hnsw::bind_worker_origin(seam.origin());
         self.seam = Some(seam);
         self
     }
 
-    /// The native writer, when the host wired one.
     pub fn graph(&self) -> Option<&GraphWriter> {
         self.graph.as_ref()
     }
 
-    /// `LATTICEAI_ENABLE_GRAPH`, as the composition root resolved it.
     pub fn with_graph_enabled(mut self, enabled: bool) -> Self {
         self.enable_graph = enabled;
         self
     }
 
-    /// Freeze the clock — the `generated_at` fields are `@ts` in every fixture.
     pub fn with_clock(mut self, now: NowFn) -> Self {
         self.now = now;
         self
     }
 
-    /// `active_model_getter` — which LLM is loaded right now, or `""`.
-    ///
-    /// Injected rather than read, because only the process that holds the model
-    /// knows; the Brain Brief reports it and is deliberately independent of it.
     pub fn with_active_model(mut self, active_model: NowFn) -> Self {
         self.active_model = Some(active_model);
         self
     }
 
-    /// The loaded model's name, or `""` when nothing was injected.
     pub fn active_model(&self) -> String {
         self.active_model
             .as_ref()
@@ -187,56 +136,43 @@ impl BrainState {
             .unwrap_or_default()
     }
 
-    /// `latticeai.core.timeutil.now_iso()`.
     pub fn now(&self) -> String {
         (self.now)()
     }
 
-    /// Freeze the instant the briefing *measures* against.
-    ///
-    /// Defaults to [`crate::brain_api::sampling::now_utc_secs`], so a host that
-    /// does not call this gets the real clock and byte-identical answers.
     pub fn with_utc_clock(mut self, now_utc: UtcNowFn) -> Self {
         self.now_utc = now_utc;
         self
     }
 
-    /// `datetime.now(timezone.utc).timestamp()` — UTC epoch seconds.
     pub fn now_utc(&self) -> f64 {
         (self.now_utc)()
     }
 
-    /// Where `workspace_os.json` and `knowledge_graph.sqlite` live.
     pub fn data_dir(&self) -> &Path {
         self.config.data_dir()
     }
 
-    /// Whether this Brain has a knowledge graph at all.
     pub fn graph_enabled(&self) -> bool {
         self.enable_graph
     }
 
-    /// The shared identity state (sessions, roles, rate limits).
     pub fn auth(&self) -> &Arc<AuthState> {
         &self.auth
     }
 
-    /// The one SQLite file the product has.
     pub fn store(&self) -> &Arc<Store> {
         &self.store
     }
 
-    /// The graph-write seam, when the host wired one.
     pub fn seam(&self) -> Option<&WorkerSeamClient> {
         self.seam.as_ref()
     }
 
-    /// `require_user(request)` — 401 with the catalog's own sentence.
     pub fn require_user(&self, headers: &HeaderMap) -> Result<Identity, Response> {
         self.auth.require_user(headers)
     }
 
-    /// `PlatformRuntime.gate_read` — resolve *and* authorize the read scope.
     pub fn gate_read(
         &self,
         headers: &HeaderMap,
@@ -246,7 +182,6 @@ impl BrainState {
         self.gate(headers, query, user, ScopeMode::Read)
     }
 
-    /// `PlatformRuntime.gate_write` — the same, gated on `write`.
     pub fn gate_write(
         &self,
         headers: &HeaderMap,
@@ -275,8 +210,6 @@ impl BrainState {
         )
     }
 
-    /// `PlatformRuntime.allowed_scopes(user)` — the set a global index is
-    /// filtered against, or `None` for the unscoped local owner.
     pub fn allowed_workspaces(&self, user: &str) -> Option<BTreeSet<String>> {
         let state = wsos::load(&self.store, self.data_dir());
         let identity = if user.is_empty() { None } else { Some(user) };
@@ -286,16 +219,12 @@ impl BrainState {
                 allowed.insert(id);
             }
         }
-        // `None` is "unscoped local mode" to every consumer, so an
-        // authenticated caller never degrades into it (workspace_service.py:87).
         if allowed.is_empty() && identity.is_none() {
             return None;
         }
         Some(allowed)
     }
 
-    /// One blocking read of the graph, off the reactor, rendered as a 500 the
-    /// same way the native retrieval routes render theirs.
     pub async fn read<T, F>(&self, work: F) -> Result<T, Response>
     where
         T: Send + 'static,
@@ -304,30 +233,12 @@ impl BrainState {
         self.store.read(work).await.map_err(store_failed)
     }
 
-    /// Run one whitelisted graph mutation on the native write engine.
-    ///
-    /// Every one of them is native since v11.7.0. The refusal's own status is
-    /// kept rather than flattened into a blanket 502, so a caller still sees
-    /// `400 op_not_allowed` as a 400.
     pub async fn mutate(&self, op: &str, args: Value) -> Result<Value, Response> {
         self.mutate_detailed(op, args)
             .await
             .map_err(SeamRefusal::into_response)
     }
 
-    /// [`BrainState::mutate`], keeping the refusal's status and reason apart.
-    ///
-    /// The Self-Model routes have to *read* the reason to pick their own
-    /// catalog id (`not_found` is a 404 about the fact, everything else a 400),
-    /// and parsing it back out of a rendered body would be a second, lossier
-    /// error channel.
-    ///
-    /// Two families of op meet here and they are written by different code for
-    /// a reason: [`graph_native::dispatch`] covers the eleven ops the shared
-    /// write engine implements, and [`self_model_write::dispatch`] covers the
-    /// five this crate owns (the Self-Model's four writes and the
-    /// contradiction stamps), because those write *review items* as well as
-    /// nodes and the review queue is not `lattice-core`'s business.
     pub async fn mutate_detailed(&self, op: &str, args: Value) -> Result<Value, SeamRefusal> {
         let Some(graph) = self.graph.clone() else {
             return Err(SeamRefusal {
@@ -352,35 +263,21 @@ impl BrainState {
     }
 }
 
-/// The one sentence a caller gets when the graph is on but no writer was bound.
-///
-/// A mis-wired host, not a request problem — and the same wording
-/// `knowledge_graph_api::writes` answers with, because it is the same fault.
 pub const WRITE_ENGINE_UNCONFIGURED: &str =
     "the knowledge-graph write engine is not configured on this host";
 
-/// What the graph-write refused with.
 #[derive(Debug, Clone)]
 pub struct SeamRefusal {
-    /// The worker's own status, or `502` when the hop itself failed.
     pub status: u16,
-    /// The reason, as the worker stated it.
     pub detail: String,
 }
 
 impl SeamRefusal {
-    /// Render the refusal as the answer the caller receives.
     pub fn into_response(self) -> Response {
         detail_response(self.status, &self.detail)
     }
 }
 
-/// `latticeai.core.timeutil.now_iso()` — `datetime.now().isoformat("seconds")`.
-///
-/// Naive **local** time with no offset, because that is what every stamp this
-/// crate compares against was written with. There is no timezone crate in this
-/// workspace, so the conversion goes through `localtime_r(3)`, the same route
-/// `routes::naive_local_now` already takes for the recency decay.
 pub fn now_iso() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -393,7 +290,6 @@ fn local_iso(utc_secs: i64) -> Option<String> {
     lattice_core::graph_write::clock::local_iso_for(utc_secs)
 }
 
-/// The language the catalog renders a refusal in.
 pub fn lang_of(headers: &HeaderMap) -> &'static str {
     lattice_core::messages::resolve_language_from_headers(
         headers
@@ -402,7 +298,6 @@ pub fn lang_of(headers: &HeaderMap) -> &'static str {
     )
 }
 
-/// A 200 whose body keeps Python's dict order.
 pub fn ok_json<T: Serialize>(body: &T) -> Response {
     match serde_json::to_string(body) {
         Ok(text) => lattice_auth::response::json_response(StatusCode::OK, &text, None),
@@ -410,7 +305,6 @@ pub fn ok_json<T: Serialize>(body: &T) -> Response {
     }
 }
 
-/// `HTTPException(status, detail=...)` as Starlette renders it.
 pub fn detail_response(status: u16, detail: &str) -> Response {
     let mut body = OrderedMap::new();
     body.insert("detail", Value::String(detail.to_string()));
@@ -418,12 +312,10 @@ pub fn detail_response(status: u16, detail: &str) -> Response {
     lattice_auth::response::json_response(status_of(status), &text, None)
 }
 
-/// `http_error(status, id, language, **args)` — the localized refusal.
 pub fn message_response(status: u16, id: &str, lang: &str, args: &[(&str, &str)]) -> Response {
     detail_response(status, &lattice_core::messages::text(id, lang, args))
 }
 
-/// FastAPI's `{"detail": [{type, loc, msg, input}]}`, one entry.
 pub fn validation_response(kind: &str, loc: Value, msg: &str, input: Value) -> Response {
     let mut entry = OrderedMap::new();
     entry.insert("type", Value::String(kind.to_string()));
@@ -436,7 +328,6 @@ pub fn validation_response(kind: &str, loc: Value, msg: &str, input: Value) -> R
     lattice_auth::response::json_response(StatusCode::UNPROCESSABLE_ENTITY, &text, None)
 }
 
-/// A required query parameter that was not sent.
 pub fn missing_query(field: &str) -> Response {
     validation_response(
         "missing",
@@ -446,7 +337,6 @@ pub fn missing_query(field: &str) -> Response {
     )
 }
 
-/// A required body field that was not sent; `input` is the whole body.
 pub fn missing_body(field: &str, input: &Value) -> Response {
     validation_response(
         "missing",
@@ -456,7 +346,6 @@ pub fn missing_body(field: &str, input: &Value) -> Response {
     )
 }
 
-/// A 500 that names the store failure rather than swallowing it.
 fn store_failed(error: CoreError) -> Response {
     detail_response(500, &format!("knowledge store read failed: {error}"))
 }

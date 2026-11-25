@@ -1,11 +1,3 @@
-//! Shared extract / parse / embed / chunk helpers for native ingest doors.
-//!
-//! The worker already serves `POST /worker/parse` (filename + base64 → text)
-//! and `POST /worker/embed` (`texts` is a list). These helpers are the only
-//! place the upload and browser doors talk to those seams, so a seam failure
-//! degrades the same way at every call site: empty extract, no supplied
-//! vectors, never a 500.
-
 use lattice_core::embeddings::EmbeddingIndexContract;
 use lattice_core::graph_write::types::{ChunkPiece, ExtractReply, SuppliedVector};
 use lattice_core::worker::WorkerSeamClient;
@@ -20,7 +12,6 @@ pub(crate) const EXTRACT_PATH: &str = "/worker/extract";
 pub(crate) const EMBED_PATH: &str = "/worker/embed";
 pub(crate) const PARSE_PATH: &str = "/worker/parse";
 
-/// `POST /worker/parse` — text out, or `None` when the seam is down / refuses.
 pub(crate) async fn parse_via_seam(
     seam: Option<&WorkerSeamClient>,
     filename: &str,
@@ -40,7 +31,6 @@ pub(crate) async fn parse_via_seam(
     payload.as_object().cloned()
 }
 
-/// Text the extract/embed chain should see. Prefers `content`, then `preview`.
 pub(crate) fn parsed_text(parsed: &Map<String, Value>) -> String {
     parsed
         .get("content")
@@ -56,7 +46,6 @@ pub(crate) fn parsed_text(parsed: &Map<String, Value>) -> String {
         .to_string()
 }
 
-/// Whether `/worker/extract` succeeded alongside its extracted reply.
 pub(crate) async fn extract_via_seam_status(
     seam: Option<&WorkerSeamClient>,
     text: &str,
@@ -77,15 +66,12 @@ pub(crate) async fn extract_via_seam_status(
     }
 }
 
-/// Verified embedding batch returned by `/worker/embed` together with its contract.
 #[derive(Debug, Clone)]
 pub(crate) struct SeamEmbedBatch {
     pub contract: EmbeddingIndexContract,
     pub rows: Vec<Vec<f64>>,
 }
 
-/// Outcome of calling `/worker/embed`, distinguishing worker unavailability
-/// from malformed/dimension-mismatched vectors.
 #[derive(Debug, Clone)]
 pub(crate) enum SeamEmbedOutcome {
     Unavailable,
@@ -113,7 +99,6 @@ impl SeamEmbedOutcome {
     }
 }
 
-/// Granular enrichment and embedding telemetry attached to ingest receipts.
 #[derive(Debug, Clone)]
 pub(crate) struct EnrichmentTelemetry {
     pub ingest_status: lattice_core::IngestStatus,
@@ -383,7 +368,6 @@ pub(crate) async fn embed_texts_with_contract(
     })
 }
 
-/// `typed_chunks` pieces for this document, no vectors yet.
 pub(crate) fn chunk_pieces_for(text: &str, filename: &str, mime: &str) -> Vec<ChunkPiece> {
     if text.trim().is_empty() {
         return Vec::new();
@@ -399,7 +383,6 @@ pub(crate) fn chunk_pieces_for(text: &str, filename: &str, mime: &str) -> Vec<Ch
         .collect()
 }
 
-/// Attach provider vectors when a verified batch is present and compatible.
 pub(crate) fn attach_chunk_embeddings_from_batch(
     mut chunks: Vec<ChunkPiece>,
     batch: Option<&SeamEmbedBatch>,
@@ -424,7 +407,6 @@ pub(crate) fn attach_chunk_embeddings_from_batch(
     chunks
 }
 
-/// Extract a single `SuppliedVector` from row 0 of a verified batch.
 pub(crate) fn first_vector_from_batch(batch: Option<&SeamEmbedBatch>) -> Option<SuppliedVector> {
     let batch = batch?;
     let values = batch.rows.first()?.clone();

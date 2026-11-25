@@ -1,19 +1,6 @@
-//! `core/io_utils.atomic_write_json`, minus the JSON.
-//!
-//! Write to `<path>.tmp` with mode 0600, then `rename(2)` over the target, then
-//! re-assert 0600 on the result. Both files this crate owns hold credentials
-//! (password digests, session tokens' hashes), so the mode is not decoration —
-//! and a torn write of `users.json` would lock the owner out of their own
-//! Brain, which is why the rename is the only thing that ever touches the real
-//! name.
-//!
-//! Every failure is swallowed, as the Python original swallows it: an install
-//! whose disk is full must still answer requests rather than crash the process.
-
 use std::io::Write;
 use std::path::Path;
 
-/// Atomically replace `path` with `text`.
 pub fn write_text(path: &Path, text: &str) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
@@ -63,8 +50,6 @@ fn set_private(path: &Path) {
 #[cfg(not(unix))]
 fn set_private(_path: &Path) {}
 
-/// `data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)` plus the explicit
-/// `chmod` the config phase performs afterwards.
 pub fn ensure_private_dir(path: &Path) {
     let _ = std::fs::create_dir_all(path);
     #[cfg(unix)]
@@ -97,8 +82,6 @@ mod tests {
 
     #[test]
     fn an_unwritable_target_is_swallowed() {
-        // A directory in the target's place makes both the temp create and the
-        // rename fail; the call must still return.
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join("as-a-dir");
         std::fs::create_dir(&target).unwrap();

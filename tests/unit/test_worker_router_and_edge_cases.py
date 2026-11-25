@@ -1,5 +1,3 @@
-"""Unit tests for worker router filtering and remaining runtime edge branches."""
-
 from __future__ import annotations
 
 import sys
@@ -129,7 +127,6 @@ def test_fourth_wave_last_gaps(tmp_path: Path, monkeypatch):
     client = TestClient(app2, raise_server_exceptions=False)
     client.get("/models")
 
-    # pptx shape without text frame
     class Shape:
         has_text_frame = False
 
@@ -146,7 +143,6 @@ def test_fourth_wave_last_gaps(tmp_path: Path, monkeypatch):
     ppt.write_bytes(b"px")
     read_document(str(ppt))
 
-    # supported ext that is not one of the handled families
     import latticeai.tools.documents as docs
 
     monkeypatch.setattr(

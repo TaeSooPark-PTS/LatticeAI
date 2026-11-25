@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> **Status: canonical** — updated 2026-11-25. Current release: **14.1.1 — Living Synthesis**.
+> **Status: canonical** — updated 2026-11-25. Current release: **14.1.2 — Living Synthesis**.
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection

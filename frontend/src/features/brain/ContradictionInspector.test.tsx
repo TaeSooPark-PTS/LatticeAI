@@ -139,7 +139,6 @@ describe("ContradictionInspector", () => {
     await screen.findByTestId("staged-contradiction-rev-x");
     await userEvent.click(screen.getByTestId("resolve-contradiction-rev-x-replace"));
     await waitFor(() => expect(resolveFail).toHaveBeenCalled());
-    // Failed resolution keeps the staged card on screen so the user can retry.
     expect(screen.getByTestId("staged-contradiction-rev-x")).toBeTruthy();
   });
 });

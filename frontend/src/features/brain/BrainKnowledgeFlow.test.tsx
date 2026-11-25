@@ -119,13 +119,10 @@ describe("BrainKnowledgeFlow", () => {
     expect(
       screen.getByText("질문하거나 자료를 넣으면 Brain이 기억과 연결을 만들기 시작합니다."),
     ).toBeTruthy();
-    // Empty graph message instead of node buttons.
     expect(document.querySelector(".brain-flow-empty-graph")).toBeTruthy();
     expect(document.querySelectorAll(".brain-flow-node").length).toBe(0);
-    // No particles at all while idle and empty.
     expect(document.querySelectorAll(".brain-flow-particle").length).toBe(0);
     expect(screen.getByText("대기 중")).toBeTruthy();
-    // Counts prefer the readiness signals when the local lists are smaller.
     expect(screen.getByText("주제 1 · 관계 1")).toBeTruthy();
   });
 
@@ -156,27 +153,21 @@ describe("BrainKnowledgeFlow", () => {
     expect(section.getAttribute("data-stage")).toBe("connected");
     expect(section.className).toContain("is-absorbing");
 
-    // Emerging node outranks the hub, degree outranks importance, importance
-    // breaks the tie between the two isolated nodes.
     const labels = Array.from(document.querySelectorAll(".brain-flow-node strong")).map(
       (element) => element.textContent,
     );
     expect(labels).toEqual(["연결B", "허브", "연결A", "외톨이1", "외톨이2"]);
     expect(document.querySelector(".brain-flow-node.is-emerging strong")?.textContent).toBe("연결B");
 
-    // The edge to a missing node is filtered from the svg and the sr list.
     expect(document.querySelectorAll(".brain-flow-edges line").length).toBe(2);
     expect(screen.getByText("허브 — 포함 — 연결B")).toBeTruthy();
 
-    // Streaming absorbs: input particles plus fast output particles.
     expect(document.querySelectorAll(".brain-flow-particle").length).toBe(7);
 
-    // Source column: chat is the active lane.
     const active = document.querySelector(".brain-flow-source.is-active")!;
     expect(active.textContent).toContain("대화");
     expect(active.getAttribute("aria-current")).toBe("step");
 
-    // Emergence status line wins over the ready line.
     expect(screen.getByText("회의 기록")).toBeTruthy();
     expect(screen.getByText("새 기억 3개와 주제 2개가 실제 Brain에 연결됐습니다.")).toBeTruthy();
 
@@ -204,8 +195,6 @@ describe("BrainKnowledgeFlow", () => {
   });
 
   it("skips machine-generated titles until a human one is found", () => {
-    // Generated ingestion label and uuid event label both fall through to the
-    // brief focus title.
     const { rerender } = renderFlow({
       ingestionStates: {
         ...EMPTY_INGESTION,
@@ -216,7 +205,6 @@ describe("BrainKnowledgeFlow", () => {
     });
     expect(screen.getByText("예산 계획")).toBeTruthy();
 
-    // Digit-only focus falls to the first memory title.
     rerender(
       <BrainKnowledgeFlow
         language="ko"
@@ -242,11 +230,9 @@ describe("BrainKnowledgeFlow", () => {
     };
     const { rerender } = renderFlow({ graph, memories: [memory("기억 하나")] });
     expect(screen.getByText("이직 준비 주변의 기억과 연결을 유지하고 있습니다.")).toBeTruthy();
-    // No emergence and nothing absorbing: slow output particles only.
     expect(document.querySelectorAll(".brain-flow-particle.is-output").length).toBe(3);
     expect(document.querySelectorAll(".brain-flow-particle").length).toBe(3);
 
-    // An id-shaped node label falls back to the neutral "Brain" focus.
     rerender(
       <BrainKnowledgeFlow
         language="ko"
@@ -275,7 +261,6 @@ describe("BrainKnowledgeFlow", () => {
       }),
     });
     expect(document.querySelectorAll(".brain-flow-node").length).toBe(8);
-    // Graph counts prefer the live lists when they are larger than readiness.
     expect(screen.getByText("주제 10 · 관계 1")).toBeTruthy();
     expect(screen.getByText("기억 기반 제안 1개")).toBeTruthy();
   });
@@ -335,15 +320,12 @@ describe("BrainMemoryAutomation", () => {
 
     expect(screen.getByText("예산 계획")).toBeTruthy();
     expect(screen.getByText("메모")).toBeTruthy();
-    // Zero-value evidence is dropped; only the first three positives render.
     const evidence = document.querySelectorAll(".brain-automation-evidence span");
     expect(evidence.length).toBe(3);
-    // The three visible actions carry their intent captions.
     expect(screen.getByText("Agent 실행")).toBeTruthy();
     expect(screen.getByText("검토함에 초안")).toBeTruthy();
     expect(screen.getByText("그래프에서 확인")).toBeTruthy();
     expect(screen.queryByText("기억으로 질문", { selector: "em" })).toBeNull();
-    // Three activity rows at most, each with its own status word.
     const rows = document.querySelectorAll(".brain-automation-activity li");
     expect(rows.length).toBe(3);
     expect(rows[0]!.getAttribute("data-status")).toBe("running");
@@ -370,7 +352,6 @@ describe("BrainMemoryAutomation", () => {
     expect(document.querySelector(".brain-automation-actions")).toBeNull();
     expect(document.querySelector(".brain-automation-activity")).toBeNull();
     expect(document.querySelector(".brain-automation-evidence")).toBeNull();
-    // Empty focus falls back to friendly copy, and no source em renders.
     expect(document.querySelector(".brain-automation-grounding em")).toBeNull();
   });
 
@@ -406,14 +387,12 @@ describe("BrainMemoryAutomation", () => {
     );
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ id: "p2" }));
 
-    // Escape closes and hands focus back to the summary; other keys pass.
     fireEvent.keyDown(details, { key: "a" });
     expect(details.open).toBe(true);
     fireEvent.keyDown(details, { key: "Escape" });
     expect(details.open).toBe(false);
     expect(document.activeElement).toBe(details.querySelector("summary"));
 
-    // The close button inside the popover does the same.
     await userEvent.click(details.querySelector("summary")!);
     expect(details.open).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "기억 기반 행동 닫기" }));

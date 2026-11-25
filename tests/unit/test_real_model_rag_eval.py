@@ -1,5 +1,3 @@
-"""Unit tests for the real-model RAG evaluation grounding gate (v13.9.0 / PR #69 Fix #5)."""
-
 from __future__ import annotations
 
 import importlib.util

@@ -1,5 +1,3 @@
-"""Tests for scripts/validate_release_artifacts.py."""
-
 import importlib.util
 import json
 import tarfile
@@ -139,12 +137,11 @@ def test_mixed_versions_warn_about_glob(tmp_path: Path):
     dist.mkdir()
     _write_python_artifacts(dist, "1.1.0")
     _write_vsix(dist, "1.1.0")
-    # A stale build from a previous release lingering in dist/.
     (dist / "ltcai-1.0.1-py3-none-any.whl").write_bytes(b"stale")
 
     result = validator.validate("1.1.0", dist, require_vsix=True, require_tgz=False)
 
-    assert result["ok"] is True  # required artifacts are present
+    assert result["ok"] is True
     assert any("dist/*" in warning for warning in result["warnings"])
 
 

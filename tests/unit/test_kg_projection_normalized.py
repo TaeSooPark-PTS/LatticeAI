@@ -1,14 +1,3 @@
-"""Normalized v2 schema contract.
-
-Locks in the KGStoreV2 redesign:
-  * no ``attrs._kg`` passthrough — summary/metadata are first-class columns,
-  * legacy free-string types are normalized into a NodeType/EdgeType superset
-    while the raw string is preserved losslessly in ``legacy_type``,
-  * edge metadata lives in its own ``metadata`` column (``evidence`` freed),
-  * edge identity follows the raw legacy type (no collapse under normalization),
-  * a projection-layout bump migrates an old-shape v2 in place, non-destructively.
-"""
-
 import json
 import sqlite3
 
@@ -52,11 +41,6 @@ def _insert_edge(conn, eid, a, b, etype, w, meta):
 
 
 def _v2_counts(store):
-    """Legacy vs. v2 id sets read straight from the tables.
-
-    The dual-write invariant is that both id sets match exactly; a difference
-    means a write path bypassed ``_upsert_*`` or a delete was not mirrored.
-    """
     with store._connect() as conn:
         legacy_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes")}
         v2_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes_v2")}
@@ -77,7 +61,6 @@ def store(tmp_path):
 
 
 def test_no_attrs_kg_passthrough(store):
-    """The projection stores summary/metadata as columns, never in attrs._kg."""
     with store._connect() as conn:
         _insert_node(
             conn,
@@ -102,12 +85,9 @@ def test_no_attrs_kg_passthrough(store):
 
 
 def test_type_normalized_legacy_preserved(store):
-    """Known legacy types normalize into the superset; the raw string is kept."""
     with store._connect() as conn:
         _insert_node(conn, "computer:1", "Computer", "Mac", "", {})
-        _insert_node(
-            conn, "evt:1", "checkout_event", "Bought", "", {}
-        )  # dynamic/unknown
+        _insert_node(conn, "evt:1", "checkout_event", "Bought", "", {})
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
@@ -115,17 +95,13 @@ def test_type_normalized_legacy_preserved(store):
             r["id"]: r
             for r in conn.execute("SELECT id, type, legacy_type FROM nodes_v2")
         }
-    # known legacy type → first-class superset member, raw preserved
     assert rows["computer:1"]["type"] == "COMPUTER"
     assert rows["computer:1"]["legacy_type"] == "Computer"
-    # unknown/dynamic type → CONCEPT fallback, but raw string is lossless
     assert rows["evt:1"]["type"] == "CONCEPT"
     assert rows["evt:1"]["legacy_type"] == "checkout_event"
 
-    # the read view reconstructs the exact legacy type string
     store._read_from_v2 = True
     types = {n["id"]: n["type"] for n in store.graph(limit=50)["nodes"]}
-    # Computer is graph-visible; the view must surface the legacy label
     assert types.get("computer:1") == "Computer"
 
 
@@ -155,13 +131,11 @@ def test_edge_metadata_in_metadata_column(store):
 
 
 def test_edge_identity_survives_normalization_collision(store):
-    """Two legacy edge types between the same pair that normalize to the same
-    EdgeType must remain two distinct edges (identity = raw legacy type)."""
     with store._connect() as conn:
         _insert_node(conn, "a", "Concept", "A", "", {})
         _insert_node(conn, "b", "Concept", "B", "", {})
-        _insert_edge(conn, "e1", "a", "b", "mentions", 1.0, {})  # → MENTIONS
-        _insert_edge(conn, "e2", "a", "b", "관련됨", 1.0, {})  # → MENTIONS too
+        _insert_edge(conn, "e1", "a", "b", "mentions", 1.0, {})
+        _insert_edge(conn, "e2", "a", "b", "관련됨", 1.0, {})
     store._backfill_v2_if_needed(force=True)
 
     with store._connect() as conn:
@@ -177,7 +151,6 @@ def test_edge_identity_survives_normalization_collision(store):
     assert n == 2, "distinct legacy edges must not collapse under normalization"
     assert legacy_types == sorted(["mentions", "관련됨"])
 
-    # legacy and v2 reads agree on the edge set
     def edge_pairs():
         return sorted(
             (e["from"], e["to"], e["type"]) for e in store.graph(limit=50)["edges"]
@@ -191,7 +164,6 @@ def test_edge_identity_survives_normalization_collision(store):
 
 
 def test_v2_read_views_self_heal_after_edge_identity_rebuild(tmp_path):
-    """Startup recreates read views before rebuilding an older edges_v2 table."""
 
     db = tmp_path / "kg.sqlite"
     with sqlite3.connect(db) as conn:
@@ -291,8 +263,6 @@ def test_v2_read_views_self_heal_after_edge_identity_rebuild(tmp_path):
 
 
 def test_edge_reupsert_tracks_confidence_and_updates_in_place(store):
-    """Re-upserting the same (source,target,legacy_type) edge updates in place and
-    refreshes the dedicated confidence column (kept in sync with metadata)."""
     with store._connect() as conn:
         store._upsert_node(conn, "a", "Concept", "A", "", {})
         store._upsert_node(conn, "b", "Concept", "B", "", {})
@@ -312,32 +282,22 @@ def test_edge_reupsert_tracks_confidence_and_updates_in_place(store):
 
 
 def test_edge_synonym_labels_dedupe_at_write_door(store):
-    """v4 write-door contract: synonymous labels normalize to ONE canonical
-    edge ('mentions' and '관련됨' are both MENTIONS — new writes dedupe), while
-    two genuinely different canonical types between the same pair coexist.
-    (Distinct legacy rows from pre-v4 data keep their separate identities via
-    the backfill path — covered in test_kg_v4_edge_identity.)"""
     with store._connect() as conn:
         store._upsert_node(conn, "a", "Concept", "A", "", {})
         store._upsert_node(conn, "b", "Concept", "B", "", {})
-        store._upsert_edge(conn, "a", "b", "mentions", 1.0, {})  # → MENTIONS
-        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})  # → MENTIONS (same edge)
-        store._upsert_edge(conn, "a", "b", "포함함", 1.0, {})  # → CONTAINS (new edge)
+        store._upsert_edge(conn, "a", "b", "mentions", 1.0, {})
+        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})
+        store._upsert_edge(conn, "a", "b", "포함함", 1.0, {})
     with store._connect() as conn:
         rows = conn.execute(
             "SELECT type, metadata FROM edges_v2 WHERE source='a' AND target='b' ORDER BY type"
         ).fetchall()
     assert [r["type"] for r in rows] == ["CONTAINS", "MENTIONS"]
-    # The original label is preserved for traceability.
     assert "포함함" in rows[0]["metadata"]
 
 
 def test_view_is_byte_faithful_to_legacy(store):
-    """The kgv2_* views reproduce the legacy row strings verbatim — including
-    unsorted multi-key metadata (no key re-sorting), NULL summary, and
-    over-length title/summary that bypassed the _upsert_* truncation."""
     with store._connect() as conn:
-        # direct inserts (not via _upsert_*) with awkward values
         conn.execute(
             "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
             " VALUES (?,?,?,?,?,?,?,?)",
@@ -388,9 +348,6 @@ def test_view_is_byte_faithful_to_legacy(store):
 
 
 def test_dual_write_invariant_holds_through_writes_and_deletes(store):
-    """Every legacy write goes through _upsert_* (dual-write) and every delete is
-    mirrored, so legacy and v2 id-sets stay identical. Comparing the id sets
-    directly is the guard for a bypassed write path."""
     with store._connect() as conn:
         store._upsert_node(conn, "conv:1", "Conversation", "c1", "", {})
         store._upsert_node(conn, "concept:x", "Concept", "X", "about x", {"k": "v"})
@@ -403,7 +360,6 @@ def test_dual_write_invariant_holds_through_writes_and_deletes(store):
     assert rep["nodes_legacy"] == rep["nodes_v2"] == 3
     assert rep["edges_legacy"] == rep["edges_v2"] == 2
 
-    # deletes are mirrored too → still in sync
     store.clear_all()
     rep = _v2_counts(store)
     assert rep["in_sync"], f"delete mirror drift: {rep}"
@@ -411,23 +367,20 @@ def test_dual_write_invariant_holds_through_writes_and_deletes(store):
 
 
 def test_migration_is_atomic_on_failure(tmp_path, monkeypatch):
-    """A crash mid-migration rolls back: legacy intact, projection_version stays
-    stale so the next startup retries, and a clean restart self-heals."""
     db = tmp_path / "kg.sqlite"
     blobs = tmp_path / "blobs"
     store = kg.KnowledgeGraphStore(db, blobs)
     with store._connect() as conn:
         _insert_node(conn, "c1", "Concept", "Alpha", "body", {"k": "v"})
-    # force the projection stale, then make the rebuild explode mid-flight
     with sqlite3.connect(str(db)) as conn:
         conn.execute("UPDATE kg_meta SET value='0' WHERE key='projection_version'")
 
     def boom(self, conn, *, force=False):
-        conn.execute("DELETE FROM nodes_v2")  # partial work inside the txn
+        conn.execute("DELETE FROM nodes_v2")
         raise RuntimeError("simulated mid-migration crash")
 
     monkeypatch.setattr(kg.KnowledgeGraphStore, "_backfill_v2_on", boom)
-    kg.KnowledgeGraphStore(db, blobs)  # _init_v2_schema must roll back
+    kg.KnowledgeGraphStore(db, blobs)
     monkeypatch.undo()
 
     with sqlite3.connect(str(db)) as conn:
@@ -440,24 +393,18 @@ def test_migration_is_atomic_on_failure(tmp_path, monkeypatch):
         "projection_version stayed stale (rolled back) so next startup retries"
     )
 
-    healed = kg.KnowledgeGraphStore(db, blobs)  # clean restart heals
+    healed = kg.KnowledgeGraphStore(db, blobs)
     assert _v2_counts(healed)["in_sync"]
 
 
 def test_projection_version_migration_rebuilds_old_shape(tmp_path):
-    """An old-shape v2 projection (pre-normalization columns) is migrated in
-    place on construction: dropped, rebuilt with the new columns, legacy intact."""
     db = tmp_path / "kg.sqlite"
     blobs = tmp_path / "blobs"
 
-    # 1) first construction lays down legacy + (current) v2 schema
     store = kg.KnowledgeGraphStore(db, blobs)
     with store._connect() as conn:
         _insert_node(conn, "c1", "Concept", "Alpha", "alpha body", {"k": "v"})
 
-    # 2) simulate an OLD projection: replace nodes_v2 with a pre-normalization
-    #    shape (no legacy_type/summary/metadata cols, summary in attrs._kg) and
-    #    roll the recorded projection_version back so the next init sees it stale.
     with sqlite3.connect(str(db)) as conn:
         conn.executescript(
             "DROP VIEW IF EXISTS kgv2_nodes;"
@@ -479,7 +426,6 @@ def test_projection_version_migration_rebuilds_old_shape(tmp_path):
             "INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','1')"
         )
 
-    # 3) reconstruct → version gate fires, old projection dropped + rebuilt
     store = kg.KnowledgeGraphStore(db, blobs)
     with store._connect() as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(nodes_v2)")}
@@ -502,7 +448,6 @@ def test_projection_version_migration_rebuilds_old_shape(tmp_path):
 
 
 def test_migration_keeps_reads_equivalent_after_rebuild(tmp_path):
-    """After the version-gated rebuild, the v2 read path still matches legacy."""
     db = tmp_path / "kg.sqlite"
     store = kg.KnowledgeGraphStore(db, tmp_path / "blobs")
     with store._connect() as conn:
@@ -511,7 +456,6 @@ def test_migration_keeps_reads_equivalent_after_rebuild(tmp_path):
         )
         _insert_node(conn, "topic:db", "Topic", "Storage", "sqlite storage", {})
         _insert_edge(conn, "e1", "concept:rag", "topic:db", "discusses", 1.0, {})
-    # force a stale projection then reconstruct
     with sqlite3.connect(str(db)) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO kg_meta(key,value) VALUES ('projection_version','0')"

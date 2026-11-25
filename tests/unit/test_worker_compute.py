@@ -1,10 +1,3 @@
-"""The v11.6.0 pure-compute seams: data in, data out, and no store touched.
-
-Parity against the write-path call, render bytes re-opened by the same library,
-honesty when a port is absent. Optional libs are stubbed via
-``sys.modules[name] = None``; the PDF font hunt uses reportlab's ``Vera.ttf``.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -56,8 +49,6 @@ COMPUTE_PATHS = [
 
 
 class Recorder:
-    """Every admission this router performed, in order."""
-
     def __init__(self) -> None:
         self.rate: List[tuple] = []
 
@@ -76,7 +67,6 @@ def _client(
     require_user: Any = None,
     recorder: Optional[Recorder] = None,
 ) -> TestClient:
-    """A bare app carrying only the compute router — no product wiring at all."""
     if embedder == "default":
         embedder = resolve_embedder("")
     recorder = recorder or Recorder()
@@ -90,13 +80,12 @@ def _client(
         )
     )
     client = TestClient(app, raise_server_exceptions=False)
-    client.recorder = recorder  # type: ignore[attr-defined]
+    client.recorder = recorder
     return client
 
 
 @pytest.fixture(autouse=True)
 def _seam_open(monkeypatch):
-    """The gate is open for every test that does not deliberately close it."""
     monkeypatch.setenv(SEAM_ENV_VAR, "1")
 
 
@@ -139,7 +128,6 @@ def test_the_messages_are_bilingual_and_land_in_the_one_catalog():
 
 
 def test_the_vectors_are_the_ones_the_write_path_would_have_stored():
-    """Parity with the literal call ``write_master._upsert_vector_item`` makes."""
     from lattice_brain.embeddings import LocalEmbeddingModel
 
     embedder = resolve_embedder("")
@@ -162,8 +150,6 @@ def test_the_vectors_are_the_ones_the_write_path_would_have_stored():
 def test_a_passage_is_clamped_where_the_write_path_clamps_it():
     embedder = resolve_embedder("")
     client = _client(embedder=embedder)
-    # The tail token sits past the clamp, so the two kinds cannot coincide the
-    # way a repeated word would (feature hashing normalises that away).
     long_text = ("lattice " * 9_000) + "zetatoken"
     assert len(long_text) > PASSAGE_MAX_CHARS
 
@@ -257,7 +243,6 @@ def test_a_worker_without_an_embedder_says_so_instead_of_crashing():
 
 
 def test_the_reported_identity_is_read_after_the_call_not_before():
-    """A network provider locks its width to what the model returned."""
 
     class WidensOnFirstCall:
         provider = "ollama"
@@ -300,7 +285,6 @@ def test_a_text_document_comes_back_as_the_parser_matrix_reports_it():
     assert body["preview"] == payload[:500]
     assert body["chars"] == len(payload)
     assert body["filename"] == "note.md"
-    # The temp file this seam wrote is not a path Rust may act on.
     assert "path" not in body
 
 
@@ -311,8 +295,6 @@ def test_a_rendered_docx_parses_back_through_the_same_worker():
         json={"title": "보고서", "body": "한 문단.\n\n두 문단.", "filename": "r.docx"},
     ).json()
 
-    # The render reply is bytes and cost only — the name belongs to the caller
-    # that asked for it, and to the Rust writer that resolved the target.
     assert "filename" not in rendered
 
     body = client.post(
@@ -504,7 +486,6 @@ def test_a_candidate_that_is_not_a_font_falls_back_instead_of_failing(
 
 
 def test_no_cjk_font_anywhere_still_renders(monkeypatch):
-    """Every candidate absent — the loop runs out and Helvetica is used."""
     monkeypatch.setattr(
         worker_compute, "CJK_FONT_CANDIDATES", ["/definitely/not/here.ttf"]
     )
@@ -560,12 +541,6 @@ def test_a_builder_that_breaks_is_a_500_naming_the_kind_and_the_reason(monkeypat
 
 
 def test_the_render_reply_carries_no_target_of_its_own():
-    """The one place a document's *name* is decided is ``lattice-agent``.
-
-    ``documents.document_output_target`` (Rust) sanitises and resolves it
-    before the render call; this seam answers with bytes and cost only, so
-    there is no second name for the two sides to disagree about.
-    """
     client = _client()
 
     body = client.post(
@@ -694,7 +669,6 @@ def test_the_temp_file_is_gone_once_the_call_returns():
 
 
 def test_a_temp_file_that_cannot_be_removed_does_not_fail_the_call(monkeypatch):
-    """A read-only tmpdir is an operator's problem, not a failed transcription."""
 
     def _refuse(self, missing_ok=False):
         raise OSError("read-only file system")
@@ -761,11 +735,6 @@ def test_vector_query_rejects_an_empty_body():
 def test_the_router_mounts_exactly_the_compute_paths():
     from latticeai.runtime.build_phases.worker_profile import WORKER_COMPUTE_ROUTES
 
-    # Read the router's own, always-flat route list rather than an
-    # application's. FastAPI >= 0.140 stopped flattening `include_router` into
-    # `app.routes` and appends a wrapper instead, where the usual
-    # `isinstance(route, APIRoute)` walk finds nothing at all — so the app-side
-    # spelling of this assertion compares an empty set and passes vacuously.
     router = create_worker_compute_router(
         embedder=None,
         require_user=lambda request: USER,
@@ -777,7 +746,6 @@ def test_the_router_mounts_exactly_the_compute_paths():
 
 
 def test_nothing_in_this_module_reaches_a_store_or_the_filesystem_it_keeps():
-    """The compute seam's whole claim, checked against its own source."""
     source = Path(worker_compute.__file__).read_text(encoding="utf-8")
     for forbidden in (
         "sqlite3",
@@ -789,19 +757,6 @@ def test_nothing_in_this_module_reaches_a_store_or_the_filesystem_it_keeps():
 
 
 def test_the_request_bodies_are_the_ones_the_create_handlers_accepted():
-    """The four bodies ``POST /tools/create_*`` took, pinned as literals.
-
-    They used to be checked against ``latticeai.api.tools.Tool{Docx,Xlsx,Pptx,
-    Pdf}Request`` — the request models of the Python routes these seams were
-    factored out of. WP-W3b made those routes native and WP-P1 deleted the
-    Python side, so the anchor is gone and the shape has to be written down.
-
-    It is written down twice on purpose: the other copy is
-    ``rust/lattice-agent/src/tools/render.rs``, which composes exactly these
-    fields (``filename`` defaulted per creator, ``sheet_name`` defaulted to
-    ``Sheet1``, ``rows``/``slides`` coerced from a JSON string). A field added
-    here and not there is a render call that silently drops it.
-    """
     expected = {
         worker_compute.RenderDocxRequest: {
             "title": "",
@@ -830,7 +785,6 @@ def test_the_request_bodies_are_the_ones_the_create_handlers_accepted():
 
 
 def _defaults(model) -> Dict[str, Any]:
-    """Each field's effective default, factory-built ones included."""
     values: Dict[str, Any] = {}
     for name, field in model.model_fields.items():
         factory = field.default_factory
@@ -839,7 +793,6 @@ def _defaults(model) -> Dict[str, Any]:
 
 
 def test_the_seams_answer_json_and_never_a_file_path():
-    """A response that named a path would be a write this seam does not own."""
     client = _client()
     docx = client.post("/worker/render/docx", json={"title": "t"}).json()
     xlsx = client.post("/worker/render/xlsx", json={"rows": []}).json()
@@ -847,6 +800,4 @@ def test_the_seams_answer_json_and_never_a_file_path():
     for body in (docx, xlsx):
         assert set(body) >= {"content_b64", "bytes"}
         assert "path" not in body
-        # Not even a name: naming a target is the writer's job, and this seam
-        # is not the writer.
         assert "filename" not in body

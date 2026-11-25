@@ -1,14 +1,3 @@
-//! Provenance and portability — port of `lattice_brain/graph/provenance.py`.
-//!
-//! `record_ingestion` is `record_provenance`: an upsert keyed on
-//! **`(node, content, source_type, source_uri, pipeline)`** and deliberately
-//! *not* on the wall clock. Through 11.0.x the basis included a
-//! second-resolution timestamp, which made a record's identity depend on when
-//! it happened: re-ingesting unchanged content twice inside one second
-//! collapsed onto a single row, and one second later appended a duplicate. That
-//! is not an audit trail, it is a race — and it grew this table without bound
-//! on every re-scan of an unchanged folder.
-
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -18,7 +7,6 @@ use super::types::{EdgeSpec, ImportRequest, IngestionRecord, NodeSpec, RebuildRe
 use super::vectors::RebuildOutcome;
 use super::GraphWriter;
 
-/// What `record_provenance` returns.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenanceReceipt {
     pub id: String,
@@ -27,13 +15,11 @@ pub struct ProvenanceReceipt {
 }
 
 impl ProvenanceReceipt {
-    /// `{"id": …, "node_id": …, "created_at": …}`.
     pub fn to_json(&self) -> Value {
         json!({"id": self.id, "node_id": self.node_id, "created_at": self.created_at})
     }
 }
 
-/// What `import_graph_data` returns (the plan, plus what happened to it).
 #[derive(Debug, Clone)]
 pub struct ImportOutcome {
     pub mode: String,
@@ -44,17 +30,10 @@ pub struct ImportOutcome {
     pub provenance: usize,
     pub dry_run: bool,
     pub imported: bool,
-    /// The re-derived vector index. `None` on a dry run.
     pub index: Option<RebuildOutcome>,
 }
 
 impl ImportOutcome {
-    /// The plan body, without the `index` block.
-    ///
-    /// `index` is composed in Python from the read-side `vector_freshness()`
-    /// report, which belongs to the retrieval layer rather than to the write
-    /// engine; the rebuild it wraps *is* observable here, because it writes a
-    /// `vector_index_operations` row.
     pub fn to_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("mode".into(), json!(self.mode));
@@ -74,7 +53,6 @@ impl ImportOutcome {
 }
 
 impl GraphWriter {
-    /// `record_provenance` — where an ingested node came from.
     pub fn record_ingestion(
         &self,
         record: &IngestionRecord,
@@ -127,12 +105,6 @@ impl GraphWriter {
         })
     }
 
-    /// Merge ``patch`` into the latest provenance row for ``source_uri``.
-    ///
-    /// Skip-by-hash restamps size/mtime here so a later scan can skip by
-    /// stamp. The row identity (node, content hash, source, pipeline) does
-    /// not change — this is not a second writer, it is the same upsert door
-    /// touching metadata only.
     pub fn update_ingestion_metadata(
         &self,
         source_uri: &str,
@@ -172,12 +144,6 @@ impl GraphWriter {
         })
     }
 
-    /// `import_graph_data` — a logical export back into the store.
-    ///
-    /// `mode="replace"` clears the graph **inside the same transaction** as the
-    /// re-import, so a malformed artifact rolls back to the previous graph
-    /// rather than leaving a cleared one. The pre-v4 path committed the clear
-    /// first, which is exactly how an import could destroy a Brain.
     pub fn import_graph_data(&self, request: &ImportRequest) -> Result<ImportOutcome, CoreError> {
         let nodes = array_of(&request.data, "nodes");
         let edges = array_of(&request.data, "edges");
@@ -265,8 +231,6 @@ impl GraphWriter {
                 let Some(edge) = edge.as_object() else { continue };
                 let meta =
                     crate::pytext::safe_loads(edge.get("metadata_json").and_then(Value::as_str));
-                // Whatever label the export carried is preserved, so two legacy
-                // strings that normalize to one canonical type stay two rows.
                 let legacy_label = meta
                     .get("legacy_label")
                     .filter(|value| truthy(value))
@@ -361,11 +325,6 @@ impl GraphWriter {
             Ok(())
         })?;
         outcome.imported = true;
-        // `_reindex_after_import`: the write door already embeds inline, so this
-        // is a verification in the common case — but "the index is consistent
-        // after an import" has to be a guarantee the import makes, not an
-        // accident of where the embedding call happens to live. It is also the
-        // only path that records the embedder fingerprint.
         outcome.index = Some(self.rebuild_vector_index(&RebuildRequest {
             full: false,
             include_nodes: true,
@@ -390,7 +349,6 @@ fn optional_text(map: &Map<String, Value>, key: &str) -> Option<String> {
     map.get(key).filter(|value| !value.is_null()).map(py_str)
 }
 
-/// `int(row.get(key) or 0)` — a JSON `null`, `false` or absent key is 0.
 fn int_of(map: &Map<String, Value>, key: &str) -> i64 {
     match map.get(key) {
         Some(Value::Bool(flag)) => i64::from(*flag),

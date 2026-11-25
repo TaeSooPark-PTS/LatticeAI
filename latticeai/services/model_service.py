@@ -1,19 +1,9 @@
-"""Model / engine state helpers used by the health and model routers.
-
-Pure payload builders with no FastAPI dependency. The model runtime (LLMRouter),
-``engine_status``, and ``runtime_features`` remain owned by ``server_app``; this
-module just assembles the response shapes so the health/model routers stay thin
-and the summaries live in one place.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List
 
 
 class ModelService:
-    """Assembles health/engine summary payloads from injected runtime pieces."""
-
     def __init__(
         self,
         *,

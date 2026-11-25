@@ -1,5 +1,3 @@
-"""Rule-based triple and semantic item extraction helpers for ``extraction.py``."""
-
 from __future__ import annotations
 
 import re
@@ -10,8 +8,6 @@ from .relations import COOCCURRENCE_CONCEPT_LIMIT, infer_edge_relation
 from .sections import heading_at, heading_spans, sentence_offsets, with_section
 from .text import _clean_text
 
-#: `(?<=[.!?\n])\s+|\n{2,}` — the sentence split, compiled so
-#: :func:`sentence_offsets` can keep each piece's position.
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?\n])\s+|\n{2,}")
 
 _RE_DECISION = re.compile(r"(결정|확정|하기로|decided|decision)")
@@ -19,12 +15,6 @@ _RE_TASK = re.compile(r"(todo|해야|하자|진행|구현|수정|확인|next|tas
 
 
 def _drop_nested(present: List[Any]) -> List[Any]:
-    """Drop a concept whose span sits inside another concept's span.
-
-    ``"RAG"`` found *inside* ``"Graph RAG"`` is not a second participant; it is
-    the same eight characters counted twice, and pairing them produces an edge
-    from a thing to part of its own name.
-    """
     kept: List[Any] = []
     for start, concept in present:
         end = start + len(concept)
@@ -39,13 +29,6 @@ def _drop_nested(present: List[Any]) -> List[Any]:
 
 
 def _candidate_pairs(present: List[Any]) -> List[Any]:
-    """``(left, right, adjacent)`` for every pair worth testing, adjacent first.
-
-    Korean puts the verb last and separates subject from object with whatever
-    clause it likes — ``하이브리드검색은 키워드검색이 아니라 벡터검색을 쓴다``
-    states a relation between the *first* and the *last* concept, and adjacency
-    never sees it.
-    """
     adjacent = [(present[i], present[i + 1], True) for i in range(len(present) - 1)]
     distant = [
         (present[i], present[j], False)
@@ -62,7 +45,6 @@ def _emit(
     section: str,
     limit: int,
 ) -> bool:
-    """Append ``triple`` unless its pair is already there. False ⇒ limit hit."""
     pair_key = tuple(
         sorted([str(triple["subject"]).lower(), str(triple["object"]).lower()])
     ) + (triple["relation"],)
@@ -79,15 +61,6 @@ def _extract_triples_rules(
     concepts: List[str],
     limit: int = 20,
 ) -> List[Dict[str, Any]]:
-    """Extract (subject, typed-edge, object, context) triples (rule-based).
-
-    Per sentence: try the four syntactic patterns in :mod:`.patterns` first —
-    they read *where* each concept sits and what stands between the two, so
-    ``A는 B를 사용한다`` and ``B is used by A`` agree on the subject — and fall
-    back to the sentence-level co-occurrence classification for pairs no
-    pattern claims. The context each triple carries names the markdown section
-    the sentence came from, so a reader can see where the fact lives.
-    """
     if len(concepts) < 2:
         return []
 
@@ -143,12 +116,6 @@ def _extract_triples_rules(
 
 
 def _semantic_items(text: str) -> List[Dict[str, Any]]:
-    """Extract explicit decision / task items from text.
-
-    Each item carries the markdown section its line sat in (when there is one)
-    so the Task or Decision node knows where in the document it was decided —
-    the ingest doors store the whole item dict in ``nodes.raw_json``.
-    """
     body = str(text or "")
     spans = heading_spans(body)
     items: List[Dict[str, Any]] = []

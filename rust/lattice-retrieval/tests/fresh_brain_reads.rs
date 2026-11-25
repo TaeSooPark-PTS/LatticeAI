@@ -1,5 +1,3 @@
-//! Fresh-Brain regression: memory reads must not 500 before the first chat write.
-
 #[allow(dead_code)]
 mod common;
 
@@ -58,7 +56,6 @@ async fn memory_reads_on_a_fresh_brain_do_not_500() {
         brief.2
     );
 
-    // Schema-at-init: the table the chat writer owns exists before any turn.
     let db = install.data_dir().join("knowledge_graph.sqlite");
     let conn = rusqlite::Connection::open(&db).expect("open fresh store");
     let found: i64 = conn

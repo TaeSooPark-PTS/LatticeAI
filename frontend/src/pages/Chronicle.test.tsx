@@ -6,13 +6,6 @@ import type { ChronicleAsOf, ChronicleDay, ChronicleOverview } from "@/api/clien
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { ChroniclePage } from "./Chronicle";
 
-/**
- * 연대기 end to end, at the level a screenshot cannot reach: the empty Brain,
- * the failed read, and — the one that matters — what happens when the handle
- * moves. Every panel below the scrubber reads from a single index, so a
- * regression there does not throw; it just quietly shows today's story under a
- * past date.
- */
 
 const OVERVIEW: ChronicleOverview = {
   first_activity_at: "2026-06-01T09:12:04",
@@ -62,7 +55,6 @@ describe("ChroniclePage", () => {
     expect(await screen.findByTestId("chronicle-growth")).toBeTruthy();
     expect(screen.getByTestId("chronicle-heatmap")).toBeTruthy();
     await screen.findByTestId("chronicle-day");
-    // The rewind panel belongs to the past only; the handle starts at the end.
     expect(screen.queryByTestId("chronicle-rewind")).toBeNull();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("두뇌가 자라온 시간");
   });
@@ -79,7 +71,6 @@ describe("ChroniclePage", () => {
     await userEvent.type(slider, "{Home}");
 
     await waitFor(() => expect(screen.getByTestId("chronicle-scrubber-date")).toHaveTextContent("2026-06-01"));
-    // Past ⇒ the as-of read runs and the rewind panel appears.
     expect(await screen.findByTestId("chronicle-rewind")).toBeTruthy();
     expect(await screen.findByTestId("chronicle-rewind-entities")).toHaveTextContent("42");
 
@@ -117,8 +108,6 @@ describe("ChroniclePage", () => {
         series: [],
       }),
     });
-    // The distinction matters: "nothing recorded yet" and "we could not read
-    // your history" are different facts and only one of them is reassuring.
     expect(await screen.findByText("연대기를 읽지 못했습니다.")).toBeTruthy();
     expect(screen.queryByText("오늘부터 기록이 쌓입니다")).toBeNull();
   });

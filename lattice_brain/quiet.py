@@ -1,11 +1,3 @@
-"""Deliberately-ignored exceptions, recorded instead of erased (Brain Core).
-
-Single source of truth for suppressed-exception logging across the repository:
-Brain Core owns :func:`record_suppressed` (keeping ``lattice_brain`` independent
-of the app package, enforced by ``tests/unit/test_import_guard.py``), and
-:mod:`latticeai.core.quiet` delegates directly to it with the app logger.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -21,7 +13,6 @@ def record_suppressed(
     *,
     level: int = logging.DEBUG,
 ) -> None:
-    """Shared implementation for recording deliberately suppressed exceptions."""
     exc_type, exc, tb = sys.exc_info()
     if exc is None:
         return
@@ -46,7 +37,6 @@ def record_suppressed(
 
 
 def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
-    """Record the exception currently being handled, then continue."""
     record_suppressed(logger, reason, level=level)
 
 

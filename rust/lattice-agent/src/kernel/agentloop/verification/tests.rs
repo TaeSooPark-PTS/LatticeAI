@@ -37,7 +37,6 @@ async fn a_pass_over_an_evidence_free_run_is_needs_review() {
          "next_state": "DONE", "reason": "all good"}))])
     .await;
     let mut ctx = harness.context();
-    // `final` and parse errors carry no result, so they are not evidence.
     ctx.transcript
         .push(json!({"state": "EXECUTING", "action": "final"}));
     ctx.transcript
@@ -74,9 +73,6 @@ async fn a_pass_that_leaves_a_requested_file_unwritten_is_needs_review() {
     assert_eq!(coverage["requirement_coverage"]["complete"], false);
 }
 
-/// The live gemma2b:S3 shape, end to end: real tool results, no `final`
-/// step at all, and a fluent PASS. The answer the caller gets must carry
-/// the number the tool returned rather than the critic's prose alone.
 #[tokio::test]
 async fn a_count_question_that_never_reached_final_still_reports_the_count() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
@@ -91,9 +87,6 @@ async fn a_count_question_that_never_reached_final_still_reports_the_count() {
         .push(json!({"state": "EXECUTING", "action": "list_dir",
          "args": {"path": "."},
          "result": {"items": [{"name": "notes"}, {"name": "README.md"}]}}));
-    // The stall: an action this run does not have, four times, and the
-    // model never chose `final`. `ctx.final_message` is empty here exactly
-    // as it was live.
     ctx.transcript
         .push(json!({"state": "EXECUTING", "action": "plan",
          "error": "Unknown action: plan"}));
@@ -110,8 +103,6 @@ async fn a_count_question_that_never_reached_final_still_reports_the_count() {
     );
 }
 
-/// The other half of the same rule: nothing counted anything, so there is
-/// no number to restore and a PASS is not a completion.
 #[tokio::test]
 async fn a_count_question_no_tool_ever_answered_is_needs_review() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
@@ -119,7 +110,6 @@ async fn a_count_question_no_tool_ever_answered_is_needs_review() {
     .await;
     harness.request.message = "이 폴더의 파일 개수를 알려줘".into();
     let mut ctx = harness.context();
-    // Evidence exists — a write really happened — but nothing counted.
     ctx.transcript.push(executed("note.md"));
     harness
         .runtime
@@ -139,8 +129,6 @@ async fn a_count_question_no_tool_ever_answered_is_needs_review() {
     );
 }
 
-/// A critic that PASSed with an empty `reason` leaves the run with nothing
-/// to lead with, and the caveat must still stand on its own.
 #[tokio::test]
 async fn a_count_gate_with_no_answer_at_all_is_the_caveat_alone() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
@@ -162,12 +150,6 @@ async fn a_count_gate_with_no_answer_at_all_is_the_caveat_alone() {
     );
 }
 
-/// A request that merely *contains* the letters `count` asked for no
-/// number, and must not be held back for want of one.
-/// The qwen05b:S3 shape: a guided run that really listed the folder, never
-/// wrote an answer, and could not convince its own weak critic three times.
-/// The apology used to be the whole output; the count the tool returned is
-/// an answer, so it survives and the state is the honest NEEDS_REVIEW.
 #[tokio::test]
 async fn retry_exhaustion_over_a_count_question_keeps_the_count_as_the_answer() {
     let guided = verdict(json!({"action": "verdict", "verdict": "FAIL",
@@ -216,10 +198,6 @@ async fn a_word_that_merely_contains_count_is_not_a_count_question() {
     assert_eq!(ctx.final_message, "the account page was written");
 }
 
-/// The live qwen05b:S5 shape. `mcp.grep` dispatched, a result came back,
-/// the run wrote an answer — and the critic said FAIL while naming DONE.
-/// The caveat that follows must not be the *whole* message: the answer and
-/// the figure the search returned are what the user asked for.
 #[tokio::test]
 async fn an_incoherent_verdict_keeps_the_answer_and_the_figure_a_tool_returned() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
@@ -257,9 +235,6 @@ async fn an_incoherent_verdict_keeps_the_answer_and_the_figure_a_tool_returned()
     );
 }
 
-/// The live gemma2b:S5 shape: the same defect on the sibling branch, and a
-/// run that never reached `final` at all. There is no answer to lead with,
-/// so the count the search returned is the answer.
 #[tokio::test]
 async fn an_empty_next_state_still_reports_what_the_search_counted() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
@@ -289,8 +264,6 @@ async fn an_empty_next_state_still_reports_what_the_search_counted() {
     );
 }
 
-/// And the shape every recorded trajectory has: no answer, no count asked
-/// for, so the caveat stands alone exactly as it always did.
 #[tokio::test]
 async fn an_incoherent_verdict_with_nothing_to_report_is_the_caveat_alone() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
@@ -310,8 +283,6 @@ async fn an_incoherent_verdict_with_nothing_to_report_is_the_caveat_alone() {
     );
 }
 
-/// The same rule on the other settling path — a critic that omitted
-/// `next_state` entirely, which is what the compact 2B critics do.
 #[tokio::test]
 async fn an_implied_done_over_a_count_question_carries_the_count_too() {
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "PASS",
@@ -363,10 +334,6 @@ async fn a_fail_asking_for_execution_retries_until_max_retry() {
 
 #[tokio::test]
 async fn retry_exhaustion_keeps_an_answer_the_run_already_produced() {
-    // The S3/S5 defect, reproduced nine times out of nine across three
-    // models: the tool ran, the executor wrote a real answer, the small
-    // critic said FAIL three times, and the caller was handed the apology
-    // with no trace of either the result or the reason.
     let retry = verdict(json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "the count was not reported",
          "verdict_source": "guided"}));
@@ -397,28 +364,18 @@ async fn retry_exhaustion_keeps_an_answer_the_run_already_produced() {
 
 #[tokio::test]
 async fn retry_exhaustion_with_no_evidence_nothing_delivered_or_a_real_verdict_fails_plainly() {
-    // The recorded behaviour, and every half of the guard that still means
-    // failure. The last row is the frozen `verify_retry_then_failed`
-    // trajectory: a *parsed* verdict object asking for another attempt is
-    // the strongest signal the loop has, and three of them is a failure.
     let guided = json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "no", "verdict_source": "guided"});
     let parsed = json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "give up"});
-    // A result object that established nothing there is any way to say.
     let opaque = json!({"state": "EXECUTING", "action": "todo_write", "result": {}});
     for (body, transcript, message) in [
-        // No execution evidence at all: nothing to outrank the critic with.
         (
             &guided,
             json!({"state": "EXECUTING", "action": "final"}),
             "an answer",
         ),
-        // Evidence, but the run delivered no file, established no fact and
-        // said nothing: there is no answer to keep, and only the apology is
-        // honest.
         (&guided, opaque, ""),
-        // A parsed verdict is the strong instrument, whatever was written.
         (&parsed, executed("a.md"), "done"),
     ] {
         let mut harness = harness(&[&verdict(body.clone())]).await;
@@ -441,12 +398,6 @@ async fn retry_exhaustion_with_no_evidence_nothing_delivered_or_a_real_verdict_f
 
 #[tokio::test]
 async fn a_delivered_file_outranks_a_weak_critic_that_never_got_an_answer() {
-    // The live 2B, twice: the requested file was written and on disk, the
-    // executor was stopped by the loop guard before it ever reached
-    // `final`, and four 0.6-confidence FAILs turned that into
-    // "처리 중 문제가 발생했습니다" — a run that had done the work reporting
-    // that it had not. `final_message` was empty, so the rule that keeps an
-    // answer had nothing to keep; the transcript had the answer all along.
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "저는 Lattice AI입니다.",
          "verdict_source": "guided"}))])
@@ -481,10 +432,6 @@ async fn a_delivered_file_outranks_a_weak_critic_that_never_got_an_answer() {
 
 #[tokio::test]
 async fn a_search_that_found_something_is_reported_rather_than_apologised_for() {
-    // The counting shape of the same defect, and the cell it protects: a
-    // run whose deliverable is a *number* writes no file, so the rule above
-    // has no path to keep — yet the search ran, the tally is on the step,
-    // and "처리 중 문제가 발생했습니다" reports neither.
     let mut harness = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "0 matches", "verdict_source": "guided"}))])
     .await;
@@ -501,9 +448,6 @@ async fn a_search_that_found_something_is_reported_rather_than_apologised_for() 
         .await
         .expect("verify");
     assert_eq!(ctx.state, AgentState::NeedsReview);
-    // The count question's own rescue answers this one first — which is the
-    // point: by the time the apology was reached there was always something
-    // truer to say. The doubt is still reported after it.
     assert!(
         ctx.final_message.starts_with("1개"),
         "{}",
@@ -515,8 +459,6 @@ async fn a_search_that_found_something_is_reported_rather_than_apologised_for() 
 
 #[tokio::test]
 async fn a_finding_is_the_answer_when_the_request_asked_for_no_number() {
-    // The same rule where `complete_a_count` cannot help: the run searched,
-    // the tally is on the step, and nothing else was ever said.
     let mut plain = harness(&[&verdict(json!({"action": "verdict", "verdict": "FAIL",
          "next_state": "EXECUTING", "reason": "0 matches", "verdict_source": "guided"}))])
     .await;

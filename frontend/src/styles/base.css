@@ -4,7 +4,7 @@
 
 html {
   background: hsl(var(--background));
-  /* Larger, calmer base size so labels stay legible for every age group. */
+  
   font-size: 17.5px;
 }
 
@@ -13,7 +13,7 @@ body {
   margin: 0;
   background: var(--grad-field);
   color: hsl(var(--foreground));
-  /* 한국어 우선 스택 — Pretendard가 설치돼 있으면 쓰고, 없으면 OS 한글 본문체로. */
+  
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Apple SD Gothic Neo", Inter, "Segoe UI", "Malgun Gothic", "Noto Sans KR", sans-serif;
   letter-spacing: 0;
@@ -29,7 +29,7 @@ h4 {
   letter-spacing: var(--lt-tracking-tight);
   line-height: var(--lt-leading-tight);
   overflow-wrap: break-word;
-  word-break: keep-all; /* 한글 제목이 어절 단위로 줄바꿈되도록 */
+  word-break: keep-all; 
 }
 
 h1 {

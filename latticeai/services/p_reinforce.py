@@ -1,14 +1,3 @@
-"""Where the knowledge garden lives, and what its folders mean.
-
-``PReinforceGardener`` — vault import, note creation, brain-backed context —
-was the writing half, and writing the vault is ``lattice-retrieval``'s
-(``/garden/*``) since v11.6.0. The two constants stay because the worker's
-read-only vault tools (``knowledge_search``, ``knowledge_tree``,
-``obsidian_search``, ``obsidian_tree``) resolve their root through them, and a
-second definition of "where the vault is" is exactly how a search and a save
-end up in different directories.
-"""
-
 import os
 from pathlib import Path
 

@@ -6,16 +6,6 @@ import { t, type Language } from "@/i18n";
 import { fmtNumber } from "@/lib/utils";
 import { entityTypeLabel } from "./DayStory";
 
-/**
- * The Brain as it stood on the chosen day — the first time `store.as_of()` has
- * ever been visible in the product.
- *
- * Two numbers and a short list, and one sentence saying what the numbers are
- * *not*: `stats.entities` counts every node in that slice, documents included,
- * which is a different measure from the concept-only "개념" lane in the growth
- * curve above. Printing them side by side without that note would make the
- * screen look like it contradicts itself.
- */
 export function RewindPanel({
   asOf,
   date,

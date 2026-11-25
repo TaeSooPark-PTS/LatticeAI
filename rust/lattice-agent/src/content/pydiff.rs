@@ -1,31 +1,5 @@
-//! `difflib.unified_diff`, natively — the diff a change proposal is reviewed by.
-//!
-//! A staged proposal carries the unified diff the Review Center renders, and
-//! Python produced it with `difflib.unified_diff(before.splitlines(),
-//! after.splitlines(), fromfile=…, tofile=…, lineterm="")`. That output is not
-//! "a diff": it is *this* diff, produced by `SequenceMatcher`'s longest-match
-//! recursion, and a proposal staged natively has to read identically to one
-//! staged before the port or the reviewer sees a different change than the one
-//! that will be applied.
-//!
-//! So this is a port of CPython's `difflib`, not a reimplementation of diffing:
-//! [`SequenceMatcher`] is `Lib/difflib.py`'s algorithm including the `autojunk`
-//! heuristic (which changes the output for files of 200 lines or more, so
-//! leaving it out would agree with Python only on small inputs), and
-//! [`unified_diff`] is its `unified_diff` generator with `lineterm=""`.
-//!
-//! `isjunk` is fixed at `None` because `unified_diff` never passes one; the two
-//! junk-extension loops of `find_longest_match` are therefore provably no-ops
-//! and are not carried. The two *popular*-extension loops are, because
-//! `autojunk` really does prune elements out of `b2j`.
-
 use std::collections::HashMap;
 
-/// `str.splitlines()` — every boundary CPython recognises, `\r\n` as one.
-///
-/// Not `str::lines`: that splits on `\n` alone and keeps a lone `\r` inside the
-/// line, which would put a carriage return in the middle of a diff line and
-/// hash differently from Python for any CRLF file.
 pub fn splitlines(text: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let mut start = 0usize;
@@ -50,7 +24,6 @@ pub fn splitlines(text: &str) -> Vec<&str> {
     out
 }
 
-/// The line boundaries of `str.splitlines`.
 fn is_line_boundary(ch: char) -> bool {
     matches!(
         ch,
@@ -66,7 +39,6 @@ fn is_line_boundary(ch: char) -> bool {
     )
 }
 
-/// One matching block: `a[i..i+size] == b[j..j+size]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Match {
     pub i: usize,
@@ -74,7 +46,6 @@ pub struct Match {
     pub size: usize,
 }
 
-/// One opcode: what to do with `a[i1..i2]` to turn it into `b[j1..j2]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Opcode {
     pub tag: Tag,
@@ -84,7 +55,6 @@ pub struct Opcode {
     pub j2: usize,
 }
 
-/// `get_opcodes`' four tags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tag {
     Equal,
@@ -93,26 +63,19 @@ pub enum Tag {
     Insert,
 }
 
-/// `difflib.SequenceMatcher(None, a, b)` over lines.
 #[derive(Debug)]
 pub struct SequenceMatcher<'a> {
     a: &'a [&'a str],
     b: &'a [&'a str],
-    /// `b2j` — element → its indices in `b`, popular elements purged.
     b2j: HashMap<&'a str, Vec<usize>>,
 }
 
 impl<'a> SequenceMatcher<'a> {
-    /// Build the reverse index, `autojunk` included.
     pub fn new(a: &'a [&'a str], b: &'a [&'a str]) -> Self {
         let mut b2j: HashMap<&str, Vec<usize>> = HashMap::new();
         for (index, element) in b.iter().enumerate() {
             b2j.entry(element).or_default().push(index);
         }
-        // `autojunk`: in a long sequence, an element appearing in more than 1%
-        // of positions is treated as noise and dropped from the index. This is
-        // the heuristic that makes difflib fast on source files, and it changes
-        // the chosen matches — so a port without it diverges above 200 lines.
         let n = b.len();
         if n >= 200 {
             let ntest = n / 100 + 1;
@@ -121,7 +84,6 @@ impl<'a> SequenceMatcher<'a> {
         Self { a, b, b2j }
     }
 
-    /// `find_longest_match(alo, ahi, blo, bhi)`.
     pub fn find_longest_match(&self, alo: usize, ahi: usize, blo: usize, bhi: usize) -> Match {
         let (mut besti, mut bestj, mut bestsize) = (alo, blo, 0usize);
         let mut j2len: HashMap<usize, usize> = HashMap::new();
@@ -150,8 +112,6 @@ impl<'a> SequenceMatcher<'a> {
             }
             j2len = newj2len;
         }
-        // Extend across elements `autojunk` pruned: they are absent from `b2j`
-        // and so invisible to the loop above, but they are still equal.
         while besti > alo && bestj > blo && self.a[besti - 1] == self.b[bestj - 1] {
             besti -= 1;
             bestj -= 1;
@@ -170,7 +130,6 @@ impl<'a> SequenceMatcher<'a> {
         }
     }
 
-    /// `get_matching_blocks()` — sorted, adjacent blocks collapsed, sentinel last.
     pub fn matching_blocks(&self) -> Vec<Match> {
         let (la, lb) = (self.a.len(), self.b.len());
         let mut queue = vec![(0usize, la, 0usize, lb)];
@@ -223,7 +182,6 @@ impl<'a> SequenceMatcher<'a> {
         merged
     }
 
-    /// `get_opcodes()`.
     pub fn opcodes(&self) -> Vec<Opcode> {
         let (mut i, mut j) = (0usize, 0usize);
         let mut answer = Vec::new();
@@ -261,7 +219,6 @@ impl<'a> SequenceMatcher<'a> {
         answer
     }
 
-    /// `get_grouped_opcodes(n)` — the hunks, each with `n` lines of context.
     pub fn grouped_opcodes(&self, n: usize) -> Vec<Vec<Opcode>> {
         let mut codes = self.opcodes();
         if codes.is_empty() {
@@ -310,7 +267,6 @@ impl<'a> SequenceMatcher<'a> {
     }
 }
 
-/// `_format_range_unified(start, stop)`.
 fn format_range(start: usize, stop: usize) -> String {
     let beginning = start + 1;
     let length = stop - start;
@@ -323,10 +279,6 @@ fn format_range(start: usize, stop: usize) -> String {
     format!("{beginning},{length}")
 }
 
-/// `difflib.unified_diff(a, b, fromfile, tofile, n=n, lineterm="")`.
-///
-/// Empty when the two sides are equal — `unified_diff` yields the `---`/`+++`
-/// header only once a hunk exists, so "no change" is no output at all.
 pub fn unified_diff(a: &[&str], b: &[&str], fromfile: &str, tofile: &str, n: usize) -> Vec<String> {
     let matcher = SequenceMatcher::new(a, b);
     let mut out: Vec<String> = Vec::new();
@@ -373,7 +325,6 @@ pub fn unified_diff(a: &[&str], b: &[&str], fromfile: &str, tofile: &str, n: usi
 mod tests {
     use super::*;
 
-    /// `unified_diff` over two whole texts, as `propose_file_update` calls it.
     fn diff(before: &str, after: &str, path: &str) -> Vec<String> {
         let a = splitlines(before);
         let b = splitlines(after);
@@ -388,17 +339,11 @@ mod tests {
         assert_eq!(splitlines("a\r\nb\r\n"), vec!["a", "b"]);
         assert_eq!(splitlines("a\rb"), vec!["a", "b"]);
         assert_eq!(splitlines("a\n\nb"), vec!["a", "", "b"]);
-        // The exotic boundaries CPython honours and `str::lines` does not.
         assert_eq!(splitlines("a\u{0b}b"), vec!["a", "b"]);
         assert_eq!(splitlines("a\u{2028}b"), vec!["a", "b"]);
         assert_eq!(splitlines("한\n글"), vec!["한", "글"]);
     }
 
-    /// The exact lists `difflib` produced for these inputs.
-    ///
-    /// Generated with CPython:
-    /// `list(difflib.unified_diff(before.splitlines(), after.splitlines(),
-    ///  fromfile="a/x", tofile="b/x", lineterm=""))`.
     #[test]
     fn the_diff_is_difflibs_line_for_line() {
         assert_eq!(
@@ -429,8 +374,6 @@ mod tests {
                 "+Staged edit.",
             ]
         );
-        // A file that did not exist: `before` is empty, so the whole body is an
-        // insert and the from-range is the empty `0,0`.
         assert_eq!(
             diff("", "one\ntwo\n", "new.md"),
             vec![
@@ -441,7 +384,6 @@ mod tests {
                 "+two",
             ]
         );
-        // A replacement in the middle, with three lines of context on each side.
         let before = "1\n2\n3\n4\n5\n6\n7\n8\n9\n";
         let after = "1\n2\n3\n4\nFOUR AND A HALF\n6\n7\n8\n9\n";
         assert_eq!(
@@ -460,7 +402,6 @@ mod tests {
                 " 8",
             ]
         );
-        // Two edits far apart become two hunks.
         let before = (1..=30).map(|n| format!("{n}\n")).collect::<String>();
         let mut lines: Vec<String> = (1..=30).map(|n| n.to_string()).collect();
         lines[1] = "TWO".into();
@@ -491,7 +432,6 @@ mod tests {
                 " 30",
             ]
         );
-        // Deleting the tail.
         assert_eq!(
             diff("a\nb\nc\n", "a\n", "n.txt"),
             vec![
@@ -503,15 +443,11 @@ mod tests {
                 "-c",
             ]
         );
-        // Equal texts produce nothing at all — not even the header.
         assert!(diff("same\n", "same\n", "n.txt").is_empty());
     }
 
     #[test]
     fn autojunk_prunes_popular_lines_above_two_hundred() {
-        // The heuristic's fingerprint, and the reason it cannot be left out.
-        // One repeated line, one changed head line — and the *only* difference
-        // between the two inputs below is the file's length.
         fn head_change(lines: usize) -> Vec<String> {
             let mut before: Vec<String> = vec!["head".into()];
             before.extend((1..lines).map(|_| "same".to_string()));
@@ -524,8 +460,6 @@ mod tests {
             };
             diff(&text(&before), &text(&after), "n.txt")
         }
-        // Under 200 lines `b2j` keeps "same", so the match is found and the
-        // hunk is three lines of context around one replacement.
         assert_eq!(
             head_change(100),
             vec![
@@ -539,12 +473,6 @@ mod tests {
                 " same",
             ]
         );
-        // At 300 lines "same" appears in more than 1% of positions, `autojunk`
-        // deletes it from `b2j`, `find_longest_match` sees nothing to match on
-        // and difflib rewrites the whole file. CPython answers exactly this —
-        // 603 lines: two headers, one `@@ -1,300 +1,300 @@`, 300 deletions and
-        // 300 insertions. A port without `autojunk` would answer the 8 lines
-        // above for both inputs and disagree with every real file.
         let long = head_change(300);
         assert_eq!(long.len(), 603);
         assert_eq!(long[2], "@@ -1,300 +1,300 @@");

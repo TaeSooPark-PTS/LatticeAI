@@ -1,30 +1,3 @@
-//! Port of the graph reads document generation is built on:
-//! `lattice_brain/graph/retrieval_docgen.py` (`search_for_document_generation`,
-//! `multi_hop_context`) and the lexical fallback `context_for_query`
-//! (`lattice_brain/graph/retrieval/context.py`).
-//!
-//! Three things here are easy to "improve" and must not be:
-//!
-//! * **Two candidate lanes, one insertion order.** The full query runs first at
-//!   `limit * 5`, then every topic term at `limit * 3`, and a row already seen is
-//!   skipped rather than re-ranked. The final sort is by score *descending and
-//!   stable*, so equal scores come back in that insertion order — a sort that
-//!   broke ties by id would answer differently on the fixture's `tie:` block.
-//! * **The related-concept join has no `ORDER BY`.** `LIMIT 8` therefore keeps
-//!   whichever eight rows the query plan produced. Adding an order would be a
-//!   nicer query and a worse port; the fixture pins what SQLite actually does.
-//! * **`multi_hop_context`'s `hop` is the expansion *round*, not the distance.**
-//!   Seeds are hop 0 and each round labels what it fetched, so with the default
-//!   `max_hops = 2` the nodes discovered by round 1 are never fetched at all —
-//!   they appear only as the far endpoints of edges.
-//!
-//! One deliberate deviation, and it is an ordering guarantee rather than a
-//! different answer: Python iterates its frontier as a `set`, so the sequence of
-//! node and edge records is unspecified (CPython randomizes string hashing per
-//! process). This port walks the frontier in id order and sorts the result —
-//! nodes by `(hop, id)`, edges by `(from, to, type, weight)` — which is the same
-//! normalization the golden generator applies to the Python side.
-
 use std::collections::{BTreeSet, HashSet};
 
 use lattice_core::pytext::{clean_text, recency_score, round4, safe_loads, truncate_chars};
@@ -38,19 +11,15 @@ use crate::keyword::search;
 use crate::service::Scope;
 use crate::shape::{haystack, json_opt};
 
-/// The fifteen node types `search_for_document_generation` will look at, as the
-/// SQL literal Python spells inline.
 const DOCGEN_TYPES_SQL: &str = "'Document', 'File', 'CodeFile', 'SlideDeck', \
      'Spreadsheet', 'Image', 'ImageText', 'Audio', \
      'Chat', 'Decision', 'Task', 'Concept', \
      'Feature', 'Page', 'Slide'";
 
-/// The four types whose hybrid score is multiplied by 1.2.
 pub const DOCGEN_BOOST_TYPES: [&str; 4] = ["Document", "File", "SlideDeck", "Decision"];
 
 const NODE_COLUMNS: &str = "id, type, title, summary, metadata_json, updated_at";
 
-/// Half-life of the recency term, in days. Fixed, not a policy knob.
 const RECENCY_HALF_LIFE_DAYS: f64 = 14.0;
 
 fn candidate_rows(
@@ -71,10 +40,6 @@ fn candidate_rows(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// `KnowledgeGraphDocGenMixin.search_for_document_generation`.
-///
-/// `now_secs` is the wall clock the recency term reads, as naive local seconds:
-/// a golden that depends on the real clock is not a golden.
 pub fn search_for_document_generation(
     conn: &Connection,
     query: &str,
@@ -86,8 +51,6 @@ pub fn search_for_document_generation(
     if query.is_empty() {
         return Ok(Vec::new());
     }
-    // `max(1, min(int(limit or 10), 50))`: a zero is Python-falsy and means the
-    // default of ten, and only a negative limit reaches the lower clamp.
     let limit = if limit == 0 { 10 } else { limit }.clamp(1, 50);
     let terms = topic_candidates(query, 12);
     let (nodes_table, edges_table) = read_tables(conn);
@@ -168,7 +131,6 @@ pub fn search_for_document_generation(
             item["related_concepts"] = Value::Array(visible);
         }
     }
-    // Stable and descending, so equal scores keep the candidate insertion order.
     scored.sort_by(|left, right| {
         score_of(right)
             .partial_cmp(&score_of(left))
@@ -196,7 +158,6 @@ fn edge_count(conn: &Connection, edges_table: &str, node_id: &str) -> Result<i64
     Ok(conn.query_row(&sql, rusqlite::params![node_id, node_id], |row| row.get(0))?)
 }
 
-/// The neighbour join, verbatim — including the missing `ORDER BY`.
 fn related_concepts(
     conn: &Connection,
     nodes_table: &str,
@@ -221,7 +182,6 @@ fn related_concepts(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// `KnowledgeGraphDocGenMixin.multi_hop_context`.
 pub fn multi_hop_context(
     conn: &Connection,
     node_ids: &[String],
@@ -279,8 +239,6 @@ pub fn multi_hop_context(
         });
     }
 
-    // The golden normalization (see the module docs): Python's own order is
-    // unspecified, so both sides agree on this one instead.
     nodes.sort_by(|left, right| {
         let key = |node: &Value| {
             (
@@ -364,9 +322,6 @@ fn incident_edges(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// `_ContextMixin.context_for_query` in its default configuration
-/// (`use_hybrid=False`, `with_meta=False`) — the lexical string the document
-/// context falls back to when the hybrid document search finds nothing.
 pub fn context_for_query(
     conn: &Connection,
     query: &str,
@@ -415,9 +370,6 @@ pub fn context_for_query(
     Ok(lines.join("\n"))
 }
 
-/// The topic-term top-up `context_for_query` reaches when `search()` is empty.
-///
-/// Note the narrower `WHERE`: `title` or `metadata_json`, **not** `summary`.
 fn topic_matches(
     conn: &Connection,
     query: &str,
@@ -466,8 +418,6 @@ fn topic_matches(
             Value::Object(safe_loads(row.metadata_json.as_deref())),
         );
         matches.push(Value::Object(item));
-        // Python breaks *after* appending, so the cut lands one row late by
-        // design when the last topic contributed several rows at once.
         if matches.len() as i64 >= limit {
             break;
         }
@@ -484,15 +434,12 @@ fn topic_matches(
     Ok(matches)
 }
 
-/// Python's `meta.get(a) or meta.get(b) or …` over a metadata blob.
 pub fn first_truthy(meta: &Map<String, Value>, keys: &[&str]) -> Option<String> {
     keys.iter()
         .find_map(|key| meta.get(*key).filter(|value| crate::shape::truthy(value)))
         .map(|value| py_text(Some(value)))
 }
 
-/// `str(value)` for the JSON a row or a metadata blob can hold — including the
-/// `None` a missing value formats as inside a Python f-string.
 pub fn py_text(value: Option<&Value>) -> String {
     match value {
         None | Some(Value::Null) => "None".to_string(),
@@ -543,7 +490,6 @@ mod tests {
         );
         let one = search_for_document_generation(&conn, "Proposal", 1, &scope, now()).unwrap();
         assert_eq!(one.len(), 1);
-        // A zero limit is Python-falsy and means the default of ten.
         let default = search_for_document_generation(&conn, "Proposal", 0, &scope, now()).unwrap();
         assert_eq!(default.len(), 1, "only one allow-listed row matches");
         assert_eq!(default[0]["id"], "d1", "the Meeting is not an allowed type");
@@ -556,13 +502,11 @@ mod tests {
             search_for_document_generation(&conn, "ranking", 10, &Scope::default(), now()).unwrap();
         let doc = found.iter().find(|item| item["id"] == "d1").unwrap();
         assert_eq!(doc["scores"]["text"], 1.0);
-        // log1p(1)/4 = 0.1733; twelve hours old on a 14-day half-life = 0.9755.
         assert_eq!(doc["scores"]["graph"], 0.1733);
         assert_eq!(doc["scores"]["recency"], 0.9755);
         assert_eq!(doc["hybrid_score"], 0.8965, "a Document is boosted by 1.2");
         assert_eq!(doc["related_concepts"][0]["id"], "c1");
         assert_eq!(doc["metadata"], serde_json::json!({"filename": "p.md"}));
-        // The Concept is not boosted, and its NULL summary survives as null.
         let concept = found.iter().find(|item| item["id"] == "c1").unwrap();
         assert_eq!(concept["summary"], Value::Null);
         assert_eq!(concept["related_concepts"], serde_json::json!([]));
@@ -625,7 +569,6 @@ mod tests {
                 "from": "d1", "to": "c1", "type": "MENTIONS", "weight": 0.9
             })
         );
-        // No rounds at all, and a seed that is not in the store.
         for hops in [0, -1] {
             let none = multi_hop_context(&conn, &seeds, hops, &Scope::default()).unwrap();
             assert_eq!(none["nodes"], serde_json::json!([]));
@@ -664,7 +607,6 @@ mod tests {
             text.contains("- [Document] Proposal draft | source=p.md | about ranking"),
             "{text}"
         );
-        // A query nothing matches at all is an empty string, not a fabrication.
         assert_eq!(
             context_for_query(&conn, "zzqq wumpus", 5, &scope).unwrap(),
             ""

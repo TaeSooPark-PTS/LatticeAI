@@ -1,5 +1,3 @@
-//! Review Center HTTP handlers.
-
 use axum::extract::{Path as AxumPath, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
@@ -21,8 +19,6 @@ use super::store::{
 };
 use super::{GovernanceState, BULK_ACTION_CAP, REVIEW_SOURCES};
 use crate::governance::workflow_designer;
-
-// ── handlers ──────────────────────────────────────────────────────────────
 
 pub(crate) async fn list_items(
     State(state): State<GovernanceState>,

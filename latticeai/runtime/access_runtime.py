@@ -1,5 +1,3 @@
-"""Access-control helper closures for the app factory."""
-
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
@@ -8,14 +6,6 @@ from latticeai.core.quiet import quiet
 
 
 def is_externally_reachable(config: Any) -> bool:
-    """Whether anything but this machine can open a socket to this worker.
-
-    The single definition of the second half of ``trusted_local_owner``.  It is
-    read here (to decide who the anonymous caller is) and by the ``/health``
-    router (to *state* the posture, so the Rust front door can mirror it on its
-    own native lanes instead of guessing).  Two derivations of one fact is how
-    a gateway ends up serving a graph the worker would have refused.
-    """
     return bool(
         getattr(config, "is_public", False) or getattr(config, "network_exposed", False)
     )
@@ -33,7 +23,6 @@ def _resolve_active_session_email(
     users: Dict,
     normalize_email: Callable[[str], str],
 ) -> Optional[str]:
-    """Resolve a session identity only while its account remains active."""
     if not identity:
         return None
     raw_identity = str(identity)
@@ -52,10 +41,6 @@ def _resolve_active_session_email(
                     matched_key = str(key)
                     user = item
                     break
-    # A session for a deleted account, malformed account record, or an
-    # explicitly disabled account is invalid immediately. This check is
-    # intentionally performed on every request so stale bearer/cookie
-    # tokens cannot retain user or administrator access.
     if (
         not matched_key
         or not isinstance(user, dict)
@@ -107,24 +92,13 @@ def build_access_runtime(
     request_type: Any,
     load_users: Callable[[], Dict],
     get_session_email: Callable[[str], Optional[str]],
-    # Optional in and out: an anonymous request has no email, and an email
-    # with no account has no id.
     user_id_for_email: Callable[[Dict, Optional[str]], Optional[str]],
 ) -> Dict[str, Any]:
-    """Build user/admin access helpers without changing legacy call signatures."""
 
     from latticeai.core.policy import normalize_role, require_capability
     from latticeai.core.users import normalize_email
 
-    # The historical loopback/no-auth profile represents its single human as
-    # an empty identity.  Keep that storage/workspace compatibility contract,
-    # but project the identity as an owner at authorization boundaries.  Never
-    # extend this trust to public or non-loopback bindings, even if an invalid
-    # caller constructs this runtime with ``require_auth=False`` directly.
     externally_reachable = is_externally_reachable(config)
-    # One flag, not two: "authentication is required" is exactly
-    # ``not trusted_local_owner``, so deriving it separately only creates a
-    # pair that a later edit can put out of step.
     trusted_local_owner = not require_auth and not externally_reachable
 
     def get_user_role(email: str, users: Optional[Dict] = None) -> str:
@@ -156,27 +130,15 @@ def build_access_runtime(
                 KeyError,
                 AttributeError,
             ):
-                # Account-store failures must fail closed rather than turning a
-                # stale session into an authenticated identity.
                 return None
         return None
 
     def require_user(request: request_type) -> str:
         email = get_current_user(request)
         if email:
-            # Optional authentication remains meaningful in local mode: a
-            # valid session keeps its real account identity instead of being
-            # collapsed into the anonymous Local User fallback.
             return email
         if trusted_local_owner:
-            # A no-auth loopback caller is the trusted, anonymous local owner.
-            # Returning the legacy empty identity keeps ownerless workspaces,
-            # shared local vaults, and Local User profile behavior compatible;
-            # get_user_role() supplies the explicit owner authorization role.
             return ""
-        # Reaching here means the caller is not the trusted local owner and no
-        # session produced an email — i.e. authentication is required and was
-        # not supplied. There is no third outcome to fall through to.
         raise http_exception(status_code=401, detail="인증이 필요합니다.")
 
     def require_admin(request: request_type) -> tuple[str, Dict]:

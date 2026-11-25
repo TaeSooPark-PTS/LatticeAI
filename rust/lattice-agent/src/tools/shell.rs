@@ -1,17 +1,3 @@
-//! `run_command` / `build_project` / `deploy_project` — the exec tools.
-//!
-//! `run_command` is already ported twice over: [`crate::tools::command::validate`] is
-//! the validator and [`crate::tools::exec::execute`] is the spawn, both pinned by the
-//! kernel goldens. All this module adds is the handler's result shape — the
-//! five keys Python returns, and no more, because the transcript records them
-//! verbatim and the critic reads them.
-//!
-//! `build_project` / `deploy_project` are the npm-script runners. They are
-//! deliberately **not** routed through the `run_command` sandbox: Python spawns
-//! `npm run <script>` with the inherited environment (npm needs its own PATH,
-//! node, and the user's registry configuration), gated instead by an allowlist
-//! of script names and by the script having to exist in `package.json`.
-
 use std::time::Duration;
 
 use serde_json::{json, Map, Value};
@@ -19,15 +5,11 @@ use serde_json::{json, Map, Value};
 use crate::tools::args;
 use crate::tools::sandbox::{ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS};
 
-/// `MAX_BUILD_SECONDS`.
 pub const MAX_BUILD_SECONDS: u64 = 180;
-/// `MAX_DEPLOY_SECONDS`.
 pub const MAX_DEPLOY_SECONDS: u64 = 300;
 
-/// `BUILD_SCRIPT_NAMES`, sorted.
 pub const BUILD_SCRIPT_NAMES: [&str; 4] = ["build", "compile", "test", "typecheck"];
 
-/// `DEPLOY_SCRIPT_NAMES`, sorted.
 pub const DEPLOY_SCRIPT_NAMES: [&str; 11] = [
     "build:exe",
     "build:installer",
@@ -42,7 +24,6 @@ pub const DEPLOY_SCRIPT_NAMES: [&str; 11] = [
     "release",
 ];
 
-/// `run_command(command, cwd=None)`.
 pub async fn run_command(
     workspace: &Workspace,
     arguments: &Map<String, Value>,
@@ -56,9 +37,6 @@ pub async fn run_command(
         Duration::from_secs(MAX_COMMAND_SECONDS),
     )
     .await?;
-    // Python returns exactly these five keys. `Execution` also carries the two
-    // truncation flags, which are a native addition and stay out of the tool
-    // result so the transcript keeps the shape the critic was trained on.
     Ok(json!({
         "command": execution.command,
         "cwd": execution.cwd,
@@ -68,7 +46,6 @@ pub async fn run_command(
     }))
 }
 
-/// `build_project(cwd=None, script="build")`.
 pub async fn build_project(
     workspace: &Workspace,
     arguments: &Map<String, Value>,
@@ -84,7 +61,6 @@ pub async fn build_project(
     .await
 }
 
-/// `deploy_project(cwd=None, script="deploy")`.
 pub async fn deploy_project(
     workspace: &Workspace,
     arguments: &Map<String, Value>,
@@ -100,7 +76,6 @@ pub async fn deploy_project(
     .await
 }
 
-/// `_run_script`: allowlist → working directory → `package.json` → `npm run`.
 async fn run_script(
     workspace: &Workspace,
     arguments: &Map<String, Value>,
@@ -137,7 +112,6 @@ async fn run_script(
     let output = match tokio::time::timeout(Duration::from_secs(timeout), command.output()).await {
         Ok(Ok(output)) => output,
         Ok(Err(error)) => {
-            // Python raises FileNotFoundError, which the seam answers as a 500.
             return Err(ToolError::tool(format!("npm could not start: {error}")));
         }
         Err(_) => {
@@ -156,7 +130,6 @@ async fn run_script(
     }))
 }
 
-/// `_load_package_scripts` plus the "is it defined?" check.
 fn package_script(
     workspace: &Workspace,
     workdir: &std::path::Path,
@@ -174,19 +147,15 @@ fn package_script(
             .map_err(|error| ToolError::tool(format!("Could not parse package.json: {error}")))?;
         let parsed: Value = serde_json::from_str(&raw)
             .map_err(|error| ToolError::tool(format!("Could not parse package.json: {error}")))?;
-        // `data.get("scripts") or {}`, and a non-dict is an empty table.
         parsed
             .get("scripts")
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default()
     } else {
-        // No manifest is an empty table, not an error — the "does it define
-        // this script?" refusal below is the one Python raises.
         Map::new()
     };
     match scripts.get(script) {
-        // `{str(k): str(v)}` — a non-string body stringifies rather than fails.
         Some(body) => Ok(crate::parse::pystr::py_str(body)),
         None => Err(ToolError::tool(format!(
             "package.json does not define a '{script}' script."
@@ -194,7 +163,6 @@ fn package_script(
     }
 }
 
-/// `output[-MAX_COMMAND_OUTPUT:]` — the tail, counted in characters.
 fn tail(text: &str) -> String {
     let length = text.chars().count();
     if length <= MAX_COMMAND_OUTPUT {
@@ -224,14 +192,6 @@ mod tests {
         let result = run_command(&workspace, &args(json!({"command": "ls"})))
             .await
             .expect("ls");
-        // The five Python keys and no others — `Execution`'s two truncation
-        // flags are a native addition that must not reach the transcript.
-        //
-        // Compared as a *set*: `lattice-retrieval` enables
-        // `serde_json/preserve_order`, and cargo unifies features across a
-        // workspace build, so `Map`'s iteration order is insertion order when
-        // this crate is built beside it and sorted when it is built alone. Which
-        // keys exist is the contract; their order in the map is not.
         let mut keys: Vec<&String> = result.as_object().expect("object").keys().collect();
         keys.sort();
         assert_eq!(keys, ["command", "cwd", "returncode", "stderr", "stdout"]);

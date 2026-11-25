@@ -1,11 +1,3 @@
-//! Schema readers. The lane/table split is Python's and is reproduced as-is.
-//!
-//! The lexical lane reads the `kgv2_nodes` / `kgv2_edges` reconstruction views
-//! (`KnowledgeGraphStore._read_tables`), while the vector lane joins the legacy
-//! `nodes` / `chunks` tables directly (`retrieval_vector.search._VECTOR_ROW_SELECT`).
-//! That duality is not a tidy design — it is what the running product does, and a
-//! port that "fixed" it would stop being a port.
-
 use std::collections::{BTreeSet, HashMap};
 
 use rusqlite::types::ValueRef;
@@ -14,13 +6,6 @@ use serde_json::Value;
 
 use crate::db::CoreError;
 
-/// One column of one row, as the JSON `json.dumps` would have produced for it.
-///
-/// `sqlite3` hands Python an `int` for INTEGER and a `float` for REAL, and those
-/// two serialize differently (`1` vs `1.0`). A port that read every numeric
-/// column as `f64` would answer `1.0` where Python answers `1` — indistinguishable
-/// in a diff you skim, and a hard failure in an exact-equality golden. BLOBs
-/// have no JSON form and no reader here needs one, so they become null.
 pub fn sql_json(value: ValueRef<'_>) -> Value {
     match value {
         ValueRef::Null => Value::Null,
@@ -31,15 +16,12 @@ pub fn sql_json(value: ValueRef<'_>) -> Value {
     }
 }
 
-/// `sql_json` for a named column of a query row.
 pub fn column_json(row: &rusqlite::Row<'_>, name: &str) -> rusqlite::Result<Value> {
     Ok(sql_json(row.get_ref(name)?))
 }
 
-/// `LATTICEAI_KG_READ_V2=0` forces the legacy tables, as in `_kg_common`.
 pub const READ_V2_ENV: &str = "LATTICEAI_KG_READ_V2";
 
-/// One row of the lexical lane's node projection.
 #[derive(Debug, Clone)]
 pub struct NodeRow {
     pub id: String,
@@ -50,7 +32,6 @@ pub struct NodeRow {
     pub updated_at: Option<String>,
 }
 
-/// One row of `_VECTOR_ROW_SELECT`, column for column.
 #[derive(Debug, Clone)]
 pub struct VectorRow {
     pub item_id: String,
@@ -75,7 +56,6 @@ pub struct VectorRow {
     pub parent_updated_at: Option<String>,
 }
 
-/// The projection every vector match is built from — byte-identical to Python's.
 pub const VECTOR_ROW_SELECT: &str = "
                     SELECT
                       ve.item_id, ve.item_type, ve.source_node, ve.embedding,
@@ -94,7 +74,6 @@ pub const VECTOR_ROW_SELECT: &str = "
                     WHERE ve.embedding_model=? AND ve.embedding_dim=?
                     ";
 
-/// `(nodes_table, edges_table)` for read queries — the v2 views when present.
 pub fn read_tables(conn: &Connection) -> (&'static str, &'static str) {
     let enabled = std::env::var(READ_V2_ENV)
         .map(|raw| raw != "0")
@@ -109,7 +88,6 @@ pub fn read_tables(conn: &Connection) -> (&'static str, &'static str) {
     ("nodes", "edges")
 }
 
-/// Read one `NodeRow` off a query row.
 pub fn node_row_from(row: &rusqlite::Row<'_>) -> rusqlite::Result<NodeRow> {
     Ok(NodeRow {
         id: row.get("id")?,
@@ -121,7 +99,6 @@ pub fn node_row_from(row: &rusqlite::Row<'_>) -> rusqlite::Result<NodeRow> {
     })
 }
 
-/// Read one `VectorRow` off a query row.
 pub fn vector_row_from(row: &rusqlite::Row<'_>) -> rusqlite::Result<VectorRow> {
     Ok(VectorRow {
         item_id: row.get("item_id")?,
@@ -149,11 +126,6 @@ pub fn vector_row_from(row: &rusqlite::Row<'_>) -> rusqlite::Result<VectorRow> {
     })
 }
 
-/// `KnowledgeGraphReadsMixin.workspaces_of` — id → workspace, missing stays missing.
-///
-/// A row present in `nodes_v2` with a NULL workspace maps to `Some(None)`; an id
-/// with no row at all is simply absent from the map, and the scoping rule below
-/// treats "absent" as private rather than as legacy-global.
 pub fn workspaces_of(
     conn: &Connection,
     node_ids: &[String],
@@ -174,12 +146,8 @@ pub fn workspaces_of(
     Ok(scopes)
 }
 
-/// The product's default workspace. A node whose `workspace_id` is NULL or
-/// blank is this visibility — ingest historically left the column unset,
-/// and chat/memory/command ride `"personal"` on a fresh install.
 pub const DEFAULT_WORKSPACE_ID: &str = "personal";
 
-/// Whether a stored workspace value is the default (NULL, blank, or `"personal"`).
 pub fn workspace_is_default(workspace_id: Option<&str>) -> bool {
     match workspace_id.map(str::trim) {
         None | Some("") => true,
@@ -187,13 +155,6 @@ pub fn workspace_is_default(workspace_id: Option<&str>) -> bool {
     }
 }
 
-/// Whether a row in `workspace` is visible to `allowed`.
-///
-/// NULL/blank is default/personal visibility: a query for [`DEFAULT_WORKSPACE_ID`]
-/// matches it. A named non-default workspace stays strict — nulls do not leak
-/// into real multi-tenant scopes. `include_legacy_global` still opts a caller
-/// into null rows even when `"personal"` is not in the set (the unscoped
-/// machine-wide legacy path).
 pub fn scoped_workspace_visible(
     node_workspace: Option<&str>,
     allowed: &BTreeSet<&str>,
@@ -205,11 +166,6 @@ pub fn scoped_workspace_visible(
     }
 }
 
-/// SQL membership filter for `workspace_id`.
-///
-/// `None` allowed is "no scoping". An empty set with no legacy opt-in is
-/// "nothing". When the allowed set contains [`DEFAULT_WORKSPACE_ID`], NULL
-/// and blank `workspace_id` match as well (`COALESCE`-style).
 pub fn workspace_membership_sql(
     allowed: Option<&BTreeSet<String>>,
     include_legacy_global: bool,
@@ -239,14 +195,6 @@ pub fn workspace_membership_sql(
     Some((clauses.join(" OR "), params))
 }
 
-/// `KnowledgeGraphReadsMixin.filter_scoped_nodes`, generic over the item shape.
-///
-/// `allowed == None` means **no scoping** — the local trusted-owner path — and
-/// is deliberately not fail-closed. An empty set is the opposite statement: a
-/// caller who may read nothing, so nothing matches.
-///
-/// NULL/blank `workspace_id` is default/personal visibility: see
-/// [`scoped_workspace_visible`].
 pub fn filter_scoped_nodes<T, F>(
     conn: &Connection,
     items: Vec<T>,
@@ -340,11 +288,9 @@ mod tests {
         };
         let id_of = |s: &String| s.clone();
 
-        // None → no scoping at all.
         let all = filter_scoped_nodes(&conn, items(), None, false, id_of).unwrap();
         assert_eq!(all.len(), 4);
 
-        // Empty set → nothing is visible (not "everything").
         let none = BTreeSet::new();
         assert!(
             filter_scoped_nodes(&conn, items(), Some(&none), false, id_of)
@@ -352,7 +298,6 @@ mod tests {
                 .is_empty()
         );
 
-        // A specific workspace, legacy-global excluded then included.
         let w1: BTreeSet<String> = ["w1".to_string()].into_iter().collect();
         assert_eq!(
             filter_scoped_nodes(&conn, items(), Some(&w1), false, id_of).unwrap(),
@@ -363,7 +308,6 @@ mod tests {
             vec!["a".to_string(), "c".to_string()]
         );
 
-        // NULL workspace_id is default/personal visibility, not a named tenant.
         let personal: BTreeSet<String> = [DEFAULT_WORKSPACE_ID.to_string()].into_iter().collect();
         assert_eq!(
             filter_scoped_nodes(&conn, items(), Some(&personal), false, id_of).unwrap(),
@@ -378,8 +322,6 @@ mod tests {
             "a named workspace does not leak null-workspace nodes"
         );
 
-        // Blank workspace ids in the allowed set are dropped, and a blank node id
-        // is never visible.
         let (predicate, params) = workspace_membership_sql(Some(&personal), false).unwrap();
         assert!(predicate.contains("workspace_id IS NULL"), "{predicate}");
         assert_eq!(params, vec![DEFAULT_WORKSPACE_ID.to_string()]);

@@ -1,5 +1,3 @@
-//! Shared HTTP helpers for the R2 families.
-
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_auth::response::json_response;

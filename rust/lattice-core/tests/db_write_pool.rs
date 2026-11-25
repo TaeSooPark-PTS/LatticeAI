@@ -1,10 +1,3 @@
-//! The pool under contention: real threads, a real file, a real busy timeout.
-//!
-//! Nothing here is mocked, because the two failure modes this pool exists to
-//! prevent are both timing: a checkout that hands the same connection to two
-//! threads, and a write that gives up on `SQLITE_BUSY` instead of waiting the
-//! way Python waits.
-
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -34,8 +27,6 @@ fn parallel_writers_all_land_exactly_once() {
     let (_dir, path) = scratch("graph.sqlite");
     let store = Arc::new(seeded(&path));
 
-    // Two write connections against one file means real SQLITE_BUSY between
-    // them; the busy timeout — not luck — is what makes every insert land.
     let threads: Vec<_> = (0..8)
         .map(|worker| {
             let store = Arc::clone(&store);
@@ -76,10 +67,6 @@ fn a_write_waits_out_a_lock_instead_of_failing() {
     let (_dir, path) = scratch("graph.sqlite");
     let store = seeded(&path);
 
-    // An outside connection — Python, as far as SQLite is concerned — holds the
-    // write lock for a beat. Without the 5 s busy timeout this write returns
-    // SQLITE_BUSY immediately and the assertion below fails on the error, not
-    // on the timing.
     let held = Duration::from_millis(400);
     let (ready, is_ready) = mpsc::channel();
     let outsider = {
@@ -160,9 +147,6 @@ fn checkout_blocks_until_a_connection_comes_back() {
 
 #[test]
 fn a_panicking_caller_poisons_the_pool_rather_than_hanging_it() {
-    // A panic inside `with_write_conn` unwinds through the guard's Drop, which
-    // tries to re-lock a mutex the panicking thread may have poisoned. The
-    // contract is that the next caller gets an error — never a deadlock.
     let (_dir, path) = scratch("graph.sqlite");
     let pool = Arc::new(Pool::open(&path, Access::Write, 1).expect("pool"));
     let panicking = {
@@ -174,7 +158,6 @@ fn a_panicking_caller_poisons_the_pool_rather_than_hanging_it() {
     };
     assert!(panicking.join().is_err(), "the thread must have panicked");
 
-    // Drop ran during the unwind, so the connection is back and the pool works.
     let conn = pool
         .checkout()
         .expect("the pool survives a panicking caller");
@@ -203,7 +186,6 @@ async fn the_async_helpers_do_the_same_work_off_the_runtime() {
         .expect("async read");
     assert_eq!(who, "async");
 
-    // An error inside the closure is the closure's error, not a task failure.
     let err = store
         .write(|_txn| Err::<(), _>(CoreError::InvalidRequest("no".into())))
         .await

@@ -1,5 +1,3 @@
-//! Native knowledge-graph writes: curation and the two promotion actions.
-
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -23,19 +21,6 @@ const CURATE_NOISE_REQUEST: &[crate::search_api::FieldSpec] = &[
 
 const PROMOTION_ACTION_REQUEST: &[crate::search_api::FieldSpec] = &[optional("ids", Kind::Array)];
 
-// ── the four native writes ──────────────────────────────────────────────────
-
-/// One whitelisted op on the write engine, and its answer verbatim.
-///
-/// The route returns the store's return value, which is what
-/// `graph().curate()` returned in Python — the worker seam that used to wrap
-/// it as `{"op", "result"}` and unwrap it again is gone, so there is one
-/// fewer shape to keep honest and a client still sees what it always saw.
-///
-/// `require_graph` in every caller has already refused a graph-less install
-/// (404, `_require_graph()`'s sentence). This arm is the *mis-wired* one — a
-/// store opened without a [`lattice_core::graph_write::GraphWriter`] — and it
-/// says exactly that rather than inventing a delegate that no longer exists.
 async fn mutate(
     state: &RetrievalApiState,
     lang: &str,
@@ -55,11 +40,6 @@ async fn mutate(
         })
 }
 
-/// The one sentence a caller gets when the graph is on but no writer was bound.
-///
-/// Deliberately the same wording `memory_api::shared::BrainState::mutate_detailed`
-/// answers with: it is the same mis-wiring, and two spellings of one fault
-/// would read as two faults.
 pub(crate) const WRITE_ENGINE_UNCONFIGURED: &str =
     "the knowledge-graph write engine is not configured on this host";
 
@@ -143,8 +123,6 @@ async fn promotion_action(
         return graph_disabled();
     }
     let lang = language(&headers);
-    // `ids=None` applies/rejects every pending promotion; the seam's argument
-    // whitelist accepts the key with a null just as the Python model does.
     let args = json!({ "ids": model.get("ids").cloned().unwrap_or(Value::Null) });
     match mutate(&state, lang, op, args).await {
         Ok(value) => ok(&value),

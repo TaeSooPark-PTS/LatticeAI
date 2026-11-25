@@ -15,7 +15,6 @@ function expiryTime(language: Language, expiresAt: string): string {
   });
 }
 
-// mm:ss for the live countdown (never negative).
 export function formatCountdown(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -23,17 +22,8 @@ export function formatCountdown(remainingMs: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Under two minutes left → amber urgency treatment + explicit warning.
 const URGENT_REMAINING_MS = 120_000;
 
-// Inline governance surface for an awaiting_approval agent run (backlog #2).
-// Not a modal: the run is parked server-side behind a single-use token, so the
-// card lives in the conversation where the pause happened. The primary action
-// receives focus when the card appears; terminal states (approved/cancelled/
-// expired/error) persist on the message so the card stays honest across
-// re-renders. A live countdown runs against the token TTL; when it reaches
-// zero the card flips to expired locally — no server call for a token we
-// already know is dead.
 export function AgentApprovalCard({
   language,
   approval,
@@ -51,12 +41,9 @@ export function AgentApprovalCard({
   const [editInvalid, setEditInvalid] = React.useState(false);
   const primaryRef = React.useRef<HTMLButtonElement>(null);
 
-  // Focus the primary action only when the card first appears (not on later
-  // re-renders), so keyboard users land on the decision immediately.
   React.useEffect(() => {
     if (approval.status === "pending") primaryRef.current?.focus();
-    // Intentionally mount-only.
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const pending = approval.status === "pending";
   const expiryMs = React.useMemo(() => {
@@ -66,7 +53,6 @@ export function AgentApprovalCard({
   }, [approval.expiresAt]);
   const [now, setNow] = React.useState(() => Date.now());
 
-  // 1s tick only while the decision is actually pending and has a TTL.
   React.useEffect(() => {
     if (!pending || expiryMs === null) return;
     setNow(Date.now());
@@ -77,8 +63,6 @@ export function AgentApprovalCard({
   const remainingMs = expiryMs === null ? null : expiryMs - now;
   const urgent = pending && remainingMs !== null && remainingMs > 0 && remainingMs < URGENT_REMAINING_MS;
 
-  // Client-side expiry: flip the message state without spending a request on
-  // a token the server would 410 anyway. One-shot per card instance.
   const expiredLocallyRef = React.useRef(false);
   React.useEffect(() => {
     if (!pending || remainingMs === null || remainingMs > 0 || expiredLocallyRef.current) return;
@@ -87,10 +71,6 @@ export function AgentApprovalCard({
   }, [pending, remainingMs, onResolved]);
 
   async function resolve(decision: { approve: boolean; editedPlan?: Record<string, unknown> }) {
-    /* v8 ignore next -- unreachable: every caller (approve/cancel/edit-run) is
-       itself disabled by the same `busy` flag in the same render, so a second
-       invocation can never observe busy=true. Kept as defense-in-depth. */
-    if (busy) return;
     setBusy(true);
     try {
       onResolved(await resolveApprovalRequest(approval, decision));

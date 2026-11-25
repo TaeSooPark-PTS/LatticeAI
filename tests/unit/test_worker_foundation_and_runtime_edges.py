@@ -1,5 +1,3 @@
-"""Unit tests for worker foundation, typed chunks, web runtime, and edge branches."""
-
 from __future__ import annotations
 
 import asyncio
@@ -51,17 +49,14 @@ def test_foundation_web_worker_and_typed_chunks(monkeypatch, tmp_path: Path):
             return None
 
     ctx = Ctx()
-    # phase_platform swallows mlx failure
     foundation.phase_platform(ctx)
     assert "mx" in ctx.store
 
-    # chmod OSError
     data = tmp_path / "data"
     data.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
         Path, "chmod", lambda self, *a, **k: (_ for _ in ()).throw(OSError("no"))
     )
-    # call just the chmod snippet via phase_config pieces is heavy; invoke chmod path
     try:
         data.chmod(0o700)
     except OSError:
@@ -69,7 +64,6 @@ def test_foundation_web_worker_and_typed_chunks(monkeypatch, tmp_path: Path):
 
         q()
 
-    # embedding profile ValueError
     import logging as _logging
 
     from latticeai.core.embedding_providers.profiles import resolve_embedding_profile
@@ -79,7 +73,6 @@ def test_foundation_web_worker_and_typed_chunks(monkeypatch, tmp_path: Path):
     except ValueError as exc:
         _logging.warning("Embedding profile ignored: %s", exc)
 
-    # CORS network origins
     origins = [f"http://localhost:{ctx.DEFAULT_PORT}"]
     if ctx.CORS_ALLOW_NETWORK:
         origins = origins + [
@@ -88,20 +81,16 @@ def test_foundation_web_worker_and_typed_chunks(monkeypatch, tmp_path: Path):
         ]
     assert any("0.0.0.0" in o for o in origins)
 
-    # prune nested empty included router
-
     class DummyIncluded:
         def __init__(self):
             self.routes = []
 
-    # exercise prune helper if importable
     try:
         from latticeai.runtime.build_phases import worker_profile as wp
 
         included = APIRouter()
         outer = APIRouter()
         outer.include_router(included)
-        # just ensure module functions exist
         assert callable(getattr(wp, "_included_router", lambda *_a: None))
     except (ImportError, AttributeError, AssertionError):
         pass
@@ -136,7 +125,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     from latticeai.tools.commands import git_diff
     from latticeai.tools.documents import _body_to_str, read_document
 
-    # kg fsutil leftovers
     iso = datetime.now().isoformat()
     assert fs._recency_score(iso) >= 0
     assert fs._drive_id_for_path(tmp_path)
@@ -144,7 +132,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     linux = Path("/var/lib")
     fs._excluded_directory_reason(linux, os_type="linux")
 
-    # hooks args.keys() raise on a dict subclass
     class BadDict(dict):
         def keys(self):
             raise RuntimeError("no keys")
@@ -155,7 +142,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
 
     dispatch_tool(Hooks(), "t", BadDict(a=1), lambda: {"ok": True})
 
-    # valid embedding profile
     assert resolve_embedding_profile("mlx:bge-m3")["provider"] == "mlx"
     OllamaEmbeddingProvider(_RemoteConfig(model="nomic", dim=768))
 
@@ -168,10 +154,8 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     packed = P().encode([1.0, 2.0])
     assert P().decode(packed, dim=2)
 
-    # untrusted peer skips forwarded proto
     assert effective_origin(host="x:1", forwarded_proto="https", peer="8.8.8.8")
 
-    # resolution leftover branches
     res = ModelResolution.from_request(
         "gemma",
         engine="vllm",
@@ -188,12 +172,10 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
         is True
     )
 
-    # rate limit 429
     _rate_buckets["rl2@x.com:chat"] = {"tokens": 0.0, "ts": time.time()}
     with pytest.raises(HTTPException):
         enforce_rate_limit("rl2@x.com", "chat", enabled=True)
 
-    # access_runtime remaining
     users = {
         "User:ABC": {"id": "user:keep", "email": "u@x.com"},
         "a": "not-a-dict",
@@ -218,7 +200,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     assert runtime["get_current_user"](req("User:ABC"))
     assert runtime["get_current_user"](req("target-id"))
 
-    # status catalog fallback + already-known catalog skip
     class Router:
         def detected_cloud_models(self):
             return []
@@ -255,15 +236,12 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
 
     catalog = list(ENGINE_MODEL_CATALOG.get("lmstudio") or [])
     if catalog:
-        # make sure known id matches a catalog id
         engine_status(state=state)
 
-    # process audit non-none hash + successful confirm
     assert _text_hash("hello")
     token = confirmation_token(["echo", "ok"], cwd=".", purpose="installer")
     require_command_confirmation(["echo", "ok"], token, cwd=".", purpose="installer")
 
-    # relative governed path
     dispatch = ToolDispatchService()
     monkeypatch.setattr(
         "latticeai.services.tool_dispatch.document_output_target",
@@ -271,7 +249,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     )
     assert dispatch._governed_path_exists("write_file", "rel.txt") in {True, False}
 
-    # git_diff without path
     from latticeai.tools import commands as command_tools
 
     class Done:
@@ -305,7 +282,6 @@ def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkey
     from latticeai.runtime.build_phases.worker_profile import apply_worker_route_filter
     from latticeai.runtime.runtime_context import RuntimeContext
 
-    # ollama wait: returncode != 0 then success
     runs = {"n": 0}
 
     def run(*_a, **_k):
@@ -320,7 +296,6 @@ def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkey
     monkeypatch.setattr(model_engines.time, "sleep", lambda *_a, **_k: None)
     model_engines.ensure_ollama_server()
 
-    # download throttle
     monkeypatch.setattr(download_mod.importlib.util, "find_spec", lambda _n: object())
     monkeypatch.setattr(download_mod, "hf_model_dir", lambda _r: tmp_path / "dl")
     checks = {"n": 0}
@@ -364,7 +339,6 @@ def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkey
     monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
     download_mod.download_hf_model("org/m", progress_emit=lambda *_a, **_k: None)
 
-    # idle loop empty unload continues
     class Router2:
         def unload_idle_models(self, seconds):
             return []
@@ -405,9 +379,6 @@ def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkey
 
     asyncio.run(_idle())
 
-    # models recommended non-dict model
-
-    # foundation phases with real RuntimeContext
     real_import = __import__
 
     def boom_import(name, *a, **k):
@@ -452,7 +423,6 @@ def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkey
     try:
         build_worker_app_shell(shell_ctx)
     except (AttributeError, RuntimeError, ValueError, TypeError):
-        # host_is_loopback / middleware may need more fields; CORS lines still run first
         pass
 
     app = FastAPI()

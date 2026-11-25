@@ -1,5 +1,3 @@
-//! Write-endpoint sanitization and streamable MCP JSON-RPC parity tests.
-
 #[allow(dead_code)]
 mod mcp_harness;
 
@@ -70,8 +68,6 @@ async fn hand_authored_content_is_written_byte_for_byte() {
 #[tokio::test]
 async fn the_refusals_still_come_first() {
     let install = Install::start().await;
-    // Containment is judged before content: an escaping path is refused with
-    // its own message, not with something the sanitizer decided.
     let answer = install
         .issue(
             "POST",

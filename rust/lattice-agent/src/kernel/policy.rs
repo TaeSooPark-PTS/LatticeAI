@@ -1,37 +1,14 @@
-//! Tool policy — **data**, not a table.
-//!
-//! `latticeai.core.tool_registry.TOOL_GOVERNANCE` is the single source of truth
-//! for "how risky is this tool", and `ToolRegistry.policy_for` is the single
-//! source of truth for the one args-dependent rewrite (a write aimed at a
-//! blocked system prefix becomes a destructive policy). Re-declaring either in
-//! Rust would create a second copy that drifts silently the first time a tool is
-//! added. So the kernel takes policies as input: callers pass the real policy,
-//! or a table of them, and the goldens carry the real table verbatim.
-
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-/// Membership in a **sorted** `&[&str]` table.
-///
-/// Every tool-name set in this crate is a sorted literal copied from the Python
-/// constant it mirrors, so the lookup is a binary search rather than a scan —
-/// and because the sortedness is what makes it correct, there is exactly one
-/// place that assumes it. `governor` and `mode` each had their own copy. It
-/// lives with the policy data because that is what those tables are.
 pub(crate) fn in_set(set: &[&str], name: &str) -> bool {
     set.binary_search(&name).is_ok()
 }
 
-/// One tool's governance record — the Python `ToolPolicy` TypedDict.
-///
-/// Fields default rather than fail: a caller that knows only `risk` still gets
-/// a decidable policy, and `Default` is exactly Python's
-/// `TOOL_GOVERNANCE_DEFAULT` (write / workspace / no rollback / gated).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolPolicy {
-    /// `read` | `write` | `write_scoped` | `exec` | `destructive`.
     #[serde(default)]
     pub risk: String,
     #[serde(default)]
@@ -42,8 +19,6 @@ pub struct ToolPolicy {
     pub network: bool,
     #[serde(default)]
     pub auto_approve: bool,
-    /// `workspace` | `home` | `system`. Empty reads as `workspace`, which is
-    /// Python's `str(policy.get("sandbox") or "workspace")`.
     #[serde(default)]
     pub sandbox: String,
     #[serde(default)]
@@ -71,13 +46,10 @@ impl Default for ToolPolicy {
 }
 
 impl ToolPolicy {
-    /// `str(policy.get("risk") or "")` — a missing risk is the empty string,
-    /// which matches none of the risk branches rather than defaulting into one.
     pub fn risk(&self) -> &str {
         &self.risk
     }
 
-    /// `str(policy.get("sandbox") or "workspace")`.
     pub fn sandbox(&self) -> &str {
         if self.sandbox.is_empty() {
             "workspace"
@@ -86,13 +58,10 @@ impl ToolPolicy {
         }
     }
 
-    /// Whether this policy is destructive by flag or by risk level. The two
-    /// spellings are checked together everywhere Python checks them together.
     pub fn is_destructive(&self) -> bool {
         self.destructive || self.risk == "destructive"
     }
 
-    /// A read-only policy for tests and callers that only need a shape.
     pub fn read_only() -> Self {
         Self {
             risk: "read".into(),
@@ -103,35 +72,16 @@ impl ToolPolicy {
     }
 }
 
-/// A name → policy table plus the fallback for names it does not carry.
-///
-/// This mirrors `ToolRegistry.governance` + `ToolRegistry.default_policy`. What
-/// it deliberately does *not* mirror is `policy_for`'s blocked-prefix rewrite:
-/// that rewrite is a function of the call arguments, and the caller that has
-/// the arguments (the worker, or the fixture generator) passes the rewritten
-/// policy in. Guessing it here would mean re-deriving
-/// `LOCAL_WRITE_BLOCKED_PREFIXES` in a second place.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyTable {
     #[serde(default)]
     pub tools: BTreeMap<String, ToolPolicy>,
     #[serde(default)]
     pub default: ToolPolicy,
-    /// `LOCAL_WRITE_BLOCKED_PREFIXES` — **data**, like the rest of the table.
-    ///
-    /// The loop cannot pre-compute a policy for a tool the model has not chosen
-    /// yet, so [`PolicyTable::policy_for`] has to make the one args-dependent
-    /// rewrite `ToolRegistry.policy_for` makes. The prefixes come in with the
-    /// table rather than being hard-coded a second time, and the parity goldens
-    /// carry the real tuple so a change in Python fails the contract.
     #[serde(default = "default_blocked_write_prefixes")]
     pub blocked_write_prefixes: Vec<String>,
 }
 
-/// The tuple `latticeai.core.tool_registry` ships, for callers that send none.
-///
-/// Public because the native `local_write` refuses the same prefixes and must
-/// refuse *these* ones: two copies of a denylist is one copy that goes stale.
 pub fn default_blocked_write_prefixes() -> Vec<String> {
     [
         "/etc/",
@@ -158,10 +108,8 @@ impl Default for PolicyTable {
     }
 }
 
-/// Tools whose `path` argument is checked against the blocked prefixes.
 const PREFIX_CHECKED_WRITERS: [&str; 3] = ["edit_file", "local_write", "write_file"];
 
-/// `RISK_LEVEL_MAP` — policy risk → the coarse label the transcript records.
 pub fn risk_level(policy: &ToolPolicy) -> &'static str {
     match policy.risk() {
         "read" => "low",
@@ -172,22 +120,16 @@ pub fn risk_level(policy: &ToolPolicy) -> &'static str {
 }
 
 impl PolicyTable {
-    /// The policy for `name`, falling back to the table's default.
     pub fn get(&self, name: &str) -> &ToolPolicy {
         self.tools.get(name).unwrap_or(&self.default)
     }
 
-    /// Whether the table carries an entry of its own for `name`.
     pub fn has(&self, name: &str) -> bool {
         self.tools.contains_key(name)
     }
 
-    /// `ToolRegistry.policy_for`: the table entry, unless this is a write aimed
-    /// at a blocked system prefix — which is a destructive policy instead.
     pub fn policy_for(&self, name: &str, args: &Map<String, Value>) -> ToolPolicy {
         if PREFIX_CHECKED_WRITERS.binary_search(&name).is_ok() {
-            // `str(args.get("path", ""))`: a *present* null stringifies to
-            // `"None"`, which matches no prefix — the default `""` does not.
             let path = match args.get("path") {
                 Some(value) => crate::parse::pystr::py_str(value),
                 None => String::new(),
@@ -292,7 +234,6 @@ mod tests {
                 "{allowed}"
             );
         }
-        // The rewrite only applies to the three writers that take a path.
         assert!(!table
             .policy_for("read_file", &args("/etc/hosts"))
             .is_destructive());

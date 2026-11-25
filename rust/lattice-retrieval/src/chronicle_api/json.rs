@@ -1,38 +1,14 @@
-//! A JSON document whose object keys keep Python's insertion order — at every
-//! level, not just the top one.
-//!
-//! `lattice_auth::OrderedMap` is the house answer for a response body and it is
-//! the right one for a *flat* object: it holds `serde_json::Value` leaves and
-//! serialises its entries in insertion order. The chronicle's three answers are
-//! not flat — `series[]`, `totals`, `counts`, `groups.sources[]` and
-//! `top_entities[]` are nested objects whose key order is part of the contract
-//! — and the only way to put an `OrderedMap` *inside* a `Value` is
-//! `serde_json::to_value`, which lands in `serde_json::Map`. That map is a
-//! `BTreeMap` in this workspace (`preserve_order` is deliberately off, because
-//! turning it on would re-order every retrieval golden), so nesting through it
-//! sorts the keys and `{"sources": …, "entities": …}` comes back as
-//! `{"connections": …, "conversations": …}`.
-//!
-//! Hence this type: the same insertion-order promise, recursive. Leaves stay
-//! `serde_json::Value`, so a cell read straight out of sqlite is emitted
-//! exactly as Python emitted it.
-
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 
-/// One JSON node: a scalar leaf, an ordered object, or an array.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ordered {
-    /// A scalar (or any value whose key order cannot matter).
     Leaf(Value),
-    /// An object, in the order Python's `dict` would have iterated it.
     Object(Vec<(String, Ordered)>),
-    /// An array.
     Array(Vec<Ordered>),
 }
 
-/// `{"a": …, "b": …}` in the order written.
 pub fn object<const N: usize>(entries: [(&str, Ordered); N]) -> Ordered {
     Ordered::Object(
         entries
@@ -143,9 +119,6 @@ mod tests {
 
     #[test]
     fn the_same_body_through_serde_json_map_would_have_been_sorted() {
-        // This crate enables `serde_json/preserve_order`, so a round-trip
-        // through `Value` now keeps insertion order — the same contract
-        // OrderedMap has when serialised directly.
         let mut map = lattice_auth::OrderedMap::new();
         map.insert("sources", Value::from(15));
         map.insert("entities", Value::from(33));

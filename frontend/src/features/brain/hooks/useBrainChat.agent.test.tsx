@@ -7,11 +7,6 @@ import { abortError, fakeChatStream } from "@/test/fakeChatStream";
 import { setup } from "@/test/brainChatHarness";
 import { useConversationSession } from "../conversationSession";
 
-/**
- * Agent frames and answer trailers: the parts of a reply that arrive beside the
- * text — step timelines, governed plans, produced files, grounding verdicts —
- * and what an answer looks like when the run fails instead.
- */
 
 beforeEach(() => {
   useConversationSession.getState().resetConversation();
@@ -252,8 +247,6 @@ describe("useBrainChat trailers and failures", () => {
   });
 
   it("badges the streamed answer even when another surface already appended to the session", async () => {
-    // The conversation store is shared across surfaces; a message written into
-    // it mid-stream must not steal the trailer badge from the actual answer.
     const stream = fakeChatStream({
       frames: [{ kind: "chunk", text: "근거 답" }],
       result: { grounding: { grounding: { status: "supported", reason: "notes.md" } } },

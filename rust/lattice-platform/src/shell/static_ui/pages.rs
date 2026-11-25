@@ -19,8 +19,6 @@ pub(crate) async fn root(
     if !config.invite_gate_enabled {
         return app_redirect("account", query.as_deref());
     }
-    // A valid claim is enough; note that Python drops the query on this branch
-    // (it calls the helper without the request), and so does this.
     if invite_authorized(config, &headers) {
         return app_redirect("account", None);
     }
@@ -30,8 +28,6 @@ pub(crate) async fn root(
     if !config.invite_code.is_empty() {
         if let Some(code) = supplied {
             if constant_time_eq(code.as_bytes(), config.invite_code.as_bytes()) {
-                // Redirect rather than render, so the code leaves the URL bar
-                // and the browser history with it.
                 let mut response = app_redirect("account", None);
                 if let Some(cookie) = issue_invite_cookie(config) {
                     response.headers_mut().append(header::SET_COOKIE, cookie);
@@ -43,7 +39,6 @@ pub(crate) async fn root(
     invite_denied()
 }
 
-/// `GET /account` — where logout and manual navigation land.
 pub(crate) async fn account(
     State(state): State<Arc<StaticUiState>>,
     headers: HeaderMap,
@@ -54,7 +49,6 @@ pub(crate) async fn account(
     app_redirect("account", None)
 }
 
-/// `GET /app` — the React shell.
 pub(crate) async fn app_shell(
     State(state): State<Arc<StaticUiState>>,
     headers: HeaderMap,
@@ -87,7 +81,6 @@ pub(crate) async fn app_shell(
     }
 }
 
-/// `GET /manifest.json` — the PWA manifest, with the media type browsers want.
 pub(crate) async fn manifest(State(state): State<Arc<StaticUiState>>) -> Response<Body> {
     match tokio::fs::read(state.config.static_dir.join("manifest.json")).await {
         Ok(bytes) => file_response(bytes, "application/manifest+json"),
@@ -95,7 +88,6 @@ pub(crate) async fn manifest(State(state): State<Arc<StaticUiState>>) -> Respons
     }
 }
 
-/// `GET|HEAD /favicon.ico` — the `.ico`, else the 32px png, else nothing.
 pub(crate) async fn favicon(State(state): State<Arc<StaticUiState>>) -> Response<Body> {
     let root = &state.config.static_dir;
     if let Ok(bytes) = tokio::fs::read(root.join("favicon.ico")).await {
@@ -107,7 +99,6 @@ pub(crate) async fn favicon(State(state): State<Arc<StaticUiState>>) -> Response
     json_detail(StatusCode::NOT_FOUND, "Not Found")
 }
 
-/// `GET /sw.js` — the service worker, allowed to claim the whole origin.
 pub(crate) async fn service_worker(State(state): State<Arc<StaticUiState>>) -> Response<Body> {
     match tokio::fs::read(state.config.static_dir.join("sw.js")).await {
         Ok(bytes) => {

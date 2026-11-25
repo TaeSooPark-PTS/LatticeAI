@@ -1,11 +1,3 @@
-/**
- * The surfaces the web app has and the editor must match (SURFACE_PARITY).
- *
- * Grounding badge on a recall, evidence → action, Review Center, agent runs
- * (batch and live), folder capture, artifact cards. Each one renders the same
- * server payload the web card renders — the difference is a QuickPick instead
- * of a panel, never a different contract.
- */
 import * as vscode from "vscode";
 import { ChatPanel } from "./ChatPanel";
 import { LatticeAIClient } from "./client";
@@ -33,7 +25,6 @@ import {
   type ProposalSummary,
 } from "./surface";
 
-/** Ask /chat for the grounding verdict on a recall and report it honestly. */
 export async function showRecallGrounding(question: string, message: string): Promise<void> {
   try {
     const payload = await vscode.window.withProgress(
@@ -41,8 +32,6 @@ export async function showRecallGrounding(question: string, message: string): Pr
       async () => client.chat(message),
     );
     const line = groundingLine(payload);
-    // Remember what this answer actually cited so "이 근거로 만들기" has real
-    // evidence to work from (SURFACE_PARITY v9.9.7).
     const sourceIds = citedSourceIds(payload);
     setLastRecall({ question, sourceIds });
     const buildFrom = "Build from this evidence";
@@ -57,7 +46,6 @@ export async function showRecallGrounding(question: string, message: string): Pr
     if (pick === buildFrom) await showEvidenceActions(client);
     else if (pick === openWeb) await openAppSurface("/app");
   } catch (err: any) {
-    // No verdict is not a passing verdict — say so rather than badge nothing.
     vscode.window.showWarningMessage(
       `Lattice AI: could not confirm evidence for this answer (${err?.message || err}).`,
     );
@@ -68,13 +56,6 @@ interface EvidenceActionItem extends vscode.QuickPickItem {
   action: EvidenceAction;
 }
 
-/**
- * Evidence → action parity (v9.9.7). The sources the last recall actually
- * cited become one-click follow-ups, composed server-side by the same
- * `/api/evidence/actions` surface the web card uses. File-producing actions
- * run through the agent so the artifact lands in the workspace; chat actions
- * open in the panel.
- */
 export async function showEvidenceActions(
   c: LatticeAIClient,
   context?: vscode.ExtensionContext,
@@ -109,7 +90,6 @@ export async function showEvidenceActions(
   });
   if (!chosen) return;
   if (chosen.action.kind === "file") {
-    // A file action must actually produce a file — that is the agent's job.
     await runAgentLive(c, chosen.action.prompt);
     return;
   }
@@ -118,11 +98,6 @@ export async function showEvidenceActions(
   vscode.window.showInformationMessage("Lattice AI: sent to chat with the cited evidence.");
 }
 
-/**
- * Live step timeline parity (v9.9.7): run the agent with `stream:true` and
- * write every named `agent_step` frame to the output channel as it happens,
- * instead of only reporting after the run ends.
- */
 export async function runAgentLive(c: LatticeAIClient, presetGoal?: string): Promise<void> {
   const goal = presetGoal ?? await vscode.window.showInputBox({
     prompt: "What should the Lattice agent do? (live step timeline)",
@@ -162,12 +137,6 @@ interface ProposalPickItem extends vscode.QuickPickItem {
   proposal: ProposalSummary;
 }
 
-/**
- * Review Center parity: list staged change proposals and approve/reject them
- * without leaving the editor. Approval applies the staged content exactly as
- * reviewed; a 409 means the file drifted since staging, which is reported as
- * a conflict rather than retried behind the user's back.
- */
 export async function showReviewCenter(c: LatticeAIClient): Promise<void> {
   let proposals: ProposalSummary[];
   try {
@@ -224,7 +193,6 @@ export async function showReviewCenter(c: LatticeAIClient): Promise<void> {
   }
 }
 
-/** Run an agent task and report its steps + plain-language outcome. */
 export async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
   const goal = await vscode.window.showInputBox({
     prompt: "What should the Lattice agent do?",
@@ -249,8 +217,6 @@ export async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
     const output = outputChannel();
     output.appendLine(`--- ${goal} ---`);
     output.appendLine(runReport(payload));
-    // Artifact cards carry the honesty flags a flat file list drops: whether
-    // the content was repaired, and whether the server validated it.
     const cards = parseArtifacts(payload);
     setLastArtifacts(cards.length ? { goal, cards } : null);
     output.appendLine(artifactReport(payload));
@@ -269,12 +235,6 @@ export async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
 }
 
 
-// ── Capture: send a whole folder to the Brain (v10.4.0) ──────────────────────
-//
-// SURFACE_PARITY had VS Code capture at ◐ because `sendToLattice` only ever
-// pushed the current file. The web Capture view ingests folders through
-// `/api/ingestion/folder`; this is the same endpoint and the same approval
-// dance, driven from the editor.
 
 export async function captureFolder(c: LatticeAIClient): Promise<void> {
   const folders = vscode.workspace.workspaceFolders ?? [];
@@ -299,8 +259,6 @@ export async function captureFolder(c: LatticeAIClient): Promise<void> {
   if (recursive === undefined) return;
 
   try {
-    // First call is unapproved on purpose: reading local disk requires an
-    // explicit, per-path approval, exactly as in the web app.
     const probe = await c.ingestFolder({ path: folderPath, recursive, approved: false });
     const token = String(probe?.approval_token || probe?.token || "");
     if (!token) {
@@ -347,11 +305,6 @@ export async function captureFolder(c: LatticeAIClient): Promise<void> {
   }
 }
 
-// ── Artifact cards (v10.4.0) ─────────────────────────────────────────────────
-//
-// The web app shows produced files as cards with their honesty flags. The
-// editor shows the same fields as a QuickPick, and opening one opens the real
-// file — a rendering difference, not a contract difference.
 
 export async function showArtifactCards(): Promise<void> {
   if (!lastArtifacts || !lastArtifacts.cards.length) {
@@ -384,8 +337,6 @@ export async function showArtifactCards(): Promise<void> {
     const doc = await vscode.workspace.openTextDocument(target);
     await vscode.window.showTextDocument(doc);
   } catch {
-    // The agent workspace is not always the editor workspace; say where the
-    // file is rather than pretending the open succeeded.
     vscode.window.showWarningMessage(
       `Lattice AI: ${pick.card.path} was written by the agent but is not in this workspace folder.`,
     );

@@ -1,22 +1,3 @@
-//! Workspace membership, as the retrieval routes want to ask about it.
-//!
-//! Two crates need the same fact — *which workspaces may this person see?* —
-//! and they ask for it through two different traits, because neither crate
-//! depends on the other:
-//!
-//! * `lattice_auth::WorkspaceResolver` resolves **one** requested scope into
-//!   the one the caller is allowed to read or write, and
-//!   `lattice_platform::workspaceos::workspace::WorkspaceService` implements it directly;
-//! * `lattice_retrieval::search_api::AllowedScopes` asks for the **set**, which
-//!   the search lanes intersect a row's `workspace_id` against.
-//!
-//! This adapter is the join. It exists in `lattice-host` rather than in either
-//! crate because the gateway is the only place that knows both are talking
-//! about the same registry — and because the alternative, passing `None`, is
-//! the documented "no membership known" contract, under which every named
-//! workspace passes ungated (WP-I2 §2). Scoping that never says no is not
-//! scoping.
-
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
@@ -24,25 +5,16 @@ use lattice_platform::workspaceos::workspace::WorkspaceService;
 use lattice_retrieval::search_api::AllowedScopes;
 use serde_json::Value;
 
-/// `PLATFORM.allowed_scopes(user)` over the native workspace registry.
 #[derive(Clone)]
 pub struct WorkspaceScopes {
     service: Arc<WorkspaceService>,
 }
 
 impl WorkspaceScopes {
-    /// Wrap the resolver the gateway already built.
     pub fn new(service: Arc<WorkspaceService>) -> Self {
         Self { service }
     }
 
-    /// The ids in a `list_workspaces` answer.
-    ///
-    /// `list_workspaces` already applies membership — an organization workspace
-    /// the caller does not belong to is not in the array — so this reads ids
-    /// rather than re-deciding anything. A row without a usable `id` is skipped
-    /// instead of being turned into an empty scope, which would match rows that
-    /// carry no workspace at all.
     fn ids(listing: &Value) -> BTreeSet<String> {
         listing
             .as_array()
@@ -59,9 +31,6 @@ impl WorkspaceScopes {
 
 impl AllowedScopes for WorkspaceScopes {
     fn allowed_scopes(&self, user: &str) -> BTreeSet<String> {
-        // The empty email is the trusted local owner (WP-I2 §2's rule the VS
-        // Code extension depends on); `list_workspaces(None)` is the unfiltered
-        // registry, which is the right answer for the machine's owner.
         let user = (!user.is_empty()).then_some(user);
         Self::ids(&self.service.list_workspaces(user))
     }

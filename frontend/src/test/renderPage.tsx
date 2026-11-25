@@ -6,18 +6,7 @@ import { vi } from "vitest";
 import { latticeApi } from "@/api/client";
 import { useAppStore } from "@/store/appStore";
 
-/**
- * Render a whole page against a stubbed API.
- *
- * Page components are where most of this app's logic lives, and until 10.3.0
- * none of them had a unit test — they were only exercised end-to-end by the
- * Playwright suite, which cannot reach error states, empty states, or modes
- * that need a specific server response. This harness makes those reachable:
- * every `latticeApi` method resolves to a successful envelope by default, and
- * a test overrides only the calls it cares about.
- */
 
-/** The envelope every `latticeApi` call returns. */
 export type ApiResult<T> = {
   ok: boolean;
   status: number;
@@ -34,20 +23,11 @@ export function fail<T>(error: string, data: T, status = 503): ApiResult<T> {
   return { ok: false, status, source: "unavailable", data, error };
 }
 
-/**
- * Stub every function on `latticeApi` so a page never hits a real fetch.
- *
- * Unstubbed calls resolve to `ok({})` rather than rejecting: a page that asks
- * for something this test does not care about should render its empty state,
- * not explode and hide the thing under test.
- */
 export function stubApi(overrides: Partial<Record<keyof typeof latticeApi, unknown>> = {}) {
   for (const key of Object.keys(latticeApi) as Array<keyof typeof latticeApi>) {
     const value = latticeApi[key];
     if (typeof value !== "function") continue;
     const override = overrides[key];
-    // `vi.spyOn` over a dynamic key widens to `never`; the cast is on the spy,
-    // not on the value, so the stub payloads stay type-checked at the call site.
     const spy = vi.spyOn(latticeApi, key as never) as unknown as {
       mockImplementation: (fn: (...args: unknown[]) => unknown) => void;
     };

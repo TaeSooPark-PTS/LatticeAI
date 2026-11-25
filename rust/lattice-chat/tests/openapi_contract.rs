@@ -1,10 +1,3 @@
-//! Mounted chat routes == `rust/fixtures/openapi/chat.json`, minus the split.
-//!
-//! The committed fragment includes `/agent*` (lattice-agent / host) and would
-//! include `GET /chat` if that op lived here — it does not: `GET /chat` is
-//! WP-I4's `static_ui` 308. This crate mounts the POST /chat pipeline and the
-//! six history routes. The test fails if either half of that split moves.
-
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -21,7 +14,6 @@ fn fragment(name: &str) -> Value {
     serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
 }
 
-/// axum 0.7 spells params `:id` / `/*id`; the contract spells them `{id}`.
 fn to_openapi(path: &str) -> String {
     path.split('/')
         .map(

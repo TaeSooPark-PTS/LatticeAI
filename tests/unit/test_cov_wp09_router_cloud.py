@@ -1,11 +1,3 @@
-"""Cloud provider wiring: client construction, catalog, generation, streaming.
-
-Every OpenAI-compatible provider is reached through one seam — the module
-global ``AsyncOpenAI`` — so the whole surface is testable by replacing that
-name. Nothing here opens a socket; the fake client records what the router
-asked for and answers with the response shapes the OpenAI SDK produces.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -14,25 +6,12 @@ import types
 import pytest
 
 from latticeai.models import router as router_mod
-
-# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
-# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
-# the load path reaches through them are read in the submodule that defines
-# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
-# rebound on the package ``__init__`` would leave those reads untouched.
 from latticeai.models.router import loading as router_loading
 
 OMITTED = "<omitted>"
 
 
 class _FakeAsyncOpenAI:
-    """Records how the router constructed it.
-
-    ``base_url`` defaults to a sentinel rather than ``None`` so a test can tell
-    "passed base_url=None" apart from "did not pass base_url at all" — the
-    distinction the router's own comment calls out.
-    """
-
     def __init__(self, *, api_key, base_url=OMITTED):
         self.api_key = api_key
         self.base_url = base_url
@@ -59,8 +38,6 @@ def _response(content):
 
 
 class _AsyncEvents:
-    """The async iterator an OpenAI streaming call returns."""
-
     def __init__(self, events):
         self._events = list(events)
 
@@ -79,7 +56,6 @@ def _delta_event(content):
 
 
 def _empty_event():
-    """A keep-alive / usage-only frame: no choices at all."""
     return types.SimpleNamespace(choices=[])
 
 
@@ -104,9 +80,6 @@ def _isolate_provider_env(monkeypatch) -> None:
         if base_url_env:
             monkeypatch.delenv(base_url_env, raising=False)
     monkeypatch.delenv("LATTICEAI_CLOUD_MODELS", raising=False)
-
-
-# ── _load_cloud_model: refusals ──────────────────────────────────────────
 
 
 def test_load_cloud_model_requires_the_openai_package(monkeypatch):
@@ -134,9 +107,6 @@ def test_load_cloud_model_names_the_env_var_it_needs(monkeypatch):
     assert router.loaded_model_ids == []
 
 
-# ── _load_cloud_model: client construction ───────────────────────────────
-
-
 def test_load_cloud_model_omits_base_url_when_none_is_configured(monkeypatch):
     monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
@@ -147,7 +117,6 @@ def test_load_cloud_model_omits_base_url_when_none_is_configured(monkeypatch):
 
     client = router._cache["openai:gpt-4o::global"].client
     assert client.api_key == "sk-env"
-    # Passing base_url=None would override the SDK's own default endpoint.
     assert client.base_url == OMITTED
 
 
@@ -156,7 +125,6 @@ def test_load_cloud_model_uses_the_catalog_base_url_when_no_env_override(monkeyp
     _isolate_provider_env(monkeypatch)
     router = router_mod.LLMRouter()
 
-    # ollama ships an api_key_fallback, so no env key is required at all.
     router._load_cloud_model("ollama", "gemma-4")
 
     client = router._cache["ollama:gemma-4::global"].client
@@ -191,7 +159,6 @@ def test_load_cloud_model_prefers_an_explicit_key_over_the_environment(monkeypat
 
 
 def test_load_cloud_model_scopes_the_cache_key_to_its_owner(monkeypatch):
-    """Two users on the same provider+model must not share one client."""
     monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
@@ -218,9 +185,6 @@ def test_load_cloud_model_scopes_the_cache_key_to_its_owner(monkeypatch):
     assert set(router.model_memory_policy()["last_used"]) == set(
         router.loaded_model_ids
     )
-
-
-# ── detected_cloud_models ────────────────────────────────────────────────
 
 
 def test_detected_cloud_models_reports_availability_and_provenance(monkeypatch):
@@ -252,11 +216,9 @@ def test_detected_cloud_models_falls_back_to_the_default_model_without_a_catalog
         item["id"]: item for item in router_mod.LLMRouter().detected_cloud_models()
     }
 
-    # llamacpp has no PROVIDER_MODEL_CATALOG entry: one synthetic row is built.
     fallback = by_id["llamacpp:llama.cpp-model"]
     assert fallback["name"] == "Llamacpp · llama.cpp-model"
     assert fallback["family"] == "Llamacpp"
-    # A built-in key fallback means a local server needs no configuration.
     assert fallback["available"] is True
     assert fallback["requires"] is None
     assert fallback["tag"] == "local-server"
@@ -266,11 +228,6 @@ def test_detected_cloud_models_falls_back_to_the_default_model_without_a_catalog
 
 
 def test_detected_cloud_models_appends_custom_refs_with_their_own_identity(monkeypatch):
-    """The custom loop must not reuse the catalog loop's entry.
-
-    Each custom row carries the id/name of the ref the operator configured,
-    and the catalog rows in front of it are untouched.
-    """
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv(
         "LATTICEAI_CLOUD_MODELS",
@@ -281,7 +238,6 @@ def test_detected_cloud_models_appends_custom_refs_with_their_own_identity(monke
 
     assert "openai:my-tuned-model" in ids
     assert "lmstudio:my-local" in ids
-    # Local MLX refs and unknown providers are not cloud models.
     assert not any(item.startswith(("local_mlx:", "mystery:")) for item in ids)
 
     custom = next(item for item in items if item["id"] == "openai:my-tuned-model")
@@ -292,12 +248,10 @@ def test_detected_cloud_models_appends_custom_refs_with_their_own_identity(monke
     assert custom["available"] is False
     assert custom["requires"] is None
 
-    # A custom ref on a local-server provider keeps the offline provenance.
     local_custom = next(item for item in items if item["id"] == "lmstudio:my-local")
     assert local_custom["execution_method"] == "내 컴퓨터에서만 실행"
     assert local_custom["available"] is True
 
-    # Catalog rows are unchanged by the custom pass.
     catalogued = next(item for item in items if item["id"] == "xai:grok-4.6")
     assert catalogued["model_name"] == "Grok 4.6"
     assert catalogued["source_company"] == "xAI"
@@ -309,9 +263,6 @@ def test_detected_cloud_models_ignores_an_empty_custom_list(monkeypatch):
     monkeypatch.setenv("LATTICEAI_CLOUD_MODELS", " , ,")
 
     assert len(router_mod.LLMRouter().detected_cloud_models()) == baseline
-
-
-# ── _cloud_generate ──────────────────────────────────────────────────────
 
 
 def test_cloud_generate_sends_the_grounded_system_prompt_and_rebrands_the_answer():
@@ -339,12 +290,6 @@ def test_cloud_generate_sends_the_grounded_system_prompt_and_rebrands_the_answer
 
 
 def test_cloud_generate_forwards_stop_strings_and_omits_the_key_otherwise():
-    """v11.9.0: the provider stops server-side, so nothing has to be trimmed.
-
-    The key is *absent* when no stop is asked for rather than sent as ``[]``:
-    some OpenAI-compatible servers reject an empty stop array, and a completion
-    that 400s because of a field nobody wanted is a failed run.
-    """
     seen = {}
 
     async def create(**kwargs):
@@ -376,7 +321,6 @@ def test_cloud_generate_without_context_keeps_the_bare_system_prompt():
         router_mod.LLMRouter()._cloud_generate(_cloud(create), "질문", None, 128, 0.2)
     )
 
-    # A refusal with no content is an empty answer, not a crash.
     assert result == ""
     assert seen["messages"][0]["content"] == router_mod.SYSTEM_PROMPT
 
@@ -398,9 +342,6 @@ def test_cloud_generate_wraps_a_backend_failure_with_the_local_server_hint():
     assert "LM Studio 연결 실패" in message
     assert "http://localhost:1234/v1" in message
     assert excinfo.value.__cause__ is boom
-
-
-# ── _cloud_stream_generate ───────────────────────────────────────────────
 
 
 def test_cloud_stream_generate_yields_only_real_deltas():
@@ -439,9 +380,6 @@ def test_cloud_stream_generate_reaches_the_public_api(monkeypatch):
     assert _collect(lambda: router.stream_generate("질문")) == ["연결됨"]
 
 
-# ── _cloud_generate_document ─────────────────────────────────────────────
-
-
 def test_cloud_generate_document_uses_the_caller_supplied_system_prompt():
     seen = {}
 
@@ -456,7 +394,6 @@ def test_cloud_generate_document_uses_the_caller_supplied_system_prompt():
     )
 
     assert result == "# Lattice AI 보고서"
-    # No SYSTEM_PROMPT, no Context block: the document prompt replaces both.
     assert seen["messages"][0] == {"role": "system", "content": "DOC SYSTEM"}
     assert seen["messages"][1] == {"role": "user", "content": "보고서 써줘"}
     assert seen["max_tokens"] == 4096
@@ -491,9 +428,6 @@ def test_cloud_generate_document_wraps_a_backend_failure():
 
     assert "gateway timeout" in str(excinfo.value)
     assert excinfo.value.__cause__ is boom
-
-
-# ── _cloud_stream_document ───────────────────────────────────────────────
 
 
 def test_cloud_stream_document_yields_only_real_deltas():

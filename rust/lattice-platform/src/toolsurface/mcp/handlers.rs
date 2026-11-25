@@ -1,5 +1,3 @@
-//! MCP registry / custom-entry HTTP handlers.
-
 use std::path::PathBuf;
 
 use axum::extract::{Path as AxumPath, State};
@@ -165,7 +163,6 @@ pub(crate) async fn mcp_tools(State(state): State<McpState>, headers: HeaderMap)
             .map(|m| serde_json::to_value(m).unwrap_or(json!({})))
             .collect::<Vec<_>>()),
     );
-    // Re-serialize tools with key order
     let tools_json: Vec<String> = tools
         .iter()
         .map(|t| serde_json::to_string(t).unwrap_or_else(|_| "{}".into()))
