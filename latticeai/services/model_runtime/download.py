@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Mapping, Optional, Set
 
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from latticeai.services.embedding_recommendation import (
     get_public_mirror_repos,
     has_hf_auth_token,
@@ -724,15 +725,7 @@ def download_hf_model(
                 raise
             last_error = exc
             break
-        except (
-            OSError,
-            RuntimeError,
-            ValueError,
-            TypeError,
-            TimeoutError,
-            LookupError,
-            AttributeError,
-        ) as exc:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
             last_error = exc
             has_more_candidates = idx + 1 < len(candidates)
             if has_more_candidates and (is_gated_or_auth_error(exc) or bool(mirrors)):

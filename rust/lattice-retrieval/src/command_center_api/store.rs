@@ -143,11 +143,9 @@ pub(crate) fn last_noise_curate_at(conn: &Connection) -> Option<String> {
 /// `CommandCenterService._older_than_days`.
 ///
 /// An unreadable stamp is stale, because suggesting a dry-run pass is safe.
-/// `now` is naive local seconds. One divergence, and it is narrow: a stamp that
-/// carries a UTC offset makes [`parse_iso`] answer `None` here (its documented
-/// behaviour) and therefore reads as stale, where Python would compare it in its
-/// own zone. Nothing writes this key with an offset — `curation.py` stamps it
-/// with `now_iso()`, which is naive local.
+/// `now` is UTC epoch seconds matching offset-free UTC stamps written by
+/// `now_iso()` across Rust and Python. One narrow contract remains: a stamp
+/// carrying an explicit UTC offset makes [`parse_iso`] answer `None` here.
 pub(crate) fn older_than_days(stamp: &str, days: i64, now: f64) -> bool {
     match parse_iso(Some(stamp)) {
         None => true,

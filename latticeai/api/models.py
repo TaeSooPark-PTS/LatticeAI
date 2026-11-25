@@ -37,6 +37,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.core.messages import http_error, resolve_language
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -315,17 +316,7 @@ def create_models_router(
             _raise_model_http(exc)
         except HTTPException:
             raise
-        except (
-            RuntimeError,
-            OSError,
-            ValueError,
-            TypeError,
-            KeyError,
-            AttributeError,
-            ImportError,
-            TimeoutError,
-            LookupError,
-        ) as exc:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
             from latticeai.core.model_compat import friendly_model_runtime_error
 
             raise HTTPException(
@@ -451,17 +442,7 @@ def create_models_router(
             _raise_model_http(exc)
         except HTTPException:
             raise
-        except (
-            RuntimeError,
-            OSError,
-            ValueError,
-            TypeError,
-            KeyError,
-            AttributeError,
-            ImportError,
-            TimeoutError,
-            LookupError,
-        ) as e:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
             raise HTTPException(
                 status_code=500,
                 detail=friendly_model_runtime_error(e, model_id=req.model_id, engine=req.engine),

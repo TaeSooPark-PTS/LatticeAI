@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from latticeai.core.quiet import quiet
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -521,7 +522,7 @@ async def smoke_test_loaded_model(
             ),
             timeout=30,
         )
-    except (TimeoutError, RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, ImportError) as exc:
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
         reason = str(exc)[:200] or "generation_failed"
         profile = _record_smoke_result(
             getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), False, reason, status="failed"

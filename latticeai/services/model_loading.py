@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Callable, Dict, Optional
 
 from latticeai.core.sse import sse_frame
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 
 from .model_errors import ModelRuntimeError
 
@@ -357,7 +358,7 @@ async def prepare_and_load_model(
         smoke_result = await deps["_smoke_test_loaded_model"](resolution, api_key_override=user_api_key)
         ready_to_chat = bool(smoke_result.get("ok"))
         compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
-    except (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, TimeoutError, ImportError) as exc:
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
         logging.warning("smoke test failed for %s: %s", resolution.load_id, exc)
         compat_status = "unknown"
     return {
@@ -527,7 +528,7 @@ async def _finalize_loaded_stream_events(
         smoke_result = await deps["_smoke_test_loaded_model"](resolution_stream, api_key_override=user_api_key)
         ready_to_chat = bool(smoke_result.get("ok"))
         compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
-    except (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, TimeoutError, ImportError) as exc:
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
         logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
         compat_status = "unknown"
     result = {

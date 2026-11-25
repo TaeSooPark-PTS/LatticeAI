@@ -263,6 +263,7 @@ fn production_policy_rejects_unpinned_port_override_before_boot() {
 
 #[tokio::test]
 async fn production_policy_fails_fast_with_clear_error_when_pinned_port_is_occupied() {
+    let _guard = topology::PORT_4825_TEST_LOCK.lock().await;
     let occupied =
         std::net::TcpListener::bind(("127.0.0.1", topology::PINNED_PRODUCTION_PORT)).ok();
     let shell = DesktopBackend::with_probe_and_policy(
@@ -273,7 +274,7 @@ async fn production_policy_fails_fast_with_clear_error_when_pinned_port_is_occup
     assert_eq!(shell.origin(), "http://127.0.0.1:4825");
 
     if occupied.is_some() {
-        shell.start_gateway().await;
+        let status = shell.start().await;
         let reason = shell
             .gateway_error()
             .expect("occupied pinned port records a clear production error");
@@ -283,6 +284,10 @@ async fn production_policy_fails_fast_with_clear_error_when_pinned_port_is_occup
         assert!(
             !reason.contains("set LATTICEAI_PORT to a free port"),
             "production error must not advise an unreachable port: {reason}"
+        );
+        assert!(
+            !status.running && status.pid.is_none(),
+            "start() must fail fast without spawning an orphaned worker on gateway bind failure"
         );
     }
     drop(occupied);

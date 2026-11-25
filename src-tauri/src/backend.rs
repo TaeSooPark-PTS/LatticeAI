@@ -381,6 +381,11 @@ impl DesktopBackend {
     /// connection refused.
     pub async fn start(&self) -> BackendStatus {
         self.start_gateway().await;
+        if self.gateway_error().is_some() {
+            // Fail fast: do not spawn an orphaned Python worker when the
+            // gateway front door failed to bind (e.g. pinned port 4825 conflict).
+            return self.status().await;
+        }
         let outcome = self.supervisor.start().await;
         if let Err(err) = &outcome {
             // Not fatal: the supervisor keeps retrying in the background, and

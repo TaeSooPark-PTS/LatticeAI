@@ -23,12 +23,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
-/// `datetime.now().isoformat(timespec="seconds")`.
+/// Offset-free UTC timestamp (`YYYY-MM-DDTHH:MM:SS`), matching `lattice_brain.utils.now_iso()`.
 pub fn now_iso() -> String {
     iso_seconds_for(naive_local_secs_now())
 }
 
-/// The same stamp, for a caller-supplied naive-local epoch second.
+/// The same stamp, for a caller-supplied UTC epoch second.
 ///
 /// Split out so tests can pin the clock without a global.
 pub fn iso_seconds_for(secs: i64) -> String {
@@ -42,7 +42,7 @@ pub fn iso_seconds_for(secs: i64) -> String {
     )
 }
 
-/// Now, as naive local seconds since the epoch — Python's `datetime.now()`.
+/// Now, as UTC seconds since the epoch (`lattice_brain.utils.local_now()`).
 fn naive_local_secs_now() -> i64 {
     let utc = SystemTime::now()
         .duration_since(UNIX_EPOCH)

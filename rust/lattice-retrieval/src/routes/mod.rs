@@ -228,8 +228,8 @@ pub fn naive_local_now() -> f64 {
     naive_local_secs(utc_secs).unwrap_or(utc_secs as f64) + fraction
 }
 
-/// Naive local seconds for a UTC epoch second, or `None` when the platform
-/// cannot say (and the caller falls back to UTC rather than guess).
+/// UTC epoch seconds parsed through the engine's own ISO parser so subtraction
+/// matches persisted offset-free UTC stamps.
 fn naive_local_secs(utc_secs: i64) -> Option<f64> {
     let iso = lattice_core::graph_write::clock::local_iso_for(utc_secs)?;
     parse_iso(Some(&iso))

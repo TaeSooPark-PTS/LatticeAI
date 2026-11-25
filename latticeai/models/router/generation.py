@@ -19,6 +19,7 @@ from latticeai.core.quiet import quiet
 
 from ._contract import RouterCore as _Core
 from .branding import SYSTEM_PROMPT, _compose_system, normalize_branding
+from .errors import CHAT_TEMPLATE_ERRORS, VLM_CHAT_TEMPLATE_ERRORS
 
 
 def _system_for(context, cite_sources: bool) -> str:
@@ -122,7 +123,7 @@ class _GenerationMixin(_Core):
             try:
                 msgs = [{"role": "system", "content": system}, {"role": "user", "content": message}]
                 return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            except (TypeError, ValueError, RuntimeError, AttributeError, KeyError):
+            except CHAT_TEMPLATE_ERRORS:
                 quiet()
         return f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
@@ -141,7 +142,7 @@ class _GenerationMixin(_Core):
                 add_generation_prompt=True,
                 num_images=num_images,
             )
-        except (ImportError, TypeError, ValueError, RuntimeError, AttributeError, KeyError) as e:
+        except VLM_CHAT_TEMPLATE_ERRORS as e:
             print(f"⚠️ VLM chat template fallback: {e}")
             return self._build_prompt(message, context, processor, cite_sources)
 
@@ -401,6 +402,13 @@ class _GenerationMixin(_Core):
             image = Image.open(io.BytesIO(base64.b64decode(image_data))).convert("RGB")
             print(f"🖼️ VLM image decoded: {image.width}x{image.height}")
             return image
-        except (OSError, ValueError, TypeError, RuntimeError, AttributeError) as e:
+        except (
+            OSError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+            AttributeError,
+            Image.DecompressionBombError,
+        ) as e:
             print(f"⚠️ VLM image decode failed: {e}")
             return None

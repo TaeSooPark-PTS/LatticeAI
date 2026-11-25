@@ -7,6 +7,7 @@ avoided by late imports inside functions.
 """
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import json
 import logging
@@ -166,7 +167,7 @@ def ensure_lmstudio_server() -> None:
     try:
         _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
         return
-    except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
+    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
         quiet()
 
     cli = find_lmstudio_cli()
@@ -188,7 +189,7 @@ def ensure_lmstudio_server() -> None:
         try:
             _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
             return
-        except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
+        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
             time.sleep(1)
     raise ModelRuntimeError(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
 

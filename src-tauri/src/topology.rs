@@ -277,6 +277,14 @@ fn loopback(port: u16) -> String {
     format!("http://127.0.0.1:{port}")
 }
 
+/// Whether `origin` strictly matches the pinned production desktop origin
+/// permitted by BOTH `tauri.conf.json` `app.security.csp` and
+/// `capabilities/default.json` (`http://127.0.0.1:4825`, optional trailing slash).
+pub fn is_pinned_production_origin(origin: &str) -> bool {
+    let trimmed = origin.trim().trim_end_matches('/');
+    trimmed.eq_ignore_ascii_case(&format!("http://127.0.0.1:{PINNED_PRODUCTION_PORT}"))
+}
+
 /// Resolve the arrangement under an explicit [`PortPolicy`].
 pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<Plan, String> {
     let raw_external = probe
@@ -285,16 +293,14 @@ pub fn resolve_with_policy(probe: &dyn HostProbe, policy: PortPolicy) -> Result<
         .filter(|value| !value.is_empty());
     if let Some(raw) = raw_external {
         if let Some(origin) = validate_external_origin(&raw) {
-            let parsed_port = origin_port(&origin);
-            if policy == PortPolicy::PinnedProduction && parsed_port != Some(PINNED_PRODUCTION_PORT)
-            {
+            if policy == PortPolicy::PinnedProduction && !is_pinned_production_origin(&origin) {
                 return Err(format!(
                     "{ORIGIN_ENV}={origin:?} conflicts with production desktop security policy: \
-                     tauri.conf.json CSP and capabilities/default.json pin port {PINNED_PRODUCTION_PORT}. \
-                     Point {ORIGIN_ENV} at http://127.0.0.1:{PINNED_PRODUCTION_PORT} or \
-                     http://localhost:{PINNED_PRODUCTION_PORT}."
+                     tauri.conf.json CSP and capabilities/default.json pin http://127.0.0.1:{PINNED_PRODUCTION_PORT}. \
+                     Point {ORIGIN_ENV} at http://127.0.0.1:{PINNED_PRODUCTION_PORT}."
                 ));
             }
+            let parsed_port = origin_port(&origin);
             let host_port = match parsed_port {
                 Some(port) => port,
                 None => resolve_port_with_policy(probe, policy)?,
@@ -357,6 +363,9 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
     resolve_with_policy(probe, PortPolicy::AllowDynamicFallback)
         .expect("dynamic fallback policy never fails port resolution")
 }
+
+#[cfg(test)]
+pub(crate) static PORT_4825_TEST_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[cfg(test)]
 mod tests {
@@ -538,6 +547,7 @@ mod tests {
 
     #[test]
     fn production_policy_pins_default_port_even_when_occupied() {
+        let _guard = PORT_4825_TEST_LOCK.blocking_lock();
         // Hold port 4825 if currently free so we exercise the real conflict path.
         let _occupied = std::net::TcpListener::bind(("127.0.0.1", PINNED_PRODUCTION_PORT)).ok();
 
@@ -591,16 +601,25 @@ mod tests {
             Ok(4825)
         );
 
-        let bad_external = StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100");
-        let err = resolve_with_policy(&bad_external, PortPolicy::PinnedProduction)
-            .expect_err("external origin on non-4825 port must fail fast in production");
-        assert!(err.contains("4825"), "{err}");
+        for rejected_origin in [
+            "http://127.0.0.1:9100",
+            "https://127.0.0.1:4825",
+            "http://[::1]:4825",
+            "http://localhost:4825",
+        ] {
+            let bad_external = StaticProbe::new().with_env(ORIGIN_ENV, rejected_origin);
+            let err = resolve_with_policy(&bad_external, PortPolicy::PinnedProduction)
+                .expect_err(&format!("{rejected_origin} must fail fast in production"));
+            assert!(err.contains("http://127.0.0.1:4825"), "{err}");
+        }
 
-        let ok_external = StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:4825");
-        let plan = resolve_with_policy(&ok_external, PortPolicy::PinnedProduction)
-            .expect("external origin on 4825 matches production CSP/capabilities");
-        assert_eq!(plan.topology, Topology::External);
-        assert_eq!(plan.worker_port, 4825);
+        for accepted_origin in ["http://127.0.0.1:4825", "http://127.0.0.1:4825/"] {
+            let ok_external = StaticProbe::new().with_env(ORIGIN_ENV, accepted_origin);
+            let plan = resolve_with_policy(&ok_external, PortPolicy::PinnedProduction)
+                .expect("http://127.0.0.1:4825 matches production CSP and capabilities");
+            assert_eq!(plan.topology, Topology::External);
+            assert_eq!(plan.worker_port, 4825);
+        }
     }
 
     #[test]

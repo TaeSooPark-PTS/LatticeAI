@@ -11,8 +11,14 @@ from __future__ import annotations
 
 import base64
 import io
+import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
+
+try:
+    from PIL.Image import DecompressionBombError as _DecompressionBombError
+except ImportError:  # pragma: no cover - Pillow is optional for lattice_brain imports
+    _DecompressionBombError = ValueError  # type: ignore[assignment,misc]
 
 from ..quiet import quiet
 from .common import (
@@ -124,7 +130,7 @@ def _run_ocr(image: Any) -> Dict[str, str]:
         return {"status": "unavailable", "text": "", "detail": str(exc)}
     try:
         text = str(pytesseract.image_to_string(image) or "").strip()
-    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+    except (OSError, subprocess.SubprocessError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
         return {"status": "failed", "text": "", "detail": str(exc)}
     if not text:
         return {"status": "empty", "text": "", "detail": "no text found in the image"}
@@ -159,7 +165,15 @@ def extract_image_facts(
                 facts.ocr_detail = result["detail"]
             if thumbnail:
                 facts.thumbnail = _thumbnail_data_uri(image)
-    except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError) as exc:
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+        _DecompressionBombError,
+    ) as exc:
         facts.error = str(exc)
         return facts
 

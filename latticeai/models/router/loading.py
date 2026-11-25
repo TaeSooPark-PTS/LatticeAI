@@ -33,6 +33,7 @@ from latticeai.models.model_providers import (
 
 from ._contract import RouterCore as _Core
 from .catalog import CloudModel, parse_model_ref, source_metadata_for_model
+from .errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from .local_models import (
     _is_gemma4_model_id,
     _local_model_type,
@@ -296,30 +297,14 @@ class _LoadingMixin(_Core):
                     raise RuntimeError("MLX-VLM is not installed.")
                 print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
                 model, tokenizer = vlm_load(target_model_id)
-            except (
-                RuntimeError,
-                OSError,
-                ValueError,
-                TypeError,
-                ImportError,
-                KeyError,
-                AttributeError,
-            ) as vlm_error:
+            except MODEL_RUNTIME_BOUNDARY_ERRORS as vlm_error:
                 if not _text_fallback_allowed(model_id, target_model_id, model_type):
                     raise
                 print(f"⚠️ MLX-VLM load failed; retrying the MLX-LM text path: {vlm_error}")
                 print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
                 try:
                     model, tokenizer = lm_load(target_model_id)
-                except (
-                    RuntimeError,
-                    OSError,
-                    ValueError,
-                    TypeError,
-                    ImportError,
-                    KeyError,
-                    AttributeError,
-                ):
+                except MODEL_RUNTIME_BOUNDARY_ERRORS:
                     # The text path is a *fallback*: when it fails too, the
                     # useful diagnosis is the first failure, from the loader
                     # this model was routed to. Raising the second one would
@@ -349,15 +334,7 @@ class _LoadingMixin(_Core):
                 self._touch(cache_key)
             print(f"✅ Fully Loaded: {cache_key} ({loader_kind})")
             return f"Success: {cache_key} ({loader_kind})"
-        except (
-            RuntimeError,
-            OSError,
-            ValueError,
-            TypeError,
-            ImportError,
-            KeyError,
-            AttributeError,
-        ) as e:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
             print(f"❌ Load Error: {e}")
             raise e
 

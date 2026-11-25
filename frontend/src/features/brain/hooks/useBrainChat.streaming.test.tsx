@@ -568,4 +568,55 @@ describe("useBrainChat regenerate edges", () => {
     });
     expect(stream.calls[1]!.message).toBe("질문2");
   });
+
+  it("ignores trailing agent_step, approval, and agent frames if the conversation was cleared mid-stream", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "chunk", text: "진행 중" },
+        {
+          kind: "agentStep",
+          step: { phase: "tool", event: "tool_done", detail: "read_file" },
+        },
+        {
+          kind: "agent",
+          agent: {
+            status: "awaiting_approval",
+            run_id: "run-cleared",
+            approval: {
+              token: "tok-cleared",
+              plan_summary: "plan",
+            },
+          },
+        },
+        {
+          kind: "agent",
+          agent: {
+            final_state: "NEEDS_REVIEW",
+            steps: [{ tool: "read_file", ok: true }],
+          },
+        },
+      ],
+      pauseAfter: 1,
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    let send: Promise<void>;
+    await act(async () => {
+      send = result.current.sendText("작업 실행");
+      await stream.started;
+    });
+
+    // Simulate workspace switch / new chat clearing messages before stream frames settle.
+    act(() => {
+      useConversationSession.getState().setMessages([]);
+    });
+
+    await act(async () => {
+      stream.resume();
+      await send;
+    });
+
+    expect(result.current.messages).toEqual([]);
+  });
 });

@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from latticeai.core.quiet import quiet
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 
 _PUBLIC_PROVIDER_ENV = {
     "openai": "OPENAI_API_KEY",
@@ -35,16 +36,7 @@ async def _autoload_public_model(public_model: str, model_router: Any) -> None:
     try:
         msg = await model_router.load_model(model_id)
         print(f"✅ {msg}")
-    except (
-        RuntimeError,
-        OSError,
-        ValueError,
-        TypeError,
-        ImportError,
-        KeyError,
-        AttributeError,
-        TimeoutError,
-    ) as e:  # pragma: no cover - startup diagnostics
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:  # pragma: no cover - startup diagnostics
         print(f"⚠️ Public model autoload failed: {e}")
 
 
@@ -59,16 +51,7 @@ async def _autoload_local_model(
         print("   - Draft:  disabled (set LATTICEAI_LOCAL_DRAFT_MODEL to enable)")
     try:
         await model_router.load_model(local_model, draft_model_id=local_draft_model or None)
-    except (
-        RuntimeError,
-        OSError,
-        ValueError,
-        TypeError,
-        ImportError,
-        KeyError,
-        AttributeError,
-        TimeoutError,
-    ) as e:  # pragma: no cover - startup diagnostics
+    except MODEL_RUNTIME_BOUNDARY_ERRORS as e:  # pragma: no cover - startup diagnostics
         print(f"⚠️ Local model autoload failed: {e}")
 
 

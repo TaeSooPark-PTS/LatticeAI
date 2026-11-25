@@ -185,7 +185,8 @@ export function useBrainChat({
             if (!parsed) return;
             setMessages((items) => {
               const next = [...items];
-              const last = next[next.length - 1]!;
+              const last = next[next.length - 1];
+              if (last?.role !== "assistant") return items;
               next[next.length - 1] = {
                 ...last,
                 role: "assistant",
@@ -202,7 +203,9 @@ export function useBrainChat({
             if (approval) {
               setMessages((items) => {
                 const next = [...items];
-                next[next.length - 1] = { ...next[next.length - 1]!, approval };
+                const last = next[next.length - 1];
+                if (last?.role !== "assistant") return items;
+                next[next.length - 1] = { ...last, approval };
                 return next;
               });
               return;
@@ -228,7 +231,8 @@ export function useBrainChat({
             ) return;
             setMessages((items) => {
               const next = [...items];
-              const current = next[next.length - 1]!;
+              const current = next[next.length - 1];
+              if (current?.role !== "assistant") return items;
               // Streamed agent_step frames win over the post-hoc transcript —
               // they carry the same run with richer per-event detail.
               const agentSteps = current.agentSteps?.length

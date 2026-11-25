@@ -16,11 +16,37 @@ from __future__ import annotations
 # ruff: noqa: F841
 import asyncio
 import functools
+import http.client
 import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+
+def _llm_extraction_errors() -> Tuple[type[BaseException], ...]:
+    errors: List[type[BaseException]] = [
+        RuntimeError,
+        OSError,
+        ValueError,
+        TypeError,
+        TimeoutError,
+        KeyError,
+        AttributeError,
+        http.client.HTTPException,
+    ]
+    for mod_name, attr in (("httpx", "HTTPError"), ("jinja2", "TemplateError")):
+        try:
+            mod = __import__(mod_name, fromlist=[attr])
+            err_cls = getattr(mod, attr, None)
+            if isinstance(err_cls, type) and issubclass(err_cls, Exception):
+                errors.append(err_cls)
+        except ImportError:
+            pass
+    return tuple(errors)
+
+
+_LLM_EXTRACTION_ERRORS = _llm_extraction_errors()
 
 from ..runtime import get_llm_router
 from .extraction_triples import (
@@ -149,7 +175,7 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
                 elif isinstance(item, str):
                     concepts.append(item)
             return concepts if concepts else None
-    except (RuntimeError, OSError, ValueError, TypeError, TimeoutError, KeyError, AttributeError) as e:
+    except _LLM_EXTRACTION_ERRORS as e:
         logging.debug("LLM concept extraction failed (falling back to rules): %s", e)
     return None
 
@@ -217,7 +243,7 @@ def _llm_extract_triples(
                         }
                     )
             return triples if triples else None
-    except (RuntimeError, OSError, ValueError, TypeError, TimeoutError, KeyError, AttributeError) as e:
+    except _LLM_EXTRACTION_ERRORS as e:
         logging.debug("LLM triple extraction failed (falling back to rules): %s", e)
     return None
 
