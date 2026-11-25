@@ -18,8 +18,8 @@ class IngestionItem:
 
     source_type: str
     title: Optional[str] = None
-    text: Optional[str] = None          # text/web sources
-    path: Optional[str] = None          # file sources
+    text: Optional[str] = None  # text/web sources
+    path: Optional[str] = None  # file sources
     source_uri: Optional[str] = None
     mime_type: Optional[str] = None
     owner: Optional[str] = None
@@ -36,7 +36,7 @@ class IngestionItem:
 class IngestionResult:
     """The outcome of one ingestion, including provenance and idempotency."""
 
-    status: str                         # ok | unavailable | blocked | failed
+    status: str  # ok | unavailable | blocked | failed
     source_type: str
     node_id: Optional[str] = None
     source_node_id: Optional[str] = None
@@ -46,7 +46,7 @@ class IngestionResult:
     chunk_count: int = 0
     duplicate: bool = False
     embedded: bool = False
-    indexing_status: str = "pending"    # indexed | skipped | failed | pending
+    indexing_status: str = "pending"  # indexed | skipped | failed | pending
     provenance_id: Optional[str] = None
     detail: Optional[str] = None
     # v9.8.0 additive quality fields — advisory only, never gate behavior.

@@ -29,7 +29,9 @@ def test_fixture_tools_and_sandbox_boundaries() -> None:
         bench.seed_workspace(ws)
         cu_events: list[str] = []
 
-        res, err = bench.execute_fixture_tool("read_file", {"path": "../secret.txt"}, ws, cu_events)
+        res, err = bench.execute_fixture_tool(
+            "read_file", {"path": "../secret.txt"}, ws, cu_events
+        )
         assert res is None and err and "escapes workspace" in err
 
         res, err = bench.execute_fixture_tool(
@@ -37,7 +39,9 @@ def test_fixture_tools_and_sandbox_boundaries() -> None:
         )
         assert err is None and res is not None
         assert any(r["is_superseded"] and "4040" in r["text"] for r in res["results"])
-        assert any((not r["is_superseded"]) and "8443" in r["text"] for r in res["results"])
+        assert any(
+            (not r["is_superseded"]) and "8443" in r["text"] for r in res["results"]
+        )
 
         res, err = bench.execute_fixture_tool(
             "computer_click", {"x": 330, "y": 220}, ws, cu_events
@@ -94,7 +98,11 @@ def test_graders_catch_injection_superseded_leaks_and_hallucination() -> None:
 def test_aggregate_arm_math() -> None:
     tasks = bench.build_benchmark_tasks("http://127.0.0.1:19999")
     outcomes = [
-        {"passed": idx % 2 == 0, "elapsed_ms": 100, "repairs": ["strip_think"] if idx < 5 else []}
+        {
+            "passed": idx % 2 == 0,
+            "elapsed_ms": 100,
+            "repairs": ["strip_think"] if idx < 5 else [],
+        }
         for idx in range(len(tasks))
     ]
     agg = bench.aggregate_arm(tasks, outcomes)

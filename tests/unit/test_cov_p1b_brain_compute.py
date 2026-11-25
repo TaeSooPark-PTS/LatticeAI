@@ -62,8 +62,12 @@ def test_hooks_and_process_audit(tmp_path, monkeypatch):
     assert result.as_dict()["hook_id"] == "h"
     assert dispatch_tool(None, "read_file", {}, lambda: {"ok": True}) == {"ok": True}
 
-    redacted = redact_command(["tool", "--api-key", "secret", "TOKEN=abcdef", "x" * 40 + "secret"])
-    assert "[REDACTED]" in " ".join(redacted) or any("REDACTED" in part for part in redacted)
+    redacted = redact_command(
+        ["tool", "--api-key", "secret", "TOKEN=abcdef", "x" * 40 + "secret"]
+    )
+    assert "[REDACTED]" in " ".join(redacted) or any(
+        "REDACTED" in part for part in redacted
+    )
     plan = command_plan(["echo", "hi"], name="n", cwd=str(tmp_path))
     assert plan["confirmation_token"]
     token = confirmation_token(["echo", "hi"], cwd=str(tmp_path))

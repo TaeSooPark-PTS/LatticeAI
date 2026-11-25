@@ -46,7 +46,10 @@ def _client(create):
 
 def _cloud(create, provider: str = "openai"):
     return router_mod.CloudModel(
-        provider=provider, model="gpt-4o", client=_client(create), cache_key="cloud-test"
+        provider=provider,
+        model="gpt-4o",
+        client=_client(create),
+        cache_key="cloud-test",
     )
 
 
@@ -194,7 +197,9 @@ def test_load_cloud_model_scopes_the_cache_key_to_its_owner(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
     router = router_mod.LLMRouter()
 
-    alice = router._load_cloud_model("openai", "gpt-4o", api_key_override="sk-a", owner="alice")
+    alice = router._load_cloud_model(
+        "openai", "gpt-4o", api_key_override="sk-a", owner="alice"
+    )
     shared = router._load_cloud_model("openai", "gpt-4o")
 
     assert alice == "Cloud provider ready: openai:gpt-4o::alice"
@@ -210,7 +215,9 @@ def test_load_cloud_model_scopes_the_cache_key_to_its_owner(monkeypatch):
     )
     assert entry.client.api_key == "sk-a"
     assert router._cache["openai:gpt-4o::global"].client.api_key == "sk-env"
-    assert set(router.model_memory_policy()["last_used"]) == set(router.loaded_model_ids)
+    assert set(router.model_memory_policy()["last_used"]) == set(
+        router.loaded_model_ids
+    )
 
 
 # ── detected_cloud_models ────────────────────────────────────────────────
@@ -237,9 +244,13 @@ def test_detected_cloud_models_reports_availability_and_provenance(monkeypatch):
     assert unconfigured["requires"] == "XAI_API_KEY"
 
 
-def test_detected_cloud_models_falls_back_to_the_default_model_without_a_catalog(monkeypatch):
+def test_detected_cloud_models_falls_back_to_the_default_model_without_a_catalog(
+    monkeypatch,
+):
     _isolate_provider_env(monkeypatch)
-    by_id = {item["id"]: item for item in router_mod.LLMRouter().detected_cloud_models()}
+    by_id = {
+        item["id"]: item for item in router_mod.LLMRouter().detected_cloud_models()
+    }
 
     # llamacpp has no PROVIDER_MODEL_CATALOG entry: one synthetic row is built.
     fallback = by_id["llamacpp:llama.cpp-model"]
@@ -311,7 +322,9 @@ def test_cloud_generate_sends_the_grounded_system_prompt_and_rebrands_the_answer
         return _response("커넥트 AI 가 답합니다")
 
     result = asyncio.run(
-        router_mod.LLMRouter()._cloud_generate(_cloud(create), "질문", "근거 문서", 256, 0.4)
+        router_mod.LLMRouter()._cloud_generate(
+            _cloud(create), "질문", "근거 문서", 256, 0.4
+        )
     )
 
     assert result == "Lattice AI 가 답합니다"
@@ -339,7 +352,9 @@ def test_cloud_generate_forwards_stop_strings_and_omits_the_key_otherwise():
         return _response("판정")
 
     router = router_mod.LLMRouter()
-    asyncio.run(router._cloud_generate(_cloud(create), "질문", None, 64, 0.0, ["\n```"]))
+    asyncio.run(
+        router._cloud_generate(_cloud(create), "질문", None, 64, 0.0, ["\n```"])
+    )
     assert seen["stop"] == ["\n```"]
 
     seen.clear()
@@ -487,12 +502,19 @@ def test_cloud_stream_document_yields_only_real_deltas():
     async def create(**kwargs):
         seen.update(kwargs)
         return _AsyncEvents(
-            [_empty_event(), _delta_event("# 커넥트 AI"), _delta_event(None), _delta_event(" 보고서")]
+            [
+                _empty_event(),
+                _delta_event("# 커넥트 AI"),
+                _delta_event(None),
+                _delta_event(" 보고서"),
+            ]
         )
 
     router = router_mod.LLMRouter()
     chunks = _collect(
-        lambda: router._cloud_stream_document(_cloud(create), "보고서", "DOC SYSTEM", 512, 0.3)
+        lambda: router._cloud_stream_document(
+            _cloud(create), "보고서", "DOC SYSTEM", 512, 0.3
+        )
     )
 
     assert chunks == ["# Lattice AI", " 보고서"]

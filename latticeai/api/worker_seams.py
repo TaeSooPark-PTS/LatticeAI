@@ -100,7 +100,7 @@ def probe_gpu_memory() -> Dict[str, Any]:
     used = active + cached
     payload = {
         "mlx_available": True,
-        "gpu_mem_gb": round(used / (1024 ** 3), 2),
+        "gpu_mem_gb": round(used / (1024**3), 2),
         "gpu_mem_pct": round(used / total * 100, 1) if total else 0.0,
         "total_bytes": total,
         "detail": None,

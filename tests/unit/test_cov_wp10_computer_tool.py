@@ -50,8 +50,16 @@ def _fake_pyautogui(calls, *, size=(1920, 1080)):
         return _call
 
     for name in (
-        "click", "doubleClick", "rightClick", "middleClick",
-        "write", "press", "hotkey", "moveTo", "dragTo", "scroll",
+        "click",
+        "doubleClick",
+        "rightClick",
+        "middleClick",
+        "write",
+        "press",
+        "hotkey",
+        "moveTo",
+        "dragTo",
+        "scroll",
     ):
         setattr(module, name, _recorder(name))
 
@@ -132,7 +140,8 @@ def test_screenshot_uses_screencapture_on_darwin(monkeypatch, screenshot_tmpdir)
     _disable_pyautogui(monkeypatch)
     monkeypatch.setattr(computer, "_PLATFORM", "Darwin")
     monkeypatch.setattr(
-        computer, "subprocess",
+        computer,
+        "subprocess",
         _fake_subprocess(calls, writes_png_to_last_arg=True),
     )
 
@@ -153,7 +162,8 @@ def test_screenshot_reports_screencapture_failure(monkeypatch, screenshot_tmpdir
     _disable_pyautogui(monkeypatch)
     monkeypatch.setattr(computer, "_PLATFORM", "Darwin")
     monkeypatch.setattr(
-        computer, "subprocess",
+        computer,
+        "subprocess",
         _fake_subprocess(calls, returncode=1, stderr="권한 없음".encode()),
     )
 
@@ -191,7 +201,8 @@ def test_screenshot_survives_temp_cleanup_failure(monkeypatch, screenshot_tmpdir
     _disable_pyautogui(monkeypatch)
     monkeypatch.setattr(computer, "_PLATFORM", "Darwin")
     monkeypatch.setattr(
-        computer, "subprocess",
+        computer,
+        "subprocess",
         _fake_subprocess(calls, writes_png_to_last_arg=True),
     )
 
@@ -289,14 +300,22 @@ def test_key_sends_hotkeys_and_single_presses(monkeypatch):
 
 
 @pytest.mark.parametrize(("direction", "amount"), [("down", -3), ("up", 3)])
-def test_scroll_moves_then_scrolls_in_the_requested_direction(monkeypatch, direction, amount):
+def test_scroll_moves_then_scrolls_in_the_requested_direction(
+    monkeypatch, direction, amount
+):
     calls = []
     _enable_pyautogui(monkeypatch, calls)
 
     result = computer.computer_scroll(5, 6, direction, 3)
 
     assert calls == [("moveTo", (5, 6), {}), ("scroll", (amount,), {})]
-    assert result == {"action": "scroll", "x": 5, "y": 6, "direction": direction, "clicks": 3}
+    assert result == {
+        "action": "scroll",
+        "x": 5,
+        "y": 6,
+        "direction": direction,
+        "clicks": 3,
+    }
 
 
 def test_move_uses_a_short_animation(monkeypatch):

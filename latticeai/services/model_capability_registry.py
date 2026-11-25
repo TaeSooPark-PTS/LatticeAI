@@ -95,6 +95,7 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
     something we would not stand behind.
     """
     from collections import defaultdict
+
     by_engine: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
     engine_map = {
@@ -108,7 +109,10 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
 
     for cap in _REGISTRY:
         for eng_key, hints in engine_map.items():
-            if any(h in cap.provider_hints for h in hints) or eng_key in cap.provider_hints:
+            if (
+                any(h in cap.provider_hints for h in hints)
+                or eng_key in cap.provider_hints
+            ):
                 legacy = cap.to_legacy_dict()
                 # Adapt id for non-mlx engines. These are provisional prefixed
                 # ids; `model_catalog._normalize_engine_entry` then replaces them
@@ -134,8 +138,11 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
 def get_verified_models() -> List[Dict[str, Any]]:
     """Return only load-verified recommended entries with rich fields (API/UI)."""
     return [
-        c.to_legacy_dict() for c in _REGISTRY
-        if c.verification.hf_exists and c.verification.has_config and c.verification.has_tokenizer
+        c.to_legacy_dict()
+        for c in _REGISTRY
+        if c.verification.hf_exists
+        and c.verification.has_config
+        and c.verification.has_tokenizer
     ]
 
 
@@ -157,7 +164,6 @@ def recommend_embedding_for_hardware(
         cuda=cuda,
         get_capability_fn=get_capability,
     )
-
 
 
 __all__ = [

@@ -58,9 +58,16 @@ class EmbeddingIndexContract:
     def is_compatible_with(self, other: "EmbeddingIndexContract") -> bool:
         if self.model_id != other.model_id or self.dimension != other.dimension:
             return False
-        if self.normalization != other.normalization or self.index_version != other.index_version:
+        if (
+            self.normalization != other.normalization
+            or self.index_version != other.index_version
+        ):
             return False
-        if self.model_revision and other.model_revision and self.model_revision != other.model_revision:
+        if (
+            self.model_revision
+            and other.model_revision
+            and self.model_revision != other.model_revision
+        ):
             return False
         return True
 
@@ -258,11 +265,22 @@ class EmbeddingProvider:
             provider=provider_name,
             model_id=model_id,
             model_revision=getattr(self, "model_revision", None),
-            dimension=int(getattr(self, "dim", DEFAULT_EMBEDDING_DIM) or DEFAULT_EMBEDDING_DIM),
+            dimension=int(
+                getattr(self, "dim", DEFAULT_EMBEDDING_DIM) or DEFAULT_EMBEDDING_DIM
+            ),
             normalization=NORMALIZATION_L2,
-            passage_mode=str(getattr(self, "passage_mode", DEFAULT_EMBEDDING_MODE) or DEFAULT_EMBEDDING_MODE),
-            query_mode=str(getattr(self, "query_mode", DEFAULT_EMBEDDING_MODE) or DEFAULT_EMBEDDING_MODE),
-            index_version=int(getattr(self, "index_version", DEFAULT_INDEX_VERSION) or DEFAULT_INDEX_VERSION),
+            passage_mode=str(
+                getattr(self, "passage_mode", DEFAULT_EMBEDDING_MODE)
+                or DEFAULT_EMBEDDING_MODE
+            ),
+            query_mode=str(
+                getattr(self, "query_mode", DEFAULT_EMBEDDING_MODE)
+                or DEFAULT_EMBEDDING_MODE
+            ),
+            index_version=int(
+                getattr(self, "index_version", DEFAULT_INDEX_VERSION)
+                or DEFAULT_INDEX_VERSION
+            ),
             grade=grade,
             semantic=is_semantic,
         )

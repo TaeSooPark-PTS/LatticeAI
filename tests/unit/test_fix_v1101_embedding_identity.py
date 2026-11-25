@@ -124,7 +124,10 @@ def test_the_other_model_backed_providers_track_the_width_too(monkeypatch):
             return None
 
         def json(self):
-            return {"embeddings": [[3.0, 4.0]], "data": [{"index": 0, "embedding": [3.0, 4.0]}]}
+            return {
+                "embeddings": [[3.0, 4.0]],
+                "data": [{"index": 0, "embedding": [3.0, 4.0]}],
+            }
 
     class _Client:
         def __init__(self, **kwargs) -> None:

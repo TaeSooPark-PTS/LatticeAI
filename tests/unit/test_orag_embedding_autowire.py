@@ -35,7 +35,9 @@ from latticeai.runtime.brain_runtime import build_embedder_runtime
 from latticeai.services.search_service import SearchService
 
 
-def _plant(root: Path, repo_id: str, *, weights: bool = True, config: bool = True) -> None:
+def _plant(
+    root: Path, repo_id: str, *, weights: bool = True, config: bool = True
+) -> None:
     """Write a snapshot that looks exactly like a finished HF download."""
     snapshot = root / ("models--" + repo_id.replace("/", "--")) / "snapshots" / "abc123"
     snapshot.mkdir(parents=True, exist_ok=True)
@@ -86,7 +88,11 @@ def test_the_best_downloaded_model_wins_the_preference_order(tmp_path: Path) -> 
 
 def test_cache_roots_respect_every_hugging_face_variable(tmp_path: Path) -> None:
     roots = hf_cache_roots(
-        {"HF_HUB_CACHE": str(tmp_path / "a"), "HF_HOME": str(tmp_path / "b"), "HOME": "/nope"}
+        {
+            "HF_HUB_CACHE": str(tmp_path / "a"),
+            "HF_HOME": str(tmp_path / "b"),
+            "HOME": "/nope",
+        }
     )
     assert roots[0] == tmp_path / "a"
     assert tmp_path / "b" / "hub" in roots
@@ -195,7 +201,9 @@ def test_a_stray_file_in_the_snapshots_directory_is_not_a_model(tmp_path: Path) 
 
 def test_an_explicit_provider_is_never_second_guessed(tmp_path: Path) -> None:
     _plant(tmp_path, "mlx-community/multilingual-e5-small-mlx")
-    found = detect_embedder("openai", "text-embedding-3-small", {"HF_HUB_CACHE": str(tmp_path)})
+    found = detect_embedder(
+        "openai", "text-embedding-3-small", {"HF_HUB_CACHE": str(tmp_path)}
+    )
     assert found.source == "configured"
     assert found.provider == "openai"
     assert found.model == "text-embedding-3-small"
@@ -209,8 +217,13 @@ def test_detection_can_be_switched_off_entirely(tmp_path: Path) -> None:
     assert autodetect_enabled({})
 
 
-def test_detect_falls_through_to_ollama_and_keeps_the_local_candidates(tmp_path: Path) -> None:
-    env = {"HF_HUB_CACHE": str(tmp_path), "LATTICEAI_EMBEDDING_BASE_URL": "http://127.0.0.1:1"}
+def test_detect_falls_through_to_ollama_and_keeps_the_local_candidates(
+    tmp_path: Path,
+) -> None:
+    env = {
+        "HF_HUB_CACHE": str(tmp_path),
+        "LATTICEAI_EMBEDDING_BASE_URL": "http://127.0.0.1:1",
+    }
     found = detect_embedder("hash", "", env, probe_ollama=True)
     assert not found.found
     assert found.candidates, "the local candidate list survives a failed Ollama probe"
@@ -232,7 +245,11 @@ def test_auto_with_nothing_found_resolves_to_hash_rather_than_to_a_failure() -> 
 
 def test_explicit_model_and_dim_still_win_under_auto() -> None:
     found = Detection(provider="mlx", model="detected", dim=384, source="local_model")
-    assert resolve_auto_provider(AUTO_PROVIDER, "mine", 768, found) == ("mlx", "mine", 768)
+    assert resolve_auto_provider(AUTO_PROVIDER, "mine", 768, found) == (
+        "mlx",
+        "mine",
+        768,
+    )
 
 
 class _Config:
@@ -381,7 +398,9 @@ def test_the_status_route_reports_an_undetected_machine_as_empty_not_missing() -
     assert report["detected"] == {}
 
 
-@pytest.mark.parametrize("profile_id", ["local:multilingual-e5-small", "local:arctic-embed-l-v2"])
+@pytest.mark.parametrize(
+    "profile_id", ["local:multilingual-e5-small", "local:arctic-embed-l-v2"]
+)
 def test_a_one_click_profile_carries_what_a_download_needs(profile_id: str) -> None:
     from latticeai.core.embedding_providers import resolve_embedding_profile
 

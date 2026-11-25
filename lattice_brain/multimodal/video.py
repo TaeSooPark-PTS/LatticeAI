@@ -167,5 +167,3 @@ def video_quality_score(facts: VideoFacts) -> Dict[str, Any]:
     else:
         reasons.append(f"no_keyframes_{facts.keyframe_status}")
     return {"score": round(max(0.0, min(1.0, score)), 4), "reasons": reasons}
-
-

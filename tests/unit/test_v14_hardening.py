@@ -15,7 +15,9 @@ from latticeai.core import security
 from latticeai.tools import filesystem
 
 
-def test_configure_trusted_proxies_warns_on_invalid_entries(caplog: pytest.LogCaptureFixture) -> None:
+def test_configure_trusted_proxies_warns_on_invalid_entries(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     with caplog.at_level(logging.WARNING, logger="latticeai.core.security"):
         count = security.configure_trusted_proxies("127.0.0.1,not-a-cidr,10.0.0.0/8")
     assert count == 2
@@ -49,7 +51,9 @@ def test_embeddings_reject_non_positive_dimension_and_validate_env(
 def test_embeddings_embed_async_matches_sync() -> None:
     model = embeddings.LocalEmbeddingModel(dim=64)
     sync_vec = model.embed("Lattice AI local knowledge graph 한글 테스트")
-    async_vec = asyncio.run(model.embed_async("Lattice AI local knowledge graph 한글 테스트"))
+    async_vec = asyncio.run(
+        model.embed_async("Lattice AI local knowledge graph 한글 테스트")
+    )
     assert async_vec == sync_vec
 
 
@@ -69,8 +73,12 @@ def test_graph_runtime_scoped_di_and_require_guard() -> None:
         graph_runtime.set_llm_router(prev)
 
 
-def test_todo_read_accepts_injectable_root_without_creating_dirs(tmp_path: Path) -> None:
+def test_todo_read_accepts_injectable_root_without_creating_dirs(
+    tmp_path: Path,
+) -> None:
     isolated_root = tmp_path / "nonexistent_workspace"
     result = filesystem.todo_read(root=isolated_root)
     assert result == {"todos": [], "path": filesystem._TODO_REL_PATH}
-    assert not isolated_root.exists(), "todo_read must not create directories as a side effect"
+    assert not isolated_root.exists(), (
+        "todo_read must not create directories as a side effect"
+    )

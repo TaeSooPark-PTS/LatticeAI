@@ -14,7 +14,9 @@ class _FakeRouter:
         return []
 
 
-def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(monkeypatch):
+def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
+    monkeypatch,
+):
     def fake_runtime(model_id, engine=None):
         if "gemma-4-12b" in str(model_id).lower():
             return {
@@ -36,7 +38,9 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
             "preferred_runtime": "MLX-VLM",
         }
 
-    monkeypatch.setattr("latticeai.core.model_compat.model_runtime_compatibility", fake_runtime)
+    monkeypatch.setattr(
+        "latticeai.core.model_compat.model_runtime_compatibility", fake_runtime
+    )
 
     catalog = {
         "local_mlx": [
@@ -98,9 +102,17 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
     data = TestClient(app).get("/models").json()
     by_id = {item["id"]: item for item in data["recommended"]}
 
-    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["load_status"] == "runtime_update_needed"
+    assert (
+        by_id["mlx-community/gemma-4-12b-it-4bit"]["load_status"]
+        == "runtime_update_needed"
+    )
     assert by_id["mlx-community/gemma-4-12b-it-4bit"]["load_available"] is False
-    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["runtime_compatibility"]["model_type"] == "gemma4_unified"
+    assert (
+        by_id["mlx-community/gemma-4-12b-it-4bit"]["runtime_compatibility"][
+            "model_type"
+        ]
+        == "gemma4_unified"
+    )
 
     assert by_id["mlx-community/gemma-4-26b-a4b-it-4bit"]["load_status"] == "ready"
     assert by_id["mlx-community/gemma-4-26b-a4b-it-4bit"]["load_available"] is True

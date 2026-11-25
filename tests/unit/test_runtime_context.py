@@ -187,7 +187,9 @@ def test_build_is_an_orchestrator_not_an_assembly() -> None:
         if isinstance(node, ast.FunctionDef) and node.name == "build_context"
     )
     length = build.end_lineno - build.lineno + 1
-    assert length < 60, f"build_context grew back to {length} lines — keep assembly in phases"
+    assert length < 60, (
+        f"build_context grew back to {length} lines — keep assembly in phases"
+    )
 
 
 def test_build_phases_module_imports_nothing_heavy() -> None:

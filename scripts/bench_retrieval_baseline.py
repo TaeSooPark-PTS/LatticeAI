@@ -151,7 +151,8 @@ def run_benchmark() -> Dict[str, Any]:
                 )[:TOP_K]
                 latencies_ms.append((time.perf_counter() - t0) * 1000.0)
                 recalls.append(
-                    len(exact_ids.intersection(k for k, _ in rescored_pairs)) / float(TOP_K)
+                    len(exact_ids.intersection(k for k, _ in rescored_pairs))
+                    / float(TOP_K)
                 )
 
         # Incremental insert + delete refresh timing when hnswlib is installed
@@ -181,7 +182,10 @@ def run_benchmark() -> Dict[str, Any]:
         reset_sidecar_cache()
 
     latencies_sorted = sorted(latencies_ms)
-    p95_idx = min(len(latencies_sorted) - 1, max(0, int(math.ceil(0.95 * len(latencies_sorted))) - 1))
+    p95_idx = min(
+        len(latencies_sorted) - 1,
+        max(0, int(math.ceil(0.95 * len(latencies_sorted))) - 1),
+    )
     p95_ms = latencies_sorted[p95_idx]
     mean_recall = sum(recalls) / float(len(recalls))
 
@@ -205,7 +209,9 @@ def run_benchmark() -> Dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", dest="json_path", help="Write benchmark report JSON to path")
+    parser.add_argument(
+        "--json", dest="json_path", help="Write benchmark report JSON to path"
+    )
     parser.add_argument(
         "--check-budgets",
         action="store_true",

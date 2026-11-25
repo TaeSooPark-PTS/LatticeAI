@@ -70,7 +70,9 @@ def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
 
 def test_the_new_seams_are_absent_from_the_committed_product_contract():
     """The loopback seams are not client surface: the spec never carried them."""
-    schema = json.loads((REPO_ROOT / "frontend/openapi.json").read_text(encoding="utf-8"))
+    schema = json.loads(
+        (REPO_ROOT / "frontend/openapi.json").read_text(encoding="utf-8")
+    )
     for _method, path in WORKER_SEAM_ROUTES + WORKER_COMPUTE_ROUTES:
         assert path not in schema["paths"]
     # …and every route the worker keeps *is* a product route today, so the
@@ -88,7 +90,9 @@ def _app_with(paths: List[Any], *, mount: bool = False) -> FastAPI:
     for method, path in paths:
         app.add_api_route(path, lambda: {"ok": True}, methods=[method])
     if mount:
-        app.mount("/static", StaticFiles(directory=str(REPO_ROOT / "static")), name="static")
+        app.mount(
+            "/static", StaticFiles(directory=str(REPO_ROOT / "static")), name="static"
+        )
     return app
 
 
@@ -120,7 +124,11 @@ def _keys(app: FastAPI) -> set:
 
 
 def test_the_filter_keeps_the_worker_surface_and_drops_the_product_one():
-    product = [("GET", "/api/command/briefing"), ("POST", "/chat"), ("GET", "/workspace")]
+    product = [
+        ("GET", "/api/command/briefing"),
+        ("POST", "/chat"),
+        ("GET", "/workspace"),
+    ]
     app = _app_with(list(worker_route_keys()) + product)
 
     apply_worker_route_filter(app)
@@ -162,7 +170,9 @@ def test_a_route_serving_an_unlisted_verb_on_a_listed_path_is_not_kept():
 
 
 def test_a_missing_worker_route_fails_the_boot_instead_of_shipping_a_gap():
-    app = _app_with([key for key in worker_route_keys() if key != ("POST", "/agent/llm")])
+    app = _app_with(
+        [key for key in worker_route_keys() if key != ("POST", "/agent/llm")]
+    )
 
     with pytest.raises(RuntimeError, match=r"POST /agent/llm"):
         apply_worker_route_filter(app)
@@ -248,14 +258,18 @@ def test_create_worker_app_builds_the_context_then_applies_the_profile(monkeypat
 
 def test_main_serves_the_worker_profile_on_the_configured_address(monkeypatch):
     served: List[Dict[str, Any]] = []
-    fake_uvicorn = SimpleNamespace(run=lambda app, **kwargs: served.append({"app": app, **kwargs}))
+    fake_uvicorn = SimpleNamespace(
+        run=lambda app, **kwargs: served.append({"app": app, **kwargs})
+    )
     monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
 
     from latticeai.core.config import Config
 
     config = SimpleNamespace(host="127.0.0.1", port=4831)
     monkeypatch.setattr(Config, "from_env", classmethod(lambda cls: config))
-    monkeypatch.setattr(worker_app, "create_worker_app", lambda cfg: f"app-for-{cfg.port}")
+    monkeypatch.setattr(
+        worker_app, "create_worker_app", lambda cfg: f"app-for-{cfg.port}"
+    )
 
     worker_app.main()
 
@@ -282,7 +296,9 @@ def _sandbox_env(tmp_path: Path) -> dict:
     }
 
 
-def test_a_real_worker_boots_serves_health_and_mounts_only_its_own_surface(tmp_path: Path):
+def test_a_real_worker_boots_serves_health_and_mounts_only_its_own_surface(
+    tmp_path: Path,
+):
     code = """
 import json
 

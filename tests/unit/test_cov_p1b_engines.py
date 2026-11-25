@@ -32,7 +32,9 @@ def test_ensure_ollama_server_missing_binary(monkeypatch):
 
 
 def test_ensure_lmstudio_server_already_up(monkeypatch):
-    monkeypatch.setattr(model_engines, "lmstudio_native_api_base", lambda: "http://127.0.0.1:1234")
+    monkeypatch.setattr(
+        model_engines, "lmstudio_native_api_base", lambda: "http://127.0.0.1:1234"
+    )
     monkeypatch.setattr(model_engines, "_json_request", lambda *a, **k: {"data": []})
     model_engines.ensure_lmstudio_server()
 
@@ -41,7 +43,9 @@ def test_ensure_lmstudio_server_missing_cli(monkeypatch):
     def boom(*_a, **_k):
         raise OSError("down")
 
-    monkeypatch.setattr(model_engines, "lmstudio_native_api_base", lambda: "http://127.0.0.1:1234")
+    monkeypatch.setattr(
+        model_engines, "lmstudio_native_api_base", lambda: "http://127.0.0.1:1234"
+    )
     monkeypatch.setattr(model_engines, "_json_request", boom)
     monkeypatch.setattr(model_engines, "find_lmstudio_cli", lambda: None)
     with pytest.raises(ModelRuntimeError):
@@ -54,8 +58,10 @@ def test_get_openai_compatible_server_models_empty_and_payload(monkeypatch):
     class Resp:
         def read(self):
             return json.dumps({"data": [{"id": "m1"}, "skip"]}).encode()
+
         def __enter__(self):
             return self
+
         def __exit__(self, *a):
             return False
 
@@ -66,9 +72,16 @@ def test_get_openai_compatible_server_models_empty_and_payload(monkeypatch):
 
 
 def test_wait_for_openai_compatible_server(monkeypatch):
-    monkeypatch.setattr(model_engines, "get_openai_compatible_server_models", lambda p: ["m"])
-    assert model_engines.wait_for_openai_compatible_server("openai", "m", timeout=1) is True
-    monkeypatch.setattr(model_engines, "get_openai_compatible_server_models", lambda p: [])
+    monkeypatch.setattr(
+        model_engines, "get_openai_compatible_server_models", lambda p: ["m"]
+    )
+    assert (
+        model_engines.wait_for_openai_compatible_server("openai", "m", timeout=1)
+        is True
+    )
+    monkeypatch.setattr(
+        model_engines, "get_openai_compatible_server_models", lambda p: []
+    )
     assert model_engines.wait_for_openai_compatible_server("openai", timeout=1) is False
 
 
@@ -103,8 +116,12 @@ def test_install_engine_timeout_and_success(monkeypatch, tmp_path: Path):
         "require_command_confirmation",
         lambda *a, **k: None,
     )
-    monkeypatch.setattr(model_engines, "append_process_audit_event", lambda *a, **k: None)
-    monkeypatch.setattr(model_engines.subprocess, "run", lambda *a, **k: _Done(0, "ok", ""))
+    monkeypatch.setattr(
+        model_engines, "append_process_audit_event", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        model_engines.subprocess, "run", lambda *a, **k: _Done(0, "ok", "")
+    )
     monkeypatch.setattr(
         "latticeai.services.model_runtime.engine_installed",
         lambda engine: True,

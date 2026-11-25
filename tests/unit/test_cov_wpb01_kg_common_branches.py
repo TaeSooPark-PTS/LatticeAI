@@ -65,7 +65,7 @@ def test_extract_concepts_rules_keeps_a_long_enough_hyphen_identifier() -> None:
 
 
 def test_two_technical_words_are_not_classified_as_a_person() -> None:
-    """"Test Mode" matches the First-Last shape but both words are technical."""
+    """ "Test Mode" matches the First-Last shape but both words are technical."""
     assert _classify_node_type("Test Mode", "flip the Test Mode switch") == "Concept"
 
 

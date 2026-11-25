@@ -14,7 +14,9 @@ from typing import Tuple
 import httpx
 
 
-def _collect_optional_errors() -> Tuple[Tuple[type[Exception], ...], Tuple[type[Exception], ...]]:
+def _collect_optional_errors() -> Tuple[
+    Tuple[type[Exception], ...], Tuple[type[Exception], ...]
+]:
     """Resolve optional third-party exception base classes once at import time."""
     jinja_errors: list[type[Exception]] = []
     try:

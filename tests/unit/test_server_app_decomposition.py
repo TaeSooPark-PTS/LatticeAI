@@ -55,7 +55,9 @@ def test_markdown_current_release_references_match_release():
         "8.9.0",
         "8.0.0",
     ):
-        assert retired not in history, f"{retired} is below the supported v13.0.0+ floor"
+        assert retired not in history, (
+            f"{retired} is below the supported v13.0.0+ floor"
+        )
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
     release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]

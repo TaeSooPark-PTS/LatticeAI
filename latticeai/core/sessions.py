@@ -57,9 +57,18 @@ def _sessions_file(data_dir: Optional[Path] = None) -> Path:
     if data_dir is None:
         try:
             from latticeai.core.config import Config
+
             data_dir = Config.from_env().data_dir
-        except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError):
+        except (
+            ImportError,
+            OSError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+            AttributeError,
+        ):
             import os
+
             data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
     d = data_dir
     d.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -84,12 +93,21 @@ def load_sessions(data_dir: Optional[Path] = None) -> Dict[str, tuple]:
             if migrated:
                 persist_sessions(sessions, data_dir)
             return sessions
-    except (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        RuntimeError,
+    ) as e:
         logging.warning("load_sessions failed (starting empty): %s", e)
     return {}
 
 
-def persist_sessions(sessions: Dict[str, tuple], data_dir: Optional[Path] = None) -> None:
+def persist_sessions(
+    sessions: Dict[str, tuple], data_dir: Optional[Path] = None
+) -> None:
     try:
         atomic_write_json(
             _sessions_file(data_dir),
@@ -138,7 +156,9 @@ class SessionStore:
     ):
         self._data_dir = data_dir
         self._ttl_seconds = int(ttl_seconds or SESSION_TTL)
-        self._refresh_threshold_seconds = int(refresh_threshold_seconds or SESSION_REFRESH_THRESHOLD)
+        self._refresh_threshold_seconds = int(
+            refresh_threshold_seconds or SESSION_REFRESH_THRESHOLD
+        )
         self._sessions: Dict[str, tuple] = load_sessions(data_dir)
         # Stamped *after* the load, so a pre-v4 file that ``load_sessions``
         # rewrote on the way in is not mistaken for a foreign write.
@@ -195,7 +215,11 @@ class SessionStore:
             # Merge onto whatever is on disk rather than over it — this process
             # is not the only writer.
             self._reload_if_stale(force=True)
-            self._sessions[_hash_token(token)] = (subject, time.time(), email or subject)
+            self._sessions[_hash_token(token)] = (
+                subject,
+                time.time(),
+                email or subject,
+            )
             self._persist()
         return token
 

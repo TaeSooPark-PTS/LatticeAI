@@ -385,12 +385,20 @@ def create_worker_compute_router(
             # The library is not installed here. That is a property of the
             # install, not of the request, so it is 503 and not 500.
             raise http_error(
-                503, "worker_compute.render_unavailable", language, kind=kind, reason=str(exc)
+                503,
+                "worker_compute.render_unavailable",
+                language,
+                kind=kind,
+                reason=str(exc),
             ) from exc
         except Exception as exc:  # noqa: BLE001 — reported with the kind, not swallowed
             logger.warning("worker render %s failed: %s", kind, exc)
             raise http_error(
-                500, "worker_compute.render_failed", language, kind=kind, reason=str(exc)
+                500,
+                "worker_compute.render_failed",
+                language,
+                kind=kind,
+                reason=str(exc),
             ) from exc
         return {
             "content_b64": base64.b64encode(payload).decode("ascii"),

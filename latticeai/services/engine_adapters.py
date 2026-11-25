@@ -49,7 +49,9 @@ class EngineAdapter:
 
 
 ENGINE_ADAPTERS: Dict[str, EngineAdapter] = {
-    "local_mlx": EngineAdapter("local_mlx", "MLX", apple_silicon_only=True, default_port=0),
+    "local_mlx": EngineAdapter(
+        "local_mlx", "MLX", apple_silicon_only=True, default_port=0
+    ),
     "omlx": EngineAdapter(
         "omlx",
         "oMLX",
@@ -71,21 +73,36 @@ def is_apple_silicon(*, sys_mod: Any = _sys, platform_mod: Any = _platform) -> b
     )
 
 
-def windows_binary_candidates(binary: str, *, env: Optional[Mapping[str, str]] = None) -> List[Path]:
+def windows_binary_candidates(
+    binary: str, *, env: Optional[Mapping[str, str]] = None
+) -> List[Path]:
     source = env if env is not None else os.environ
     local_appdata = source.get("LOCALAPPDATA", "")
     program_files = source.get("ProgramFiles", r"C:\Program Files")
     program_files_x86 = source.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
     candidates: Dict[str, List[Optional[Path]]] = {
         "ollama": [
-            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
+            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe"
+            if local_appdata
+            else None,
             Path(program_files) / "Ollama" / "ollama.exe",
         ],
         "lms": [
-            Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe"
+            Path(local_appdata)
+            / "Programs"
+            / "LM Studio"
+            / "resources"
+            / "app"
+            / ".webpack"
+            / "lms.exe"
             if local_appdata
             else None,
-            Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe",
+            Path(program_files)
+            / "LM Studio"
+            / "resources"
+            / "app"
+            / ".webpack"
+            / "lms.exe",
         ],
         "llama-server": [
             Path(local_appdata) / "Microsoft" / "WinGet" / "Links" / "llama-server.exe"
@@ -108,6 +125,7 @@ def _windows_memory_status_gb() -> Optional[tuple[float, float]]:
     if not _sys.platform.startswith("win"):
         return None
     try:
+
         class _MemoryStatusEx(ctypes.Structure):
             _fields_ = [
                 ("dwLength", ctypes.c_ulong),
@@ -124,8 +142,10 @@ def _windows_memory_status_gb() -> Optional[tuple[float, float]]:
         stat = _MemoryStatusEx()
         stat.dwLength = ctypes.sizeof(_MemoryStatusEx)
         windll = getattr(ctypes, "windll", None)
-        if windll is not None and windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
-            gib = float(1024 ** 3)
+        if windll is not None and windll.kernel32.GlobalMemoryStatusEx(
+            ctypes.byref(stat)
+        ):
+            gib = float(1024**3)
             return stat.ullTotalPhys / gib, stat.ullAvailPhys / gib
     except (OSError, AttributeError, TypeError, ValueError, RuntimeError):
         quiet()
@@ -141,7 +161,7 @@ def host_ram_gb() -> float:
         pages = os.sysconf("SC_PHYS_PAGES")
         page_size = os.sysconf("SC_PAGE_SIZE")
         if pages > 0 and page_size > 0:
-            return (pages * page_size) / (1024 ** 3)
+            return (pages * page_size) / (1024**3)
     except (OSError, ValueError, TypeError, AttributeError, RuntimeError):
         quiet()
     return 16.0
@@ -158,7 +178,7 @@ def host_available_ram_gb(total_ram_gb: Optional[float] = None) -> float:
             for line in meminfo.splitlines():
                 if line.startswith("MemAvailable:"):
                     kb = int(line.split()[1])
-                    return (kb * 1024) / (1024 ** 3)
+                    return (kb * 1024) / (1024**3)
         except (OSError, ValueError, IndexError, TypeError, RuntimeError):
             quiet()
     if _sys.platform == "darwin":
@@ -174,13 +194,24 @@ def host_available_ram_gb(total_ram_gb: Optional[float] = None) -> float:
                 page_match = re.search(r"page size of (\d+) bytes", proc.stdout)
                 page_size = int(page_match.group(1)) if page_match else 16384
                 reclaimable_pages = 0
-                for key in ("Pages free", "Pages inactive", "Pages speculative", "Pages purgeable"):
+                for key in (
+                    "Pages free",
+                    "Pages inactive",
+                    "Pages speculative",
+                    "Pages purgeable",
+                ):
                     m = re.search(rf"{key}:\s+(\d+)\.", proc.stdout)
                     if m:
                         reclaimable_pages += int(m.group(1))
                 if reclaimable_pages > 0:
-                    return (reclaimable_pages * page_size) / (1024 ** 3)
-        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
+                    return (reclaimable_pages * page_size) / (1024**3)
+        except (
+            OSError,
+            subprocess.SubprocessError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ):
             quiet()
     fallback_total = float(total_ram_gb) if total_ram_gb is not None else host_ram_gb()
     return max(4.0, fallback_total * 0.75)
@@ -232,7 +263,9 @@ def omlx_serve_args(
     if not ssd_cache_dir:
         ssd_cache_dir = str(Path.home() / ".omlx" / "kv-cache")
 
-    ssd_max_size = (os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_MAX_SIZE") or "32GB").strip()
+    ssd_max_size = (
+        os.getenv("LATTICEAI_OMLX_PAGED_SSD_CACHE_MAX_SIZE") or "32GB"
+    ).strip()
     initial_blocks = (os.getenv("LATTICEAI_OMLX_INITIAL_CACHE_BLOCKS") or "128").strip()
 
     return [
@@ -270,7 +303,11 @@ def llamacpp_serve_args(
     effective_ram = float(ram_gb) if ram_gb is not None else host_ram_gb()
     ctx_size = (os.getenv("LATTICEAI_LLAMACPP_CTX_SIZE") or "").strip()
     if not ctx_size:
-        ctx_size = "32768" if effective_ram >= 48.0 else ("16384" if effective_ram >= 24.0 else "8192")
+        ctx_size = (
+            "32768"
+            if effective_ram >= 48.0
+            else ("16384" if effective_ram >= 24.0 else "8192")
+        )
     gpu_layers = (os.getenv("LATTICEAI_LLAMACPP_GPU_LAYERS") or "auto").strip()
     args = [
         "-m",
@@ -305,7 +342,11 @@ def default_local_engine_for_host(
     platform_mod: Any = _platform,
 ) -> str:
     """Pick the best local runtime for this OS/architecture for zero-config one-way setup."""
-    is_mac_arm = apple_silicon if apple_silicon is not None else is_apple_silicon(sys_mod=sys_mod, platform_mod=platform_mod)
+    is_mac_arm = (
+        apple_silicon
+        if apple_silicon is not None
+        else is_apple_silicon(sys_mod=sys_mod, platform_mod=platform_mod)
+    )
     if is_mac_arm:
         if engine_installed_fn is not None:
             if engine_installed_fn("omlx") and not engine_installed_fn("local_mlx"):
@@ -322,24 +363,24 @@ def _omlx_wheel_fallback_script(python_exe: str) -> str:
     """Install official jundot/omlx macOS universal2 wheel into ~/.omlx/venv when Homebrew is absent."""
     return (
         "set -euo pipefail; "
-        "mkdir -p \"$HOME/.omlx/bin\"; "
+        'mkdir -p "$HOME/.omlx/bin"; '
         f"PY_BIN={python_exe!r}; "
         "if command -v uv >/dev/null 2>&1; then "
-        "  uv venv --python 3.12 \"$HOME/.omlx/venv\" --allow-existing; "
+        '  uv venv --python 3.12 "$HOME/.omlx/venv" --allow-existing; '
         "else "
-        "  \"$PY_BIN\" -m venv \"$HOME/.omlx/venv\"; "
+        '  "$PY_BIN" -m venv "$HOME/.omlx/venv"; '
         "fi; "
-        "\"$HOME/.omlx/venv/bin/python\" -c '"
+        '"$HOME/.omlx/venv/bin/python" -c \''
         "import json, subprocess, sys, urllib.request; "
-        "tag = f\"cp{sys.version_info.major}{sys.version_info.minor}\"; "
-        "req = urllib.request.Request(\"https://api.github.com/repos/jundot/omlx/releases/latest\", headers={\"User-Agent\": \"latticeai\"}); "
+        'tag = f"cp{sys.version_info.major}{sys.version_info.minor}"; '
+        'req = urllib.request.Request("https://api.github.com/repos/jundot/omlx/releases/latest", headers={"User-Agent": "latticeai"}); '
         "data = json.loads(urllib.request.urlopen(req, timeout=20).read().decode()); "
-        "wheels = [a[\"browser_download_url\"] for a in data.get(\"assets\", []) if a.get(\"name\", \"\").endswith(\".whl\")]; "
-        "url = next((u for u in wheels if tag in u), wheels[0] if wheels else \"\"); "
-        "assert url, \"No oMLX wheel found in latest release\"; "
-        "subprocess.check_call([sys.executable, \"-m\", \"pip\", \"install\", \"--upgrade\", url])"
+        'wheels = [a["browser_download_url"] for a in data.get("assets", []) if a.get("name", "").endswith(".whl")]; '
+        'url = next((u for u in wheels if tag in u), wheels[0] if wheels else ""); '
+        'assert url, "No oMLX wheel found in latest release"; '
+        'subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", url])'
         "'; "
-        "ln -sf \"$HOME/.omlx/venv/bin/omlx\" \"$HOME/.omlx/bin/omlx\""
+        'ln -sf "$HOME/.omlx/venv/bin/omlx" "$HOME/.omlx/bin/omlx"'
     )
 
 
@@ -348,7 +389,10 @@ def _resolve_ollama_installer(
 ) -> List[str]:
     if sys_platform.startswith("win"):
         if not which_fn("winget"):
-            raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 Ollama를 자동 설치할 수 없습니다.")
+            raise ModelRuntimeError(
+                status_code=400,
+                detail="winget가 설치되어 있지 않아 Ollama를 자동 설치할 수 없습니다.",
+            )
         return [
             "winget",
             "install",
@@ -364,9 +408,14 @@ def _resolve_ollama_installer(
             return ["/bin/sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"]
         if which_fn("brew"):
             return ["brew", "install", "ollama"]
-        raise ModelRuntimeError(status_code=400, detail="curl 또는 brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+        raise ModelRuntimeError(
+            status_code=400,
+            detail="curl 또는 brew가 설치되어 있지 않아 자동 설치할 수 없습니다.",
+        )
     if not which_fn("brew"):
-        raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+        raise ModelRuntimeError(
+            status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다."
+        )
     return ["brew", "install", "ollama"]
 
 
@@ -385,10 +434,26 @@ def _resolve_llamacpp_installer(
                 "--accept-source-agreements",
                 "--accept-package-agreements",
             ]
-        return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
+        return [
+            python_exe,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "llama-cpp-python[server]",
+            "huggingface_hub[cli]",
+        ]
     if which_fn("brew"):
         return ["brew", "install", "llama.cpp"]
-    return [python_exe, "-m", "pip", "install", "--upgrade", "llama-cpp-python[server]", "huggingface_hub[cli]"]
+    return [
+        python_exe,
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "llama-cpp-python[server]",
+        "huggingface_hub[cli]",
+    ]
 
 
 def _resolve_lmstudio_installer(
@@ -396,7 +461,10 @@ def _resolve_lmstudio_installer(
 ) -> List[str]:
     if sys_platform.startswith("win"):
         if not which_fn("winget"):
-            raise ModelRuntimeError(status_code=400, detail="winget가 설치되어 있지 않아 LM Studio를 자동 설치할 수 없습니다.")
+            raise ModelRuntimeError(
+                status_code=400,
+                detail="winget가 설치되어 있지 않아 LM Studio를 자동 설치할 수 없습니다.",
+            )
         return [
             "winget",
             "install",
@@ -408,7 +476,9 @@ def _resolve_lmstudio_installer(
             "--accept-package-agreements",
         ]
     if not which_fn("brew"):
-        raise ModelRuntimeError(status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+        raise ModelRuntimeError(
+            status_code=400, detail="brew가 설치되어 있지 않아 자동 설치할 수 없습니다."
+        )
     return ["brew", "install", "--cask", "lm-studio"]
 
 
@@ -431,7 +501,9 @@ def resolve_engine_installer(
 
     if engine == "omlx":
         if not apple_arm:
-            raise ModelRuntimeError(status_code=400, detail="oMLX는 Apple Silicon macOS에서만 지원됩니다.")
+            raise ModelRuntimeError(
+                status_code=400, detail="oMLX는 Apple Silicon macOS에서만 지원됩니다."
+            )
         if which_fn("brew"):
             return [
                 "/bin/bash",
@@ -462,7 +534,10 @@ def resolve_engine_installer(
 
     required_binary = str(installer.get("requires_binary") or "")
     if required_binary and which_fn(required_binary) is None:
-        raise ModelRuntimeError(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+        raise ModelRuntimeError(
+            status_code=400,
+            detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.",
+        )
     return list(installer["command"])
 
 
@@ -501,10 +576,16 @@ async def smoke_test_loaded_model(
         return {"ok": False, "reason": f"smoke import failed: {exc}", "skipped": True}
 
     if model_router is None:
-        return {"ok": False, "reason": "model router is not configured", "skipped": True}
+        return {
+            "ok": False,
+            "reason": "model router is not configured",
+            "skipped": True,
+        }
 
     if (getattr(resolution, "engine", "") or "").lower() not in _LOCAL_SMOKE_ENGINES:
-        profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
+        profile = _ensure_compat_profile(
+            getattr(resolution, "load_id", ""), getattr(resolution, "engine", "")
+        )
         return {
             "ok": True,
             "reason": "skipped (cloud model — smoke test would incur cost)",
@@ -525,7 +606,11 @@ async def smoke_test_loaded_model(
     except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
         reason = str(exc)[:200] or "generation_failed"
         profile = _record_smoke_result(
-            getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), False, reason, status="failed"
+            getattr(resolution, "load_id", ""),
+            getattr(resolution, "engine", ""),
+            False,
+            reason,
+            status="failed",
         )
         return {
             "ok": False,
@@ -535,12 +620,18 @@ async def smoke_test_loaded_model(
             "profile": profile.to_dict(),
         }
 
-    profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
+    profile = _ensure_compat_profile(
+        getattr(resolution, "load_id", ""), getattr(resolution, "engine", "")
+    )
     cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
     status, reason = _classify_smoke_response(cleaned)
     ok = status != "failed"
     profile = _record_smoke_result(
-        getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), ok, reason, status=status
+        getattr(resolution, "load_id", ""),
+        getattr(resolution, "engine", ""),
+        ok,
+        reason,
+        status=status,
     )
     return {
         "ok": ok,

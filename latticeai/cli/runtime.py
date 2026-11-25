@@ -36,6 +36,3 @@ def _apply_extra_path() -> None:
         if Path(expanded).exists() and expanded not in current:
             current.insert(0, expanded)
     os.environ["PATH"] = os.pathsep.join(current)
-
-
-

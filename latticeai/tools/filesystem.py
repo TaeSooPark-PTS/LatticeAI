@@ -32,7 +32,9 @@ def list_dir(path: str = ".") -> Dict[str, Any]:
         raise ToolError("Path is not a directory.")
 
     items: List[Dict[str, Any]] = []
-    for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+    for child in sorted(
+        target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+    ):
         items.append(
             {
                 "name": child.name,
@@ -41,7 +43,11 @@ def list_dir(path: str = ".") -> Dict[str, Any]:
                 "size": child.stat().st_size if child.is_file() else None,
             }
         )
-    return {"root": str(tools.AGENT_ROOT), "path": _relative(target) if target != tools.AGENT_ROOT else ".", "items": items}
+    return {
+        "root": str(tools.AGENT_ROOT),
+        "path": _relative(target) if target != tools.AGENT_ROOT else ".",
+        "items": items,
+    }
 
 
 def workspace_tree(path: str = ".", max_depth: int = 3) -> Dict[str, Any]:
@@ -55,7 +61,9 @@ def workspace_tree(path: str = ".", max_depth: int = 3) -> Dict[str, Any]:
     def walk(current: Path, depth: int) -> None:
         if depth > max_depth:
             return
-        for child in sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        for child in sorted(
+            current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+        ):
             rel = _relative(child)
             entries.append(
                 {
@@ -69,10 +77,16 @@ def workspace_tree(path: str = ".", max_depth: int = 3) -> Dict[str, Any]:
                 walk(child, depth + 1)
 
     walk(target, 1)
-    return {"root": str(tools.AGENT_ROOT), "path": _relative(target) if target != tools.AGENT_ROOT else ".", "entries": entries}
+    return {
+        "root": str(tools.AGENT_ROOT),
+        "path": _relative(target) if target != tools.AGENT_ROOT else ".",
+        "entries": entries,
+    }
 
 
-def read_file(path: str, offset: int = 0, limit: int = 0, line_numbers: bool = True) -> Dict[str, Any]:
+def read_file(
+    path: str, offset: int = 0, limit: int = 0, line_numbers: bool = True
+) -> Dict[str, Any]:
     """Read a file from the agent workspace.
 
     Returns content as plain text. When line_numbers is True (default), also
@@ -116,12 +130,51 @@ def read_file(path: str, offset: int = 0, limit: int = 0, line_numbers: bool = T
     return result
 
 
-_GREP_BINARY_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".zip", ".tar",
-                    ".gz", ".bz2", ".xz", ".7z", ".mp3", ".mp4", ".mov", ".wav",
-                    ".woff", ".woff2", ".ttf", ".eot", ".ico", ".db", ".sqlite",
-                    ".pyc", ".pyo", ".o", ".so", ".dylib", ".dll", ".exe", ".bin"}
-_GREP_BINARY_DIRS = {"node_modules", ".git", ".venv", "venv", "__pycache__",
-                    ".pytest_cache", "dist", "build", ".next", ".cache"}
+_GREP_BINARY_EXTS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".pdf",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".wav",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".ico",
+    ".db",
+    ".sqlite",
+    ".pyc",
+    ".pyo",
+    ".o",
+    ".so",
+    ".dylib",
+    ".dll",
+    ".exe",
+    ".bin",
+}
+_GREP_BINARY_DIRS = {
+    "node_modules",
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "dist",
+    "build",
+    ".next",
+    ".cache",
+}
 
 
 def grep(
@@ -264,7 +317,9 @@ def search_files(query: str, path: str = ".", max_results: int = 20) -> Dict[str
             continue
         for index, line in enumerate(lines, start=1):
             if query_lower in line.lower():
-                matches.append({"path": _relative(file_path), "line": index, "preview": line[:240]})
+                matches.append(
+                    {"path": _relative(file_path), "line": index, "preview": line[:240]}
+                )
                 break
 
     return {"query": query, "matches": matches}
@@ -293,7 +348,9 @@ class _HTMLInspector(HTMLParser):
         # ``HTMLParser`` hands every attribute value over as a string, so rel is
         # split on whitespace (rel="stylesheet preload" is two tokens) rather
         # than joined, and matched case-insensitively.
-        elif tag == "link" and "stylesheet" in str(attr.get("rel") or "").lower().split():
+        elif (
+            tag == "link" and "stylesheet" in str(attr.get("rel") or "").lower().split()
+        ):
             if attr.get("href"):
                 self.stylesheets.append(attr["href"])
         elif tag == "img" and attr.get("src"):
@@ -355,5 +412,3 @@ def preview_url(path: str = "index.html") -> Dict[str, Any]:
 # Generous cap for a generated-project archive — the workspace itself caps
 # individual files at MAX_FILE_BYTES, this only bounds pathological trees.
 MAX_ZIP_TOTAL_BYTES = 50_000_000
-
-

@@ -36,12 +36,16 @@ class ModelService:
             "platform": "AI Workspace OS",
         }
 
-    def health_full(self, base: Dict[str, Any], engines: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def health_full(
+        self, base: Dict[str, Any], engines: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         return {
             **base,
             "current_model": self._router.current_model_id,
             "loaded_models": self._router.loaded_model_ids,
-            "device": "Apple Silicon MLX" if not self._is_public else "Public cloud/API runtime",
+            "device": "Apple Silicon MLX"
+            if not self._is_public
+            else "Public cloud/API runtime",
             "features": self._runtime_features(),
             "providers": self._router.detected_cloud_models(),
             "engines": engines,

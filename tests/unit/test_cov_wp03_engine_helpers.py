@@ -46,13 +46,17 @@ def _fake_urllib(monkeypatch, urlopen) -> None:
         model_engines,
         "urllib",
         types.SimpleNamespace(
-            request=types.SimpleNamespace(Request=urllib.request.Request, urlopen=urlopen),
+            request=types.SimpleNamespace(
+                Request=urllib.request.Request, urlopen=urlopen
+            ),
             error=urllib.error,
         ),
     )
 
 
-def _fake_platform(monkeypatch, *, system: str = "Linux", machine: str = "x86_64") -> None:
+def _fake_platform(
+    monkeypatch, *, system: str = "Linux", machine: str = "x86_64"
+) -> None:
     monkeypatch.setattr(
         model_engines,
         "platform",
@@ -60,7 +64,9 @@ def _fake_platform(monkeypatch, *, system: str = "Linux", machine: str = "x86_64
     )
 
 
-def _fake_sys(monkeypatch, *, sys_platform: str = "linux", version_info=(3, 12, 0)) -> None:
+def _fake_sys(
+    monkeypatch, *, sys_platform: str = "linux", version_info=(3, 12, 0)
+) -> None:
     monkeypatch.setattr(
         model_engines,
         "sys",
@@ -94,7 +100,9 @@ def test_progress_payload_delegates_to_the_runtime_formatter():
     assert payload["detail"] == "model"
 
 
-def test_progress_payload_degrades_to_empty_when_the_runtime_cannot_be_imported(monkeypatch):
+def test_progress_payload_degrades_to_empty_when_the_runtime_cannot_be_imported(
+    monkeypatch,
+):
     """Progress reporting must never be the reason a download fails."""
     monkeypatch.setitem(sys.modules, "latticeai.services.model_runtime", None)
 
@@ -110,7 +118,9 @@ def test_local_binary_prefers_whatever_is_on_path(monkeypatch):
     assert model_engines.local_binary("ollama") == "/usr/local/bin/ollama"
 
 
-def test_local_binary_falls_back_to_the_windows_install_directory(monkeypatch, tmp_path):
+def test_local_binary_falls_back_to_the_windows_install_directory(
+    monkeypatch, tmp_path
+):
     """Windows ships ollama.exe outside PATH, so PATH-miss is not absence."""
     exe = tmp_path / "Programs" / "Ollama" / "ollama.exe"
     exe.parent.mkdir(parents=True)
@@ -149,7 +159,10 @@ def test_windows_candidates_cover_each_known_binary(monkeypatch, tmp_path):
 
     assert [p.name for p in ollama] == ["ollama.exe", "ollama.exe"]
     assert [p.name for p in lms] == ["lms.exe", "lms.exe"]
-    assert [str(p.parent.parent.parent) for p in smi] == [str(tmp_path / "pf"), str(tmp_path / "pf86")]
+    assert [str(p.parent.parent.parent) for p in smi] == [
+        str(tmp_path / "pf"),
+        str(tmp_path / "pf86"),
+    ]
     assert model_engines.windows_binary_candidates("wat") == []
 
 
@@ -252,9 +265,12 @@ def test_json_request_encodes_a_payload_and_declares_json(monkeypatch):
 
     _fake_urllib(monkeypatch, urlopen)
 
-    assert model_engines._json_request(
-        "http://127.0.0.1:1234/x", method="POST", payload={"a": 1}
-    ) == {}
+    assert (
+        model_engines._json_request(
+            "http://127.0.0.1:1234/x", method="POST", payload={"a": 1}
+        )
+        == {}
+    )
     assert json.loads(seen["body"].decode("utf-8")) == {"a": 1}
     assert seen["content_type"] == "application/json"
     assert seen["method"] == "POST"
@@ -312,7 +328,10 @@ def test_lmstudio_native_base_drops_the_openai_suffix(monkeypatch):
 
 
 def test_every_engine_but_vllm_is_unconditionally_supported():
-    assert model_engines.engine_support_status("ollama") == {"supported": True, "reason": None}
+    assert model_engines.engine_support_status("ollama") == {
+        "supported": True,
+        "reason": None,
+    }
 
 
 @pytest.mark.parametrize(
@@ -360,11 +379,15 @@ def test_install_command_refuses_when_its_package_manager_is_missing(monkeypatch
     assert "brew" in str(err.value.detail)
 
 
-def test_vllm_on_apple_silicon_installs_the_metal_runtime_instead(monkeypatch, tmp_path):
+def test_vllm_on_apple_silicon_installs_the_metal_runtime_instead(
+    monkeypatch, tmp_path
+):
     _fake_sys(monkeypatch, sys_platform="darwin")
     _fake_platform(monkeypatch, system="Darwin", machine="arm64")
 
-    command, cwd, requires_admin = model_engines._engine_install_command("vllm", base_dir=tmp_path)
+    command, cwd, requires_admin = model_engines._engine_install_command(
+        "vllm", base_dir=tmp_path
+    )
 
     assert command[:2] == ["/bin/bash", "-lc"]
     assert "vllm-metal" in command[2]

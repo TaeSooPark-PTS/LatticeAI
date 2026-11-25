@@ -169,6 +169,7 @@ def test_multimodal_ports_default_off(monkeypatch):
 
     class Shared:
         shares_text_space = True
+
         def embed_batch(self, texts):
             return [[0.1, 0.2]]
 
@@ -194,7 +195,11 @@ def test_session_store_create_get_expire_and_migrate(tmp_path: Path):
 
     # Pre-v4 plaintext key is rehashed on load.
     raw = tmp_path / "sessions.json"
-    raw.write_text(json.dumps({"plaintext-token": ["bob@example.com", 9_999_999_999.0, "bob@example.com"]}))
+    raw.write_text(
+        json.dumps(
+            {"plaintext-token": ["bob@example.com", 9_999_999_999.0, "bob@example.com"]}
+        )
+    )
     loaded = load_sessions(tmp_path)
     assert all(len(key) == 64 for key in loaded)
 
@@ -237,11 +242,13 @@ def test_users_file_roundtrip_and_identity(tmp_path: Path):
     path.write_text("not-json")
     assert load_users_file(path) == {}
 
-    migrated, email_to_id, changed = migrate_users({
-        "A@B.C": {"role": "user"},
-        "a@b.c": {"role": "admin", "api_keys": {"k": "v"}},
-        "skip": "not-a-dict",
-    })
+    migrated, email_to_id, changed = migrate_users(
+        {
+            "A@B.C": {"role": "user"},
+            "a@b.c": {"role": "admin", "api_keys": {"k": "v"}},
+            "skip": "not-a-dict",
+        }
+    )
     assert changed is True
     assert "a@b.c" in migrated
     assert user_id_for_email(migrated, None) is None

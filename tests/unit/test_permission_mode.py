@@ -35,33 +35,58 @@ def test_normalize_aliases():
 
 def test_strict_keeps_writes_gated():
     assert effective_auto_approve("strict", "write_file", _write_policy()) is False
-    assert effective_auto_approve("strict", "knowledge_search", _write_policy(risk="read")) is False
+    assert (
+        effective_auto_approve("strict", "knowledge_search", _write_policy(risk="read"))
+        is False
+    )
 
 
 def test_trusted_autos_workspace_and_knowledge():
     assert effective_auto_approve("trusted", "write_file", _write_policy()) is True
     assert effective_auto_approve("trusted", "edit_file", _write_policy()) is True
-    assert effective_auto_approve(
-        "trusted", "knowledge_search", _write_policy(risk="read", auto_approve=False)
-    ) is True
-    assert effective_auto_approve(
-        "trusted", "computer_screenshot", _write_policy(risk="read", sandbox="system")
-    ) is True
-    assert effective_auto_approve(
-        "trusted", "computer_click", _write_policy(risk="exec", sandbox="system")
-    ) is False
-    assert effective_auto_approve(
-        "trusted", "run_command", _write_policy(risk="exec", shell=True)
-    ) is False
+    assert (
+        effective_auto_approve(
+            "trusted",
+            "knowledge_search",
+            _write_policy(risk="read", auto_approve=False),
+        )
+        is True
+    )
+    assert (
+        effective_auto_approve(
+            "trusted",
+            "computer_screenshot",
+            _write_policy(risk="read", sandbox="system"),
+        )
+        is True
+    )
+    assert (
+        effective_auto_approve(
+            "trusted", "computer_click", _write_policy(risk="exec", sandbox="system")
+        )
+        is False
+    )
+    assert (
+        effective_auto_approve(
+            "trusted", "run_command", _write_policy(risk="exec", shell=True)
+        )
+        is False
+    )
 
 
 def test_bypass_autos_exec_inside_workspace():
-    assert effective_auto_approve(
-        "bypass", "run_command", _write_policy(risk="exec", shell=True)
-    ) is True
-    assert effective_auto_approve(
-        "bypass", "computer_click", _write_policy(risk="exec", sandbox="system")
-    ) is True
+    assert (
+        effective_auto_approve(
+            "bypass", "run_command", _write_policy(risk="exec", shell=True)
+        )
+        is True
+    )
+    assert (
+        effective_auto_approve(
+            "bypass", "computer_click", _write_policy(risk="exec", sandbox="system")
+        )
+        is True
+    )
 
 
 def test_circuit_breaker_root_delete():

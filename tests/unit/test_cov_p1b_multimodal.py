@@ -74,7 +74,9 @@ from lattice_brain.multimodal.video import (
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-def _write_png(path: Path, *, size=(8, 8), colour=(200, 40, 40), mode: str = "RGB") -> Path:
+def _write_png(
+    path: Path, *, size=(8, 8), colour=(200, 40, 40), mode: str = "RGB"
+) -> Path:
     image = Image.new(mode, size, colour if mode != "P" else 1)
     image.save(path, format="PNG")
     return path
@@ -120,11 +122,16 @@ def _reset_ingestion_gates(monkeypatch):
     MULTIMODAL_GATE.reset()
     VIDEO_GATE.reset()
 
+
 def test_detect_modality_prefers_declared_mime_and_strips_parameters():
     assert detect_modality(mime_type="IMAGE/PNG; charset=binary") == "image"
     assert detect_modality(mime_type="audio/mpeg") == "audio"
     assert detect_modality(mime_type="video/mp4") == "video"
-    assert detect_modality(path="shot.png", mime_type="application/octet-stream") == "image"
+    assert (
+        detect_modality(path="shot.png", mime_type="application/octet-stream")
+        == "image"
+    )
+
 
 @pytest.mark.parametrize(
     "name,expected",
@@ -138,6 +145,7 @@ def test_detect_modality_prefers_declared_mime_and_strips_parameters():
 def test_detect_modality_uses_the_module_extension_tables(name, expected):
     assert detect_modality(path=name) == expected
 
+
 def test_detect_modality_falls_back_to_stdlib_mimetypes_then_text():
     # `.svg` is not in IMAGE_EXTENSIONS; the stdlib table still calls it image.
     assert detect_modality(path="icon.svg") == "image"
@@ -146,6 +154,7 @@ def test_detect_modality_falls_back_to_stdlib_mimetypes_then_text():
     assert detect_modality(path="") == "text"
     assert detect_modality() == "text"
     assert detect_modality(path="no-such-extension.zzz") == "text"
+
 
 def test_sha256_and_split_index_text(tmp_path: Path):
     empty = tmp_path / "empty.bin"
@@ -167,6 +176,7 @@ def test_sha256_and_split_index_text(tmp_path: Path):
     huge = "z" * (IMAGE_CHUNK_CHARS * 2 + 10)
     assert len(_split_index_text(huge)) == 3
 
+
 def test_audio_facts_searchable_and_supplied_transcript():
     empty = AudioFacts(path="memo.m4a")
     assert empty.searchable is False
@@ -174,7 +184,11 @@ def test_audio_facts_searchable_and_supplied_transcript():
     assert supplied.transcription_status == "supplied"
     assert supplied.transcript == "already typed"
     assert supplied.searchable is True
-    assert transcribe_audio("memo.m4a", transcript="   ").transcription_status == "unavailable"
+    assert (
+        transcribe_audio("memo.m4a", transcript="   ").transcription_status
+        == "unavailable"
+    )
+
 
 def test_transcribe_audio_unavailable_failed_empty_and_ok(tmp_path: Path):
     path = str(tmp_path / "memo.wav")
@@ -193,20 +207,29 @@ def test_transcribe_audio_unavailable_failed_empty_and_ok(tmp_path: Path):
     assert blank.transcription_status == "failed"
     assert "no text" in blank.detail
 
-    none_text = transcribe_audio(path, ports=MultimodalPorts(transcriber=lambda _p: None))
+    none_text = transcribe_audio(
+        path, ports=MultimodalPorts(transcriber=lambda _p: None)
+    )
     assert none_text.transcription_status == "failed"
 
-    ok = transcribe_audio(path, ports=MultimodalPorts(transcriber=lambda _p: "  hello world  "))
+    ok = transcribe_audio(
+        path, ports=MultimodalPorts(transcriber=lambda _p: "  hello world  ")
+    )
     assert ok.transcription_status == "ok"
     assert ok.transcript == "hello world"
 
+
 def test_audio_quality_score_empty_short_and_long():
-    assert audio_quality_score(AudioFacts(path="x")) == {"score": 0.0, "reasons": ["no_transcript"]}
+    assert audio_quality_score(AudioFacts(path="x")) == {
+        "score": 0.0,
+        "reasons": ["no_transcript"],
+    }
     short = audio_quality_score(AudioFacts(path="x", transcript="hi"))
     assert short["reasons"] == ["transcript"]
     assert 0.5 <= short["score"] < 1.0
     long = audio_quality_score(AudioFacts(path="x", transcript="w" * 400))
     assert long["score"] == 1.0
+
 
 def test_image_facts_index_text_and_metadata_optional_fields():
     facts = ImageFacts(
@@ -241,7 +264,10 @@ def test_image_facts_index_text_and_metadata_optional_fields():
     assert "image_error" not in bare_meta
     assert bare.index_text() == ""
 
-def test_open_image_and_thumbnail_rgb_l_convert_and_too_big(tmp_path: Path, monkeypatch):
+
+def test_open_image_and_thumbnail_rgb_l_convert_and_too_big(
+    tmp_path: Path, monkeypatch
+):
     rgb = _write_png(tmp_path / "rgb.png", mode="RGB")
     opened = _open_image(str(rgb))
     uri = _thumbnail_data_uri(opened)
@@ -269,6 +295,7 @@ def test_open_image_and_thumbnail_rgb_l_convert_and_too_big(tmp_path: Path, monk
     with _open_image(str(rgb)) as image:
         assert _thumbnail_data_uri(image) is None
 
+
 def test_run_ocr_unavailable_failed_empty_and_ok(monkeypatch):
     real_import = builtins.__import__
 
@@ -284,7 +311,9 @@ def test_run_ocr_unavailable_failed_empty_and_ok(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", real_import)
 
     fake = types.ModuleType("pytesseract")
-    fake.image_to_string = lambda _img: (_ for _ in ()).throw(RuntimeError("tesseract missing"))
+    fake.image_to_string = lambda _img: (_ for _ in ()).throw(
+        RuntimeError("tesseract missing")
+    )
     monkeypatch.setitem(sys.modules, "pytesseract", fake)
     failed = _run_ocr(object())
     assert failed["status"] == "failed"
@@ -302,11 +331,17 @@ def test_run_ocr_unavailable_failed_empty_and_ok(monkeypatch):
     assert ok["status"] == "ok"
     assert len(ok["text"]) == common_mod.MAX_INDEX_TEXT_CHARS
 
-def test_extract_image_facts_unreadable_skipped_and_full_ports(tmp_path: Path, monkeypatch):
+
+def test_extract_image_facts_unreadable_skipped_and_full_ports(
+    tmp_path: Path, monkeypatch
+):
     missing = extract_image_facts(str(tmp_path / "nope.png"))
     assert missing.error
     assert missing.readable is False
-    assert image_quality_score(missing) == {"score": 0.0, "reasons": ["image_unreadable"]}
+    assert image_quality_score(missing) == {
+        "score": 0.0,
+        "reasons": ["image_unreadable"],
+    }
 
     path = _write_png(tmp_path / "tiny.png")
     skipped = extract_image_facts(str(path), ocr=False, thumbnail=False)
@@ -357,6 +392,7 @@ def test_extract_image_facts_unreadable_skipped_and_full_ports(tmp_path: Path, m
     assert failed_embed.embedding_status == "failed"
     assert "no clip" in failed_embed.embedding_detail
 
+
 def test_safe_caption_and_apply_vision_embedding_helpers():
     facts = ImageFacts(path="x.png")
     assert _safe_caption(lambda _p: None, "x.png") is None
@@ -380,6 +416,7 @@ def test_safe_caption_and_apply_vision_embedding_helpers():
     _apply_vision_embedding(broken, boom)
     assert broken.embedding_status == "failed"
 
+
 def test_image_quality_score_reason_matrix():
     unread = ImageFacts(path="x", error="bad")
     assert image_quality_score(unread)["reasons"] == ["image_unreadable"]
@@ -391,10 +428,22 @@ def test_image_quality_score_reason_matrix():
     assert "vision_embedding" in scored["reasons"]
     assert scored["score"] == 1.0
 
-    assert "ocr_unavailable" in image_quality_score(ImageFacts(path="x", ocr_status="unavailable"))["reasons"]
-    assert "ocr_skipped" in image_quality_score(ImageFacts(path="x", ocr_status="skipped"))["reasons"]
-    assert "no_ocr_text" in image_quality_score(ImageFacts(path="x", ocr_status="empty"))["reasons"]
+    assert (
+        "ocr_unavailable"
+        in image_quality_score(ImageFacts(path="x", ocr_status="unavailable"))[
+            "reasons"
+        ]
+    )
+    assert (
+        "ocr_skipped"
+        in image_quality_score(ImageFacts(path="x", ocr_status="skipped"))["reasons"]
+    )
+    assert (
+        "no_ocr_text"
+        in image_quality_score(ImageFacts(path="x", ocr_status="empty"))["reasons"]
+    )
     assert "no_vision_caption" in image_quality_score(ImageFacts(path="x"))["reasons"]
+
 
 def test_multimodal_ports_describe_with_and_without_capabilities(monkeypatch):
     monkeypatch.setattr(ports_mod, "_which_ffmpeg", lambda: None)
@@ -422,6 +471,7 @@ def test_multimodal_ports_describe_with_and_without_capabilities(monkeypatch):
     assert full["vision_model_id"] == "clip"
     assert full["vision_space"] == "shared"
 
+
 def test_which_ffmpeg_and_run_ffmpeg(monkeypatch):
     monkeypatch.setattr(ports_mod.shutil, "which", lambda _name: "/opt/ffmpeg")
     assert _which_ffmpeg() == "/opt/ffmpeg"
@@ -445,6 +495,7 @@ def test_which_ffmpeg_and_run_ffmpeg(monkeypatch):
     assert seen["argv"] == ["/bin/ffmpeg", "-version"]
     assert seen["kwargs"]["check"] is False
 
+
 def test_extract_keyframes_injected_and_ffmpeg_outcomes(tmp_path: Path, monkeypatch):
     video = tmp_path / "clip.mp4"
     video.write_bytes(b"not-a-real-video")
@@ -454,7 +505,13 @@ def test_extract_keyframes_injected_and_ffmpeg_outcomes(tmp_path: Path, monkeypa
         video,
         dest,
         count=2,
-        ports=MultimodalPorts(keyframe_extractor=lambda *_a, **_k: [str(dest / "a.jpg"), str(dest / "b.jpg"), "extra"]),
+        ports=MultimodalPorts(
+            keyframe_extractor=lambda *_a, **_k: [
+                str(dest / "a.jpg"),
+                str(dest / "b.jpg"),
+                "extra",
+            ]
+        ),
     )
     assert injected["status"] == "ok"
     assert injected["frames"] == [str(dest / "a.jpg"), str(dest / "b.jpg")]
@@ -472,7 +529,9 @@ def test_extract_keyframes_injected_and_ffmpeg_outcomes(tmp_path: Path, monkeypa
     def boom(*_a, **_k):
         raise RuntimeError("decoder died")
 
-    failed_port = extract_keyframes(video, dest, ports=MultimodalPorts(keyframe_extractor=boom))
+    failed_port = extract_keyframes(
+        video, dest, ports=MultimodalPorts(keyframe_extractor=boom)
+    )
     assert failed_port["status"] == "failed"
     assert "decoder died" in failed_port["detail"]
 
@@ -526,6 +585,7 @@ def test_extract_keyframes_injected_and_ffmpeg_outcomes(tmp_path: Path, monkeypa
     empty_ffmpeg = extract_keyframes(video, dest / "empty-ok")
     assert empty_ffmpeg["status"] == "empty"
 
+
 def test_injected_keyframes_helper_directly(tmp_path: Path):
     video = tmp_path / "v.mp4"
     dest = tmp_path / "d"
@@ -537,6 +597,7 @@ def test_injected_keyframes_helper_directly(tmp_path: Path):
 
     assert "keyframe port failed" in _injected_keyframes(boom, video, dest, 1)["detail"]
 
+
 def test_find_subtitle_prefers_srt_then_vtt(tmp_path: Path):
     clip = tmp_path / "talk.mp4"
     clip.write_bytes(b"x")
@@ -547,6 +608,7 @@ def test_find_subtitle_prefers_srt_then_vtt(tmp_path: Path):
     srt = tmp_path / "talk.srt"
     srt.write_text("1\n00:00:00,000 --> 00:00:01,000\nhi\n", encoding="utf-8")
     assert find_subtitle(clip) == srt
+
 
 def test_parse_subtitles_strips_scaffolding_and_duplicates(monkeypatch):
     raw = (
@@ -575,6 +637,7 @@ def test_parse_subtitles_strips_scaffolding_and_duplicates(monkeypatch):
     huge = "\n".join(f"unique line {i} of spoken words" for i in range(8))
     assert len(parse_subtitles(huge)) == 20
 
+
 def test_video_facts_metadata_and_searchable():
     bare = VideoFacts(path="clip.mp4")
     assert bare.searchable is False
@@ -595,7 +658,10 @@ def test_video_facts_metadata_and_searchable():
     assert rich_meta["keyframe_detail"] == "ok"
     assert rich_meta["subtitle_path"] == "clip.srt"
 
-def test_read_video_facts_supplied_companion_empty_and_unreadable(tmp_path: Path, monkeypatch):
+
+def test_read_video_facts_supplied_companion_empty_and_unreadable(
+    tmp_path: Path, monkeypatch
+):
     clip = tmp_path / "standup.mp4"
     clip.write_bytes(b"x")
     dest = tmp_path / "frames"
@@ -616,12 +682,16 @@ def test_read_video_facts_supplied_companion_empty_and_unreadable(tmp_path: Path
     assert absent.subtitle_status == "absent"
 
     empty_srt = tmp_path / "standup.srt"
-    empty_srt.write_text("WEBVTT\n\n1\n00:00:00.000 --> 00:00:01.000\n\n", encoding="utf-8")
+    empty_srt.write_text(
+        "WEBVTT\n\n1\n00:00:00.000 --> 00:00:01.000\n\n", encoding="utf-8"
+    )
     empty = read_video_facts(clip, dest, ports=ports)
     assert empty.subtitle_status == "empty"
     assert empty.subtitle_path == str(empty_srt)
 
-    empty_srt.write_text("1\n00:00:00.000 --> 00:00:01.000\nspoken words\n", encoding="utf-8")
+    empty_srt.write_text(
+        "1\n00:00:00.000 --> 00:00:01.000\nspoken words\n", encoding="utf-8"
+    )
     ok = read_video_facts(str(clip), str(dest), ports=ports)
     assert ok.subtitle_status == "ok"
     assert ok.subtitle_text == "spoken words"
@@ -647,6 +717,7 @@ def test_read_video_facts_supplied_companion_empty_and_unreadable(tmp_path: Path
     assert unreadable2.subtitle_status == "unreadable"
     assert "unreadable" in unreadable2.subtitle_path
 
+
 def test_video_quality_score_with_and_without_signals():
     empty = video_quality_score(VideoFacts(path="x"))
     assert empty["reasons"] == ["no_subtitles_absent", "no_keyframes_unavailable"]
@@ -665,11 +736,13 @@ def test_video_quality_score_with_and_without_signals():
     assert "keyframes" in rich["reasons"]
     assert rich["score"] == 1.0
 
+
 def test_quality_level_thresholds():
     assert _quality_level(0.7) == "high"
     assert _quality_level(0.69) == "medium"
     assert _quality_level(0.4) == "medium"
     assert _quality_level(0.39) == "low"
+
 
 def test_assess_extraction_quality_upstream_and_empty():
     high = assess_extraction_quality("ignored", upstream_confidence=0.95)
@@ -682,8 +755,11 @@ def test_assess_extraction_quality_upstream_and_empty():
     # Unusable confidence falls through to the text heuristics.
     empty = assess_extraction_quality("   ", upstream_confidence="not-a-number")
     assert empty == {"score": 0.0, "level": "low", "reasons": ["empty_text"]}
-    assert assess_extraction_quality(None, upstream_confidence=object())["reasons"] == ["empty_text"]
+    assert assess_extraction_quality(None, upstream_confidence=object())["reasons"] == [
+        "empty_text"
+    ]
     assert assess_extraction_quality("")["reasons"] == ["empty_text"]
+
 
 def test_assess_extraction_quality_length_structure_diversity_cleanliness():
     very_short = assess_extraction_quality("tiny note")
@@ -717,12 +793,17 @@ def test_assess_extraction_quality_length_structure_diversity_cleanliness():
     assert scored["reasons"] == ["clean_extraction"]
     assert scored["level"] == "high"
 
-    no_period_short = assess_extraction_quality("Title without any sentence mark at all here")
+    no_period_short = assess_extraction_quality(
+        "Title without any sentence mark at all here"
+    )
     assert "no_sentence_structure" not in no_period_short["reasons"]
 
     no_period_long = assess_extraction_quality("abcdefghijklmnopqrstuvwxyz " * 10)
     assert len(no_period_long and "abcdefghijklmnopqrstuvwxyz " * 10) >= 200
-    assert "no_sentence_structure" in assess_extraction_quality("abcdefghijklmnopqrstuvwxyz " * 10)["reasons"]
+    assert (
+        "no_sentence_structure"
+        in assess_extraction_quality("abcdefghijklmnopqrstuvwxyz " * 10)["reasons"]
+    )
 
     low_div = assess_extraction_quality("aaaaaaaaaa " * 8)
     assert "low_character_diversity" in low_div["reasons"]
@@ -739,7 +820,10 @@ def test_assess_extraction_quality_length_structure_diversity_cleanliness():
     assert "repetitive_lines" not in unique_lines["reasons"]
 
     long_lines = assess_extraction_quality(
-        "\n".join(f"This reasonably long line number {i} has many extra words." for i in range(8))
+        "\n".join(
+            f"This reasonably long line number {i} has many extra words."
+            for i in range(8)
+        )
     )
     assert "fragmented_lines" not in long_lines["reasons"]
 
@@ -749,7 +833,9 @@ def test_assess_extraction_quality_length_structure_diversity_cleanliness():
     whitespace = assess_extraction_quality("a" + (" \n" * 40) + "b. more words here.")
     assert "high_whitespace_ratio" in whitespace["reasons"]
 
-    fragmented = assess_extraction_quality("\n".join(["one two"] * 8) + "\nA full sentence is here.")
+    fragmented = assess_extraction_quality(
+        "\n".join(["one two"] * 8) + "\nA full sentence is here."
+    )
     assert "fragmented_lines" in fragmented["reasons"]
 
     chrome = "Home\nMenu\nLogin\nSign in\nActual article body with enough letters.\n"
@@ -757,6 +843,7 @@ def test_assess_extraction_quality_length_structure_diversity_cleanliness():
     assert "nav_menu_remnants" in web["reasons"]
     other = assess_extraction_quality(chrome, source_type="note")
     assert "boilerplate_markers" in other["reasons"]
+
 
 def test_capture_quality_verdict_thin_ok_and_unusable():
     none = capture_quality_verdict(None)
@@ -775,7 +862,9 @@ def test_capture_quality_verdict_thin_ok_and_unusable():
     assert "짧습니다" in labeled["reason"]
     assert labeled["reason_codes"] == ["very_short_text", "unknown_code"]
 
-    unlabeled = capture_quality_verdict({"level": "low", "score": 0.2, "reasons": ["mystery"]})
+    unlabeled = capture_quality_verdict(
+        {"level": "low", "score": 0.2, "reasons": ["mystery"]}
+    )
     assert unlabeled["reason"] == QUALITY_LOW_WARNING
 
     no_reasons = capture_quality_verdict({"level": "low", "score": 0.1})
@@ -794,6 +883,7 @@ def test_capture_quality_verdict_thin_ok_and_unusable():
     assert empty_level["status"] == "ok"
     assert empty_level["level"] is None
 
+
 def test_ingestion_hashing_text_and_file(tmp_path: Path):
     assert len(content_hash_text("hello")) == 64
     assert content_hash_text("") == content_hash_text(None)
@@ -803,6 +893,7 @@ def test_ingestion_hashing_text_and_file(tmp_path: Path):
     empty = tmp_path / "empty.bin"
     empty.write_bytes(b"")
     assert len(_file_digest(empty)) == 64
+
 
 def test_ingestion_item_and_result_as_dict_additive_keys():
     item = IngestionItem(

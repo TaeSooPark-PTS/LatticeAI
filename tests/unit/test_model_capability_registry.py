@@ -34,19 +34,21 @@ def _recommended():
 def test_registry_has_core_models_and_verification():
     ids = {c.id for c in _recommended()}
     # one entry per RAM tier, newest generation only
-    assert "mlx-community/LFM2.5-2.6B-4bit" in ids            # ultralight, text
-    assert "mlx-community/gemma-4-e2b-it-4bit" in ids         # ultralight, vision
-    assert "mlx-community/gemma-4-e4b-it-4bit" in ids         # light
-    assert "mlx-community/gemma-4-12B-it-4bit" in ids         # mid — note the capital B
-    assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids         # mid, vision
-    assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids        # general purpose
-    assert "mlx-community/gemma-4-26B-A4B-it-qat-4bit" in ids     # MoE QAT 4-bit
-    assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids     # MoE
-    assert "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit" in ids  # MoE QAT OptiQ 4-bit
-    assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids        # MoE
-    assert "mlx-community/Qwen3.8-27B-4bit" in ids            # large dense 3.8
-    assert "mlx-community/Qwen3.6-27B-4bit" in ids            # large dense 3.6
-    assert "mlx-community/gemma-4-31b-it-4bit" in ids         # large
+    assert "mlx-community/LFM2.5-2.6B-4bit" in ids  # ultralight, text
+    assert "mlx-community/gemma-4-e2b-it-4bit" in ids  # ultralight, vision
+    assert "mlx-community/gemma-4-e4b-it-4bit" in ids  # light
+    assert "mlx-community/gemma-4-12B-it-4bit" in ids  # mid — note the capital B
+    assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids  # mid, vision
+    assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids  # general purpose
+    assert "mlx-community/gemma-4-26B-A4B-it-qat-4bit" in ids  # MoE QAT 4-bit
+    assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids  # MoE
+    assert (
+        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit" in ids
+    )  # MoE QAT OptiQ 4-bit
+    assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids  # MoE
+    assert "mlx-community/Qwen3.8-27B-4bit" in ids  # large dense 3.8
+    assert "mlx-community/Qwen3.6-27B-4bit" in ids  # large dense 3.6
+    assert "mlx-community/gemma-4-31b-it-4bit" in ids  # large
 
     verified = get_verified_models()
     assert len(verified) == len(ids)
@@ -132,7 +134,9 @@ def test_verified_badge_requires_config_and_tokenizer():
         family="Example",
         tag="local-vlm",
         size="1GB",
-        verification=VerificationStatus(hf_exists=True, has_config=True, has_tokenizer=False),
+        verification=VerificationStatus(
+            hf_exists=True, has_config=True, has_tokenizer=False
+        ),
     )
 
     verification = cap.to_legacy_dict()["verification"]
@@ -180,5 +184,7 @@ def test_get_capability_and_build_catalog_roundtrip():
 
     catalog = build_engine_model_catalog()
     assert "local_mlx" in catalog
-    assert any(m["id"] == "mlx-community/gemma-4-12B-it-4bit" for m in catalog["local_mlx"])
+    assert any(
+        m["id"] == "mlx-community/gemma-4-12B-it-4bit" for m in catalog["local_mlx"]
+    )
     assert all(m["lifecycle"] == RECOMMENDED for m in catalog["local_mlx"])

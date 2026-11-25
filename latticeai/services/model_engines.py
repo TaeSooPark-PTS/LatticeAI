@@ -5,6 +5,7 @@ This module is the home for engine-specific server starting, model pulling and i
 is passed explicitly through the bound runtime service. Circular imports are
 avoided by late imports inside functions.
 """
+
 from __future__ import annotations
 
 import http.client
@@ -66,7 +67,9 @@ LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
 VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
 VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
 VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
-LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
+LMSTUDIO_BUNDLED_CLI = Path(
+    "/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms"
+)
 
 
 def local_binary(binary: str) -> Optional[str]:
@@ -151,10 +154,14 @@ def lmstudio_api_base() -> str:
         from latticeai.services.model_runtime import (
             OPENAI_COMPATIBLE_PROVIDERS,  # type: ignore
         )
+
         prov = OPENAI_COMPATIBLE_PROVIDERS
     except (ImportError, AttributeError, RuntimeError):
         prov = {}
-    return (os.getenv("LMSTUDIO_BASE_URL") or (prov.get("lmstudio", {}) or {}).get("base_url", "http://localhost:1234/v1")).rstrip("/")
+    return (
+        os.getenv("LMSTUDIO_BASE_URL")
+        or (prov.get("lmstudio", {}) or {}).get("base_url", "http://localhost:1234/v1")
+    ).rstrip("/")
 
 
 def lmstudio_native_api_base() -> str:
@@ -165,14 +172,29 @@ def lmstudio_native_api_base() -> str:
 def ensure_lmstudio_server() -> None:
     base_url = lmstudio_native_api_base()
     try:
-        _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
+        _json_request(
+            f"{base_url}/api/v1/models",
+            headers={"Authorization": "Bearer lmstudio"},
+            timeout=2.5,
+        )
         return
-    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
+    except (
+        urllib.error.URLError,
+        http.client.HTTPException,
+        OSError,
+        TimeoutError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ):
         quiet()
 
     cli = find_lmstudio_cli()
     if not cli:
-        raise ModelRuntimeError(status_code=400, detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(
+            status_code=400,
+            detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.",
+        )
 
     try:
         subprocess.Popen(
@@ -181,17 +203,39 @@ def ensure_lmstudio_server() -> None:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
-    except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError) as e:
-        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
+    except (
+        OSError,
+        subprocess.SubprocessError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ) as e:
+        raise ModelRuntimeError(
+            status_code=500, detail=f"LM Studio 서버 시작 실패: {e}"
+        )
 
     deadline = time.time() + 45
     while time.time() < deadline:
         try:
-            _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
+            _json_request(
+                f"{base_url}/api/v1/models",
+                headers={"Authorization": "Bearer lmstudio"},
+                timeout=2.5,
+            )
             return
-        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
+        except (
+            urllib.error.URLError,
+            http.client.HTTPException,
+            OSError,
+            TimeoutError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ):
             time.sleep(1)
-    raise ModelRuntimeError(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
+    raise ModelRuntimeError(
+        status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다."
+    )
 
 
 def ensure_ollama_server() -> None:
@@ -199,7 +243,9 @@ def ensure_ollama_server() -> None:
     if not ollama:
         raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     try:
-        probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
+        probe = subprocess.run(
+            [ollama, "list"], capture_output=True, text=True, timeout=3, check=False
+        )
         if probe.returncode == 0:
             return
     except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
@@ -213,13 +259,23 @@ def ensure_ollama_server() -> None:
     deadline = time.time() + 20
     while time.time() < deadline:
         try:
-            probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
+            probe = subprocess.run(
+                [ollama, "list"], capture_output=True, text=True, timeout=3, check=False
+            )
             if probe.returncode == 0:
                 return
-        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
+        except (
+            OSError,
+            subprocess.SubprocessError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ):
             quiet()
         time.sleep(0.5)
-    raise ModelRuntimeError(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
+    raise ModelRuntimeError(
+        status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다."
+    )
 
 
 def get_openai_compatible_server_models(provider: str) -> List[str]:
@@ -243,12 +299,20 @@ def get_openai_compatible_server_models(provider: str) -> List[str]:
         return list(dict.fromkeys([model for model in models if model]))
 
     config = OPENAI_COMPATIBLE_PROVIDERS.get(provider) or {}
-    base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
+    base_url = (
+        os.getenv(config.get("base_url_env", ""))
+        if config.get("base_url_env")
+        else None
+    )
     base_url = (base_url or config.get("base_url") or "").rstrip("/")
     if not base_url or not base_url.startswith(("http://", "https://")):
         return []
 
-    api_key = os.getenv(config.get("env_key", "")) or config.get("api_key_fallback") or provider
+    api_key = (
+        os.getenv(config.get("env_key", ""))
+        or config.get("api_key_fallback")
+        or provider
+    )
     req = urllib.request.Request(
         f"{base_url}/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -268,7 +332,9 @@ def get_openai_compatible_server_models(provider: str) -> List[str]:
     return models
 
 
-def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] = None, timeout: int = 45) -> bool:
+def wait_for_openai_compatible_server(
+    provider: str, model_name: Optional[str] = None, timeout: int = 45
+) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         models = get_openai_compatible_server_models(provider)
@@ -317,7 +383,9 @@ def ensure_vllm_server(model_name: str) -> None:
     vllm_bin = vllm_executable()
     vllm_metal_py = vllm_metal_python()
     if not vllm_bin and not vllm_metal_py and importlib.util.find_spec("vllm") is None:
-        raise ModelRuntimeError(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
+        raise ModelRuntimeError(
+            status_code=400, detail="vLLM runtime이 설치되지 않았습니다."
+        )
 
     local_dir = hf_model_dir(model_name)
     if not vllm_metal_py and not hf_model_ready(model_name, "vllm"):
@@ -327,15 +395,41 @@ def ensure_vllm_server(model_name: str) -> None:
     if running and running.poll() is None:
         _reap_local_server(running, "vLLM")
     elif served_models:
-        raise ModelRuntimeError(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(
+            status_code=409,
+            detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.",
+        )
 
     host_args = ["--host", "127.0.0.1", "--port", "8000"]
     if vllm_metal_py:
-        command = [vllm_metal_py, "-m", "vllm_metal.server", "--model", model_name, *host_args]
+        command = [
+            vllm_metal_py,
+            "-m",
+            "vllm_metal.server",
+            "--model",
+            model_name,
+            *host_args,
+        ]
     elif vllm_bin:
-        command = [vllm_bin, "serve", str(local_dir), "--served-model-name", model_name, *host_args]
+        command = [
+            vllm_bin,
+            "serve",
+            str(local_dir),
+            "--served-model-name",
+            model_name,
+            *host_args,
+        ]
     else:
-        command = [sys.executable, "-m", "vllm.entrypoints.openai.api_server", "--model", str(local_dir), "--served-model-name", model_name, *host_args]
+        command = [
+            sys.executable,
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            str(local_dir),
+            "--served-model-name",
+            model_name,
+            *host_args,
+        ]
     LOCAL_SERVER_PROCESSES["vllm"] = subprocess.Popen(
         command,
         stdout=subprocess.DEVNULL,
@@ -343,7 +437,9 @@ def ensure_vllm_server(model_name: str) -> None:
         start_new_session=True,
     )
     if not wait_for_openai_compatible_server("vllm", model_name, timeout=90):
-        raise ModelRuntimeError(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
+        raise ModelRuntimeError(
+            status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다."
+        )
 
 
 def ensure_llamacpp_server(model_name: str) -> None:
@@ -364,21 +460,33 @@ def ensure_llamacpp_server(model_name: str) -> None:
     if running and running.poll() is None:
         _reap_local_server(running, "llama.cpp")
     elif served_models:
-        raise ModelRuntimeError(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(
+            status_code=409,
+            detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.",
+        )
     llama_bin = local_binary("llama-server")
     has_python_server = llamacpp_python_available()
     if not llama_bin and not has_python_server:
-        raise ModelRuntimeError(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
+        raise ModelRuntimeError(
+            status_code=400, detail="llama.cpp가 설치되지 않았습니다."
+        )
     if not hf_model_ready(model_name, "llamacpp"):
         download_hf_model(model_name, "llamacpp")
 
     gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
     primary_ggufs = [p for p in gguf_files if not is_auxiliary_gguf(p.name)]
     if not primary_ggufs:
-        raise ModelRuntimeError(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
+        raise ModelRuntimeError(
+            status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다."
+        )
 
     preferred = next(
-        (p for pref in GGUF_QUANT_PREFERENCE for p in primary_ggufs if pref in p.name.lower()),
+        (
+            p
+            for pref in GGUF_QUANT_PREFERENCE
+            for p in primary_ggufs
+            if pref in p.name.lower()
+        ),
         None,
     )
     model_file = preferred or primary_ggufs[0]
@@ -412,21 +520,27 @@ def ensure_llamacpp_server(model_name: str) -> None:
         start_new_session=True,
     )
     if not wait_for_openai_compatible_server("llamacpp", model_name, timeout=45):
-        raise ModelRuntimeError(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
+        raise ModelRuntimeError(
+            status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다."
+        )
 
 
-def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, Any]:
+def pull_ollama_model_with_progress(
+    model_name: str, progress_emit=None
+) -> Dict[str, Any]:
     ollama = local_binary("ollama")
     if not ollama:
         raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     if progress_emit:
-        progress_emit(_progress_payload(
-            "download",
-            "Ollama 모델 다운로드를 시작합니다.",
-            percent=0,
-            detail=model_name,
-            indeterminate=True,
-        ))
+        progress_emit(
+            _progress_payload(
+                "download",
+                "Ollama 모델 다운로드를 시작합니다.",
+                percent=0,
+                detail=model_name,
+                indeterminate=True,
+            )
+        )
     process = subprocess.Popen(
         [ollama, "pull", model_name],
         stdout=subprocess.PIPE,
@@ -448,23 +562,27 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
                 if match:
                     last_percent = min(100.0, float(match.group(1)))
                     if progress_emit:
-                        progress_emit(_progress_payload(
+                        progress_emit(
+                            _progress_payload(
+                                "download",
+                                "Ollama 모델 다운로드 중입니다.",
+                                percent=last_percent,
+                                detail=line[-180:],
+                                eta_seconds=None,
+                                indeterminate=False,
+                            )
+                        )
+                elif progress_emit:
+                    progress_emit(
+                        _progress_payload(
                             "download",
                             "Ollama 모델 다운로드 중입니다.",
                             percent=last_percent,
                             detail=line[-180:],
                             eta_seconds=None,
-                            indeterminate=False,
-                        ))
-                elif progress_emit:
-                    progress_emit(_progress_payload(
-                        "download",
-                        "Ollama 모델 다운로드 중입니다.",
-                        percent=last_percent,
-                        detail=line[-180:],
-                        eta_seconds=None,
-                        indeterminate=last_percent is None,
-                    ))
+                            indeterminate=last_percent is None,
+                        )
+                    )
         returncode = process.wait()
     except Exception:
         process.kill()
@@ -472,17 +590,21 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
 
     if returncode != 0:
         tail = "\n".join(lines[-12:])
-        raise ModelRuntimeError(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
+        raise ModelRuntimeError(
+            status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패"
+        )
 
     if progress_emit:
-        progress_emit(_progress_payload(
-            "download",
-            "Ollama 모델 다운로드가 완료되었습니다.",
-            percent=100,
-            detail=model_name,
-            eta_seconds=0,
-            indeterminate=False,
-        ))
+        progress_emit(
+            _progress_payload(
+                "download",
+                "Ollama 모델 다운로드가 완료되었습니다.",
+                percent=100,
+                detail=model_name,
+                eta_seconds=0,
+                indeterminate=False,
+            )
+        )
     return {"provider": "ollama", "model": model_name, "returncode": returncode}
 
 
@@ -491,7 +613,9 @@ def get_ollama_pulled_models() -> set:
     if not ollama:
         return set()
     try:
-        result = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=5, check=False)
+        result = subprocess.run(
+            [ollama, "list"], capture_output=True, text=True, timeout=5, check=False
+        )
         pulled = set()
         for line in result.stdout.splitlines()[1:]:
             parts = line.split()
@@ -513,7 +637,11 @@ def ensure_omlx_server(model_name: str) -> str:
     )
 
     raw_name = str(model_name or "").strip()
-    hf_repo = raw_name.replace("--", "/", 1) if "/" not in raw_name and "--" in raw_name else raw_name
+    hf_repo = (
+        raw_name.replace("--", "/", 1)
+        if "/" not in raw_name and "--" in raw_name
+        else raw_name
+    )
     served_name = hf_repo.replace("/", "--") if "/" in hf_repo else raw_name
 
     if not hf_model_ready(hf_repo, "omlx"):
@@ -533,7 +661,11 @@ def ensure_omlx_server(model_name: str) -> str:
         )
 
     prov = OPENAI_COMPATIBLE_PROVIDERS.get("omlx") or {}
-    base_url = (os.getenv(prov.get("base_url_env", "")) or prov.get("base_url") or "http://127.0.0.1:8000/v1").strip()
+    base_url = (
+        os.getenv(prov.get("base_url_env", ""))
+        or prov.get("base_url")
+        or "http://127.0.0.1:8000/v1"
+    ).strip()
     parsed = urlparse(base_url)
     port = parsed.port or 8000
 
@@ -552,30 +684,53 @@ def ensure_omlx_server(model_name: str) -> str:
         # Fallback: check if oMLX exposed the original repo id
         if hf_repo in get_openai_compatible_server_models("omlx"):
             return hf_repo
-        raise ModelRuntimeError(status_code=500, detail=f"oMLX 서버가 모델({served_name})을 로드하지 못했습니다.")
+        raise ModelRuntimeError(
+            status_code=500,
+            detail=f"oMLX 서버가 모델({served_name})을 로드하지 못했습니다.",
+        )
     return served_name
 
 
 def engine_support_status(engine: str) -> Dict[str, Any]:
-    is_apple_silicon = sys.platform == "darwin" and str(platform.machine() or "").lower() in {"arm64", "aarch64"}
+    is_apple_silicon = sys.platform == "darwin" and str(
+        platform.machine() or ""
+    ).lower() in {"arm64", "aarch64"}
     if engine == "local_mlx":
         if not is_apple_silicon:
-            return {"supported": False, "reason": "MLX는 Apple Silicon macOS에서만 지원됩니다."}
+            return {
+                "supported": False,
+                "reason": "MLX는 Apple Silicon macOS에서만 지원됩니다.",
+            }
         return {"supported": True, "reason": None}
     if engine == "omlx":
         if not is_apple_silicon:
-            return {"supported": False, "reason": "oMLX는 Apple Silicon macOS에서만 지원됩니다."}
+            return {
+                "supported": False,
+                "reason": "oMLX는 Apple Silicon macOS에서만 지원됩니다.",
+            }
         return {"supported": True, "reason": None}
     if engine != "vllm":
         return {"supported": True, "reason": None}
     if sys.platform.startswith("win"):
-        return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
+        return {
+            "supported": False,
+            "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다.",
+        }
     if sys.platform == "darwin" and not is_apple_silicon:
-        return {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."}
+        return {
+            "supported": False,
+            "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다.",
+        }
     if sys.version_info >= (3, 13) and is_apple_silicon:
-        return {"supported": True, "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다."}
+        return {
+            "supported": True,
+            "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다.",
+        }
     if sys.version_info >= (3, 13):
-        return {"supported": False, "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다."}
+        return {
+            "supported": False,
+            "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다.",
+        }
     return {"supported": True, "reason": None}
 
 
@@ -622,9 +777,13 @@ def install_engine(
     command, cwd, _requires_admin = _engine_install_command(engine, base_dir=base_dir)
     plan = engine_install_plan(engine, base_dir=base_dir)
     try:
-        require_command_confirmation(command, confirmation_token, cwd=cwd, purpose="engine_install")
+        require_command_confirmation(
+            command, confirmation_token, cwd=cwd, purpose="engine_install"
+        )
     except CommandConfirmationError as exc:
-        append_process_audit_event("engine_install", plan=plan, status="denied", error=str(exc))
+        append_process_audit_event(
+            "engine_install", plan=plan, status="denied", error=str(exc)
+        )
         raise ModelRuntimeError(
             status_code=403,
             detail={
@@ -646,9 +805,13 @@ def install_engine(
         )
     except subprocess.TimeoutExpired:
         append_process_audit_event("engine_install", plan=plan, status="timeout")
-        raise ModelRuntimeError(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
+        raise ModelRuntimeError(
+            status_code=408, detail="엔진 설치 시간이 초과되었습니다."
+        )
     except Exception as exc:
-        append_process_audit_event("engine_install", plan=plan, status="error", error=str(exc))
+        append_process_audit_event(
+            "engine_install", plan=plan, status="error", error=str(exc)
+        )
         raise
     append_process_audit_event(
         "engine_install",
@@ -672,9 +835,17 @@ def install_engine(
     if engine == "ollama" and completed.returncode == 0 and ollama:
         already_up = False
         try:
-            probe = subprocess.run([ollama, "list"], capture_output=True, timeout=2, check=False)
+            probe = subprocess.run(
+                [ollama, "list"], capture_output=True, timeout=2, check=False
+            )
             already_up = probe.returncode == 0
-        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
+        except (
+            OSError,
+            subprocess.SubprocessError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ):
             already_up = False
         if already_up:
             result["daemon_started"] = "already_running"
@@ -687,17 +858,32 @@ def install_engine(
                 metadata={"engine": "ollama"},
             )
             try:
-                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="started")
+                append_process_audit_event(
+                    "engine_daemon_start", plan=daemon_plan, status="started"
+                )
                 subprocess.Popen(
                     daemon_command,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
                 )
-                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="spawned")
+                append_process_audit_event(
+                    "engine_daemon_start", plan=daemon_plan, status="spawned"
+                )
                 result["daemon_started"] = True
-            except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError) as exc:
-                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="error", error=str(exc))
+            except (
+                OSError,
+                subprocess.SubprocessError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+            ) as exc:
+                append_process_audit_event(
+                    "engine_daemon_start",
+                    plan=daemon_plan,
+                    status="error",
+                    error=str(exc),
+                )
                 logging.warning("ollama serve spawn failed: %s", exc)
                 result["daemon_started"] = False
     return result

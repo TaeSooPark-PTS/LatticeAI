@@ -234,9 +234,13 @@ def _local_model_type(model_id: str) -> Optional[str]:
 def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
     mlx_available = _module_available("mlx")
     mlx_vlm_available = mlx_available and _module_available("mlx_vlm")
-    mlx_vlm_unified_available = mlx_vlm_available and _module_available(GEMMA4_MLX_UNIFIED_MODULE)
+    mlx_vlm_unified_available = mlx_vlm_available and _module_available(
+        GEMMA4_MLX_UNIFIED_MODULE
+    )
     mlx_lm_available = mlx_available and _module_available("mlx_lm")
-    mlx_lm_gemma4_available = mlx_lm_available and any(_module_available(module) for module in GEMMA4_MLX_LM_MODULES)
+    mlx_lm_gemma4_available = mlx_lm_available and any(
+        _module_available(module) for module in GEMMA4_MLX_LM_MODULES
+    )
     return [
         {
             "engine": "local_mlx",
@@ -277,7 +281,9 @@ def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
     ]
 
 
-def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> Dict[str, Any]:
+def model_runtime_compatibility(
+    model_id: str, engine: Optional[str] = None
+) -> Dict[str, Any]:
     """Return a lightweight pre-load runtime compatibility signal.
 
     This intentionally checks only known fast failure modes. The loader and
@@ -320,69 +326,97 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
 
     mlx_available = _module_available("mlx")
     mlx_vlm_available = _module_available("mlx_vlm")
-    mlx_lm_available = any(bool(candidate.get("available")) for candidate in candidates if candidate.get("runtime") == "MLX-LM")
+    mlx_lm_available = any(
+        bool(candidate.get("available"))
+        for candidate in candidates
+        if candidate.get("runtime") == "MLX-LM"
+    )
 
     if not mlx_available or not (mlx_vlm_available or mlx_lm_available):
-        payload.update({
-            "status": "runtime_not_installed",
-            "checked": False,
-            "supported": True,
-            "user_message": (
-                "Install the local MLX runtime before loading Gemma 4, or choose "
-                "the Gemma 4 GGUF route through Ollama, LM Studio, or llama.cpp."
-            ),
-            "alternatives": candidates[2:],
-        })
+        payload.update(
+            {
+                "status": "runtime_not_installed",
+                "checked": False,
+                "supported": True,
+                "user_message": (
+                    "Install the local MLX runtime before loading Gemma 4, or choose "
+                    "the Gemma 4 GGUF route through Ollama, LM Studio, or llama.cpp."
+                ),
+                "alternatives": candidates[2:],
+            }
+        )
         return payload
 
-    if model_type == "gemma4_unified" and not _module_available(GEMMA4_MLX_UNIFIED_MODULE):
-        payload.update({
-            "status": "runtime_update_needed",
-            "supported": False,
-            "reason_code": "mlx_vlm_missing_gemma4_unified_model",
-            "model_type": "gemma4_unified",
-            "missing_components": [GEMMA4_MLX_UNIFIED_MODULE],
-            "user_message": (
-                "Gemma 4 12B uses the gemma4_unified MLX format. The installed "
-                "MLX-VLM runtime does not include that loader, so this local "
-                "model cannot load until MLX-VLM is updated."
-            ),
-            "recovery_guidance": [
-                "Update the MLX runtime from Library/System setup, or run: pip install --upgrade 'mlx-vlm>=0.6.3'.",
-                "After the runtime update, re-open Models so Lattice can re-check this model.",
-                "Use Gemma 4 26B A4B locally or Gemma 4 12B GGUF through Ollama, LM Studio, or llama.cpp until then.",
-            ],
-            "alternatives": [
-                {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B", "engine": "local_mlx"},
-                {"id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0", "name": "Gemma 4 12B GGUF", "engine": "ollama"},
-                {"id": "lmstudio:ggml-org/gemma-4-12B-it-GGUF", "name": "Gemma 4 12B GGUF", "engine": "lmstudio"},
-            ],
-            "action": "Runtime update needed",
-        })
+    if model_type == "gemma4_unified" and not _module_available(
+        GEMMA4_MLX_UNIFIED_MODULE
+    ):
+        payload.update(
+            {
+                "status": "runtime_update_needed",
+                "supported": False,
+                "reason_code": "mlx_vlm_missing_gemma4_unified_model",
+                "model_type": "gemma4_unified",
+                "missing_components": [GEMMA4_MLX_UNIFIED_MODULE],
+                "user_message": (
+                    "Gemma 4 12B uses the gemma4_unified MLX format. The installed "
+                    "MLX-VLM runtime does not include that loader, so this local "
+                    "model cannot load until MLX-VLM is updated."
+                ),
+                "recovery_guidance": [
+                    "Update the MLX runtime from Library/System setup, or run: pip install --upgrade 'mlx-vlm>=0.6.3'.",
+                    "After the runtime update, re-open Models so Lattice can re-check this model.",
+                    "Use Gemma 4 26B A4B locally or Gemma 4 12B GGUF through Ollama, LM Studio, or llama.cpp until then.",
+                ],
+                "alternatives": [
+                    {
+                        "id": "mlx-community/gemma-4-26b-a4b-it-4bit",
+                        "name": "Gemma 4 26B A4B",
+                        "engine": "local_mlx",
+                    },
+                    {
+                        "id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0",
+                        "name": "Gemma 4 12B GGUF",
+                        "engine": "ollama",
+                    },
+                    {
+                        "id": "lmstudio:ggml-org/gemma-4-12B-it-GGUF",
+                        "name": "Gemma 4 12B GGUF",
+                        "engine": "lmstudio",
+                    },
+                ],
+                "action": "Runtime update needed",
+            }
+        )
         return payload
 
     if mlx_vlm_available:
         return payload
 
-    payload.update({
-        "status": "fallback_available",
-        "supported": True,
-        "reason_code": "mlx_vlm_missing_gemma4_standard_runtime",
-        "missing_components": ["mlx_vlm"],
-        "user_message": (
-            "MLX-VLM is not available for this Gemma 4 model. Lattice can use "
-            "the MLX-LM text fallback or a Gemma 4 GGUF local runtime."
-        ),
-        "recovery_guidance": [
-            "Use the MLX-LM text fallback for text chat.",
-            "Use a Gemma 4 GGUF model through Ollama, LM Studio, or llama.cpp if the MLX route fails.",
-        ],
-        "alternatives": [
-            {"id": candidate["load_id"], "name": candidate["runtime"], "engine": candidate["engine"]}
-            for candidate in candidates
-            if candidate.get("role") != "v3_primary"
-        ],
-    })
+    payload.update(
+        {
+            "status": "fallback_available",
+            "supported": True,
+            "reason_code": "mlx_vlm_missing_gemma4_standard_runtime",
+            "missing_components": ["mlx_vlm"],
+            "user_message": (
+                "MLX-VLM is not available for this Gemma 4 model. Lattice can use "
+                "the MLX-LM text fallback or a Gemma 4 GGUF local runtime."
+            ),
+            "recovery_guidance": [
+                "Use the MLX-LM text fallback for text chat.",
+                "Use a Gemma 4 GGUF model through Ollama, LM Studio, or llama.cpp if the MLX route fails.",
+            ],
+            "alternatives": [
+                {
+                    "id": candidate["load_id"],
+                    "name": candidate["runtime"],
+                    "engine": candidate["engine"],
+                }
+                for candidate in candidates
+                if candidate.get("role") != "v3_primary"
+            ],
+        }
+    )
     # MLX-VLM is absent and the guard above already returned when MLX-LM was too.
     payload["preferred_runtime"] = "MLX-LM fallback"
     return payload
@@ -402,17 +436,18 @@ def friendly_model_runtime_error(
             "status": compat.get("status") or "unsupported",
             "model_id": model_id,
             "engine": engine,
-            "user_message": compat.get("user_message") or (
-                "The selected model is not supported by the installed local runtime."
-            ),
-            "recovery_guidance": compat.get("recovery_guidance") or [
+            "user_message": compat.get("user_message")
+            or ("The selected model is not supported by the installed local runtime."),
+            "recovery_guidance": compat.get("recovery_guidance")
+            or [
                 "Choose a recommended alternative model.",
                 "Update the local runtime and try validation again.",
             ],
             "alternatives": compat.get("alternatives") or [],
             "missing_components": compat.get("missing_components") or [],
             "action": compat.get("action"),
-            "reason_code": compat.get("reason_code") or "runtime_model_type_unsupported",
+            "reason_code": compat.get("reason_code")
+            or "runtime_model_type_unsupported",
         }
     return {
         "status": "load_failed",
@@ -600,7 +635,9 @@ def remember_profile(profile: CompatProfile) -> None:
         _COMPAT_CACHE[cache_key(profile.model_id, profile.engine)] = profile
 
 
-def lookup_profile(model_id: str, engine: Optional[str] = None) -> Optional[CompatProfile]:
+def lookup_profile(
+    model_id: str, engine: Optional[str] = None
+) -> Optional[CompatProfile]:
     with _CACHE_LOCK:
         return _COMPAT_CACHE.get(cache_key(model_id, engine))
 

@@ -76,6 +76,8 @@ def git_log(max_count: int = 5, cwd: Optional[str] = None) -> Dict[str, Any]:
 
 
 def git_show(revision: str = "HEAD", cwd: Optional[str] = None) -> Dict[str, Any]:
-    if revision.startswith("-") or any(token in revision for token in ["..", ":", "/", "\\"]):
+    if revision.startswith("-") or any(
+        token in revision for token in ["..", ":", "/", "\\"]
+    ):
         raise ToolError("Revision is not allowed.")
     return _run_git(["show", "--stat", "--oneline", "--decorate", revision], cwd)

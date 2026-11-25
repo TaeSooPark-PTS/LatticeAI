@@ -14,9 +14,11 @@ from latticeai.cli.runtime import (
 )
 
 
-def test_load_env_file_loads_new_vars(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_env_file_loads_new_vars(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     env_file = tmp_path / ".env"
-    env_file.write_text("FOO=bar\nBAZ=\"quoted\"\n# comment\nEMPTY=\n", encoding="utf-8")
+    env_file.write_text('FOO=bar\nBAZ="quoted"\n# comment\nEMPTY=\n', encoding="utf-8")
     monkeypatch.delenv("FOO", raising=False)
     monkeypatch.delenv("BAZ", raising=False)
     _load_env_file(env_file)
@@ -24,7 +26,9 @@ def test_load_env_file_loads_new_vars(tmp_path: Path, monkeypatch: pytest.Monkey
     assert os.environ["BAZ"] == "quoted"
 
 
-def test_load_env_file_skips_existing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_load_env_file_skips_existing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text("EXISTING=fromfile\n", encoding="utf-8")
     monkeypatch.setenv("EXISTING", "already")
@@ -32,7 +36,9 @@ def test_load_env_file_skips_existing(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert os.environ["EXISTING"] == "already"
 
 
-def test_apply_extra_path_prepends(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_apply_extra_path_prepends(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     extra_dir = tmp_path / "extra"
     extra_dir.mkdir()
     monkeypatch.setenv("LATTICEAI_EXTRA_PATH", str(extra_dir))

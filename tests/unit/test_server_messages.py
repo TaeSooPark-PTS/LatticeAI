@@ -35,7 +35,9 @@ class _Request:
     """Minimal stand-in: `resolve_language` only ever reads `.headers`."""
 
     def __init__(self, **headers: str) -> None:
-        self.headers = {key.replace("_", "-").lower(): value for key, value in headers.items()}
+        self.headers = {
+            key.replace("_", "-").lower(): value for key, value in headers.items()
+        }
 
 
 # ── catalog integrity ───────────────────────────────────────────────────
@@ -53,16 +55,15 @@ def test_every_message_exists_in_every_language():
 
 def test_no_message_is_the_same_string_in_both_languages():
     """A copy-pasted entry is an untranslated one wearing a translation's clothes."""
-    identical = [
-        key for key, entry in MESSAGES.items()
-        if entry["ko"] == entry["en"]
-    ]
+    identical = [key for key, entry in MESSAGES.items() if entry["ko"] == entry["en"]]
     assert identical == []
 
 
 def test_korean_entries_actually_contain_korean():
     hangul = re.compile(r"[가-힣]")
-    assert [key for key, entry in MESSAGES.items() if not hangul.search(entry["ko"])] == []
+    assert [
+        key for key, entry in MESSAGES.items() if not hangul.search(entry["ko"])
+    ] == []
 
 
 def test_english_entries_contain_no_korean():
@@ -160,7 +161,9 @@ def test_the_two_gates_agree_on_which_routers_are_migrated():
         for line in body.splitlines()
         if line.strip().startswith('"')
     }
-    from_tests = {path.rsplit("/", 1)[1].removesuffix(".py") for path in MIGRATED_ROUTERS}
+    from_tests = {
+        path.rsplit("/", 1)[1].removesuffix(".py") for path in MIGRATED_ROUTERS
+    }
     assert from_gate == from_tests, (
         "scripts/check_server_i18n.mjs and MIGRATED_ROUTERS disagree: "
         f"only in gate={sorted(from_gate - from_tests)}, "
@@ -232,14 +235,16 @@ def _seam_client(monkeypatch):
 
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
     app = FastAPI()
-    app.include_router(create_agent_worker_seam_router(
-        model_router=object(),
-        dispatch_service=object(),
-        execute_tool=lambda name, args: {},
-        hooks=None,
-        require_user=lambda _request: "owner@example.com",
-        enforce_rate_limit=lambda *_args: None,
-    ))
+    app.include_router(
+        create_agent_worker_seam_router(
+            model_router=object(),
+            dispatch_service=object(),
+            execute_tool=lambda name, args: {},
+            hooks=None,
+            require_user=lambda _request: "owner@example.com",
+            enforce_rate_limit=lambda *_args: None,
+        )
+    )
     return TestClient(app)
 
 
@@ -273,11 +278,13 @@ def test_the_compute_seam_can_resolve_a_language_too(monkeypatch):
 
     monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
     app = FastAPI()
-    app.include_router(create_worker_seams_router(
-        model_router=None,
-        require_user=lambda _request: "owner@example.com",
-        enforce_rate_limit=lambda *_args: None,
-    ))
+    app.include_router(
+        create_worker_seams_router(
+            model_router=None,
+            require_user=lambda _request: "owner@example.com",
+            enforce_rate_limit=lambda *_args: None,
+        )
+    )
     response = TestClient(app).get(
         "/worker/sysinfo",
         headers={LANGUAGE_HEADER: "en"},

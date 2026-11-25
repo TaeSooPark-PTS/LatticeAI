@@ -8,6 +8,7 @@ empty transcript is treated as no text. ``GET /api/capture/voice/status`` and
 the port can do is reported per call by ``POST /worker/asr``
 (``tests/unit/test_worker_compute.py``).
 """
+
 from __future__ import annotations
 
 import sys
@@ -56,4 +57,3 @@ def test_a_broken_transcriber_is_not_swallowed(tmp_path):
 
     with pytest.raises(RuntimeError, match="model file corrupt"):
         VoiceCaptureService(transcriber=boom)._transcribe(audio)
-

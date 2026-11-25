@@ -64,6 +64,7 @@ mx: Any = _mx
 
 try:
     from mlx_vlm import load as _vlm_load
+
     VLM_AVAILABLE = True
     print("✅ MLX-VLM is ready for multimodal models.")
 except (ImportError, OSError, RuntimeError) as e:
@@ -75,6 +76,7 @@ vlm_load: Any = _vlm_load
 
 try:
     from mlx_lm import load as _lm_load
+
     LM_AVAILABLE = True
     print("✅ MLX-LM is ready for text fallback models.")
 except (ImportError, OSError, RuntimeError) as e:
@@ -91,6 +93,7 @@ def ensure_mlx_runtime() -> None:
     errors = []
     try:
         import mlx.core as mlx_core
+
         mx = mlx_core
         mx.set_default_device(mx.gpu)
     except (ImportError, OSError, RuntimeError) as e:
@@ -99,6 +102,7 @@ def ensure_mlx_runtime() -> None:
 
     try:
         from mlx_vlm import load as mlx_vlm_load
+
         vlm_load = mlx_vlm_load
         VLM_AVAILABLE = True
     except (ImportError, OSError, RuntimeError) as e:
@@ -108,6 +112,7 @@ def ensure_mlx_runtime() -> None:
 
     try:
         from mlx_lm import load as mlx_lm_load
+
         lm_load = mlx_lm_load
         LM_AVAILABLE = True
     except (ImportError, OSError, RuntimeError) as e:
@@ -116,7 +121,9 @@ def ensure_mlx_runtime() -> None:
         errors.append(f"mlx-lm: {e}")
 
     if mx is None or (vlm_load is None and lm_load is None):
-        raise RuntimeError(f"MLX runtime is not available after install: {'; '.join(errors)}")
+        raise RuntimeError(
+            f"MLX runtime is not available after install: {'; '.join(errors)}"
+        )
 
 
 def _mlx_sampler(temperature: float):
@@ -168,7 +175,10 @@ def _declares_vision(model_id: str) -> bool:
         except (OSError, ValueError, TypeError, UnicodeDecodeError) as error:
             quiet(f"vision probe skipped for {config_path}: {error}")
             continue
-        if any(key in data for key in ("vision_config", "vision_tower", "image_token_index")):
+        if any(
+            key in data
+            for key in ("vision_config", "vision_tower", "image_token_index")
+        ):
             return True
     return False
 
@@ -268,11 +278,15 @@ class _LoadingMixin(_Core):
     ) -> str:
         provider, provider_model = parse_model_ref(model_id)
         if provider != "local_mlx":
-            return self._load_cloud_model(provider, provider_model, api_key_override=api_key_override, owner=owner)
+            return self._load_cloud_model(
+                provider, provider_model, api_key_override=api_key_override, owner=owner
+            )
 
         ensure_mlx_runtime()
         if mx is None or (vlm_load is None and lm_load is None):
-            raise RuntimeError("MLX is not available in this process. Run on Apple Silicon with Metal access.")
+            raise RuntimeError(
+                "MLX is not available in this process. Run on Apple Silicon with Metal access."
+            )
 
         cache_key = f"{model_id}_{draft_model_id}" if draft_model_id else model_id
         with self._lock:
@@ -285,11 +299,15 @@ class _LoadingMixin(_Core):
         print(f"⏳ Loading local model stack: {cache_key}...")
         loop = asyncio.get_event_loop()
         target_model_id = _resolve_local_hf_model(model_id)
-        target_draft_model_id = _resolve_local_hf_model(draft_model_id) if draft_model_id else None
-        
+        target_draft_model_id = (
+            _resolve_local_hf_model(draft_model_id) if draft_model_id else None
+        )
+
         def _load():
             mx.set_default_device(mx.gpu)
-            model_type = _local_model_type(target_model_id) or _local_model_type(model_id)
+            model_type = _local_model_type(target_model_id) or _local_model_type(
+                model_id
+            )
             loader_kind = "mlx_vlm"
 
             try:
@@ -300,7 +318,9 @@ class _LoadingMixin(_Core):
             except MODEL_RUNTIME_BOUNDARY_ERRORS as vlm_error:
                 if not _text_fallback_allowed(model_id, target_model_id, model_type):
                     raise
-                print(f"⚠️ MLX-VLM load failed; retrying the MLX-LM text path: {vlm_error}")
+                print(
+                    f"⚠️ MLX-VLM load failed; retrying the MLX-LM text path: {vlm_error}"
+                )
                 print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
                 try:
                     model, tokenizer = lm_load(target_model_id)
@@ -316,7 +336,9 @@ class _LoadingMixin(_Core):
             draft_model = None
             if target_draft_model_id:
                 if loader_kind == "mlx_vlm":
-                    print(f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}...")
+                    print(
+                        f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}..."
+                    )
                     draft_model, _ = vlm_load(target_draft_model_id)
                 elif lm_load is not None:
                     print(f"🔄 Loading Assistant (LM Mode): {target_draft_model_id}...")
@@ -327,7 +349,9 @@ class _LoadingMixin(_Core):
 
         try:
             # Use the dedicated single-thread executor to ensure MLX GPU streams match during inference
-            model, tokenizer, draft_model, loader_kind = await loop.run_in_executor(executor, _load)
+            model, tokenizer, draft_model, loader_kind = await loop.run_in_executor(
+                executor, _load
+            )
             with self._lock:
                 self._cache[cache_key] = (model, tokenizer, draft_model, loader_kind)
                 self._current = cache_key
@@ -338,18 +362,34 @@ class _LoadingMixin(_Core):
             print(f"❌ Load Error: {e}")
             raise e
 
-    def _load_cloud_model(self, provider: str, model: str, api_key_override: Optional[str] = None, owner: Optional[str] = None) -> str:
+    def _load_cloud_model(
+        self,
+        provider: str,
+        model: str,
+        api_key_override: Optional[str] = None,
+        owner: Optional[str] = None,
+    ) -> str:
         if AsyncOpenAI is None:
-            raise RuntimeError("openai package is not installed. Add it to requirements.txt and install dependencies.")
+            raise RuntimeError(
+                "openai package is not installed. Add it to requirements.txt and install dependencies."
+            )
         config = OPENAI_COMPATIBLE_PROVIDERS.get(provider)
         if not config:
             raise RuntimeError(f"Unsupported cloud provider: {provider}")
 
-        api_key = api_key_override or os.getenv(config["env_key"]) or config.get("api_key_fallback")
+        api_key = (
+            api_key_override
+            or os.getenv(config["env_key"])
+            or config.get("api_key_fallback")
+        )
         if not api_key:
             raise RuntimeError(f"Missing API key env var: {config['env_key']}")
 
-        base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
+        base_url = (
+            os.getenv(config.get("base_url_env", ""))
+            if config.get("base_url_env")
+            else None
+        )
         base_url = base_url or config.get("base_url")
         # base_url is passed only when configured: an explicit None is not
         # the same as omitting the argument.
@@ -373,45 +413,58 @@ class _LoadingMixin(_Core):
         local_server_providers = {"ollama", "vllm", "lmstudio", "llamacpp"}
         items: List[Dict[str, Any]] = []
         for provider, config in OPENAI_COMPATIBLE_PROVIDERS.items():
-            has_key = bool(os.getenv(config["env_key"]) or config.get("api_key_fallback"))
-            provider_models = PROVIDER_MODEL_CATALOG.get(provider) or [{
-                "id": config["default_model"],
-                "name": f"{provider.title()} · {config['default_model']}",
-                "family": provider.title(),
-            }]
+            has_key = bool(
+                os.getenv(config["env_key"]) or config.get("api_key_fallback")
+            )
+            provider_models = PROVIDER_MODEL_CATALOG.get(provider) or [
+                {
+                    "id": config["default_model"],
+                    "name": f"{provider.title()} · {config['default_model']}",
+                    "family": provider.title(),
+                }
+            ]
             for model in provider_models:
                 model_id = model["id"]
                 local_server = provider in local_server_providers
-                items.append({
-                    "id": f"{provider}:{model_id}",
-                    "name": model.get("name") or f"{provider.title()} · {model_id}",
-                    "provider": provider,
-                    "family": model.get("family"),
-                    "tag": "local-server" if local_server else "cloud",
-                    "available": has_key,
-                    "requires": config["env_key"] if not has_key else None,
-                    **source_metadata_for_model(provider, model, local_server=local_server),
-                })
+                items.append(
+                    {
+                        "id": f"{provider}:{model_id}",
+                        "name": model.get("name") or f"{provider.title()} · {model_id}",
+                        "provider": provider,
+                        "family": model.get("family"),
+                        "tag": "local-server" if local_server else "cloud",
+                        "available": has_key,
+                        "requires": config["env_key"] if not has_key else None,
+                        **source_metadata_for_model(
+                            provider, model, local_server=local_server
+                        ),
+                    }
+                )
         custom = os.getenv("LATTICEAI_CLOUD_MODELS") or ""
         for raw in [item.strip() for item in custom.split(",") if item.strip()]:
             provider, custom_model = parse_model_ref(raw)
             if provider != "local_mlx" and provider in OPENAI_COMPATIBLE_PROVIDERS:
                 config = OPENAI_COMPATIBLE_PROVIDERS[provider]
-                items.append({
-                    "id": f"{provider}:{custom_model}",
-                    "name": f"{provider.title()} · {custom_model}",
-                    "provider": provider,
-                    "tag": "cloud",
-                    "available": bool(os.getenv(config["env_key"]) or config.get("api_key_fallback")),
-                    "requires": None,
-                    **source_metadata_for_model(
-                        provider,
-                        {
-                            "id": custom_model,
-                            "name": f"{provider.title()} · {custom_model}",
-                            "family": provider.title(),
-                        },
-                        local_server=provider in local_server_providers,
-                    ),
-                })
+                items.append(
+                    {
+                        "id": f"{provider}:{custom_model}",
+                        "name": f"{provider.title()} · {custom_model}",
+                        "provider": provider,
+                        "tag": "cloud",
+                        "available": bool(
+                            os.getenv(config["env_key"])
+                            or config.get("api_key_fallback")
+                        ),
+                        "requires": None,
+                        **source_metadata_for_model(
+                            provider,
+                            {
+                                "id": custom_model,
+                                "name": f"{provider.title()} · {custom_model}",
+                                "family": provider.title(),
+                            },
+                            local_server=provider in local_server_providers,
+                        ),
+                    }
+                )
         return items

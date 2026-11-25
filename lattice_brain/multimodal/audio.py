@@ -47,7 +47,9 @@ def transcribe_audio(
     ports = ports or MultimodalPorts()
     supplied = str(transcript or "").strip()
     if supplied:
-        return AudioFacts(path=str(path), transcription_status="supplied", transcript=supplied)
+        return AudioFacts(
+            path=str(path), transcription_status="supplied", transcript=supplied
+        )
     if ports.transcriber is None:
         return AudioFacts(
             path=str(path),
@@ -57,7 +59,9 @@ def transcribe_audio(
     try:
         text = str(ports.transcriber(str(path)) or "").strip()
     except Exception as exc:  # noqa: BLE001 — a broken transcriber is a state
-        return AudioFacts(path=str(path), transcription_status="failed", detail=str(exc))
+        return AudioFacts(
+            path=str(path), transcription_status="failed", detail=str(exc)
+        )
     if not text:
         return AudioFacts(
             path=str(path),

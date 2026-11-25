@@ -127,11 +127,27 @@ def run(cmd: list[str], **kwargs) -> None:
 def build_wheel(out_dir: Path) -> Path:
     try:
         import build  # noqa: F401 — probe only
-        run([sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir)], cwd=REPO_ROOT)
-    except ImportError:
-        print("'build' package unavailable; falling back to pip wheel --no-deps", flush=True)
+
         run(
-            [sys.executable, "-m", "pip", "wheel", str(REPO_ROOT), "--no-deps", "-w", str(out_dir)],
+            [sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir)],
+            cwd=REPO_ROOT,
+        )
+    except ImportError:
+        print(
+            "'build' package unavailable; falling back to pip wheel --no-deps",
+            flush=True,
+        )
+        run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "wheel",
+                str(REPO_ROOT),
+                "--no-deps",
+                "-w",
+                str(out_dir),
+            ],
             cwd=REPO_ROOT,
         )
     wheels = sorted(out_dir.glob("ltcai-*.whl"))
@@ -142,8 +158,17 @@ def build_wheel(out_dir: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wheel", type=Path, default=None, help="use an existing wheel instead of building")
-    parser.add_argument("--skip-health", action="store_true", help="run import checks only (no app boot)")
+    parser.add_argument(
+        "--wheel",
+        type=Path,
+        default=None,
+        help="use an existing wheel instead of building",
+    )
+    parser.add_argument(
+        "--skip-health",
+        action="store_true",
+        help="run import checks only (no app boot)",
+    )
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory(prefix="ltcai-wheel-smoke-") as tmp:

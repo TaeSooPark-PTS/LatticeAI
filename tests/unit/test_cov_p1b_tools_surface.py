@@ -30,7 +30,9 @@ def workspace(tmp_path: Path, monkeypatch):
     root = tmp_path / "agent"
     root.mkdir()
     (root / "notes").mkdir()
-    (root / "notes" / "a.md").write_text("hello lattice\nsecond line\n", encoding="utf-8")
+    (root / "notes" / "a.md").write_text(
+        "hello lattice\nsecond line\n", encoding="utf-8"
+    )
     monkeypatch.setattr(tools, "AGENT_ROOT", root)
     return root
 
@@ -97,4 +99,3 @@ def test_knowledge_and_local_reads(tmp_path: Path, monkeypatch, workspace):
     assert listed
     read = local_read(str(workspace / "notes" / "a.md"))
     assert read
-

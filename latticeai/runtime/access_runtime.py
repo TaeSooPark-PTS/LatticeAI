@@ -17,8 +17,7 @@ def is_externally_reachable(config: Any) -> bool:
     a gateway ends up serving a graph the worker would have refused.
     """
     return bool(
-        getattr(config, "is_public", False)
-        or getattr(config, "network_exposed", False)
+        getattr(config, "is_public", False) or getattr(config, "network_exposed", False)
     )
 
 
@@ -57,7 +56,11 @@ def _resolve_active_session_email(
     # explicitly disabled account is invalid immediately. This check is
     # intentionally performed on every request so stale bearer/cookie
     # tokens cannot retain user or administrator access.
-    if not matched_key or not isinstance(user, dict) or bool(user.get("disabled", False)):
+    if (
+        not matched_key
+        or not isinstance(user, dict)
+        or bool(user.get("disabled", False))
+    ):
         return None
     return normalize_email(matched_key)
 
@@ -75,13 +78,17 @@ def _resolve_user_role(
     if trusted_local_owner and not identity:
         return "owner"
     normalized_email = normalize_email(identity)
-    user = users.get(normalized_email) or users.get(identity) or next(
-        (
-            item
-            for item in users.values()
-            if isinstance(item, dict) and item.get("id") == identity
-        ),
-        {},
+    user = (
+        users.get(normalized_email)
+        or users.get(identity)
+        or next(
+            (
+                item
+                for item in users.values()
+                if isinstance(item, dict) and item.get("id") == identity
+            ),
+            {},
+        )
     )
     if isinstance(user, dict) and user.get("role"):
         return normalize_role(user["role"])
@@ -141,7 +148,14 @@ def build_access_runtime(
         if token:
             try:
                 return active_session_email(get_session_email(token), load_users())
-            except (OSError, ValueError, TypeError, RuntimeError, KeyError, AttributeError):
+            except (
+                OSError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+                KeyError,
+                AttributeError,
+            ):
                 # Account-store failures must fail closed rather than turning a
                 # stale session into an authenticated identity.
                 return None

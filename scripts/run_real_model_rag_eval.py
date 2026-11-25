@@ -118,7 +118,8 @@ def score_grounded_answer(
     """
     valid_doc_ids = {str(p["doc_id"]) for p in passages}
     evidence_text = "\n".join(
-        f"{p.get('title', '')} {p.get('text', '')} {p.get('doc_id', '')}" for p in passages
+        f"{p.get('title', '')} {p.get('text', '')} {p.get('doc_id', '')}"
+        for p in passages
     )
     evidence_tokens = _content_tokens(evidence_text)
     evidence_numbers = _numeric_tokens(evidence_text)
@@ -173,7 +174,11 @@ def score_grounded_answer(
 
 
 def _post_chat(
-    endpoint: str, api_key: str | None, model_id: str, prompt: str, timeout: float = 30.0
+    endpoint: str,
+    api_key: str | None,
+    model_id: str,
+    prompt: str,
+    timeout: float = 30.0,
 ) -> tuple[str, float]:
     url = endpoint.rstrip("/") + "/chat/completions"
     payload = json.dumps(
@@ -220,7 +225,9 @@ def evaluate_target(
         "model_version": model_version,
         "provider": provider,
         "execution_location": execution_location,
-        "execution_mode": "real_model_cloud" if execution_location == "cloud" else "real_model_local",
+        "execution_mode": "real_model_cloud"
+        if execution_location == "cloud"
+        else "real_model_local",
         "dataset_version": dataset["dataset_version"],
         "prompt_version": "grounded-abstain-v2",
         "is_real_model": True,
@@ -242,14 +249,22 @@ def evaluate_target(
         passages = [
             docs_by_id[did]
             for did in q["supporting_span_doc_ids"]
-            if did in docs_by_id and docs_by_id[did]["workspace_id"] == q["workspace_id"]
+            if did in docs_by_id
+            and docs_by_id[did]["workspace_id"] == q["workspace_id"]
         ]
-        ctx = "\n".join(f"[{p['doc_id']}] {p['title']}: {p['text']}" for p in passages) or "(no evidence)"
+        ctx = (
+            "\n".join(f"[{p['doc_id']}] {p['title']}: {p['text']}" for p in passages)
+            or "(no evidence)"
+        )
         prompt = f"Evidence:\n{ctx}\n\nQuestion: {q['query']}"
         try:
             answer, lat = _post_chat(endpoint, api_key, model_id, prompt)
         except (urllib.error.URLError, TimeoutError, OSError, KeyError) as exc:
-            return {**meta, "status": "unavailable", "reason": f"inference failed: {exc}"}
+            return {
+                **meta,
+                "status": "unavailable",
+                "reason": f"inference failed: {exc}",
+            }
         latencies.append(lat)
         scored = score_grounded_answer(
             answer,
@@ -269,7 +284,9 @@ def evaluate_target(
     claim_support_rate = claim_hits / penalized_denom
     expected_claim_recall = claim_hits / max(claim_total, 1)
     total_citations = valid_citations + fabricated_citations
-    citation_precision = valid_citations / total_citations if total_citations > 0 else 1.0
+    citation_precision = (
+        valid_citations / total_citations if total_citations > 0 else 1.0
+    )
 
     return {
         **meta,
@@ -288,14 +305,30 @@ def evaluate_target(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run authentic local/cloud real-model RAG evaluation.")
+    parser = argparse.ArgumentParser(
+        description="Run authentic local/cloud real-model RAG evaluation."
+    )
     parser.add_argument("--dataset", default=str(DATASET_PATH))
     parser.add_argument("--limit", type=int, default=20)
-    parser.add_argument("--local-endpoint", default=os.environ.get("LATTICE_EVAL_LOCAL_ENDPOINT", ""))
-    parser.add_argument("--local-model", default=os.environ.get("LATTICE_EVAL_LOCAL_MODEL", "mlx-community/Qwen3.8-27B-4bit"))
-    parser.add_argument("--cloud-endpoint", default=os.environ.get("LATTICE_EVAL_CLOUD_ENDPOINT", ""))
-    parser.add_argument("--cloud-model", default=os.environ.get("LATTICE_EVAL_CLOUD_MODEL", "gpt-4o-mini"))
-    parser.add_argument("--cloud-api-key", default=os.environ.get("LATTICE_EVAL_CLOUD_API_KEY", ""))
+    parser.add_argument(
+        "--local-endpoint", default=os.environ.get("LATTICE_EVAL_LOCAL_ENDPOINT", "")
+    )
+    parser.add_argument(
+        "--local-model",
+        default=os.environ.get(
+            "LATTICE_EVAL_LOCAL_MODEL", "mlx-community/Qwen3.8-27B-4bit"
+        ),
+    )
+    parser.add_argument(
+        "--cloud-endpoint", default=os.environ.get("LATTICE_EVAL_CLOUD_ENDPOINT", "")
+    )
+    parser.add_argument(
+        "--cloud-model",
+        default=os.environ.get("LATTICE_EVAL_CLOUD_MODEL", "gpt-4o-mini"),
+    )
+    parser.add_argument(
+        "--cloud-api-key", default=os.environ.get("LATTICE_EVAL_CLOUD_API_KEY", "")
+    )
     args = parser.parse_args()
 
     dataset = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
@@ -321,7 +354,13 @@ def main() -> None:
             sample_limit=args.limit,
         ),
     ]
-    print(json.dumps({"dataset_version": dataset["dataset_version"], "results": results}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"dataset_version": dataset["dataset_version"], "results": results},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":

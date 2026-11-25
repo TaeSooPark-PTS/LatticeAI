@@ -48,7 +48,9 @@ def test_vendored_assets_exist_and_are_real():
     ]:
         path = vendor / rel
         assert path.exists(), f"missing vendored asset: {rel}"
-        assert path.stat().st_size >= min_bytes, f"vendored asset suspiciously small: {rel}"
+        assert path.stat().st_size >= min_bytes, (
+            f"vendored asset suspiciously small: {rel}"
+        )
     # woff2 magic number — the font files are real fonts, not error pages.
     for woff in (vendor / "fonts").glob("*.woff2"):
         assert woff.read_bytes()[:4] == b"wOF2", f"not a woff2 file: {woff.name}"
@@ -57,7 +59,9 @@ def test_vendored_assets_exist_and_are_real():
 
 def test_vendored_css_references_only_local_files():
     inter = (STATIC / "vendor" / "fonts" / "inter.css").read_text(encoding="utf-8")
-    tabler = (STATIC / "vendor" / "icons" / "tabler-icons.min.css").read_text(encoding="utf-8")
+    tabler = (STATIC / "vendor" / "icons" / "tabler-icons.min.css").read_text(
+        encoding="utf-8"
+    )
     assert "http" not in inter
     for url in re.findall(r'url\("?([^")]+)"?\)', tabler):
         assert not url.startswith("http"), f"external url in tabler css: {url}"
@@ -73,7 +77,9 @@ def test_service_worker_precaches_vite_app_not_legacy():
     assert "ltcai-v310" not in sw, "stale cache name"
     # Every static SHELL path the sw lists must exist on disk.
     for match in re.findall(r'"(/static/vendor/[^"]+)"', sw):
-        assert (REPO / match.lstrip("/")).exists(), f"sw precaches missing file: {match}"
+        assert (REPO / match.lstrip("/")).exists(), (
+            f"sw precaches missing file: {match}"
+        )
 
 
 def test_react_shell_has_no_cdn_dependencies():
@@ -83,7 +89,11 @@ def test_react_shell_has_no_cdn_dependencies():
 
 
 def test_asset_manifest_hashed_files_exist():
-    manifest = json.loads((STATIC / "app" / "asset-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (STATIC / "app" / "asset-manifest.json").read_text(encoding="utf-8")
+    )
     paths = [manifest["entrypoints"]["app"], *manifest["assets"].values()]
     for rel in paths:
-        assert (REPO / rel.lstrip("/")).exists(), f"manifest references missing file: {rel}"
+        assert (REPO / rel.lstrip("/")).exists(), (
+            f"manifest references missing file: {rel}"
+        )

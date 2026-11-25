@@ -26,20 +26,83 @@ _SUBWORD_SPLIT_RE = re.compile(r"[_.:/+-]+")
 
 _EN_STOPWORDS = frozenset(
     {
-        "a", "an", "and", "are", "as", "at", "be", "been", "by", "for", "from",
-        "has", "have", "in", "is", "it", "its", "of", "on", "or", "that", "the",
-        "their", "this", "to", "was", "were", "will", "with",
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "been",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "their",
+        "this",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
     }
 )
 _KO_STOPWORDS = frozenset(
     {
-        "있는", "없는", "하는", "되는", "그리고", "그러나", "따라서", "경우", "통해", "위해", "대한", "관한",
+        "있는",
+        "없는",
+        "하는",
+        "되는",
+        "그리고",
+        "그러나",
+        "따라서",
+        "경우",
+        "통해",
+        "위해",
+        "대한",
+        "관한",
     }
 )
 _KO_PARTICLES = (
-    "에서", "으로", "에게", "부터", "까지", "처럼", "대한", "관한", "하는", "하고",
-    "하며", "이고", "이나", "이라", "에는", "에도", "은", "는", "이", "가", "을",
-    "를", "의", "에", "로", "와", "과", "도", "만",
+    "에서",
+    "으로",
+    "에게",
+    "부터",
+    "까지",
+    "처럼",
+    "대한",
+    "관한",
+    "하는",
+    "하고",
+    "하며",
+    "이고",
+    "이나",
+    "이라",
+    "에는",
+    "에도",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "에",
+    "로",
+    "와",
+    "과",
+    "도",
+    "만",
 )
 _STRIP_PREFIXES = (
     "task: search result | query: ",
@@ -196,7 +259,9 @@ def _extract_fallback_features(text: str) -> List[Tuple[str, float]]:
     return weighted
 
 
-def _project_weighted_features(features: Sequence[Tuple[str, float]], dim: int) -> List[float]:
+def _project_weighted_features(
+    features: Sequence[Tuple[str, float]], dim: int
+) -> List[float]:
     if dim <= 0:
         raise ValueError("embedding dimension must be positive")
     vector = [0.0] * dim
@@ -249,7 +314,10 @@ class FallbackTextEmbedder(EmbeddingProvider):
         return [self.embed(t) for t in texts]
 
     def health(self) -> Dict[str, Any]:
-        return {"status": "ok", "detail": "deterministic multi-scale subword local fallback"}
+        return {
+            "status": "ok",
+            "detail": "deterministic multi-scale subword local fallback",
+        }
 
 
 class HashEmbeddingProvider(FallbackTextEmbedder):

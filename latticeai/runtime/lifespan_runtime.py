@@ -50,7 +50,9 @@ async def _autoload_local_model(
     else:
         print("   - Draft:  disabled (set LATTICEAI_LOCAL_DRAFT_MODEL to enable)")
     try:
-        await model_router.load_model(local_model, draft_model_id=local_draft_model or None)
+        await model_router.load_model(
+            local_model, draft_model_id=local_draft_model or None
+        )
     except MODEL_RUNTIME_BOUNDARY_ERRORS as e:  # pragma: no cover - startup diagnostics
         print(f"⚠️ Local model autoload failed: {e}")
 
@@ -98,7 +100,9 @@ def build_lifespan_runtime(
             await _autoload_public_model(public_model, model_router)
             return
         if not allow_local_models:
-            print("⏭️ Local model autoload skipped because LATTICEAI_ALLOW_LOCAL_MODELS=false.")
+            print(
+                "⏭️ Local model autoload skipped because LATTICEAI_ALLOW_LOCAL_MODELS=false."
+            )
             return
         await _autoload_local_model(local_model, local_draft_model, model_router)
 
@@ -143,7 +147,13 @@ def build_lifespan_runtime(
             print(f"🧭 Lattice AI mode: {app_mode}")
             spawn(unload_idle_models_loop(), name="unload_idle_models")
             spawn(autoload_default_model(), name="autoload_default_model")
-        except (RuntimeError, OSError, ValueError, TypeError, AttributeError) as e:  # pragma: no cover - startup diagnostics
+        except (
+            RuntimeError,
+            OSError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as e:  # pragma: no cover - startup diagnostics
             print(f"⚠️ Startup sequence failed: {e}")
         try:
             yield

@@ -38,7 +38,16 @@ from latticeai.services.model_capability_registry import (
 
 ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
     "local_mlx": {
-        "command": [sys.executable, "-m", "pip", "install", "--upgrade", "mlx-vlm>=0.6.3", "mlx-lm", "huggingface_hub[cli]"],
+        "command": [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "mlx-vlm>=0.6.3",
+            "mlx-lm",
+            "huggingface_hub[cli]",
+        ],
         "label": "Install MLX runtime",
     },
     "openai": {
@@ -67,7 +76,14 @@ ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
         "requires_binary": "brew",
     },
     "vllm": {
-        "command": [sys.executable, "-m", "pip", "install", "vllm", "huggingface_hub[cli]"],
+        "command": [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "vllm",
+            "huggingface_hub[cli]",
+        ],
         "label": "Install vLLM runtime",
     },
     "lmstudio": {
@@ -99,7 +115,9 @@ ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
 # user-facing ENGINE_MODEL_CATALOG below is then narrowed to the aggressive 5.2.0
 # policy (latest family generations only, no text-only/legacy weights) and the
 # engine-specific ids/sizes are normalised. See `_finalize_engine_catalog`.
-_RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = _build_engine_model_catalog()
+_RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = (
+    _build_engine_model_catalog()
+)
 # Filled in at module end once the blocklist, alias map and family-version filter
 # are all defined; declared here so the public name exists for static readers.
 ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = {}
@@ -136,66 +154,97 @@ def _gguf_routes(
 
 _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
     "mlx-community/LFM2.5-2.6B-4bit": _gguf_routes(
-        "mlx-community/LFM2.5-2.6B-4bit", "LiquidAI/LFM2.5-2.6B-GGUF", "LiquidAI/LFM2.5-2.6B",
+        "mlx-community/LFM2.5-2.6B-4bit",
+        "LiquidAI/LFM2.5-2.6B-GGUF",
+        "LiquidAI/LFM2.5-2.6B",
     ),
     "mlx-community/gemma-4-e2b-it-4bit": _gguf_routes(
-        "mlx-community/gemma-4-e2b-it-4bit", "ggml-org/gemma-4-E2B-it-GGUF", "google/gemma-4-E2B-it",
+        "mlx-community/gemma-4-e2b-it-4bit",
+        "ggml-org/gemma-4-E2B-it-GGUF",
+        "google/gemma-4-E2B-it",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-e4b-it-4bit": _gguf_routes(
-        "mlx-community/gemma-4-e4b-it-4bit", "ggml-org/gemma-4-E4B-it-GGUF", "google/gemma-4-E4B-it",
+        "mlx-community/gemma-4-e4b-it-4bit",
+        "ggml-org/gemma-4-E4B-it-GGUF",
+        "google/gemma-4-E4B-it",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-12B-it-4bit": _gguf_routes(
-        "mlx-community/gemma-4-12B-it-4bit", "ggml-org/gemma-4-12B-it-GGUF", "google/gemma-4-12B-it",
+        "mlx-community/gemma-4-12B-it-4bit",
+        "ggml-org/gemma-4-12B-it-GGUF",
+        "google/gemma-4-12B-it",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-26B-A4B-it-qat-4bit": _gguf_routes(
-        "mlx-community/gemma-4-26B-A4B-it-qat-4bit", "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
+        "mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
         "google/gemma-4-26B-A4B-it-qat-q4_0-unquantized",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-26b-a4b-it-4bit": _gguf_routes(
-        "mlx-community/gemma-4-26b-a4b-it-4bit", "ggml-org/gemma-4-26B-A4B-it-GGUF",
+        "mlx-community/gemma-4-26b-a4b-it-4bit",
+        "ggml-org/gemma-4-26B-A4B-it-GGUF",
         "google/gemma-4-26B-A4B-it",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit": _gguf_routes(
-        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit", "unsloth/gemma-4-26B-A4B-it-GGUF",
+        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        "unsloth/gemma-4-26B-A4B-it-GGUF",
         "google/gemma-4-26B-A4B-it-qat-q4_0-unquantized",
         ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-31b-it-4bit": _gguf_routes(
-        "mlx-community/gemma-4-31b-it-4bit", "ggml-org/gemma-4-31B-it-GGUF", "google/gemma-4-31B-it",
+        "mlx-community/gemma-4-31b-it-4bit",
+        "ggml-org/gemma-4-31B-it-GGUF",
+        "google/gemma-4-31B-it",
         ollama_tag="Q4_0",
     ),
     "mlx-community/Qwen3.8-27B-4bit": _gguf_routes(
-        "mlx-community/Qwen3.8-27B-4bit", "ggml-org/Qwen3.8-27B-GGUF", "Qwen/Qwen3.8-27B",
+        "mlx-community/Qwen3.8-27B-4bit",
+        "ggml-org/Qwen3.8-27B-GGUF",
+        "Qwen/Qwen3.8-27B",
     ),
     "mlx-community/Qwen3.6-27B-4bit": _gguf_routes(
-        "mlx-community/Qwen3.6-27B-4bit", "ggml-org/Qwen3.6-27B-GGUF", "Qwen/Qwen3.6-27B",
+        "mlx-community/Qwen3.6-27B-4bit",
+        "ggml-org/Qwen3.6-27B-GGUF",
+        "Qwen/Qwen3.6-27B",
     ),
     "mlx-community/gpt-oss-20b-MXFP4-Q8": _gguf_routes(
-        "mlx-community/gpt-oss-20b-MXFP4-Q8", "ggml-org/gpt-oss-20b-GGUF", "openai/gpt-oss-20b",
+        "mlx-community/gpt-oss-20b-MXFP4-Q8",
+        "ggml-org/gpt-oss-20b-GGUF",
+        "openai/gpt-oss-20b",
         ollama_tag="MXFP4",
     ),
     "mlx-community/Qwen3.5-9B-MLX-4bit": _gguf_routes(
-        "mlx-community/Qwen3.5-9B-MLX-4bit", "unsloth/Qwen3.5-9B-GGUF", "Qwen/Qwen3.5-9B",
+        "mlx-community/Qwen3.5-9B-MLX-4bit",
+        "unsloth/Qwen3.5-9B-GGUF",
+        "Qwen/Qwen3.5-9B",
     ),
     "mlx-community/Qwen3.6-35B-A3B-4bit": _gguf_routes(
-        "mlx-community/Qwen3.6-35B-A3B-4bit", "ggml-org/Qwen3.6-35B-A3B-GGUF", "Qwen/Qwen3.6-35B-A3B",
+        "mlx-community/Qwen3.6-35B-A3B-4bit",
+        "ggml-org/Qwen3.6-35B-A3B-GGUF",
+        "Qwen/Qwen3.6-35B-A3B",
     ),
     "google/embeddinggemma-2": _gguf_routes(
-        "google/embeddinggemma-2", "ggml-org/embeddinggemma-2-GGUF", "google/embeddinggemma-2",
+        "google/embeddinggemma-2",
+        "ggml-org/embeddinggemma-2-GGUF",
+        "google/embeddinggemma-2",
     ),
     "mlx-community/embeddinggemma-2-4bit": _gguf_routes(
-        "mlx-community/embeddinggemma-2-4bit", "mlx-community/embeddinggemma-2-4bit-GGUF", "mlx-community/embeddinggemma-2-4bit",
+        "mlx-community/embeddinggemma-2-4bit",
+        "mlx-community/embeddinggemma-2-4bit-GGUF",
+        "mlx-community/embeddinggemma-2-4bit",
     ),
     "google/embeddinggemma-300m": _gguf_routes(
-        "google/embeddinggemma-300m", "ggml-org/embeddinggemma-300m-GGUF", "google/embeddinggemma-300m",
+        "google/embeddinggemma-300m",
+        "ggml-org/embeddinggemma-300m-GGUF",
+        "google/embeddinggemma-300m",
     ),
     "mlx-community/embeddinggemma-300m-4bit": _gguf_routes(
-        "mlx-community/embeddinggemma-300m-4bit", "mlx-community/embeddinggemma-300m-4bit-GGUF", "mlx-community/embeddinggemma-300m-4bit",
+        "mlx-community/embeddinggemma-300m-4bit",
+        "mlx-community/embeddinggemma-300m-4bit-GGUF",
+        "mlx-community/embeddinggemma-300m-4bit",
     ),
 }
 
@@ -245,9 +294,15 @@ def _version_tuple(raw: str) -> tuple[int, ...]:
     return tuple(int(part) for part in raw.split(".") if part.isdigit())
 
 
-def _model_family_version(model: Dict[str, Any]) -> Optional[tuple[str, tuple[int, ...]]]:
+def _model_family_version(
+    model: Dict[str, Any],
+) -> Optional[tuple[str, tuple[int, ...]]]:
     text = " ".join(str(model.get(key) or "") for key in ("family", "name", "id"))
-    if "embeddinggemma" in text.lower() or model.get("category") == "embedding" or model.get("task") == "embedding":
+    if (
+        "embeddinggemma" in text.lower()
+        or model.get("category") == "embedding"
+        or model.get("task") == "embedding"
+    ):
         return None
     for family, pattern in _VERSIONED_MODEL_PATTERNS:
         match = pattern.search(text)
@@ -278,8 +333,10 @@ def filter_lower_family_versions(models: List[Dict[str, Any]]) -> List[Dict[str,
         if version > max_versions.get(family, (0,)):
             max_versions[family] = version
     return [
-        model for model, version_info in detected
-        if not version_info or version_info[1] >= max_versions.get(version_info[0], version_info[1])
+        model
+        for model, version_info in detected
+        if not version_info
+        or version_info[1] >= max_versions.get(version_info[0], version_info[1])
     ]
 
 
@@ -294,13 +351,25 @@ def filter_lower_family_versions(models: List[Dict[str, Any]]) -> List[Dict[str,
 # 11.2.0 removed ``gpt-oss`` from this list — GPT-OSS 20B is now a recommended
 # entry, not a retired one — and added the generations retired this release.
 _BLOCKED_CATALOG_FRAGMENTS = (
-    "gemma-3", "gemma3", "gemma-2", "gemma2",
-    "qwen2.5", "qwen-2.5", "qwen2-5",
-    "qwen3-vl", "qwen3vl",
-    "llama-3", "llama3.2", "llama-3.2",
-    "llama-4", "llama4",
-    "pixtral", "mistral",
-    "smollm", "phi-", "moondream",
+    "gemma-3",
+    "gemma3",
+    "gemma-2",
+    "gemma2",
+    "qwen2.5",
+    "qwen-2.5",
+    "qwen2-5",
+    "qwen3-vl",
+    "qwen3vl",
+    "llama-3",
+    "llama3.2",
+    "llama-3.2",
+    "llama-4",
+    "llama4",
+    "pixtral",
+    "mistral",
+    "smollm",
+    "phi-",
+    "moondream",
 )
 
 
@@ -324,7 +393,9 @@ def _normalize_engine_entry(engine: str, model: Dict[str, Any]) -> Dict[str, Any
     entry = dict(model)
     hf_repo = str(entry.get("hf_repo_id") or entry.get("id") or "")
     short = hf_repo.split("/")[-1].lower()
-    aliases = MODEL_ENGINE_ALIASES.get(short) or MODEL_ENGINE_ALIASES.get(hf_repo.lower())
+    aliases = MODEL_ENGINE_ALIASES.get(short) or MODEL_ENGINE_ALIASES.get(
+        hf_repo.lower()
+    )
     if engine == "omlx":
         mapped = aliases.get("omlx") if aliases else hf_repo.replace("/", "--")
         entry["id"] = f"omlx:{mapped}"
@@ -354,4 +425,3 @@ def _finalize_engine_catalog(
 
 
 ENGINE_MODEL_CATALOG = _finalize_engine_catalog(_RAW_ENGINE_MODEL_CATALOG)
-

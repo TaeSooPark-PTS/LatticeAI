@@ -71,7 +71,9 @@ _CLOUD_METADATA_HOSTS = {
 class DistilledPage(dict):
     """Distilled HTML page supporting both attribute and dict access."""
 
-    def __init__(self, title: str = "", text: str = "", links: Optional[List[str]] = None) -> None:
+    def __init__(
+        self, title: str = "", text: str = "", links: Optional[List[str]] = None
+    ) -> None:
         super().__init__(title=title, text=text, links=list(links or []))
 
     @property
@@ -102,7 +104,11 @@ def _looks_like_obscured_ip_literal(host: str) -> bool:
         bool(p)
         and (
             p.isdigit()
-            or (p.startswith("0x") and len(p) > 2 and all(c in "0123456789abcdef" for c in p[2:]))
+            or (
+                p.startswith("0x")
+                and len(p) > 2
+                and all(c in "0123456789abcdef" for c in p[2:])
+            )
         )
         for p in parts
     ):
@@ -110,7 +116,9 @@ def _looks_like_obscured_ip_literal(host: str) -> bool:
     return False
 
 
-def _classify_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address, allow_loopback: bool) -> bool:
+def _classify_ip(
+    ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address, allow_loopback: bool
+) -> bool:
     if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj.ipv4_mapped is not None:
         ip_obj = ip_obj.ipv4_mapped
 
@@ -125,7 +133,9 @@ def _classify_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address, allow_lo
             f"Blocked loopback address: {ip_str} (LATTICEAI_WEB_ALLOW_LOOPBACK is not enabled)."
         )
 
-    if ip_obj.is_unspecified or (isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj.packed[0] == 0):
+    if ip_obj.is_unspecified or (
+        isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj.packed[0] == 0
+    ):
         raise ToolError(f"Blocked unspecified IP address: {ip_str}")
 
     if ip_obj.is_link_local:
@@ -137,7 +147,9 @@ def _classify_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address, allow_lo
     if ip_obj.is_multicast or ip_obj.is_reserved:
         raise ToolError(f"Blocked reserved/multicast IP address: {ip_str}")
 
-    if isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj == ipaddress.IPv4Address("255.255.255.255"):
+    if isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj == ipaddress.IPv4Address(
+        "255.255.255.255"
+    ):
         raise ToolError(f"Blocked broadcast IP address: {ip_str}")
 
     return False
@@ -159,7 +171,11 @@ def validate_web_url(raw: str) -> str:
         )
     if not parsed.netloc:
         raise ToolError("URL is missing a host.")
-    if parsed.username is not None or parsed.password is not None or "@" in parsed.netloc:
+    if (
+        parsed.username is not None
+        or parsed.password is not None
+        or "@" in parsed.netloc
+    ):
         raise ToolError("URLs with userinfo (@) are not allowed.")
 
     try:
@@ -180,7 +196,9 @@ def validate_web_url(raw: str) -> str:
         raise ToolError(f"Blocked non-standard IP literal: {host}")
 
     allow_loopback = os.environ.get("LATTICEAI_WEB_ALLOW_LOOPBACK", "").strip() == "1"
-    offline_mode = os.environ.get("LATTICEAI_NETWORK_MODE", "").strip().lower() == "offline"
+    offline_mode = (
+        os.environ.get("LATTICEAI_NETWORK_MODE", "").strip().lower() == "offline"
+    )
 
     is_loopback = False
     if host == "localhost" or host.endswith(".localhost"):
@@ -199,7 +217,9 @@ def validate_web_url(raw: str) -> str:
 
     if offline_mode:
         if not allow_loopback:
-            raise ToolError("Web access is disabled because LATTICEAI_NETWORK_MODE is offline.")
+            raise ToolError(
+                "Web access is disabled because LATTICEAI_NETWORK_MODE is offline."
+            )
         if not is_loopback:
             raise ToolError(
                 f"External host '{host}' is blocked because LATTICEAI_NETWORK_MODE is offline."
@@ -223,7 +243,9 @@ def _resolve_href(href: str, base_url: str) -> Optional[str]:
     parsed = urllib.parse.urlsplit(joined)
     if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc:
         return None
-    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/", parsed.query, ""))
+    return urllib.parse.urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path or "/", parsed.query, "")
+    )
 
 
 def _strip_all_tags(fragment: str) -> str:
@@ -270,7 +292,9 @@ def _extract_html_links(cleaned: str, base_url: str) -> List[str]:
         )
         if not href_match:
             continue
-        raw_href = href_match.group(1) or href_match.group(2) or href_match.group(3) or ""
+        raw_href = (
+            href_match.group(1) or href_match.group(2) or href_match.group(3) or ""
+        )
         resolved = _resolve_href(raw_href, base_url)
         if not resolved:
             continue
@@ -285,7 +309,9 @@ def _apply_distilled_tag(
     tag_content: str, out_parts: List[str], in_tr: bool, cell_in_row: int
 ) -> Tuple[bool, int]:
     is_closing = tag_content.startswith("/")
-    tag_body = tag_content[1:].strip() if is_closing else tag_content.rstrip("/").strip()
+    tag_body = (
+        tag_content[1:].strip() if is_closing else tag_content.rstrip("/").strip()
+    )
     tag_name = re.split(r"[\s/]+", tag_body, maxsplit=1)[0].lower() if tag_body else ""
 
     if tag_name in _HEADING_PREFIXES:
@@ -426,10 +452,14 @@ def _get_with_validated_redirects(initial_url: str) -> Dict[str, Any]:
         except urllib.error.HTTPError as err:
             if err.code in (301, 302, 303, 307, 308):
                 if hop == MAX_REDIRECTS:
-                    raise ToolError(f"Too many redirects (exceeded {MAX_REDIRECTS}).") from err
+                    raise ToolError(
+                        f"Too many redirects (exceeded {MAX_REDIRECTS})."
+                    ) from err
                 location = err.headers.get("Location") if err.headers else None
                 if not location:
-                    raise ToolError("Redirect response is missing Location header.") from err
+                    raise ToolError(
+                        "Redirect response is missing Location header."
+                    ) from err
                 resolved = _resolve_href(location, current_url)
                 if not resolved:
                     raise ToolError(f"Invalid redirect Location: {location}") from err
@@ -437,7 +467,9 @@ def _get_with_validated_redirects(initial_url: str) -> Dict[str, Any]:
                 continue
             raw_bytes = err.read(MAX_WEB_BODY_BYTES) if hasattr(err, "read") else b""
             content_type = (
-                err.headers.get("Content-Type", "text/plain") if err.headers else "text/plain"
+                err.headers.get("Content-Type", "text/plain")
+                if err.headers
+                else "text/plain"
             )
             return {
                 "final_url": current_url,
@@ -523,7 +555,9 @@ def _unwrap_ddg_url(href: str) -> str:
     return decoded
 
 
-def parse_duckduckgo_html(html_text: str, max_results: int = DEFAULT_MAX_RESULTS) -> List[Tuple[str, str, str]]:
+def parse_duckduckgo_html(
+    html_text: str, max_results: int = DEFAULT_MAX_RESULTS
+) -> List[Tuple[str, str, str]]:
     """Extract `(title, url, snippet)` tuples from DuckDuckGo HTML search page."""
     cleaned = str(html_text or "")
     for pat in _STRIP_BLOCK_PATTERNS:
@@ -551,7 +585,9 @@ def parse_duckduckgo_html(html_text: str, max_results: int = DEFAULT_MAX_RESULTS
         )
         if not href_match:
             continue
-        raw_href = href_match.group(1) or href_match.group(2) or href_match.group(3) or ""
+        raw_href = (
+            href_match.group(1) or href_match.group(2) or href_match.group(3) or ""
+        )
         target_url = _unwrap_ddg_url(raw_href)
         if not target_url.startswith(("http://", "https://")):
             continue
@@ -563,7 +599,9 @@ def parse_duckduckgo_html(html_text: str, max_results: int = DEFAULT_MAX_RESULTS
     return items
 
 
-def _parse_custom_search_json(payload: Any, max_results: int) -> List[Tuple[str, str, str]]:
+def _parse_custom_search_json(
+    payload: Any, max_results: int
+) -> List[Tuple[str, str, str]]:
     if isinstance(payload, list):
         entries = payload
     elif isinstance(payload, dict):
@@ -591,7 +629,9 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> Dict[str, 
     clean_query = str(query or "").strip()
     if not clean_query:
         raise ToolError("Search query is required.")
-    clamped_max = _clamp_int(max_results, DEFAULT_MAX_RESULTS, MIN_MAX_RESULTS, MAX_MAX_RESULTS)
+    clamped_max = _clamp_int(
+        max_results, DEFAULT_MAX_RESULTS, MIN_MAX_RESULTS, MAX_MAX_RESULTS
+    )
 
     custom_endpoint = os.environ.get("LATTICEAI_WEB_SEARCH_ENDPOINT", "").strip()
     if custom_endpoint:
@@ -614,7 +654,9 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> Dict[str, 
         raw_items = parse_duckduckgo_html(fetched["body_text"], clamped_max)
 
     results: List[Dict[str, Any]] = []
-    for idx, (raw_title, item_url, raw_snippet) in enumerate(raw_items[:clamped_max], start=1):
+    for idx, (raw_title, item_url, raw_snippet) in enumerate(
+        raw_items[:clamped_max], start=1
+    ):
         clean_title, _ = sanitize_untrusted_web_text(raw_title)
         clean_snippet, _ = sanitize_untrusted_web_text(raw_snippet)
         results.append(

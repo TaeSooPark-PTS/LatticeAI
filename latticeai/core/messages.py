@@ -53,20 +53,20 @@ LANGUAGE_HEADER = "x-lattice-language"
 MESSAGES: Dict[str, Dict[str, str]] = {
     # ── agent_seam ────────────────────────────────────────────────────────
     "agent_seam.disabled": {
-        "ko": '워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다.',
-        "en": 'The worker seam is off. It opens only in a worker the host started itself.',
+        "ko": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다.",
+        "en": "The worker seam is off. It opens only in a worker the host started itself.",
     },
     "agent_seam.max_tokens_out_of_range": {
-        "ko": '한 번에 만들 길이는 {min}에서 {max} 사이여야 합니다.',
-        "en": 'Ask for between {min} and {max} tokens in one completion.',
+        "ko": "한 번에 만들 길이는 {min}에서 {max} 사이여야 합니다.",
+        "en": "Ask for between {min} and {max} tokens in one completion.",
     },
     "agent_seam.message_required": {
-        "ko": '모델에 보낼 내용을 적어주세요.',
-        "en": 'Write the message to send to the model.',
+        "ko": "모델에 보낼 내용을 적어주세요.",
+        "en": "Write the message to send to the model.",
     },
     "agent_seam.temperature_out_of_range": {
-        "ko": '온도는 {min}에서 {max} 사이여야 합니다.',
-        "en": 'Temperature has to be between {min} and {max}.',
+        "ko": "온도는 {min}에서 {max} 사이여야 합니다.",
+        "en": "Temperature has to be between {min} and {max}.",
     },
     "agent_seam.tool_blocked": {
         "ko": "'{tool}' 도구는 어떤 모드에서도 차단됩니다 ({reason}).",
@@ -77,13 +77,13 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "en": "'{tool}' would change existing content but cannot be staged as a reviewable proposal, so it is blocked ({reason}).",
     },
     "agent_seam.tool_required": {
-        "ko": '실행할 도구 이름이 필요합니다.',
-        "en": 'A tool name to run is required.',
+        "ko": "실행할 도구 이름이 필요합니다.",
+        "en": "A tool name to run is required.",
     },
     # ── auth ────────────────────────────────────────────────────────
     "auth.user_not_found": {
-        "ko": '사용자를 찾을 수 없습니다.',
-        "en": 'No such user.',
+        "ko": "사용자를 찾을 수 없습니다.",
+        "en": "No such user.",
     },
     # ── chat ────────────────────────────────────────────────────────
     "chat.model_not_loaded": {
@@ -92,71 +92,71 @@ MESSAGES: Dict[str, Dict[str, str]] = {
     },
     # ── common ────────────────────────────────────────────────────────
     "common.file_not_found": {
-        "ko": '파일을 찾을 수 없습니다.',
-        "en": 'File not found.',
+        "ko": "파일을 찾을 수 없습니다.",
+        "en": "File not found.",
     },
     # ── models ────────────────────────────────────────────────────────
     "models.download_consent_required": {
-        "ko": '모델 내려받기는 사용자가 직접 동의해야 시작됩니다.',
-        "en": 'Model downloads require explicit consent (allow_download=true).',
+        "ko": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다.",
+        "en": "Model downloads require explicit consent (allow_download=true).",
     },
     "models.download_not_automated": {
-        "ko": '{provider} 엔진의 모델 내려받기는 아직 자동화되지 않았습니다.',
-        "en": 'Model downloads for the {provider} engine are not automated yet.',
+        "ko": "{provider} 엔진의 모델 내려받기는 아직 자동화되지 않았습니다.",
+        "en": "Model downloads for the {provider} engine are not automated yet.",
     },
     "models.download_timeout": {
-        "ko": '모델 내려받기 시간이 초과되었습니다.',
-        "en": 'The model download timed out.',
+        "ko": "모델 내려받기 시간이 초과되었습니다.",
+        "en": "The model download timed out.",
     },
     "models.identifier_empty": {
-        "ko": '모델 식별자가 비어 있습니다.',
-        "en": 'The model identifier is empty.',
+        "ko": "모델 식별자가 비어 있습니다.",
+        "en": "The model identifier is empty.",
     },
     "models.name_empty": {
-        "ko": '모델 이름이 비어 있습니다.',
-        "en": 'The model name is empty.',
+        "ko": "모델 이름이 비어 있습니다.",
+        "en": "The model name is empty.",
     },
     "models.ollama_missing": {
-        "ko": 'Ollama가 설치되어 있지 않습니다.',
-        "en": 'Ollama is not installed.',
+        "ko": "Ollama가 설치되어 있지 않습니다.",
+        "en": "Ollama is not installed.",
     },
     "models.other_user_credentials": {
-        "ko": '다른 사용자의 모델 자격 증명을 사용할 수 없습니다.',
+        "ko": "다른 사용자의 모델 자격 증명을 사용할 수 없습니다.",
         "en": "You cannot use another user's model credentials.",
     },
     "models.public_mode_blocks_local": {
-        "ko": '공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. openai:, openrouter:, groq:, together: 모델을 쓰거나 LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요.',
-        "en": 'Public mode does not load local MLX models. Use an openai:, openrouter:, groq: or together: model, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.',
+        "ko": "공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. openai:, openrouter:, groq:, together: 모델을 쓰거나 LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요.",
+        "en": "Public mode does not load local MLX models. Use an openai:, openrouter:, groq: or together: model, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
     },
     "models.pull_failed": {
-        "ko": '모델 내려받기에 실패했습니다.',
-        "en": 'The model download failed.',
+        "ko": "모델 내려받기에 실패했습니다.",
+        "en": "The model download failed.",
     },
     # ── tools ────────────────────────────────────────────────────────
     "tools.path_outside_workspace": {
-        "ko": '경로가 작업 공간 밖입니다.',
-        "en": 'That path is outside the workspace.',
+        "ko": "경로가 작업 공간 밖입니다.",
+        "en": "That path is outside the workspace.",
     },
     "tools.pdf_render_failed": {
-        "ko": 'PDF를 그리지 못했습니다: {reason}',
-        "en": 'The PDF could not be rendered: {reason}',
+        "ko": "PDF를 그리지 못했습니다: {reason}",
+        "en": "The PDF could not be rendered: {reason}",
     },
     # ── worker_compute ────────────────────────────────────────────────────────
     "worker_compute.audio_too_large": {
-        "ko": '오디오가 {size} bytes 입니다. 한도는 {limit} bytes 입니다.',
-        "en": 'The audio is {size} bytes; the limit is {limit} bytes.',
+        "ko": "오디오가 {size} bytes 입니다. 한도는 {limit} bytes 입니다.",
+        "en": "The audio is {size} bytes; the limit is {limit} bytes.",
     },
     "worker_compute.audio_unsupported": {
         "ko": "'{suffix}' 은(는) 지원하는 오디오 형식이 아닙니다. {allowed} 만 가능합니다.",
         "en": "'{suffix}' is not a supported audio container. Supported: {allowed}.",
     },
     "worker_compute.content_invalid": {
-        "ko": '본문을 base64로 읽지 못했습니다: {reason}',
-        "en": 'The payload is not valid base64: {reason}',
+        "ko": "본문을 base64로 읽지 못했습니다: {reason}",
+        "en": "The payload is not valid base64: {reason}",
     },
     "worker_compute.embedder_unavailable": {
-        "ko": '임베딩 공급자가 연결되어 있지 않습니다.',
-        "en": 'No embedding provider is connected to this worker.',
+        "ko": "임베딩 공급자가 연결되어 있지 않습니다.",
+        "en": "No embedding provider is connected to this worker.",
     },
     "worker_compute.extract_kind_invalid": {
         "ko": "'{kind}' 은(는) 추출 종류가 아닙니다. {allowed} 중 하나여야 합니다.",
@@ -167,8 +167,8 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "en": "'{kind}' is not an embedding kind. Use one of {allowed}.",
     },
     "worker_compute.parse_failed": {
-        "ko": '문서를 읽지 못했습니다: {reason}',
-        "en": 'The document could not be parsed: {reason}',
+        "ko": "문서를 읽지 못했습니다: {reason}",
+        "en": "The document could not be parsed: {reason}",
     },
     "worker_compute.render_failed": {
         "ko": "'{kind}' 문서 생성이 실패했습니다: {reason}",

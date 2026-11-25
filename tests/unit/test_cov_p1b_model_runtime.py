@@ -99,5 +99,26 @@ def test_model_runtime_service_binds_state():
     assert isinstance(state, ModelRuntimeState)
     service = ModelRuntimeService(state=state)
     assert service.state is state
-    built = build_model_runtime(router=object(), APP_MODE="full", DEFAULT_HOST="127.0.0.1", DEFAULT_PORT=1, DATA_DIR=Path("."), BASE_DIR=Path("."), ENABLE_GRAPH=False, AUTOLOAD_MODELS=False, MODEL_IDLE_UNLOAD_SECONDS=0, ALLOW_MODEL_DOWNLOADS=False, MODEL_DOWNLOAD_TIMEOUT=1, ALLOW_LOCAL_MODELS=True, REQUIRE_AUTH=False, ALLOW_PLAINTEXT_API_KEYS=False, CORS_ALLOW_NETWORK=False, PUBLIC_MODEL="", LOCAL_MODEL="", IS_PUBLIC_MODE=False, keyring=None, get_current_user=lambda r: None)
+    built = build_model_runtime(
+        router=object(),
+        APP_MODE="full",
+        DEFAULT_HOST="127.0.0.1",
+        DEFAULT_PORT=1,
+        DATA_DIR=Path("."),
+        BASE_DIR=Path("."),
+        ENABLE_GRAPH=False,
+        AUTOLOAD_MODELS=False,
+        MODEL_IDLE_UNLOAD_SECONDS=0,
+        ALLOW_MODEL_DOWNLOADS=False,
+        MODEL_DOWNLOAD_TIMEOUT=1,
+        ALLOW_LOCAL_MODELS=True,
+        REQUIRE_AUTH=False,
+        ALLOW_PLAINTEXT_API_KEYS=False,
+        CORS_ALLOW_NETWORK=False,
+        PUBLIC_MODEL="",
+        LOCAL_MODEL="",
+        IS_PUBLIC_MODE=False,
+        keyring=None,
+        get_current_user=lambda r: None,
+    )
     assert built is not None

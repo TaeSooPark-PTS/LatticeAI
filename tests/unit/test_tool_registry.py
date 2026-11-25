@@ -45,7 +45,9 @@ def test_dispatchable_tools_are_governed_and_historical_writes_are_not_dispatche
 
 
 def test_tool_registry_owns_permission_views():
-    permission = tools.DEFAULT_TOOL_REGISTRY.permission("run_command", {"command": "ls"})
+    permission = tools.DEFAULT_TOOL_REGISTRY.permission(
+        "run_command", {"command": "ls"}
+    )
     assert permission["risk"] == "high"
     assert permission["requires_approval"] is True
 
@@ -131,7 +133,9 @@ def test_desktop_capability_is_admin_only():
     assert denied.value.status_code == 403
 
     service.check_role("computer_screenshot", "admin@example.com")
-    assert service.policy_for("computer_screenshot", {})["capability"] == "desktop:control"
+    assert (
+        service.policy_for("computer_screenshot", {})["capability"] == "desktop:control"
+    )
 
 
 def test_tool_registry_manifest_reports_contract_diagnostics():
@@ -139,7 +143,10 @@ def test_tool_registry_manifest_reports_contract_diagnostics():
     diagnostics = manifest["diagnostics"]
     assert manifest["schema_version"] == "tool-registry-contract/v1"
     assert manifest["boundary"]["owner"] == "latticeai.core.tool_registry.ToolRegistry"
-    assert manifest["boundary"]["permission_owner"] == "latticeai.services.tool_dispatch.ToolDispatchService"
+    assert (
+        manifest["boundary"]["permission_owner"]
+        == "latticeai.services.tool_dispatch.ToolDispatchService"
+    )
     assert manifest["status"] in {"ok", "degraded"}
     assert diagnostics["registered_tools"] == len(tools.registered_tools())
     read_file = next(item for item in manifest["tools"] if item["name"] == "read_file")

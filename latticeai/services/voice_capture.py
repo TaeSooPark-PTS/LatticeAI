@@ -46,14 +46,27 @@ if TYPE_CHECKING:  # import-time isolation: the port is a callable, not a class
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ["VoiceCaptureService", "TranscriptionUnavailable", "SUPPORTED_AUDIO_EXTENSIONS"]
+__all__ = [
+    "VoiceCaptureService",
+    "TranscriptionUnavailable",
+    "SUPPORTED_AUDIO_EXTENSIONS",
+]
 
 # Container formats a local transcriber can plausibly open. Anything else is
 # refused with a clear reason rather than handed to a transcriber that will
 # fail obscurely.
-SUPPORTED_AUDIO_EXTENSIONS = frozenset({
-    ".m4a", ".mp3", ".wav", ".aac", ".flac", ".ogg", ".webm", ".mp4",
-})
+SUPPORTED_AUDIO_EXTENSIONS = frozenset(
+    {
+        ".m4a",
+        ".mp3",
+        ".wav",
+        ".aac",
+        ".flac",
+        ".ogg",
+        ".webm",
+        ".mp4",
+    }
+)
 
 # A memo is short by nature; a huge file is a recording session, not a memo,
 # and would block the request for minutes.
@@ -67,9 +80,7 @@ class TranscriptionUnavailable(RuntimeError):
 class VoiceCaptureService:
     """The local transcriber port, and the honest refusal when there is none."""
 
-    def __init__(
-        self, *, transcriber: Optional[Callable[[str], str]] = None
-    ) -> None:
+    def __init__(self, *, transcriber: Optional[Callable[[str], str]] = None) -> None:
         self._transcriber = transcriber
 
     def multimodal_ports(self) -> "MultimodalPorts":
@@ -98,4 +109,8 @@ class VoiceCaptureService:
         return cleaned
 
 
-__all__ = ["VoiceCaptureService", "TranscriptionUnavailable", "SUPPORTED_AUDIO_EXTENSIONS"]
+__all__ = [
+    "VoiceCaptureService",
+    "TranscriptionUnavailable",
+    "SUPPORTED_AUDIO_EXTENSIONS",
+]

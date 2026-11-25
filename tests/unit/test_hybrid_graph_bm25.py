@@ -33,9 +33,13 @@ def test_fallback_text_embedder_defaults_to_768d_and_is_unit_normalized() -> Non
     assert embedder.embed("Hybrid BM25F + Vector + Knowledge Graph RRF") == vec
 
 
-def test_fallback_text_embedder_extracts_cjk_bigrams_korean_stems_and_char_ngrams() -> None:
+def test_fallback_text_embedder_extracts_cjk_bigrams_korean_stems_and_char_ngrams() -> (
+    None
+):
     features = dict(
-        _extract_fallback_features("지식그래프에서 하이브리드 검색을 수행하는 retrieving_engine")
+        _extract_fallback_features(
+            "지식그래프에서 하이브리드 검색을 수행하는 retrieving_engine"
+        )
     )
     # Korean particle stripping ("에서", "을") + character bigrams + trigrams
     assert "stem:지식그래프" in features
@@ -53,7 +57,9 @@ def test_fallback_text_embedder_extracts_cjk_bigrams_korean_stems_and_char_ngram
     assert any(k.startswith("bi:") for k in features)
 
 
-def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity() -> None:
+def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity() -> (
+    None
+):
     embedder = FallbackTextEmbedder(dim=768)
 
     # Korean morphological / particle / spacing variations
@@ -63,7 +69,9 @@ def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity()
 
     sim_ko_rel = embedder.similarity(q_ko, rel_ko)
     sim_ko_unrel = embedder.similarity(q_ko, unrel_ko)
-    assert sim_ko_rel > 0.45, f"expected high Korean subword similarity, got {sim_ko_rel}"
+    assert sim_ko_rel > 0.45, (
+        f"expected high Korean subword similarity, got {sim_ko_rel}"
+    )
     assert sim_ko_rel > sim_ko_unrel + 0.30
 
     # English morphological inflections (retrieving vs retrieval, indexing vs index)
@@ -73,11 +81,15 @@ def test_fallback_text_embedder_korean_and_english_semantic_subword_similarity()
 
     sim_en_rel = embedder.similarity(q_en, rel_en)
     sim_en_unrel = embedder.similarity(q_en, unrel_en)
-    assert sim_en_rel > 0.40, f"expected high English subword similarity, got {sim_en_rel}"
+    assert sim_en_rel > 0.40, (
+        f"expected high English subword similarity, got {sim_en_rel}"
+    )
     assert sim_en_rel > sim_en_unrel + 0.25
 
 
-def test_fallback_text_embedder_strips_instruction_prefixes_for_query_passage_alignment() -> None:
+def test_fallback_text_embedder_strips_instruction_prefixes_for_query_passage_alignment() -> (
+    None
+):
     embedder = FallbackTextEmbedder(dim=768)
     raw_query = "Okapi BM25F 한국어 토크나이저"
     prefixed_query = f"{EMBEDDINGGEMMA_PREFIXES['query']}{raw_query}"
@@ -90,7 +102,9 @@ def test_fallback_text_embedder_strips_instruction_prefixes_for_query_passage_al
     assert v_raw == v_q == v_p
 
 
-def test_hash_embedding_provider_and_fallback_subword_embedder_preserve_contracts() -> None:
+def test_hash_embedding_provider_and_fallback_subword_embedder_preserve_contracts() -> (
+    None
+):
     from lattice_brain.embeddings import LocalEmbeddingModel
 
     prov = build_embedding_provider("hash", dim=384)
@@ -98,9 +112,9 @@ def test_hash_embedding_provider_and_fallback_subword_embedder_preserve_contract
     assert isinstance(prov, FallbackTextEmbedder)
     assert prov.dim == 384
     assert prov.model_id == "lattice-local-hash-v1:384"
-    assert prov.embed("knowledge_graph_traversal") == LocalEmbeddingModel(dim=384).embed(
-        "knowledge_graph_traversal"
-    )
+    assert prov.embed("knowledge_graph_traversal") == LocalEmbeddingModel(
+        dim=384
+    ).embed("knowledge_graph_traversal")
 
     fallback = FallbackTextEmbedder(dim=384)
     assert fallback.model_id == "lattice-fallback-subword-v2:384"
@@ -146,7 +160,10 @@ def test_bm25_node_stats_sidecar_schema_and_readonly_contract(tmp_path: Path) ->
 
     ro = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
-        cols = [row[1] for row in ro.execute("PRAGMA table_info(bm25_node_stats)").fetchall()]
+        cols = [
+            row[1]
+            for row in ro.execute("PRAGMA table_info(bm25_node_stats)").fetchall()
+        ]
         assert cols == [
             "node_id",
             "updated_at",

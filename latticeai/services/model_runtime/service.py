@@ -33,6 +33,7 @@ def configure_model_runtime(**deps: Any) -> "ModelRuntimeService":
 
     return ModelRuntimeService(create_model_runtime_state(**deps))
 
+
 @dataclass(slots=True)
 class ModelRuntimeService:
     """Bound model operations for one explicitly configured application.
@@ -57,7 +58,6 @@ class ModelRuntimeService:
             state=self.state,
             cloud_verify_cache=self._cloud_verify_cache,
         )
-
 
     async def prepare_and_load_model(
         self,

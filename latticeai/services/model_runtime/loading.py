@@ -32,18 +32,36 @@ def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
     raw = model_id.strip()
     engine_hint = (engine or "").strip().lower()
     if engine_hint == "auto":
-        engine_hint = default_local_engine_for_host(engine_installed_fn=engine_installed)
+        engine_hint = default_local_engine_for_host(
+            engine_installed_fn=engine_installed
+        )
     provider: Optional[str] = None
     model_name = raw
     if ":" in raw:
         prefix, rest = raw.split(":", 1)
         prefix = prefix.strip().lower()
-        if prefix in {"omlx", "ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
+        if prefix in {
+            "omlx",
+            "ollama",
+            "vllm",
+            "lmstudio",
+            "llamacpp",
+            "local_mlx",
+            "mlx",
+        }:
             provider = "local_mlx" if prefix in {"local_mlx", "mlx"} else prefix
             model_name = rest.strip()
-    provider = provider or ("local_mlx" if engine_hint in {"", "local_mlx", "mlx"} else engine_hint)
-    lookup_name = model_name.replace("--", "/", 1) if "/" not in model_name and "--" in model_name else model_name
-    aliases = MODEL_ENGINE_ALIASES.get(model_name.lower()) or MODEL_ENGINE_ALIASES.get(lookup_name.lower())
+    provider = provider or (
+        "local_mlx" if engine_hint in {"", "local_mlx", "mlx"} else engine_hint
+    )
+    lookup_name = (
+        model_name.replace("--", "/", 1)
+        if "/" not in model_name and "--" in model_name
+        else model_name
+    )
+    aliases = MODEL_ENGINE_ALIASES.get(model_name.lower()) or MODEL_ENGINE_ALIASES.get(
+        lookup_name.lower()
+    )
     if not aliases:
         return raw
     mapped = aliases.get(provider)
@@ -65,11 +83,27 @@ def resolve_cross_platform_model_request(
         return normalize_local_model_request(model_id, engine), engine
     raw = model_id.strip()
     raw_prefix = raw.split(":", 1)[0].lower() if ":" in raw else ""
-    bare_name = raw.split(":", 1)[1].strip() if raw_prefix in {"local_mlx", "mlx", "omlx"} else raw
-    lookup_name = bare_name.replace("--", "/", 1) if "/" not in bare_name and "--" in bare_name else bare_name
-    aliases = MODEL_ENGINE_ALIASES.get(bare_name.lower()) or MODEL_ENGINE_ALIASES.get(lookup_name.lower())
-    if aliases and engine_hint in {"", "local_mlx", "mlx", "omlx"} and not engine_installed("local_mlx"):
-        chosen = default_local_engine_for_host(engine_installed_fn=engine_installed, apple_silicon=False)
+    bare_name = (
+        raw.split(":", 1)[1].strip()
+        if raw_prefix in {"local_mlx", "mlx", "omlx"}
+        else raw
+    )
+    lookup_name = (
+        bare_name.replace("--", "/", 1)
+        if "/" not in bare_name and "--" in bare_name
+        else bare_name
+    )
+    aliases = MODEL_ENGINE_ALIASES.get(bare_name.lower()) or MODEL_ENGINE_ALIASES.get(
+        lookup_name.lower()
+    )
+    if (
+        aliases
+        and engine_hint in {"", "local_mlx", "mlx", "omlx"}
+        and not engine_installed("local_mlx")
+    ):
+        chosen = default_local_engine_for_host(
+            engine_installed_fn=engine_installed, apple_silicon=False
+        )
         mapped = aliases.get(chosen)
         if mapped:
             return f"{chosen}:{mapped}", chosen
@@ -89,7 +123,9 @@ def normalize_local_model_request(model_id: str, engine: Optional[str] = None) -
 def ensure_engine_ready(engine: str, *, state: ModelRuntimeState) -> Dict[str, Any]:
     engine = "local_mlx" if engine == "mlx" else engine
     if engine not in ENGINE_INSTALLERS and engine not in OPENAI_COMPATIBLE_PROVIDERS:
-        raise ModelRuntimeError(status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}")
+        raise ModelRuntimeError(
+            status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}"
+        )
     support = engine_support_status(engine)
     if not support["supported"]:
         raise ModelRuntimeError(status_code=400, detail=str(support["reason"]))
@@ -100,16 +136,27 @@ def ensure_engine_ready(engine: str, *, state: ModelRuntimeState) -> Dict[str, A
         return {"engine": engine, "installed": True, "installed_now": False}
 
     if engine not in ENGINE_INSTALLERS:
-        raise ModelRuntimeError(status_code=400, detail=f"{engine} 엔진 설치 방법이 등록되어 있지 않습니다.")
+        raise ModelRuntimeError(
+            status_code=400, detail=f"{engine} 엔진 설치 방법이 등록되어 있지 않습니다."
+        )
 
     result = install_engine(engine, state=state)
     if result.get("returncode") not in (0, None) or not engine_installed(engine):
-        detail = result.get("stderr") or result.get("stdout") or f"{engine} 설치에 실패했습니다."
+        detail = (
+            result.get("stderr")
+            or result.get("stdout")
+            or f"{engine} 설치에 실패했습니다."
+        )
         raise ModelRuntimeError(status_code=500, detail=str(detail)[-2000:])
 
     if engine == "local_mlx":
         ensure_mlx_runtime()
-    return {"engine": engine, "installed": True, "installed_now": True, "install": result}
+    return {
+        "engine": engine,
+        "installed": True,
+        "installed_now": True,
+        "install": result,
+    }
 
 
 def build_model_resolution(
@@ -149,6 +196,7 @@ async def _smoke_test_loaded_model(
     from latticeai.services.model_engines import (
         _smoke_test_loaded_model as _impl_smoke,
     )
+
     return await _impl_smoke(
         resolution,
         api_key_override=api_key_override,
@@ -169,7 +217,9 @@ async def prepare_and_load_model(
 ) -> Dict[str, Any]:
     from latticeai.services.model_loading import prepare_and_load_model as _impl
 
-    resolved_id, resolved_engine = resolve_cross_platform_model_request(model_id, engine)
+    resolved_id, resolved_engine = resolve_cross_platform_model_request(
+        model_id, engine
+    )
     return await _impl(
         resolved_id,
         request,
@@ -199,7 +249,9 @@ async def prepare_and_load_model_stream(
         prepare_and_load_model_stream as _impl,
     )
 
-    resolved_id, resolved_engine = resolve_cross_platform_model_request(model_id, engine)
+    resolved_id, resolved_engine = resolve_cross_platform_model_request(
+        model_id, engine
+    )
     async for event in _impl(
         resolved_id,
         request,

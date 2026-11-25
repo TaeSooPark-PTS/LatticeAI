@@ -43,8 +43,15 @@ class HookContext:
     """
 
     __slots__ = (
-        "kind", "event", "payload", "metadata",
-        "user_email", "workspace_id", "blocked", "block_reason", "notes",
+        "kind",
+        "event",
+        "payload",
+        "metadata",
+        "user_email",
+        "workspace_id",
+        "blocked",
+        "block_reason",
+        "notes",
     )
 
     def __init__(
@@ -98,8 +105,17 @@ class HookResult:
     """The outcome of running a single hook (one entry in a dispatch)."""
 
     __slots__ = (
-        "hook_id", "name", "kind", "status", "detail", "output",
-        "duration_ms", "blocked", "source", "binding", "started_at",
+        "hook_id",
+        "name",
+        "kind",
+        "status",
+        "detail",
+        "output",
+        "duration_ms",
+        "blocked",
+        "source",
+        "binding",
+        "started_at",
     )
 
     def __init__(
@@ -172,25 +188,38 @@ def dispatch_tool(
         LOGGER.debug("tool argument metadata could not be inspected: %s", exc)
         arg_keys = []
     pre = hooks.fire_hook(
-        "pre_tool", f"tool.{tool_name}",
+        "pre_tool",
+        f"tool.{tool_name}",
         payload={"tool": tool_name, "args_keys": arg_keys, "source": source},
-        user_email=user_email, workspace_id=workspace_id,
+        user_email=user_email,
+        workspace_id=workspace_id,
     )
     if pre.get("blocked"):
-        raise PermissionError(pre.get("block_reason") or f"Tool '{tool_name}' blocked by a pre_tool hook.")
+        raise PermissionError(
+            pre.get("block_reason") or f"Tool '{tool_name}' blocked by a pre_tool hook."
+        )
     try:
         result = run_fn()
     except Exception as exc:
         hooks.fire_hook(
-            "post_tool", f"tool.{tool_name}",
-            payload={"tool": tool_name, "status": "error", "detail": str(exc), "source": source},
-            user_email=user_email, workspace_id=workspace_id,
+            "post_tool",
+            f"tool.{tool_name}",
+            payload={
+                "tool": tool_name,
+                "status": "error",
+                "detail": str(exc),
+                "source": source,
+            },
+            user_email=user_email,
+            workspace_id=workspace_id,
         )
         raise
     hooks.fire_hook(
-        "post_tool", f"tool.{tool_name}",
+        "post_tool",
+        f"tool.{tool_name}",
         payload={"tool": tool_name, "status": "ok", "source": source},
-        user_email=user_email, workspace_id=workspace_id,
+        user_email=user_email,
+        workspace_id=workspace_id,
     )
     return result
 

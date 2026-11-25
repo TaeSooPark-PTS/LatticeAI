@@ -52,7 +52,15 @@ def _symbol_exists(dotted: str) -> bool:
         mod_name, name = dotted.rsplit(".", 1)
         mod = importlib.import_module(mod_name)
         return hasattr(mod, name)
-    except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError, SyntaxError):
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+        SyntaxError,
+    ):
         return False
 
 
@@ -69,7 +77,9 @@ def _package_sources(root: Path, relative_package: str) -> List[str]:
     return [str(path.relative_to(root)) for path in sources]
 
 
-def _forbidden_patterns(root: Path, relative_path: str, patterns: List[str]) -> List[str]:
+def _forbidden_patterns(
+    root: Path, relative_path: str, patterns: List[str]
+) -> List[str]:
     path = root / relative_path
     try:
         source = path.read_text(encoding="utf-8")
@@ -170,12 +180,14 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="agent-runtime",
             title="AgentRuntime boundary",
-            status="complete" if (
+            status="complete"
+            if (
                 _symbol_exists(
                     "latticeai.api.agent_worker_seam.create_agent_worker_seam_router"
                 )
                 and not agent_alias_forbidden
-            ) else "incomplete",
+            )
+            else "incomplete",
             evidence=[
                 "rust/lattice-agent/src/kernel/permission.rs block_reason_for_tool (native owner)",
                 "latticeai.api.agent_worker_seam.create_agent_worker_seam_router",
@@ -185,7 +197,15 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="tool-registry",
             title="ToolRegistry separation",
-            status="complete" if all(_symbol_exists(s) for s in ["latticeai.core.tool_registry.ToolRegistry", "latticeai.services.tool_dispatch.ToolDispatchService"]) else "incomplete",
+            status="complete"
+            if all(
+                _symbol_exists(s)
+                for s in [
+                    "latticeai.core.tool_registry.ToolRegistry",
+                    "latticeai.services.tool_dispatch.ToolDispatchService",
+                ]
+            )
+            else "incomplete",
             evidence=[
                 "latticeai.core.tool_registry.ToolRegistry",
                 "latticeai.services.tool_dispatch.ToolDispatchService",
@@ -195,11 +215,13 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="config-centralization",
             title="Central app Config",
-            status="complete" if (
+            status="complete"
+            if (
                 _symbol_exists("latticeai.core.config.Config")
                 and _symbol_exists("latticeai.runtime.config_runtime.ConfigRuntime")
                 and not model_runtime_forbidden
-            ) else "incomplete",
+            )
+            else "incomplete",
             evidence=[
                 "latticeai.core.config.Config.from_env",
                 "latticeai.runtime.config_runtime.ConfigRuntime",
@@ -209,7 +231,8 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="server-decomposition",
             title="Server decomposition",
-            status="complete" if (
+            status="complete"
+            if (
                 all(
                     _symbol_exists(symbol)
                     for symbol in [
@@ -221,7 +244,8 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
                     ]
                 )
                 and not factory_forbidden
-            ) else "incomplete",
+            )
+            else "incomplete",
             evidence=[
                 "latticeai.worker_app.create_worker_app composition root",
                 "latticeai.api.* domain routers",
@@ -231,7 +255,9 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="kg-hardening",
             title="Knowledge Graph stabilization",
-            status="complete" if _symbol_exists("lattice_brain.embeddings.LocalEmbeddingModel") else "incomplete",
+            status="complete"
+            if _symbol_exists("lattice_brain.embeddings.LocalEmbeddingModel")
+            else "incomplete",
             evidence=[
                 "lattice_brain.embeddings.LocalEmbeddingModel",
                 "lattice_brain.graph._kg_common.extraction",
@@ -263,14 +289,16 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="orchestration-maturity",
             title="AgentRuntime and workflow orchestration maturity",
-            status="complete" if all(
+            status="complete"
+            if all(
                 _symbol_exists(s)
                 for s in [
                     "latticeai.services.tool_dispatch.ToolDispatchService",
                     "latticeai.tools.execute_tool",
                     "latticeai.api.worker_compute.create_worker_compute_router",
                 ]
-            ) else "incomplete",
+            )
+            else "incomplete",
             evidence=[
                 "latticeai.services.tool_dispatch.ToolDispatchService",
                 "latticeai.tools.execute_tool",
@@ -313,7 +341,9 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         "ordered_gate_ids": ordered_gate_ids,
     }
     return {
-        "status": "complete" if all(gate.status == "complete" for gate in gates) else "incomplete",
+        "status": "complete"
+        if all(gate.status == "complete" for gate in gates)
+        else "incomplete",
         "version_target": ARCHITECTURE_VERSION_TARGET,
         "contract": contract,
         "gates": [gate.__dict__ for gate in gates],

@@ -121,14 +121,25 @@ def extract_keyframes(
         return _injected_keyframes(ports.keyframe_extractor, video, dest, wanted)
     binary = _which_ffmpeg()
     if binary is None:
-        return {"status": "unavailable", "frames": [], "detail": VIDEO_UNAVAILABLE_DETAIL}
+        return {
+            "status": "unavailable",
+            "frames": [],
+            "detail": VIDEO_UNAVAILABLE_DETAIL,
+        }
     dest.mkdir(parents=True, exist_ok=True)
     args = [
-        "-nostdin", "-loglevel", "error", "-y",
-        "-i", str(video),
-        "-vf", f"thumbnail={KEYFRAME_WINDOW}",
-        "-frames:v", str(wanted),
-        "-vsync", "vfr",
+        "-nostdin",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(video),
+        "-vf",
+        f"thumbnail={KEYFRAME_WINDOW}",
+        "-frames:v",
+        str(wanted),
+        "-vsync",
+        "vfr",
         str(dest / "keyframe-%03d.jpg"),
     ]
     try:
@@ -158,7 +169,11 @@ def _injected_keyframes(
     try:
         produced = extractor(str(video), str(dest), wanted)
     except Exception as exc:  # noqa: BLE001 — an injected port is not trusted more
-        return {"status": "failed", "frames": [], "detail": f"keyframe port failed: {exc}"}
+        return {
+            "status": "failed",
+            "frames": [],
+            "detail": f"keyframe port failed: {exc}",
+        }
     frames = [str(item) for item in (produced or [])][:wanted]
     if not frames:
         return {

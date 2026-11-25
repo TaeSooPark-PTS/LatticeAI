@@ -28,7 +28,11 @@ RUST_LOCKFILES: Tuple[str, ...] = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
 
 CARGO_TARGETS: List[Tuple[str, str, Optional[str]]] = [
     ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
-    ("src-tauri/Cargo.lock", "regex", r'(name = "lattice-ai-desktop"\nversion = ")([^"]+)(")'),
+    (
+        "src-tauri/Cargo.lock",
+        "regex",
+        r'(name = "lattice-ai-desktop"\nversion = ")([^"]+)(")',
+    ),
     ("src-tauri/tauri.conf.json", "json", "version"),
     ("rust/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
     *[

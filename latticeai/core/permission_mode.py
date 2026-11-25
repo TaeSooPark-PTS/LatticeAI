@@ -34,48 +34,56 @@ class PermissionMode(str, Enum):
 DEFAULT_MODE = PermissionMode.STRICT
 
 # Computer-use split: observation is low-friction in trusted; control stays gated.
-COMPUTER_OBSERVATION_TOOLS: FrozenSet[str] = frozenset({
-    "computer_screenshot",
-    "computer_status",
-    "computer_use_status",
-    "chrome_status",
-    "vision_analyze",
-})
+COMPUTER_OBSERVATION_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "computer_screenshot",
+        "computer_status",
+        "computer_use_status",
+        "chrome_status",
+        "vision_analyze",
+    }
+)
 
-COMPUTER_CONTROL_TOOLS: FrozenSet[str] = frozenset({
-    "computer_click",
-    "computer_type",
-    "computer_key",
-    "computer_scroll",
-    "computer_drag",
-    "computer_move",
-    "computer_open_app",
-    "computer_open_url",
-})
+COMPUTER_CONTROL_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "computer_click",
+        "computer_type",
+        "computer_key",
+        "computer_scroll",
+        "computer_drag",
+        "computer_move",
+        "computer_open_app",
+        "computer_open_url",
+    }
+)
 
-KNOWLEDGE_READ_TOOLS: FrozenSet[str] = frozenset({
-    "knowledge_search",
-    "knowledge_tree",
-    "obsidian_search",
-    "obsidian_tree",
-    "knowledge_graph_search",
-    "knowledge_graph_graph",
-    "knowledge_graph_context",
-})
+KNOWLEDGE_READ_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "knowledge_search",
+        "knowledge_tree",
+        "obsidian_search",
+        "obsidian_tree",
+        "knowledge_graph_search",
+        "knowledge_graph_graph",
+        "knowledge_graph_context",
+    }
+)
 
-WORKSPACE_WRITE_TOOLS: FrozenSet[str] = frozenset({
-    "write_file",
-    "edit_file",
-    "create_docx",
-    "create_xlsx",
-    "create_pptx",
-    "create_pdf",
-    "create_web_project",
-    "knowledge_save",
-    "obsidian_save",
-    "knowledge_graph_ingest",
-    "todo_write",
-})
+WORKSPACE_WRITE_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "write_file",
+        "edit_file",
+        "create_docx",
+        "create_xlsx",
+        "create_pptx",
+        "create_pdf",
+        "create_web_project",
+        "knowledge_save",
+        "obsidian_save",
+        "knowledge_graph_ingest",
+        "todo_write",
+    }
+)
 
 # Always blocked regardless of mode (Claude-style circuit breakers).
 HARD_BLOCK_SANDBOXES: FrozenSet[str] = frozenset({"system"})
@@ -165,12 +173,18 @@ def is_circuit_breaker(
     if path:
         normalized = path.replace("\\", "/")
         # Root / home mass-delete style paths — Claude circuit breaker analogue.
-        if normalized in {"/", "~", "/home", "/Users"} or normalized.rstrip("/") in {"/", "~"}:
+        if normalized in {"/", "~", "/home", "/Users"} or normalized.rstrip("/") in {
+            "/",
+            "~",
+        }:
             return f"circuit breaker: refusing path {path!r}"
 
     command = str((args or {}).get("command") or (args or {}).get("cmd") or "")
     lowered = command.lower()
-    if any(token in lowered for token in ("rm -rf /", "rm -rf ~", "rm -rf /*", "rm -rf $home")):
+    if any(
+        token in lowered
+        for token in ("rm -rf /", "rm -rf ~", "rm -rf /*", "rm -rf $home")
+    ):
         return "circuit breaker: refusing destructive shell command"
 
     return None
@@ -208,7 +222,10 @@ def effective_auto_approve(
             # Additive and mutation both auto under trusted; destructive still
             # blocked by circuit breaker / risk check above.
             if risk in {"write", "write_scoped", "read"} or change_class in {
-                "additive", "mutation", "read", None,
+                "additive",
+                "mutation",
+                "read",
+                None,
             }:
                 if risk != "destructive" and not policy.get("destructive"):
                     return True
@@ -218,7 +235,10 @@ def effective_auto_approve(
     # bypass
     if risk == "destructive" or policy.get("destructive"):
         return False
-    if sandbox == "system" and tool_name not in COMPUTER_OBSERVATION_TOOLS | COMPUTER_CONTROL_TOOLS:
+    if (
+        sandbox == "system"
+        and tool_name not in COMPUTER_OBSERVATION_TOOLS | COMPUTER_CONTROL_TOOLS
+    ):
         # Non-desktop system tools stay gated even in bypass.
         if risk in {"write", "exec"}:
             return False
@@ -262,7 +282,9 @@ def plan_requires_approval(
 def mode_contract(mode: PermissionMode | str) -> Dict[str, Any]:
     """Serializable contract for API / agent responses."""
     mode = normalize_mode(mode)
-    entry = next((m for m in mode_catalog() if m["id"] == mode.value), mode_catalog()[0])
+    entry = next(
+        (m for m in mode_catalog() if m["id"] == mode.value), mode_catalog()[0]
+    )
     return {
         "mode": mode.value,
         "label": entry["label"],
@@ -270,10 +292,12 @@ def mode_contract(mode: PermissionMode | str) -> Dict[str, Any]:
         "risk": entry["risk"],
         "requires_ack": entry["requires_ack"],
         "proposal_first": mode == PermissionMode.STRICT,
-        "workspace_writes_auto": mode in {PermissionMode.TRUSTED, PermissionMode.BYPASS},
+        "workspace_writes_auto": mode
+        in {PermissionMode.TRUSTED, PermissionMode.BYPASS},
         "knowledge_reads_auto": mode in {PermissionMode.TRUSTED, PermissionMode.BYPASS},
         "exec_auto": mode == PermissionMode.BYPASS,
-        "computer_observation_auto": mode in {PermissionMode.TRUSTED, PermissionMode.BYPASS},
+        "computer_observation_auto": mode
+        in {PermissionMode.TRUSTED, PermissionMode.BYPASS},
         "computer_control_auto": mode == PermissionMode.BYPASS,
         "circuit_breakers": True,
     }

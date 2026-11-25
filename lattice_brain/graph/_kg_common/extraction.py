@@ -159,9 +159,7 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
                 )
                 raw = future.result(timeout=30)
         else:
-            raw = asyncio.run(
-                router.generate(prompt, max_tokens=1024, temperature=0.1)
-            )
+            raw = asyncio.run(router.generate(prompt, max_tokens=1024, temperature=0.1))
         raw = raw.strip()
         if raw.startswith("```"):
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -207,9 +205,7 @@ def _llm_extract_triples(
                 )
                 raw = future.result(timeout=30)
         else:
-            raw = asyncio.run(
-                router.generate(prompt, max_tokens=2048, temperature=0.1)
-            )
+            raw = asyncio.run(router.generate(prompt, max_tokens=2048, temperature=0.1))
         raw = raw.strip()
         if raw.startswith("```"):
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -236,7 +232,11 @@ def _llm_extract_triples(
                             "confidence": confidence,
                             "evidence": "verb" if is_semantic else "cooccurrence",
                             "weight": round(
-                                (VERB_EDGE_WEIGHT if is_semantic else COOCCURRENCE_EDGE_WEIGHT)
+                                (
+                                    VERB_EDGE_WEIGHT
+                                    if is_semantic
+                                    else COOCCURRENCE_EDGE_WEIGHT
+                                )
                                 * max(0.1, min(confidence, 1.0)),
                                 4,
                             ),
@@ -709,15 +709,9 @@ def _deduplicate_contained_concepts(values: List[str], text: str) -> List[str]:
         ]
         if longer:
             swallowers[i] = longer
-    wanted = {
-        values[index]
-        for i, group in swallowers.items()
-        for index in [i, *group]
-    }
+    wanted = {values[index] for i, group in swallowers.items() for index in [i, *group]}
     text_lower = text.lower() if wanted else ""
-    spans = {
-        term: _whole_word_spans(term, text, text_lower) for term in wanted
-    }
+    spans = {term: _whole_word_spans(term, text, text_lower) for term in wanted}
 
     keep = set(range(len(values)))
     for i, longer in swallowers.items():

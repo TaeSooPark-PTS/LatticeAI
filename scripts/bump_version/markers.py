@@ -183,7 +183,9 @@ def _update_release_marker(text: str, version: str) -> Tuple[bool, str, str, boo
     return True, current, new_text, new_text != text
 
 
-def _update_release_notes_marker(text: str, version: str) -> Tuple[bool, str, str, bool]:
+def _update_release_notes_marker(
+    text: str, version: str
+) -> Tuple[bool, str, str, bool]:
     m = re.search(rf"(?m)^# \[v{_SEMVER_CAP}\s+[—-]\s+[^\]]+\]", text)
     if not m:
         return False, "", text, False
@@ -287,7 +289,9 @@ def bump_markers(
             print(f"  skip  {rel} (missing)")
             continue
         text = path.read_text(encoding="utf-8")
-        ok, current, new_text, changed = inspect_or_update_marker_file(rel, text, version)
+        ok, current, new_text, changed = inspect_or_update_marker_file(
+            rel, text, version
+        )
         if not ok:
             print(f"  FAIL  {rel}: release marker not found")
             failures += 1

@@ -106,7 +106,9 @@ def build_pdf_bytes(title: str, body: Any) -> bytes:
         from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
     except Exception as exc:  # noqa: BLE001 — an absent library is a configuration
-        raise ToolError("reportlab is not installed. Run `pip install reportlab`.") from exc
+        raise ToolError(
+            "reportlab is not installed. Run `pip install reportlab`."
+        ) from exc
 
     font_name = "Helvetica"
     from . import worker_compute as _wc
@@ -120,8 +122,12 @@ def build_pdf_bytes(title: str, body: Any) -> bytes:
                 quiet("CJK font registration")
             break
 
-    title_style = ParagraphStyle("Title", fontName=font_name, fontSize=18, spaceAfter=8, leading=24)
-    body_style = ParagraphStyle("Body", fontName=font_name, fontSize=11, spaceAfter=6, leading=16)
+    title_style = ParagraphStyle(
+        "Title", fontName=font_name, fontSize=18, spaceAfter=8, leading=24
+    )
+    body_style = ParagraphStyle(
+        "Body", fontName=font_name, fontSize=11, spaceAfter=6, leading=16
+    )
 
     story: List[Any] = []
     if title:
@@ -131,7 +137,9 @@ def build_pdf_bytes(title: str, body: Any) -> bytes:
     for block in _body_to_str(body).split("\n\n"):
         text = block.strip()
         if text:
-            safe_text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            safe_text = (
+                text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            )
             story.append(Paragraph(safe_text, body_style))
             story.append(Spacer(1, 2 * mm))
 
@@ -220,4 +228,3 @@ class VectorQueryRequest(BaseModel):
     embedding_dim: int
     vector: List[float] = Field(default_factory=list)
     k: int = 10
-

@@ -95,8 +95,7 @@ accidentally treat an invalid plugin as runnable. The validator enforces:
 ```python
 def validate_manifest(
     data: Dict[str, Any], *, path: str = ""
-) -> Tuple[Optional[PluginManifest], List[str]]:
-    ...
+) -> Tuple[Optional[PluginManifest], List[str]]: ...
 ```
 
 ### Parsed manifest
@@ -272,8 +271,7 @@ def install(
     plugin_id: str,
     *,
     register_skill: Optional[Callable[[str, str], Any]] = None,
-) -> Dict[str, Any]:
-    ...
+) -> Dict[str, Any]: ...
 ```
 
 `register_skill(skill_name, plugin_id)` is injected by the host so plugins
@@ -328,8 +326,9 @@ The store methods used by the registry are:
 
 ```python
 def list_plugin_registry(self) -> Dict[str, Any]: ...
-def mark_plugin_installed(self, plugin_id, *, version="0.0.0",
-                          metadata=None) -> Dict[str, Any]: ...
+def mark_plugin_installed(
+    self, plugin_id, *, version="0.0.0", metadata=None
+) -> Dict[str, Any]: ...
 def mark_plugin_uninstalled(self, plugin_id) -> Dict[str, Any]: ...
 def set_plugin_enabled(self, plugin_id, enabled) -> Dict[str, Any]: ...
 ```
@@ -377,8 +376,7 @@ def execute_action(
     args: Optional[Dict[str, Any]] = None,
     *,
     runners: Optional[Dict[str, Callable[..., Any]]] = None,
-) -> PluginExecutionResult:
-    ...
+) -> PluginExecutionResult: ...
 ```
 
 `runners` maps a capability (`"tools"`, `"skills"`, `"workflows"`, `"agents"`) to
@@ -458,11 +456,12 @@ def create_plugins_router(
     require_admin: Callable[[Request], Any],
     append_audit_event: Callable[..., None],
     register_skill: Optional[Callable[[str, str], Any]] = None,
-    plugin_runners_factory: Optional[Callable[[], Dict[str, Callable[..., Any]]]] = None,
+    plugin_runners_factory: Optional[
+        Callable[[], Dict[str, Callable[..., Any]]]
+    ] = None,
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
-) -> APIRouter:
-    ...
+) -> APIRouter: ...
 ```
 
 > All paths are namespaced under `/plugins/registry` (and sibling action routes)
@@ -577,8 +576,10 @@ class PluginActionRequest(BaseModel):
     enabled: Optional[bool] = None
     version: Optional[str] = None
 
+
 class PluginValidateRequest(BaseModel):
     manifest: Dict[str, Any] = {}
+
 
 class PluginExecuteRequest(BaseModel):
     plugin_id: str

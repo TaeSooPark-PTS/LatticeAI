@@ -16,7 +16,9 @@ class _FakeRouter:
         return []
 
     def unload_model(self, model_id):
-        self.loaded_model_ids = [item for item in self.loaded_model_ids if item != model_id]
+        self.loaded_model_ids = [
+            item for item in self.loaded_model_ids if item != model_id
+        ]
 
 
 def _models_client(
@@ -92,7 +94,9 @@ def test_model_endpoints_reject_anonymous_callers(method, path, payload):
         ("delete", "/models/unload/loaded-model", None),
     ],
 )
-def test_model_inventory_and_lifecycle_are_admin_only_in_auth_mode(method, path, payload):
+def test_model_inventory_and_lifecycle_are_admin_only_in_auth_mode(
+    method, path, payload
+):
     client, calls = _models_client(identity="member@example.com", role="user")
 
     response = client.request(method, path, json=payload)
@@ -104,9 +108,18 @@ def test_model_inventory_and_lifecycle_are_admin_only_in_auth_mode(method, path,
 @pytest.mark.parametrize(
     ("path", "payload"),
     [
-        ("/engines/prepare-model", {"model": "example/model", "user_email": "victim@example.com"}),
-        ("/engines/prepare-model/stream", {"model": "example/model", "user_email": "victim@example.com"}),
-        ("/models/load", {"model_id": "openai:test", "user_email": "victim@example.com"}),
+        (
+            "/engines/prepare-model",
+            {"model": "example/model", "user_email": "victim@example.com"},
+        ),
+        (
+            "/engines/prepare-model/stream",
+            {"model": "example/model", "user_email": "victim@example.com"},
+        ),
+        (
+            "/models/load",
+            {"model_id": "openai:test", "user_email": "victim@example.com"},
+        ),
     ],
 )
 def test_body_identity_cannot_override_logged_in_admin(path, payload):

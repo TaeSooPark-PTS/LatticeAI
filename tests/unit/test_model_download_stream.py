@@ -68,13 +68,26 @@ def test_speed_and_eta_estimation_and_progress_payload():
 
     snapshot = get_download_progress_snapshot("mlx-community/embeddinggemma-2-4bit")
     assert snapshot["percent"] == 50.0
-    assert get_download_progress_snapshot()["fallback_repo"] == "mlx-community/embeddinggemma-2-4bit"
+    assert (
+        get_download_progress_snapshot()["fallback_repo"]
+        == "mlx-community/embeddinggemma-2-4bit"
+    )
 
 
 def test_is_gated_or_auth_error_and_resolve_download_candidates():
-    assert is_gated_or_auth_error(RuntimeError("401 Client Error: Unauthorized")) is True
-    assert is_gated_or_auth_error(RuntimeError("403 Forbidden: Cannot access gated repo")) is True
-    assert is_gated_or_auth_error(RuntimeError("Access to model google/embeddinggemma-2 is restricted")) is True
+    assert (
+        is_gated_or_auth_error(RuntimeError("401 Client Error: Unauthorized")) is True
+    )
+    assert (
+        is_gated_or_auth_error(RuntimeError("403 Forbidden: Cannot access gated repo"))
+        is True
+    )
+    assert (
+        is_gated_or_auth_error(
+            RuntimeError("Access to model google/embeddinggemma-2 is restricted")
+        )
+        is True
+    )
     assert is_gated_or_auth_error(RuntimeError("disk full")) is False
 
     unauth = resolve_download_candidates("google/embeddinggemma-2", "local_mlx", env={})
@@ -95,14 +108,20 @@ def test_is_gated_or_auth_error_and_resolve_download_candidates():
     assert authed["hf_endpoint"] == "https://hf-mirror.com"
 
 
-def test_download_hf_model_unauthenticated_proactive_mirror_fallback(monkeypatch, tmp_path: Path):
+def test_download_hf_model_unauthenticated_proactive_mirror_fallback(
+    monkeypatch, tmp_path: Path
+):
     import huggingface_hub
 
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGING_FACE_HUB_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_TOKEN", raising=False)
-    monkeypatch.setattr(download_mod.importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(download_mod, "hf_model_dir", lambda repo: tmp_path / repo.replace("/", "__"))
+    monkeypatch.setattr(
+        download_mod.importlib.util, "find_spec", lambda _name: object()
+    )
+    monkeypatch.setattr(
+        download_mod, "hf_model_dir", lambda repo: tmp_path / repo.replace("/", "__")
+    )
 
     downloaded_repos: list[str] = []
 
@@ -113,7 +132,10 @@ def test_download_hf_model_unauthenticated_proactive_mirror_fallback(monkeypatch
     monkeypatch.setattr(
         download_mod,
         "hf_repo_files_with_sizes",
-        lambda repo: [{"name": "model.safetensors", "size": 4096}, {"name": "config.json", "size": 512}],
+        lambda repo: [
+            {"name": "model.safetensors", "size": 4096},
+            {"name": "config.json", "size": 512},
+        ],
     )
 
     def fake_hf_download(*, repo_id, filename, local_dir, tqdm_class=None):
@@ -127,7 +149,9 @@ def test_download_hf_model_unauthenticated_proactive_mirror_fallback(monkeypatch
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_hf_download)
 
     events: list[dict] = []
-    result = download_hf_model("google/embeddinggemma-2", "local_mlx", progress_emit=events.append)
+    result = download_hf_model(
+        "google/embeddinggemma-2", "local_mlx", progress_emit=events.append
+    )
 
     assert result["model"] == "mlx-community/embeddinggemma-2-4bit"
     assert result["requested_model"] == "google/embeddinggemma-2"
@@ -137,19 +161,29 @@ def test_download_hf_model_unauthenticated_proactive_mirror_fallback(monkeypatch
     assert events[-1]["percent"] == 100
 
 
-def test_download_hf_model_gated_403_falls_back_to_public_mirror(monkeypatch, tmp_path: Path):
+def test_download_hf_model_gated_403_falls_back_to_public_mirror(
+    monkeypatch, tmp_path: Path
+):
     import huggingface_hub
 
     monkeypatch.setenv("HF_TOKEN", "hf_expired_or_unaccepted_gate")
-    monkeypatch.setattr(download_mod.importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(download_mod, "hf_model_dir", lambda repo: tmp_path / repo.replace("/", "__"))
+    monkeypatch.setattr(
+        download_mod.importlib.util, "find_spec", lambda _name: object()
+    )
+    monkeypatch.setattr(
+        download_mod, "hf_model_dir", lambda repo: tmp_path / repo.replace("/", "__")
+    )
 
     ready_repos: set[str] = set()
-    monkeypatch.setattr(download_mod, "hf_model_ready", lambda repo, _p="local_mlx": repo in ready_repos)
+    monkeypatch.setattr(
+        download_mod, "hf_model_ready", lambda repo, _p="local_mlx": repo in ready_repos
+    )
 
     def fake_files(repo: str):
         if repo == "google/embeddinggemma-2":
-            raise RuntimeError("403 Forbidden: Cannot access gated repo for url https://huggingface.co/google/embeddinggemma-2")
+            raise RuntimeError(
+                "403 Forbidden: Cannot access gated repo for url https://huggingface.co/google/embeddinggemma-2"
+            )
         return [{"name": "model.safetensors", "size": 2048}]
 
     monkeypatch.setattr(download_mod, "hf_repo_files_with_sizes", fake_files)
@@ -164,14 +198,18 @@ def test_download_hf_model_gated_403_falls_back_to_public_mirror(monkeypatch, tm
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_hf_download)
 
     events: list[dict] = []
-    result = download_hf_model("google/embeddinggemma-2", "local_mlx", progress_emit=events.append)
+    result = download_hf_model(
+        "google/embeddinggemma-2", "local_mlx", progress_emit=events.append
+    )
     assert result["model"] == "mlx-community/embeddinggemma-2-4bit"
     assert result["gated_fallback"] is True
     assert result["fallback_repo"] == "mlx-community/embeddinggemma-2-4bit"
     assert any(ev.get("current_file") == "model.safetensors" for ev in events)
 
 
-def test_prepare_and_load_model_stream_sse_emits_speed_eta_and_fallback(monkeypatch, tmp_path: Path):
+def test_prepare_and_load_model_stream_sse_emits_speed_eta_and_fallback(
+    monkeypatch, tmp_path: Path
+):
     from latticeai.services import model_loading as ml_mod
 
     fake_state = SimpleNamespace(
@@ -244,7 +282,9 @@ def test_prepare_and_load_model_stream_sse_emits_speed_eta_and_fallback(monkeypa
             "router": fake_state.router,
             "_ModelResolution": FakeResolution,
             "MODEL_ENGINE_ALIASES": {},
-            "_smoke_test_loaded_model": lambda *_a, **_kw: asyncio.sleep(0, result={"ok": True, "status": "ok"}),
+            "_smoke_test_loaded_model": lambda *_a, **_kw: asyncio.sleep(
+                0, result={"ok": True, "status": "ok"}
+            ),
         },
     )
 
@@ -263,12 +303,17 @@ def test_prepare_and_load_model_stream_sse_emits_speed_eta_and_fallback(monkeypa
     frames = asyncio.run(collect())
     parsed_events = []
     for frame in frames:
-        lines = [line for line in frame.strip().splitlines() if line.startswith("data: ")]
+        lines = [
+            line for line in frame.strip().splitlines() if line.startswith("data: ")
+        ]
         if lines:
             parsed_events.append(json.loads(lines[0][6:]))
 
     download_frames = [
-        ev for ev in parsed_events if ev.get("stage") == "download" and ev.get("current_file") == "model.safetensors"
+        ev
+        for ev in parsed_events
+        if ev.get("stage") == "download"
+        and ev.get("current_file") == "model.safetensors"
     ]
     assert len(download_frames) == 1
     df = download_frames[0]

@@ -41,10 +41,10 @@ AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 
 ROLE_AGENT_IDS = {
     "researcher": "agent:researcher",
-    "planner":    "agent:planner",
-    "executor":   "agent:executor",
-    "reviewer":   "agent:reviewer",
-    "release":    "agent:release",
+    "planner": "agent:planner",
+    "executor": "agent:executor",
+    "reviewer": "agent:reviewer",
+    "release": "agent:release",
 }
 ```
 
@@ -80,8 +80,7 @@ def run(
     inputs: Optional[Dict[str, Any]] = None,
     roles: Optional[List[str]] = None,
     max_retries: int = 2,
-) -> AgentRunResult:
-    ...
+) -> AgentRunResult: ...
 ```
 
 `run`은 확정된 파이프라인을 따라 이동하며 모든 단계에 단일 `OrchestrationContext`를 전달합니다. 진행 과정에서 관측 가능한 타임라인에 두 가지 종류의 이벤트를 기록합니다.
@@ -165,7 +164,9 @@ v1 런타임과 마찬가지로 오케스트레이터는 **주입된 `role_runne
 class MultiAgentOrchestrator:
     def __init__(
         self,
-        role_runner: Optional[Callable[[str, OrchestrationContext], Dict[str, Any]]] = None,
+        role_runner: Optional[
+            Callable[[str, OrchestrationContext], Dict[str, Any]]
+        ] = None,
     ):
         self.role_runner = role_runner or default_role_runner()
 ```
@@ -184,8 +185,7 @@ def default_role_runner(
     workflow_runner: Optional[Callable[..., Any]] = None,
     plugin_runner: Optional[Callable[..., Any]] = None,
     context_provider: Optional[Callable[[str], List[str]]] = None,
-) -> Callable[[str, OrchestrationContext], Dict[str, Any]]:
-    ...
+) -> Callable[[str, OrchestrationContext], Dict[str, Any]]: ...
 ```
 
 역할별 기본 동작:
@@ -234,8 +234,7 @@ def record_agent_run(
     relationships: Optional[List[str]] = None,
     graph: Any = None,
     workspace_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    ...
+) -> Dict[str, Any]: ...
 ```
 
 수행 동작:

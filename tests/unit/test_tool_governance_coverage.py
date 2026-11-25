@@ -110,6 +110,8 @@ def test_external_side_effects_are_not_proposal_routed():
         if category != EXTERNAL_SIDE_EFFECT:
             continue
         verdict = classify_tool_call(
-            name, {}, policy=dict(TOOL_GOVERNANCE.get(name, {})),
+            name,
+            {},
+            policy=dict(TOOL_GOVERNANCE.get(name, {})),
         )
         assert verdict["proposal_required"] is False, name

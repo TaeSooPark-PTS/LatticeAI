@@ -8,13 +8,17 @@ from latticeai.models import router as router_mod
 def _cloud(name: str):
     # Resolve the class from the live module because the MLX import contract
     # tests intentionally reload this module during the full suite.
-    return router_mod.CloudModel(provider="test", model=name, client=object(), cache_key=name)
+    return router_mod.CloudModel(
+        provider="test", model=name, client=object(), cache_key=name
+    )
 
 
 def test_generate_as_does_not_mutate_default_model_during_concurrency() -> None:
     async def scenario() -> None:
         router = router_mod.LLMRouter()
-        router._cache = {name: _cloud(name) for name in ("default", "model-b", "model-c")}
+        router._cache = {
+            name: _cloud(name) for name in ("default", "model-b", "model-c")
+        }
         router._current = "default"
         started = {name: asyncio.Event() for name in ("model-b", "model-c")}
         release = {name: asyncio.Event() for name in ("model-b", "model-c")}
@@ -55,7 +59,9 @@ def test_stream_generate_as_uses_requested_snapshot() -> None:
 
         router._cloud_stream_generate = fake_stream
 
-        chunks = [chunk async for chunk in router.stream_generate_as("requested", "hello")]
+        chunks = [
+            chunk async for chunk in router.stream_generate_as("requested", "hello")
+        ]
 
         assert chunks == ["requested"]
         assert router.current_model_id == "default"

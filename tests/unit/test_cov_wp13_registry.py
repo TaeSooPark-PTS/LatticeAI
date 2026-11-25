@@ -63,7 +63,9 @@ def test_resolve_workspace_path_creates_the_workspace_on_demand(
 # ── remaining dispatchable tools ─────────────────────────────────────────────
 
 
-def test_list_dir_reads_the_workspace_through_the_handler_table(workspace: Path) -> None:
+def test_list_dir_reads_the_workspace_through_the_handler_table(
+    workspace: Path,
+) -> None:
     (workspace / "note.md").write_text("hello", encoding="utf-8")
 
     result = execute_tool("list_dir", {"path": "."})
@@ -98,7 +100,9 @@ _SCOPED_TOOLS = [
 
 
 @pytest.mark.parametrize("action,args", _SCOPED_TOOLS)
-def test_every_knowledge_tool_refuses_an_unauthenticated_call(vault: Path, action, args) -> None:
+def test_every_knowledge_tool_refuses_an_unauthenticated_call(
+    vault: Path, action, args
+) -> None:
     with pytest.raises(ToolError, match="authenticated workspace and user scope"):
         execute_tool(action, dict(args))
 
@@ -112,7 +116,9 @@ def test_every_knowledge_tool_refuses_an_unauthenticated_call(vault: Path, actio
         {"workspace_id": "ws-1", "user_email": "   "},
     ],
 )
-def test_a_half_scoped_knowledge_call_is_refused_at_the_registry(vault: Path, scope) -> None:
+def test_a_half_scoped_knowledge_call_is_refused_at_the_registry(
+    vault: Path, scope
+) -> None:
     with pytest.raises(ToolError, match="authenticated workspace and user scope"):
         execute_tool("knowledge_tree", dict(scope))
 
@@ -145,7 +151,8 @@ def test_scopes_cannot_read_each_others_notes(vault: Path) -> None:
     (note_dir / "a.md").write_text("first tenant", encoding="utf-8")
 
     other = execute_tool(
-        "knowledge_search", {"query": "tenant", "workspace_id": "ws-2", "user_email": "a@x.com"}
+        "knowledge_search",
+        {"query": "tenant", "workspace_id": "ws-2", "user_email": "a@x.com"},
     )
 
     assert other["results"] == []

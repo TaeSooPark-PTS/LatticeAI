@@ -202,7 +202,10 @@ PRODUCTION_PROVIDER_PROFILES: Dict[str, Dict[str, Any]] = {
 
 
 def embedding_provider_profiles() -> List[Dict[str, Any]]:
-    return [dict(PRODUCTION_PROVIDER_PROFILES[key]) for key in sorted(PRODUCTION_PROVIDER_PROFILES)]
+    return [
+        dict(PRODUCTION_PROVIDER_PROFILES[key])
+        for key in sorted(PRODUCTION_PROVIDER_PROFILES)
+    ]
 
 
 def resolve_embedding_profile(profile: str) -> Dict[str, Any]:

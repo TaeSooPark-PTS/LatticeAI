@@ -54,13 +54,26 @@ def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[st
     current_vision = False
     if current_model_id:
         try:
-            current_vision = bool(get_model_profile(current_model_id).get("supports_vision"))
-        except (ImportError, RuntimeError, ValueError, TypeError, KeyError, AttributeError):
+            current_vision = bool(
+                get_model_profile(current_model_id).get("supports_vision")
+            )
+        except (
+            ImportError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+        ):
             current_vision = False
     engine_available = False
     try:
-        for eng in (engines or []):
-            if isinstance(eng, dict) and eng.get("id") in {"local_mlx", "mlx"} and eng.get("installed"):
+        for eng in engines or []:
+            if (
+                isinstance(eng, dict)
+                and eng.get("id") in {"local_mlx", "mlx"}
+                and eng.get("installed")
+            ):
                 engine_available = True
                 break
     except (TypeError, AttributeError, RuntimeError):
@@ -83,14 +96,11 @@ class LoadModelRequest(BaseModel):
     allow_download: bool = False
 
 
-
-
 class PrepareModelRequest(BaseModel):
     model: str
     engine: Optional[str] = None
     user_email: Optional[str] = None
     allow_download: bool = False
-
 
 
 def create_models_router(
@@ -123,16 +133,24 @@ def create_models_router(
     def _normalized_identity(value: Optional[str]) -> str:
         return str(value or "").strip().lower()
 
-    def _authorize_model_admin(request: Request, claimed_email: Optional[str] = None) -> str:
+    def _authorize_model_admin(
+        request: Request, claimed_email: Optional[str] = None
+    ) -> str:
         """Authenticate model operations and gate host-global state to admins."""
         current_user = require_user(request)
         if REQUIRE_AUTH:
-            if claimed_email and _normalized_identity(claimed_email) != _normalized_identity(current_user):
-                raise http_error(403, "models.other_user_credentials", resolve_language(request))
+            if claimed_email and _normalized_identity(
+                claimed_email
+            ) != _normalized_identity(current_user):
+                raise http_error(
+                    403, "models.other_user_credentials", resolve_language(request)
+                )
             require_admin(request)
         return current_user
 
-    def _effective_email(current_user: str, claimed_email: Optional[str]) -> Optional[str]:
+    def _effective_email(
+        current_user: str, claimed_email: Optional[str]
+    ) -> Optional[str]:
         # Authenticated callers may only act as their session identity. The
         # legacy body field remains usable solely in explicit no-auth/local
         # mode for backward compatibility.
@@ -149,13 +167,18 @@ def create_models_router(
     ) -> List[Dict[str, object]]:
         from latticeai.core.model_compat import model_runtime_compatibility
 
-        engine_lookup = {str(engine.get("id") or ""): engine for engine in engines or []}
+        engine_lookup = {
+            str(engine.get("id") or ""): engine for engine in engines or []
+        }
         model_lookup: Dict[str, Dict[str, Any]] = {}
         for engine in engines or []:
             engine_id = str(engine.get("id") or "")
             for model in list(engine.get("models") or []):
                 if isinstance(model, dict):
-                    model_lookup[str(model.get("id") or "")] = {**model, "_engine": engine_id}
+                    model_lookup[str(model.get("id") or "")] = {
+                        **model,
+                        "_engine": engine_id,
+                    }
         engine_order = ("local_mlx", "omlx", "ollama", "lmstudio", "llamacpp", "vllm")
         loaded = set(loaded_ids or [])
         out: List[Dict[str, Any]] = []
@@ -167,65 +190,106 @@ def create_models_router(
                 real = aliases.get(engine_name)
                 if not real:
                     continue
-                load_id = real if engine_name == "local_mlx" else f"{engine_name}:{real}"
+                load_id = (
+                    real if engine_name == "local_mlx" else f"{engine_name}:{real}"
+                )
                 engine_info = engine_lookup.get(engine_name) or {}
                 model_info = model_lookup.get(load_id) or model_lookup.get(real) or {}
-                option_loaded = load_id in loaded or real in loaded or current_id in {load_id, real}
-                option_runtime = model_runtime_compatibility(load_id, engine=engine_name)
+                option_loaded = (
+                    load_id in loaded or real in loaded or current_id in {load_id, real}
+                )
+                option_runtime = model_runtime_compatibility(
+                    load_id, engine=engine_name
+                )
                 engine_supported = engine_info.get("supported") is not False
-                option_supported = (option_runtime.get("supported") is not False) and engine_supported
+                option_supported = (
+                    option_runtime.get("supported") is not False
+                ) and engine_supported
                 option_pulled = bool(model_info.get("pulled"))
-                option_download_required = bool(item.get("pullable", True) and not option_pulled and not option_loaded)
-                options.append({
-                    "engine": engine_name,
-                    "model_id": real,
-                    "load_id": load_id,
-                    "installed": bool(engine_info.get("installed")),
-                    "installable": bool(engine_info.get("installable", engine_supported)),
-                    "pulled": option_pulled,
-                    "loaded": option_loaded,
-                    "download_required": option_download_required,
-                    "runtime_compatibility": option_runtime,
-                    "runtime_supported": option_supported,
-                    "runtime_label": str(option_runtime.get("preferred_runtime") or engine_info.get("name") or engine_name),
-                })
+                option_download_required = bool(
+                    item.get("pullable", True)
+                    and not option_pulled
+                    and not option_loaded
+                )
+                options.append(
+                    {
+                        "engine": engine_name,
+                        "model_id": real,
+                        "load_id": load_id,
+                        "installed": bool(engine_info.get("installed")),
+                        "installable": bool(
+                            engine_info.get("installable", engine_supported)
+                        ),
+                        "pulled": option_pulled,
+                        "loaded": option_loaded,
+                        "download_required": option_download_required,
+                        "runtime_compatibility": option_runtime,
+                        "runtime_supported": option_supported,
+                        "runtime_label": str(
+                            option_runtime.get("preferred_runtime")
+                            or engine_info.get("name")
+                            or engine_name
+                        ),
+                    }
+                )
             if not options:
                 raw_id = str(item["id"])
                 engine_info = engine_lookup.get("local_mlx") or {}
                 model_info = model_lookup.get(raw_id) or {}
                 option_loaded = raw_id in loaded or current_id == raw_id
                 option_pulled = bool(model_info.get("pulled"))
-                runtime_compatibility = model_runtime_compatibility(str(item["id"]), engine="local_mlx")
+                runtime_compatibility = model_runtime_compatibility(
+                    str(item["id"]), engine="local_mlx"
+                )
                 engine_supported = engine_info.get("supported") is not False
-                options.append({
-                    "engine": "local_mlx",
-                    "model_id": item["id"],
-                    "load_id": item["id"],
-                    "installed": bool(engine_info.get("installed")),
-                    "installable": bool(engine_info.get("installable", engine_supported)),
-                    "pulled": option_pulled,
-                    "loaded": option_loaded,
-                    "download_required": bool(item.get("pullable", True) and not option_pulled and not option_loaded),
-                    "runtime_compatibility": runtime_compatibility,
-                    "runtime_supported": (runtime_compatibility.get("supported") is not False) and engine_supported,
-                    "runtime_label": str(runtime_compatibility.get("preferred_runtime") or "MLX"),
-                })
+                options.append(
+                    {
+                        "engine": "local_mlx",
+                        "model_id": item["id"],
+                        "load_id": item["id"],
+                        "installed": bool(engine_info.get("installed")),
+                        "installable": bool(
+                            engine_info.get("installable", engine_supported)
+                        ),
+                        "pulled": option_pulled,
+                        "loaded": option_loaded,
+                        "download_required": bool(
+                            item.get("pullable", True)
+                            and not option_pulled
+                            and not option_loaded
+                        ),
+                        "runtime_compatibility": runtime_compatibility,
+                        "runtime_supported": (
+                            runtime_compatibility.get("supported") is not False
+                        )
+                        and engine_supported,
+                        "runtime_label": str(
+                            runtime_compatibility.get("preferred_runtime") or "MLX"
+                        ),
+                    }
+                )
 
             def option_rank(option: Dict[str, object]) -> tuple[int, int, int, int]:
                 runtime_supported = bool(option.get("runtime_supported"))
                 installed = bool(option.get("installed"))
                 loaded_option = bool(option.get("loaded"))
-                ready_without_download = installed and not bool(option.get("download_required"))
+                ready_without_download = installed and not bool(
+                    option.get("download_required")
+                )
                 eng_key = str(option.get("engine") or "vllm")
                 return (
                     0 if runtime_supported else 1,
                     0 if loaded_option or ready_without_download else 1,
                     0 if installed else 1,
-                    engine_order.index(eng_key) if eng_key in engine_order else len(engine_order),
+                    engine_order.index(eng_key)
+                    if eng_key in engine_order
+                    else len(engine_order),
                 )
 
             primary_option = options[0]
-            primary_compatibility = dict(primary_option.get("runtime_compatibility") or {})
+            primary_compatibility = dict(
+                primary_option.get("runtime_compatibility") or {}
+            )
             hard_primary_statuses = {
                 "runtime_update_needed",
                 "unsupported_format",
@@ -240,22 +304,35 @@ def create_models_router(
             )
             recommended_engine = str(selected_option["engine"])
             load_id = str(selected_option["load_id"])
-            model_info = model_lookup.get(load_id) or model_lookup.get(str(selected_option.get("model_id") or "")) or {}
+            model_info = (
+                model_lookup.get(load_id)
+                or model_lookup.get(str(selected_option.get("model_id") or ""))
+                or {}
+            )
             pulled = bool(selected_option.get("pulled") or model_info.get("pulled"))
             is_loaded = bool(selected_option.get("loaded"))
             engine_installed = bool(selected_option.get("installed"))
             engine_installable = bool(selected_option.get("installable"))
             pullable = bool(item.get("pullable", True))
-            runtime_compatibility = dict(selected_option.get("runtime_compatibility") or {})
+            runtime_compatibility = dict(
+                selected_option.get("runtime_compatibility") or {}
+            )
             runtime_supported = bool(selected_option.get("runtime_supported"))
-            download_required = bool(selected_option.get("download_required") and pullable and not is_loaded)
-            install_required = bool(runtime_supported and not engine_installed and engine_installable)
+            download_required = bool(
+                selected_option.get("download_required") and pullable and not is_loaded
+            )
+            install_required = bool(
+                runtime_supported and not engine_installed and engine_installable
+            )
             if is_loaded:
                 load_status = "loaded"
                 unavailable_reason = None
             elif not runtime_supported:
                 load_status = str(runtime_compatibility.get("status") or "unsupported")
-                unavailable_reason = str(runtime_compatibility.get("user_message") or "This model is not supported by the installed runtime.")
+                unavailable_reason = str(
+                    runtime_compatibility.get("user_message")
+                    or "This model is not supported by the installed runtime."
+                )
             elif not engine_installed:
                 load_status = "unavailable"
                 unavailable_reason = f"{(engine_lookup.get(recommended_engine) or {}).get('name') or recommended_engine} runtime is not installed."
@@ -273,9 +350,12 @@ def create_models_router(
                 "size": item["size"],
                 "display_name": item.get("name") or item.get("id"),
                 "modality": item.get("modality") or "multimodal",
-                "category": item.get("category") or ("embedding" if item.get("task") == "embedding" else "chat"),
-                "task": item.get("task") or ("embedding" if item.get("category") == "embedding" else "chat"),
-                "role": item.get("role") or ("embedding" if item.get("category") == "embedding" else "chat"),
+                "category": item.get("category")
+                or ("embedding" if item.get("task") == "embedding" else "chat"),
+                "task": item.get("task")
+                or ("embedding" if item.get("category") == "embedding" else "chat"),
+                "role": item.get("role")
+                or ("embedding" if item.get("category") == "embedding" else "chat"),
                 "dimensions": item.get("dimensions"),
                 "hf_repo_id": item.get("hf_repo_id") or item["id"],
                 "source_country": item.get("source_country"),
@@ -287,12 +367,15 @@ def create_models_router(
                 "pulled": pulled,
                 "download_required": download_required,
                 "install_required": install_required,
-                "load_available": is_loaded or (runtime_supported and engine_installed and not download_required),
+                "load_available": is_loaded
+                or (runtime_supported and engine_installed and not download_required),
                 "load_status": load_status,
                 "unavailable_reason": unavailable_reason,
                 "runtime_compatibility": runtime_compatibility,
-                "recovery_guidance": runtime_compatibility.get("recovery_guidance") or [],
-                "alternative_recommendations": runtime_compatibility.get("alternatives") or [],
+                "recovery_guidance": runtime_compatibility.get("recovery_guidance")
+                or [],
+                "alternative_recommendations": runtime_compatibility.get("alternatives")
+                or [],
                 "runtime_label": selected_option.get("runtime_label"),
             }
             base["engine_options"] = options
@@ -308,7 +391,9 @@ def create_models_router(
         current_user = _authorize_model_admin(request, req.user_email)
         try:
             return await prepare_and_load_model(
-                req.model, request, engine=req.engine,
+                req.model,
+                request,
+                engine=req.engine,
                 user_email=_effective_email(current_user, req.user_email),
                 allow_download=req.allow_download,
             )
@@ -321,7 +406,9 @@ def create_models_router(
 
             raise HTTPException(
                 status_code=500,
-                detail=friendly_model_runtime_error(exc, model_id=req.model, engine=req.engine),
+                detail=friendly_model_runtime_error(
+                    exc, model_id=req.model, engine=req.engine
+                ),
             )
 
     @router.post("/engines/prepare-model/stream")
@@ -332,30 +419,40 @@ def create_models_router(
         async def event_stream():
             try:
                 async for chunk in prepare_and_load_model_stream(
-                    req.model, request, engine=req.engine, user_email=effective_email,
+                    req.model,
+                    request,
+                    engine=req.engine,
+                    user_email=effective_email,
                     allow_download=req.allow_download,
                 ):
                     yield chunk
             except (HTTPException, ModelRuntimeError) as exc:
-                yield sse_event("error", {
-                    "status_code": exc.status_code,
-                    "detail": exc.detail or "모델 준비에 실패했습니다.",
-                })
+                yield sse_event(
+                    "error",
+                    {
+                        "status_code": exc.status_code,
+                        "detail": exc.detail or "모델 준비에 실패했습니다.",
+                    },
+                )
             except Exception as exc:
                 logging.exception("model prepare stream failed")
                 from latticeai.core.model_compat import friendly_model_runtime_error
 
-                yield sse_event("error", {
-                    "status_code": 500,
-                    "detail": friendly_model_runtime_error(exc, model_id=req.model, engine=req.engine),
-                })
+                yield sse_event(
+                    "error",
+                    {
+                        "status_code": 500,
+                        "detail": friendly_model_runtime_error(
+                            exc, model_id=req.model, engine=req.engine
+                        ),
+                    },
+                )
 
         return StreamingResponse(
             event_stream(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-
 
     # ── Models ────────────────────────────────────────────────────────────
 
@@ -364,7 +461,9 @@ def create_models_router(
         _authorize_model_admin(request)
         engines = await asyncio.to_thread(engine_status)
         recommended = _recommended_with_engine_options(
-            list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", []))),
+            list(
+                filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", []))
+            ),
             engines=engines,
             loaded_ids=_router.loaded_model_ids,
             current_id=_router.current_model_id,
@@ -375,9 +474,18 @@ def create_models_router(
                 get_verified_models,
                 recommend_embedding_for_hardware,
             )
+
             verified = get_verified_models()
             embedding_rec = recommend_embedding_for_hardware()
-        except (ImportError, RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError):
+        except (
+            ImportError,
+            RuntimeError,
+            OSError,
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+        ):
             verified = []
             embedding_rec = {
                 "id": "google/embeddinggemma-2",
@@ -394,7 +502,14 @@ def create_models_router(
             )
 
             download_progress = get_download_progress_snapshot()
-        except (ImportError, RuntimeError, OSError, ValueError, TypeError, AttributeError):
+        except (
+            ImportError,
+            RuntimeError,
+            OSError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
             download_progress = {}
         return {
             "recommended": recommended,
@@ -411,10 +526,11 @@ def create_models_router(
             "registry": {
                 "version": "5.2.0",
                 "verified_count": len(verified),
-                "verified": verified[:12],  # compact; full via /models/recommendations or future dedicated
+                "verified": verified[
+                    :12
+                ],  # compact; full via /models/recommendations or future dedicated
             },
         }
-
 
     @router.post("/models/load")
     async def load_model(req: LoadModelRequest, request: Request):
@@ -426,16 +542,29 @@ def create_models_router(
             )
 
             model_id = req.model_id
-            requested_engine = req.engine or (model_id.split(":", 1)[0] if ":" in model_id else "local_mlx")
-            if IS_PUBLIC_MODE and not ALLOW_LOCAL_MODELS and requested_engine in {"local_mlx", "mlx"}:
-                raise http_error(400, "models.public_mode_blocks_local", resolve_language(request))
-            compatibility = model_runtime_compatibility(model_id, engine=requested_engine)
+            requested_engine = req.engine or (
+                model_id.split(":", 1)[0] if ":" in model_id else "local_mlx"
+            )
+            if (
+                IS_PUBLIC_MODE
+                and not ALLOW_LOCAL_MODELS
+                and requested_engine in {"local_mlx", "mlx"}
+            ):
+                raise http_error(
+                    400, "models.public_mode_blocks_local", resolve_language(request)
+                )
+            compatibility = model_runtime_compatibility(
+                model_id, engine=requested_engine
+            )
             if compatibility.get("supported") is False:
                 raise HTTPException(status_code=400, detail=compatibility)
             return await prepare_and_load_model(
-                model_id, request, engine=req.engine,
+                model_id,
+                request,
+                engine=req.engine,
                 user_email=_effective_email(current_user, req.user_email),
-                adapter_path=req.adapter_path, draft_model_id=req.draft_model_id,
+                adapter_path=req.adapter_path,
+                draft_model_id=req.draft_model_id,
                 allow_download=req.allow_download,
             )
         except ModelRuntimeError as exc:
@@ -445,7 +574,9 @@ def create_models_router(
         except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
             raise HTTPException(
                 status_code=500,
-                detail=friendly_model_runtime_error(e, model_id=req.model_id, engine=req.engine),
+                detail=friendly_model_runtime_error(
+                    e, model_id=req.model_id, engine=req.engine
+                ),
             )
 
     @router.delete("/models/unload/{model_id:path}")

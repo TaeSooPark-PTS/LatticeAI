@@ -61,7 +61,8 @@ def test_module_probe_reports_false_for_a_module_whose_parent_is_missing():
 
 def test_local_model_type_reads_an_explicit_directory_config(tmp_path):
     (tmp_path / "config.json").write_text(
-        json.dumps({"model_type": "Gemma4_Unified"}), encoding="utf-8",
+        json.dumps({"model_type": "Gemma4_Unified"}),
+        encoding="utf-8",
     )
 
     assert _local_model_type(str(tmp_path)) == "gemma4_unified"
@@ -80,7 +81,9 @@ def test_compatibility_normalizes_the_engine_and_strips_the_load_prefix(monkeypa
     monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: None)
 
-    payload = model_runtime_compatibility("mlx:mlx-community/gemma-4-12b-it-4bit", "mlx")
+    payload = model_runtime_compatibility(
+        "mlx:mlx-community/gemma-4-12b-it-4bit", "mlx"
+    )
 
     assert payload["engine"] == "local_mlx"
     assert payload["model_id"] == "mlx-community/gemma-4-12b-it-4bit"
@@ -91,25 +94,32 @@ def test_compatibility_reports_runtime_not_installed_and_offers_gguf(monkeypatch
     monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: None)
 
-    payload = model_runtime_compatibility("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
+    payload = model_runtime_compatibility(
+        "mlx-community/gemma-4-12b-it-4bit", "local_mlx"
+    )
 
     assert payload["status"] == "runtime_not_installed"
     assert payload["checked"] is False
     assert payload["supported"] is True
     assert "Install the local MLX runtime" in payload["user_message"]
     assert [alt["engine"] for alt in payload["alternatives"]] == [
-        "ollama", "lmstudio", "llamacpp",
+        "ollama",
+        "lmstudio",
+        "llamacpp",
     ]
 
 
 def test_compatibility_falls_back_to_mlx_lm_when_only_vlm_is_missing(monkeypatch):
     monkeypatch.setattr(
-        module_probe.importlib.util, "find_spec",
+        module_probe.importlib.util,
+        "find_spec",
         _find_spec("mlx", "mlx_lm", "mlx_lm.models.gemma4"),
     )
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: "gemma4")
 
-    payload = model_runtime_compatibility("mlx-community/gemma-4-26b-a4b-it-4bit", "local_mlx")
+    payload = model_runtime_compatibility(
+        "mlx-community/gemma-4-26b-a4b-it-4bit", "local_mlx"
+    )
 
     assert payload["status"] == "fallback_available"
     assert payload["supported"] is True
@@ -123,7 +133,9 @@ def test_a_supported_model_reports_a_plain_load_failure(monkeypatch):
     monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
 
     detail = friendly_model_runtime_error(
-        RuntimeError("weights not found"), model_id="ollama:llama3.1", engine="ollama",
+        RuntimeError("weights not found"),
+        model_id="ollama:llama3.1",
+        engine="ollama",
     )
 
     assert detail["status"] == "load_failed"
@@ -159,7 +171,8 @@ def test_fast_postprocess_keeps_going_when_a_postprocessor_raises(monkeypatch):
     monkeypatch.setitem(model_compat.POSTPROCESSORS, "wp32_boom", boom)
 
     out = fast_postprocess(
-        "assistant: hello", {"postprocess": ["wp32_boom", "strip_role_tokens"]},
+        "assistant: hello",
+        {"postprocess": ["wp32_boom", "strip_role_tokens"]},
     )
 
     assert out == "hello"
@@ -171,7 +184,10 @@ def test_fast_postprocess_keeps_going_when_a_postprocessor_raises(monkeypatch):
 def test_smoke_classification_rejects_missing_and_leaking_responses():
     assert classify_smoke_response(None) == ("failed", "empty response")
     assert classify_smoke_response("   ") == ("failed", "empty response")
-    assert classify_smoke_response("4 <|weird_token|>") == ("failed", "special token leakage")
+    assert classify_smoke_response("4 <|weird_token|>") == (
+        "failed",
+        "special token leakage",
+    )
     assert classify_smoke_response("assistant: 4") == ("failed", "role marker leakage")
 
 
@@ -188,7 +204,10 @@ def test_smoke_classification_flags_mild_repetition_as_degraded():
 
     assert status == "degraded"
     assert reason == "mild repetition"
-    assert validate_smoke_response("정답은 4. 정답은 4. 정답은 4.") == (True, "mild repetition")
+    assert validate_smoke_response("정답은 4. 정답은 4. 정답은 4.") == (
+        True,
+        "mild repetition",
+    )
 
 
 def test_smoke_classification_flags_a_long_but_valid_answer_as_degraded():
@@ -204,15 +223,24 @@ def test_smoke_classification_flags_a_long_but_valid_answer_as_degraded():
 
 
 def test_normalize_generation_params_applies_only_non_none_overrides():
-    profile = {"temperature": 0.2, "top_p": 0.9, "max_tokens": 2048, "stop_sequences": ["</s>"]}
+    profile = {
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "max_tokens": 2048,
+        "stop_sequences": ["</s>"],
+    }
 
     defaults = normalize_generation_params(profile)
     overridden = normalize_generation_params(
-        profile, {"temperature": 0.7, "max_tokens": None, "stop": ["<|end|>"]},
+        profile,
+        {"temperature": 0.7, "max_tokens": None, "stop": ["<|end|>"]},
     )
 
     assert defaults == {
-        "temperature": 0.2, "top_p": 0.9, "max_tokens": 2048, "stop": ["</s>"],
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "max_tokens": 2048,
+        "stop": ["</s>"],
     }
     assert overridden["temperature"] == 0.7
     assert overridden["max_tokens"] == 2048  # None never overrides

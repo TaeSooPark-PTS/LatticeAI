@@ -113,7 +113,9 @@ class ModelResolution:
         if ":" in raw:
             prefix, rest = raw.split(":", 1)
             prefix_canon = _canonical_engine(prefix)
-            if prefix_canon and prefix_canon in LOCAL_ENGINES.union({"openai", "anthropic", "openrouter", "groq", "together"}):
+            if prefix_canon and prefix_canon in LOCAL_ENGINES.union(
+                {"openai", "anthropic", "openrouter", "groq", "together"}
+            ):
                 provider = prefix_canon
                 model_name = rest.strip()
 
@@ -140,7 +142,9 @@ class ModelResolution:
                     else:
                         resolved_model = maybe
             except Exception:
-                logger.debug("alias_resolver failed for %s", resolved_model, exc_info=True)
+                logger.debug(
+                    "alias_resolver failed for %s", resolved_model, exc_info=True
+                )
 
         download_id = resolved_model
         if provider == "local_mlx":
@@ -203,7 +207,11 @@ class PrepareReport:
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
-        data["state"] = self.state.value if isinstance(self.state, PrepareState) else str(self.state)
+        data["state"] = (
+            self.state.value
+            if isinstance(self.state, PrepareState)
+            else str(self.state)
+        )
         data["resolution"] = self.resolution.to_dict()
         return data
 
@@ -211,7 +219,9 @@ class PrepareReport:
 # ── State machine helpers ─────────────────────────────────────────────────────
 
 
-def transition_log(state: PrepareState, message: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def transition_log(
+    state: PrepareState, message: str, extra: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     log: Dict[str, Any] = {"state": state.value, "message": message}
     if extra:
         log["extra"] = extra

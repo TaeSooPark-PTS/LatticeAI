@@ -47,7 +47,9 @@ def test_openapi_export_environment_is_disposable_and_restored(tmp_path, monkeyp
 
 
 def test_integration_runner_and_ci_use_disposable_state():
-    runner = (ROOT / "scripts" / "run_integration_tests.mjs").read_text(encoding="utf-8")
+    runner = (ROOT / "scripts" / "run_integration_tests.mjs").read_text(
+        encoding="utf-8"
+    )
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
     assert "mkdtempSync" in runner
@@ -83,7 +85,7 @@ def test_launchers_never_pin_the_guardless_module_form():
     for name in ("bin/ltcai.js", "start_ai.sh"):
         launcher = (ROOT / name).read_text(encoding="utf-8")
         assert "LTCAI_PYTHON" in launcher, name
-        assert 'LATTICEAI_DESKTOP_BACKEND_CMD = `' not in launcher, name
+        assert "LATTICEAI_DESKTOP_BACKEND_CMD = `" not in launcher, name
         assert 'export LATTICEAI_DESKTOP_BACKEND_CMD="' not in launcher, name
 
 

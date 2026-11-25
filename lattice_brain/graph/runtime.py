@@ -15,7 +15,9 @@ from typing import Any, Iterator, Optional
 
 _UNSET = object()
 _llm_router_ref: Any = None
-_scoped_llm_router: ContextVar[Any] = ContextVar("lattice_brain_llm_router", default=_UNSET)
+_scoped_llm_router: ContextVar[Any] = ContextVar(
+    "lattice_brain_llm_router", default=_UNSET
+)
 
 
 def set_llm_router(router_instance: Any) -> None:

@@ -28,7 +28,9 @@ def _shipped_hybrid_search_bundle() -> Path:
     manifest = json.loads(
         (STATIC_DIR / "app" / "asset-manifest.json").read_text(encoding="utf-8")
     )
-    public_url = next(v for k, v in manifest["assets"].items() if k.endswith("index.html"))
+    public_url = next(
+        v for k, v in manifest["assets"].items() if k.endswith("index.html")
+    )
     return REPO_ROOT / public_url.removeprefix("/")
 
 

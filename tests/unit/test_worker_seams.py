@@ -35,7 +35,7 @@ from latticeai.api.worker_seams import create_worker_seams_router, probe_gpu_mem
 from latticeai.core.messages import MESSAGES
 
 USER = "worker@local"
-MEMSIZE_16GB = str(16 * 1024 ** 3) + "\n"
+MEMSIZE_16GB = str(16 * 1024**3) + "\n"
 
 
 # ── fakes ───────────────────────────────────────────────────────────────────
@@ -152,14 +152,14 @@ def _hide_mlx(monkeypatch) -> None:
 
 
 def test_the_probe_reports_unified_memory_the_way_local_sysinfo_does(monkeypatch):
-    _install_fake_mlx(monkeypatch, active_bytes=2 * 1024 ** 3, cache_bytes=1024 ** 3 // 2)
+    _install_fake_mlx(monkeypatch, active_bytes=2 * 1024**3, cache_bytes=1024**3 // 2)
     _fake_sysctl(monkeypatch, MEMSIZE_16GB)
 
     result = probe_gpu_memory()
     assert result["mlx_available"] is True
-    assert result["gpu_mem_gb"] == 2.5               # active + cache, unified memory
-    assert result["gpu_mem_pct"] == 15.6             # 2.5 GB of 16 GB
-    assert result["total_bytes"] == 16 * 1024 ** 3
+    assert result["gpu_mem_gb"] == 2.5  # active + cache, unified memory
+    assert result["gpu_mem_pct"] == 15.6  # 2.5 GB of 16 GB
+    assert result["total_bytes"] == 16 * 1024**3
     assert result["detail"] is None
     assert "capabilities" in result
     assert "pointer_tools" in result["capabilities"]
@@ -167,7 +167,9 @@ def test_the_probe_reports_unified_memory_the_way_local_sysinfo_does(monkeypatch
     assert result["python_version"]
 
 
-def test_a_host_that_reports_no_memory_at_all_yields_zero_not_a_zero_division(monkeypatch):
+def test_a_host_that_reports_no_memory_at_all_yields_zero_not_a_zero_division(
+    monkeypatch,
+):
     _install_fake_mlx(monkeypatch, active_bytes=1024, cache_bytes=0)
     _fake_sysctl(monkeypatch, "0\n")
 

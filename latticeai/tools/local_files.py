@@ -17,14 +17,18 @@ def local_list(path: str) -> Dict[str, Any]:
         raise ToolError(f"폴더가 아닙니다: {path}")
     items = []
     try:
-        for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        for child in sorted(
+            target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+        ):
             stat = child.stat()
-            items.append({
-                "name": child.name,
-                "path": str(child),
-                "type": "directory" if child.is_dir() else "file",
-                "size": stat.st_size if child.is_file() else None,
-            })
+            items.append(
+                {
+                    "name": child.name,
+                    "path": str(child),
+                    "type": "directory" if child.is_dir() else "file",
+                    "size": stat.st_size if child.is_file() else None,
+                }
+            )
     except PermissionError as exc:
         raise ToolError(f"접근 권한 없음: {exc}") from exc
     return {"path": str(target), "items": items}
@@ -39,7 +43,9 @@ def local_read(path: str) -> Dict[str, Any]:
         raise ToolError(f"파일이 아닙니다: {path}")
     size = target.stat().st_size
     if size > LOCAL_MAX_FILE_BYTES:
-        raise ToolError(f"파일이 너무 큽니다 ({size:,} bytes). 최대 {LOCAL_MAX_FILE_BYTES:,} bytes.")
+        raise ToolError(
+            f"파일이 너무 큽니다 ({size:,} bytes). 최대 {LOCAL_MAX_FILE_BYTES:,} bytes."
+        )
     try:
         content = target.read_text(encoding="utf-8", errors="replace")
     except Exception as exc:

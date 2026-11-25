@@ -59,7 +59,9 @@ def test_a_valueless_rel_attribute_does_not_raise() -> None:
     assert _stylesheets("<link rel href='/e.css'>") == []
 
 
-def test_every_stylesheet_on_a_page_reaches_the_inspect_html_report(workspace: Path) -> None:
+def test_every_stylesheet_on_a_page_reaches_the_inspect_html_report(
+    workspace: Path,
+) -> None:
     (workspace / "page.html").write_text(
         """<!doctype html>
         <html><head>

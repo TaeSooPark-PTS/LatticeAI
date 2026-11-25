@@ -30,19 +30,30 @@ CHANGE_DESTRUCTIVE = "destructive"
 CHANGE_EXEC = "exec"
 
 # Tools whose effect depends on whether the target already exists.
-_TARGET_WRITE_TOOLS = frozenset({
-    "write_file", "local_write",
-    "create_docx", "create_xlsx", "create_pptx", "create_pdf",
-})
+_TARGET_WRITE_TOOLS = frozenset(
+    {
+        "write_file",
+        "local_write",
+        "create_docx",
+        "create_xlsx",
+        "create_pptx",
+        "create_pdf",
+    }
+)
 # Tools that always rewrite existing content.
 _ALWAYS_MUTATION_TOOLS = frozenset({"edit_file"})
 # Tools that remove existing content.
 _DESTRUCTIVE_TOOLS = frozenset({"delete_file", "remove_file", "clear_history"})
 # Additive-only knowledge writes (append-style, never rewrite).
-_ADDITIVE_TOOLS = frozenset({
-    "knowledge_save", "obsidian_save", "todo_write", "create_web_project",
-    "knowledge_graph_ingest",
-})
+_ADDITIVE_TOOLS = frozenset(
+    {
+        "knowledge_save",
+        "obsidian_save",
+        "todo_write",
+        "create_web_project",
+        "knowledge_graph_ingest",
+    }
+)
 
 # ── Mutating-tool inventory (single source of truth) ─────────────────────
 # Every tool with a side effect is classified into exactly one category so a
@@ -124,9 +135,7 @@ def classify_tool_call(
         path = str(args.get("path") or args.get("filename") or "")
         exists = bool(path and path_exists and path_exists(path))
         change = CHANGE_MUTATION if exists else CHANGE_ADDITIVE
-        reason = (
-            "overwrites an existing file" if exists else "creates a new file"
-        )
+        reason = "overwrites an existing file" if exists else "creates a new file"
     elif name in _ADDITIVE_TOOLS:
         change = CHANGE_ADDITIVE
         reason = "adds new content only"
@@ -163,10 +172,7 @@ def assert_governance_coverage(tool_names: "Any") -> None:
     this raise, so CI fails closed instead of shipping an ungoverned mutator.
     Read-only tools (risk ``read``) are intentionally exempt.
     """
-    missing = [
-        name for name in tool_names
-        if name not in MUTATING_TOOL_INVENTORY
-    ]
+    missing = [name for name in tool_names if name not in MUTATING_TOOL_INVENTORY]
     if missing:
         raise ValueError(
             "ungoverned mutating tools (add to MUTATING_TOOL_INVENTORY): "

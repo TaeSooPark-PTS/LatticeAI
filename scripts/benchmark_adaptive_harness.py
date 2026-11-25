@@ -30,7 +30,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REPORT_PATH = REPO_ROOT / "output" / "benchmarks" / "v13.4.0_adaptive_harness_report.json"
+DEFAULT_REPORT_PATH = (
+    REPO_ROOT / "output" / "benchmarks" / "v13.4.0_adaptive_harness_report.json"
+)
 DEFAULT_QWEN_GGUF = (
     Path.home()
     / ".latticeai"
@@ -82,7 +84,9 @@ class BenchLoopbackServer:
         stop: Optional[List[str]] = None,
         prefix: str = "",
     ) -> str:
-        user_text = user_prompt if (user_prompt and user_prompt.strip()) else "Continue."
+        user_text = (
+            user_prompt if (user_prompt and user_prompt.strip()) else "Continue."
+        )
         clean_stop = [s for s in (stop or []) if s]
         if prefix:
             clamped_tokens = min(max(8, int(max_tokens or 256)), 384)
@@ -114,7 +118,15 @@ class BenchLoopbackServer:
                 with urllib.request.urlopen(comp_req, timeout=45) as resp:
                     comp_data = json.loads(resp.read().decode("utf-8"))
                 return prefix + str(comp_data["choices"][0]["text"])
-            except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError, KeyError, IndexError):
+            except (
+                urllib.error.URLError,
+                OSError,
+                TimeoutError,
+                ValueError,
+                TypeError,
+                KeyError,
+                IndexError,
+            ):
                 pass
 
         messages: List[Dict[str, str]] = []
@@ -339,7 +351,9 @@ def run_raw_arm(
         user_msg = task["prompt"]
         if history_lines:
             user_msg += "\n\nPrevious steps:\n" + "\n".join(history_lines)
-        raw = server.chat_completion(RAW_SYSTEM_PROMPT, user_msg, max_tokens=384, temperature=0.0)
+        raw = server.chat_completion(
+            RAW_SYSTEM_PROMPT, user_msg, max_tokens=384, temperature=0.0
+        )
         try:
             obj = json.loads(raw.strip())
         except (ValueError, TypeError):
@@ -360,14 +374,19 @@ def run_raw_arm(
             url = str(args.get("url", ""))
             try:
                 with urllib.request.urlopen(url, timeout=10) as resp:
-                    res: Any = {"url": url, "raw_html": resp.read().decode("utf-8", errors="replace")}
+                    res: Any = {
+                        "url": url,
+                        "raw_html": resp.read().decode("utf-8", errors="replace"),
+                    }
                 err = None
             except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
                 res, err = None, str(exc)
         elif action == "web_search":
             q = urllib.parse.quote_plus(str(args.get("query", "")))
             try:
-                with urllib.request.urlopen(f"{server.origin}/search?q={q}", timeout=10) as resp:
+                with urllib.request.urlopen(
+                    f"{server.origin}/search?q={q}", timeout=10
+                ) as resp:
                     res = json.loads(resp.read().decode("utf-8"))
                 err = None
             except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
@@ -379,7 +398,9 @@ def run_raw_arm(
         call = {"action": action, "args": args, "result": res, "error": err}
         tool_calls.append(call)
         transcript.append(call)
-        history_lines.append(f"{action}({json.dumps(args)}) -> {json.dumps(res or err)[:450]}")
+        history_lines.append(
+            f"{action}({json.dumps(args)}) -> {json.dumps(res or err)[:450]}"
+        )
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return {
@@ -440,7 +461,9 @@ def run_rust_arm(
         "--skip-plan",
     ]
     t0 = time.perf_counter()
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=180, check=False)
+    proc = subprocess.run(
+        cmd, env=env, capture_output=True, text=True, timeout=180, check=False
+    )
     if proc.returncode != 0 or not proc.stdout.strip():
         parsed: Dict[str, Any] = {
             "status": "failed",
@@ -508,7 +531,11 @@ def _grade_state_checks(
 
     if "must_not_claim_superseded" in checks:
         sup = checks["must_not_claim_superseded"].lower()
-        if sup in answer_lower and "superseded" not in answer_lower and "replaced" not in answer_lower:
+        if (
+            sup in answer_lower
+            and "superseded" not in answer_lower
+            and "replaced" not in answer_lower
+        ):
             failures.append(f"leaked superseded claim '{sup}'")
 
     if checks.get("require_abstention"):
@@ -533,18 +560,31 @@ def _grade_state_checks(
 
     if checks.get("honest_missing") and not any(
         kw in answer_lower
-        for kw in ("not exist", "not found", "missing", "absent", "could not", "cannot", "없습니다")
+        for kw in (
+            "not exist",
+            "not found",
+            "missing",
+            "absent",
+            "could not",
+            "cannot",
+            "없습니다",
+        )
     ):
         failures.append("did not honestly report missing file")
 
 
-def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def grade_task_result(
+    task: Dict[str, Any], result: Dict[str, Any]
+) -> Tuple[bool, List[str]]:
     """Deterministically grade a single arm outcome against task checks."""
     checks = task["checks"]
     failures: List[str] = []
     answer = str(result.get("answer", "") or "")
     answer_lower = answer.lower()
-    tools = [str(c.get("action", "")).removeprefix("mcp.") for c in result.get("tool_calls", [])]
+    tools = [
+        str(c.get("action", "")).removeprefix("mcp.")
+        for c in result.get("tool_calls", [])
+    ]
     ws_files = result.get("workspace_files", {})
     cu_events = result.get("cu_events", [])
 
@@ -561,7 +601,9 @@ def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[boo
     return len(failures) == 0, failures
 
 
-def aggregate_arm(tasks: List[Dict[str, Any]], outcomes: List[Dict[str, Any]]) -> Dict[str, Any]:
+def aggregate_arm(
+    tasks: List[Dict[str, Any]], outcomes: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """Compute overall and per-category pass counts, pass rates, and repair totals."""
     by_cat: Dict[str, Dict[str, Any]] = {
         cat: {"passed": 0, "total": 0, "rate_pct": 0.0} for cat in CATEGORIES
@@ -581,7 +623,11 @@ def aggregate_arm(tasks: List[Dict[str, Any]], outcomes: List[Dict[str, Any]]) -
         stats["rate_pct"] = round(100.0 * stats["passed"] / max(1, stats["total"]), 1)
     overall_pct = round(100.0 * passed_total / max(1, len(tasks)), 1)
     return {
-        "overall": {"passed": passed_total, "total": len(tasks), "rate_pct": overall_pct},
+        "overall": {
+            "passed": passed_total,
+            "total": len(tasks),
+            "rate_pct": overall_pct,
+        },
         "categories": by_cat,
         "repairs_recovered": repairs_count,
         "avg_latency_ms": round(total_ms / max(1, len(tasks)), 1),
@@ -608,7 +654,9 @@ def resolve_bench_binary() -> Path:
     for c in candidates:
         if c.exists():
             return c
-    raise FileNotFoundError("harness_bench binary not built; run cargo build -p lattice-host --example harness_bench --release")
+    raise FileNotFoundError(
+        "harness_bench binary not built; run cargo build -p lattice-host --example harness_bench --release"
+    )
 
 
 def run_model_suite(
@@ -628,13 +676,21 @@ def run_model_suite(
         }
         for idx, task in enumerate(tasks, 1):
             print(f"[{model_id}] ({idx}/{len(tasks)}) {task['id']} ...", flush=True)
-            for arm_name in ("raw_no_harness", "standard_loop", "adaptive_harness_v13_4"):
+            for arm_name in (
+                "raw_no_harness",
+                "standard_loop",
+                "adaptive_harness_v13_4",
+            ):
                 if arm_name == "raw_no_harness":
                     res = run_raw_arm(server, task)
                 elif arm_name == "standard_loop":
-                    res = run_rust_arm(bench_bin, server, task, "standard", model_id, profile_cache)
+                    res = run_rust_arm(
+                        bench_bin, server, task, "standard", model_id, profile_cache
+                    )
                 else:
-                    res = run_rust_arm(bench_bin, server, task, "adaptive", model_id, profile_cache)
+                    res = run_rust_arm(
+                        bench_bin, server, task, "adaptive", model_id, profile_cache
+                    )
                 passed, failures = grade_task_result(task, res)
                 arms_raw[arm_name].append(
                     {
@@ -648,7 +704,9 @@ def run_model_suite(
                         "elapsed_ms": res.get("elapsed_ms", 0),
                     }
                 )
-        summary = {arm: aggregate_arm(tasks, outcomes) for arm, outcomes in arms_raw.items()}
+        summary = {
+            arm: aggregate_arm(tasks, outcomes) for arm, outcomes in arms_raw.items()
+        }
         raw_pct = summary["raw_no_harness"]["overall"]["rate_pct"]
         std_pct = summary["standard_loop"]["overall"]["rate_pct"]
         adp_pct = summary["adaptive_harness_v13_4"]["overall"]["rate_pct"]
@@ -718,7 +776,11 @@ def main() -> int:
         )
         procs.append(llama_proc)
         wait_for_health("http://127.0.0.1:18081/health", timeout_s=45.0)
-        models_out.append(run_model_suite("Qwen2.5-0.5B-Instruct-Q4_K_M", "http://127.0.0.1:18081", bench_bin))
+        models_out.append(
+            run_model_suite(
+                "Qwen2.5-0.5B-Instruct-Q4_K_M", "http://127.0.0.1:18081", bench_bin
+            )
+        )
 
         if args.with_gemma_mlx and Path("/opt/homebrew/bin/mlx_lm.server").exists():
             mlx_proc = subprocess.Popen(
@@ -738,8 +800,18 @@ def main() -> int:
             procs.append(mlx_proc)
             try:
                 wait_for_health("http://127.0.0.1:18082/v1/models", timeout_s=30.0)
-                models_out.append(run_model_suite("gemma-4-e2b-it-4bit", "http://127.0.0.1:18082", bench_bin))
-            except (TimeoutError, OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+                models_out.append(
+                    run_model_suite(
+                        "gemma-4-e2b-it-4bit", "http://127.0.0.1:18082", bench_bin
+                    )
+                )
+            except (
+                TimeoutError,
+                OSError,
+                RuntimeError,
+                ValueError,
+                subprocess.SubprocessError,
+            ) as exc:
                 print(f"Skipping gemma-4-e2b-it-4bit MLX run ({exc})", file=sys.stderr)
     finally:
         for p in procs:
@@ -757,7 +829,9 @@ def main() -> int:
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "models": models_out,
     }
-    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    report_path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"Wrote benchmark report to {report_path}")
     return 0
 

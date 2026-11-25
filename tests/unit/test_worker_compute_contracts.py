@@ -45,10 +45,14 @@ def test_embed_endpoint_emits_full_contract_and_marks_hash_fallback_explicit():
         "huggingface", model="google/embeddinggemma-2", dim=8
     )
     gemma.embed_batch_for = lambda texts, kind="passage": [[0.25] * 8 for _ in texts]
-    resolved_gemma = type("Resolved", (), {"provider": gemma, "active": "huggingface"})()
-    semantic_body = _client(embedder=resolved_gemma).post(
-        "/worker/embed", json={"texts": ["lattice contract"], "kind": "query"}
-    ).json()
+    resolved_gemma = type(
+        "Resolved", (), {"provider": gemma, "active": "huggingface"}
+    )()
+    semantic_body = (
+        _client(embedder=resolved_gemma)
+        .post("/worker/embed", json={"texts": ["lattice contract"], "kind": "query"})
+        .json()
+    )
 
     assert semantic_body["semantic"] is True
     assert semantic_body["grade"] == "production"
@@ -59,9 +63,11 @@ def test_embed_endpoint_emits_full_contract_and_marks_hash_fallback_explicit():
 
     hash_prov = HashEmbeddingProvider(dim=16)
     resolved_hash = type("Resolved", (), {"provider": hash_prov, "active": "hash"})()
-    hash_body = _client(embedder=resolved_hash).post(
-        "/worker/embed", json={"texts": ["offline fallback"]}
-    ).json()
+    hash_body = (
+        _client(embedder=resolved_hash)
+        .post("/worker/embed", json={"texts": ["offline fallback"]})
+        .json()
+    )
 
     assert hash_body["semantic"] is False
     assert hash_body["grade"] == "fallback"
@@ -81,7 +87,9 @@ def test_pointer_tools_follows_whether_pyautogui_is_findable(monkeypatch):
     import importlib.util
 
     monkeypatch.setattr(
-        importlib.util, "find_spec", lambda name: object() if name == "pyautogui" else None
+        importlib.util,
+        "find_spec",
+        lambda name: object() if name == "pyautogui" else None,
     )
     assert pointer_tools_available() is True
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)

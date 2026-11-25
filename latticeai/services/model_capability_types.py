@@ -39,6 +39,7 @@ LEGACY = "legacy"
 @dataclass(frozen=True)
 class ModelCapability:
     """Rich capability entry. id is the canonical key used in ENGINE_MODEL_CATALOG."""
+
     id: str
     hf_repo_id: str  # clean HF path for download (e.g. mlx-community/xxx or Qwen/yyy)
     name: str
@@ -56,16 +57,26 @@ class ModelCapability:
     #: RECOMMENDED (offered + recommended) or LEGACY (recognised only).
     lifecycle: str = RECOMMENDED
     quantization: Optional[str] = None  # "4bit", "Q4_K_M", "GGUF-Q4"
-    provider_hints: List[str] = field(default_factory=lambda: ["local_mlx"])  # which engines this id primarily maps to
-    download_strategy: str = "hf_hub"  # hf_hub | ollama_pull | lmstudio_app | gguf_manual
-    load_strategy: str = "mlx_vlm"  # mlx_vlm | ollama | vllm | lmstudio | llamacpp_server
+    provider_hints: List[str] = field(
+        default_factory=lambda: ["local_mlx"]
+    )  # which engines this id primarily maps to
+    download_strategy: str = (
+        "hf_hub"  # hf_hub | ollama_pull | lmstudio_app | gguf_manual
+    )
+    load_strategy: str = (
+        "mlx_vlm"  # mlx_vlm | ollama | vllm | lmstudio | llamacpp_server
+    )
     hardware: HardwareProfile = field(default_factory=HardwareProfile)
     license: str = "apache-2.0"
-    safety_notes: str = "Standard open weights; review license and responsible use guidelines."
+    safety_notes: str = (
+        "Standard open weights; review license and responsible use guidelines."
+    )
     source_country: str = ""
     source_company: str = ""
     execution_method: str = "내 컴퓨터에서만 실행"
-    internet_requirement: str = "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
+    internet_requirement: str = (
+        "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
+    )
     # Verification
     verification: VerificationStatus = field(default_factory=VerificationStatus)
     # UI / rec hints
@@ -80,7 +91,9 @@ class ModelCapability:
         base = {
             "id": self.id,
             "name": self.name,
-            "model_name": self.name.split(" via ")[0] if " via " in self.name else self.name,
+            "model_name": self.name.split(" via ")[0]
+            if " via " in self.name
+            else self.name,
             "family": self.family,
             "tag": self.tag,
             "size": self.size,
@@ -97,8 +110,11 @@ class ModelCapability:
             "run_location": "내 컴퓨터에서만 실행",
             "internet_requirement": self.internet_requirement,
             "source_display_order": [
-                "source_country", "source_company", "execution_method",
-                "internet_requirement", "model_name"
+                "source_country",
+                "source_company",
+                "execution_method",
+                "internet_requirement",
+                "model_name",
             ],
             # 5.2+ rich fields (non-breaking; frontend + backend read if present)
             "hf_repo_id": self.hf_repo_id,
@@ -133,5 +149,3 @@ class ModelCapability:
         if self.dimensions is not None:
             base["dimensions"] = self.dimensions
         return base
-
-

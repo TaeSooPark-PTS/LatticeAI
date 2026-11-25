@@ -121,7 +121,9 @@ def test_router_binds_every_optional_backend_when_all_are_installed(monkeypatch)
         module.executor.shutdown(wait=False)
 
 
-def test_router_import_defaults_the_draft_kind_without_overriding_an_operator(monkeypatch):
+def test_router_import_defaults_the_draft_kind_without_overriding_an_operator(
+    monkeypatch,
+):
     monkeypatch.setenv("MLX_VLM_DRAFT_KIND", "operator-choice")
     _absent(monkeypatch, *OPTIONAL_MODULES)
 
@@ -210,7 +212,9 @@ def test_ensure_mlx_runtime_fails_when_only_the_core_package_is_importable(monke
     monkeypatch.setitem(sys.modules, "mlx.core", fakes["mlx.core"])
     _absent(monkeypatch, "mlx_vlm", "mlx_lm")
 
-    with pytest.raises(RuntimeError, match="MLX runtime is not available after install"):
+    with pytest.raises(
+        RuntimeError, match="MLX runtime is not available after install"
+    ):
         loading_mod.ensure_mlx_runtime()
 
     assert loading_mod.mx is fakes["mlx.core"]
@@ -245,7 +249,9 @@ def test_mlx_sampler_builds_a_sampler_at_the_requested_temperature(monkeypatch):
     assert seen == {"temp": 0.0}, "an int temperature is coerced, not passed on"
 
 
-def test_mlx_sampler_falls_back_to_the_backend_default_when_it_cannot_build_one(monkeypatch):
+def test_mlx_sampler_falls_back_to_the_backend_default_when_it_cannot_build_one(
+    monkeypatch,
+):
     """A sampler that cannot be built must never be a failed generation."""
     _absent(monkeypatch, "mlx_lm", "mlx_lm.sample_utils")
     assert loading_mod._mlx_sampler(0.7) is None

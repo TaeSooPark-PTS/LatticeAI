@@ -156,7 +156,9 @@ def expected_baseline_version(root: Path, current_version: Optional[str] = None)
 
 
 def _baseline_dir_for_version(root: Path, version: str) -> Path:
-    return root / "output" / "release" / f"v{_normalize_version(version)}" / "screenshots"
+    return (
+        root / "output" / "release" / f"v{_normalize_version(version)}" / "screenshots"
+    )
 
 
 def _baseline_looks_complete(shots: Path) -> bool:
@@ -182,7 +184,14 @@ def _extract_baseline_from_git(root: Path, version: str) -> Optional[Path]:
     if probe.returncode != 0:
         return None
 
-    cache = root / "output" / ".cache" / "screenshot-baseline" / f"v{version}" / "screenshots"
+    cache = (
+        root
+        / "output"
+        / ".cache"
+        / "screenshot-baseline"
+        / f"v{version}"
+        / "screenshots"
+    )
     cache.mkdir(parents=True, exist_ok=True)
     missing: List[str] = []
     for name in SHOTS:
@@ -337,7 +346,9 @@ def _pixel_delta_pct(
 CLAIMS_PATH = "scripts/release_screen_claims.json"
 
 
-def _load_screen_claims(root: Path, version: str) -> Optional[Dict[str, Dict[str, object]]]:
+def _load_screen_claims(
+    root: Path, version: str
+) -> Optional[Dict[str, Dict[str, object]]]:
     """What this release says it changed, or None for "all twelve".
 
     A version with no entry is gated on every screen, so forgetting to write a
@@ -398,9 +409,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     current = args.current.resolve()
-    baseline, expected_version = resolve_baseline(
-        root, current, explicit=args.baseline
-    )
+    baseline, expected_version = resolve_baseline(root, current, explicit=args.baseline)
     print(f"pixel delta: current  = {current}")
     print(f"pixel delta: baseline = {baseline}")
     print(f"pixel delta: baseline version pin = v{expected_version}")
@@ -418,8 +427,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     # Final pin check: if baseline path embeds a version, it must match.
-    parent_name = baseline.parent.name if baseline.name == "screenshots" else baseline.name
-    if parent_name.startswith("v") and _normalize_version(parent_name) != expected_version:
+    parent_name = (
+        baseline.parent.name if baseline.name == "screenshots" else baseline.name
+    )
+    if (
+        parent_name.startswith("v")
+        and _normalize_version(parent_name) != expected_version
+    ):
         print(
             f"pixel delta: FAIL — baseline path version {parent_name} "
             f"!= expected v{expected_version}",
@@ -431,14 +445,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"pixel delta: thresholds static>={args.min_pct:.1f}% "
         f"live>={args.min_pct_live:.1f}% height>={args.min_height_px}px"
     )
-    print(
-        f"{'file':<32} {'px%':>8} {'Δh':>6} {'min%':>6} {'pass':>5}"
-    )
+    print(f"{'file':<32} {'px%':>8} {'Δh':>6} {'min%':>6} {'pass':>5}")
     print("-" * 64)
 
     claims = _load_screen_claims(root, _package_version(root))
     if claims is None:
-        print(f"pixel delta: no claim for this version in {CLAIMS_PATH} — gating all {len(SHOTS)} screens")
+        print(
+            f"pixel delta: no claim for this version in {CLAIMS_PATH} — gating all {len(SHOTS)} screens"
+        )
     else:
         print(
             f"pixel delta: gating {len(claims)} claimed screen(s); "
@@ -484,7 +498,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"{name:<32} {'—':>8} {'—':>6} {'—':>6} FAIL")
             continue
 
-        region = options.get("region") if isinstance(options.get("region"), list) else None
+        region = (
+            options.get("region") if isinstance(options.get("region"), list) else None
+        )
         pct, changed, total, h_cur, h_base = _pixel_delta_pct(cur, base, region)
         height_delta = abs(h_cur - h_base)
         live = name in LIVING_BRAIN
@@ -504,7 +520,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 + (f" region={region}" if region else "")
             )
         marker = "" if claimed else " (unclaimed)"
-        print(f"{name:<32} {pct:7.2f}% {height_delta:5d}p {min_pct:5.1f}% {tag:>5}{marker}")
+        print(
+            f"{name:<32} {pct:7.2f}% {height_delta:5d}p {min_pct:5.1f}% {tag:>5}{marker}"
+        )
         results.append(
             {
                 "file": name,
@@ -524,7 +542,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("-" * 64)
     gated = sum(1 for item in results if item["claimed"])
     if failures:
-        print(f"pixel delta: FAIL — {len(failures)}/{gated} claimed screen(s) below threshold")
+        print(
+            f"pixel delta: FAIL — {len(failures)}/{gated} claimed screen(s) below threshold"
+        )
         for item in failures:
             print(f"  - {item}", file=sys.stderr)
         return 1
@@ -537,9 +557,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         if not item["claimed"] and item["moved"]
     ]
     if surprises:
-        print(f"pixel delta: note — unclaimed screens that changed anyway: {', '.join(surprises)}")
+        print(
+            f"pixel delta: note — unclaimed screens that changed anyway: {', '.join(surprises)}"
+        )
 
-    print(f"pixel delta: PASS — all {gated} claimed screen(s) moved vs baseline v{expected_version}")
+    print(
+        f"pixel delta: PASS — all {gated} claimed screen(s) moved vs baseline v{expected_version}"
+    )
     return 0
 
 

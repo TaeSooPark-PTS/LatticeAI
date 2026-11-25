@@ -59,15 +59,17 @@ COMPUTER    : computer_screenshot  computer_ui_inspect  computer_open_app  compu
 MISC        : network_status  clear_history  final
 """
 
-FILE_CREATE_ACTIONS = frozenset({
-    "create_docx",
-    "create_xlsx",
-    "create_pptx",
-    "create_pdf",
-    "write_file",
-    "edit_file",
-    "create_web_project",
-})
+FILE_CREATE_ACTIONS = frozenset(
+    {
+        "create_docx",
+        "create_xlsx",
+        "create_pptx",
+        "create_pdf",
+        "write_file",
+        "edit_file",
+        "create_web_project",
+    }
+)
 
 LOCAL_WRITE_BLOCKED_PREFIXES = (
     "/etc/",
@@ -87,22 +89,29 @@ RISK_LEVEL_MAP = {
     "destructive": "high",
 }
 
-SCOPED_KNOWLEDGE_TOOLS = frozenset({
-    "knowledge_save",
-    "knowledge_search",
-    "knowledge_tree",
-    "obsidian_save",
-    "obsidian_search",
-    "obsidian_tree",
-})
+SCOPED_KNOWLEDGE_TOOLS = frozenset(
+    {
+        "knowledge_save",
+        "knowledge_search",
+        "knowledge_tree",
+        "obsidian_save",
+        "obsidian_search",
+        "obsidian_tree",
+    }
+)
 
 KNOWLEDGE_WRITE_TOOLS = frozenset({"knowledge_save", "obsidian_save"})
 
 
 def _r(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="read", destructive=False, shell=False, network=False,
-        auto_approve=True, sandbox=sandbox, rollback=rollback,
+        risk="read",
+        destructive=False,
+        shell=False,
+        network=False,
+        auto_approve=True,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
@@ -115,8 +124,13 @@ def _rc(
 ) -> ToolPolicy:
     """Read operation that still requires explicit human consent."""
     policy = ToolPolicy(
-        risk="read", destructive=False, shell=False, network=False,
-        auto_approve=False, sandbox=sandbox, rollback=rollback,
+        risk="read",
+        destructive=False,
+        shell=False,
+        network=False,
+        auto_approve=False,
+        sandbox=sandbox,
+        rollback=rollback,
     )
     if capability:
         policy["capability"] = capability
@@ -127,15 +141,25 @@ def _rc(
 
 def _rs(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="read", destructive=False, shell=True, network=False,
-        auto_approve=True, sandbox=sandbox, rollback=rollback,
+        risk="read",
+        destructive=False,
+        shell=True,
+        network=False,
+        auto_approve=True,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
 def _rn(sandbox: str = "system", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="read", destructive=False, shell=True, network=True,
-        auto_approve=True, sandbox=sandbox, rollback=rollback,
+        risk="read",
+        destructive=False,
+        shell=True,
+        network=True,
+        auto_approve=True,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
@@ -147,8 +171,13 @@ def _w(
     scope: str = "",
 ) -> ToolPolicy:
     policy = ToolPolicy(
-        risk="write", destructive=False, shell=False, network=False,
-        auto_approve=False, sandbox=sandbox, rollback=rollback,
+        risk="write",
+        destructive=False,
+        shell=False,
+        network=False,
+        auto_approve=False,
+        sandbox=sandbox,
+        rollback=rollback,
     )
     if capability:
         policy["capability"] = capability
@@ -159,22 +188,37 @@ def _w(
 
 def _e(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="exec", destructive=False, shell=True, network=False,
-        auto_approve=False, sandbox=sandbox, rollback=rollback,
+        risk="exec",
+        destructive=False,
+        shell=True,
+        network=False,
+        auto_approve=False,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
 def _en(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="exec", destructive=False, shell=True, network=True,
-        auto_approve=False, sandbox=sandbox, rollback=rollback,
+        risk="exec",
+        destructive=False,
+        shell=True,
+        network=True,
+        auto_approve=False,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
 def _ec(sandbox: str = "system", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
-        risk="exec", destructive=False, shell=False, network=False,
-        auto_approve=False, sandbox=sandbox, rollback=rollback,
+        risk="exec",
+        destructive=False,
+        shell=False,
+        network=False,
+        auto_approve=False,
+        sandbox=sandbox,
+        rollback=rollback,
     )
 
 
@@ -212,9 +256,7 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "computer_status": _rc(
         sandbox="system", capability="desktop:control", scope="host"
     ),
-    "chrome_status": _rc(
-        sandbox="system", capability="desktop:control", scope="host"
-    ),
+    "chrome_status": _rc(sandbox="system", capability="desktop:control", scope="host"),
     "computer_use_status": _rc(
         sandbox="system", capability="desktop:control", scope="host"
     ),
@@ -245,28 +287,54 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "computer_move": _ec(),
     "computer_open_app": _ec(),
     "computer_open_url": ToolPolicy(
-        risk="exec", destructive=False, shell=False, network=True,
-        auto_approve=False, sandbox="system", rollback="none",
+        risk="exec",
+        destructive=False,
+        shell=False,
+        network=True,
+        auto_approve=False,
+        sandbox="system",
+        rollback="none",
     ),
     "vision_analyze": _r(sandbox="system"),
     "web_fetch": ToolPolicy(
-        risk="read", destructive=False, shell=False, network=True,
-        auto_approve=True, sandbox="system", rollback="none",
+        risk="read",
+        destructive=False,
+        shell=False,
+        network=True,
+        auto_approve=True,
+        sandbox="system",
+        rollback="none",
     ),
     "web_search": ToolPolicy(
-        risk="read", destructive=False, shell=False, network=True,
-        auto_approve=True, sandbox="system", rollback="none",
+        risk="read",
+        destructive=False,
+        shell=False,
+        network=True,
+        auto_approve=True,
+        sandbox="system",
+        rollback="none",
     ),
     "computer_ui_inspect": ToolPolicy(
-        risk="read", destructive=False, shell=False, network=False,
-        auto_approve=True, sandbox="system", rollback="none",
-        capability="desktop:control", scope="host",
+        risk="read",
+        destructive=False,
+        shell=False,
+        network=False,
+        auto_approve=True,
+        sandbox="system",
+        rollback="none",
+        capability="desktop:control",
+        scope="host",
     ),
 }
 
 TOOL_GOVERNANCE_DEFAULT = ToolPolicy(
-    risk="write", destructive=False, shell=False, network=False,
-    auto_approve=False, sandbox="workspace", rollback="none",
+    risk="write",
+    destructive=False,
+    shell=False,
+    network=False,
+    auto_approve=False,
+    sandbox="workspace",
+    rollback="none",
 )
 
 MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
@@ -331,9 +399,13 @@ MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
 @dataclass
 class ToolRegistry:
     handlers: Mapping[str, Callable[[Dict[str, Any]], Dict[str, Any]]]
-    governance: Mapping[str, ToolPolicy] = field(default_factory=lambda: TOOL_GOVERNANCE)
+    governance: Mapping[str, ToolPolicy] = field(
+        default_factory=lambda: TOOL_GOVERNANCE
+    )
     default_policy: ToolPolicy = field(default_factory=lambda: TOOL_GOVERNANCE_DEFAULT)
-    descriptions: Mapping[str, str] = field(default_factory=lambda: MCP_TOOL_DESCRIPTIONS)
+    descriptions: Mapping[str, str] = field(
+        default_factory=lambda: MCP_TOOL_DESCRIPTIONS
+    )
     catalog_brief: str = TOOL_CATALOG_BRIEF
     file_create_actions: frozenset[str] = FILE_CREATE_ACTIONS
     local_write_blocked_prefixes: tuple[str, ...] = LOCAL_WRITE_BLOCKED_PREFIXES
@@ -342,8 +414,10 @@ class ToolRegistry:
     @property
     def admin_only_tools(self) -> frozenset[str]:
         return frozenset(
-            name for name, policy in self.governance.items()
-            if policy["sandbox"] == "system" or policy["risk"] in {"exec", "destructive"}
+            name
+            for name, policy in self.governance.items()
+            if policy["sandbox"] == "system"
+            or policy["risk"] in {"exec", "destructive"}
         )
 
     def registered_tools(self) -> frozenset[str]:
@@ -380,7 +454,9 @@ class ToolRegistry:
         }
         unhandled_governed = (governed - registered) - native_host_tools
         return {
-            "ready": not (unhandled_governed or registered - governed or registered - described),
+            "ready": not (
+                unhandled_governed or registered - governed or registered - described
+            ),
             "registered_tools": len(registered),
             "governed_tools": len(governed),
             "described_tools": len(described),
@@ -394,17 +470,21 @@ class ToolRegistry:
         """Serializable tool registry contract for runtime/admin inspection."""
 
         tools = []
-        for name in sorted(self.registered_tools() | set(self.governance) | set(self.descriptions)):
+        for name in sorted(
+            self.registered_tools() | set(self.governance) | set(self.descriptions)
+        ):
             policy = self.policy_for(name, {})
-            tools.append({
-                "name": name,
-                "registered": name in self.handlers,
-                "governed": name in self.governance,
-                "described": name in self.descriptions,
-                "description": self.descriptions.get(name, ""),
-                "policy": dict(policy),
-                "permission": dict(self.permission(name, {})),
-            })
+            tools.append(
+                {
+                    "name": name,
+                    "registered": name in self.handlers,
+                    "governed": name in self.governance,
+                    "described": name in self.descriptions,
+                    "description": self.descriptions.get(name, ""),
+                    "policy": dict(policy),
+                    "permission": dict(self.permission(name, {})),
+                }
+            )
         diagnostics = self.diagnostics()
         return {
             "schema_version": "tool-registry-contract/v1",
@@ -420,7 +500,9 @@ class ToolRegistry:
             "tools": tools,
         }
 
-    def execute(self, action: str, args: Dict[str, Any], *, error_cls: type[Exception]) -> Dict[str, Any]:
+    def execute(
+        self, action: str, args: Dict[str, Any], *, error_cls: type[Exception]
+    ) -> Dict[str, Any]:
         handler = self.handlers.get(action)
         if handler is None:
             raise error_cls(f"Unknown action: {action}")
@@ -432,16 +514,25 @@ class ToolRegistry:
             path = str((args or {}).get("path", "")).replace("\\", "/")
             for prefix in self.local_write_blocked_prefixes:
                 normalized_prefix = str(prefix).rstrip("/")
-                blocked = path == normalized_prefix or path.startswith(f"{normalized_prefix}/")
+                blocked = path == normalized_prefix or path.startswith(
+                    f"{normalized_prefix}/"
+                )
                 if not blocked:
                     continue
                 return ToolPolicy(
-                    risk="destructive", destructive=True, shell=False, network=False,
-                    auto_approve=False, sandbox="system", rollback="none",
+                    risk="destructive",
+                    destructive=True,
+                    shell=False,
+                    network=False,
+                    auto_approve=False,
+                    sandbox="system",
+                    rollback="none",
                 )
         return policy
 
-    def risk_level(self, policy_or_action: ToolPolicy | str, args: Optional[dict] = None) -> str:
+    def risk_level(
+        self, policy_or_action: ToolPolicy | str, args: Optional[dict] = None
+    ) -> str:
         if isinstance(policy_or_action, str):
             policy = self.policy_for(policy_or_action, args or {})
         else:

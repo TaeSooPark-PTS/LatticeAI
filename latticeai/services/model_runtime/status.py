@@ -73,15 +73,19 @@ def engine_status(
             continue
         downloaded_by_key[key] = item
         loaded_instances = item.get("loaded_instances") or []
-        lmstudio_models.append({
-            "id": f"lmstudio:{key}",
-            "name": item.get("display_name") or f"LM Studio · {key}",
-            "family": item.get("architecture") or item.get("publisher") or "LM Studio",
-            "tag": "loaded-server-model" if loaded_instances else "downloaded",
-            "size": item.get("params_string") or item.get("format") or "LM Studio",
-            "pullable": True,
-            "pulled": True,
-        })
+        lmstudio_models.append(
+            {
+                "id": f"lmstudio:{key}",
+                "name": item.get("display_name") or f"LM Studio · {key}",
+                "family": item.get("architecture")
+                or item.get("publisher")
+                or "LM Studio",
+                "tag": "loaded-server-model" if loaded_instances else "downloaded",
+                "size": item.get("params_string") or item.get("format") or "LM Studio",
+                "pullable": True,
+                "pulled": True,
+            }
+        )
 
     if not lmstudio_models:
         for m in ENGINE_MODEL_CATALOG.get("lmstudio", []):
@@ -90,7 +94,10 @@ def engine_status(
         known_ids = {item["id"] for item in lmstudio_models}
         for m in ENGINE_MODEL_CATALOG.get("lmstudio", []):
             repo_id = m["id"].removeprefix("lmstudio:")
-            if f"lmstudio:{repo_id}" not in known_ids and repo_id not in downloaded_by_key:
+            if (
+                f"lmstudio:{repo_id}" not in known_ids
+                and repo_id not in downloaded_by_key
+            ):
                 lmstudio_models.append({**m, "pulled": False})
     lmstudio_models = filter_lower_family_versions(lmstudio_models)
 
@@ -128,8 +135,8 @@ def engine_status(
             "requires": "LMSTUDIO_BASE_URL",
             "note": (
                 "다운로드된 모델은 자동 감지하고, 선택 시 필요하면 다운로드 후 바로 로드합니다."
-                if downloaded_lmstudio else
-                "LM Studio 설치 후 모델을 선택하면 Local Server 시작, 다운로드, 로드를 자동으로 진행합니다."
+                if downloaded_lmstudio
+                else "LM Studio 설치 후 모델을 선택하면 Local Server 시작, 다운로드, 로드를 자동으로 진행합니다."
             ),
             "server_ready": bool(downloaded_lmstudio),
         },
@@ -153,7 +160,9 @@ def engine_status(
             "support_reason": mlx_support["reason"],
             "installable": bool(mlx_support["supported"]),
             "install_label": ENGINE_INSTALLERS["local_mlx"]["label"],
-            "install_plan": _safe_engine_install_plan("local_mlx", base_dir=state.BASE_DIR),
+            "install_plan": _safe_engine_install_plan(
+                "local_mlx", base_dir=state.BASE_DIR
+            ),
             "models": mlx_models,
         },
         {
@@ -164,61 +173,85 @@ def engine_status(
             "installed": ollama_installed,
             "installable": True,
             "install_label": ENGINE_INSTALLERS["ollama"]["label"],
-            "install_plan": _safe_engine_install_plan("ollama", base_dir=state.BASE_DIR),
+            "install_plan": _safe_engine_install_plan(
+                "ollama", base_dir=state.BASE_DIR
+            ),
             "models": ollama_models,
         },
     ]
     for spec in local_server_specs:
         support = engine_support_status(spec["id"])
-        engines.append({
-            "id": spec["id"],
-            "name": spec["name"],
-            "kind": "local-server",
-            "description": spec["description"],
-            "installed": engine_installed(spec["id"]),
-            "supported": support["supported"],
-            "support_reason": support["reason"],
-            "installable": support["supported"] and spec["id"] in ENGINE_INSTALLERS,
-            "install_label": ENGINE_INSTALLERS.get(spec["id"], {}).get("label"),
-            "install_plan": (
-                _safe_engine_install_plan(spec["id"], base_dir=state.BASE_DIR)
-                if spec["id"] in ENGINE_INSTALLERS
-                else None
-            ),
-            "requires": spec["requires"],
-            "models": (
-                omlx_models if spec["id"] == "omlx"
-                else vllm_models if spec["id"] == "vllm"
-                else lmstudio_models if spec["id"] == "lmstudio"
-                else llamacpp_models if spec["id"] == "llamacpp"
-                else ENGINE_MODEL_CATALOG.get(spec["id"], [])
-            ),
-            "note": spec.get("note") or support["reason"] or f"{spec['requires']} 설정 시 활성화됩니다.",
-            "server_ready": spec.get("server_ready"),
-        })
+        engines.append(
+            {
+                "id": spec["id"],
+                "name": spec["name"],
+                "kind": "local-server",
+                "description": spec["description"],
+                "installed": engine_installed(spec["id"]),
+                "supported": support["supported"],
+                "support_reason": support["reason"],
+                "installable": support["supported"] and spec["id"] in ENGINE_INSTALLERS,
+                "install_label": ENGINE_INSTALLERS.get(spec["id"], {}).get("label"),
+                "install_plan": (
+                    _safe_engine_install_plan(spec["id"], base_dir=state.BASE_DIR)
+                    if spec["id"] in ENGINE_INSTALLERS
+                    else None
+                ),
+                "requires": spec["requires"],
+                "models": (
+                    omlx_models
+                    if spec["id"] == "omlx"
+                    else vllm_models
+                    if spec["id"] == "vllm"
+                    else lmstudio_models
+                    if spec["id"] == "lmstudio"
+                    else llamacpp_models
+                    if spec["id"] == "llamacpp"
+                    else ENGINE_MODEL_CATALOG.get(spec["id"], [])
+                ),
+                "note": spec.get("note")
+                or support["reason"]
+                or f"{spec['requires']} 설정 시 활성화됩니다.",
+                "server_ready": spec.get("server_ready"),
+            }
+        )
     for provider in ["openai", "openrouter", "groq", "together", "xai"]:
-        env_key = next((item.get("requires") for item in cloud_by_provider.get(provider, []) if item.get("requires")), None)
+        env_key = next(
+            (
+                item.get("requires")
+                for item in cloud_by_provider.get(provider, [])
+                if item.get("requires")
+            ),
+            None,
+        )
         provider_models = []
         for model in cloud_by_provider.get(provider, []):
             cache = verify_cache.get(str(model.get("id") or ""))
-            provider_models.append({
-                **model,
-                "verified": cache.get("ok") if cache else None,
-                "verify_reason": cache.get("reason") if cache else None,
-            })
-        engines.append({
-            "id": provider,
-            "name": provider.title(),
-            "kind": "cloud",
-            "description": "OpenAI 호환 Chat Completions API로 cloud LLM을 실행합니다.",
-            "installed": engine_installed(provider),
-            "installable": True,
-            "install_label": ENGINE_INSTALLERS[provider]["label"],
-            "install_plan": _safe_engine_install_plan(provider, base_dir=state.BASE_DIR),
-            "requires": env_key,
-            "models": provider_models,
-        })
+            provider_models.append(
+                {
+                    **model,
+                    "verified": cache.get("ok") if cache else None,
+                    "verify_reason": cache.get("reason") if cache else None,
+                }
+            )
+        engines.append(
+            {
+                "id": provider,
+                "name": provider.title(),
+                "kind": "cloud",
+                "description": "OpenAI 호환 Chat Completions API로 cloud LLM을 실행합니다.",
+                "installed": engine_installed(provider),
+                "installable": True,
+                "install_label": ENGINE_INSTALLERS[provider]["label"],
+                "install_plan": _safe_engine_install_plan(
+                    provider, base_dir=state.BASE_DIR
+                ),
+                "requires": env_key,
+                "models": provider_models,
+            }
+        )
     return engines
+
 
 def runtime_features(*, state: ModelRuntimeState) -> Dict:
     s = state
@@ -258,6 +291,7 @@ def runtime_features(*, state: ModelRuntimeState) -> Dict:
             "persistent_data_dir": str(s.DATA_DIR),
         },
     }
+
 
 def install_engine(
     engine: str,

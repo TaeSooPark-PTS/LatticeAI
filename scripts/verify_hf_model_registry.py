@@ -66,7 +66,12 @@ try:
         ModelCapability,
         get_all_capabilities,
     )
-except (ImportError, OSError, RuntimeError, SyntaxError) as e:  # pragma: no cover - import guard for standalone runs
+except (
+    ImportError,
+    OSError,
+    RuntimeError,
+    SyntaxError,
+) as e:  # pragma: no cover - import guard for standalone runs
     print("ERROR: Could not import model_capability_registry:", e)
     sys.exit(2)
 
@@ -125,7 +130,9 @@ LIMITATIONS = [
 
 def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[int]]:
     """GET a JSON document. Returns ``(payload, http_status)``; payload is None on failure."""
-    req = urllib.request.Request(url, headers={"User-Agent": "LatticeAI-model-registry-verifier/2.0"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "LatticeAI-model-registry-verifier/2.0"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -198,7 +205,9 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
     result["http_status"] = status
     if info is None:
         reasons.append(f"repo not reachable anonymously (HTTP {status})")
-        result["notes"] = "404/401 on the HF API — cannot be downloaded without credentials."
+        result["notes"] = (
+            "404/401 on the HF API — cannot be downloaded without credentials."
+        )
         return result
 
     result["hf_exists"] = True
@@ -222,7 +231,9 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
     names = [str(f.get("path") or "") for f in files if isinstance(f, dict)]
     lowered = [n.lower() for n in names]
     result["has_config"] = "config.json" in lowered
-    result["has_tokenizer"] = any("tokenizer" in n or n.endswith(".model") for n in lowered)
+    result["has_tokenizer"] = any(
+        "tokenizer" in n or n.endswith(".model") for n in lowered
+    )
     result["safetensors_count"] = sum(1 for n in lowered if n.endswith(".safetensors"))
     total_bytes = sum(int(f.get("size") or 0) for f in files if isinstance(f, dict))
     if total_bytes:
@@ -235,13 +246,19 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
     if result["gated"]:
         reasons.append(f"gated={result['gated']} — needs Hub credentials")
     if not result["canonical_case_matches"]:
-        reasons.append(f"case drift: registry {repo!r} vs canonical {result['canonical_id']!r}")
+        reasons.append(
+            f"case drift: registry {repo!r} vs canonical {result['canonical_id']!r}"
+        )
     if not result["mlx_signal"]:
         reasons.append("no mlx library_name or mlx tag")
     if result["architecture_supported_by"] is None:
-        reasons.append(f"architecture {arch or '?'} is not in SUPPORTED_MLX_ARCHITECTURES")
+        reasons.append(
+            f"architecture {arch or '?'} is not in SUPPORTED_MLX_ARCHITECTURES"
+        )
     if not result["architecture_matches_registry"]:
-        reasons.append(f"architecture {arch or '?'} != registry {cap.architecture or '?'}")
+        reasons.append(
+            f"architecture {arch or '?'} != registry {cap.architecture or '?'}"
+        )
     if not result["has_config"]:
         reasons.append("no config.json in the file tree")
     if not result["has_tokenizer"]:
@@ -250,7 +267,9 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
         reasons.append("no .safetensors shard in the file tree")
     downloads = result["downloads"] or 0
     if downloads < MIN_COMMUNITY_DOWNLOADS:
-        reasons.append(f"only {downloads} downloads — too few to count as community-proven")
+        reasons.append(
+            f"only {downloads} downloads — too few to count as community-proven"
+        )
     if result["size_delta_gb"] is not None and abs(result["size_delta_gb"]) > 0.2:
         reasons.append(
             f"size drift: measured {result['measured_size_gb']}GB vs registry {cap.download_size_gb}GB"
@@ -261,25 +280,41 @@ def verify_one(cap: ModelCapability) -> Dict[str, Any]:
 
 
 def _print_row(r: Dict[str, Any]) -> None:
-    mark = {VERDICT_LOADABLE: "OK ", VERDICT_NEEDS_REVIEW: "?? ", VERDICT_UNAVAILABLE: "XX "}[r["verdict"]]
+    mark = {
+        VERDICT_LOADABLE: "OK ",
+        VERDICT_NEEDS_REVIEW: "?? ",
+        VERDICT_UNAVAILABLE: "XX ",
+    }[r["verdict"]]
     size = f"{r['measured_size_gb']}GB" if r["measured_size_gb"] else "-"
-    print(f"{mark}{r['id']:<46} {size:>9}  {str(r['architecture'] or '-'):<16} {r['lifecycle']}")
+    print(
+        f"{mark}{r['id']:<46} {size:>9}  {str(r['architecture'] or '-'):<16} {r['lifecycle']}"
+    )
     for reason in r["reasons"]:
         print(f"      · {reason}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", default="verification_report.json", help="Report filename (written to cwd)")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--out",
+        default="verification_report.json",
+        help="Report filename (written to cwd)",
+    )
     args = parser.parse_args()
 
     caps = get_all_capabilities()
-    print("Lattice AI model registry verifier — HF metadata only, no downloads, no loads")
+    print(
+        "Lattice AI model registry verifier — HF metadata only, no downloads, no loads"
+    )
     print(f"Entries: {len(caps)}   Time: {datetime.now(timezone.utc).isoformat()}")
     print("-" * 96)
 
     results: List[Dict[str, Any]] = []
-    for cap in sorted(caps, key=lambda c: (c.lifecycle != RECOMMENDED, c.display_priority, c.id)):
+    for cap in sorted(
+        caps, key=lambda c: (c.lifecycle != RECOMMENDED, c.display_priority, c.id)
+    ):
         result = verify_one(cap)
         _print_row(result)
         results.append(result)
@@ -322,7 +357,9 @@ def main() -> int:
     }
 
     out_path = Path(args.out).resolve()
-    out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     print("-" * 96)
     print(json.dumps(summary, indent=2, ensure_ascii=False))
@@ -332,7 +369,9 @@ def main() -> int:
     print(f"\nFull report written: {out_path}")
 
     if failing:
-        print(f"\n**FAIL**: {len(failing)} recommended entries are not statically loadable.")
+        print(
+            f"\n**FAIL**: {len(failing)} recommended entries are not statically loadable."
+        )
         return 1
     return 0
 

@@ -179,13 +179,26 @@ class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
         try:
             return list(encode_text(list(texts)))
         except Exception as exc:
-            raise EmbeddingUnavailable(f"MLX vision text embedding failed: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"MLX vision text embedding failed: {exc}"
+            ) from exc
 
     def health(self) -> Dict[str, Any]:
         try:
             self._load()
-            return {"status": "ok", "detail": f"MLX vision model {self._cfg.model} loaded"}
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            return {
+                "status": "ok",
+                "detail": f"MLX vision model {self._cfg.model} loaded",
+            }
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -200,8 +213,12 @@ class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
 
     def __init__(self, cfg: _RemoteConfig):
         super().__init__(cfg)
-        self._target_ref = str(cfg.extra.get("target") or os.getenv(VISION_TARGET_ENV, ""))
-        self.model_id = f"custom-vision:{cfg.model or self._target_ref or 'callable'}:{self.dim}"
+        self._target_ref = str(
+            cfg.extra.get("target") or os.getenv(VISION_TARGET_ENV, "")
+        )
+        self.model_id = (
+            f"custom-vision:{cfg.model or self._target_ref or 'callable'}:{self.dim}"
+        )
         self._fn: Optional[Callable[..., Any]] = None
 
     def _load(self) -> Callable[..., Any]:
@@ -215,7 +232,9 @@ class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
         try:
             rows = list(fn(list(paths)))
         except Exception as exc:
-            raise EmbeddingUnavailable(f"custom vision embedding failed: {exc}") from exc
+            raise EmbeddingUnavailable(
+                f"custom vision embedding failed: {exc}"
+            ) from exc
         return self._normalize_rows(rows)
 
     def _embed_texts_raw(self, texts: Sequence[str]) -> List[List[float]]:
@@ -229,8 +248,19 @@ class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
     def health(self) -> Dict[str, Any]:
         try:
             self._load()
-            return {"status": "ok", "detail": f"custom vision target {self._target_ref} loaded"}
-        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            return {
+                "status": "ok",
+                "detail": f"custom vision target {self._target_ref} loaded",
+            }
+        except (
+            EmbeddingUnavailable,
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -327,7 +357,14 @@ def resolve_vision_embedder(
         prov = build_vision_provider(
             requested, model=model, dim=dim, space=space, timeout=timeout, extra=extra
         )
-    except (ValueError, TypeError, RuntimeError, OSError, KeyError, AttributeError) as exc:
+    except (
+        ValueError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        KeyError,
+        AttributeError,
+    ) as exc:
         return ResolvedVisionEmbedder(
             None,
             requested,
@@ -340,7 +377,15 @@ def resolve_vision_embedder(
         )
     try:
         health = prov.health()
-    except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:  # a provider probe must never crash startup
+    except (
+        EmbeddingUnavailable,
+        ImportError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        AttributeError,
+    ) as exc:  # a provider probe must never crash startup
         health = {"status": "unavailable", "detail": str(exc)}
     if health.get("status") != "ok":
         return ResolvedVisionEmbedder(

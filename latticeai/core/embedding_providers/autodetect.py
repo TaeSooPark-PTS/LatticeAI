@@ -142,7 +142,11 @@ def _has_model_files(directory: Path) -> bool:
     return (
         any(
             (directory / name).exists()
-            for name in ("model.safetensors", "weights.safetensors", "pytorch_model.bin")
+            for name in (
+                "model.safetensors",
+                "weights.safetensors",
+                "pytorch_model.bin",
+            )
         )
         or any(directory.glob("*.safetensors"))
         or any(directory.glob("*.bin"))
@@ -246,7 +250,9 @@ def detect_ollama(
     to delay or fail a boot.
     """
     values = env or dict(os.environ)
-    base = (base_url or values.get(OLLAMA_BASE_ENV, "") or DEFAULT_OLLAMA_BASE).rstrip("/")
+    base = (base_url or values.get(OLLAMA_BASE_ENV, "") or DEFAULT_OLLAMA_BASE).rstrip(
+        "/"
+    )
     try:
         import httpx
     except ImportError as exc:
@@ -257,7 +263,14 @@ def detect_ollama(
             response = client.get(f"{base}/api/tags")
             response.raise_for_status()
             payload = response.json()
-    except (_http_error, OSError, ValueError, TypeError, RuntimeError, AttributeError) as exc:
+    except (
+        _http_error,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+    ) as exc:
         return Detection(source="none", detail=f"no Ollama server at {base}: {exc}")
     names = [
         str(model.get("name") or "")
@@ -299,7 +312,12 @@ def detect_embedder(
         resolved_model = configured_model or (
             "google/embeddinggemma-2" if configured == "huggingface" else ""
         )
-        dim = 768 if configured == "huggingface" and "embeddinggemma" in resolved_model.lower() else 0
+        dim = (
+            768
+            if configured == "huggingface"
+            and "embeddinggemma" in resolved_model.lower()
+            else 0
+        )
         return Detection(
             provider=configured,
             model=resolved_model,
