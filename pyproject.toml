@@ -224,9 +224,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.mccabe]
-# 20 is the complexity ceiling for ordinary functions. Router factories are
-# exempt below — their "complexity" is N sibling route handlers defined in one
-# closure, an idiom of this codebase rather than tangled logic.
+# 20 is the complexity ceiling enforced across the entire Python codebase
+# with zero C901 exemptions.
 max-complexity = 20
 
 [tool.ruff.lint.per-file-ignores]
@@ -246,14 +245,12 @@ max-complexity = 20
   "E402", "S101", "S110", "S603", "S604", "S607", "S608", "SIM", "B007",
 ]
 
-# Router factories: one closure holding N sibling route handlers. mccabe counts
-# every handler's branches as a single function's complexity, which measures the
-# wrong thing. Security Bandit checks (S105/S108/S603/S604/S607) stay enabled.
-"latticeai/api/*.py" = ["C901", "E402", "SIM", "B008"]
+# Router modules: FastAPI dependency defaults (B008) and guarded imports (E402).
+# Security Bandit checks (S105/S108/S603/S604/S607) and C901 complexity stay enabled.
+"latticeai/api/*.py" = ["E402", "SIM", "B008"]
 
-# Named exception above the complexity ceiling, with a standing reason:
-#   app_factory._build — the composition root, being decomposed incrementally
-"latticeai/app_factory.py" = ["C901", "E402", "SIM"]
+# Composition root: C901 complexity stays enabled.
+"latticeai/app_factory.py" = ["E402", "SIM"]
 
 # Process launchers. Every command is a fixed program plus validated arguments,
 # recorded through latticeai/services/process_audit.py.

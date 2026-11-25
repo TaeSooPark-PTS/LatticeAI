@@ -76,6 +76,7 @@ import importlib.util
 import logging
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
@@ -326,86 +327,111 @@ def build_extract_reply(text: str, kind: str) -> Dict[str, Any]:
     return {"concepts": concepts, "triples": triples, "semantic": semantic}
 
 
-def create_worker_compute_router(
-    *,
-    embedder: Any,
-    transcriber: Optional[Callable[[str], str]] = None,
-    require_user: Callable[[Request], Any],
-    enforce_rate_limit: Callable[[str, str], None],
-    db_path: Any = None,
-) -> APIRouter:
-    """The nine compute seams, wired to what this worker actually resolved.
+@dataclass(frozen=True)
+class _WorkerComputeDeps:
+    embedder: Any
+    transcriber: Optional[Callable[[str], str]]
+    require_user: Callable[[Request], Any]
+    enforce_rate_limit: Callable[[str, str], None]
+    db_path: Any
 
-    ``embedder`` is the :class:`~latticeai.core.embedding_providers.text.ResolvedEmbedder`
-    ``phase_brain`` built (``None`` ⇒ 503, because a worker with no embedder is
-    a configuration rather than a crash). ``transcriber`` is the injected port
-    the voice path holds; absent, ``/worker/asr`` reports the absence instead of
-    inventing a transcript.
+
+def _require_seam(request: Request) -> None:
+    """404 unless the host opened the seam for this worker."""
+    if not seam_open():
+        raise http_error(404, "agent_seam.disabled", resolve_language(request))
+
+
+def _admit(deps: _WorkerComputeDeps, request: Request) -> str:
+    """Authenticate and charge this call against the per-step budget."""
+    current_user = deps.require_user(request)
+    deps.enforce_rate_limit(current_user, SEAM_RATE_BUCKET)
+    return str(current_user or "")
+
+
+def _decode_b64_payload(payload: str, language: str) -> bytes:
+    """Base64 in, bytes out — a malformed body is 422, never a 500."""
+    try:
+        return base64.b64decode(str(payload or ""), validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise http_error(
+            422, "worker_compute.content_invalid", language, reason=str(exc)
+        ) from exc
+
+
+async def _render_document_payload(
+    kind: str,
+    builder: Callable[[], bytes],
+    language: str,
+    **extra: Any,
+) -> Dict[str, Any]:
+    """Build one document off the event loop and hand back its bytes.
+
+    The reply is the bytes and what they cost, and nothing about *where*
+    they go: ``lattice-agent``'s ``documents::document_output_target`` runs
+    its own ``safe_filename`` and ``Workspace::resolve`` over the request's
+    ``filename`` **before** it calls here, and writes to the target it
+    resolved. A second sanitisation on this side produced a name no caller
+    ever read — two spellings of one rule, one of them invisible.
     """
-    router = APIRouter()
+    try:
+        payload = await asyncio.to_thread(builder)
+    except ToolError as exc:
+        # The library is not installed here. That is a property of the
+        # install, not of the request, so it is 503 and not 500.
+        raise http_error(
+            503,
+            "worker_compute.render_unavailable",
+            language,
+            kind=kind,
+            reason=str(exc),
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 — reported with the kind, not swallowed
+        logger.warning("worker render %s failed: %s", kind, exc)
+        raise http_error(
+            500,
+            "worker_compute.render_failed",
+            language,
+            kind=kind,
+            reason=str(exc),
+        ) from exc
+    return {
+        "content_b64": base64.b64encode(payload).decode("ascii"),
+        "bytes": len(payload),
+        **extra,
+    }
 
-    def _require_seam(request: Request) -> None:
-        """404 unless the host opened the seam for this worker."""
-        if not seam_open():
-            raise http_error(404, "agent_seam.disabled", resolve_language(request))
 
-    def _admit(request: Request) -> str:
-        """Authenticate and charge this call against the per-step budget."""
-        current_user = require_user(request)
-        enforce_rate_limit(current_user, SEAM_RATE_BUCKET)
-        return str(current_user or "")
+def _resolve_embed_contract(embedder: Any, provider: Any) -> Tuple[str, Dict[str, Any]]:
+    grade = getattr(provider, "grade", None)
+    if grade is None:
+        grade = "fallback" if embedder.active == "hash" else "production"
+    contract_fn = getattr(provider, "index_contract", None)
+    if callable(contract_fn):
+        return str(grade), contract_fn().as_dict()
+    model_id = str(getattr(provider, "model_id", "") or "")
+    is_semantic = (
+        grade != "fallback"
+        and embedder.active != "hash"
+        and not model_id.startswith("lattice-local-hash")
+        and not model_id.startswith("lattice-fallback-")
+    )
+    contract = EmbeddingIndexContract(
+        provider=str(embedder.active or "hash"),
+        model_id=model_id,
+        model_revision=getattr(provider, "model_revision", None),
+        dimension=int(getattr(provider, "dim", 0) or 0),
+        passage_mode=str(getattr(provider, "passage_mode", "raw") or "raw"),
+        query_mode=str(getattr(provider, "query_mode", "raw") or "raw"),
+        grade=str(grade),
+        semantic=is_semantic,
+    ).as_dict()
+    return str(grade), contract
 
-    def _decode(payload: str, language: str) -> bytes:
-        """Base64 in, bytes out — a malformed body is 422, never a 500."""
-        try:
-            return base64.b64decode(str(payload or ""), validate=True)
-        except (binascii.Error, ValueError) as exc:
-            raise http_error(
-                422, "worker_compute.content_invalid", language, reason=str(exc)
-            ) from exc
 
-    async def _render(
-        kind: str,
-        builder: Callable[[], bytes],
-        language: str,
-        **extra: Any,
-    ) -> Dict[str, Any]:
-        """Build one document off the event loop and hand back its bytes.
-
-        The reply is the bytes and what they cost, and nothing about *where*
-        they go: ``lattice-agent``'s ``documents::document_output_target`` runs
-        its own ``safe_filename`` and ``Workspace::resolve`` over the request's
-        ``filename`` **before** it calls here, and writes to the target it
-        resolved. A second sanitisation on this side produced a name no caller
-        ever read — two spellings of one rule, one of them invisible.
-        """
-        try:
-            payload = await asyncio.to_thread(builder)
-        except ToolError as exc:
-            # The library is not installed here. That is a property of the
-            # install, not of the request, so it is 503 and not 500.
-            raise http_error(
-                503,
-                "worker_compute.render_unavailable",
-                language,
-                kind=kind,
-                reason=str(exc),
-            ) from exc
-        except Exception as exc:  # noqa: BLE001 — reported with the kind, not swallowed
-            logger.warning("worker render %s failed: %s", kind, exc)
-            raise http_error(
-                500,
-                "worker_compute.render_failed",
-                language,
-                kind=kind,
-                reason=str(exc),
-            ) from exc
-        return {
-            "content_b64": base64.b64encode(payload).decode("ascii"),
-            "bytes": len(payload),
-            **extra,
-        }
-
+def _register_embed_and_parse_routes(
+    router: APIRouter, deps: _WorkerComputeDeps
+) -> None:
     @router.post("/worker/embed")
     async def worker_embed(req: EmbedRequest, request: Request):
         """Vectors for these texts, from the provider this worker resolved.
@@ -416,9 +442,9 @@ def create_worker_compute_router(
         every vector under whatever this says.
         """
         _require_seam(request)
-        _admit(request)
+        _admit(deps, request)
         language = resolve_language(request)
-        if embedder is None:
+        if deps.embedder is None:
             raise http_error(503, "worker_compute.embedder_unavailable", language)
         kind = req.kind.strip().lower()
         if kind not in EMBED_KINDS:
@@ -429,7 +455,7 @@ def create_worker_compute_router(
                 kind=req.kind,
                 allowed=", ".join(EMBED_KINDS),
             )
-        provider = embedder.provider
+        provider = deps.embedder.provider
         texts = list(req.texts)
         if len(texts) > EMBED_MAX_BATCH:
             raise http_error(
@@ -441,46 +467,17 @@ def create_worker_compute_router(
             )
         if kind == "passage":
             texts = [text[:PASSAGE_MAX_CHARS] for text in texts]
-        # `embed_batch_for` rather than `embed_batch`: an asymmetric model (the
-        # E5 family) needs to know whether this text is the question or the
-        # answer, and `kind` is exactly that. Symmetric providers ignore it.
-        # Resolved by name because the embedder arrives injected: a stand-in
-        # that predates the role-aware method still embeds, it just cannot be
-        # told which role it is embedding for.
         role_aware = getattr(provider, "embed_batch_for", None)
         vectors = (
             await asyncio.to_thread(role_aware, texts, kind)
             if callable(role_aware)
             else await asyncio.to_thread(provider.embed_batch, texts)
         )
-        grade = getattr(provider, "grade", None)
-        if grade is None:
-            grade = "fallback" if embedder.active == "hash" else "production"
-        contract_fn = getattr(provider, "index_contract", None)
-        if callable(contract_fn):
-            contract = contract_fn().as_dict()
-        else:
-            model_id = str(getattr(provider, "model_id", "") or "")
-            is_semantic = (
-                grade != "fallback"
-                and embedder.active != "hash"
-                and not model_id.startswith("lattice-local-hash")
-                and not model_id.startswith("lattice-fallback-")
-            )
-            contract = EmbeddingIndexContract(
-                provider=str(embedder.active or "hash"),
-                model_id=model_id,
-                model_revision=getattr(provider, "model_revision", None),
-                dimension=int(getattr(provider, "dim", 0) or 0),
-                passage_mode=str(getattr(provider, "passage_mode", "raw") or "raw"),
-                query_mode=str(getattr(provider, "query_mode", "raw") or "raw"),
-                grade=str(grade),
-                semantic=is_semantic,
-            ).as_dict()
+        grade, contract = _resolve_embed_contract(deps.embedder, provider)
         return {
             "vectors": vectors,
             "dim": provider.dim,
-            "provider": embedder.active,
+            "provider": deps.embedder.active,
             "model_id": provider.model_id,
             "model_revision": contract["model_revision"],
             "normalization": contract["normalization"],
@@ -507,9 +504,9 @@ def create_worker_compute_router(
         one the caller named — takes its place.
         """
         _require_seam(request)
-        _admit(request)
+        _admit(deps, request)
         language = resolve_language(request)
-        data = _decode(req.content_b64, language)
+        data = _decode_b64_payload(req.content_b64, language)
         suffix = Path(req.filename or "").suffix.lower()
         with _temp_payload(data, suffix) as tmp_path:
             try:
@@ -522,12 +519,14 @@ def create_worker_compute_router(
         parsed["filename"] = req.filename
         return parsed
 
+
+def _register_render_routes(router: APIRouter, deps: _WorkerComputeDeps) -> None:
     @router.post("/worker/render/docx")
     async def worker_render_docx(req: RenderDocxRequest, request: Request):
         """A Word document's bytes. Rust decides where it lands."""
         _require_seam(request)
-        _admit(request)
-        return await _render(
+        _admit(deps, request)
+        return await _render_document_payload(
             "docx",
             lambda: build_docx_bytes(req.title, req.body),
             resolve_language(request),
@@ -537,8 +536,8 @@ def create_worker_compute_router(
     async def worker_render_xlsx(req: RenderXlsxRequest, request: Request):
         """A workbook's bytes, with the row count ``create_xlsx`` reported."""
         _require_seam(request)
-        _admit(request)
-        return await _render(
+        _admit(deps, request)
+        return await _render_document_payload(
             "xlsx",
             lambda: build_xlsx_bytes(req.rows, req.sheet_name),
             resolve_language(request),
@@ -549,8 +548,8 @@ def create_worker_compute_router(
     async def worker_render_pptx(req: RenderPptxRequest, request: Request):
         """A deck's bytes. ``slides`` counts the title slide, as ``create_pptx`` did."""
         _require_seam(request)
-        _admit(request)
-        return await _render(
+        _admit(deps, request)
+        return await _render_document_payload(
             "pptx",
             lambda: build_pptx_bytes(req.title, req.slides),
             resolve_language(request),
@@ -561,13 +560,17 @@ def create_worker_compute_router(
     async def worker_render_pdf(req: RenderPdfRequest, request: Request):
         """A PDF's bytes, CJK font and all."""
         _require_seam(request)
-        _admit(request)
-        return await _render(
+        _admit(deps, request)
+        return await _render_document_payload(
             "pdf",
             lambda: build_pdf_bytes(req.title, req.body),
             resolve_language(request),
         )
 
+
+def _register_media_and_extract_routes(
+    router: APIRouter, deps: _WorkerComputeDeps
+) -> None:
     @router.post("/worker/asr")
     async def worker_asr(req: AsrRequest, request: Request):
         """Transcribe one recording — and never claim a transcript it did not get.
@@ -579,9 +582,9 @@ def create_worker_compute_router(
         an answer about the audio, not an error about the request.
         """
         _require_seam(request)
-        _admit(request)
+        _admit(deps, request)
         language = resolve_language(request)
-        data = _decode(req.audio_b64, language)
+        data = _decode_b64_payload(req.audio_b64, language)
         suffix = _suffix_for(req.filename, req.mime, ".m4a")
         if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
             raise http_error(
@@ -599,7 +602,7 @@ def create_worker_compute_router(
                 size=len(data),
                 limit=MAX_AUDIO_BYTES,
             )
-        if transcriber is None:
+        if deps.transcriber is None:
             return {
                 "text": "",
                 "segments": None,
@@ -607,10 +610,10 @@ def create_worker_compute_router(
                 "status": "unavailable",
                 "detail": "no local transcriber is configured",
             }
-        provider = _callable_identity(transcriber)
+        provider = _callable_identity(deps.transcriber)
         with _temp_payload(data, suffix) as tmp_path:
             try:
-                raw = await asyncio.to_thread(transcriber, tmp_path)
+                raw = await asyncio.to_thread(deps.transcriber, tmp_path)
             except Exception as exc:  # noqa: BLE001 — a broken transcriber is a state
                 logger.warning("worker asr failed: %s", exc)
                 return {
@@ -651,7 +654,7 @@ def create_worker_compute_router(
         a write.
         """
         _require_seam(request)
-        _admit(request)
+        _admit(deps, request)
         language = resolve_language(request)
         kind = req.kind.strip().lower()
         if kind not in EXTRACT_KINDS:
@@ -668,7 +671,7 @@ def create_worker_compute_router(
     async def worker_vector_query(req: VectorQueryRequest, request: Request):
         """Top-k ids from the HNSW sidecar, or ``index: "none"`` honestly."""
         _require_seam(request)
-        _admit(request)
+        _admit(deps, request)
         language = resolve_language(request)
         if not req.embedding_model or req.embedding_dim <= 0 or not req.vector:
             raise http_error(422, "worker_compute.vector_query_invalid", language)
@@ -681,9 +684,37 @@ def create_worker_compute_router(
             embedding_dim=req.embedding_dim,
             vector=req.vector,
             k=req.k,
-            db_path=db_path,
+            db_path=deps.db_path,
         )
 
+
+def create_worker_compute_router(
+    *,
+    embedder: Any,
+    transcriber: Optional[Callable[[str], str]] = None,
+    require_user: Callable[[Request], Any],
+    enforce_rate_limit: Callable[[str, str], None],
+    db_path: Any = None,
+) -> APIRouter:
+    """The nine compute seams, wired to what this worker actually resolved.
+
+    ``embedder`` is the :class:`~latticeai.core.embedding_providers.text.ResolvedEmbedder`
+    ``phase_brain`` built (``None`` ⇒ 503, because a worker with no embedder is
+    a configuration rather than a crash). ``transcriber`` is the injected port
+    the voice path holds; absent, ``/worker/asr`` reports the absence instead of
+    inventing a transcript.
+    """
+    deps = _WorkerComputeDeps(
+        embedder=embedder,
+        transcriber=transcriber,
+        require_user=require_user,
+        enforce_rate_limit=enforce_rate_limit,
+        db_path=db_path,
+    )
+    router = APIRouter()
+    _register_embed_and_parse_routes(router, deps)
+    _register_render_routes(router, deps)
+    _register_media_and_extract_routes(router, deps)
     return router
 
 
