@@ -5,7 +5,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **14.1.0 — Living Synthesis**.
+Current release: **14.1.1 — Living Synthesis**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -83,7 +83,7 @@ worker interpreter with `LTCAI_PYTHON` when both exist.
 `rust/target/release/lattice-host`, then `rust/target/debug/lattice-host`. If
 none exist it runs `cargo build -p lattice-host` (debug). A stale
 `rust/target/release/lattice-host` wins over a current debug binary — pin or
-rebuild (`cargo build -p lattice-host --release`) if `-V` is not 14.1.0.
+rebuild (`cargo build -p lattice-host --release`) if `-V` is not 14.1.1.
 
 Do not run `npm start` and `npm run dev` on the same port. The worker
 entrypoint defaults to `LATTICEAI_PORT` or **4825**, the same port as the
@@ -181,14 +181,14 @@ npm run release:validate
 
 ### `npm run lint` — ten members, in this order
 
-1. `lint:python` — `ruff check .` (with `"BLE"` blind-except detection, McCabe `max-complexity <= 20`, production `S608`, and minimal Bandit per-file ignores) then `mypy`. Fix ruff locally (`ruff check --fix`) before arguing with the rule; mypy errors name the module under `latticeai/` or `lattice_brain/`.
+1. `lint:python` — `ruff format --check .` and `ruff check .` (with `"BLE"` blind-except detection, global McCabe `max-complexity <= 20` with zero `C901` exemptions, production `S608`, and minimal Bandit per-file ignores) then `mypy`. Fix formatting with `ruff format .` and lint locally (`ruff check --fix`) before arguing with the rule; mypy errors name the module under `latticeai/` or `lattice_brain/`.
 2. `lint:visual` — `node --check` on every `tests/visual/*.js`, `*.cjs`, and `tests/visual/mock_server/*.cjs`. A syntax error in a screenshot spec fails here, not in Playwright.
 3. `lint:frontend` — `scripts/lint_frontend.mjs`: `tsc --noEmit` (TypeScript 7.0.2 with `"noUncheckedIndexedAccess": true`) plus static checks over `frontend/` and `static/app`.
 4. `frontend:openapi:check` — `frontend/openapi.json` and `frontend/src/api/openapi.ts` must match a fresh isolated export. Fix: `npm run frontend:openapi` and commit both artifacts.
 5. `scripts/check_i18n_literals.mjs` — no user-facing string literals in `frontend/src` TS/TSX. Move the words into the matching `frontend/src/i18n/` namespace (both `ko` and `en`).
 6. `check:i18n-namespaces` — a lazy chunk may only read keys whose namespace it imports. Import the namespace module from the route, do not reach into a sibling dictionary.
 7. `check:bundle` — initial JS gzip closure stays under 150 KiB. Heavy UI belongs behind `React.lazy`. Do not raise the budget to hide a sync import.
-8. `check:server-i18n` — routers listed in `scripts/check_server_i18n.mjs` must raise through `http_error` / `translate`, never a quoted `detail=`. Adding a name to `LOCALIZED` is how a migration is declared finished. Today it locks all 6 worker routers (`0 not yet claimed`).
+8. `check:server-i18n` — routers listed in `scripts/check_server_i18n.mjs` (`LOCALIZED`) must raise through `http_error` / `translate`, never a quoted `detail=`, and non-router helpers (`worker_compute_render.py`, `worker_resilience.py`) are explicitly registered in `NON_ROUTER_HELPERS`. The gate fails closed (`exit 1`) on any unclassified `latticeai/api/*.py` module (`0 unclaimed`).
 9. `scripts/check_release_evidence_bound.mjs` — see the binding paragraph below.
 10. `check:max-file-lines` — see the line-limit paragraph below.
 
@@ -247,7 +247,7 @@ fixture parity tests stay deterministic, and falls back to
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **14.1.0 — …**` matching
+included) must carry `Current release: **14.1.1 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -258,7 +258,7 @@ changelog entries that mention old versions stay.
 ### Release-evidence binding
 
 `scripts/check_release_evidence_bound.mjs` (lint member 9) checks that
-`output/release/v14.1.0/SCREENSHOT_INDEX.md` still names the live
+`output/release/v14.1.1/SCREENSHOT_INDEX.md` still names the live
 `static/app/asset-manifest.json` digest and the visual mock-server
 fingerprint. It exists so a later `npm run build:assets` cannot ship
 screenshots of an older UI, and so a mock-server edit cannot leave the
@@ -327,19 +327,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 14.1.0 ahead of
+bumps. Do not move this file's `Current release` marker off 14.1.1 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 14.1.0 release work, exact artifacts are:
+For 14.1.1 release work, exact artifacts are:
 
-- `dist/ltcai-14.1.0-py3-none-any.whl`
-- `dist/ltcai-14.1.0.tar.gz`
-- `ltcai-14.1.0.tgz`
-- `dist/ltcai-14.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
+- `dist/ltcai-14.1.1-py3-none-any.whl`
+- `dist/ltcai-14.1.1.tar.gz`
+- `ltcai-14.1.1.tgz`
+- `dist/ltcai-14.1.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.1_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
 > 서브시스템 설계 원칙과 운영 관점 개요는 [`docs/ko/architecture-overview.md`](./architecture-overview.md)를 참고하세요.
 
-현재 릴리스: **14.1.0 — Living Synthesis**.
+현재 릴리스: **14.1.1 — Living Synthesis**.
 
 Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 20개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 
@@ -143,7 +143,7 @@ flowchart LR
 - **무-TS5 OpenAPI 코드 생성:** [`scripts/generate_openapi_types.mjs`](../../scripts/generate_openapi_types.mjs)가 TypeScript 5 의존성 없이 `frontend/openapi.json`에서 `frontend/src/api/openapi.ts`를 결정론적으로 생성합니다.
 - **자동 검증 및 크로스플랫폼 CI 게이트:**
   - **프론트엔드:** `npm run test:frontend:coverage`(113개 테스트 파일 / 1,852개 테스트 4대 지표 100%), `tsc 7.0.2`(`noUncheckedIndexedAccess` 활성), 번들 예산(`<= 150 KiB` gzip), i18n 리터럴·네임스페이스 검증, 확장 테스트 스위트.
-  - **Python:** `npm run test:coverage`(`>= 90%` 하한), `ruff`(`"BLE"` 광범위 예외 탐지, McCabe `max-complexity <= 20`, 프로덕션 `S608`, 최소 Bandit 파일별 예외), `mypy`, 도메인별 모듈화 단위 테스트(`tests/unit/`, 다중 타임존 UTC 타임스탬프 일관성 테스트 포함).
+  - **Python:** `npm run test:coverage`(`>= 90%` 하한), `ruff`(`ruff format --check .`, `"BLE"` 광범위 예외 탐지, `C901` 예외 없는 전역 McCabe `max-complexity <= 20`, 프로덕션 `S608`, 최소 Bandit 파일별 예외), `mypy`, 도메인별 모듈화 단위 테스트(`tests/unit/`, 다중 타임존 UTC 타임스탬프 일관성 테스트 포함).
   - **Rust, Windows, 데스크톱 및 컨테이너:** `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, **Ubuntu (`ubuntu-latest`)** 및 **Windows (`windows-latest`)** 병렬 `cargo-nextest`, **macOS (`macos-latest`)** `src-tauri` 테스트, 다이제스트 고정 멀티스테이지 `Dockerfile` 빌드 및 `lattice-host --version` 스모크 검증.
   - **문서 & 비주얼:** `docs:check-current`, `docs:check-links`, `docs:check-languages`(EN ↔ KO 100% 패리티), `check:max-file-lines`, **PR 및 `main`** Playwright `visual` 스모크, 릴리스 증거 바인딩.
 
@@ -155,13 +155,13 @@ flowchart LR
 
 ## 릴리스 산출물 맵
 
-14.1.0 정확 버전 산출물 이름:
+14.1.1 정확 버전 산출물 이름:
 
-- Python 휠: `dist/ltcai-14.1.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.1.0.tar.gz`
-- npm tarball: `ltcai-14.1.0.tgz`
-- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.1.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
+- Python 휠: `dist/ltcai-14.1.1-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.1.1.tar.gz`
+- npm tarball: `ltcai-14.1.1.tgz`
+- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.1.1.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.1_aarch64.dmg`
 
 ## 알려진 경계
 

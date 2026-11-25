@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.1.1 — Living Synthesis (2026-11-25)
+
+Python 포매팅, 복잡도 전역 강제, 서버 i18n 래칫, 컨테이너 권한 위생에 대한 제로 기술 부채(zero-technical-debt) 패스를 완료했습니다: 전체 Python 파일 219개를 전용 포매팅 커밋(`55ba57c381a433066fd94434c3a6250c4a1beb59`)으로 `ruff format .` 정렬하고 `.git-blame-ignore-revs`에 기록했으며 `npm run lint:python`과 CI에 `ruff format --check .`를 연동했습니다. `create_models_router`(`latticeai/api/models.py`)와 `create_worker_compute_router`(`latticeai/api/worker_compute.py`)를 모듈 수준 헬퍼로 분해하고 `pyproject.toml`의 모든 `"C901"` 파일별 예외를 제거해 McCabe `max-complexity = 20`을 예외 없이 전역 강제하며 `/worker/extract` 테스트를 `tests/unit/test_worker_compute_extract.py`로 분리했습니다. `worker_compute_render.py`와 `worker_resilience.py`를 `NON_ROUTER_HELPERS`에 명시 등록하고 `scripts/check_server_i18n.mjs`가 미분류 `latticeai/api/*.py` 모듈 추가 시 즉시 실패(`exit 1`, `0 unclaimed`)하도록 잠갔으며, `Dockerfile`의 `lattice-host` 바이너리 복사에 `--chown=lattice:lattice --chmod=0755`를 명시했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.1.1.md](./releases/RELEASE_NOTES_v14.1.1.md).
+
+빌드 산출물은 `dist/ltcai-14.1.1-py3-none-any.whl`, `dist/ltcai-14.1.1.tar.gz`, `ltcai-14.1.1.tgz`, `dist/ltcai-14.1.1.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.1_aarch64.dmg` 입니다.
+
 ## v14.1.0 — Living Synthesis (2026-11-25)
 
 v14.0.0의 치명적 회귀 2건을 수정하고 풀스택 정적 분석 및 문서 최신화를 완료했습니다: `clock.rs`, `lattice_brain/utils.py`, `_kg_fsutil.py`의 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일하여 비-UTC 환경의 9시간 편차를 제거하고 `Asia/Seoul`·`America/New_York`·`UTC` 회귀 테스트를 추가했습니다. `src-tauri`에 `PortPolicy`(`PinnedProduction` / `AllowDynamicFallback`)를 도입해 프로덕션 빌드가 포트 `4825` 충돌 시 조용히 이탈하지 않고 명확한 안내와 함께 즉시 실패(fail-fast)하도록 수정했습니다. Python 전역의 포괄적 `except Exception` / `# noqa: BLE001`을 구체적 예외로 좁히고 Ruff `"BLE"` 전역 활성화·McCabe 복잡도 상한 `30 → 20` 하향·Bandit 예외 최소화를 완료했습니다. `rust/lattice-auth`에 `messages.rs` 및 구조화된 `CsrfReason` 열거형을 도입하고 비실패 Tauri 커맨드(`backend_status`, `shutdown_backend`)를 직접 `BackendStatus` 반환으로 정리했습니다. 프론트엔드에 TypeScript 7 `"noUncheckedIndexedAccess": true`를 활성화해 68개 파일의 457건 오류를 해소(113개 테스트 파일 / 1,852개 테스트, Vitest 100% 유지)했고, CI의 Playwright `visual` 스모크 잡을 `main`뿐 아니라 PR에서도 실행하도록 확장했으며, 모든 정본·참고 영문 문서와 한국어 미러를 `v14.1.0` 기준으로 갱신했습니다.

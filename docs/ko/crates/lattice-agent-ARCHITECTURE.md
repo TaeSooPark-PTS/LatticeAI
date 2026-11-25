@@ -65,6 +65,6 @@ prompts/   호출자가 프롬프트를 제공하지 않았을 때 모델에 전
 
 **…새로운 라우트?** `surface/`에 추가하며 요청 본문은 `runbody.rs`에 두고 400 응답은 `surface::bad_request`를 통해 반환합니다. 라우트는 요청을 변환하고, 커널을 호출하고, 결과를 다시 변환할 뿐입니다.
 
-## 공개 API 표면 (14.1.0)
+## 공개 API 표면 (14.1.1)
 
 `src/lib.rs`는 정본 도메인 그룹(`content`, `kernel`, `parse`, `prompts`, `seam`, `surface`, `tools`)과 `VERSION`만 공개합니다. 모든 내부·외부 호출자는 정본 경로(`lattice_agent::kernel::state`, `lattice_agent::tools::sandbox`, `lattice_agent::surface::looproutes` 등)에서 직접 임포트합니다.

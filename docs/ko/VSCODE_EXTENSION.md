@@ -12,7 +12,7 @@ Lattice AI 확장은 VS Code, Cursor, VSCodium을 로컬 우선 Digital Brain에
 
 ## 현재 릴리스
 
-**14.1.0 — Living Synthesis**는 Rust ↔ Python 오프셋 없는 UTC 타임스탬프 통일, Tauri 프로덕션 포트(`4825`) 즉시 실패(fail-fast) 고정, Python Ruff(`BLE` · McCabe `<= 20` · 최소 Bandit 예외), TypeScript 7 `noUncheckedIndexedAccess`(Vitest 100%), PR Playwright 시각 스모크와 함께 강화된 VS Code 확장(선택적 Bearer 인증 `ltcai.authToken` / `LATTICEAI_API_TOKEN`, TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 스트림 타임아웃, `onDidChangeConfiguration` 실시간 설정 리로드, 동기화 폴링 중복 가드, 크로스플랫폼 VSIX 패키징 `scripts/vsix-cli.mjs`)을 제공합니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.1.0.md](./releases/RELEASE_NOTES_v14.1.0.md)에서 확인할 수 있습니다.
+**14.1.1 — Living Synthesis**는 저장소 전역 Python 포매팅(`ruff format --check .`), `C901` 예외 없는 전역 McCabe `<= 20` 강제, fail-closed 서버 i18n 래칫(`0 unclaimed`), Rust ↔ Python 오프셋 없는 UTC 타임스탬프 통일, Tauri 프로덕션 포트(`4825`) 즉시 실패(fail-fast) 고정, TypeScript 7 `noUncheckedIndexedAccess`(Vitest 100%), PR Playwright 시각 스모크와 함께 강화된 VS Code 확장(선택적 Bearer 인증 `ltcai.authToken` / `LATTICEAI_API_TOKEN`, TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 스트림 타임아웃, `onDidChangeConfiguration` 실시간 설정 리로드, 동기화 폴링 중복 가드, 크로스플랫폼 VSIX 패키징 `scripts/vsix-cli.mjs`)을 제공합니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.1.1.md](./releases/RELEASE_NOTES_v14.1.1.md)에서 확인할 수 있습니다.
 
 **핵심 프로토콜은 기존과 호환됩니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
 

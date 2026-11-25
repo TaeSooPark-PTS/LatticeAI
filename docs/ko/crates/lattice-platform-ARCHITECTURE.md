@@ -54,7 +54,7 @@ adminops/      설치 환경 운영 및 감사
 
 **…감사 로그(audit line)?** `adminops::admin::append_audit_event`를 사용합니다. 단일 추가 함수, 단일 파일, 단일 포맷을 유지하며 `lattice-chat`과 `lattice-host` 역시 자체 작성자를 늘리지 않고 외부에서 이 함수를 호출합니다.
 
-## 공개 API 표면 (14.1.0)
+## 공개 API 표면 (14.1.1)
 
 `src/lib.rs`는 7개의 정본 도메인 모듈(`adminops`, `governance`, `knowledge`, `modelops`, `shell`, `toolsurface`, `workspaceos`)과 `VERSION`만 공개합니다. `lattice-host`, `lattice-chat` 및 통합 테스트의 모든 호출자는 정본 도메인 경로(`lattice_platform::adminops::admin`, `lattice_platform::workspaceos::workspace` 등)에서 직접 임포트합니다.
 

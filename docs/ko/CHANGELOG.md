@@ -5,6 +5,20 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.1.1] - 2026-11-25 — Living Synthesis
+
+### 변경됨
+- **저장소 전역 Python 포매팅 및 Blame 위생 (`.git-blame-ignore-revs`, `package.json`, `.github/workflows/ci.yml`):**
+  - 전체 Python 파일 219개를 전용 포매팅 커밋(`55ba57c381a433066fd94434c3a6250c4a1beb59`)으로 `ruff format .` 정렬하고 `.git-blame-ignore-revs`에 기록했습니다.
+  - `npm run lint:python`(CI 실행)에 `ruff check .`, `npm run typecheck:python`과 함께 `ruff format --check .`를 추가해 포맷 드리프트를 차단합니다.
+- **전역 `C901` 복잡도 강제 (`pyproject.toml`, `latticeai/api/models.py`, `latticeai/api/worker_compute.py`, `tests/unit/test_worker_compute_extract.py`):**
+  - `create_models_router`와 `create_worker_compute_router`를 응집도 높은 모듈 수준 하위 등록 함수와 헬퍼로 분해해 API/OpenAPI 변경 없이 McCabe `max-complexity = 20` 이하를 달성했습니다.
+  - `[tool.ruff.lint.per-file-ignores]`에서 `"latticeai/api/*.py"` 및 `"latticeai/app_factory.py"`의 `"C901"` 예외를 전량 삭제(`C901` 예외 0건)하고 `/worker/extract` 테스트를 `tests/unit/test_worker_compute_extract.py`로 분리해 1,000줄 파일 상한을 준수했습니다.
+- **서버 i18n 래칫 `0 unclaimed` 달성 (`scripts/check_server_i18n.mjs`):**
+  - `worker_compute_render.py`와 `worker_resilience.py`를 감사 후 `NON_ROUTER_HELPERS`에 명시 등록하고, 향후 `latticeai/api/`에 미분류 `.py` 모듈이 추가되면 `exit 1`로 실패(fail-closed)하도록 래칫을 잠갔습니다.
+- **컨테이너 소유권 및 권한 일관화 (`Dockerfile`):**
+  - `Dockerfile` 43번 줄의 `lattice-host` 바이너리 복사에 `--chown=lattice:lattice --chmod=0755`를 명시해 런타임 스테이지 권한 정책을 통일했습니다.
+
 ## [14.1.0] - 2026-11-25 — Living Synthesis
 
 ### 수정됨

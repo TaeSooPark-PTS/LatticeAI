@@ -2,7 +2,7 @@
 
 # Lattice AI — Browser Extension (Manifest V3)
 
-Current release: **14.1.0 — Living Synthesis**.
+Current release: **14.1.1 — Living Synthesis**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this

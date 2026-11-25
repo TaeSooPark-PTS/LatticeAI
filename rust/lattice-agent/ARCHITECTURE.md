@@ -184,7 +184,7 @@ under `rust/fixtures/agent/`, and reordering them is a behaviour change.
 **…a new route?** `surface/`, with its body in `runbody.rs` and its 400 through
 `surface::bad_request`. The route translates, calls the kernel, translates back.
 
-## Public API Surface (14.1.0)
+## Public API Surface (14.1.1)
 
 `src/lib.rs` exposes only the canonical domain groups (`content`, `kernel`,
 `parse`, `prompts`, `seam`, `surface`, `tools`) and `VERSION`. Every internal

@@ -2,15 +2,15 @@
 
 # Lattice AI 갭 로드맵
 
-> **상태: 참고 문서** — **v14.1.0** (2026-11-25) 기준으로 갱신된 시점별 갭 인벤토리입니다. 현재 릴리스 정본 문서가 아니므로 버전 게이트의 구속을 받지 않습니다.
+> **상태: 참고 문서** — **v14.1.1** (2026-11-25) 기준으로 갱신된 시점별 갭 인벤토리입니다. 현재 릴리스 정본 문서가 아니므로 버전 게이트의 구속을 받지 않습니다.
 
-기준 시점: **2026-11-25**, **14.1.0 — Living Synthesis** 트리 기준. 이 문서는 [`FEATURE_STATUS.md`](./FEATURE_STATUS.md), [`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), 그리고 [`docs/ko/releases/README.md`](./releases/README.md)의 `v13.0.0+` 릴리스 노트에서 추려낸 실제 잔여 엔지니어링 과제를 추적합니다. 크레이트 소유권 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md), 기여자 가이드는 [`docs/ko/DEVELOPMENT.md`](./DEVELOPMENT.md)를 참고하세요.
+기준 시점: **2026-11-25**, **14.1.1 — Living Synthesis** 트리 기준. 이 문서는 [`FEATURE_STATUS.md`](./FEATURE_STATUS.md), [`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), 그리고 [`docs/ko/releases/README.md`](./releases/README.md)의 `v13.0.0+` 릴리스 노트에서 추려낸 실제 잔여 엔지니어링 과제를 추적합니다. 크레이트 소유권 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md), 기여자 가이드는 [`docs/ko/DEVELOPMENT.md`](./DEVELOPMENT.md)를 참고하세요.
 
 난이도: **S** 집중 변경 1건 · **M** 수직 슬라이스 · **L** 복합 프로그램(자격 증명, 모델 하네스, 인덱스 포맷 또는 플랫폼 포트).
 
 ---
 
-## 최근 완료 항목 (`v13.0.0` – `v14.1.0`) — 다시 열지 말 것
+## 최근 완료 항목 (`v13.0.0` – `v14.1.1`) — 다시 열지 말 것
 
 | 항목 | 출시 버전 | 해결 내용 |
 | --- | --- | --- |
@@ -26,6 +26,7 @@
 | 실제 Windows Rust CI, macOS Tauri CI, Docker 스모크 & PR 시각 스모크 | `14.0.0` / `14.1.0` | `.github/workflows/ci.yml`에 `rust-windows`(`windows-latest`), `tauri-check`(`macos-latest`), 다이제스트 고정 `docker-smoke`, PR + `main` Playwright `visual` 스모크를 추가했습니다. |
 | Rust ↔ Python UTC 편차 & Tauri 프로덕션 포트 이탈 | `14.1.0` | 다중 타임존에서 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 타임스탬프를 통일하고 `PortPolicy::PinnedProduction`으로 프로덕션 Tauri 포트를 `4825`에 고정했습니다. |
 | 풀스택 정적 분석 강화(`BLE`, McCabe <= 20, TS `noUncheckedIndexedAccess`) | `14.1.0` | Python 전역 포괄적 `except Exception`을 제거하고 McCabe 상한을 `20`으로 낮추며 457건의 `noUncheckedIndexedAccess` TypeScript 오류를 Vitest 100%로 해결했습니다. |
+| 제로 기술 부채 패스(`ruff format`, `C901` 예외 0건, fail-closed i18n 래칫, `Dockerfile` 위생) | `14.1.1` | Python 219개 파일 일괄 `ruff format .`(`.git-blame-ignore-revs` + CI `ruff format --check .`), `models.py`/`worker_compute.py` 분해 및 `pyproject.toml` `"C901"` 예외 전량 제거, `NON_ROUTER_HELPERS` 명시 등록으로 `check_server_i18n.mjs` `0 unclaimed` 잠금, `Dockerfile` `lattice-host` `--chown`/`--chmod` 명시를 완료했습니다. |
 
 ---
 

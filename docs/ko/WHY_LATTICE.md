@@ -2,7 +2,7 @@
 
 # 왜 Lattice AI인가
 
-현재 릴리스: **14.1.0 — Living Synthesis**.
+현재 릴리스: **14.1.1 — Living Synthesis**.
 
 **모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.**
 
