@@ -2,7 +2,7 @@
 
 # LatticeAI 프로젝트 AGENTS.md
 
-현재 릴리스: **14.0.0 — Living Synthesis**.
+현재 릴리스: **14.1.0 — Living Synthesis**.
 
 이 파일은 릴리스 문서 게이트(`scripts/check_current_release_docs.mjs`)의 일부입니다. 위 현재 릴리스 표기는 버전 상향(version bump)과 동일한 커밋에서 반드시 함께 업데이트되어야 하며, 이를 통해 릴리스 이후 `AGENTS.md`가 뒤처지는 현상을 방지합니다.
 

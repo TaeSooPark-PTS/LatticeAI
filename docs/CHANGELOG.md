@@ -6,6 +6,31 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.1.0] - 2026-11-25 — Living Synthesis
+
+### Fixed
+- **Unified Rust ↔ Python UTC Timestamps (`rust/lattice-core/src/graph_write/clock.rs`, `lattice_brain/utils.py`, `lattice_brain/graph/_kg_fsutil.py`):**
+  - Unified Python's `local_now()`, `now_iso()`, `_recency_score()`, and `_safe_iso_from_stat_mtime()` onto offset-free UTC (`YYYY-MM-DDTHH:MM:SS`) matching Rust's pure-Rust `SystemClock::now_iso()`, eliminating 9-hour skew on non-UTC hosts.
+  - Updated contradictory pre-v14.0.0 local-time comments across `clock.rs`, `workspace/pyutil.rs`, `retrieval/routes/mod.rs`, `chat/turn.rs`, and `command_center_api/store.rs`, and added Rust and Python regression tests (`tests/unit/test_timestamp_utc_consistency.py`) verifying zero skew under `Asia/Seoul`, `America/New_York`, and `UTC`.
+- **Tauri Production Pinned-Port Policy (`src-tauri/src/topology.rs`, `src-tauri/src/backend.rs`):**
+  - Added explicit `PortPolicy` (`PinnedProduction` vs. `AllowDynamicFallback`), pinning production builds strictly to `PINNED_PRODUCTION_PORT` (`4825`) so the runtime gateway origin never diverges from `tauri.conf.json` CSP and `capabilities/default.json`.
+  - Replaced silent upward port fallback (`4826+`) in production with fail-fast conflict detection and actionable `gateway_error` diagnostics, backed by unit tests verifying policy enforcement and config/capability parity.
+
+### Changed
+- **Python Exception Narrowing & Ruff Strictness (`pyproject.toml`, `lattice_brain/`, `latticeai/`, `scripts/`, `tests/`):**
+  - Replaced all broad `except Exception` / `# noqa: BLE001` catches (including all 6 blocks in `lattice_brain/multimodal/images.py` and all 6 in `latticeai/models/router/loading.py`) with concrete exception tuples.
+  - Enabled `"BLE"` globally in `[tool.ruff.lint] select`, lowered `[tool.ruff.lint.mccabe] max-complexity` from `30` to `20` (refactoring all 12 functions exceeding 20 into cohesive helpers), and trimmed `[tool.ruff.lint.per-file-ignores]` (`S603`, `S105`, `S108`) to the minimum required files while keeping `S608` active on production code.
+- **Rust Auth Messages, Infallible Tauri Commands & Docstrings (`rust/lattice-auth/`, `src-tauri/src/main.rs`, `lattice_brain/quiet.py`):**
+  - Moved `CSRF_DENIED_DETAIL` and `CSRF_ERROR_CODE` into `rust/lattice-auth/src/messages.rs` and replaced raw reason strings in `csrf.rs` with the structured `CsrfReason` enum (preserving byte-identical HTTP 403 JSON responses).
+  - Updated infallible Tauri commands `backend_status` and `shutdown_backend` to return `BackendStatus` directly via `tauri::AppHandle` instead of `Result<BackendStatus, String>`.
+  - Updated `lattice_brain/quiet.py` docstring to reflect that `lattice_brain.quiet` is the single source of truth for suppressed-exception logging.
+- **TypeScript 7 `noUncheckedIndexedAccess` (`tsconfig.json`, `frontend/src/`):**
+  - Enabled `"noUncheckedIndexedAccess": true` and resolved all 457 resulting TypeScript errors across 68 frontend source and test files while preserving 100% Vitest coverage across statements, branches, functions, and lines (`113` files, `1,852` tests).
+- **PR Visual Regression Gate (`.github/workflows/ci.yml`):**
+  - Enabled the Playwright `visual` smoke job on pull requests as well as pushes to `main`.
+- **v14.1.0 Documentation Modernization:**
+  - Refreshed all canonical and reference Markdown documentation across the repository root, `docs/`, extensions, crate maps, and Korean mirrors (`README.ko.md`, `docs/ko/`) to `v14.1.0`, pruning superseded pre-v13 prose and stale `v12.x` roadmap entries.
+
 ## [14.0.0] - 2026-11-25 — Living Synthesis
 
 ### Security & Reliability

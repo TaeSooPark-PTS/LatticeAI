@@ -68,8 +68,8 @@ describe("parseGraph", () => {
       { nodes: [{ id: "a" }, { id: "b" }], edges: [{ from: "a", to: "b" }] },
       "en",
     );
-    expect(parsed.edges[0].label).toBe("related");
-    expect(parsed.edges[0].id).toBe("edge-0");
+    expect(parsed.edges[0]!.label).toBe("related");
+    expect(parsed.edges[0]!.id).toBe("edge-0");
   });
 
   it("keeps every edge weight positive so nothing renders invisible", () => {
@@ -85,19 +85,19 @@ describe("parseGraph", () => {
       "en",
     );
     for (const edge of parsed.edges) expect(edge.weight).toBeGreaterThan(0);
-    expect(parsed.edges[2].weight).toBe(2.5);
+    expect(parsed.edges[2]!.weight).toBe(2.5);
   });
 
   it("strips Markdown out of a node title", () => {
     const parsed = parseGraph({ nodes: [{ id: "n1", title: "**Bold heading**" }] }, "en");
-    expect(parsed.nodes[0].label).not.toContain("**");
-    expect(parsed.nodes[0].label).toContain("Bold heading");
+    expect(parsed.nodes[0]!.label).not.toContain("**");
+    expect(parsed.nodes[0]!.label).toContain("Bold heading");
   });
 
   it("falls back to a shortened id when a node has no title at all", () => {
     const longId = "concept:".padEnd(80, "x");
     const parsed = parseGraph({ nodes: [{ id: longId }] }, "en");
-    const { label } = parsed.nodes[0];
+    const { label } = parsed.nodes[0]!;
     expect(label).not.toBe("");
     // Shortened for the canvas, but still recognisably the same node.
     expect(label.length).toBeLessThan(longId.length);
@@ -121,7 +121,7 @@ describe("parseGraph", () => {
     ["SomethingNew", "other"],
   ])("puts a %s node in the %s group", (type, group) => {
     const parsed = parseGraph({ nodes: [{ id: "n", type }] }, "en");
-    expect(parsed.nodes[0].group).toBe(group);
+    expect(parsed.nodes[0]!.group).toBe(group);
   });
 
   it("only reports groups that actually have nodes", () => {
@@ -155,7 +155,7 @@ describe("parseGraph", () => {
       "en",
     );
     const byId = Object.fromEntries(parsed.nodes.map((node) => [node.id, node.importance]));
-    expect(byId.hub).toBeGreaterThan(byId.leaf);
+    expect(byId.hub).toBeGreaterThan(byId.leaf!);
     for (const value of Object.values(byId)) {
       expect(value).toBeGreaterThanOrEqual(0.08);
       expect(value).toBeLessThanOrEqual(1);
@@ -164,7 +164,7 @@ describe("parseGraph", () => {
 
   it("prefers an explicit importance over the degree heuristic", () => {
     const parsed = parseGraph({ nodes: [{ id: "n", importance: 0.9 }] }, "en");
-    expect(parsed.nodes[0].importance).toBeCloseTo(0.9);
+    expect(parsed.nodes[0]!.importance).toBeCloseTo(0.9);
   });
 
   it("builds a lowercase search index from id, label, type, summary and source", () => {
@@ -182,7 +182,7 @@ describe("parseGraph", () => {
       },
       "en",
     );
-    const { searchText } = parsed.nodes[0];
+    const { searchText } = parsed.nodes[0]!;
     expect(searchText).toBe(searchText.toLowerCase());
     expect(searchText).toContain("quarterly plan");
     expect(searchText).toContain("revenue targets");
@@ -247,7 +247,7 @@ describe("buildExplorerModel", () => {
     expect(result.visibleNodes).toHaveLength(2);
     expect(result.hiddenByFilters).toBe(2);
     // The cap keeps the most important nodes, not an arbitrary two.
-    expect(result.visibleNodes[0].id).toBe("hub");
+    expect(result.visibleNodes[0]!.id).toBe("hub");
   });
 
   it("only draws an edge when both endpoints survived the filters", () => {
@@ -363,7 +363,7 @@ describe("parseGraph payload variants", () => {
       { nodes: [{ id: "m", metadata: { graph_metrics: { importance_norm: 0.7 } } }] },
       "en",
     );
-    expect(parsed.nodes[0].importance).toBeCloseTo(0.7);
+    expect(parsed.nodes[0]!.importance).toBeCloseTo(0.7);
   });
 
   it("falls back to metadata for the summary and prefers a top-level source", () => {
@@ -375,8 +375,8 @@ describe("parseGraph payload variants", () => {
       },
       "en",
     );
-    expect(parsed.nodes[0].summary).toBe("메타 요약");
-    expect(parsed.nodes[0].source).toBe("s3://bucket/file");
+    expect(parsed.nodes[0]!.summary).toBe("메타 요약");
+    expect(parsed.nodes[0]!.source).toBe("s3://bucket/file");
   });
 });
 

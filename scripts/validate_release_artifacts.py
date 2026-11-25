@@ -63,7 +63,7 @@ def _vsix_version(path: Path) -> Optional[str]:
                 if name.endswith("extension/package.json"):
                     data = json.loads(zf.read(name).decode("utf-8"))
                     return str(data.get("version") or "")
-    except Exception:
+    except (zipfile.BadZipFile, OSError, KeyError, ValueError, TypeError, UnicodeDecodeError):
         return None
     return None
 

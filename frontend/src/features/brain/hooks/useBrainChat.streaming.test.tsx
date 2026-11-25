@@ -53,7 +53,7 @@ describe("useBrainChat streaming", () => {
 
     expect(result.current.messages.at(-1)?.content).toBe("로컬에서 동작합니다.");
     expect(result.current.streaming).toBe(false);
-    expect(stream.calls[0].message).toBe("어디서 도나요?");
+    expect(stream.calls[0]!.message).toBe("어디서 도나요?");
   });
 
   it("attaches hybrid context as it arrives and marks the reply as a cloud answer", async () => {
@@ -231,7 +231,7 @@ describe("useBrainChat streaming", () => {
     await act(async () => {
       await result.current.sendText("기본");
     });
-    expect(stream.calls[0].network_mode).toBeUndefined();
+    expect(stream.calls[0]!.network_mode).toBeUndefined();
 
     act(() => {
       useConversationSession.getState().setPreferLocalOnly(true);
@@ -239,7 +239,7 @@ describe("useBrainChat streaming", () => {
     await act(async () => {
       await result.current.sendText("로컬만");
     });
-    expect(stream.calls[1].network_mode).toBe("local_only");
+    expect(stream.calls[1]!.network_mode).toBe("local_only");
   });
 
   it("leaves the organism at rest once the answer is done, even after a recall pulse", async () => {
@@ -416,7 +416,7 @@ describe("useBrainChat streaming", () => {
     });
 
     expect(stream.calls.length).toBe(2);
-    expect(stream.calls[1].message).toBe("같은 질문");
+    expect(stream.calls[1]!.message).toBe("같은 질문");
     // One user turn and one assistant turn, not a growing transcript.
     expect(result.current.messages.length).toBe(2);
   });
@@ -433,8 +433,8 @@ describe("useBrainChat streaming", () => {
       await result.current.sendText("둘");
     });
 
-    expect(stream.calls[0].conversation_id).toBeTruthy();
-    expect(stream.calls[1].conversation_id).toBe(stream.calls[0].conversation_id);
+    expect(stream.calls[0]!.conversation_id).toBeTruthy();
+    expect(stream.calls[1]!.conversation_id).toBe(stream.calls[0]!.conversation_id);
   });
 });
 
@@ -468,7 +468,7 @@ describe("useBrainChat presence and drafts", () => {
     await act(async () => {
       await result.current.send();
     });
-    expect(stream.calls[0].message).toBe("보낼 질문");
+    expect(stream.calls[0]!.message).toBe("보낼 질문");
     expect(result.current.draft).toBe("");
   });
 
@@ -509,7 +509,7 @@ describe("useBrainChat presence and drafts", () => {
       await result.current.sendText("이 그림 뭐야?");
     });
 
-    expect(stream.calls[0].image_data).toBe("data:image/png;base64,QUJD");
+    expect(stream.calls[0]!.image_data).toBe("data:image/png;base64,QUJD");
     expect(result.current.imageData).toBeNull();
   });
 });
@@ -553,7 +553,7 @@ describe("useBrainChat regenerate edges", () => {
     await act(async () => {
       await result.current.regenerate();
     });
-    expect(stream.calls[0].message).toBe("질문");
+    expect(stream.calls[0]!.message).toBe("질문");
 
     // A doubled assistant tail loses only the trailing answer.
     act(() => {
@@ -566,6 +566,57 @@ describe("useBrainChat regenerate edges", () => {
     await act(async () => {
       await result.current.regenerate();
     });
-    expect(stream.calls[1].message).toBe("질문2");
+    expect(stream.calls[1]!.message).toBe("질문2");
+  });
+
+  it("ignores trailing agent_step, approval, and agent frames if the conversation was cleared mid-stream", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "chunk", text: "진행 중" },
+        {
+          kind: "agentStep",
+          step: { phase: "tool", event: "tool_done", detail: "read_file" },
+        },
+        {
+          kind: "agent",
+          agent: {
+            status: "awaiting_approval",
+            run_id: "run-cleared",
+            approval: {
+              token: "tok-cleared",
+              plan_summary: "plan",
+            },
+          },
+        },
+        {
+          kind: "agent",
+          agent: {
+            final_state: "NEEDS_REVIEW",
+            steps: [{ tool: "read_file", ok: true }],
+          },
+        },
+      ],
+      pauseAfter: 1,
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    let send: Promise<void>;
+    await act(async () => {
+      send = result.current.sendText("작업 실행");
+      await stream.started;
+    });
+
+    // Simulate workspace switch / new chat clearing messages before stream frames settle.
+    act(() => {
+      useConversationSession.getState().setMessages([]);
+    });
+
+    await act(async () => {
+      stream.resume();
+      await send;
+    });
+
+    expect(result.current.messages).toEqual([]);
   });
 });

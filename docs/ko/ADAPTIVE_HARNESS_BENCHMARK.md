@@ -1,10 +1,10 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../ADAPTIVE_HARNESS_BENCHMARK.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./ADAPTIVE_HARNESS_BENCHMARK.md)
 
-# 범용 적응형 에이전트 하네스 벤치마크 (v13.5.0)
+# 범용 적응형 에이전트 하네스 벤치마크 (v13.4.0)
 
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화된 실측 하네스 벤치마크 보고서입니다.
 
-현재 릴리스: **14.0.0 — Living Synthesis**.
+현재 릴리스: **14.1.0 — Living Synthesis**.
 
 본 보고서는 `13.4.0`에 도입된 **LatticeAI 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness)**의 실증적 성능 평가 결과를 기록합니다. 이 하네스는 모델 이름에 따른 하드코딩 분기(**Zero per-model code branches**) 없이 런타임에서 로드된 모델의 동작을 직접 실측하고 실행 구조를 적응시켜, 소형 로컬 인스트럭션 튜닝 모델도 도구 호출, 웹 탐색, 컴퓨터 유즈, 답변 품질, 양방향 시간 축 RAG 그라운딩 전반에서 높은 신뢰도를 발휘하도록 만듭니다.
 

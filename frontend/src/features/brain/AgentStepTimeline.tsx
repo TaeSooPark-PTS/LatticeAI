@@ -83,7 +83,7 @@ export function AgentStepTimeline({
 }) {
   if (!steps.length) return null;
   const visible = steps.slice(-MAX_VISIBLE_STEPS);
-  const lastStep = steps[steps.length - 1];
+  const lastStep = steps[steps.length - 1]!;
   const activeTool = friendlyAction(language, lastStep.action);
   const toolCount = steps.filter((step) => step.event === "tool").length;
   const list = (

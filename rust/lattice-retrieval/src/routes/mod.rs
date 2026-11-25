@@ -213,14 +213,12 @@ fn retrieval_failed(endpoint: Endpoint, detail: String) -> Response {
         .into_response()
 }
 
-/// Now, as naive local seconds since the epoch — Python's `datetime.now()`.
+/// Now, as UTC epoch seconds matching offset-free UTC stamps (`lattice_brain.utils.now_iso()`).
 ///
-/// The stamps this is compared against were written by
-/// `datetime.now().isoformat()`: naive local time, no offset. Handing the engine
-/// UTC epoch seconds on a machine at UTC+9 would age every document by nine
-/// hours. There is no timezone crate in this workspace, so the conversion goes
-/// through `localtime_r(3)` and then through the very parser the engine uses on
-/// the stored stamps — same function on both sides of the subtraction.
+/// Both Rust (`lattice-core::graph_write::clock`) and Python (`lattice_brain.utils`)
+/// emit offset-free UTC timestamps (`YYYY-MM-DDTHH:MM:SS`), eliminating host-timezone
+/// skew (such as UTC+9) while keeping pure-Rust cross-platform arithmetic identical
+/// across Unix and Windows.
 pub fn naive_local_now() -> f64 {
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -230,8 +228,8 @@ pub fn naive_local_now() -> f64 {
     naive_local_secs(utc_secs).unwrap_or(utc_secs as f64) + fraction
 }
 
-/// Naive local seconds for a UTC epoch second, or `None` when the platform
-/// cannot say (and the caller falls back to UTC rather than guess).
+/// UTC epoch seconds parsed through the engine's own ISO parser so subtraction
+/// matches persisted offset-free UTC stamps.
 fn naive_local_secs(utc_secs: i64) -> Option<f64> {
     let iso = lattice_core::graph_write::clock::local_iso_for(utc_secs)?;
     parse_iso(Some(&iso))

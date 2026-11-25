@@ -181,7 +181,7 @@ describe("BrainConversation empty home", () => {
     const buttons = grid.querySelectorAll("button");
     expect(buttons).toHaveLength(2);
 
-    fireEvent.click(buttons[1]);
+    fireEvent.click(buttons[1]!);
     expect(props.onDraftChange).toHaveBeenCalledWith("");
     expect(props.onSendText).toHaveBeenCalledWith(
       t("ko", "brain.suggestion.focus.prompt", { focus: "프로젝트 계획" }),
@@ -245,18 +245,18 @@ describe("BrainConversation with messages", () => {
 
     // Inline citation markers only where citations exist.
     const bubbles = container.querySelectorAll(".brain-message-bubble");
-    expect(bubbles[1].querySelector(".brain-inline-citations")).toBeTruthy();
-    expect(bubbles[3].querySelector(".brain-inline-citations")).toBeNull();
+    expect(bubbles[1]!.querySelector(".brain-inline-citations")).toBeTruthy();
+    expect(bubbles[3]!.querySelector(".brain-inline-citations")).toBeNull();
 
     // Grounding: supported with a reason tooltip, unsupported without one.
     const badges = screen.getAllByTestId("grounding-badge");
     expect(badges).toHaveLength(2);
-    expect(badges[0].className).toContain("is-supported");
+    expect(badges[0]!.className).toContain("is-supported");
     expect(badges[0]).toHaveAttribute("title", "근거 2건");
-    expect(badges[0].textContent).toBe(t("ko", "brain.grounding.supported"));
-    expect(badges[1].className).toContain("is-none");
+    expect(badges[0]!.textContent).toBe(t("ko", "brain.grounding.supported"));
+    expect(badges[1]!.className).toContain("is-none");
     expect(badges[1]).not.toHaveAttribute("title");
-    expect(badges[1].textContent).toBe(t("ko", "brain.grounding.none"));
+    expect(badges[1]!.textContent).toBe(t("ko", "brain.grounding.none"));
 
     // Context quality: the limited note renders its reason in advanced mode.
     const note = screen.getByTestId("context-quality-note");
@@ -269,10 +269,10 @@ describe("BrainConversation with messages", () => {
     // Agent terminal states: FAILED and NEEDS_REVIEW look different.
     const states = screen.getAllByTestId("agent-state-note");
     expect(states).toHaveLength(2);
-    expect(states[0].className).toContain("is-review");
-    expect(states[0].textContent).toBe(t("ko", "brain.agent.needsReview"));
-    expect(states[1].className).toContain("is-failed");
-    expect(states[1].textContent).toBe(t("ko", "brain.agent.failed"));
+    expect(states[0]!.className).toContain("is-review");
+    expect(states[0]!.textContent).toBe(t("ko", "brain.agent.needsReview"));
+    expect(states[1]!.className).toContain("is-failed");
+    expect(states[1]!.textContent).toBe(t("ko", "brain.agent.failed"));
 
     // Loop repairs + run explanation notes surfaced for the first answer.
     expect(container.textContent).toContain("요청을 끝까지 수행했습니다");
@@ -291,7 +291,7 @@ describe("BrainConversation with messages", () => {
     vi.useFakeTimers();
 
     const copyButtons = screen.getAllByRole("button", { name: t("ko", "brain.message.copyAria") });
-    fireEvent.click(copyButtons[copyButtons.length - 1]);
+    fireEvent.click(copyButtons[copyButtons.length - 1]!);
     await act(async () => {
       await Promise.resolve();
     });
@@ -309,7 +309,7 @@ describe("BrainConversation with messages", () => {
     renderConversation({ messages: conversationMessages() });
 
     const copyButtons = screen.getAllByRole("button", { name: t("ko", "brain.message.copyAria") });
-    fireEvent.click(copyButtons[copyButtons.length - 1]);
+    fireEvent.click(copyButtons[copyButtons.length - 1]!);
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("최종 답변입니다."));
   });
 
@@ -319,7 +319,7 @@ describe("BrainConversation with messages", () => {
     renderConversation({ messages: conversationMessages() });
 
     const copyButtons = screen.getAllByRole("button", { name: t("ko", "brain.message.copyAria") });
-    fireEvent.click(copyButtons[0]);
+    fireEvent.click(copyButtons[0]!);
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -335,7 +335,7 @@ describe("BrainConversation with messages", () => {
     expect(screen.getAllByRole("button", { name: t("ko", "brain.message.copyAria") })).toHaveLength(3);
     const regenerate = screen.getAllByRole("button", { name: t("ko", "brain.message.regenerateAria") });
     expect(regenerate).toHaveLength(1);
-    fireEvent.click(regenerate[0]);
+    fireEvent.click(regenerate[0]!);
     expect(props.onRegenerate).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.message.saveTaskAria") }));
@@ -344,7 +344,7 @@ describe("BrainConversation with messages", () => {
     const followups = screen.getByLabelText(t("ko", "brain.message.followup.aria"));
     const buttons = followups.querySelectorAll("button");
     expect(buttons).toHaveLength(3);
-    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[0]!);
     expect(props.onSendText).toHaveBeenCalledWith(t("ko", "brain.message.followup.checklist.prompt"));
   });
 
@@ -385,7 +385,7 @@ describe("BrainConversation with messages", () => {
 
     const chips = screen.getAllByTestId("cloud-answer-chip");
     expect(chips).toHaveLength(1);
-    expect(chips[0].textContent).toContain(t("ko", "brain.cloud.chip.model", { model: "gemini-3.7-flash" }));
+    expect(chips[0]!.textContent).toContain(t("ko", "brain.cloud.chip.model", { model: "gemini-3.7-flash" }));
     expect(screen.queryByText("이 컴퓨터에서 답합니다.")).toBeTruthy();
   });
 });

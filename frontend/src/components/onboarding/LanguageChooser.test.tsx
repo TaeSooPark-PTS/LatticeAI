@@ -24,9 +24,9 @@ describe("LanguageChooser", () => {
       LANGUAGE_LABELS.ko,
       LANGUAGE_LABELS.en,
     ]);
-    expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
-    expect(buttons[0].className).toContain("is-active");
-    expect(buttons[1].getAttribute("aria-pressed")).toBe("false");
+    expect(buttons[0]!.getAttribute("aria-pressed")).toBe("true");
+    expect(buttons[0]!.className).toContain("is-active");
+    expect(buttons[1]!.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("switches and persists the language on click", () => {

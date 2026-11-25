@@ -51,8 +51,8 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
         node.focus();
         return;
       }
-      const first = items[0];
-      const last = items[items.length - 1];
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
       const active = document.activeElement;
       if (event.shiftKey) {
         if (active === first || active === node || !node.contains(active)) {

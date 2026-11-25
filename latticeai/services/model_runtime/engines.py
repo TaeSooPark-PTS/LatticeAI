@@ -21,6 +21,7 @@ the live value.
 
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import os
 import shutil
@@ -101,7 +102,7 @@ def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, Any]]:
             headers={"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"},
             timeout=2.5,
         )
-    except Exception:
+    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
         return _LMSTUDIO_MODELS_CACHE
     models = payload.get("models")
     _LMSTUDIO_MODELS_CACHE = models if isinstance(models, list) else []
@@ -159,7 +160,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="replace")[-2000:]
             raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}")
-        except Exception as e:
+        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError) as e:
             raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}")
 
         status = str(job.get("status") or "")
@@ -200,7 +201,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")[-2000:]
         raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}")
-    except Exception as e:
+    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError) as e:
         raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {e}")
 
     if str(loaded.get("status") or "") != "loaded":
@@ -222,7 +223,7 @@ def _safe_engine_install_plan(
 ) -> Optional[Dict[str, Any]]:
     try:
         return _engine_install_plan(engine, base_dir=base_dir)
-    except Exception:
+    except (ModelRuntimeError, OSError, ValueError, TypeError, RuntimeError, KeyError, AttributeError):
         return None
 
 

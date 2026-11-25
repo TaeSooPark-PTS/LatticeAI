@@ -18,13 +18,19 @@ def parse_iso(value: Optional[str]) -> Optional[datetime]:
 
 
 def local_now() -> datetime:
-    """Return local wall-clock time for legacy local persistence formats."""
+    """Return offset-free UTC wall-clock time matching Rust's ``SystemClock``.
 
-    return datetime.now()
+    Persisted rows across Brain Core and ``lattice-core`` store offset-free
+    ``YYYY-MM-DDTHH:MM:SS`` strings. Emitting naive UTC on both sides preserves
+    lexicographical compatibility with existing rows while eliminating host
+    timezone skew (such as a 9-hour offset on UTC+9 machines).
+    """
+
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def now_iso(*, timespec: str = "seconds") -> str:
-    """Return one consistently formatted local timestamp."""
+    """Return one consistently formatted offset-free UTC timestamp."""
 
     return local_now().isoformat(timespec=timespec)
 

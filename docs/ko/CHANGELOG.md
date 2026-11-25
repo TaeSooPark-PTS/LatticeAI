@@ -5,6 +5,29 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.1.0] - 2026-11-25 — Living Synthesis
+
+### 수정됨
+- **Rust ↔ Python UTC 타임스탬프 통합 (`rust/lattice-core/src/graph_write/clock.rs`, `lattice_brain/utils.py`, `lattice_brain/graph/_kg_fsutil.py`):**
+  - Python의 `local_now()`, `now_iso()`, `_recency_score()`, `_safe_iso_from_stat_mtime()`을 Rust `SystemClock::now_iso()`와 동일한 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일해 비-UTC 환경의 9시간 편차를 제거했습니다.
+  - `clock.rs`, `workspace/pyutil.rs`, `retrieval/routes/mod.rs`, `chat/turn.rs`, `command_center_api/store.rs`의 구형 로컬 시각 주석을 정리하고 `Asia/Seoul`, `America/New_York`, `UTC` 회귀 테스트(`tests/unit/test_timestamp_utc_consistency.py`)를 추가했습니다.
+- **Tauri 프로덕션 포트 고정 정책 정렬 (`src-tauri/src/topology.rs`, `src-tauri/src/backend.rs`):**
+  - `PortPolicy`(`PinnedProduction` / `AllowDynamicFallback`)를 도입해 프로덕션 빌드는 `tauri.conf.json` CSP 및 `capabilities/default.json`과 일치하는 `PINNED_PRODUCTION_PORT`(`4825`)로 엄격히 고정하고, 포트 충돌 시 조용한 `4826+` 폴백 대신 실행 가능한 `gateway_error` 안내와 함께 즉시 실패(fail-fast)하도록 수정했습니다.
+
+### 변경됨
+- **Python 예외 처리 세분화 및 Ruff 규칙 강화 (`pyproject.toml`, `lattice_brain/`, `latticeai/`, `scripts/`, `tests/`):**
+  - `lattice_brain/multimodal/images.py`(6곳), `latticeai/models/router/loading.py`(6곳) 및 저장소 전반의 포괄적 `except Exception` / `# noqa: BLE001`을 구체적 예외 튜플로 교체했습니다.
+  - `[tool.ruff.lint] select`에 `"BLE"`를 전역 추가하고 `[tool.ruff.lint.mccabe] max-complexity`를 `30`에서 `20`으로 하향(초과 함수 12개 리팩터링)했으며, 프로덕션 `S608`을 유지한 채 `S603`, `S105`, `S108` 파일별 예외를 최소 범위로 축소했습니다.
+- **Rust 인증 메시지, 비실패 Tauri 커맨드 및 독스트링 정리 (`rust/lattice-auth/`, `src-tauri/src/main.rs`, `lattice_brain/quiet.py`):**
+  - `CSRF_DENIED_DETAIL`과 `CSRF_ERROR_CODE`를 `rust/lattice-auth/src/messages.rs`로 이동하고 `csrf.rs`의 사유 문자열을 구조화된 `CsrfReason` 열거형으로 교체했습니다(HTTP 403 JSON 계약 바이트 단위 유지).
+  - 비실패 Tauri 커맨드 `backend_status`, `shutdown_backend`가 `Result<BackendStatus, String>` 대신 `tauri::AppHandle`을 통해 `BackendStatus`를 직접 반환하도록 정리하고 `lattice_brain/quiet.py` 독스트링을 최신화했습니다.
+- **TypeScript 7 `noUncheckedIndexedAccess` 활성화 (`tsconfig.json`, `frontend/src/`):**
+  - `"noUncheckedIndexedAccess": true`를 활성화해 68개 프론트엔드 소스·테스트 파일의 오류 457건을 해소하며 113개 테스트 파일 / 1,852개 테스트 Vitest **100% 커버리지**를 유지했습니다.
+- **PR 시각 회귀 게이트 활성화 (`.github/workflows/ci.yml`):**
+  - Playwright `visual` 스모크 잡이 `main` 푸시뿐 아니라 풀 리퀘스트에서도 실행되도록 확장했습니다.
+- **v14.1.0 문서 최신화:**
+  - 저장소 루트, `docs/`, 확장, 크레이트 맵 및 한국어 미러(`README.ko.md`, `docs/ko/`) 전체를 `v14.1.0` 기준으로 갱신하고 구형 v13 이전 서술 및 완료된 `v12.x` 로드맵 항목을 정리했습니다.
+
 ## [14.0.0] - 2026-11-25 — Living Synthesis
 
 ### 보안 및 안정성

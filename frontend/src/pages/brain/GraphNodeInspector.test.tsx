@@ -47,7 +47,7 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
 
     renderPage(
       <GraphNodeInspector
-        selected={parsed.nodes[0]}
+        selected={parsed.nodes[0]!}
         groups={parsed.groups}
         mode="basic"
         language="ko"
@@ -141,7 +141,7 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     );
     renderPage(
       <GraphNodeInspector
-        selected={parsed.nodes[0]}
+        selected={parsed.nodes[0]!}
         groups={parsed.groups}
         mode="advanced"
         language="en"

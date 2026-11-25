@@ -95,7 +95,7 @@ export function fakeChatStream({
     for (let index = 0; index < frames.length; index += 1) {
       // The real reader can be aborted between any two frames; so can this one.
       if (handlers.signal?.aborted) break;
-      const frame = frames[index];
+      const frame = frames[index]!;
       if (frame.kind === "chunk") {
         text += frame.text;
         handlers.onChunk?.(frame.text, text);

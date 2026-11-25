@@ -416,6 +416,8 @@ def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: P
     out = engines_mod.ensure_lmstudio_model("done")
     assert out["server_ready"] is True
 
+
+def test_high_leftover_engine_install_and_lifespan(monkeypatch, tmp_path: Path):
     # ensure_engine_ready successful install of non-mlx
     state = create_model_runtime_state()
     installed = {"now": False}

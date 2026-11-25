@@ -577,7 +577,7 @@ function ContextQualityNote({ language, reason }: { language: Language; reason: 
 
 function findLastAssistantIndex(messages: Message[]): number {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index].role === "assistant") return index;
+    if (messages[index]!.role === "assistant") return index;
   }
   return -1;
 }

@@ -80,6 +80,6 @@ def _local_model_type(path_or_model_id: str) -> Optional[str]:
                 model_type = str(data.get("model_type") or "").strip().lower()
                 if model_type:
                     return model_type
-        except Exception as e:
+        except (OSError, ValueError, TypeError, UnicodeDecodeError) as e:
             print(f"⚠️ Model config read skipped for {config_path}: {e}")
     return None

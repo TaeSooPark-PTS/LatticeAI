@@ -263,11 +263,11 @@ describe("IngestionJobsPanel", () => {
     renderWithQuery(<IngestionJobsPanel language="ko" />);
     await screen.findByTestId("ingestion-jobs-panel");
     const [first, second] = screen.getAllByRole("button", { name: /이어서 처리/ });
-    fireEvent.click(first);
+    fireEvent.click(first!);
     // The clicked job says "resuming", its sibling keeps the idle label but is
     // disabled with it while the request runs.
     await screen.findByText("다시 시작하는 중…");
-    expect(second.textContent).toContain("이어서 처리");
+    expect(second!.textContent).toContain("이어서 처리");
     expect((first as HTMLButtonElement).disabled).toBe(true);
     expect((second as HTMLButtonElement).disabled).toBe(true);
     release({ ok: true, status: 200, source: "live", data: {} });
@@ -357,8 +357,8 @@ describe("IngestionJobsPanel", () => {
     });
     await waitFor(() => expect(screen.getAllByTestId("ingestion-job-report").length).toBe(2));
     const reports = screen.getAllByTestId("ingestion-job-report");
-    expect(reports[0].textContent).toContain("+6 문서");
-    expect(reports[1].textContent).toContain("+10 문서");
+    expect(reports[0]!.textContent).toContain("+6 문서");
+    expect(reports[1]!.textContent).toContain("+10 문서");
   });
 
   it("drops a report whose job vanished from the backend list", async () => {
@@ -421,7 +421,7 @@ describe("IngestionJobReportCard", () => {
     expect(card.textContent).toContain("90%");
     const samples = card.querySelectorAll("li");
     expect(samples.length).toBe(3);
-    expect(samples[0].textContent).toContain("a.pdf");
+    expect(samples[0]!.textContent).toContain("a.pdf");
     expect(card.textContent).not.toContain("d.txt");
   });
 
@@ -597,8 +597,8 @@ describe("WatchHealthCard", () => {
     expect(card.textContent).toContain("실패 3건");
     expect(card.textContent).not.toContain("추적");
     const errors = card.querySelectorAll(".brain-watch-errors li");
-    expect(errors[0].textContent).toBe("watcher crashed");
-    expect(errors[1].textContent).toBe("딱경로만.pdf");
+    expect(errors[0]!.textContent).toBe("watcher crashed");
+    expect(errors[1]!.textContent).toBe("딱경로만.pdf");
   });
 });
 

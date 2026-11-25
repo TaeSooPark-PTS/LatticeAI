@@ -53,8 +53,8 @@ describe("cloudStatus", () => {
   it("reads GET /api/cloud/status and keeps a 404 as the unconfigured shape", async () => {
     const calls = recordFetch(() => jsonResponse({ detail: "missing" }, 404));
     const result = await cloudStatus();
-    expect(calls[0].method).toBe("GET");
-    expect(calls[0].url.pathname).toBe("/api/cloud/status");
+    expect(calls[0]!.method).toBe("GET");
+    expect(calls[0]!.url.pathname).toBe("/api/cloud/status");
     expect(result.ok).toBe(false);
     expect(result.status).toBe(404);
     expect(result.data).toEqual(CLOUD_STATUS_UNCONFIGURED);

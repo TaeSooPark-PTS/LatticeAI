@@ -33,8 +33,8 @@ describe("streamChat SSE parsing", () => {
     );
 
     expect(onAgentStep).toHaveBeenCalledTimes(2);
-    expect(onAgentStep.mock.calls[0][0]).toMatchObject({ phase: "plan", event: "planned" });
-    expect(onAgentStep.mock.calls[1][0]).toMatchObject({
+    expect(onAgentStep.mock.calls[0]![0]).toMatchObject({ phase: "plan", event: "planned" });
+    expect(onAgentStep.mock.calls[1]![0]).toMatchObject({
       phase: "execute",
       event: "tool",
       action: "write_file",
@@ -43,7 +43,7 @@ describe("streamChat SSE parsing", () => {
     });
     expect(onChunk).toHaveBeenCalledWith("안녕", "안녕");
     expect(onAgent).toHaveBeenCalledTimes(1);
-    expect(onAgent.mock.calls[0][0]).toMatchObject({
+    expect(onAgent.mock.calls[0]![0]).toMatchObject({
       final_state: "DONE",
       loop: { repairs: { json_fence: 2 }, parse_recovered: 1 },
     });

@@ -149,13 +149,13 @@ describe("buildRecommendations", () => {
     expect(best).toMatchObject({ id: "top-1", role: "best", reason: "custom reason", engine: "local_mlx" });
     expect(faster).toMatchObject({ id: "qwen-8b", role: "faster", reason: "faster", engine: "local_gguf", externalHost: "ollama" });
     expect(advanced).toMatchObject({ id: "llama-70b", role: "advanced", reason: "advanced", externalHost: "example.com" });
-    expect(best.externalHost).toBe("huggingface");
-    expect(best.estimatedDownloadMinutes).toBe(73); // 8GB at ~15 Mbps
-    expect(faster.downloadSize).toBe("2GB");
-    expect(advanced.downloadSize).toBe("40GB");
-    expect(best.parameterBillions).toBe(26);
-    expect(faster.estimatedFirstResponseSeconds).toBe(5);
-    expect(advanced.estimatedFirstResponseSeconds).toBe(30);
+    expect(best!.externalHost).toBe("huggingface");
+    expect(best!.estimatedDownloadMinutes).toBe(73); // 8GB at ~15 Mbps
+    expect(faster!.downloadSize).toBe("2GB");
+    expect(advanced!.downloadSize).toBe("40GB");
+    expect(best!.parameterBillions).toBe(26);
+    expect(faster!.estimatedFirstResponseSeconds).toBe(5);
+    expect(advanced!.estimatedFirstResponseSeconds).toBe(30);
   });
 
   it("keeps a top pick that appears in no other list", () => {
@@ -171,13 +171,13 @@ describe("buildRecommendations", () => {
     const byName = buildRecommendations({
       models: { recommended: [{ id: "z", name: "Zeta" }, { id: "g12", name: "Gemma 12B" }] },
     });
-    expect(byName[0].id).toBe("g12");
-    expect(byName[1].id).toBe("z"); // second-choice fallback, no qwen/8b/7b match
+    expect(byName[0]!.id).toBe("g12");
+    expect(byName[1]!.id).toBe("z"); // second-choice fallback, no qwen/8b/7b match
 
     const byPosition = buildRecommendations({
       models: { recommended: [{ id: "alpha", name: "Alpha" }, { id: "beta", name: "Beta" }] },
     });
-    expect(byPosition[0].id).toBe("alpha");
+    expect(byPosition[0]!.id).toBe("alpha");
   });
 
   it("uses the generic third pick when nothing matches the advanced pattern", () => {
@@ -191,7 +191,7 @@ describe("buildRecommendations", () => {
       },
     });
     expect(models.map((model) => model.id)).toEqual(["a", "b", "c"]);
-    expect(models[2].role).toBe("advanced");
+    expect(models[2]!.role).toBe("advanced");
   });
 
   it("still describes unsupported hardware honestly when nothing is supported", () => {
@@ -199,7 +199,7 @@ describe("buildRecommendations", () => {
       models: { recommended: [{ id: "u", name: "Unsupported 12B", load_status: "unsupported" }] },
     });
     expect(models).toHaveLength(1);
-    expect(models[0].supported).toBe(false);
+    expect(models[0]!.supported).toBe(false);
   });
 
   it("marks each unsupported signal and only full support as supported", () => {

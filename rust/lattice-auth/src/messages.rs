@@ -24,6 +24,11 @@ pub const ADMIN_REQUIRED_LITERAL: &str = "관리자 권한이 필요합니다.";
 pub const IP_RATE_LIMITED_LITERAL: &str = "요청이 너무 많습니다. 잠시 후 다시 시도하세요.";
 /// `requested_workspace`'s 403 detail (`api/workspace_scope.py`).
 pub const WORKSPACE_MISMATCH_LITERAL: &str = "Workspace selectors must match.";
+/// Standard English refusal detail for rejected cross-site origins (`csrf.rs`).
+pub const CSRF_DENIED_DETAIL: &str =
+    "Request origin could not be verified and was rejected. It may have been sent from another site.";
+/// Structured error code emitted in 403 CSRF refusal responses.
+pub const CSRF_ERROR_CODE: &str = "csrf_origin_rejected";
 
 /// Localized text for `key` via canonical [`lattice_core::messages::text`];
 /// an unknown id returns the id verbatim.

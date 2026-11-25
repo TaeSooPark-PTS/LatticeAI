@@ -185,7 +185,7 @@ class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
         try:
             self._load()
             return {"status": "ok", "detail": f"MLX vision model {self._cfg.model} loaded"}
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -230,7 +230,7 @@ class CustomVisionEmbeddingProvider(VisionEmbeddingProvider):
         try:
             self._load()
             return {"status": "ok", "detail": f"custom vision target {self._target_ref} loaded"}
-        except Exception as exc:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
             return {"status": "unavailable", "detail": str(exc)}
 
 
@@ -327,7 +327,7 @@ def resolve_vision_embedder(
         prov = build_vision_provider(
             requested, model=model, dim=dim, space=space, timeout=timeout, extra=extra
         )
-    except Exception as exc:
+    except (ValueError, TypeError, RuntimeError, OSError, KeyError, AttributeError) as exc:
         return ResolvedVisionEmbedder(
             None,
             requested,
@@ -340,7 +340,7 @@ def resolve_vision_embedder(
         )
     try:
         health = prov.health()
-    except Exception as exc:  # a provider probe must never crash startup
+    except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:  # a provider probe must never crash startup
         health = {"status": "unavailable", "detail": str(exc)}
     if health.get("status") != "ok":
         return ResolvedVisionEmbedder(

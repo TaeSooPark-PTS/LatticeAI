@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
 > 서브시스템 설계 원칙과 운영 관점 개요는 [`docs/ko/architecture-overview.md`](./architecture-overview.md)를 참고하세요.
 
-현재 릴리스: **14.0.0 — Living Synthesis**.
+현재 릴리스: **14.1.0 — Living Synthesis**.
 
 Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 20개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 
@@ -18,7 +18,7 @@ flowchart TB
   subgraph surfaces["표면 계층 (Surfaces)"]
     direction LR
     ui["React / Vite 8 / TS 7.0.2 앱<br/>지연 라우트 · AppRouteView · 라우트별 i18n · ko · en"]
-    desktop["Tauri 2.11 데스크톱 셸<br/>직렬화 게이트웨이 생명주기 · 127.0.0.1:4825 고정 CSP"]
+    desktop["Tauri 2.11 데스크톱 셸<br/>직렬화 게이트웨이 · PortPolicy::PinnedProduction (4825)"]
     editor["VS Code<br/>확장"]
     browser["브라우저<br/>확장"]
     desktop ~~~ ui ~~~ editor ~~~ browser
@@ -34,7 +34,7 @@ flowchart TB
       ingestc["lattice-ingest (28 ops)<br/>청크 증분 동기화 · 디바운스 워치 · spawn_blocking fs<br/>네이티브 Obsidian 위키링크 · Notion/Git/Mail 연동"]
       chatc["lattice-chat (8 ops)<br/>채팅 · 히스토리 · 논블로킹 문서 세션 · 상한 클라우드 예산"]
       jobsc["lattice-jobs (4 ops)<br/>인덱스 · 적응형 드레인 스케줄러 · 루프백/Bearer 가드"]
-      authc["lattice-auth<br/>버전화 $scrypt$ · 상한 레이트 리미터 · 세션 · CSRF"]
+      authc["lattice-auth<br/>버전화 $scrypt$ · 상한 레이트 리미터 · CsrfReason + messages.rs"]
       agentc["lattice-agent (6 그룹)<br/>kernel · parse · content · tools · surface · prompts<br/>적응형 하네스 · DurableWorkflowStore · safe_io"]
       corec["lattice-core<br/>Store (세대 에폭) · GraphWriter (단일 라이터)<br/>순수 Rust UTC 시계 · temporal · entity_resolution"]
       hostc["lattice-host<br/>fail-closed 게이트웨이 · EnvOverlayProbe 슈퍼바이저 · 정적 UI"]
@@ -90,8 +90,8 @@ flowchart TB
 | 크레이트 | 책임 | 주요 모듈 |
 | --- | --- | --- |
 | `lattice-host` | 제품 컴포지션 루트, One Door 라우터, fail-closed 무리다이렉트 프록시 클라이언트, 정적 UI 서버, `EnvOverlayProbe` 워커 슈퍼바이저 | `gateway/mod.rs`, `gateway/onedoor.rs`, `gateway/product.rs`, `supervisor/` |
-| `lattice-core` | 무재시작 복원 세대 에폭 및 단일 라이터 풀 `Store`, `GraphWriter`, 순수 Rust UTC 시계(`libc` `unsafe` 제거), 이중시간(`temporal.rs`), 엔티티 해소, 무결성 검사기, `EmbeddingModelRegistry`, 멱등 워커 클라이언트 | `graph_write/`, `integrity/`, `temporal.rs`, `entity_resolution.rs`, `embedding_registry.rs`, `worker.rs` |
-| `lattice-auth` | 버전화 `$scrypt$` 비밀번호 해싱(`Result` 반환, 레거시 검증 호환), 상한 메모리 레이트 리미터 및 통합 HTTP `429` + `Retry-After` 계약, 세션 저장소, CSRF Origin 가드 | `password.rs`, `ratelimit.rs`, `session.rs`, `csrf.rs`, `config.rs` |
+| `lattice-core` | 무재시작 복원 세대 에폭 및 단일 라이터 풀 `Store`, `GraphWriter`, 통합 Rust ↔ Python 오프셋 없는 UTC 시계(`libc` `unsafe` 제거), 이중시간(`temporal.rs`), 엔티티 해소, 무결성 검사기, `EmbeddingModelRegistry`, 멱등 워커 클라이언트 | `graph_write/`, `integrity/`, `temporal.rs`, `entity_resolution.rs`, `embedding_registry.rs`, `worker.rs` |
+| `lattice-auth` | 버전화 `$scrypt$` 비밀번호 해싱(`Result` 반환, 레거시 검증 호환), 상한 메모리 레이트 리미터 및 통합 HTTP `429` + `Retry-After` 계약, 세션 저장소, CSRF Origin 가드(`CsrfReason` 열거형 + `messages.rs`) | `password.rs`, `ratelimit.rs`, `session.rs`, `csrf.rs`, `messages.rs`, `config.rs` |
 | `lattice-agent` | 안전 커널, 범용 적응형 에이전트 하네스(`probe.rs` 3턴 마이크로 프로빙, `ui_resolve.rs`, `rag_grounding.rs`), fail-closed 검증기, `DurableWorkflowStore`, 5역할 `MultiAgentSession`, TOCTOU 방지 `safe_io`(Unix `openat`/`O_NOFOLLOW` + Windows 핸들 고정 탐색) | `kernel/`, `parse/`, `content/`, `tools/`, `surface/`, `prompts/` |
 | `lattice-retrieval` | 사전 토큰화 BM25F 사이드카(`bm25_node_stats`), 상한 캐시 순수 Rust `NativeHnswIndex`, 3-way BM25F+Vector+Graph RRF 하이브리드 검색, 주장 단위 근거 검증·기권, `as_of` 시점 조회, Self-Model, Brain 거버넌스 API | `bm25/`, `native_hnsw.rs`, `hybrid.rs`, `grounding.rs`, `brain_api/`, `chronicle_api/`, `self_model.rs` |
 | `lattice-ingest` | 청크 단위 증분 동기화, `DebouncedWatchEngine`, 논블로킹 `spawn_blocking` 로컬 파일시스템 API, PDF/표/OCR 구조 보존, `GraphWriter` 기반 네이티브 Obsidian(`[[wikilink]]` `LINKS_TO` 엣지) 및 Notion/Git/Mail 연동 브릿지 | `incremental_sync.rs`, `incremental_watch.rs`, `document_structure.rs`, `local_files_api/{local.rs,folder.rs,interop.rs}` |
@@ -135,17 +135,17 @@ flowchart LR
 
 ## 표면 계층, 툴체인 및 검증 게이트
 
-- **프론트엔드 (`frontend/src`):** `strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`를 강제하는 React + Vite 8 + TypeScript 7.0.2 (`tsgo`), 네이티브 ESM 설정([`vite.config.mts`](../../vite.config.mts), [`vitest.config.mts`](../../vitest.config.mts)), 모듈화된 라우트 디스패치(`AppRouteView.tsx`), 라우트별 지연 로딩 및 i18n 네임스페이스(`ko`, `en`), SSR/비-DOM 안전 가드, 모든 라우트·패널 `ErrorBoundary` 격리.
+- **프론트엔드 (`frontend/src`):** `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`를 강제하는 React + Vite 8 + TypeScript 7.0.2 (`tsgo`), 네이티브 ESM 설정([`vite.config.mts`](../../vite.config.mts), [`vitest.config.mts`](../../vitest.config.mts)), 모듈화된 라우트 디스패치(`AppRouteView.tsx`), 라우트별 지연 로딩 및 i18n 네임스페이스(`ko`, `en`), SSR/비-DOM 안전 가드, 모든 라우트·패널 `ErrorBoundary` 격리.
 - **데스크톱 및 확장:**
-  - **Tauri 2.11 (`src-tauri/`):** 직렬화된 비동기 게이트웨이 생명주기(`start`/`stop`/`restart`), 루프백 검증 외부 오리진 처리, `spawn_blocking` 기반 `/usr/bin/osascript` 폴더 선택기, `'unsafe-inline'`을 제거한 엄격 CSP 및 `127.0.0.1:4825` 고정 권한.
+  - **Tauri 2.11 (`src-tauri/`):** 직렬화된 비동기 게이트웨이 생명주기(`start`/`stop`/`restart`), 프로덕션 빌드가 포트 `4825` 충돌 시 즉시 실패(fail-fast)하도록 고정하는 `PortPolicy::PinnedProduction`, 비실패 커맨드(`backend_status`, `shutdown_backend`)의 직접 `BackendStatus` 반환, 루프백 검증 외부 오리진 처리, `spawn_blocking` 기반 `/usr/bin/osascript` 폴더 선택기, `'unsafe-inline'`을 제거한 엄격 CSP 및 `127.0.0.1:4825` 고정 권한.
   - **VS Code 확장 (`vscode-extension/`):** 선택적 Bearer 인증, TTL 단일 사용 승인 토큰 캐시, HTTP/SSE 타임아웃 및 오류 가드, 실시간 설정 리로드, 크로스플랫폼 VSIX 패키징.
   - **브라우저 확장 (`browser-extension/`):** 포트 4825 한정 호스트 권한 및 선택적 사용자 지정 포트, 라이브 DOM 가시성 추출, UTF-8 바이트 예산 절단, 종단간 본문 타임아웃 제어.
 - **무-TS5 OpenAPI 코드 생성:** [`scripts/generate_openapi_types.mjs`](../../scripts/generate_openapi_types.mjs)가 TypeScript 5 의존성 없이 `frontend/openapi.json`에서 `frontend/src/api/openapi.ts`를 결정론적으로 생성합니다.
 - **자동 검증 및 크로스플랫폼 CI 게이트:**
-  - **프론트엔드:** `npm run test:frontend:coverage`(113개 테스트 파일 4대 지표 100%), `tsc 7.0.2`, 번들 예산(`<= 150 KiB` gzip), i18n 리터럴·네임스페이스 검증, 확장 테스트 스위트.
-  - **Python:** `npm run test:coverage`(`>= 90%` 하한), `ruff`(SQL·서브프로세스 보안 규칙 활성화), `mypy`, 도메인별 모듈화 단위 테스트(`tests/unit/`).
+  - **프론트엔드:** `npm run test:frontend:coverage`(113개 테스트 파일 / 1,852개 테스트 4대 지표 100%), `tsc 7.0.2`(`noUncheckedIndexedAccess` 활성), 번들 예산(`<= 150 KiB` gzip), i18n 리터럴·네임스페이스 검증, 확장 테스트 스위트.
+  - **Python:** `npm run test:coverage`(`>= 90%` 하한), `ruff`(`"BLE"` 광범위 예외 탐지, McCabe `max-complexity <= 20`, 프로덕션 `S608`, 최소 Bandit 파일별 예외), `mypy`, 도메인별 모듈화 단위 테스트(`tests/unit/`, 다중 타임존 UTC 타임스탬프 일관성 테스트 포함).
   - **Rust, Windows, 데스크톱 및 컨테이너:** `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, **Ubuntu (`ubuntu-latest`)** 및 **Windows (`windows-latest`)** 병렬 `cargo-nextest`, **macOS (`macos-latest`)** `src-tauri` 테스트, 다이제스트 고정 멀티스테이지 `Dockerfile` 빌드 및 `lattice-host --version` 스모크 검증.
-  - **문서 & 비주얼:** `docs:check-current`, `docs:check-links`, `docs:check-languages`(EN ↔ KO 100% 패리티), `check:max-file-lines`, Playwright 비주얼 스모크 및 릴리스 증거 바인딩.
+  - **문서 & 비주얼:** `docs:check-current`, `docs:check-links`, `docs:check-languages`(EN ↔ KO 100% 패리티), `check:max-file-lines`, **PR 및 `main`** Playwright `visual` 스모크, 릴리스 증거 바인딩.
 
 ## 로컬 우선 경계, 거버넌스 및 포터빌리티
 
@@ -155,13 +155,13 @@ flowchart LR
 
 ## 릴리스 산출물 맵
 
-14.0.0 정확 버전 산출물 이름:
+14.1.0 정확 버전 산출물 이름:
 
-- Python 휠: `dist/ltcai-14.0.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.0.0.tar.gz`
-- npm tarball: `ltcai-14.0.0.tgz`
-- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.0.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
+- Python 휠: `dist/ltcai-14.1.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.1.0.tar.gz`
+- npm tarball: `ltcai-14.1.0.tgz`
+- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.1.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
 
 ## 알려진 경계
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "14.0.0"
+version = "14.1.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -198,7 +198,7 @@ extend-exclude = ["ltcai-0.3.1", "dist-smoke", "agent_workspace", "venv", "outpu
 # `Optional[X]` → `X | None`, and rewriting annotation syntax across the tree
 # is a change to every file for no behavioural gain while 3.11 is the floor.
 select = [
-  "E4", "E7", "E9", "F", "B", "S", "I", "SIM", "RET", "C901",
+  "E4", "E7", "E9", "F", "B", "BLE", "S", "I", "SIM", "RET", "C901",
   "ASYNC210", "ASYNC220", "ASYNC221", "ASYNC222", "ASYNC230", "ASYNC251",
 ]
 ignore = [
@@ -224,12 +224,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.mccabe]
-# 30 is a real ceiling for ordinary code: only three functions in the tree
-# exceed it, and each is named in per-file-ignores with a reason. Router
-# factories are exempt below — their "complexity" is N sibling route handlers
-# defined in one closure, an idiom of this codebase rather than tangled logic.
-# Lower this as the exempted functions come down.
-max-complexity = 30
+# 20 is the complexity ceiling for ordinary functions. Router factories are
+# exempt below — their "complexity" is N sibling route handlers defined in one
+# closure, an idiom of this codebase rather than tangled logic.
+max-complexity = 20
 
 [tool.ruff.lint.per-file-ignores]
 # Deliberate re-export hub: the tool registry's public surface.
@@ -259,20 +257,21 @@ max-complexity = 30
 
 # Process launchers. Every command is a fixed program plus validated arguments,
 # recorded through latticeai/services/process_audit.py.
-"latticeai/cli/*.py" = ["E402", "S603", "S604", "S607", "SIM"]
-"latticeai/tools/*.py" = ["S404", "S603", "S607", "SIM", "B007"]
-"latticeai/core/tool_registry.py" = ["S603", "S604", "S606", "S607", "SIM", "B007"]
-"latticeai/services/engine_adapters.py" = ["S603", "S607", "SIM"]
-"latticeai/services/model_engines.py" = ["S603", "S604", "S607", "SIM"]
-"latticeai/services/model_loading.py" = ["S603", "S607", "SIM"]
-"latticeai/services/tool_dispatch.py" = ["S603", "S604", "S607", "SIM"]
-"lattice_brain/runtime/hooks.py" = ["S603", "S607", "SIM"]
+"latticeai/cli/*.py" = ["E402", "SIM"]
+"latticeai/tools/*.py" = ["SIM", "B007"]
+"latticeai/tools/commands.py" = ["S603", "S607"]
+"latticeai/tools/computer.py" = ["S603", "S607"]
+"latticeai/tools/network.py" = ["S603"]
+"latticeai/core/tool_registry.py" = ["S604", "SIM", "B007"]
+"latticeai/services/engine_adapters.py" = ["S607", "SIM"]
+"latticeai/services/model_engines.py" = ["S603", "SIM"]
+"latticeai/services/model_loading.py" = ["S603", "SIM"]
 
 # S608 (SQL injection check) stays enabled on lattice_brain/graph/*.py.
 "lattice_brain/graph/*.py" = ["SIM", "B007", "B905", "E402"]
 
 # Literal classification tables; flagged for the words they contain.
-"lattice_brain/graph/_kg_constants.py" = ["S105", "S108"]
+"lattice_brain/graph/_kg_constants.py" = ["S108"]
 
 # Remaining reviewed surfaces.
 "latticeai/core/*.py" = ["SIM", "B008", "S311", "S324"]

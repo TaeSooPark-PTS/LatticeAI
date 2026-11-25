@@ -56,7 +56,7 @@ describe("filter tables", () => {
       "approved",
       "dismissed",
     ]);
-    expect(reviewSourceFilters[0].id).toBe("all");
+    expect(reviewSourceFilters[0]!.id).toBe("all");
     expect(reviewSourceFilters.map((f) => f.id)).toContain("change_proposal");
   });
 });

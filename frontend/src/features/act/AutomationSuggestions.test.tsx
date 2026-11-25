@@ -61,7 +61,7 @@ describe("AutomationSuggestions", () => {
       api: { automationOverview: ok(SUGGESTIONS) },
     });
     await screen.findByText("오늘 뭐 했지?");
-    await userEvent.click(screen.getAllByRole("button", { name: "자동화 만들기" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "자동화 만들기" })[0]!);
     await waitFor(() =>
       expect(latticeApi.installAutomationSuggestion).toHaveBeenCalledWith("s-question", false),
     );
@@ -76,7 +76,7 @@ describe("AutomationSuggestions", () => {
       },
     });
     await screen.findByText("오늘 뭐 했지?");
-    await userEvent.click(screen.getAllByRole("button", { name: "자동화 만들기" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "자동화 만들기" })[0]!);
     await screen.findByRole("button", { name: "만드는 중..." });
     // The other cards keep their label but are disabled during the flight.
     const others = screen.getAllByRole("button", { name: "자동화 만들기" });

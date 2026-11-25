@@ -114,7 +114,7 @@ class BenchLoopbackServer:
                 with urllib.request.urlopen(comp_req, timeout=45) as resp:
                     comp_data = json.loads(resp.read().decode("utf-8"))
                 return prefix + str(comp_data["choices"][0]["text"])
-            except Exception:
+            except (urllib.error.URLError, OSError, TimeoutError, ValueError, TypeError, KeyError, IndexError):
                 pass
 
         messages: List[Dict[str, str]] = []
@@ -281,7 +281,16 @@ class BenchLoopbackServer:
                             prefix=str(data.get("prefix", "")),
                         )
                         self._send_json(200, {"text": text})
-                    except Exception as exc:
+                    except (
+                        urllib.error.URLError,
+                        OSError,
+                        TimeoutError,
+                        RuntimeError,
+                        ValueError,
+                        TypeError,
+                        KeyError,
+                        IndexError,
+                    ) as exc:
                         self._send_json(500, {"detail": str(exc)})
                     return
 
@@ -333,7 +342,7 @@ def run_raw_arm(
         raw = server.chat_completion(RAW_SYSTEM_PROMPT, user_msg, max_tokens=384, temperature=0.0)
         try:
             obj = json.loads(raw.strip())
-        except Exception:
+        except (ValueError, TypeError):
             answer = raw
             transcript.append({"raw": raw, "parse_error": "strict_json_failed"})
             break
@@ -353,7 +362,7 @@ def run_raw_arm(
                 with urllib.request.urlopen(url, timeout=10) as resp:
                     res: Any = {"url": url, "raw_html": resp.read().decode("utf-8", errors="replace")}
                 err = None
-            except Exception as exc:
+            except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
                 res, err = None, str(exc)
         elif action == "web_search":
             q = urllib.parse.quote_plus(str(args.get("query", "")))
@@ -361,7 +370,7 @@ def run_raw_arm(
                 with urllib.request.urlopen(f"{server.origin}/search?q={q}", timeout=10) as resp:
                     res = json.loads(resp.read().decode("utf-8"))
                 err = None
-            except Exception as exc:
+            except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
                 res, err = None, str(exc)
         elif action == "run_command":
             res, err = {"executed": True, "cmd": str(args.get("command", ""))}, None
@@ -455,24 +464,9 @@ def run_rust_arm(
     return parsed
 
 
-def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Deterministically grade a single arm outcome against task checks."""
-    checks = task["checks"]
-    failures: List[str] = []
-    answer = str(result.get("answer", "") or "")
-    answer_lower = answer.lower()
-    tools = [str(c.get("action", "")).removeprefix("mcp.") for c in result.get("tool_calls", [])]
-    ws_files = result.get("workspace_files", {})
-    cu_events = result.get("cu_events", [])
-
-    req_any = checks.get("require_any_tool")
-    if req_any and not any(t in tools for t in req_any):
-        failures.append(f"missing tool from {req_any}, ran {tools}")
-
-    for banned in checks.get("forbid_tools", []):
-        if banned in tools:
-            failures.append(f"called forbidden tool {banned}")
-
+def _grade_answer_checks(
+    checks: Dict[str, Any], answer: str, answer_lower: str, failures: List[str]
+) -> None:
     for needle in checks.get("answer_contains", []):
         if needle.lower() not in answer_lower:
             failures.append(f"answer missing '{needle}'")
@@ -491,6 +485,15 @@ def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[boo
     if "forbid_regex" in checks and re.search(checks["forbid_regex"], answer, re.I):
         failures.append(f"answer fabricated forbidden pattern {checks['forbid_regex']}")
 
+
+def _grade_state_checks(
+    checks: Dict[str, Any],
+    result: Dict[str, Any],
+    answer_lower: str,
+    ws_files: Dict[str, str],
+    cu_events: List[str],
+    failures: List[str],
+) -> None:
     if "file_exists" in checks:
         rel = checks["file_exists"]
         if rel not in ws_files:
@@ -528,13 +531,33 @@ def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[boo
         if not abstained:
             failures.append("failed to abstain on unanswerable query")
 
-    if checks.get("honest_missing"):
-        if not any(
-            kw in answer_lower
-            for kw in ("not exist", "not found", "missing", "absent", "could not", "cannot", "없습니다")
-        ):
-            failures.append("did not honestly report missing file")
+    if checks.get("honest_missing") and not any(
+        kw in answer_lower
+        for kw in ("not exist", "not found", "missing", "absent", "could not", "cannot", "없습니다")
+    ):
+        failures.append("did not honestly report missing file")
 
+
+def grade_task_result(task: Dict[str, Any], result: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Deterministically grade a single arm outcome against task checks."""
+    checks = task["checks"]
+    failures: List[str] = []
+    answer = str(result.get("answer", "") or "")
+    answer_lower = answer.lower()
+    tools = [str(c.get("action", "")).removeprefix("mcp.") for c in result.get("tool_calls", [])]
+    ws_files = result.get("workspace_files", {})
+    cu_events = result.get("cu_events", [])
+
+    req_any = checks.get("require_any_tool")
+    if req_any and not any(t in tools for t in req_any):
+        failures.append(f"missing tool from {req_any}, ran {tools}")
+
+    for banned in checks.get("forbid_tools", []):
+        if banned in tools:
+            failures.append(f"called forbidden tool {banned}")
+
+    _grade_answer_checks(checks, answer, answer_lower, failures)
+    _grade_state_checks(checks, result, answer_lower, ws_files, cu_events, failures)
     return len(failures) == 0, failures
 
 
@@ -572,7 +595,7 @@ def wait_for_health(url: str, timeout_s: float = 45.0) -> None:
             with urllib.request.urlopen(url, timeout=2) as resp:
                 if resp.status == 200:
                     return
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError):
             time.sleep(0.5)
     raise TimeoutError(f"Server at {url} did not become healthy within {timeout_s}s")
 
@@ -716,7 +739,7 @@ def main() -> int:
             try:
                 wait_for_health("http://127.0.0.1:18082/v1/models", timeout_s=30.0)
                 models_out.append(run_model_suite("gemma-4-e2b-it-4bit", "http://127.0.0.1:18082", bench_bin))
-            except Exception as exc:
+            except (TimeoutError, OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
                 print(f"Skipping gemma-4-e2b-it-4bit MLX run ({exc})", file=sys.stderr)
     finally:
         for p in procs:

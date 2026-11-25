@@ -36,10 +36,10 @@ describe("readEventStream", () => {
     ]);
 
     expect(frames.map((frame) => frame.malformed)).toEqual([false, true, false, false]);
-    expect(frames[1].data).toBeNull();
-    expect(frames[1].raw).toBe('{"chunk":"truncated');
+    expect(frames[1]!.data).toBeNull();
+    expect(frames[1]!.raw).toBe('{"chunk":"truncated');
     expect(frames[2]).toMatchObject({ event: "agent_step", data: { phase: "plan" } });
-    expect(frames[3].data).toEqual({ chunk: "after" });
+    expect(frames[3]!.data).toEqual({ chunk: "after" });
   });
 
   it("keeps non-JSON sentinels and non-object payloads out of the malformed count", async () => {
@@ -53,7 +53,7 @@ describe("readEventStream", () => {
     // Well-formed JSON that is not an object: usable by nobody, but not a
     // decoding failure either.
     expect(frames[1]).toMatchObject({ data: null, malformed: false });
-    expect(frames[2].raw).toBe("[DONE]");
+    expect(frames[2]!.raw).toBe("[DONE]");
   });
 
   it("names unnamed frames 'message' and ignores frames with no data line", async () => {
@@ -64,8 +64,8 @@ describe("readEventStream", () => {
     ]);
 
     expect(frames).toHaveLength(2);
-    expect(frames[0].event).toBe("progress");
-    expect(frames[1].event).toBe("message");
+    expect(frames[0]!.event).toBe("progress");
+    expect(frames[1]!.event).toBe("message");
   });
 
   it("still yields a final frame that arrives without its trailing blank line", async () => {
@@ -120,7 +120,7 @@ describe("streamChat frame skipping", () => {
     const result = await latticeApi.streamChat({ message: "hi" }, { onAgentStep });
 
     expect(onAgentStep).toHaveBeenCalledTimes(1);
-    expect(onAgentStep.mock.calls[0][0]).toMatchObject({ phase: "execute", event: "tool" });
+    expect(onAgentStep.mock.calls[0]![0]).toMatchObject({ phase: "execute", event: "tool" });
     expect(result.text).toBe("done");
     expect(result.malformedFrames).toBe(1);
   });
@@ -155,7 +155,7 @@ describe("readEventStream teardown", () => {
     ]);
 
     expect(frames).toHaveLength(1);
-    expect(frames[0].data).toEqual({ chunk: "a" });
+    expect(frames[0]!.data).toEqual({ chunk: "a" });
   });
 
   it("cancels the body when the consumer breaks early, even if cancel rejects", async () => {

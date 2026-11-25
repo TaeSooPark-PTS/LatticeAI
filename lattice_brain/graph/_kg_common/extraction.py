@@ -16,11 +16,37 @@ from __future__ import annotations
 # ruff: noqa: F841
 import asyncio
 import functools
+import http.client
 import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+
+def _llm_extraction_errors() -> Tuple[type[BaseException], ...]:
+    errors: List[type[BaseException]] = [
+        RuntimeError,
+        OSError,
+        ValueError,
+        TypeError,
+        TimeoutError,
+        KeyError,
+        AttributeError,
+        http.client.HTTPException,
+    ]
+    for mod_name, attr in (("httpx", "HTTPError"), ("jinja2", "TemplateError")):
+        try:
+            mod = __import__(mod_name, fromlist=[attr])
+            err_cls = getattr(mod, attr, None)
+            if isinstance(err_cls, type) and issubclass(err_cls, Exception):
+                errors.append(err_cls)
+        except ImportError:
+            pass
+    return tuple(errors)
+
+
+_LLM_EXTRACTION_ERRORS = _llm_extraction_errors()
 
 from ..runtime import get_llm_router
 from .extraction_triples import (
@@ -149,7 +175,7 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
                 elif isinstance(item, str):
                     concepts.append(item)
             return concepts if concepts else None
-    except Exception as e:
+    except _LLM_EXTRACTION_ERRORS as e:
         logging.debug("LLM concept extraction failed (falling back to rules): %s", e)
     return None
 
@@ -217,7 +243,7 @@ def _llm_extract_triples(
                         }
                     )
             return triples if triples else None
-    except Exception as e:
+    except _LLM_EXTRACTION_ERRORS as e:
         logging.debug("LLM triple extraction failed (falling back to rules): %s", e)
     return None
 
@@ -568,37 +594,28 @@ def _always_inside(short: str, longer: List[str], spans: Dict[str, List[Any]]) -
     )
 
 
-def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
-    """Extract meaningful named concepts from text (rule-based).
+def _add_rule_concept(seen: Dict[str, str], term: str) -> None:
+    # A candidate that crosses a line, or runs past a handful of words, is
+    # a quoted *passage* the backtick and quote rules swept up — the graph
+    # was storing whole sentences as entity names.
+    if "\n" in term or len(term.split()) > _MAX_CONCEPT_WORDS:
+        return
+    key = term.strip().lower()
+    if key and key not in _CONCEPT_STOP and not key.isdigit() and len(key) >= 2:
+        seen.setdefault(key, term.strip())
 
-    Priority order:
-    1. Backtick / quoted terms (explicitly technical)
-    2. Multi-word proper nouns (Lattice AI, GPT-4o, Claude Sonnet)
-    3. Single capitalized proper nouns not at sentence start (Claude, Python, FastAPI)
-    4. Korean compound technical terms (멀티모달, 에이전트, 그래프RAG)
-    5. Hyphenated / versioned identifiers (gpt-4o, mlx-vlm, gemma-4)
-    """
-    text = str(text or "")
-    seen: dict = {}  # concept_lower → original form
 
-    def _add(term: str) -> None:
-        # A candidate that crosses a line, or runs past a handful of words, is
-        # a quoted *passage* the backtick and quote rules swept up — the graph
-        # was storing whole sentences as entity names.
-        if "\n" in term or len(term.split()) > _MAX_CONCEPT_WORDS:
-            return
-        key = term.strip().lower()
-        if key and key not in _CONCEPT_STOP and not key.isdigit() and len(key) >= 2:
-            seen.setdefault(key, term.strip())
+def _collect_rule_concept_candidates(text: str) -> List[str]:
+    seen: Dict[str, str] = {}  # concept_lower → original form
 
     # 1. Backtick-quoted code/term (highest confidence)
     for m in _RE_BACKTICK.findall(text):
         if not _RE_CODE_PUNCT.search(m):  # skip code expressions
-            _add(m)
+            _add_rule_concept(seen, m)
 
     # 2. Double/single quoted terms
     for m in _RE_DQUOTE.findall(text):
-        _add(m)
+        _add_rule_concept(seen, m)
 
     # 3. Multi-word English proper nouns (Title Case or ALL-CAPS first word, 2–4 words).
     #    The inner separator is `[ \t]+`, not `\s+`: `\s` crosses newlines, so a
@@ -607,53 +624,57 @@ def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
     #    the next pass would have found (regex scanning does not overlap).
     #    Pattern A: Mixed-case first word — "Lattice AI", "Tool Use", "Graph RAG"
     for m in _RE_PROPER_MIXED.findall(text):
-        _add(_drop_leading_stopwords(m))
+        _add_rule_concept(seen, _drop_leading_stopwords(m))
     #    Pattern B: ALL-CAPS first word — "VS Code", "MCP Server", "GPT-4o Mini"
     for m in _RE_PROPER_CAPS.findall(text):
-        _add(_drop_leading_stopwords(m))
+        _add_rule_concept(seen, _drop_leading_stopwords(m))
 
     # 4. Single capitalized proper noun.
     #    Use ASCII-boundary lookaround instead of \b so Korean particles
     #    (와, 의, 는 …) after an English word don't block the match.
-    all_caps_words = _RE_PROPER_SINGLE.findall(text)
     freq: Dict[str, int] = {}
-    for w in all_caps_words:
+    for w in _RE_PROPER_SINGLE.findall(text):
         freq[w] = freq.get(w, 0) + 1
     sentence_starts = set(_RE_SENTENCE_START.findall(text))
     for m, cnt in freq.items():
-        if m.lower() in _CONCEPT_STOP:
-            continue
-        if cnt >= 2 or m not in sentence_starts:
-            _add(m)
+        if m.lower() not in _CONCEPT_STOP and (cnt >= 2 or m not in sentence_starts):
+            _add_rule_concept(seen, m)
 
-    # 5. Korean technical compound nouns (3–12 chars, no common particles)
+    # 5. Korean technical compound nouns, particle stems, and definition stems.
+    _collect_korean_rule_concepts(text, seen)
+
+    # 6. Hyphenated / versioned identifiers (gpt-4o, gemma-4, mlx-vlm)
+    for m in _RE_HYPHEN_ID.findall(text):
+        if len(m) >= 4:
+            _add_rule_concept(seen, m)
+
+    return list(seen.values())
+
+
+def _collect_korean_rule_concepts(text: str, seen: Dict[str, str]) -> None:
     for m in _RE_KO_COMPOUND.findall(text):
-        _add(m)
+        _add_rule_concept(seen, m)
     # Korean standalone terms that appear before a particle. Multi-syllable
     # particles come first in the alternation: the group is greedy, so
     # "지식그래프에서" has to be offered 에서 before 에 or the leftover 서
     # blocks the match entirely.
-    ko_stems = _RE_KO_PARTICLE.findall(text)
     ko_counts: Dict[str, int] = {}
-    for m in ko_stems:
+    for m in _RE_KO_PARTICLE.findall(text):
         if m.lower() not in _CONCEPT_STOP and len(m) >= 2:
             if m not in ko_counts:
                 ko_counts[m] = text.count(m)
             if len(m) >= 3 or ko_counts[m] >= 2:
-                _add(m)
+                _add_rule_concept(seen, m)
 
     # 5b. The term a Korean definition sentence is *about*: `지식그래프란 …이다`.
     #     The stem is lazy and the marker must end the word, so `설명이란` keeps
     #     `설명` (the `이` belongs to `이란`) and `의견란에` is left alone
     #     entirely (`란` there is part of the noun, not a marker).
     for m in _RE_KO_DEFINITION.findall(text):
-        _add(m)
+        _add_rule_concept(seen, m)
 
-    # 6. Hyphenated / versioned identifiers (gpt-4o, gemma-4, mlx-vlm)
-    for m in _RE_HYPHEN_ID.findall(text):
-        if len(m) >= 4:
-            _add(m)
 
+def _deduplicate_contained_concepts(values: List[str], text: str) -> List[str]:
     # De-duplicate by containment: drop the shorter term when every occurrence
     # of it in the source text is *inside* a longer concept.
     #
@@ -664,7 +685,6 @@ def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
     #
     # Until v12.0.0 this only looked at *prefixes*, so "Graph RAG" and "RAG"
     # both became nodes and the graph answered one question with two entities.
-    values = list(seen.values())
     # Which candidates *could* swallow which is decided on the candidate
     # strings alone — matching "Vector" inside "Vector Index" is a few
     # characters of work. Only the terms that survive that filter are then
@@ -705,7 +725,22 @@ def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
         if alive and _always_inside(values[i], alive, spans):
             keep.discard(i)
 
-    final = [values[i] for i in range(len(values)) if i in keep]
+    return [values[i] for i in range(len(values)) if i in keep]
+
+
+def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
+    """Extract meaningful named concepts from text (rule-based).
+
+    Priority order:
+    1. Backtick / quoted terms (explicitly technical)
+    2. Multi-word proper nouns (Lattice AI, GPT-4o, Claude Sonnet)
+    3. Single capitalized proper nouns not at sentence start (Claude, Python, FastAPI)
+    4. Korean compound technical terms (멀티모달, 에이전트, 그래프RAG)
+    5. Hyphenated / versioned identifiers (gpt-4o, mlx-vlm, gemma-4)
+    """
+    text = str(text or "")
+    values = _collect_rule_concept_candidates(text)
+    final = _deduplicate_contained_concepts(values, text)
     # The surface merge is the last word: whatever the six passes above
     # produced, two spellings of one entity leave as one concept and therefore
     # as one node. Applied after the prefix de-duplication so the two rules

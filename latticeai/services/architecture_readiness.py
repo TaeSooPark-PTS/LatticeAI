@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-ARCHITECTURE_VERSION_TARGET = "14.0.0"
+ARCHITECTURE_VERSION_TARGET = "14.1.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -52,7 +52,7 @@ def _symbol_exists(dotted: str) -> bool:
         mod_name, name = dotted.rsplit(".", 1)
         mod = importlib.import_module(mod_name)
         return hasattr(mod, name)
-    except Exception:
+    except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError, SyntaxError):
         return False
 
 

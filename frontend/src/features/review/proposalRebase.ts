@@ -55,10 +55,12 @@ export function unifiedDiffLines(before: string, after: string, path: string): s
   const cols = afterLines.length;
   const table: Uint32Array[] = Array.from({ length: rows + 1 }, () => new Uint32Array(cols + 1));
   for (let i = rows - 1; i >= 0; i -= 1) {
+    const row = table[i]!;
+    const nextRow = table[i + 1]!;
     for (let j = cols - 1; j >= 0; j -= 1) {
-      table[i][j] = beforeLines[i] === afterLines[j]
-        ? table[i + 1][j + 1] + 1
-        : Math.max(table[i + 1][j], table[i][j + 1]);
+      row[j] = beforeLines[i] === afterLines[j]
+        ? nextRow[j + 1]! + 1
+        : Math.max(nextRow[j]!, row[j + 1]!);
     }
   }
   const body: string[] = [];
@@ -68,7 +70,7 @@ export function unifiedDiffLines(before: string, after: string, path: string): s
     if (beforeLines[i] === afterLines[j]) {
       i += 1;
       j += 1;
-    } else if (table[i + 1][j] >= table[i][j + 1]) {
+    } else if (table[i + 1]![j]! >= table[i]![j + 1]!) {
       body.push(`-${beforeLines[i]}`);
       i += 1;
     } else {

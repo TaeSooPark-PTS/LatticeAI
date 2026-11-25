@@ -728,13 +728,12 @@ pub async fn write_chat_turn(
         })
 }
 
-/// `datetime.now().isoformat()` — naive **local** time, microseconds included.
+/// Offset-free UTC timestamp (`YYYY-MM-DDTHH:MM:SS[.ffffff]`), matching
+/// `lattice_brain.utils.local_now().isoformat()` and `lattice_retrieval::routes::naive_local_now`.
 ///
-/// Naive local because that is what every stamp in `conversation_messages` was
-/// written with; a UTC stamp on a machine at UTC+9 would sort nine hours wrong
-/// against the rows already there. The conversion goes through
-/// `lattice_retrieval::routes::naive_local_now`, which is this workspace's one
-/// `localtime_r(3)` route, rather than a fourth copy of it.
+/// Both Rust and Python emit offset-free UTC stamps so `conversation_messages`
+/// sort consistently across non-UTC host timezones while preserving compatibility
+/// with existing offset-free rows.
 ///
 /// Stated deviation: the fraction comes back through an `f64` of seconds, so the
 /// microseconds are accurate to about a quarter of one. `isoformat()` omits the

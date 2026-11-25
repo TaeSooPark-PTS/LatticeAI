@@ -79,11 +79,11 @@ describe("MessageBody markdown rendering", () => {
     expect(screen.getByText("앞 문단")).toBeTruthy();
     const blocks = document.querySelectorAll(".brain-code-block");
     expect(blocks.length).toBe(2);
-    expect(blocks[0].querySelector(".brain-code-lang")!.textContent).toBe("python");
-    expect(blocks[0].querySelector("pre code")!.textContent).toBe("print('hi')");
+    expect(blocks[0]!.querySelector(".brain-code-lang")!.textContent).toBe("python");
+    expect(blocks[0]!.querySelector("pre code")!.textContent).toBe("print('hi')");
     // A fence without a language falls back to the neutral label.
-    expect(blocks[1].querySelector(".brain-code-lang")!.textContent).toBe("text");
-    expect(blocks[1].querySelector("pre code")!.textContent).toBe("tail without end");
+    expect(blocks[1]!.querySelector(".brain-code-lang")!.textContent).toBe("text");
+    expect(blocks[1]!.querySelector("pre code")!.textContent).toBe("tail without end");
   });
 
   it("renders plain content and trailing prose after a fence", () => {
@@ -306,10 +306,10 @@ describe("CreatedFilesCard", () => {
       />,
     );
     const buttons = screen.getAllByRole("button", { name: /다운로드/ });
-    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[0]!);
     await screen.findByText("내려받는 중…");
     // While one download runs, a second request is ignored entirely.
-    fireEvent.click(buttons[1]);
+    fireEvent.click(buttons[1]!);
     expect(download).toHaveBeenCalledTimes(1);
     expect(download).toHaveBeenCalledWith("a.txt", "a.txt");
     release({ ok: true });

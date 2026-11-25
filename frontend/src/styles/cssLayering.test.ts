@@ -94,7 +94,7 @@ function ownedClasses(): Set<string> {
   const owned = new Set<string>();
   for (const sheet of SHEETS) {
     for (const match of read(sheet).matchAll(/\.(ritual-[\w-]+|brain-[\w-]+|data-panel)\b/g)) {
-      owned.add(match[1]);
+      owned.add(match[1]!);
     }
   }
   return owned;
@@ -115,7 +115,7 @@ function classNameGroups(source: string): string[][] {
   for (const pattern of patterns) {
     for (const match of source.matchAll(pattern)) {
       // Interpolations are conditional and cannot be judged statically.
-      const literal = match[1].replace(/\$\{[^}]*\}/g, " ");
+      const literal = match[1]!.replace(/\$\{[^}]*\}/g, " ");
       groups.push(literal.split(/\s+/).filter(Boolean));
     }
   }

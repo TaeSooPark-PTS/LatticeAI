@@ -537,8 +537,8 @@ describe("the model catalogue", () => {
     });
     await screen.findByText("Nope One");
     const buttons = screen.getAllByRole("button", { name: t("ko", "library.btn.validateLoad") });
-    expect(buttons[0].getAttribute("title")).toBe(t("ko", "library.model.notReady"));
-    expect(buttons[1].getAttribute("title")).toBe(t("ko", "library.model.status.unsupported"));
+    expect(buttons[0]!.getAttribute("title")).toBe(t("ko", "library.model.notReady"));
+    expect(buttons[1]!.getAttribute("title")).toBe(t("ko", "library.model.status.unsupported"));
   });
 
   it("lists the profiles that were checked, and says so when none were", async () => {
@@ -676,7 +676,7 @@ describe("preparing a model", () => {
     // The runtime summary carries its own unload button above the catalogue;
     // this is the one on the row itself.
     const unloads = await screen.findAllByRole("button", { name: t("ko", "library.runtime.unload") });
-    await userEvent.click(unloads[unloads.length - 1]);
+    await userEvent.click(unloads[unloads.length - 1]!);
 
     await waitFor(() => expect(unloadModel).toHaveBeenCalledWith("local/loaded"));
   });
@@ -706,7 +706,7 @@ describe("the runtime summary", () => {
       expect.anything(),
     ));
 
-    const unload = screen.getAllByRole("button", { name: t("ko", "library.runtime.unload") })[0];
+    const unload = screen.getAllByRole("button", { name: t("ko", "library.runtime.unload") })[0]!;
     await userEvent.click(unload);
     await waitFor(() => expect(unloadModel).toHaveBeenCalledWith("local/loaded"));
   });
@@ -732,7 +732,7 @@ describe("the runtime summary", () => {
     ));
 
     // Index 0 is the summary's own button, not the catalogue row's.
-    const unload = screen.getAllByRole("button", { name: t("ko", "library.runtime.unload") })[0];
+    const unload = screen.getAllByRole("button", { name: t("ko", "library.runtime.unload") })[0]!;
     await userEvent.click(unload);
     expect(unloadModel).not.toHaveBeenCalled();
   });
@@ -828,15 +828,15 @@ describe("SkillsPanel", () => {
 
     // "정렬" has no name, so its own toggle must call back with its id.
     const enableButtons = screen.getAllByRole("button", { name: t("ko", "library.skills.enable") });
-    await userEvent.click(enableButtons[enableButtons.length - 1]);
+    await userEvent.click(enableButtons[enableButtons.length - 1]!);
     await waitFor(() => expect(skillToggle).toHaveBeenCalledWith("정렬", false));
 
-    await userEvent.click(screen.getAllByRole("button", { name: t("ko", "library.skills.install") })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: t("ko", "library.skills.install") })[0]!);
     await waitFor(() => expect(skillInstall).toHaveBeenCalledWith("번역", "market"));
 
     // "요청" has no name and no plugin: installs by id, with no plugin arg.
     const installButtons = screen.getAllByRole("button", { name: t("ko", "library.skills.install") });
-    await userEvent.click(installButtons[installButtons.length - 1]);
+    await userEvent.click(installButtons[installButtons.length - 1]!);
     await waitFor(() => expect(skillInstall).toHaveBeenCalledWith("요청", ""));
   });
 });

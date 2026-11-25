@@ -6,7 +6,7 @@
 > with the current release. Subsystem design principles and operational views
 > live in [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **14.0.0 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
 Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
@@ -22,7 +22,7 @@ flowchart TB
   subgraph surfaces["Surfaces"]
     direction LR
     ui["React / Vite 8 / TS 7.0.2 app<br/>lazy routes · AppRouteView · per-route i18n · ko · en"]
-    desktop["Tauri 2.11 desktop shell<br/>serialized gateway lifecycle · pinned 127.0.0.1:4825 CSP"]
+    desktop["Tauri 2.11 desktop shell<br/>serialized gateway lifecycle · PortPolicy::PinnedProduction (4825)"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
     desktop ~~~ ui ~~~ editor ~~~ browser
@@ -38,7 +38,7 @@ flowchart TB
       ingestc["lattice-ingest (28 ops)<br/>incremental chunk sync · debounced watch · spawn_blocking fs<br/>native Obsidian wikilinks · Notion/Git/Mail interop"]
       chatc["lattice-chat (8 ops)<br/>chat · history · non-blocking doc sessions · bounded cloud budget"]
       jobsc["lattice-jobs (4 ops)<br/>index · adaptive drain scheduler · loopback/Bearer guard"]
-      authc["lattice-auth<br/>versioned $scrypt$ · bounded rate limiter · sessions · CSRF"]
+      authc["lattice-auth<br/>versioned $scrypt$ · bounded rate limiter · CsrfReason + messages.rs"]
       agentc["lattice-agent (6 groups)<br/>kernel · parse · content · tools · surface · prompts<br/>Adaptive Harness · DurableWorkflowStore · safe_io"]
       corec["lattice-core<br/>Store (generation epoch) · GraphWriter (single writer)<br/>pure-Rust UTC clock · temporal · entity_resolution"]
       hostc["lattice-host<br/>fail-closed gateway · EnvOverlayProbe supervisor · static UI"]
@@ -94,8 +94,8 @@ flowchart TB
 | Crate | Responsibility | Key Modules |
 | --- | --- | --- |
 | `lattice-host` | Product composition root, One Door router, fail-closed no-redirect proxy client, static UI server, `EnvOverlayProbe` worker supervisor | `gateway/mod.rs`, `gateway/onedoor.rs`, `gateway/product.rs`, `supervisor/` |
-| `lattice-core` | SQLite `Store` with live-restore generation epoch & single-writer pool, `GraphWriter`, pure-Rust UTC clock (zero `libc` `unsafe`), bi-temporal facts, entity resolution, integrity checker, `EmbeddingModelRegistry`, idempotent worker seam client | `graph_write/`, `integrity/`, `temporal.rs`, `entity_resolution.rs`, `embedding_registry.rs`, `worker.rs` |
-| `lattice-auth` | Versioned `$scrypt$` password hashing (`Result`-based, legacy verify compatible), bounded memory rate limiter with unified HTTP `429` + `Retry-After` contract, session management, CSRF origin guard | `password.rs`, `ratelimit.rs`, `session.rs`, `csrf.rs`, `config.rs` |
+| `lattice-core` | SQLite `Store` with live-restore generation epoch & single-writer pool, `GraphWriter`, unified Rust ↔ Python offset-free UTC clock (zero `libc` `unsafe`), bi-temporal facts, entity resolution, integrity checker, `EmbeddingModelRegistry`, idempotent worker seam client | `graph_write/`, `integrity/`, `temporal.rs`, `entity_resolution.rs`, `embedding_registry.rs`, `worker.rs` |
+| `lattice-auth` | Versioned `$scrypt$` password hashing (`Result`-based, legacy verify compatible), bounded memory rate limiter with unified HTTP `429` + `Retry-After` contract, session management, CSRF origin guard (`CsrfReason` enum + `messages.rs`) | `password.rs`, `ratelimit.rs`, `session.rs`, `csrf.rs`, `messages.rs`, `config.rs` |
 | `lattice-agent` | Safety kernel, Universal Adaptive Agent Harness (`probe.rs` 3-turn micro-probing, `ui_resolve.rs`, `rag_grounding.rs`), fail-closed verifier, `DurableWorkflowStore`, 5-role `MultiAgentSession`, TOCTOU-safe `safe_io` (Unix `openat`/`O_NOFOLLOW` + Windows handle-pinned traversal) | `kernel/`, `parse/`, `content/`, `tools/`, `surface/`, `prompts/` |
 | `lattice-retrieval` | Pre-tokenized BM25F sidecar (`bm25_node_stats`), bounded pure-Rust `NativeHnswIndex` cache, 3-way BM25F + Vector + Graph RRF hybrid search, claim-level grounding & abstention, `as_of` temporal chronicle, Self-Model, Brain Governance API | `bm25/`, `native_hnsw.rs`, `hybrid.rs`, `grounding.rs`, `brain_api/`, `chronicle_api/`, `self_model.rs` |
 | `lattice-ingest` | Chunk-level incremental sync, `DebouncedWatchEngine`, non-blocking `spawn_blocking` local filesystem API, PDF/table/OCR structure preservation, native Obsidian (`[[wikilink]]` `LINKS_TO` edges) and Notion/Git/Mail interop bridges through `GraphWriter` | `incremental_sync.rs`, `incremental_watch.rs`, `document_structure.rs`, `local_files_api/{local.rs,folder.rs,interop.rs}` |
@@ -170,16 +170,19 @@ security primitives (`latticeai.core.security`).
 ## Surfaces, Tooling & Verification Gates
 
 - **Frontend (`frontend/src`):** React + Vite 8 + TypeScript 7.0.2 (`tsgo`)
-  enforcing `strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`,
-  `noUnusedLocals`, `noUnusedParameters`, and `verbatimModuleSyntax`; native ESM
-  configs ([`vite.config.mts`](vite.config.mts),
+  enforcing `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`,
+  `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, and
+  `verbatimModuleSyntax`; native ESM configs ([`vite.config.mts`](vite.config.mts),
   [`vitest.config.mts`](vitest.config.mts)); modular route dispatch
   (`AppRouteView.tsx`); lazy route splitting with per-route i18n namespaces
   (`ko`, `en`); SSR/non-DOM safe theme/storage guards; and `ErrorBoundary`
   isolation around every route and heavy panel.
 - **Desktop & Extensions:**
   - **Tauri 2.11 (`src-tauri/`):** Serialized async gateway lifecycle (`start` /
-    `stop` / `restart`), loopback-validated external origin handling,
+    `stop` / `restart`), `PortPolicy::PinnedProduction` fail-fast on port `4825`
+    so production builds never drift off the pinned CSP/capability origin,
+    direct `BackendStatus` returns for infallible commands (`backend_status`,
+    `shutdown_backend`), loopback-validated external origin handling,
     `spawn_blocking` `/usr/bin/osascript` folder picker, and strict CSP +
     `127.0.0.1:4825` pinned capabilities without `'unsafe-inline'`.
   - **VS Code Extension (`vscode-extension/`):** Optional Bearer authentication,
@@ -193,12 +196,14 @@ security primitives (`latticeai.core.security`).
   `frontend/openapi.json` with zero TypeScript 5 dependencies.
 - **Automated Quality & Cross-Platform CI Gates:**
   - **Frontend:** `npm run test:frontend:coverage` (100% statements, branches,
-    functions, lines across 113 test files), `npm run typecheck` (`tsc 7.0.2`),
-    `npm run check:bundle` (`<= 150 KiB` initial JS gzip), i18n literal &
-    namespace checks, extension test suites.
-  - **Python:** `npm run test:coverage` (`>= 90%` floor), `ruff` (with SQL and
-    subprocess security rules enabled), `mypy`, modular unit tests under
-    `tests/unit/`.
+    functions, lines across 113 test files / 1,852 tests), `npm run typecheck`
+    (`tsc 7.0.2` with `noUncheckedIndexedAccess`), `npm run check:bundle`
+    (`<= 150 KiB` initial JS gzip), i18n literal & namespace checks, extension
+    test suites.
+  - **Python:** `npm run test:coverage` (`>= 90%` floor), `ruff` (with `"BLE"`
+    blind-except detection, McCabe `max-complexity <= 20`, production `S608`,
+    and minimal Bandit per-file ignores), `mypy`, modular unit tests under
+    `tests/unit/` (including cross-timezone UTC timestamp consistency tests).
   - **Rust, Windows, Desktop & Container:** `cargo fmt --check`,
     `cargo clippy --workspace --all-targets -- -D warnings`, parallel
     `cargo-nextest` on both **Ubuntu (`ubuntu-latest`)** and **Windows
@@ -207,7 +212,8 @@ security primitives (`latticeai.core.security`).
     smoke check.
   - **Documentation & Visual:** `docs:check-current`, `docs:check-links`,
     `docs:check-languages` (100% EN ↔ KO parity), `check:max-file-lines`,
-    Playwright visual smoke & release evidence binding.
+    Playwright `visual` smoke on **both pull requests and `main`**, and release
+    evidence binding.
 
 ## Local-First Boundary, Governance & Portability
 
@@ -225,13 +231,13 @@ security primitives (`latticeai.core.security`).
 
 ## Release Artifact Map
 
-14.0.0 exact artifact names:
+14.1.0 exact artifact names:
 
-- Python wheel: `dist/ltcai-14.0.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.0.0.tar.gz`
-- npm tarball: `ltcai-14.0.0.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.0.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
+- Python wheel: `dist/ltcai-14.1.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.1.0.tar.gz`
+- npm tarball: `ltcai-14.1.0.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.1.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
 
 ## Known Boundaries
 

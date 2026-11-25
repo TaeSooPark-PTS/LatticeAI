@@ -39,6 +39,58 @@ def _quality_level(score: float) -> str:
     return "low"
 
 
+def _score_diversity(
+    sample: str,
+    lines: List[str],
+    words: List[str],
+    reasons: List[str],
+) -> float:
+    diversity_factor = 1.0
+    distinct_chars = len(set(sample.lower()))
+    if distinct_chars < 10:
+        diversity_factor *= 0.2
+        reasons.append("low_character_diversity")
+    elif distinct_chars < 20:
+        diversity_factor *= 0.7
+    if len(lines) >= 6:
+        top_count = max(lines.count(ln) for ln in set(lines))
+        if top_count >= max(3, len(lines) // 4):
+            diversity_factor *= 0.5
+            reasons.append("repetitive_lines")
+    if len(words) >= 30 and (len(set(w.lower() for w in words)) / len(words)) < 0.25:
+        diversity_factor *= 0.5
+        reasons.append("repetitive_words")
+    return diversity_factor
+
+
+def _score_cleanliness(
+    raw: str,
+    lines: List[str],
+    source_type: Optional[str],
+    reasons: List[str],
+) -> float:
+    cleanliness_factor = 1.0
+    whitespace_ratio = sum(1 for ch in raw if ch.isspace()) / max(1, len(raw))
+    if whitespace_ratio > 0.45:
+        cleanliness_factor *= 0.6
+        reasons.append("high_whitespace_ratio")
+    if len(lines) >= 8:
+        short_lines = sum(1 for ln in lines if len(ln.split()) <= 3)
+        if short_lines / len(lines) > 0.6:
+            cleanliness_factor *= 0.6
+            reasons.append("fragmented_lines")
+    boilerplate_hits = sum(
+        1 for ln in lines if ln.lower().strip(" .:>|•·-–—*") in _BOILERPLATE_LINE_MARKERS
+    )
+    if lines and boilerplate_hits >= 3 and (boilerplate_hits / len(lines)) > 0.2:
+        cleanliness_factor *= 0.35
+        if str(source_type or "").lower() in _WEB_SOURCE_TYPES:
+            reasons.append("nav_menu_remnants")
+        else:
+            reasons.append("boilerplate_markers")
+    return cleanliness_factor
+
+
 def assess_extraction_quality(
     text: Optional[str],
     *,
@@ -99,42 +151,10 @@ def assess_extraction_quality(
         reasons.append("no_sentence_structure")
 
     # 3) Diversity — repeated characters/lines/words indicate extraction junk.
-    diversity_factor = 1.0
-    distinct_chars = len(set(sample.lower()))
-    if distinct_chars < 10:
-        diversity_factor *= 0.2
-        reasons.append("low_character_diversity")
-    elif distinct_chars < 20:
-        diversity_factor *= 0.7
-    if len(lines) >= 6:
-        top_count = max(lines.count(ln) for ln in set(lines))
-        if top_count >= max(3, len(lines) // 4):
-            diversity_factor *= 0.5
-            reasons.append("repetitive_lines")
-    if len(words) >= 30 and (len(set(w.lower() for w in words)) / len(words)) < 0.25:
-        diversity_factor *= 0.5
-        reasons.append("repetitive_words")
+    diversity_factor = _score_diversity(sample, lines, words, reasons)
 
     # 4) Cleanliness — whitespace floods, fragmented lines, site chrome.
-    cleanliness_factor = 1.0
-    whitespace_ratio = sum(1 for ch in raw if ch.isspace()) / max(1, len(raw))
-    if whitespace_ratio > 0.45:
-        cleanliness_factor *= 0.6
-        reasons.append("high_whitespace_ratio")
-    if len(lines) >= 8:
-        short_lines = sum(1 for ln in lines if len(ln.split()) <= 3)
-        if short_lines / len(lines) > 0.6:
-            cleanliness_factor *= 0.6
-            reasons.append("fragmented_lines")
-    boilerplate_hits = sum(
-        1 for ln in lines if ln.lower().strip(" .:>|•·-–—*") in _BOILERPLATE_LINE_MARKERS
-    )
-    if lines and boilerplate_hits >= 3 and (boilerplate_hits / len(lines)) > 0.2:
-        cleanliness_factor *= 0.35
-        if str(source_type or "").lower() in _WEB_SOURCE_TYPES:
-            reasons.append("nav_menu_remnants")
-        else:
-            reasons.append("boilerplate_markers")
+    cleanliness_factor = _score_cleanliness(raw, lines, source_type, reasons)
 
     score = length_factor * structure_factor * diversity_factor * cleanliness_factor
     score = max(0.0, min(1.0, score))

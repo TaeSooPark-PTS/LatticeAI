@@ -571,9 +571,9 @@ describe("graph subview: DigitalBrainExplorer interactions", () => {
     renderGraph();
     await screen.findByTestId("brain-cytoscape");
     const [groupSelect, labelSelect] = screen.getAllByRole("combobox");
-    await userEvent.selectOptions(groupSelect, "지식");
-    await userEvent.selectOptions(labelSelect, "모든 이름");
-    await userEvent.selectOptions(labelSelect, "이름 숨기기");
+    await userEvent.selectOptions(groupSelect!, "지식");
+    await userEvent.selectOptions(labelSelect!, "모든 이름");
+    await userEvent.selectOptions(labelSelect!, "이름 숨기기");
     // No crash across every group/label combination is the contract here;
     // the underlying filtering is graphExplorer's, already covered there.
     expect(screen.getByTestId("brain-cytoscape")).toBeTruthy();

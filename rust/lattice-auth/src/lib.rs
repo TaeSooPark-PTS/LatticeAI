@@ -87,7 +87,7 @@ pub mod users;
 pub use clock::Clock;
 pub use config::{AuthConfig, SsoSettings};
 pub use cookies::SESSION_COOKIE_NAME;
-pub use csrf::{CsrfDecision, CsrfOriginPolicy, CsrfRequest};
+pub use csrf::{CsrfDecision, CsrfOriginPolicy, CsrfReason, CsrfRequest};
 pub use enterprise::{
     allowed_tenants_of_user, apply_scim_user, authorize_scim_request, constant_time_eq,
     is_valid_tenant_id, requested_tenant, tenant_denied_response, tenant_of_user,

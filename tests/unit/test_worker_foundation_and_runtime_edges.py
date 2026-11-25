@@ -103,14 +103,14 @@ def test_foundation_web_worker_and_typed_chunks(monkeypatch, tmp_path: Path):
         outer.include_router(included)
         # just ensure module functions exist
         assert callable(getattr(wp, "_included_router", lambda *_a: None))
-    except Exception:
+    except (ImportError, AttributeError, AssertionError):
         pass
 
 
 def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     from datetime import datetime
 
-    from fastapi import APIRouter, HTTPException
+    from fastapi import HTTPException
 
     from lattice_brain.graph import _kg_fsutil as fs
     from lattice_brain.runtime.hooks import dispatch_tool
@@ -126,15 +126,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     from latticeai.core.permission_mode import effective_auto_approve
     from latticeai.core.security import _rate_buckets, enforce_rate_limit
     from latticeai.runtime.access_runtime import build_access_runtime
-    from latticeai.runtime.build_phases.foundation import (
-        phase_brain,
-        phase_config,
-        phase_identity,
-        phase_platform,
-    )
-    from latticeai.runtime.build_phases.web import build_worker_app_shell
-    from latticeai.runtime.build_phases.worker_profile import apply_worker_route_filter
-    from latticeai.runtime.runtime_context import RuntimeContext
     from latticeai.services.model_runtime.status import engine_status
     from latticeai.services.process_audit import (
         _text_hash,
@@ -300,6 +291,20 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     note.write_text("a,b\n", encoding="utf-8")
     assert read_document(str(note))["ext"] == ".csv"
 
+
+def test_third_wave_download_lifespan_and_foundation_gaps(tmp_path: Path, monkeypatch):
+    from fastapi import APIRouter
+
+    from latticeai.runtime.build_phases.foundation import (
+        phase_brain,
+        phase_config,
+        phase_identity,
+        phase_platform,
+    )
+    from latticeai.runtime.build_phases.web import build_worker_app_shell
+    from latticeai.runtime.build_phases.worker_profile import apply_worker_route_filter
+    from latticeai.runtime.runtime_context import RuntimeContext
+
     # ollama wait: returncode != 0 then success
     runs = {"n": 0}
 
@@ -446,7 +451,7 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     shell_ctx.REQUIRE_AUTH = False
     try:
         build_worker_app_shell(shell_ctx)
-    except Exception:
+    except (AttributeError, RuntimeError, ValueError, TypeError):
         # host_is_loopback / middleware may need more fields; CORS lines still run first
         pass
 

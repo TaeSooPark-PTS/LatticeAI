@@ -384,8 +384,8 @@ describe("patchCatalog", () => {
       data: FeatureCatalog;
     };
 
-    expect(patched.data.features[0].current).toBe(true);
-    expect(patched.data.features[0].source).toBe("user");
+    expect(patched.data.features[0]!.current).toBe(true);
+    expect(patched.data.features[0]!.source).toBe("user");
     // Nothing else moved.
     expect(patched.data.features[1]).toEqual(CATALOG.features[1]);
   });

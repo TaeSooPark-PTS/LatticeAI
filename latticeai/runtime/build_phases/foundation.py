@@ -45,7 +45,7 @@ def phase_platform(ctx: RuntimeContext) -> None:
 
         mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
         print("✅ MLX Metal context initialized in main thread.")
-    except Exception as exc:
+    except (ImportError, OSError, RuntimeError, AttributeError) as exc:
         print(f"⚠️ MLX Metal context unavailable: {exc}")
         mx = None  # type: ignore[assignment]
     ctx.set(mx=mx)
@@ -62,7 +62,7 @@ def phase_config(ctx: RuntimeContext) -> None:
 
     try:
         import keyring
-    except Exception:
+    except (ImportError, OSError, RuntimeError):
         keyring = None  # type: ignore[assignment]
 
     config_runtime = build_config_runtime(ctx.config_arg)

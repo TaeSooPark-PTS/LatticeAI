@@ -33,6 +33,7 @@ from latticeai.models.model_providers import (
 
 from ._contract import RouterCore as _Core
 from .catalog import CloudModel, parse_model_ref, source_metadata_for_model
+from .errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from .local_models import (
     _is_gemma4_model_id,
     _local_model_type,
@@ -157,14 +158,14 @@ def _declares_vision(model_id: str) -> bool:
         candidates.append(explicit / "config.json")
     try:
         candidates.append(hf_model_dir(raw) / "config.json")
-    except Exception as error:  # noqa: BLE001 — an unresolvable id is not a claim
+    except (OSError, ValueError, TypeError, RuntimeError) as error:
         quiet(f"vision probe skipped for {raw}: {error}")
     for config_path in candidates:
         try:
             if not config_path.exists():
                 continue
             data = _json.loads(config_path.read_text(encoding="utf-8"))
-        except Exception as error:  # noqa: BLE001 — an unreadable config is not a claim
+        except (OSError, ValueError, TypeError, UnicodeDecodeError) as error:
             quiet(f"vision probe skipped for {config_path}: {error}")
             continue
         if any(key in data for key in ("vision_config", "vision_tower", "image_token_index")):
@@ -254,7 +255,7 @@ class _LoadingMixin(_Core):
         if mx is not None and hasattr(mx, "clear_cache"):
             try:
                 mx.clear_cache()
-            except Exception as e:
+            except (RuntimeError, OSError, AttributeError) as e:
                 print(f"⚠️ MLX cache clear skipped: {e}")
 
     async def load_model(
@@ -296,14 +297,14 @@ class _LoadingMixin(_Core):
                     raise RuntimeError("MLX-VLM is not installed.")
                 print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
                 model, tokenizer = vlm_load(target_model_id)
-            except Exception as vlm_error:
+            except MODEL_RUNTIME_BOUNDARY_ERRORS as vlm_error:
                 if not _text_fallback_allowed(model_id, target_model_id, model_type):
                     raise
                 print(f"⚠️ MLX-VLM load failed; retrying the MLX-LM text path: {vlm_error}")
                 print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
                 try:
                     model, tokenizer = lm_load(target_model_id)
-                except Exception:
+                except MODEL_RUNTIME_BOUNDARY_ERRORS:
                     # The text path is a *fallback*: when it fails too, the
                     # useful diagnosis is the first failure, from the loader
                     # this model was routed to. Raising the second one would
@@ -333,7 +334,7 @@ class _LoadingMixin(_Core):
                 self._touch(cache_key)
             print(f"✅ Fully Loaded: {cache_key} ({loader_kind})")
             return f"Success: {cache_key} ({loader_kind})"
-        except Exception as e:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
             print(f"❌ Load Error: {e}")
             raise e
 

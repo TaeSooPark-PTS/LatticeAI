@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.0.0 Living Brain 둘러보기](output/release/v14.0.0/gifs/v14.0.0-living-brain-walkthrough.gif)
+![v14.1.0 Living Brain 둘러보기](output/release/v14.1.0/gifs/v14.1.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.0.0_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.1.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -85,15 +85,15 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v14.0.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.0.0/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v14.1.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.1.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v14.0.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.0.0/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v14.1.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.1.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v14.0.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.0.0/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v14.1.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.1.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v14.0.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.0.0/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v14.1.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.1.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v14.0.0/SCREENSHOT_INDEX.md](output/release/v14.0.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.0.0/screenshots/01-login.png), [06-capture.png](output/release/v14.0.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.0.0/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v14.1.0/SCREENSHOT_INDEX.md](output/release/v14.1.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.1.0/screenshots/01-login.png), [06-capture.png](output/release/v14.1.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -117,24 +117,24 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **14.0.0 — Living Synthesis**입니다:
+현재 최신 릴리스는 **14.1.0 — Living Synthesis**입니다:
 
-- **풀스택 보안·동시성 고도화** — `lattice-auth`의 버전화 `$scrypt$` `Result` 기반 해싱, 상한 레이트 리미팅 및 통합 HTTP `429` + `Retry-After` 계약, 영문 CSRF 거부 메시지; `lattice-core`의 순수 Rust UTC 시계(`unsafe` `libc` 제거); `spawn_blocking` 파일/세션 I/O 오프로딩, 상한 HNSW/클라우드 예산 캐시, fail-closed 프록시 클라이언트, 플랫폼 가드 MLX extra 및 Ruff 보안 규칙 복원을 적용했습니다.
-- **엄격 TypeScript 7 프론트엔드, Tauri 데스크톱 및 확장 강화** — 엄격 TypeScript 7 플래그와 `AppRouteView.tsx` 모듈 분리(Vitest 100%), 직렬화된 Tauri 게이트웨이 생명주기 및 `127.0.0.1:4825` 고정 CSP/권한, VS Code·브라우저 확장 보안·타임아웃·가시성 추출 강화를 완료했습니다.
-- **실제 Windows Rust CI, Tauri CI, 다이제스트 고정 Docker 및 14.0.0 아키텍처 최신화** — `windows-latest` Rust 워크스페이스 테스트, `macos-latest` Tauri 테스트, SHA256 다이제스트 고정 멀티스테이지 `Dockerfile` 스모크 CI를 추가하고 모든 아키텍처 문서와 한국어 미러를 `14.0.0` 기준으로 최신화했습니다.
+- **Rust ↔ Python UTC 타임스탬프 통합 및 Tauri 프로덕션 포트 고정** — `clock.rs`, `lattice_brain/utils.py`, `_kg_fsutil.py`의 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일해 비-UTC 호스트 편차를 제거했고, `src-tauri`에 `PortPolicy::PinnedProduction`을 도입해 포트 `4825` 충돌 시 조용히 폴백하지 않고 즉시 실패(fail-fast)하도록 정렬했습니다.
+- **풀스택 정적 분석 및 타입 안전성 강화** — Python 전역의 포괄적 `except Exception`을 좁히고 Ruff `"BLE"`·McCabe 복잡도 `<= 20`·최소 Bandit 예외를 적용했으며, `rust/lattice-auth`에 `messages.rs`와 구조화된 `CsrfReason` 열거형을 도입하고 비실패 Tauri 커맨드를 단순화했으며, 프론트엔드에 TypeScript 7 `"noUncheckedIndexedAccess": true`를 활성화해 68개 파일의 457건 오류를 해소(113개 테스트 파일 / 1,852개 테스트, Vitest 100%)했습니다.
+- **PR 시각 회귀 게이트 및 v14.1.0 문서 최신화** — Playwright `visual` 스모크 잡을 `main`뿐 아니라 풀 리퀘스트에서도 실행하도록 확장하고, 모든 정본·참고 영문 문서와 한국어 미러를 100% 양방향 패리티로 `v14.1.0` 기준 최신화했습니다.
 
 <details>
-<summary>14.0.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>14.1.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.0.0.md](docs/ko/releases/RELEASE_NOTES_v14.0.0.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.1.0.md](docs/ko/releases/RELEASE_NOTES_v14.1.0.md).
 
-14.0.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+14.1.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-14.0.0-py3-none-any.whl`
-- `dist/ltcai-14.0.0.tar.gz`
-- `ltcai-14.0.0.tgz`
-- `dist/ltcai-14.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
+- `dist/ltcai-14.1.0-py3-none-any.whl`
+- `dist/ltcai-14.1.0.tar.gz`
+- `ltcai-14.1.0.tgz`
+- `dist/ltcai-14.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -156,6 +156,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](docs/ko/releases/RELEASE_NOTES_v14.1.0.md) |
 | 14.0.0 | Living Synthesis | [RELEASE_NOTES_v14.0.0.md](docs/ko/releases/RELEASE_NOTES_v14.0.0.md) |
 | 13.9.0 | Living Synthesis | [RELEASE_NOTES_v13.9.0.md](docs/ko/releases/RELEASE_NOTES_v13.9.0.md) |
 | 13.8.0 | Living Synthesis | [RELEASE_NOTES_v13.8.0.md](docs/ko/releases/RELEASE_NOTES_v13.8.0.md) |

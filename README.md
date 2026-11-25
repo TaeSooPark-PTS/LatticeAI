@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.0.0 Living Brain walkthrough](output/release/v14.0.0/gifs/v14.0.0-living-brain-walkthrough.gif)
+![v14.1.0 Living Brain walkthrough](output/release/v14.1.0/gifs/v14.1.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_14.0.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_14.1.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -85,15 +85,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v14.0.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.0.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v14.1.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.1.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v14.0.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.0.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v14.1.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.1.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v14.0.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.0.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v14.1.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.1.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v14.0.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.0.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v14.1.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.1.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v14.0.0/SCREENSHOT_INDEX.md](output/release/v14.0.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.0.0/screenshots/01-login.png), [06-capture.png](output/release/v14.0.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.0.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v14.1.0/SCREENSHOT_INDEX.md](output/release/v14.1.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.1.0/screenshots/01-login.png), [06-capture.png](output/release/v14.1.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -117,24 +117,24 @@ Full visual index: [output/release/v14.0.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **14.0.0 — Living Synthesis**:
+The current release is **14.1.0 — Living Synthesis**:
 
-- **Full-Stack Security & Concurrency Hardening** — Versioned `$scrypt$` `Result`-based hashing, bounded rate limiting with unified HTTP `429` + `Retry-After` and English CSRF denials in `lattice-auth`, pure-Rust UTC clock eliminating all `unsafe` `libc` FFI in `lattice-core`, `spawn_blocking` offload for filesystem/session I/O, bounded HNSW/cloud-budget caches, fail-closed proxy client, and platform-guarded MLX extras with Ruff security rules re-enabled.
-- **Strict TypeScript 7 Frontend, Tauri Desktop & Extensions** — Enabled strict TypeScript 7 compiler flags and modular `AppRouteView.tsx` at 100% Vitest coverage; serialized Tauri gateway lifecycle with pinned `127.0.0.1:4825` CSP/capabilities; hardened VS Code and browser extensions with Bearer auth, TTL single-use approval token caching, live DOM capture, and UTF-8 byte truncation.
-- **Real Windows Rust CI, Tauri CI, Digest-Pinned Docker & Modernized 14.0.0 Architecture Docs** — Added `windows-latest` Rust workspace tests, `macos-latest` Tauri tests, and SHA256 digest-pinned multi-stage `Dockerfile` smoke checks in CI, and modernized `ARCHITECTURE.md`, `docs/architecture.md`, and all Korean mirrors to `14.0.0`.
+- **Unified UTC Timestamps & Fail-Fast Tauri Pinned Port** — Unified Rust ↔ Python timestamps onto offset-free UTC (`YYYY-MM-DDTHH:MM:SS`) across `clock.rs`, `lattice_brain/utils.py`, and `_kg_fsutil.py` (verified under `Asia/Seoul`, `America/New_York`, and `UTC`), and introduced `PortPolicy::PinnedProduction` in `src-tauri` so production desktop builds fail fast on port `4825` conflicts instead of drifting off the pinned CSP/capability origin.
+- **Full-Stack Static Analysis & Type Safety Hardening** — Enabled Ruff `"BLE"`, lowered McCabe `max-complexity` from `30` to `20`, and minimized Bandit ignores across Python; moved CSRF strings into `rust/lattice-auth/src/messages.rs` with a structured `CsrfReason` enum and simplified infallible Tauri commands; and enabled TypeScript 7 `"noUncheckedIndexedAccess": true` across 68 frontend files (457 errors resolved at 100% Vitest coverage across 113 files / 1,852 tests).
+- **PR Visual Regression Gate & v14.1.0 Documentation Modernization** — Enabled the Playwright `visual` smoke job on pull requests as well as pushes to `main`, and refreshed all canonical, reference, and Korean mirror Markdown documentation to `v14.1.0` with 100% EN↔KO bidirectional parity.
 
 <details>
-<summary>Release notes & exact 14.0.0 distribution artifacts</summary>
+<summary>Release notes & exact 14.1.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.0.0.md](docs/releases/RELEASE_NOTES_v14.0.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.1.0.md](docs/releases/RELEASE_NOTES_v14.1.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 14.0.0 must use exact filenames:
+Expected artifacts for 14.1.0 must use exact filenames:
 
-- `dist/ltcai-14.0.0-py3-none-any.whl`
-- `dist/ltcai-14.0.0.tar.gz`
-- `ltcai-14.0.0.tgz`
-- `dist/ltcai-14.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.0.0_aarch64.dmg`
+- `dist/ltcai-14.1.0-py3-none-any.whl`
+- `dist/ltcai-14.1.0.tar.gz`
+- `ltcai-14.1.0.tgz`
+- `dist/ltcai-14.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -156,6 +156,7 @@ Public release history in this repository covers `v13.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](docs/releases/RELEASE_NOTES_v14.1.0.md) |
 | 14.0.0 | Living Synthesis | [RELEASE_NOTES_v14.0.0.md](docs/releases/RELEASE_NOTES_v14.0.0.md) |
 | 13.9.0 | Living Synthesis | [RELEASE_NOTES_v13.9.0.md](docs/releases/RELEASE_NOTES_v13.9.0.md) |
 | 13.8.0 | Living Synthesis | [RELEASE_NOTES_v13.8.0.md](docs/releases/RELEASE_NOTES_v13.8.0.md) |

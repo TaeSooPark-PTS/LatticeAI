@@ -46,9 +46,9 @@ describe("BrainHome first entry", () => {
     ]);
 
     expect(hero).toBeGreaterThanOrEqual(0);
-    expect(composer).toBeGreaterThan(hero);
-    expect(toolbar).toBeGreaterThan(composer);
-    expect(prompts).toBeGreaterThan(toolbar);
+    expect(composer).toBeGreaterThan(hero!);
+    expect(toolbar).toBeGreaterThan(composer!);
+    expect(prompts).toBeGreaterThan(toolbar!);
   });
 
   it("holds the first move on the station and nothing else", async () => {
@@ -91,8 +91,8 @@ describe("BrainHome first entry", () => {
       "[data-testid='brain-secondary-deck']",
       ".brain-home-quiet",
     ]);
-    expect(deckIndex).toBeGreaterThan(stationIndex);
-    expect(quietIndex).toBeGreaterThan(deckIndex);
+    expect(deckIndex).toBeGreaterThan(stationIndex!);
+    expect(quietIndex).toBeGreaterThan(deckIndex!);
   });
 
   it("opens with the dock closed, so the first screen is the composer", async () => {

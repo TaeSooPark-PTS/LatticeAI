@@ -1,6 +1,6 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/OPERATIONS.md)
 
-# Lattice AI — Operations Guide (v14.0.0)
+# Lattice AI — Operations Guide (v14.1.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -221,8 +221,12 @@ Ctrl+C  or  kill <pid>
 
 `lattice-host` binds only to loopback (`127.0.0.1:4825`) by default, and
 non-loopback addresses (such as `0.0.0.0`) are permitted only when
-`LATTICEAI_REQUIRE_AUTH=true` is set. On shutdown, in-flight HTTP requests and
-the worker process are drained cleanly before exit.
+`LATTICEAI_REQUIRE_AUTH=true` is set. Production Tauri desktop builds enforce
+`PortPolicy::PinnedProduction` on port `4825` (failing fast with clear
+diagnostics if another process already holds `4825`, keeping the runtime origin
+aligned with the pinned CSP and capabilities). Rust and Python both record
+timestamps in offset-free UTC (`YYYY-MM-DDTHH:MM:SS`). On shutdown, in-flight
+HTTP requests and the worker process are drained cleanly before exit.
 
 ## 10. Release Evidence Capture Order (After Layout / UI Changes)
 

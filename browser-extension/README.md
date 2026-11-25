@@ -2,7 +2,7 @@
 
 # Lattice AI — Browser Extension (Manifest V3)
 
-Current release: **13.3.1 — Living Synthesis**.
+Current release: **14.1.0 — Living Synthesis**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this
@@ -24,8 +24,9 @@ never as "Grounded".
 - It posts **only** to `http://127.0.0.1:<port>` on your own machine.
 - There is **no** cloud endpoint, telemetry, or external server anywhere in this
   extension. Grep the source: the single `fetch` target is `127.0.0.1`.
-- `host_permissions` is restricted to `http://127.0.0.1/*` and
-  `http://localhost/*`.
+- `host_permissions` is restricted to `http://127.0.0.1:4825/*` and
+  `http://localhost:4825/*` (custom loopback ports require explicit opt-in via
+  `optional_host_permissions`).
 
 ## What it sends
 
@@ -41,8 +42,9 @@ The active tab is captured (scripts/styles/SVG stripped) into:
 }
 ```
 
-…to `POST /api/browser/ingest-current-tab`, which routes it through the unified
-ingestion pipeline as `source_type=browser_tab` (see `latticeai/api/browser.py`).
+…to `POST /api/browser/ingest-current-tab`, which routes it through the native
+Rust ingestion pipeline as `source_type=browser_tab` (see
+`rust/lattice-ingest/src/browser_api/`).
 
 ## Install (developer mode)
 

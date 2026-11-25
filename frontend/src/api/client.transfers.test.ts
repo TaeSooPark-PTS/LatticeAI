@@ -25,9 +25,9 @@ describe("uploadDocument", () => {
 
     expect(res.ok).toBe(true);
     expect(res.data).toEqual({ status: "ingested" });
-    expect(calls[0].method).toBe("POST");
-    expect(calls[0].url.pathname).toBe("/upload/document");
-    const body = calls[0].body as FormData;
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.url.pathname).toBe("/upload/document");
+    const body = calls[0]!.body as FormData;
     expect(body).toBeInstanceOf(FormData);
     const part = body.get("file") as File;
     expect(part.name).toBe("메모.txt");
@@ -72,9 +72,9 @@ describe("resumeAgentApproval", () => {
 
     const res = await latticeApi.resumeAgentApproval(body);
 
-    expect(calls[0].method).toBe("POST");
-    expect(calls[0].url.pathname).toBe("/agent/resume");
-    expect(calls[0].body).toEqual(body);
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.url.pathname).toBe("/agent/resume");
+    expect(calls[0]!.body).toEqual(body);
     expect(res.ok).toBe(true);
     expect(res.data).toEqual({ status: "resumed" });
   });
@@ -125,8 +125,8 @@ describe("installDemoCorpus", () => {
 
     const res = await latticeApi.installDemoCorpus();
 
-    expect(calls[0].method).toBe("POST");
-    expect(calls[0].url.pathname).toBe("/api/setup/demo-corpus");
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.url.pathname).toBe("/api/setup/demo-corpus");
     expect(res.ok).toBe(true);
     expect(res.data).toMatchObject({ status: "installed", ingested: 3, duplicates: 0, documents: [] });
   });
@@ -167,8 +167,8 @@ describe("readWorkspaceFile", () => {
 
     const res = await latticeApi.readWorkspaceFile("out/페이지.html");
 
-    expect(calls[0].url.pathname).toBe("/tools/download");
-    expect(calls[0].url.searchParams.get("path")).toBe("out/페이지.html");
+    expect(calls[0]!.url.pathname).toBe("/tools/download");
+    expect(calls[0]!.url.searchParams.get("path")).toBe("out/페이지.html");
     expect(res.ok).toBe(true);
     expect(res.data.content).toBe("<h1>안녕</h1>");
   });
@@ -275,8 +275,8 @@ describe("runAgent", () => {
 
     const res = await latticeApi.runAgent("정리해줘", ["writer"]);
 
-    expect(calls[0].url.pathname).toBe("/agents/api/run");
-    expect(calls[0].body).toEqual({ goal: "정리해줘", roles: ["writer"] });
+    expect(calls[0]!.url.pathname).toBe("/agents/api/run");
+    expect(calls[0]!.body).toEqual({ goal: "정리해줘", roles: ["writer"] });
     expect(res.ok).toBe(true);
   });
 

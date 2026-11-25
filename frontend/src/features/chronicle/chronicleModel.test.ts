@@ -86,7 +86,7 @@ describe("buildTimeline", () => {
 
   it("sorts the series itself rather than trusting the order it arrived in", () => {
     const timeline = buildTimeline([point("2026-06-03"), point("2026-06-01")]);
-    expect(timeline[0].date).toBe("2026-06-01");
+    expect(timeline[0]!.date).toBe("2026-06-01");
     expect(timeline).toHaveLength(3);
   });
 
@@ -96,15 +96,15 @@ describe("buildTimeline", () => {
       point("2026-06-01", { sources: 5 }),
     ]);
     expect(timeline).toHaveLength(1);
-    expect(timeline[0].total).toBe(5);
+    expect(timeline[0]!.total).toBe(5);
   });
 
   it("counts a missing or non-numeric lane as nothing, never NaN", () => {
     const timeline = buildTimeline([
       { date: "2026-06-01", sources: "3", entities: undefined, connections: Number.NaN, conversations: 2 } as unknown as ChronicleSeriesPoint,
     ]);
-    expect(timeline[0].total).toBe(2);
-    expect(timeline[0].daily).toBe(2);
+    expect(timeline[0]!.total).toBe(2);
+    expect(timeline[0]!.daily).toBe(2);
   });
 });
 
@@ -135,10 +135,10 @@ describe("buildHeatmap", () => {
     // 2026-06-03 is a Wednesday, so Sunday..Tuesday before it are padding.
     const weeks = buildHeatmap(buildTimeline([point("2026-06-03", { sources: 1 })]));
     expect(weeks).toHaveLength(1);
-    expect(weeks[0].key).toBe("2026-05-31");
-    expect(weeks[0].cells.slice(0, 3)).toEqual([null, null, null]);
-    expect(weeks[0].cells[3]).toEqual({ date: "2026-06-03", daily: 1, level: 4 });
-    expect(weeks[0].cells.slice(4)).toEqual([null, null, null]);
+    expect(weeks[0]!.key).toBe("2026-05-31");
+    expect(weeks[0]!.cells.slice(0, 3)).toEqual([null, null, null]);
+    expect(weeks[0]!.cells[3]).toEqual({ date: "2026-06-03", daily: 1, level: 4 });
+    expect(weeks[0]!.cells.slice(4)).toEqual([null, null, null]);
   });
 
   it("spans several weeks, one column each", () => {

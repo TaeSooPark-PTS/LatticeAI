@@ -141,7 +141,7 @@ def html_to_text(markup: str) -> str:
     try:
         extractor.feed(str(markup or ""))
         extractor.close()
-    except Exception as exc:  # pragma: no cover - html.parser is very tolerant
+    except (ValueError, TypeError, RuntimeError, AttributeError, LookupError) as exc:  # pragma: no cover - html.parser is very tolerant
         logging.debug("HTML parse stopped early; keeping what was read: %s", exc)
     text = "".join(extractor.parts)
     text = _TRAILING_SPACE.sub("\n", text)

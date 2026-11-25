@@ -48,7 +48,7 @@ class SearchService:
         if provider is not None and hasattr(provider, "metadata"):
             try:
                 meta = dict(provider.metadata())
-            except Exception:
+            except (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError):
                 meta = {}
         else:  # legacy LocalEmbeddingModel
             meta = {
@@ -63,7 +63,7 @@ class SearchService:
         if refresh and provider is not None and hasattr(provider, "health"):
             try:
                 health = provider.health()
-            except Exception as exc:  # pragma: no cover - defensive
+            except (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError) as exc:  # pragma: no cover - defensive
                 health = {"status": "unavailable", "detail": str(exc)}
 
         fell_back = bool(resolved.get("fell_back"))

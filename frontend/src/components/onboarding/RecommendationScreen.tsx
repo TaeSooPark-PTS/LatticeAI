@@ -161,7 +161,7 @@ export function RecommendationScreen({
 
           {items[0].supported ? (
             <>
-              <Button onClick={() => onSelect(items[0])} className="ritual-primary-model-button">
+              <Button onClick={() => onSelect(items[0]!)} className="ritual-primary-model-button">
                 {t(language, "flow.recommend.primary")} <ArrowRight size={18} aria-hidden="true" />
               </Button>
               <p className="ritual-hero-next">

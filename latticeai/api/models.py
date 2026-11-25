@@ -37,6 +37,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.core.messages import http_error, resolve_language
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -54,7 +55,7 @@ def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[st
     if current_model_id:
         try:
             current_vision = bool(get_model_profile(current_model_id).get("supports_vision"))
-        except Exception:
+        except (ImportError, RuntimeError, ValueError, TypeError, KeyError, AttributeError):
             current_vision = False
     engine_available = False
     try:
@@ -62,7 +63,7 @@ def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[st
             if isinstance(eng, dict) and eng.get("id") in {"local_mlx", "mlx"} and eng.get("installed"):
                 engine_available = True
                 break
-    except Exception:
+    except (TypeError, AttributeError, RuntimeError):
         engine_available = False
     return {
         "current_model": current_model_id,
@@ -315,7 +316,7 @@ def create_models_router(
             _raise_model_http(exc)
         except HTTPException:
             raise
-        except Exception as exc:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
             from latticeai.core.model_compat import friendly_model_runtime_error
 
             raise HTTPException(
@@ -376,7 +377,7 @@ def create_models_router(
             )
             verified = get_verified_models()
             embedding_rec = recommend_embedding_for_hardware()
-        except Exception:
+        except (ImportError, RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError):
             verified = []
             embedding_rec = {
                 "id": "google/embeddinggemma-2",
@@ -393,7 +394,7 @@ def create_models_router(
             )
 
             download_progress = get_download_progress_snapshot()
-        except Exception:
+        except (ImportError, RuntimeError, OSError, ValueError, TypeError, AttributeError):
             download_progress = {}
         return {
             "recommended": recommended,
@@ -441,7 +442,7 @@ def create_models_router(
             _raise_model_http(exc)
         except HTTPException:
             raise
-        except Exception as e:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as e:
             raise HTTPException(
                 status_code=500,
                 detail=friendly_model_runtime_error(e, model_id=req.model_id, engine=req.engine),

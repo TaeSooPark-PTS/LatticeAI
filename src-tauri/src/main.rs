@@ -35,12 +35,13 @@ fn backend_origin(state: State<'_, Arc<DesktopBackend>>) -> String {
 
 /// `backend_status` → a live snapshot, health probe included.
 ///
-/// Async, and therefore `Result`, because Tauri requires it of a command that
-/// borrows state across an await. It never returns `Err`: the frontend keeps
-/// receiving a resolved record exactly as before.
+/// Takes an owned `AppHandle` rather than a borrowed `State<'_, _>` so this
+/// infallible async command returns `BackendStatus` directly without a
+/// vacuous `Result<BackendStatus, String>` wrapper.
 #[tauri::command]
-async fn backend_status(state: State<'_, Arc<DesktopBackend>>) -> Result<BackendStatus, String> {
-    Ok(state.status().await)
+async fn backend_status(app: tauri::AppHandle) -> BackendStatus {
+    let state = Arc::clone(&app.state::<Arc<DesktopBackend>>());
+    state.status().await
 }
 
 /// `restart_backend` → stop, start, and propagate failures to the caller.
@@ -49,10 +50,11 @@ async fn restart_backend(state: State<'_, Arc<DesktopBackend>>) -> Result<Backen
     state.restart().await
 }
 
-/// `shutdown_backend` → stop the worker and suppress restarts.
+/// `shutdown_backend` → stop the worker and suppress restarts (infallible).
 #[tauri::command]
-async fn shutdown_backend(state: State<'_, Arc<DesktopBackend>>) -> Result<BackendStatus, String> {
-    Ok(state.stop().await)
+async fn shutdown_backend(app: tauri::AppHandle) -> BackendStatus {
+    let state = Arc::clone(&app.state::<Arc<DesktopBackend>>());
+    state.stop().await
 }
 
 /// `select_folder` → the native directory picker (non-blocking, distinguishes cancel vs error).

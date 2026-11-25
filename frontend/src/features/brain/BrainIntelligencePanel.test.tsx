@@ -70,10 +70,10 @@ describe("BrainIntelligencePanel", () => {
 
     const dimensions = Array.from(container.querySelectorAll(".brain-intelligence-dimension"));
     expect(dimensions).toHaveLength(4);
-    expect(dimensions[0].textContent).toContain("신선도");
-    expect(dimensions[0].textContent).toContain("91");
-    expect(dimensions[1].textContent).toContain("—"); // record without score
-    expect(dimensions[2].textContent).toContain("—"); // dimension missing entirely
+    expect(dimensions[0]!.textContent).toContain("신선도");
+    expect(dimensions[0]!.textContent).toContain("91");
+    expect(dimensions[1]!.textContent).toContain("—"); // record without score
+    expect(dimensions[2]!.textContent).toContain("—"); // dimension missing entirely
 
     expect(screen.getByText("최근 7일 새 지식 4개")).toBeTruthy();
     expect(screen.getByText("오래된 지식 2개")).toBeTruthy();

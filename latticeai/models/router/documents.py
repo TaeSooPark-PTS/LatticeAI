@@ -7,12 +7,13 @@ drain.
 """
 
 import asyncio
+import logging
 from typing import Any, AsyncIterator
 
 from ._contract import RouterCore as _Core
 from .branding import normalize_branding
 from .catalog import CloudModel
-from .errors import ModelStreamError, _stream_failure
+from .errors import CHAT_TEMPLATE_ERRORS, ModelStreamError, _stream_failure
 from .loading import _mlx_sampler, executor
 
 
@@ -46,7 +47,7 @@ class _DocumentMixin(_Core):
                     {"role": "user", "content": message},
                 ]
                 prompt = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            except Exception:
+            except CHAT_TEMPLATE_ERRORS:
                 prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
         else:
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
@@ -109,7 +110,7 @@ class _DocumentMixin(_Core):
                     {"role": "user", "content": message},
                 ]
                 prompt = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            except Exception:
+            except CHAT_TEMPLATE_ERRORS:
                 prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
         else:
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
@@ -132,6 +133,7 @@ class _DocumentMixin(_Core):
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)
             except Exception as exc:
+                logging.exception("MLX document stream failed")
                 loop.call_soon_threadsafe(
                     queue.put_nowait, _stream_failure("MLX document stream failed", exc)
                 )

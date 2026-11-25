@@ -227,7 +227,7 @@ describe("LivingBrain", () => {
       expect(frames).toHaveLength(1);
 
       act(() => {
-        frames[0](0);
+        frames[0]!(0);
       });
       // The latest pending position wins: nx=1 -> y=11deg, ny=-1 -> x=9deg.
       expect(button.style.getPropertyValue("--tilt-y")).toBe("11.00deg");
@@ -293,7 +293,7 @@ describe("LivingBrain", () => {
       unmount();
       // The stubbed cancel let the frame survive; firing it now must hit the
       // unmounted-ref guard, not a crash.
-      expect(() => frames[0](0)).not.toThrow();
+      expect(() => frames[0]!(0)).not.toThrow();
       expect(button.style.getPropertyValue("--tilt-y")).toBe("");
     });
   });

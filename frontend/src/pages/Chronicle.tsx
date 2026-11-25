@@ -83,7 +83,7 @@ export function ChroniclePage() {
           <GrowthScrubber
             timeline={timeline}
             index={index}
-            onIndexChange={(next) => setPinnedDate(timeline[next].date)}
+            onIndexChange={(next) => setPinnedDate(timeline[next]!.date)}
             language={language}
           />
           <ActivityHeatmap

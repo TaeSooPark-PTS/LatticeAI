@@ -7,6 +7,7 @@ avoided by late imports inside functions.
 """
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import json
 import logging
@@ -56,7 +57,7 @@ from latticeai.services.process_audit import (
 def _progress_payload(*args, **kwargs) -> Dict[str, Any]:
     try:
         from latticeai.services.model_runtime import model_download_progress_payload
-    except Exception:
+    except (ImportError, AttributeError, RuntimeError):
         return {}
     return model_download_progress_payload(*args, **kwargs)
 
@@ -151,7 +152,7 @@ def lmstudio_api_base() -> str:
             OPENAI_COMPATIBLE_PROVIDERS,  # type: ignore
         )
         prov = OPENAI_COMPATIBLE_PROVIDERS
-    except Exception:
+    except (ImportError, AttributeError, RuntimeError):
         prov = {}
     return (os.getenv("LMSTUDIO_BASE_URL") or (prov.get("lmstudio", {}) or {}).get("base_url", "http://localhost:1234/v1")).rstrip("/")
 
@@ -166,7 +167,7 @@ def ensure_lmstudio_server() -> None:
     try:
         _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
         return
-    except Exception:
+    except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
         quiet()
 
     cli = find_lmstudio_cli()
@@ -180,7 +181,7 @@ def ensure_lmstudio_server() -> None:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError) as e:
         raise ModelRuntimeError(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
 
     deadline = time.time() + 45
@@ -188,7 +189,7 @@ def ensure_lmstudio_server() -> None:
         try:
             _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
             return
-        except Exception:
+        except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError, ValueError, TypeError, RuntimeError):
             time.sleep(1)
     raise ModelRuntimeError(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
 
@@ -201,7 +202,7 @@ def ensure_ollama_server() -> None:
         probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
         if probe.returncode == 0:
             return
-    except Exception:
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
         quiet()
     subprocess.Popen(
         [ollama, "serve"],
@@ -215,7 +216,7 @@ def ensure_ollama_server() -> None:
             probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
             if probe.returncode == 0:
                 return
-        except Exception:
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
             quiet()
         time.sleep(0.5)
     raise ModelRuntimeError(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
@@ -497,7 +498,7 @@ def get_ollama_pulled_models() -> set:
             if parts:
                 pulled.add(parts[0])
         return pulled
-    except Exception:
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
         return set()
 
 
@@ -673,7 +674,7 @@ def install_engine(
         try:
             probe = subprocess.run([ollama, "list"], capture_output=True, timeout=2, check=False)
             already_up = probe.returncode == 0
-        except Exception:
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError):
             already_up = False
         if already_up:
             result["daemon_started"] = "already_running"
@@ -695,7 +696,7 @@ def install_engine(
                 )
                 append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="spawned")
                 result["daemon_started"] = True
-            except Exception as exc:
+            except (OSError, subprocess.SubprocessError, ValueError, TypeError, RuntimeError) as exc:
                 append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="error", error=str(exc))
                 logging.warning("ollama serve spawn failed: %s", exc)
                 result["daemon_started"] = False

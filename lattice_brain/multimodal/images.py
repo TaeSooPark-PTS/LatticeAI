@@ -11,8 +11,14 @@ from __future__ import annotations
 
 import base64
 import io
+import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
+
+try:
+    from PIL.Image import DecompressionBombError as _DecompressionBombError
+except ImportError:  # pragma: no cover - Pillow is optional for lattice_brain imports
+    _DecompressionBombError = ValueError  # type: ignore[assignment,misc]
 
 from ..quiet import quiet
 from .common import (
@@ -107,7 +113,7 @@ def _thumbnail_data_uri(image: Any, edge: int = THUMBNAIL_EDGE) -> Optional[str]
             small = small.convert("RGB")
         buffer = io.BytesIO()
         small.save(buffer, format="PNG")
-    except Exception:  # noqa: BLE001 — a missing thumbnail is not a failed ingest
+    except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
         quiet()
         return None
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
@@ -120,11 +126,11 @@ def _run_ocr(image: Any) -> Dict[str, str]:
     """OCR through ``pytesseract`` when it is installed, honestly otherwise."""
     try:
         import pytesseract  # optional local binary + wrapper
-    except Exception as exc:  # noqa: BLE001 — absence is a state, not an error
+    except (ImportError, OSError, RuntimeError) as exc:
         return {"status": "unavailable", "text": "", "detail": str(exc)}
     try:
         text = str(pytesseract.image_to_string(image) or "").strip()
-    except Exception as exc:  # noqa: BLE001 — a broken OCR runtime is a state
+    except (OSError, subprocess.SubprocessError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
         return {"status": "failed", "text": "", "detail": str(exc)}
     if not text:
         return {"status": "empty", "text": "", "detail": "no text found in the image"}
@@ -159,7 +165,15 @@ def extract_image_facts(
                 facts.ocr_detail = result["detail"]
             if thumbnail:
                 facts.thumbnail = _thumbnail_data_uri(image)
-    except Exception as exc:  # noqa: BLE001 — an unreadable image is a state
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        AttributeError,
+        _DecompressionBombError,
+    ) as exc:
         facts.error = str(exc)
         return facts
 
@@ -180,7 +194,7 @@ def _safe_caption(
     """Ask the VLM; a failure means *no caption*, never an invented one."""
     try:
         caption = captioner(path)
-    except Exception:  # noqa: BLE001 — a broken captioner must not fail an ingest
+    except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
         quiet()
         return None
     cleaned = str(caption or "").strip()
@@ -192,7 +206,7 @@ def _apply_vision_embedding(
 ) -> None:
     try:
         vector = [float(value) for value in embedder(facts.path)]
-    except Exception as exc:  # noqa: BLE001 — an absent model is not a failed ingest
+    except (OSError, ValueError, TypeError, RuntimeError, AttributeError, KeyError) as exc:
         facts.embedding_status = "failed"
         facts.embedding_detail = str(exc)
         return

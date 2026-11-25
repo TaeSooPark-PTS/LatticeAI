@@ -525,7 +525,7 @@ export function Tabs({
   const moveFocus = (currentIndex: number, direction: number) => {
     const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
     focusTabButton(tabRefs.current[nextIndex]);
-    onChange(tabs[nextIndex].id);
+    onChange(tabs[nextIndex]!.id);
   };
 
   // A roving tabindex hands focus to the selected tab, but a tablist that holds
@@ -561,11 +561,11 @@ export function Tabs({
             } else if (event.key === "Home") {
               event.preventDefault();
               focusTabButton(tabRefs.current[0]);
-              onChange(tabs[0].id);
+              onChange(tabs[0]!.id);
             } else if (event.key === "End") {
               event.preventDefault();
               focusTabButton(tabRefs.current[tabs.length - 1]);
-              onChange(tabs[tabs.length - 1].id);
+              onChange(tabs[tabs.length - 1]!.id);
             }
           }}
           className={cn(

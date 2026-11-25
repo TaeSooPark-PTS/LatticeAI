@@ -181,6 +181,6 @@ def append_process_audit_event(
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
-    except Exception:
+    except (OSError, ValueError, TypeError, RuntimeError):
         # Auditing must never make setup recovery paths unusable.
         return

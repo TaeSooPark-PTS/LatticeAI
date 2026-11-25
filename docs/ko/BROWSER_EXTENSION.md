@@ -2,7 +2,7 @@
 
 # Lattice AI — 브라우저 확장 (Manifest V3)
 
-현재 릴리스: **14.0.0 — Living Synthesis**.
+현재 릴리스: **14.1.0 — Living Synthesis**.
 
 **로컬** Lattice AI 지식 그래프를 위한 경량 Chrome/Edge(Manifest V3) 확장 프로그램입니다. 클라우드 모델 연동은 호스트 측에 머무르며(선택 사항, 기본값 로컬), 이 확장은 오직 `127.0.0.1`로만 요청을 보냅니다. 핵심 기능은 세 가지입니다.
 
@@ -16,7 +16,7 @@
 
 - 오직 사용자 PC의 `http://127.0.0.1:<port>`로만 요청을 전송합니다.
 - 이 확장 내부에는 클라우드 엔드포인트, 텔레메트리, 외부 서버 호출이 **전혀** 없습니다. 소스를 검색해 보면 유일한 `fetch` 대상은 `127.0.0.1`입니다.
-- `host_permissions`는 `http://127.0.0.1/*`과 `http://localhost/*`로만 제한됩니다.
+- `host_permissions`는 `http://127.0.0.1:4825/*`과 `http://localhost:4825/*`로만 제한되며, 사용자 지정 루프백 포트는 `optional_host_permissions`를 통한 명시적 동의가 필요합니다.
 
 ## 전송되는 데이터
 
@@ -32,7 +32,7 @@
 }
 ```
 
-이 페이로드는 `POST /api/browser/ingest-current-tab`으로 전송되며, 통합 인제스트 파이프라인을 통해 `source_type=browser_tab`으로 처리됩니다(`latticeai/api/browser.py` 참고).
+이 페이로드는 `POST /api/browser/ingest-current-tab`으로 전송되며, 네이티브 Rust 인제스트 파이프라인을 통해 `source_type=browser_tab`으로 처리됩니다(`rust/lattice-ingest/src/browser_api/` 참고).
 
 ## 설치 방법 (개발자 모드)
 

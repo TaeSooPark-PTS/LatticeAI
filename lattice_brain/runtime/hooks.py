@@ -168,7 +168,7 @@ def dispatch_tool(
         return run_fn()
     try:
         arg_keys = list(args.keys()) if isinstance(args, dict) else []
-    except Exception as exc:
+    except (TypeError, AttributeError, RuntimeError) as exc:
         LOGGER.debug("tool argument metadata could not be inspected: %s", exc)
         arg_keys = []
     pre = hooks.fire_hook(

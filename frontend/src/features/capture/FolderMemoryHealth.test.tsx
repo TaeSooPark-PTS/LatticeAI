@@ -49,8 +49,8 @@ function renderCard() {
 describe("parseFolderHealth", () => {
   it("keeps unknown coverage as null so it is never shown as 0%", () => {
     const parsed = parseFolderHealth(PAYLOAD);
-    expect(parsed.folders[0].coverage).toBe(0.8);
-    expect(parsed.folders[1].coverage).toBeNull();
+    expect(parsed.folders[0]!.coverage).toBe(0.8);
+    expect(parsed.folders[1]!.coverage).toBeNull();
   });
 
   it("drops folders without an id and errors without a reason", () => {
@@ -61,7 +61,7 @@ describe("parseFolderHealth", () => {
       ],
     });
     expect(parsed.folders.map((f) => f.id)).toEqual(["ok"]);
-    expect(parsed.folders[0].errors).toEqual([{ path: "b", detail: "why" }]);
+    expect(parsed.folders[0]!.errors).toEqual([{ path: "b", detail: "why" }]);
   });
 
   it("reads the vector figure as one global number", () => {
@@ -77,8 +77,8 @@ describe("parseFolderHealth", () => {
     });
     expect(parsed.folders.map((f) => f.id)).toEqual(["f1"]);
     // No label or root_path → the id names the folder rather than a blank.
-    expect(parsed.folders[0].label).toBe("f1");
-    expect(parsed.folders[0].errors).toEqual([{ path: "p", detail: "why" }]);
+    expect(parsed.folders[0]!.label).toBe("f1");
+    expect(parsed.folders[0]!.errors).toEqual([{ path: "p", detail: "why" }]);
   });
 });
 
@@ -120,12 +120,12 @@ describe("FolderMemoryHealthCard", () => {
     const fromCount = parseFolderHealth({
       folders: [{ id: "a", root_path: "/tmp/a", files: { deleted: 3 } }],
     });
-    expect(fromCount.folders[0].deleted).toBe(3);
-    expect(fromCount.folders[0].rootPath).toBe("/tmp/a");
+    expect(fromCount.folders[0]!.deleted).toBe(3);
+    expect(fromCount.folders[0]!.rootPath).toBe("/tmp/a");
     const fromList = parseFolderHealth({
       folders: [{ id: "b", root_path: "/tmp/b", deleted: ["gone.md", "also.md"] }],
     });
-    expect(fromList.folders[0].deleted).toBe(2);
+    expect(fromList.folders[0]!.deleted).toBe(2);
   });
 });
 

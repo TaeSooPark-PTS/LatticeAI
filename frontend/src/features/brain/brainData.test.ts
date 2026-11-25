@@ -180,7 +180,7 @@ describe("brainData parsers", () => {
       created_files: [{ path: "out/page.html", filename: "page.html", bytes: 10 }],
       brain_ingest: { status: "ok", node_id: "doc:1", chunk_count: 2, duplicate: false },
     });
-    expect(single[0].brainIngest).toEqual({ status: "ok" });
+    expect(single[0]!.brainIngest).toEqual({ status: "ok" });
 
     // Bundle path: list keyed by path; unknown statuses stay silent.
     const bundle = agentPayloadFiles({
@@ -194,9 +194,9 @@ describe("brainData parsers", () => {
         { path: "site/style.css", status: "skipped" },
       ],
     });
-    expect(bundle[0].brainIngest).toEqual({ status: "failed", detail: "chunker crashed" });
-    expect(bundle[1].brainIngest).toBeUndefined();
-    expect(bundle[2].brainIngest).toBeUndefined();
+    expect(bundle[0]!.brainIngest).toEqual({ status: "failed", detail: "chunker crashed" });
+    expect(bundle[1]!.brainIngest).toBeUndefined();
+    expect(bundle[2]!.brainIngest).toBeUndefined();
 
     // A single dict never fans out across multiple files.
     const ambiguous = agentPayloadFiles({
@@ -211,7 +211,7 @@ describe("brainData parsers", () => {
     // Absent field → unknown → nothing.
     expect(agentPayloadFiles({
       created_files: [{ path: "c.html", filename: "c.html", bytes: 1 }],
-    })[0].brainIngest).toBeUndefined();
+    })[0]!.brainIngest).toBeUndefined();
   });
 
   it("parses pending approvals and drops rows without a run id", () => {
@@ -254,12 +254,12 @@ describe("brainData parsers", () => {
       lastResult: { status: "ok", ingested: 2, failed: 1 },
       trackedFiles: 40,
     });
-    expect(status.watches[0].lastErrors).toEqual([
+    expect(status.watches[0]!.lastErrors).toEqual([
       { path: "/Users/me/Documents/notes/bad.pdf", detail: "parse failed" },
       { path: "", detail: "loose error" },
     ]);
-    expect(status.watches[1].lastResult).toBeNull();
-    expect(status.watches[1].lastErrors).toEqual([]);
+    expect(status.watches[1]!.lastResult).toBeNull();
+    expect(status.watches[1]!.lastErrors).toEqual([]);
   });
 });
 
@@ -408,19 +408,19 @@ describe("buildMemoryFragments", () => {
     ]);
     // Whitespace collapses in derived titles; the tier id translates.
     expect(fragments[0]).toMatchObject({ title: "긴 내용 줄바꿈", kind: "Note", tags: ["agent-synthesis"], agentGenerated: true });
-    expect(fragments[1].agentGenerated).toBe(true);
+    expect(fragments[1]!.agentGenerated).toBe(true);
     expect(fragments[2]).toMatchObject({ title: "Distillation", agentGenerated: true });
-    expect(fragments[3].agentGenerated).toBe(false);
-    expect(fragments[4].title).toBe("작업공간 기억");
+    expect(fragments[3]!.agentGenerated).toBe(false);
+    expect(fragments[4]!.title).toBe("작업공간 기억");
     expect(fragments[5]).toMatchObject({ title: "Custom Source", kind: "Healthy" });
-    expect(fragments[6].title).toBe("/tmp/notes");
-    expect(fragments[8].title).toBe("Conversation");
+    expect(fragments[6]!.title).toBe("/tmp/notes");
+    expect(fragments[8]!.title).toBe("Conversation");
   });
 
   it("falls back to tiers and the requested language, and survives junk", () => {
     const fragments = buildMemoryFragments({ tiers: [{ id: "workspace" }], recentMemories: [{ id: "rm" }] }, undefined, "en");
     expect(fragments.map((fragment) => fragment.id)).toEqual(["rm", "workspace"]);
-    expect(fragments[1].title).toBe("Workspace memory");
+    expect(fragments[1]!.title).toBe("Workspace memory");
     expect(buildMemoryFragments(null, undefined, "en")).toEqual([]);
   });
 });
@@ -476,7 +476,7 @@ describe("brainData parser edges", () => {
     // Zero importance takes the midpoint; metadata supplies summary and time.
     expect(graph.nodes[1]).toMatchObject({ importance: 0.5, summary: "메타 요약", createdAt: 1_700_000_000_000 });
     expect(graph.nodes[2]).toMatchObject({ label: "c", type: "Concept" });
-    expect(graph.nodes[2].createdAt).toBeUndefined();
+    expect(graph.nodes[2]!.createdAt).toBeUndefined();
     // The zero-score edge survives with the default weight — never dropped.
     expect(graph.edges).toEqual([
       { id: "edge-0", source: "a", target: "b", label: "Relates", weight: 1 },
@@ -693,7 +693,7 @@ describe("buildBrainProof shapes", () => {
     expect(proof.proofs).toMatchObject({ durableItems: 4, hasDurableEvidence: false, vectorItems: 6 });
     expect(proof.recall.items[0]).toMatchObject({ source: "Note Source", confidence: "low", locator: "p.3" });
     expect(proof.recall.items.map((item) => item.confidence)).toEqual(["low", "medium", "low", "high"]);
-    expect(proof.recall.items[1].id).toBe("recall-1");
+    expect(proof.recall.items[1]!.id).toBe("recall-1");
     expect(proof.claims).toEqual({ canRecallUserContext: true, keepsContextAcrossModels: true, isKnowledgeStore: true });
   });
 
@@ -747,9 +747,9 @@ describe("buildBrainBrief", () => {
       id: "ask_brain", labelKey: "brain.brief.action.ask", detailKey: "brain.brief.action.ask.detail", route: "", priority: 0,
     });
     expect(brief.suggestedQuestions.map((question) => question.id)).toEqual(["q-high", "q-low"]);
-    expect(brief.suggestedQuestions[1].params).toEqual({ topic: "브레인", count: 2 });
+    expect(brief.suggestedQuestions[1]!.params).toEqual({ topic: "브레인", count: 2 });
     expect(brief.proactiveActions.map((action) => action.id)).toEqual(["p-high", "p-low"]);
-    expect(brief.proactiveActions[1].context).toEqual({});
+    expect(brief.proactiveActions[1]!.context).toEqual({});
     expect(brief.evidence).toEqual([{ id: "durable", labelKey: "e", value: 12, detailKey: "ed" }]);
     expect(brief.generatedAt).toBe("2026-08-05T00:00:00Z");
   });
@@ -777,8 +777,8 @@ describe("watch status and job edges", () => {
       ],
     });
     expect(status.watches).toHaveLength(1);
-    expect(status.watches[0].id).toBe("/only/path");
-    expect(status.watches[0].lastErrors).toEqual([{ path: "/x", detail: "" }, { path: "", detail: "d" }]);
+    expect(status.watches[0]!.id).toBe("/only/path");
+    expect(status.watches[0]!.lastErrors).toEqual([{ path: "/x", detail: "" }, { path: "", detail: "d" }]);
     expect(parseIngestionWatchStatus(null)).toEqual({ enabledCount: 0, polling: false, intervalSeconds: 0, watches: [] });
   });
 
@@ -789,7 +789,7 @@ describe("watch status and job edges", () => {
       updated_at: "2026-08-02T00:00:00Z",
       errors: [{ source: "a.pdf", detail: "깨짐" }, { detail: "이유만" }, { source: "b.md" }, {}, 42, "  "],
     }] });
-    expect(jobs[0].errors).toEqual(["a.pdf — 깨짐", "이유만", "b.md"]);
+    expect(jobs[0]!.errors).toEqual(["a.pdf — 깨짐", "이유만", "b.md"]);
     expect(jobs[0]).toMatchObject({ createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-08-02T00:00:00Z" });
     expect(parseIngestionJobs(null)).toEqual([]);
   });
@@ -808,9 +808,9 @@ describe("agentPayloadFiles joins", () => {
     });
     expect(files[0]).toMatchObject({ previewable: true, repaired: true });
     expect(files[1]).toMatchObject({ filename: "b.css", bytes: 0 });
-    expect(files[1].previewable).toBeUndefined();
+    expect(files[1]!.previewable).toBeUndefined();
     // A degenerate empty path still yields a stable (empty) filename.
-    expect(files[2].filename).toBe("");
+    expect(files[2]!.filename).toBe("");
     expect(agentPayloadFiles({})).toEqual([]);
   });
 });

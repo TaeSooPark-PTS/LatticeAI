@@ -92,7 +92,7 @@ class MLXVisionCaptioner(VisionCaptioner):
                 prompt or self._prompt,
                 max_tokens=self._max_tokens,
             )
-        except Exception:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError):
             # A caption the model did not produce is not a caption. Absence is
             # the honest answer, and every caller already handles it.
             return None
@@ -132,7 +132,7 @@ class CustomVisionCaptioner(VisionCaptioner):
     def caption(self, path: str, *, prompt: str = "") -> Optional[str]:
         try:
             text = self._load()(str(path), prompt or DEFAULT_CAPTION_PROMPT)
-        except Exception:
+        except (EmbeddingUnavailable, ImportError, OSError, RuntimeError, ValueError, TypeError, AttributeError):
             return None
         cleaned = str(text or "").strip()
         return cleaned or None

@@ -248,3 +248,47 @@ fn degraded_worker_surfaces_explicit_non_silent_warning() {
     assert!(warning.contains("Local Brain"), "{warning}");
     assert!(warning.contains("LTCAI_PYTHON"), "{warning}");
 }
+
+#[test]
+fn production_policy_rejects_unpinned_port_override_before_boot() {
+    let err = DesktopBackend::with_probe_and_policy(
+        Arc::new(StaticProbe::new().with_env(PORT_ENV, "4826")),
+        PortPolicy::PinnedProduction,
+    )
+    .err()
+    .expect("production policy rejects non-4825 port");
+    assert!(err.contains("4825"), "{err}");
+    assert!(err.contains("CSP"), "{err}");
+}
+
+#[tokio::test]
+async fn production_policy_fails_fast_with_clear_error_when_pinned_port_is_occupied() {
+    let _guard = topology::PORT_4825_TEST_LOCK.lock().await;
+    let occupied =
+        std::net::TcpListener::bind(("127.0.0.1", topology::PINNED_PRODUCTION_PORT)).ok();
+    let shell = DesktopBackend::with_probe_and_policy(
+        Arc::new(StaticProbe::new()),
+        PortPolicy::PinnedProduction,
+    )
+    .expect("production shell resolves to pinned 4825");
+    assert_eq!(shell.origin(), "http://127.0.0.1:4825");
+
+    if occupied.is_some() {
+        let status = shell.start().await;
+        let reason = shell
+            .gateway_error()
+            .expect("occupied pinned port records a clear production error");
+        assert!(reason.contains("could not bind"), "{reason}");
+        assert!(reason.contains("4825"), "{reason}");
+        assert!(reason.contains("CSP"), "{reason}");
+        assert!(
+            !reason.contains("set LATTICEAI_PORT to a free port"),
+            "production error must not advise an unreachable port: {reason}"
+        );
+        assert!(
+            !status.running && status.pid.is_none(),
+            "start() must fail fast without spawning an orphaned worker on gateway bind failure"
+        );
+    }
+    drop(occupied);
+}

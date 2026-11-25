@@ -33,5 +33,5 @@ def module_available(name: str, *, strict: bool = False) -> bool:
             importlib.import_module(name)
             return True
         return importlib.util.find_spec(name) is not None
-    except Exception:
+    except (ImportError, OSError, ValueError, TypeError, RuntimeError, AttributeError, SyntaxError):
         return False

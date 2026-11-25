@@ -16,11 +16,12 @@ import math
 import os
 import platform
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..quiet import quiet
+from ..utils import local_now as _local_now
 from ..utils import now_iso as _now
 from ..utils import parse_iso as _parse_iso
 from ._kg_constants import *  # noqa: F401,F403
@@ -35,7 +36,11 @@ def _recency_score(
     stamp = _parse_iso(updated_at)
     if not stamp:
         return 0.0
-    now = now or datetime.now()
+    now = now or _local_now()
+    if stamp.tzinfo is not None and now.tzinfo is None:
+        stamp = stamp.astimezone(timezone.utc).replace(tzinfo=None)
+    elif stamp.tzinfo is None and now.tzinfo is not None:
+        now = now.astimezone(timezone.utc).replace(tzinfo=None)
     age_days = max(0.0, (now - stamp).total_seconds() / 86400.0)
     decay = math.log(2) / max(0.1, half_life_days)
     return math.exp(-decay * age_days)
@@ -57,7 +62,7 @@ def _sha256_text(text: str) -> str:
 
 def _safe_iso_from_stat_mtime(mtime: float) -> str:
     try:
-        return datetime.fromtimestamp(float(mtime)).isoformat()
+        return datetime.fromtimestamp(float(mtime), tz=timezone.utc).replace(tzinfo=None).isoformat()
     except (TypeError, ValueError, OSError):
         return ""
 

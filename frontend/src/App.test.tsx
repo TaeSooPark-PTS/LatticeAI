@@ -175,13 +175,13 @@ describe("which screen the hash selects", () => {
     // which primary nav entry claims to be current.
     const graph = renderApp("#/knowledge-graph");
     await screen.findByTestId("page-brain");
-    expect(screen.getAllByRole("link", { current: "page" })[0].textContent).toContain("Memory");
+    expect(screen.getAllByRole("link", { current: "page" })[0]!.textContent).toContain("Memory");
     graph.unmount();
 
     renderApp("#/brain/notes");
     const page = await screen.findByTestId("page-brain");
     expect(page.dataset.tab).toBe("notes");
-    expect(screen.getAllByRole("link", { current: "page" })[0].textContent).toContain("Chat");
+    expect(screen.getAllByRole("link", { current: "page" })[0]!.textContent).toContain("Chat");
   });
 
   it("lets the admin console hand the shell back", async () => {
@@ -251,7 +251,7 @@ describe("the more menu behaves like a dialog", () => {
     await screen.findByTestId("page-brain-home");
     // Two copies of the trigger exist — topbar and mobile nav — and CSS picks
     // which one shows. Either drives the same menu, so drive the first.
-    const trigger = screen.getAllByRole("button", { name: "Open menu" })[0];
+    const trigger = screen.getAllByRole("button", { name: "Open menu" })[0]!;
     fireEvent.click(trigger);
     return trigger;
   }
@@ -296,7 +296,7 @@ describe("the more menu keeps the keyboard inside it", () => {
     withLaidOutElements();
     renderApp(hash);
     const triggers = await screen.findAllByRole("button", { name: "Open menu" });
-    fireEvent.click(triggers[0]);
+    fireEvent.click(triggers[0]!);
     return screen.findByRole("dialog");
   }
 
@@ -320,7 +320,7 @@ describe("the more menu keeps the keyboard inside it", () => {
   it("wraps Tab from the last item back to the first", async () => {
     await openMenuWithLayout();
     const items = focusablesInDialog();
-    items[items.length - 1].focus();
+    items[items.length - 1]!.focus();
 
     fireEvent.keyDown(window, { key: "Tab" });
 
@@ -330,7 +330,7 @@ describe("the more menu keeps the keyboard inside it", () => {
   it("wraps Shift+Tab from the first item back to the last", async () => {
     await openMenuWithLayout();
     const items = focusablesInDialog();
-    items[0].focus();
+    items[0]!.focus();
 
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
 
@@ -340,7 +340,7 @@ describe("the more menu keeps the keyboard inside it", () => {
   it("leaves Tab alone in the middle of the list", async () => {
     await openMenuWithLayout();
     const items = focusablesInDialog();
-    items[1].focus();
+    items[1]!.focus();
 
     fireEvent.keyDown(window, { key: "Tab" });
 
@@ -359,7 +359,7 @@ describe("the more menu keeps the keyboard inside it", () => {
     // then fall through to the browser rather than focusing an invisible node.
     renderApp("#/brain");
     await screen.findByTestId("page-brain-home");
-    fireEvent.click(screen.getAllByRole("button", { name: "Open menu" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Open menu" })[0]!);
     await screen.findByRole("dialog");
     const before = document.activeElement;
 
@@ -403,7 +403,7 @@ describe("the more menu keeps the keyboard inside it", () => {
     await screen.findByTestId("page-brain-home");
     const triggers = screen.getAllByRole("button", { name: "Open menu" });
 
-    fireEvent.click(triggers[triggers.length - 1]);
+    fireEvent.click(triggers[triggers.length - 1]!);
 
     expect(await screen.findByRole("dialog")).toBeTruthy();
   });
@@ -452,7 +452,7 @@ describe("the VS Code link indicator", () => {
     useAppStore.setState({ mode });
     renderApp("#/brain", api);
     await screen.findByTestId("page-brain-home");
-    fireEvent.click(screen.getAllByRole("button", { name: "Open menu" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Open menu" })[0]!);
     await screen.findByRole("dialog");
   }
 

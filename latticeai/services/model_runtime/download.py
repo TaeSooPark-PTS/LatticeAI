@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Mapping, Optional, Set
 
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
+from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
 from latticeai.services.embedding_recommendation import (
     get_public_mirror_repos,
     has_hf_auth_token,
@@ -175,7 +176,7 @@ def _shards_complete(model_dir: Path) -> bool:
         if isinstance(weight_map, dict) and weight_map:
             shards = {str(shard) for shard in weight_map.values() if shard}
             return all((model_dir / shard).exists() for shard in shards)
-    except Exception:
+    except (OSError, ValueError, TypeError, AttributeError):
         quiet()
     return True
 
@@ -563,7 +564,7 @@ def _download_single_hf_repo(
                         return result
 
                 tqdm_class = ProgressTqdm
-            except Exception:
+            except (ImportError, OSError, RuntimeError, TypeError, AttributeError):
                 tqdm_class = None
         else:
             try:
@@ -575,7 +576,7 @@ def _download_single_hf_repo(
                         return super().update(n)
 
                 tqdm_class = CancelOnlyTqdm
-            except Exception:
+            except (ImportError, OSError, RuntimeError, TypeError, AttributeError):
                 tqdm_class = None
 
         local_path = _call_hf_hub_download(
@@ -724,7 +725,7 @@ def download_hf_model(
                 raise
             last_error = exc
             break
-        except Exception as exc:
+        except MODEL_RUNTIME_BOUNDARY_ERRORS as exc:
             last_error = exc
             has_more_candidates = idx + 1 < len(candidates)
             if has_more_candidates and (is_gated_or_auth_error(exc) or bool(mirrors)):
