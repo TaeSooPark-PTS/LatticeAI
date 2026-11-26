@@ -72,7 +72,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
 
       <section className="admin-accordion-list flex flex-col gap-4 mt-4">
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4" open>
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.users")} · {t(language, "admin.panel.people")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.users")} <span className="whitespace-nowrap">· {t(language, "admin.panel.people")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-users">
           <AdminPanel title={t(language, "admin.panel.users")} eyebrow={t(language, "admin.panel.people")}>
             <AdminList
@@ -93,7 +93,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         </details>
 
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.roles")} · {t(language, "admin.panel.access")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.roles")} <span className="whitespace-nowrap">· {t(language, "admin.panel.access")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-roles">
           <AdminPanel title={t(language, "admin.panel.roles")} eyebrow={t(language, "admin.panel.access")}>
             <AdminList
@@ -114,7 +114,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         </details>
 
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.logs")} · {t(language, "admin.panel.audit")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.logs")} <span className="whitespace-nowrap">· {t(language, "admin.panel.audit")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-logs">
           <AdminPanel title={t(language, "admin.panel.logs")} eyebrow={t(language, "admin.panel.audit")}>
             <AdminLogFilters language={language} filters={filters} onChange={setFilters} matched={(auditQ.data?.data as ApiRecord | undefined)?.filters as ApiRecord | undefined} />
@@ -128,7 +128,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         </details>
 
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.securityEvents")} · {t(language, "admin.panel.protection")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.securityEvents")} <span className="whitespace-nowrap">· {t(language, "admin.panel.protection")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-security">
           <AdminPanel title={t(language, "admin.panel.securityEvents")} eyebrow={t(language, "admin.panel.protection")}>
             <AdminList
@@ -141,7 +141,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         </details>
 
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.brainOps")} · {t(language, "admin.panel.maintenance")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.brainOps")} <span className="whitespace-nowrap">· {t(language, "admin.panel.maintenance")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-brain-ops">
           <AdminPanel title={t(language, "admin.panel.brainOps")} eyebrow={t(language, "admin.panel.maintenance")}>
             <div className="admin-operation">
@@ -170,7 +170,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         </details>
 
         <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
-          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.runtimeTrust")} · {t(language, "admin.panel.contracts")}</h2></summary>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.runtimeTrust")} <span className="whitespace-nowrap">· {t(language, "admin.panel.contracts")}</span></h2></summary>
           <ErrorBoundary surface="panel" resetKey="admin-runtime">
           <AdminPanel title={t(language, "admin.panel.runtimeTrust")} eyebrow={t(language, "admin.panel.contracts")}>
             <RuntimeTrustPanel runtime={agentRuntimeQ.data?.data as ApiRecord | undefined} registry={toolRegistryQ.data?.data as ApiRecord | undefined} language={language} />
