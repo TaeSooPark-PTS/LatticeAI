@@ -149,6 +149,15 @@ pub(super) fn save_note(
     Ok(result)
 }
 
+fn temporal_of(args: &Value) -> Result<TemporalRanking, String> {
+    let sort_by = match args.get("sort_by") {
+        None | Some(Value::Null) => SortBy::Auto,
+        Some(Value::String(raw)) => SortBy::parse(Some(raw))?,
+        Some(other) => return Err(format!("sort_by must be a string, got {other}")),
+    };
+    Ok(TemporalRanking::from_env().with_request(sort_by, false, None, None))
+}
+
 pub(crate) fn run_knowledge_search(
     state: &ToolsState,
     identity: &Identity,
@@ -166,16 +175,7 @@ pub(crate) fn run_knowledge_search(
     if query.is_empty() {
         return Err(ToolExecError::Message("Query is required.".into()));
     }
-    let sort_by = match args.get("sort_by") {
-        None | Some(Value::Null) => SortBy::Auto,
-        Some(Value::String(raw)) => SortBy::parse(Some(raw)).map_err(ToolExecError::Message)?,
-        Some(other) => {
-            return Err(ToolExecError::Message(format!(
-                "sort_by must be a string, got {other}"
-            )))
-        }
-    };
-    let temporal = TemporalRanking::from_env().with_request(sort_by, false, None, None);
+    let temporal = temporal_of(args).map_err(ToolExecError::Message)?;
     let (ws, email) = scope_of(state, headers, identity)
         .map_err(|_| ToolExecError::Message("Knowledge search failed.".into()))?;
     let max_results = args.get("max_results").and_then(Value::as_u64).unwrap_or(5) as usize;
@@ -334,6 +334,10 @@ pub(crate) async fn obsidian_search(
         Err(r) => return r,
     };
     let query = parsed.get("query").and_then(Value::as_str).unwrap_or("");
+    let temporal = match temporal_of(&parsed) {
+        Ok(temporal) => temporal,
+        Err(message) => return tool_err(&message),
+    };
     let (ws, email) = match scope_of(&state, &headers, &identity) {
         Ok(s) => s,
         Err(r) => return r,
@@ -362,7 +366,7 @@ pub(crate) async fn obsidian_search(
         mode,
         hops,
         include_graph,
-        None,
+        Some(&temporal),
     ) {
         Ok(v) => tool_ok(&state.workspace, v),
         Err(r) => r,

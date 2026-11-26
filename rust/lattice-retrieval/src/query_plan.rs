@@ -10,6 +10,15 @@ pub const MAX_EXPANDED_QUERIES: usize = 5;
 const MAX_CARRIED_TERMS: usize = 8;
 const HISTORY_LOOKBACK: usize = 6;
 const FOLLOW_UP_MAX_TERMS: usize = 3;
+const PRONOUN_MAX_TERMS: usize = 4;
+const EXPLETIVE_PHRASES: &[&str] = &[
+    "is it possible",
+    "what time is it",
+    "what day is it",
+    "what date is it",
+    "it is raining",
+    "it's raining",
+];
 
 const STOPWORDS: &[&str] = &[
     "a",
@@ -419,10 +428,15 @@ pub fn is_follow_up(message: &str) -> bool {
         return true;
     }
     let words: Vec<&str> = raw_tokens(&lower).collect();
-    if words.iter().any(|word| ENGLISH_PRONOUNS.contains(word)) {
+    let terms = content_terms(message).len();
+    let referring = EXPLETIVE_PHRASES
+        .iter()
+        .fold(lower.clone(), |text, phrase| text.replace(phrase, " "));
+    if terms <= PRONOUN_MAX_TERMS
+        && raw_tokens(&referring).any(|word| ENGLISH_PRONOUNS.contains(&word))
+    {
         return true;
     }
-    let terms = content_terms(message).len();
     if terms <= 2 && words.iter().any(|word| matches!(*word, "that" | "this")) {
         return true;
     }
@@ -433,7 +447,7 @@ pub fn is_follow_up(message: &str) -> bool {
     if korean_ellipsis && terms <= FOLLOW_UP_MAX_TERMS {
         return true;
     }
-    lower.ends_with(['?', '？']) && terms <= 1
+    referring == lower && lower.ends_with(['?', '？']) && terms <= 1
 }
 
 fn strip_leader(message: &str) -> String {
@@ -668,6 +682,23 @@ mod tests {
         let lonely = plan_query("그럼 롤백은?", &[]);
         assert!(!lonely.follow_up);
         assert_eq!(lonely.standalone, "그럼 롤백은?");
+    }
+
+    #[test]
+    fn an_unrelated_it_never_pulls_the_previous_topic() {
+        let prior = history(&["What is the Phoenix deployment plan?"]);
+        for message in [
+            "What time is it?",
+            "Is it possible to sort a Python list?",
+            "How do I convert a CSV file to JSON and save it in Python?",
+        ] {
+            let plan = plan_query(message, &prior);
+            assert!(!plan.follow_up, "{message}: {plan:?}");
+            assert_eq!(plan.standalone, message);
+        }
+        for message in ["who owns it?", "is it possible to roll it back?"] {
+            assert!(plan_query(message, &prior).follow_up, "{message}");
+        }
     }
 
     #[test]

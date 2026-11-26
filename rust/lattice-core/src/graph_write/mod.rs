@@ -2,6 +2,7 @@ pub mod chunk_parents;
 pub mod clock;
 pub mod curator;
 pub mod dump;
+pub mod identity;
 pub mod lifecycle;
 pub mod pyaux;
 pub mod schema;

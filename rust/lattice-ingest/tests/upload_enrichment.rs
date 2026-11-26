@@ -418,3 +418,56 @@ async fn multipart_unwraps_the_spa_file_field() {
     assert_eq!(parses.len(), 1);
     assert_eq!(parses[0]["filename"], "report.pdf");
 }
+
+#[tokio::test]
+async fn re_uploading_a_file_supersedes_the_older_version_and_records_its_scope() {
+    let data = tempfile::tempdir().expect("data");
+    let log = SeamLog::default();
+    let worker = spawn_worker(WorkerSpec::default(), log.clone()).await;
+    let (origin, token, db) = boot(data.path(), &worker).await;
+    let mut ids = Vec::new();
+    for body in [
+        "# Handbook\n\nThe gateway listens on port one.\n",
+        "# Handbook\n\nThe gateway listens on port two.\n",
+    ] {
+        let (status, payload) = post_bytes(
+            &origin,
+            &token,
+            body.as_bytes().to_vec(),
+            "handbook.md",
+            "text/markdown",
+        )
+        .await;
+        assert_eq!(status, 200, "{payload}");
+        ids.push(payload["node_id"].as_str().expect("id").to_string());
+    }
+    let conn = rusqlite::Connection::open(&db).expect("db");
+    let read = |id: &str, path: &str| -> Option<String> {
+        conn.query_row(
+            "SELECT json_extract(metadata_json, ?2) FROM nodes WHERE id = ?1",
+            [id, path],
+            |row| row.get(0),
+        )
+        .expect("metadata")
+    };
+    assert_eq!(
+        read(&ids[0], "$.superseded_by").as_deref(),
+        Some(ids[1].as_str())
+    );
+    assert_eq!(read(&ids[1], "$.superseded_by"), None);
+    for id in &ids {
+        assert_eq!(read(id, "$.owner").as_deref(), Some("owner@lattice.test"));
+        assert_eq!(
+            read(id, "$.source_uri").as_deref(),
+            Some("upload://handbook.md")
+        );
+    }
+    let kept: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM chunks WHERE source_node = ?1",
+            [&ids[0]],
+            |row| row.get(0),
+        )
+        .expect("chunks");
+    assert!(kept >= 1);
+}

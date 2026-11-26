@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use axum::extract::State;
 use axum::http::HeaderMap;
 use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthConfig, AuthState, Clock, Identity};
@@ -71,6 +72,52 @@ fn hybrid_note_search_surfaces_bm25f_and_wikilink_graph_subgraph() {
     assert_eq!(subgraph["hops"], 2);
     assert!(!subgraph["nodes"].as_array().unwrap().is_empty());
     assert!(!subgraph["edges"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn obsidian_search_ranks_notes_by_recency_and_sort_by() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut config = AuthConfig::from_map(&HashMap::new(), None);
+    config.data_dir = tmp.path().to_path_buf();
+    config.require_auth = false;
+    let auth = AuthState::with_clock(config, Clock::frozen(1_700_000_000.0));
+    let workspace = Workspace::new(tmp.path()).expect("workspace");
+    let mut state = ToolsState::new(auth, workspace, tmp.path());
+    state.require_auth = false;
+    for (title, content, days) in [
+        (
+            "alpha",
+            "zebrafish rollout zebrafish rollout zebrafish rollout",
+            200,
+        ),
+        ("beta", "zebrafish tank cleaned, nothing about plans", 1),
+    ] {
+        let saved = save_note(&state, "", "", content, Some(title), true).expect("save");
+        age(saved["path"].as_str().expect("path"), days);
+    }
+    for (sort_by, first) in [("relevance", "alpha.md"), ("newest", "beta.md")] {
+        let body =
+            json!({"query": "zebrafish rollout", "mode": "hybrid", "sort_by": sort_by}).to_string();
+        let response =
+            super::obsidian_search(State(state.clone()), HeaderMap::new(), body.into()).await;
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&bytes);
+        let at = text.find("alpha.md").expect("alpha");
+        let other = text.find("beta.md").expect("beta");
+        assert_eq!(at < other, first == "alpha.md", "{text}");
+        assert!(text.contains("updated_at"), "{text}");
+    }
+    let refused = super::obsidian_search(
+        State(state.clone()),
+        HeaderMap::new(),
+        json!({"query": "zebrafish", "sort_by": "oldest"})
+            .to_string()
+            .into(),
+    )
+    .await;
+    assert!(refused.status().is_client_error());
 }
 
 fn age(path: &str, days: u64) {

@@ -478,9 +478,17 @@ pub(super) async fn upload_document(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    if let Err(refusal) = state.require_user(&headers) {
-        return refusal;
-    }
+    let user = match state.require_user(&headers) {
+        Ok(user) => user,
+        Err(refusal) => return refusal,
+    };
+    let owner = Some(user).filter(|email| !email.is_empty());
+    let workspace_id = headers
+        .get("x-workspace-id")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && *value != "personal")
+        .map(str::to_string);
     let lang = language(&headers);
     let Some(graph) = state.graph().cloned() else {
         return http_error(503, "capture.ingestion_disabled", lang);
@@ -590,9 +598,15 @@ pub(super) async fn upload_document(
         })
         .cloned();
     let chunks_for_overlay = chunks.clone();
+    let (overlay_owner, overlay_workspace) = (owner.clone(), workspace_id.clone());
     let request = lattice_core::graph_write::types::IngestFileRequest {
         path: tmp.clone(),
+        source_uri: Some(lattice_core::graph_write::identity::upload_source_uri(
+            &filename,
+        )),
         original_filename: Some(filename),
+        owner,
+        workspace_id,
         mime_type: mime,
         extracted: extracted_map,
         structure: structure_plan.structure.clone(),
@@ -612,7 +626,7 @@ pub(super) async fn upload_document(
                 .as_ref()
                 .zip(incoming_contract.as_ref())
                 .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
-            let outcome = graph.ingest_file(&request)?;
+            let outcome = graph.ingest_file_superseding(&request)?;
             let overlay_warning =
                 match crate::document_structure::persist_structure_and_multimodal_overlay(
                     &graph,
@@ -620,8 +634,8 @@ pub(super) async fn upload_document(
                     &chunks_for_overlay,
                     &outcome.chunk_ids,
                     &structure_plan,
-                    None,
-                    None,
+                    overlay_owner.as_deref(),
+                    overlay_workspace.as_deref(),
                 ) {
                     Ok(_) => None,
                     Err(err) => {

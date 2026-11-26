@@ -150,6 +150,10 @@ impl NoteReceipt {
     }
 }
 
+fn shares_source_between_items(metadata: &Map<String, Value>) -> bool {
+    metadata.get("format").and_then(Value::as_str) == Some("ics")
+}
+
 #[derive(Debug, Clone)]
 pub struct NoteIngestor {
     graph: GraphWriter,
@@ -223,7 +227,11 @@ impl NoteIngestor {
         let outline_chunks = request.chunks.clone();
         let written = tokio::task::spawn_blocking(move || {
             let prior_contract = graph.current_index_contract().ok().flatten();
-            let outcome = graph.ingest_content(&request)?;
+            let outcome = if shares_source_between_items(&request.metadata) {
+                graph.ingest_content(&request)?
+            } else {
+                graph.ingest_content_superseding(&request)?
+            };
             let overlay = crate::sections::build_overlay(
                 &outline_chunks,
                 &outcome.chunk_ids,

@@ -2,6 +2,7 @@ use crate::db::CoreError;
 use crate::temporal::stamp_temporal_fact;
 
 use super::chunk_parents::{purge_document_chunks, purge_stale_chunks};
+use super::identity::{revive_version, supersede_prior_versions};
 use super::ingest::IngestOutcome;
 use super::types::IngestContentRequest;
 use super::GraphWriter;
@@ -20,6 +21,23 @@ pub struct RevisionOutcome {
 }
 
 impl GraphWriter {
+    pub fn ingest_content_superseding(
+        &self,
+        request: &IngestContentRequest,
+    ) -> Result<IngestOutcome, CoreError> {
+        let recorded_at = self.clock.now_iso();
+        self.ingest_content_with(request, &mut |txn, content_id, chunk_ids, parent_ids| {
+            let purged = if request.chunks.is_empty() {
+                0
+            } else {
+                purge_stale_chunks(txn, content_id, chunk_ids, parent_ids)?
+            };
+            supersede_prior_versions(txn, content_id, &request.title, &recorded_at)?;
+            Ok(purged)
+        })
+        .map(|(ingest, _)| ingest)
+    }
+
     pub fn replace_document_revision(
         &self,
         request: &IngestContentRequest,
@@ -39,6 +57,7 @@ impl GraphWriter {
                     purge_stale_chunks(txn, content_id, chunk_ids, parent_ids)?
                 };
                 if let Some(prior_id) = prior.as_deref().filter(|id| *id != content_id) {
+                    revive_version(txn, content_id, &[prior_id.to_string()])?;
                     stamp_temporal_fact(
                         txn,
                         content_id,

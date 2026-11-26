@@ -216,7 +216,8 @@ async fn ingest_current_tab(
         let (_title, extracted) = extract_readable_text(model.str("html"));
         text = extracted;
     }
-    if text.is_empty() {
+    let selection_only = text.is_empty();
+    if selection_only {
         text = model.str("selected_text").trim().to_string();
     }
     if text.is_empty() {
@@ -329,7 +330,11 @@ async fn ingest_current_tab(
                 node_type: Some("Document".into()),
                 ..Default::default()
             };
-            let outcome = graph.ingest_content(&request)?;
+            let outcome = if selection_only {
+                graph.ingest_content(&request)?
+            } else {
+                graph.ingest_content_superseding(&request)?
+            };
             let mut supplied = Vec::new();
             if let Some(vector) = request.embedding.as_ref() {
                 if !vector.values.is_empty() && !outcome.node_id.is_empty() {

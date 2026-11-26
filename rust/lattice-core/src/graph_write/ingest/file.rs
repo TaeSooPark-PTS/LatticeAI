@@ -13,6 +13,21 @@ use super::{extension_of, IngestOutcome};
 
 impl GraphWriter {
     pub fn ingest_file(&self, request: &IngestFileRequest) -> Result<IngestOutcome, CoreError> {
+        self.write_file(request, false)
+    }
+
+    pub fn ingest_file_superseding(
+        &self,
+        request: &IngestFileRequest,
+    ) -> Result<IngestOutcome, CoreError> {
+        self.write_file(request, true)
+    }
+
+    fn write_file(
+        &self,
+        request: &IngestFileRequest,
+        supersede: bool,
+    ) -> Result<IngestOutcome, CoreError> {
         let data = std::fs::read(&request.path).map_err(|err| {
             CoreError::Io(format!(
                 "cannot read the file being ingested {}: {err}",
@@ -234,6 +249,14 @@ impl GraphWriter {
             )?;
             if !request.chunks.is_empty() {
                 purge_stale_chunks(txn, &file_id, &chunk_ids, &parent_ids)?;
+            }
+            if supersede {
+                super::super::identity::supersede_prior_versions(
+                    txn,
+                    &file_id,
+                    &filename,
+                    &self.clock.now_iso(),
+                )?;
             }
             let concept_ids = self.write_concepts(
                 txn,
