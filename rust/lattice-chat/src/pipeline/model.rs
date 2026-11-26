@@ -24,6 +24,8 @@ use crate::worker::{ChatWorker, FrameReader, LlmFrame};
 use super::answers::{document_response, hybrid_response, persist_answer};
 use super::{file_path_count, now_secs, recent_context};
 
+const CHAT_KNOWLEDGE_LIMIT: i64 = 5;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_model_turn(
     state: ChatState,
@@ -53,19 +55,39 @@ pub(crate) async fn run_model_turn(
     )
     .await;
     let mut context_trace = None;
+    let mut context_request = lattice_retrieval::ContextRequest {
+        query: req.message.clone(),
+        budget: 2000,
+        knowledge: true,
+        knowledge_limit: CHAT_KNOWLEDGE_LIMIT,
+        user_email: effective_email.clone(),
+        conversation_id: req.conversation_id.clone(),
+        workspace_id: workspace_id.clone(),
+        now_secs: now_secs(),
+        query_embedding: query_embed.query_vector.clone(),
+        semantic_degraded: query_embed.degraded_reason.clone(),
+        ..Default::default()
+    };
+    let knowledge = state.read_conn().and_then(|conn| {
+        lattice_retrieval::context::knowledge_search(
+            &conn,
+            &LocalEmbeddingModel::default(),
+            &context_request,
+        )
+        .ok()
+    });
+    if let Some(mut payload) = knowledge {
+        lattice_retrieval::rerank::rerank_report(
+            state.worker.as_ref().map(ChatWorker::client),
+            &req.message,
+            &mut payload,
+            &lattice_retrieval::rerank::RerankConfig::from_env(),
+        )
+        .await;
+        context_request.knowledge_payload = Some(payload);
+    }
     if let Some(conn) = state.read_conn() {
-        let request = lattice_retrieval::ContextRequest {
-            query: req.message.clone(),
-            budget: 2000,
-            knowledge: true,
-            user_email: effective_email.clone(),
-            conversation_id: req.conversation_id.clone(),
-            workspace_id: workspace_id.clone(),
-            now_secs: now_secs(),
-            query_embedding: query_embed.query_vector.clone(),
-            semantic_degraded: query_embed.degraded_reason.clone(),
-            ..Default::default()
-        };
+        let request = context_request;
         if let Ok(assembled) =
             lattice_retrieval::assemble_context(&conn, &LocalEmbeddingModel::default(), &request)
         {

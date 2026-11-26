@@ -98,6 +98,12 @@ local = [
   "mlx-lm; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
+# Neural retrieval on the worker: google/embeddinggemma-2 (768d, Apache-2.0)
+# needs sentence-transformers>=6.1 and transformers>=5.18; the cross-encoder
+# reranker (BAAI/bge-reranker-v2-m3) loads through the same runtime. Weights
+# are never fetched at query time; absent runtime or weights degrade to the
+# 384d lattice-local-hash embedding and the RRF order.
+rag = ["sentence-transformers>=6.1.0", "transformers>=5.18.0"]
 # Pointer actuation (the six pyautogui tools on the worker). Not a core
 # dependency: a stock install answers capabilities.pointer_tools=false and
 # the tools stay "unavailable". `pip install "ltcai[pointer]"` opts in.
@@ -354,6 +360,7 @@ files = [
   "latticeai/core/permission_mode.py",
   "latticeai/core/policy.py",
   "latticeai/core/quiet.py",
+  "latticeai/core/rerankers.py",
   "latticeai/core/security.py",
   "latticeai/core/sessions.py",
   "latticeai/core/sse.py",

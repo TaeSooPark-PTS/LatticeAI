@@ -189,6 +189,11 @@ class ExtractRequest(BaseModel):
     kind: str = "message"
 
 
+class RerankRequest(BaseModel):
+    query: str = ""
+    documents: List[str] = Field(default_factory=list)
+
+
 class VectorQueryRequest(BaseModel):
     workspace: Optional[str] = None
     embedding_model: str

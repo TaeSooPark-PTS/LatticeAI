@@ -421,6 +421,7 @@ def test_internal_worker_seams_are_exempt_from_the_subset_check(tmp_path, capsys
         "/worker/asr",
         "/worker/extract",
         "/worker/vector/query",
+        "/worker/rerank",
     }
 
 

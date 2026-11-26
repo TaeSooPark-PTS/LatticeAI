@@ -29,7 +29,7 @@ replaceable runtimes over that Brain.
 - **One Door Rust product server:** `lattice-host` natively serves **422
   operations across 41 route families** across 9 Rust workspace crates, owns
   all Knowledge Graph writes through a single `GraphWriter` / `Store::write_conn`
-  pool, and supervises a 20-route loopback Python AI compute worker.
+  pool, and supervises a 21-route loopback Python AI compute worker.
 - **Honest grounding & proposal-first governance:** Hybrid retrieval reports
   context quality and claim-level verification transparently. Additive creations
   run with minimal friction; edits or deletions of existing user files,
@@ -48,7 +48,7 @@ replaceable runtimes over that Brain.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| **One Door Rust Product Server** | Current | Nine workspace crates (`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`) serve 422 native operations across 41 route families. The Python AI worker serves strictly 20 allow-listed compute routes (`rust/fixtures/worker_allowlist.json`); all other non-native paths return `404`. |
+| **One Door Rust Product Server** | Current | Nine workspace crates (`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`) serve 422 native operations across 41 route families. The Python AI worker serves strictly 21 allow-listed compute routes (`rust/fixtures/worker_allowlist.json`); all other non-native paths return `404`. |
 | **Canonical Crate Domain Structure** | Current | `lattice-agent` is organized into 6 groups (`kernel`/`parse`/`content`/`tools`/`surface`/`prompts`) and `lattice-platform` into 7 domains (`workspaceos`/`toolsurface`/`governance`/`adminops`/`knowledge`/`modelops`/`shell`). All workspace callers use canonical domain paths (obsolete crate-root compatibility maps removed in `13.7.2`), enforced by `domain_boundaries.rs`. |
 | **Unified UTC Clock & Single-Writer SQLite** | Current | All Knowledge Graph mutations serialize through `lattice-core::graph_write::GraphWriter` and `Store::write_conn`. Rust (`clock.rs`, zero `libc` `unsafe`) and Python (`lattice_brain/utils.py`, `_kg_fsutil.py`) emit unified offset-free UTC timestamps (`YYYY-MM-DDTHH:MM:SS`) with zero skew across timezones (`Asia/Seoul`, `America/New_York`, `UTC`). Restoring a `.latticebrain` archive bumps the store generation epoch for instant in-process visibility with no restart. |
 | **Brain Home & Everyday Surfaces** | Current | Living Brain growth rings, composer-first workflow, floor continuity bar (`Past Chats · Overview · Memory Map · Features`), per-route `React.lazy` code splitting (`<= 150 KiB` gzip initial JS budget), per-route i18n namespaces (`ko` default + `en`), and route/panel `ErrorBoundary` isolation. Strict TypeScript 7.0.2 (`noUncheckedIndexedAccess`) at 100% Vitest coverage (`113` files, `1,852` tests). |

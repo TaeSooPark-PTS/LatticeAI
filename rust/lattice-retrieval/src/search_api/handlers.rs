@@ -229,6 +229,13 @@ async fn hybrid_graphrag(
         Ok(value) => value,
         Err(refusal) => return refusal,
     };
+    crate::rerank::rerank_report(
+        state.seam(),
+        &query,
+        &mut report,
+        &crate::rerank::RerankConfig::from_env(),
+    )
+    .await;
     if image_fusion {
         if let Some(object) = report.as_object_mut() {
             object.insert(
@@ -291,6 +298,13 @@ async fn hybrid(
         Ok(value) => value,
         Err(refusal) => return refusal,
     };
+    crate::rerank::rerank_report(
+        state.seam(),
+        &query,
+        &mut report,
+        &crate::rerank::RerankConfig::from_env(),
+    )
+    .await;
     if image_fusion {
         if let Some(object) = report.as_object_mut() {
             object.insert(

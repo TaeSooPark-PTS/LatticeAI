@@ -75,6 +75,7 @@ pub struct ContextRequest {
     pub now_secs: f64,
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
+    pub knowledge_payload: Option<Value>,
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -244,6 +245,28 @@ fn assembled_text(sections: &[Section]) -> String {
         .join("\n\n")
 }
 
+pub fn knowledge_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+) -> Result<Value, CoreError> {
+    service_hybrid_search(
+        conn,
+        model,
+        &request.query,
+        &ServiceHybridOptions {
+            limit: request
+                .knowledge_limit
+                .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64),
+            scope: knowledge_scope(request.workspace_id.as_deref()),
+            now_secs: request.now_secs,
+            query_embedding: request.query_embedding.clone(),
+            semantic_degraded: request.semantic_degraded.clone(),
+            ..ServiceHybridOptions::default()
+        },
+    )
+}
+
 pub fn assemble_context(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -257,19 +280,10 @@ pub fn assemble_context(
         sections.push(artifacts_section(artifacts));
     }
     if request.knowledge {
-        let payload = service_hybrid_search(
-            conn,
-            model,
-            &request.query,
-            &ServiceHybridOptions {
-                limit: request.knowledge_limit,
-                scope: knowledge_scope(request.workspace_id.as_deref()),
-                now_secs: request.now_secs,
-                query_embedding: request.query_embedding.clone(),
-                semantic_degraded: request.semantic_degraded.clone(),
-                ..ServiceHybridOptions::default()
-            },
-        )?;
+        let payload = match request.knowledge_payload.as_ref() {
+            Some(prepared) => prepared.clone(),
+            None => knowledge_search(conn, model, request)?,
+        };
         sections.push(knowledge_section(&payload, request.knowledge_limit));
     }
     if let Some(notes) = request.notes.as_ref() {
@@ -570,5 +584,33 @@ mod tests {
         )
         .unwrap();
         assert_eq!(match_ids(&stamped), vec!["team".to_string()]);
+    }
+
+    #[test]
+    fn a_prepared_knowledge_payload_replaces_the_inline_search_in_its_order() {
+        let (_dir, conn) = knowledge_graph();
+        let model = LocalEmbeddingModel::new(384);
+        let mut request = ContextRequest {
+            query: "phoenix".into(),
+            budget: 2000,
+            knowledge_limit: 5,
+            knowledge: true,
+            ..Default::default()
+        };
+        let searched = knowledge_search(&conn, &model, &request).unwrap();
+        assert_eq!(searched["matches"][0]["id"], json!("note"));
+        request.knowledge_payload = Some(json!({"matches": [
+            {"id": "reranked", "title": "Promoted", "summary": "cross-encoder pick"},
+            {"id": "note", "title": "Phoenix launch notes", "summary": "the phoenix plan"},
+        ]}));
+        let out = assemble_context(&conn, &model, &request).unwrap();
+        assert_eq!(
+            match_ids(&out),
+            vec!["reranked".to_string(), "note".to_string()]
+        );
+        assert!(out["text"]
+            .as_str()
+            .unwrap()
+            .contains("Promoted: cross-encoder pick"));
     }
 }

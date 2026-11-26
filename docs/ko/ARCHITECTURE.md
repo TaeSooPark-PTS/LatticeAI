@@ -7,7 +7,7 @@
 
 현재 릴리스: **14.1.2 — Living Synthesis**.
 
-Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 20개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
+Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 21개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 
 ## 시스템 맵
 
@@ -26,7 +26,7 @@ flowchart TB
 
   subgraph host["Lattice Host — 제품 서버 (Rust, 127.0.0.1)"]
     direction TB
-    door["One Door: 네이티브 422 오퍼레이션 · 41 라우트 패밀리<br/>네이티브도 20개 허용 워커 라우트도 아니면 ⇒ 404"]
+    door["One Door: 네이티브 422 오퍼레이션 · 41 라우트 패밀리<br/>네이티브도 21개 허용 워커 라우트도 아니면 ⇒ 404"]
     subgraph crates["9개 워크스페이스 크레이트"]
       direction TB
       plat["lattice-platform (317 ops · 7 도메인)<br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
@@ -56,7 +56,7 @@ flowchart TB
   subgraph worker["Python AI 워커 — 연산 전용 (latticeai.worker_app · 20 라우트)"]
     direction LR
     llm["추론<br/>/agent/llm · /worker/llm/stream<br/>oMLX · MLX · Ollama · llama.cpp · LM Studio · vLLM"]
-    compute["연산 심<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query}"]
+    compute["연산 심<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query,rerank}"]
     catalog["모델·엔진 카탈로그<br/>/models · /engines/* · /worker/sysinfo · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -73,7 +73,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  door -- "허용된 20개 라우트만 전달" --> gates
+  door -- "허용된 21개 라우트만 전달" --> gates
   gates --> worker
   corec -- "단일 라이터 (Rust)" --> data
   crates -- "WAL 읽기" --> data
@@ -125,7 +125,7 @@ flowchart LR
 
 ## Python AI 워커 및 크로스플랫폼 모델 런타임
 
-`latticeai.worker_app`(`create_worker_app`)은 **20개** 허용 라우트만 제공하는 루프백 전용 연산 워커이며 `worker_resilience.py`(`x-lattice-idempotency-key` 병합 및 단항 타임아웃 격리), `ContextVar` 기반 LLM 라우터 의존성 주입(`lattice_brain.graph.runtime.llm_router_scope`), 사전 컴파일·비동기 지원 폴백 임베딩(`lattice_brain.embeddings`), 상한 레이트·프록시 보안 프리미티브(`latticeai.core.security`)를 제공합니다.
+`latticeai.worker_app`(`create_worker_app`)은 **21개** 허용 라우트만 제공하는 루프백 전용 연산 워커이며 `worker_resilience.py`(`x-lattice-idempotency-key` 병합 및 단항 타임아웃 격리), `ContextVar` 기반 LLM 라우터 의존성 주입(`lattice_brain.graph.runtime.llm_router_scope`), 사전 컴파일·비동기 지원 폴백 임베딩(`lattice_brain.embeddings`), 상한 레이트·프록시 보안 프리미티브(`latticeai.core.security`)를 제공합니다.
 
 - **크로스플랫폼 엔진 어댑터 (`latticeai/services/engine_adapters.py`):**
   - **macOS (Apple Silicon):** `omlx`(Homebrew 또는 `~/.omlx/venv` 무-Homebrew universal2 휠 폴백) 계층형 RAM/SSD KV 캐시 및 실시간 가용 메모리 압박 자동 튜닝(`host_available_ram_gb`, `omlx_serve_args`), `local_mlx`(`pyproject.toml`에서 `darwin`/`arm64` 플랫폼 가드 적용), `ollama`, `lmstudio`, `llamacpp`.

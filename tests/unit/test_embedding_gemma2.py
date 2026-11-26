@@ -207,12 +207,18 @@ def test_huggingface_provider_with_transformers_mean_pooling(
     monkeypatch.setitem(sys.modules, "transformers", tf_mod)
 
     prov = HuggingFaceEmbeddingProvider(
-        _RemoteConfig(model="google/embeddinggemma-2", dim=4)
+        _RemoteConfig(model="sentence-transformers/all-MiniLM-L6-v2", dim=4)
     )
     vecs = prov.embed_batch(["hello world"])
     assert vecs == [[1.0, 0.0, 0.0, 0.0]]
     assert prov.dim == 4
-    assert prov.model_id == "huggingface:google/embeddinggemma-2:4"
+    assert prov.model_id == "huggingface:sentence-transformers/all-MiniLM-L6-v2:4"
+
+    gemma = HuggingFaceEmbeddingProvider(
+        _RemoteConfig(model="google/embeddinggemma-2", dim=4)
+    )
+    with pytest.raises(EmbeddingUnavailable, match="EmbeddingGemma 2 needs"):
+        gemma.embed_batch(["hello world"])
 
 
 def test_autodetect_prioritizes_embeddinggemma_2_in_mlx_and_hf_caches(
@@ -272,9 +278,25 @@ def test_autodetect_finds_embeddinggemma_2_in_latticeai_models_dir(
     assert found.source == "local_model"
 
 
+def _fake_sentence_transformers(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeSentenceTransformer:
+        def __init__(self, model_name: str) -> None:
+            self.model_name = model_name
+
+        def encode(
+            self, texts: List[str], normalize_embeddings: bool = True
+        ) -> List[List[float]]:
+            return [[1.0] + [0.0] * 767 for _ in texts]
+
+    st_mod = types.ModuleType("sentence_transformers")
+    st_mod.SentenceTransformer = FakeSentenceTransformer
+    monkeypatch.setitem(sys.modules, "sentence_transformers", st_mod)
+
+
 def test_item13_auto_activates_semantic_embeddings_when_cached_and_falls_back_when_empty(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _fake_sentence_transformers(monkeypatch)
     empty_cache = tmp_path / "empty"
     empty_cache.mkdir()
     offline = resolve_embedder(
@@ -303,6 +325,7 @@ def test_item13_auto_activates_semantic_embeddings_when_cached_and_falls_back_wh
 def test_embeddings_status_and_worker_embed_expose_recommended_embeddinggemma_2(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    _fake_sentence_transformers(monkeypatch)
     monkeypatch.setenv(SEAM_ENV_VAR, "1")
     cache_dir = tmp_path / "cache"
     _plant_hf_snapshot(cache_dir, "google/embeddinggemma-2")

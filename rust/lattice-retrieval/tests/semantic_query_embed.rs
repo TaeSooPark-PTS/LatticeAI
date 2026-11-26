@@ -291,3 +291,130 @@ async fn hash_store_never_calls_worker_embed_seam() {
     assert_eq!(status, reqwest::StatusCode::OK);
     assert_eq!(calls.load(Ordering::SeqCst), 0);
 }
+
+#[tokio::test]
+async fn a_worker_serving_another_model_degrades_instead_of_scoring_across_spaces() {
+    let dir = tempfile::tempdir().unwrap();
+    let model_id = "huggingface:google/embeddinggemma-2:4";
+    let vec_bytes = encode_f32_le(&[1.0, 0.0, 0.0, 0.0]);
+    let (auth, store, config, writer) = build_semantic_fixture(dir.path(), model_id, &vec_bytes, 4);
+
+    let calls = Arc::new(AtomicUsize::new(0));
+    let worker_origin = spawn_mock_worker(MockWorker {
+        calls: Arc::clone(&calls),
+        delay: Duration::ZERO,
+        fail: false,
+        model_id: "lattice-local-hash-v1:4".to_string(),
+        vector: vec![1.0, 0.0, 0.0, 0.0],
+    })
+    .await;
+
+    let seam = WorkerSeamClient::new(&worker_origin).unwrap();
+    let state = Arc::new(
+        RetrievalApiState::new(auth, Some(store), config)
+            .with_graph(writer)
+            .with_seam(seam),
+    );
+    let api_origin = spawn_router(search_api::router(state)).await;
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+
+    let (status, body) = post_json(
+        &client,
+        format!("{api_origin}/api/search/vector"),
+        &json!({"query": "spacecraft orientation failure", "limit": 5}),
+    )
+    .await;
+    assert_eq!(status, reqwest::StatusCode::OK);
+    assert_eq!(body["provider_status"], "degraded");
+    let reason = body["degraded_reason"].as_str().unwrap();
+    assert!(
+        reason.starts_with("query_embed_contract_mismatch"),
+        "{reason}"
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
+
+#[derive(Clone)]
+struct RerankWorker {
+    rerank_calls: Arc<AtomicUsize>,
+    favourite: &'static str,
+}
+
+async fn rerank_handler(
+    State(worker): State<RerankWorker>,
+    Json(body): Json<Value>,
+) -> (StatusCode, Json<Value>) {
+    worker.rerank_calls.fetch_add(1, Ordering::SeqCst);
+    let scores: Vec<f64> = body["documents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|doc| {
+            if doc.as_str().unwrap_or("").contains(worker.favourite) {
+                0.99
+            } else {
+                0.01
+            }
+        })
+        .collect();
+    (
+        StatusCode::OK,
+        Json(json!({"scores": scores, "model_id": "cross-encoder:BAAI/bge-reranker-v2-m3"})),
+    )
+}
+
+#[tokio::test]
+async fn hybrid_search_promotes_the_cross_encoder_favourite_and_reports_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let model_id = "huggingface:google/embeddinggemma-2:4";
+    let vec_bytes = encode_f32_le(&[1.0, 0.0, 0.0, 0.0]);
+    let (auth, store, config, writer) = build_semantic_fixture(dir.path(), model_id, &vec_bytes, 4);
+
+    let embed_calls = Arc::new(AtomicUsize::new(0));
+    let rerank_calls = Arc::new(AtomicUsize::new(0));
+    let embed = Router::new()
+        .route("/worker/embed", post(embed_handler))
+        .with_state(MockWorker {
+            calls: Arc::clone(&embed_calls),
+            delay: Duration::ZERO,
+            fail: false,
+            model_id: model_id.to_string(),
+            vector: vec![1.0, 0.0, 0.0, 0.0],
+        });
+    let rerank = Router::new()
+        .route("/worker/rerank", post(rerank_handler))
+        .with_state(RerankWorker {
+            rerank_calls: Arc::clone(&rerank_calls),
+            favourite: "Orbital Telemetry",
+        });
+    let worker_origin = spawn_router(embed.merge(rerank)).await;
+
+    let seam = WorkerSeamClient::new(&worker_origin).unwrap();
+    let state = Arc::new(
+        RetrievalApiState::new(auth, Some(store), config)
+            .with_graph(writer)
+            .with_seam(seam),
+    );
+    let api_origin = spawn_router(search_api::router(state)).await;
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+
+    for mode in ["", "graphrag"] {
+        let (status, body) = post_json(
+            &client,
+            format!("{api_origin}/api/search/hybrid"),
+            &json!({"query": "satellite telemetry report", "limit": 5, "mode": mode}),
+        )
+        .await;
+        assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+        let matches = body["matches"].as_array().unwrap();
+        if matches.len() >= 2 {
+            assert_eq!(body["rerank"]["applied"], json!(true), "{mode}: {body}");
+            assert_eq!(body["rerank"]["strategy"], json!("cross_encoder"));
+            assert_eq!(matches[0]["id"], json!("lex-1"), "{mode}: {body}");
+            assert_eq!(matches[0]["rerank_promoted"], json!(true));
+        } else {
+            assert_eq!(body["rerank"]["applied"], json!(false), "{mode}: {body}");
+        }
+    }
+    assert!(rerank_calls.load(Ordering::SeqCst) >= 1);
+}

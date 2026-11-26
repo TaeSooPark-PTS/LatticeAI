@@ -45,6 +45,7 @@ COMPUTE_PATHS = [
         "/worker/vector/query",
         {"embedding_model": "hash", "embedding_dim": 8, "vector": [0.0] * 8, "k": 4},
     ),
+    ("/worker/rerank", {"query": "q", "documents": ["d"]}),
 ]
 
 

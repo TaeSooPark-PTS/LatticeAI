@@ -31,6 +31,7 @@ WORKER_COMPUTE_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("POST", "/worker/asr"),
     ("POST", "/worker/extract"),
     ("POST", "/worker/vector/query"),
+    ("POST", "/worker/rerank"),
 )
 
 
@@ -51,6 +52,7 @@ def phase_worker_routes(ctx: Any) -> None:
     from latticeai.api.worker_compute import create_worker_compute_router
     from latticeai.api.worker_resilience import install_worker_compute_resilience
     from latticeai.api.worker_seams import create_worker_seams_router
+    from latticeai.core.rerankers import resolve_reranker
 
     app = ctx.app
     install_worker_compute_resilience(app)
@@ -75,6 +77,7 @@ def phase_worker_routes(ctx: Any) -> None:
             require_user=ctx.require_user,
             enforce_rate_limit=ctx.enforce_rate_limit,
             db_path=db_path,
+            reranker=resolve_reranker(),
         )
     )
     apply_worker_route_filter(app)

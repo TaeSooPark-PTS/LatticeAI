@@ -103,7 +103,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 | --- | --- | --- |
 | **시작 가이드** | [docs/ko/ONBOARDING.md](docs/ko/ONBOARDING.md) | 처음 5분 제품 흐름 및 첫 실행 보장 |
 | **제품 철학** | [docs/ko/WHY_LATTICE.md](docs/ko/WHY_LATTICE.md) | 개별 AI 모델보다 브레인이 오래 남아야 하는 이유 |
-| **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 20개 라우트 Python AI 워커 |
+| **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 21개 라우트 Python AI 워커 |
 | **기능 현황** | [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md) | 현재 출시된 기능과 정직한 시스템 한계 |
 | **적응형 하네스 벤치마크** | [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md) | 25개 태스크 실측 보고서 (`Qwen2.5-0.5B-Instruct-Q4_K_M` `28.0% → 84.0%`) |
 | **운영 & 셀프 호스팅** | [docs/ko/OPERATIONS.md](docs/ko/OPERATIONS.md) | 저장소 구조, `.latticebrain` 백업/복원, 공개 모드 체크리스트 |

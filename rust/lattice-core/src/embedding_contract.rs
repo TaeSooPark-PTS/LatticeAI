@@ -200,6 +200,19 @@ impl EmbeddingIndexContract {
     pub fn requires_reindex(&self, existing: &Self) -> bool {
         !self.is_compatible_with(existing)
     }
+
+    pub fn query_vector_mismatch(&self, model_id: &str, dimension: usize) -> Option<String> {
+        if self.model_id == model_id.trim() && self.dimension == dimension {
+            return None;
+        }
+        Some(format!(
+            "worker embeds with {} ({dimension}d) but the index holds {} ({}d); \
+             reindex or restore the indexed embedding model",
+            model_id.trim(),
+            self.model_id,
+            self.dimension
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -229,5 +242,18 @@ mod tests {
         assert_eq!(gemma.query_mode, "embeddinggemma_query");
         assert!(gemma.requires_reindex(&hash));
         assert!(gemma.is_compatible_with(&gemma));
+        assert!(gemma
+            .query_vector_mismatch(" huggingface:google/embeddinggemma-2:768 ", 768)
+            .is_none());
+        let reason = gemma
+            .query_vector_mismatch("lattice-local-hash-v1:384", 384)
+            .expect("hash query against a gemma index is a mismatch");
+        assert!(
+            reason.contains("384d") && reason.contains("768d"),
+            "{reason}"
+        );
+        assert!(gemma
+            .query_vector_mismatch("huggingface:google/embeddinggemma-2:768", 512)
+            .is_some());
     }
 }

@@ -108,7 +108,7 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 | Agent Harness | `rust/lattice-agent/src/{kernel/,parse/,content/,tools/,surface/,prompts/}` | Universal Adaptive Harness, fail-closed verifier, durable DAG workflows, 5-role multi-agent session, TOCTOU-safe `safe_io` |
 | Platform Surface | `rust/lattice-platform/src/{workspaceos/,toolsurface/,governance/,knowledge/,modelops/,adminops/,shell/}` | Workspace OS, native MCP & tools, Review Center & proposals, `.latticebrain` portability & Brain Network, setup/catalog, admin audit |
 | Chat & Jobs | `rust/lattice-chat/src/`, `rust/lattice-jobs/src/` | Grounded chat, non-blocking document sessions, bounded cloud budget, background embedding/index drain |
-| Python Compute Worker | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 20-route loopback inference, embeddings, parsing, document rendering, and cross-platform engine lifecycle |
+| Python Compute Worker | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 21-route loopback inference, embeddings, parsing, document rendering, and cross-platform engine lifecycle |
 | Frontend & Extensions | `frontend/src/`, `src-tauri/src/`, `vscode-extension/`, `browser-extension/` | Strict TypeScript 7 (`noUncheckedIndexedAccess`) / React / Vite 8 SPA, Tauri 2.11 desktop shell (`PortPolicy::PinnedProduction` on `4825`), VS Code extension, browser capture extension |
 
 ## Compatibility & Upgrades

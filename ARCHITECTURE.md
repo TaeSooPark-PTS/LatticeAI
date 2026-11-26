@@ -9,7 +9,7 @@
 Current release: **14.1.2 — Living Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
-Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
+Rust product host (`lattice-host`), a 21-route loopback Python AI compute worker
 (`latticeai.worker_app`), a private SQLite Knowledge Graph, a model-agnostic
 Adaptive Agent Harness, and a strict TypeScript 7 / React / Vite 8 UI.
 
@@ -30,7 +30,7 @@ flowchart TB
 
   subgraph host["Lattice Host — the product server (Rust, 127.0.0.1)"]
     direction TB
-    door["One Door: 422 native operations · 41 route families<br/>anything not native and not on the 20-route allowlist ⇒ 404"]
+    door["One Door: 422 native operations · 41 route families<br/>anything not native and not on the 21-route allowlist ⇒ 404"]
     subgraph crates["Nine Workspace Crates"]
       direction TB
       plat["lattice-platform (317 ops · 7 domains)<br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
@@ -60,7 +60,7 @@ flowchart TB
   subgraph worker["Python AI Worker — compute only (latticeai.worker_app · 20 routes)"]
     direction LR
     llm["Inference<br/>/agent/llm · /worker/llm/stream<br/>oMLX · MLX · Ollama · llama.cpp · LM Studio · vLLM"]
-    compute["Compute seams<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query}"]
+    compute["Compute seams<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query,rerank}"]
     catalog["Model & Engine Catalog<br/>/models · /engines/* · /worker/sysinfo · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -77,7 +77,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  door -- "20 allow-listed routes only" --> gates
+  door -- "21 allow-listed routes only" --> gates
   gates --> worker
   corec -- "single writer (Rust)" --> data
   crates -- "WAL reads" --> data
@@ -143,8 +143,8 @@ flowchart LR
 ## Python AI Worker & Cross-Platform Model Runtime
 
 `latticeai.worker_app` (`create_worker_app`) is a loopback-only compute worker
-serving **20** allow-listed routes (`/agent/{llm,tool}`,
-`/worker/{llm/stream,sysinfo,embed,extract,parse,asr,render/{docx,pdf,pptx,xlsx},vector/query}`,
+serving **21** allow-listed routes (`/agent/{llm,tool}`,
+`/worker/{llm/stream,sysinfo,embed,extract,parse,asr,render/{docx,pdf,pptx,xlsx},vector/query,rerank}`,
 `/models*`, `/engines/*`, `GET /api/embeddings/status`, `/health`) with
 `worker_resilience.py` (`x-lattice-idempotency-key` coalescing and unary timeout
 isolation), `ContextVar`-scoped LLM router dependency injection

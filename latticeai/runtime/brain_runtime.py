@@ -33,7 +33,10 @@ def build_embedder_runtime(
         api_key=config.embedding_api_key,
         dim=dim,
         timeout=config.embedding_timeout,
-        extra={"target": config.embedding_custom_target},
+        extra={
+            "target": config.embedding_custom_target,
+            "fallback_dim": int(config.embedding_dim or 0),
+        },
         probe=provider not in _FALLBACK_NAMES,
     )
     try:

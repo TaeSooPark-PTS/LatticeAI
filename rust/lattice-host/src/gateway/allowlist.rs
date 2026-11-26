@@ -174,6 +174,7 @@ mod tests {
             (Method::POST, "/agent/llm"),
             (Method::POST, "/agent/tool"),
             (Method::POST, "/worker/embed"),
+            (Method::POST, "/worker/rerank"),
             (Method::POST, "/worker/llm/stream"),
             (Method::GET, "/models"),
             (Method::POST, "/models/load"),

@@ -53,6 +53,7 @@ INTERNAL_WORKER_PATHS = frozenset(
         "/worker/asr",
         "/worker/extract",
         "/worker/vector/query",
+        "/worker/rerank",
     }
 )
 

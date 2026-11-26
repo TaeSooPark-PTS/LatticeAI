@@ -49,7 +49,7 @@ path requires explicit opt-in.
 
 The Rust product server (`lattice-host`) owns all trust boundaries across **422
 native operations (41 route families)** and supervises the loopback-only Python
-AI compute worker (`latticeai.worker_app`), which is restricted to **20**
+AI compute worker (`latticeai.worker_app`), which is restricted to **21**
 allow-listed compute routes (`rust/fixtures/worker_allowlist.json`, pinned from
 both Python and Rust; all non-native unallowlisted paths answer `404`). Security
 responsibilities map to explicit domain addresses:

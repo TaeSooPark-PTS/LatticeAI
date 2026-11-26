@@ -10,8 +10,42 @@ pub const VECTOR_DIM_ENV: &str = "LATTICEAI_VECTOR_DIM";
 pub const DEFAULT_EMBEDDING_DIM: usize = 384;
 pub const EMBEDDINGGEMMA_2_MODEL_ID: &str = "google/embeddinggemma-2";
 pub const EMBEDDINGGEMMA_2_DIM: usize = 768;
+pub const EMBEDDINGGEMMA_2_PROVIDER: &str = "huggingface";
 
 type Blake2b64 = Blake2b<U8>;
+
+pub fn embeddinggemma_2_model_id() -> String {
+    format!("{EMBEDDINGGEMMA_2_PROVIDER}:{EMBEDDINGGEMMA_2_MODEL_ID}:{EMBEDDINGGEMMA_2_DIM}")
+}
+
+pub fn default_neural_contract() -> EmbeddingIndexContract {
+    EmbeddingIndexContract::from_semantic(
+        EMBEDDINGGEMMA_2_PROVIDER,
+        embeddinggemma_2_model_id(),
+        EMBEDDINGGEMMA_2_DIM,
+    )
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum QueryEmbeddingPlan {
+    Neural(EmbeddingIndexContract),
+    LocalFallback(LocalEmbeddingModel),
+}
+
+impl QueryEmbeddingPlan {
+    pub fn for_contract(contract: Option<&EmbeddingIndexContract>) -> Self {
+        match contract {
+            Some(active) if active.is_semantic() && active.dimension > 0 => {
+                Self::Neural(active.clone())
+            }
+            _ => Self::LocalFallback(LocalEmbeddingModel::from_env()),
+        }
+    }
+
+    pub fn is_neural(&self) -> bool {
+        matches!(self, Self::Neural(_))
+    }
+}
 
 pub fn embedding_model_id(dim: usize) -> String {
     format!("lattice-local-hash-v1:{dim}")
@@ -591,6 +625,32 @@ pub fn project_weighted_features(features: &[(String, f64)], dim: usize) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn embeddinggemma_2_is_the_default_neural_contract() {
+        let contract = default_neural_contract();
+        assert_eq!(contract.model_id, "huggingface:google/embeddinggemma-2:768");
+        assert_eq!(contract.dimension, 768);
+        assert!(contract.is_semantic());
+        assert_eq!(contract.passage_mode, "embeddinggemma_passage");
+        assert_eq!(contract.query_mode, "embeddinggemma_query");
+        let neural = QueryEmbeddingPlan::for_contract(Some(&contract));
+        assert!(neural.is_neural());
+        assert_eq!(neural, QueryEmbeddingPlan::Neural(contract));
+    }
+
+    #[test]
+    fn hash_or_absent_contracts_plan_the_local_blake2b_fallback() {
+        let hash = LocalEmbeddingModel::new(DEFAULT_EMBEDDING_DIM).contract();
+        for contract in [None, Some(&hash)] {
+            match QueryEmbeddingPlan::for_contract(contract) {
+                QueryEmbeddingPlan::LocalFallback(model) => {
+                    assert!(model.model_id().starts_with("lattice-local-hash-v1:"));
+                }
+                other => panic!("expected the local fallback, got {other:?}"),
+            }
+        }
+    }
 
     #[test]
     fn model_id_tracks_the_dimension() {

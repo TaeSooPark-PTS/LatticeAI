@@ -42,7 +42,7 @@
 
 Lattice AI는 로컬 우선(local-first) Digital Brain입니다. 사용자 지식, 대화 컨텍스트, 지식 그래프 데이터, 아카이브를 기본값으로 로컬에 보관하며 모든 외부 통신 경로는 명시적 옵트인을 통해서만 활성화됩니다.
 
-Rust 제품 서버(`lattice-host`)가 **422개 네이티브 오퍼레이션(41개 라우트 패밀리)** 전반의 모든 신뢰 경계를 소유하고, 루프백 전용 Python AI 연산 워커(`latticeai.worker_app`)는 **20개** 허용 목록 연산 라우트(`rust/fixtures/worker_allowlist.json`, Python·Rust 양측 고정; 목록 외 비네이티브 경로는 `404`)로 엄격히 제한됩니다. 보안 책임은 명확한 도메인 주소에 매핑됩니다:
+Rust 제품 서버(`lattice-host`)가 **422개 네이티브 오퍼레이션(41개 라우트 패밀리)** 전반의 모든 신뢰 경계를 소유하고, 루프백 전용 Python AI 연산 워커(`latticeai.worker_app`)는 **21개** 허용 목록 연산 라우트(`rust/fixtures/worker_allowlist.json`, Python·Rust 양측 고정; 목록 외 비네이티브 경로는 `404`)로 엄격히 제한됩니다. 보안 책임은 명확한 도메인 주소에 매핑됩니다:
 
 - `rust/lattice-auth/src/` — 버전화 `$scrypt$` 비밀번호 해싱, 상한 메모리 레이트 리미팅, 세션 관리, 구조화된 CSRF Origin 강제(`CsrfReason` + `messages.rs`).
 - `rust/lattice-agent/src/kernel/` — 권한 게이트, 모드 불변 서킷 브레이커, fail-closed `NEEDS_REVIEW` 검증, 내구성 워크플로 승인.

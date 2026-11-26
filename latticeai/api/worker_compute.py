@@ -23,6 +23,11 @@ from latticeai.core.embedding_providers.profiles import (
 )
 from latticeai.core.messages import MESSAGES, http_error, resolve_language
 from latticeai.core.quiet import quiet
+from latticeai.core.rerankers import (
+    RERANK_MAX_DOCUMENTS,
+    RERANKER_PROVIDER,
+    RerankerUnavailable,
+)
 from latticeai.services.voice_capture import (
     MAX_AUDIO_BYTES,
     SUPPORTED_AUDIO_EXTENSIONS,
@@ -83,6 +88,14 @@ WORKER_COMPUTE_MESSAGES: Dict[str, Dict[str, str]] = {
     "worker_compute.embed_batch_too_large": {
         "ko": "임베딩 배치가 {count}개입니다. 한 번에 {limit}개까지입니다.",
         "en": "The embed batch has {count} texts; the limit is {limit}.",
+    },
+    "worker_compute.reranker_unavailable": {
+        "ko": "교차 인코더 재순위 모델을 쓸 수 없습니다: {reason}",
+        "en": "The cross-encoder reranker is unavailable: {reason}",
+    },
+    "worker_compute.rerank_batch_too_large": {
+        "ko": "재순위 후보가 {count}개입니다. 한 번에 {limit}개까지입니다.",
+        "en": "The rerank batch has {count} documents; the limit is {limit}.",
     },
     "worker_compute.vector_query_invalid": {
         "ko": "벡터 질의는 embedding_model, embedding_dim, vector 가 필요합니다.",
@@ -149,6 +162,7 @@ from .worker_compute_render import (
     RenderPdfRequest,
     RenderPptxRequest,
     RenderXlsxRequest,
+    RerankRequest,
     VectorQueryRequest,
     build_docx_bytes,
     build_pdf_bytes,
@@ -203,6 +217,7 @@ class _WorkerComputeDeps:
     require_user: Callable[[Request], Any]
     enforce_rate_limit: Callable[[str, str], None]
     db_path: Any
+    reranker: Any = None
 
 
 def _require_seam(request: Request) -> None:
@@ -503,6 +518,49 @@ def _register_media_and_extract_routes(
         )
 
 
+def _register_rerank_route(router: APIRouter, deps: _WorkerComputeDeps) -> None:
+    @router.post("/worker/rerank")
+    async def worker_rerank(req: RerankRequest, request: Request):
+        _require_seam(request)
+        _admit(deps, request)
+        language = resolve_language(request)
+        resolution = deps.reranker
+        reranker = getattr(resolution, "reranker", None)
+        if reranker is None:
+            reason = str(getattr(resolution, "detail", "") or "no reranker configured")
+            raise http_error(
+                503, "worker_compute.reranker_unavailable", language, reason=reason
+            )
+        documents = list(req.documents)
+        if len(documents) > RERANK_MAX_DOCUMENTS:
+            raise http_error(
+                422,
+                "worker_compute.rerank_batch_too_large",
+                language,
+                count=str(len(documents)),
+                limit=str(RERANK_MAX_DOCUMENTS),
+            )
+        query = req.query.strip()
+        if not query or not documents:
+            scores: List[float] = [0.0] * len(documents)
+        else:
+            try:
+                scores = await asyncio.to_thread(reranker.score, query, documents)
+            except RerankerUnavailable as exc:
+                raise http_error(
+                    503,
+                    "worker_compute.reranker_unavailable",
+                    language,
+                    reason=str(exc),
+                ) from exc
+        return {
+            "scores": scores,
+            "count": len(scores),
+            "model_id": reranker.model_id,
+            "provider": RERANKER_PROVIDER,
+        }
+
+
 def create_worker_compute_router(
     *,
     embedder: Any,
@@ -510,6 +568,7 @@ def create_worker_compute_router(
     require_user: Callable[[Request], Any],
     enforce_rate_limit: Callable[[str, str], None],
     db_path: Any = None,
+    reranker: Any = None,
 ) -> APIRouter:
     deps = _WorkerComputeDeps(
         embedder=embedder,
@@ -517,11 +576,13 @@ def create_worker_compute_router(
         require_user=require_user,
         enforce_rate_limit=enforce_rate_limit,
         db_path=db_path,
+        reranker=reranker,
     )
     router = APIRouter()
     _register_embed_and_parse_routes(router, deps)
     _register_render_routes(router, deps)
     _register_media_and_extract_routes(router, deps)
+    _register_rerank_route(router, deps)
     return router
 
 
@@ -537,6 +598,7 @@ __all__ = [
     "EmbedRequest",
     "ExtractRequest",
     "ParseRequest",
+    "RerankRequest",
     "VectorQueryRequest",
     "RenderDocxRequest",
     "RenderPdfRequest",

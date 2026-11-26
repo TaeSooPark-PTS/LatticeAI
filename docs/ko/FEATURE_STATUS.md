@@ -16,7 +16,7 @@
 Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영속적인 핵심 자산은 모델이 아니라 사용자의 브레인(대화, 문서, 의사결정, 기억, 출처, 지식 그래프 구조)이며, 로컬 또는 옵트인 클라우드 모델은 그 브레인 위에서 언제든 교체할 수 있는 런타임입니다.
 
 - **첫 화면은 대시보드가 아니라 조용한 작업 공간입니다**: 살아 있는 Brain과 컴포저가 데스크톱(`1280×800`)과 모바일(`390×780`) 첫 뷰포트에 함께 자리하고, 자료 수집은 컴포저 안에 통합됩니다. 일상 목적지(대화 · 자료 · 기억)와 관리 목적지(작업 · AI 모델 · 설정)가 명확히 분리되어 있습니다.
-- **단일 관문(One Door) Rust 제품 서버**: `lattice-host`가 9개 Rust 크레이트에 걸쳐 41개 패밀리, **422개 네이티브 오퍼레이션**을 직접 서빙하고, 단일 `GraphWriter` / `Store::write_conn` 풀로 모든 지식 그래프 쓰기를 소유하며, 20개 연산 전용 라우트의 루프백 Python AI 워커를 감독합니다.
+- **단일 관문(One Door) Rust 제품 서버**: `lattice-host`가 9개 Rust 크레이트에 걸쳐 41개 패밀리, **422개 네이티브 오퍼레이션**을 직접 서빙하고, 단일 `GraphWriter` / `Store::write_conn` 풀로 모든 지식 그래프 쓰기를 소유하며, 21개 연산 전용 라우트의 루프백 Python AI 워커를 감독합니다.
 - **정직한 근거와 제안 우선 거버넌스**: 하이브리드 검색은 문맥 품질과 주장 단위 근거 검증을 투명하게 노출합니다. 새 파일 생성은 최소 마찰로 실행되고, 기존 사용자 파일 수정·삭제, 자기모델 갱신, 모순 해결, 폴더 정리, 클라우드 지식 반영은 모두 해시 검증을 거치는 검토함(Review Center) 제안으로 스테이징됩니다.
 - **명시적 자율성과 네트워크 경계**: `PermissionMode`(`strict` / `trusted` / `bypass`)와 `NetworkBoundaryMode`(`local_only` 기본 / `cloud_allowed` 옵트인)가 서로 독립적으로 동작하며, 파괴적 명령 서킷 브레이커와 민감 노드 필터는 어떤 모드에서도 해제되지 않습니다.
 
@@ -26,7 +26,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 
 | 영역 | 상태 | 설명 |
 | --- | --- | --- |
-| **단일 관문 Rust 제품 서버** | 현재 제공 | 9개 워크스페이스 크레이트(`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`)가 41개 패밀리, **422개 네이티브 오퍼레이션**을 서빙합니다. Python AI 워커는 허용 목록(`rust/fixtures/worker_allowlist.json`)에 등록된 **20개 연산 라우트**만 처리하며, 그 외 비네이티브 경로는 `404`를 반환합니다. |
+| **단일 관문 Rust 제품 서버** | 현재 제공 | 9개 워크스페이스 크레이트(`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`)가 41개 패밀리, **422개 네이티브 오퍼레이션**을 서빙합니다. Python AI 워커는 허용 목록(`rust/fixtures/worker_allowlist.json`)에 등록된 **21개 연산 라우트**만 처리하며, 그 외 비네이티브 경로는 `404`를 반환합니다. |
 | **정본 크레이트 도메인 구조** | 현재 제공 | `lattice-agent`는 6개 그룹(`kernel`/`parse`/`content`/`tools`/`surface`/`prompts`), `lattice-platform`은 7개 도메인(`workspaceos`/`toolsurface`/`governance`/`adminops`/`knowledge`/`modelops`/`shell`)으로 구성되며, `13.7.2` 이후 모든 호출자가 정본 도메인 경로를 직접 사용하고 `domain_boundaries.rs`가 경계를 검증합니다. |
 | **통합 UTC 시계 & 단일 라이터 SQLite** | 현재 제공 | 모든 지식 그래프 쓰기는 `lattice-core::graph_write::GraphWriter`와 `Store::write_conn`으로 직렬화됩니다. Rust(`clock.rs`, `libc` `unsafe` 0건)와 Python(`lattice_brain/utils.py`, `_kg_fsutil.py`)이 오프셋 없는 UTC 타임스탬프(`YYYY-MM-DDTHH:MM:SS`)로 통일되어 `Asia/Seoul`, `America/New_York`, `UTC` 환경에서 편차가 없습니다. `.latticebrain` 복원 시 스토어 세대 에폭이 증가해 재시작 없이 즉시 반영됩니다. |
 | **Brain Home & 일상 표면** | 현재 제공 | 살아 있는 Brain 성장 링, 컴포저 중심 작업 흐름, 하단 연속성 바(지난 대화 · 현황 · 기억 지도 · 기능), 라우트별 `React.lazy` 분할(초기 JS gzip `<= 150 KiB`), 라우트별 i18n 네임스페이스(`ko` 기본 + `en`), 라우트/패널 `ErrorBoundary` 격리를 제공합니다. 엄격 TypeScript 7.0.2(`noUncheckedIndexedAccess`)와 Vitest 100% 커버리지(`113`개 파일, `1,852`개 테스트)를 유지합니다. |
