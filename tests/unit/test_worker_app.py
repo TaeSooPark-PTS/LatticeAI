@@ -251,9 +251,6 @@ from latticeai.worker_app import create_worker_app
 
 
 def route_rows(routes):
-    # Same duck-typing as _keys() above: FastAPI >= 0.140 wraps included
-    # routers instead of flattening them, and the isinstance-only walk
-    # reports an empty table there rather than failing.
     rows = []
     for route in routes:
         inner = getattr(route, "original_router", None)

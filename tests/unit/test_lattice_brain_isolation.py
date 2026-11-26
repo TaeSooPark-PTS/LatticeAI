@@ -83,13 +83,10 @@ def test_lattice_brain_usable_in_isolation(tmp_path):
         vector = model.embed("isolation note")
         assert len(vector) > 0
 
-        # The extraction half is what `POST /worker/extract` answers with, so
-        # it is what has to stand up without `latticeai` on the path.
         concepts = _extract_concepts("Graph RAG uses SQLite for storage.", limit=5)
         assert concepts
         assert isinstance(_extract_triples("Graph RAG uses SQLite.", concepts), list)
 
-        # The advisory score `POST /worker/parse` attaches, same requirement.
         quality = assess_extraction_quality("Graph RAG uses SQLite for storage.")
         assert quality["level"]
 
