@@ -488,7 +488,18 @@ fn quantitative_rag_evaluation_suite_meets_quality_and_latency_gates() {
         serde_json::to_string_pretty(&json_summary).unwrap()
     );
 
-    assert_eq!(report.total_queries, 5);
+    assert_eq!(report.total_queries, 6);
+    assert!(report.mrr >= 0.85, "MRR {} below 0.85", report.mrr);
+    assert!(
+        report.temporal_cases >= 4,
+        "temporal cases {}",
+        report.temporal_cases
+    );
+    assert!(
+        (report.recency_accuracy - 1.0).abs() < 1e-9,
+        "Recency accuracy {} must be 1.0",
+        report.recency_accuracy
+    );
     assert!(
         report.recall_at_5 >= 0.90,
         "Recall@5 {} below 0.90",
