@@ -2,7 +2,7 @@
 
 # CI 및 릴리스 게이트
 
-> **상태: 정본 (2026-11-25 갱신) — 현재 릴리스: 14.1.2 — Living Synthesis**
+> **상태: 정본 (2026-11-27 갱신) — 현재 릴리스: 14.2.0 — Temporal Synthesis**
 
 `main` 브랜치와 릴리스를 보호하는 GitHub Actions 워크플로우, 공급망 하드닝(액션 SHA 고정), CI 통과 강제형 자동 CD 파이프라인, 권장 브랜치 보호 설정을 정리한 문서입니다. 관련 문서: [`SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), [`BENCHMARKS.md`](../BENCHMARKS.md).
 

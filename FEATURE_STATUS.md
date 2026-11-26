@@ -1,14 +1,14 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v14.1.2)
+# Lattice AI Feature Status (v14.2.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 This document records the live product capabilities and honest boundaries of
-Lattice AI as of `v14.1.2`. Public release history is maintained from `v13.0.0`
+Lattice AI as of `v14.2.0`. Public release history is maintained from `v13.0.0`
 onward in [`RELEASE.md`](RELEASE.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md),
 and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
@@ -64,6 +64,9 @@ replaceable runtimes over that Brain.
 | **Folder Ingestion, Debounced Watch & Incremental Sync** | Current | `.latticeignore` filtering, fingerprint skip (path + size + mtime + sha256; no-change reindex `33s → 0.26s`), `spawn_blocking` filesystem I/O, `DebouncedWatchEngine` (`moved_from_uri` relocation + per-watch `paused`), and two-phase async chunk-level incremental re-embedding (`incremental_sync.rs`, `watch_deliver.rs`). |
 | **Deleted-File Cleanup** | Current (consent-gated) | Incremental ingest reports vanished files without auto-deleting. `POST /api/ingestion/folder/prune` previews dry-run counts and, upon explicit `confirm`, removes only the graph subtree (`delete_document_tree` / `delete_node_subgraph`). Disk files are never touched. |
 | **Vector Index Backends & Embedding Registry** | Current | Unified Rust ↔ Python `EmbeddingIndexContract` (`provider`, `model_id`, `model_revision`, `dimension`, `normalization`, `index_version`, `grade`, `semantic`). Supports `brute` (default exact scan), `quantized`, and bounded LRU `NativeHnswIndex` / worker `hnsw+rescore` (auto-tried at 512+ vectors with a bound worker). `EmbeddingModelRegistry` supports resumable shadow re-indexing, quality-gated cutover, and instant rollback. |
+| **Temporal Retrieval & Chunking** | Current | Token-sized parent-child chunks with contextual prefixes, tree-sitter code splitting, time-intent prefilter, recency decay, `SUPERSEDES` handling, `sort_by=relevance\|newest`, and `ltcai search`. |
+| **Reranking & Chat Grounding Gates** | Current (reranker needs `rag` extra) | Cross-encoder rerank through `POST /worker/rerank` with RRF fallback, MMR with a per-document cap, and Self-RAG abstention. Real reranker and EmbeddingGemma 2 loading is unverified in the build environment. |
+| **3D Living Brain & Desktop Shell** | Current | 3D graph view with retrieval firing and 2D fallback, fixed-viewport shell, Brain Vital Pill, docked evidence panel, and `Cmd/Ctrl+K` palette. |
 | **Background Embedding & Drain Controls** | Current | Durable `vector_jobs` queue drained by `lattice-jobs` adaptive scheduler (preserving partial drain progress and guarding `/host/jobs` with loopback/Bearer checks). `VectorFreshnessNotice` surfaces embedded-vs-total progress and one-click **Index now** (`POST /api/index/drain`). |
 | **Proactive Synthesis, Learning Loop & Self-Model** | Current | Event-driven synthesis stages `kg_change_digest` proposals for contradictions, unnamed topics, unlinked pairs, and stale fragments. Local-only `knowledge_corrections` learning loop records user corrections with workspace ownership checks. `SelfModelPanel` and `/api/memory/self-model*` manage owner preferences, habits, decisions, and relationships with proposal-first writes. |
 | **Universal Adaptive Agent Harness & Durable Workflows** | Current | Model-agnostic `kernel/probe.rs` 3-turn micro-probing picks `standard` / `compact` / `guided` dials with zero per-model branches, downward-only self-demotion (`demote_to_guided`), `ui_resolve.rs`, `rag_grounding.rs`, and fail-closed `NEEDS_REVIEW` verification. `DurableWorkflowStore` provides atomic checkpoints, SHA-256 idempotency replay, `WaitingApproval` restart recovery, file rollback snapshots, and 5-role least-privilege `MultiAgentSession`. |
@@ -79,12 +82,17 @@ replaceable runtimes over that Brain.
 | **Multimodal (Image, Audio, Video)** | Opt-in (default off) | Behind `allow_multimodal`: first-class `Image`/`ImageText`, `Audio`, and `Video` (`Modality::Video` + `ffmpeg` keyframes + `.srt`/`.vtt`) nodes. OCR (`pytesseract`), VLM captions, vision embeddings, transcribers, and `ffmpeg` are not bundled and report `unavailable` honestly when absent. |
 | **PostgreSQL Backend** | Planned | SQLite WAL is the official live local Brain store. PostgreSQL/pgvector remains `Planned` (dry-run planning and opt-in dispatch CI guard only). |
 | **Telegram Bridge & SSO/OIDC Login Callbacks** | Removed (11.6.0) | Retired when the product server moved to Rust (`lattice-host`). Password authentication, sessions, `$scrypt$` hashing, rate limiting, CSRF, and SSO configuration surfaces remain native in `lattice-auth`. |
-| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.1.2_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
+| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.2.0_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
 
 ---
 
 ## Known Limitations (Honest Boundaries)
 
+- **Retrieval models unverified here:** real EmbeddingGemma 2 and
+  `bge-reranker-v2-m3` loading was not exercised for 14.2.0; failures degrade to
+  hash embeddings and RRF order.
+- **No per-user document privacy inside a workspace:** the multi-user viewer
+  filter covers conversation-derived nodes only.
 - **Small-model content quality on hard tasks:** The Universal Adaptive Agent
   Harness solves mechanical execution (`28.0% → 84.0%` on
   `Qwen2.5-0.5B-Instruct-Q4_K_M`), yet 0.5B–2B models can still produce fluent
@@ -137,9 +145,9 @@ replaceable runtimes over that Brain.
 ## Release History Kept In Git (`v13.0.0+`)
 
 The active Git tree maintains public release history for the modern Rust-host
-and domain-grouped architecture era (`v13.0.0` through `v14.1.2`):
+and domain-grouped architecture era (`v13.0.0` through `v14.2.0`):
 
-- `14.1.2` · `14.1.2` · `14.1.0` · `14.0.0`
+- `14.2.0` · `14.1.2` · `14.1.1` · `14.1.0` · `14.0.0`
 - `13.9.0` · `13.8.0` · `13.7.2` · `13.7.1` · `13.7.0` · `13.6.0` · `13.5.0` ·
   `13.4.2` · `13.4.1` · `13.4.0` · `13.3.1` · `13.3.0` · `13.2.1` · `13.2.0` ·
   `13.1.0` · `13.0.0`

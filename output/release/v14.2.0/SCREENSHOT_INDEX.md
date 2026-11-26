@@ -1,6 +1,6 @@
-# v14.1.0 Release Evidence
+# v14.2.0 Release Evidence
 
-Captured from the built React/Vite app served by the release visual API on 2026-11-25T00:08:49.521Z.
+Captured from the built React/Vite app served by the release visual API on 2026-11-26T18:59:31.005Z.
 
 ## Build Binding
 
@@ -10,13 +10,13 @@ Evidence is only trustworthy while this fingerprint matches
 A later `build:assets` or mock-server edit without recapture invalidates the
 screenshots even when their mtimes look fresh.
 
-- asset-manifest.sha256: `f4832f561a41b979a9b70694255d44f5e1f327e9eafa2d4b86bd3ca515eac4b7`
-- asset-manifest.mtime: `2026-11-25T00:07:43.874Z`
-- asset-manifest.bytes: 4362
-- mock-server.sha256: `b1b691f95c8d7fffe3fcb592a6c4ef263da669be86c07a8afb3e10be11c954f3`
-- mock-server.mtime: `2026-11-24T23:14:16.112Z`
-- mock-server.bytes: 100580
-- mock-server.files: 10
+- asset-manifest.sha256: `2be915fc7f2f605ab6f65625d7fb40c92aa920ea15230a7bab907a8a88c4bdd8`
+- asset-manifest.mtime: `2026-11-26T18:59:03.806Z`
+- asset-manifest.bytes: 4582
+- mock-server.sha256: `8d3d53016bfb94655ceccd687d1af678de50fa6549b59ca9a5b34731045efbe2`
+- mock-server.mtime: `2026-11-26T18:50:48.721Z`
+- mock-server.bytes: 92568
+- mock-server.files: 11
 
 ## Screenshots
 
@@ -38,5 +38,5 @@ screenshots even when their mtimes look fresh.
 
 ## Motion Evidence
 
-- [v14.1.0-living-brain-walkthrough.webm](videos/v14.1.0-living-brain-walkthrough.webm)
-- [v14.1.0-living-brain-walkthrough.gif](gifs/v14.1.0-living-brain-walkthrough.gif)
+- [v14.2.0-living-brain-walkthrough.webm](videos/v14.2.0-living-brain-walkthrough.webm)
+- [v14.2.0-living-brain-walkthrough.gif](gifs/v14.2.0-living-brain-walkthrough.gif)

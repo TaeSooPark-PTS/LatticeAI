@@ -2,7 +2,7 @@
 
 # Knowledge Graph Schema
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 Spec reference: `lattice_ai_full_spec.pptx` slides 20, 21, and 22  
 Implementation: `lattice_brain/graph/schema.py`
@@ -276,9 +276,24 @@ switching and record `PRAGMA user_version=4` and
 
 ---
 
+## Temporal State and Parent Chunks (v14.2.0)
+
+- `chunk_parents(id, source_node, parent_index, text, metadata_json, created_at)`
+  is an additive table, created on first parent write; `source_node` cascades on
+  delete. Child chunks carry `parent_id` in chunk metadata.
+- `SUPERSEDES` edges point from the new version to the old one. Retrieval reads
+  `status` (`active` / `superseded`), `valid_from`, `valid_until`, and
+  `superseded_by` from node metadata, lifecycle, and inbound edges.
+- Watch-folder documents record `document_version` and purge the replaced
+  revision's chunks. Note, browser-tab, and upload re-ingest keep older versions
+  and mark them superseded.
+
+---
+
 ## Embeddings
 
-- Dimension: `LATTICEAI_EMBED_DIM` environment variable (default `1024`)
+- Dimension: set by the active embedder (768 for EmbeddingGemma 2, 384 for the
+  hash fallback); `LATTICEAI_VECTOR_DIM` overrides it
 - Storage: SQLite `BLOB` column packed via `struct.pack('<{n}f', …)`
 - Search: defaults to **exact cosine scan (`brute`)**. Since v12.0.0, enabling
   `LATTICEAI_VECTOR_INDEX=hnsw` queries the worker sidecar

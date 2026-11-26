@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.2.0 - Temporal Synthesis] (2026-11-27)
+
+검색을 시간 중심으로 재구성했습니다: 문맥 접두어를 갖춘 토큰·AST·parent-child 청킹, 새 `auto` 임베딩 기본값과 선택적 `rag` extra를 통한 EmbeddingGemma 2, RRF 대체를 갖춘 cross-encoder 재랭킹, `sort_by`·시간 의도 사전 필터·`SUPERSEDES` 처리를 포함한 2단계 시간 랭킹, 채팅의 대화 이력 반영 질의 재작성·MMR·Self-RAG 게이트, 3D 살아있는 Brain 화면·고정 뷰포트 데스크톱 셸·커맨드 팔레트, `ltcai search` CLI, 다중 사용자 대화 노출·업로드/폴더 소유권·공유 번들 가져오기 수정. 실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](./releases/RELEASE_NOTES_v14.2.0.md).
+
 # [v14.1.2 - Living Synthesis] (2026-11-25)
 
 모든 추적 소스 언어에 저장소 전역 무주석(zero-comments) 표준을 적용했습니다: 필수 셔뱅 및 `/// <reference ... />` 지시문을 제외한 모든 인라인 주석, 블록 주석, 독스트링, JSDoc, 억제 지시문을 제거하고 전역 설정 완화 없이 소스 코드를 직접 수정해 모든 Ruff, mypy, TypeScript, Rust Clippy 검증을 통과했습니다. `npm run check:no-comments` (`scripts/check_no_comments.mjs`)를 `npm run lint`와 `.github/workflows/ci.yml`에 연동하고 `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러에 영구 정책을 명시했습니다.
@@ -124,10 +130,11 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 14.1.2까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.2.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
+- [v14.2.0 - Temporal Synthesis](./releases/RELEASE_NOTES_v14.2.0.md)
 - [v14.1.2 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.1.md)
 - [v14.1.0 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.0.md)

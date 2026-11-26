@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite
@@ -113,9 +113,10 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 
 ## Compatibility & Upgrades
 
-14.1.2 preserves non-destructive, read-compatible upgrades across SQLite
-Knowledge Graph schemas, `.latticebrain` archives (v2 KDF), and legacy
-`salt:key` password hashes (automatically verified alongside versioned
-`$scrypt$` hashes), while keeping Rust and Python timestamps unified on
-offset-free UTC (`YYYY-MM-DDTHH:MM:SS`). Existing workspace data is preserved
-without destructive migrations.
+14.2.0 changes the schema only additively (the `chunk_parents` table is created
+on first parent write) and performs no destructive migration. Documents are
+re-embedded once on their next sync because chunk index text now includes a
+contextual prefix, and the `auto` embedding default can change the active
+embedder, which reports `reindex_required`. See
+[the 14.2.0 release notes](releases/RELEASE_NOTES_v14.2.0.md) for the retrieval
+pipeline, environment variables, and limitations.

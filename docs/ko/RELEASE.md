@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.2.0 — Temporal Synthesis (2026-11-27)
+
+검색을 시간 중심으로 재구성했습니다: 문맥 접두어를 갖춘 토큰·AST·parent-child 청킹, 새 `auto` 임베딩 기본값과 선택적 `rag` extra를 통한 EmbeddingGemma 2, RRF 대체를 갖춘 cross-encoder 재랭킹, `sort_by`·시간 의도 사전 필터·`SUPERSEDES` 처리를 포함한 2단계 시간 랭킹, 채팅의 대화 이력 반영 질의 재작성·MMR·Self-RAG 게이트, 3D 살아있는 Brain 화면·고정 뷰포트 데스크톱 셸·커맨드 팔레트, `ltcai search` CLI, 다중 사용자 대화 노출·업로드/폴더 소유권·공유 번들 가져오기 수정. 실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](./releases/RELEASE_NOTES_v14.2.0.md).
+
+빌드 산출물은 `dist/ltcai-14.2.0-py3-none-any.whl`, `dist/ltcai-14.2.0.tar.gz`, `ltcai-14.2.0.tgz`, `dist/ltcai-14.2.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg` 입니다.
+
 ## v14.1.2 — Living Synthesis (2026-11-25)
 
 모든 추적 소스 파일에 저장소 전역 무주석(zero-comments) 표준을 적용했습니다: OS/컴파일러 필수 지시문(`#!/usr/bin/env ...` 및 `/// <reference ... />`)을 제외한 모든 인라인 주석, 블록 주석, 독스트링, JSDoc 및 억제 지시문(`# noqa`, `# type: ignore`, `// @ts-expect-error`, `// eslint-disable`, `/* @vite-ignore */` 등)을 제거하고, 전역 설정 완화 없이 소스 코드 자체를 리팩터링해 모든 린트·타입 체크·Clippy·테스트를 통과시켰습니다. 또한 `npm run check:no-comments` (`scripts/check_no_comments.mjs`)를 `npm run lint`와 `.github/workflows/ci.yml`에 영구 게이트로 추가하고 `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러에 정책을 명시했습니다.

@@ -1,6 +1,6 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./ko/OPERATIONS.md)
 
-# Lattice AI — Operations Guide (v14.1.2)
+# Lattice AI — Operations Guide (v14.2.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -151,6 +151,16 @@ pip install --upgrade ltcai
   startup and are guarded by read-compatibility, rollback, and equivalence
   tests.
 
+### 6.4 Upgrading to 14.2.0
+- `LATTICEAI_EMBEDDING_PROVIDER` now defaults to `auto`. Set it to `hash` to keep
+  the previous behaviour; a changed embedder reports `reindex_required`.
+- Optional models: `pip install "ltcai[rag]"` and pre-cache
+  `google/embeddinggemma-2` and `BAAI/bge-reranker-v2-m3`.
+- Existing documents are re-embedded once on their next sync. No destructive
+  migration runs.
+- All new retrieval settings are listed in the
+  [14.2.0 release notes](releases/RELEASE_NOTES_v14.2.0.md#environment-variables).
+
 ## 7. Public Server Checklist
 
 Verify every item before exposing an instance to the public internet:
@@ -173,7 +183,9 @@ Verify every item before exposing an instance to the public internet:
 
 ## 8. User Data Isolation & Embedding / Model Operations
 
-- Conversation history is filtered by `user_email`.
+- Conversation history is filtered by `user_email`. When authentication is
+  required, conversation-derived graph nodes are also filtered by owner;
+  documents and uploads are scoped by workspace only.
 - **Per-user `AGENT_ROOT` isolation**: The agent working directory is no longer
   a single shared directory. The Rust host and agent runtime
   (`IsolatedRootSpec`, `resolve_isolated_agent_root`,

@@ -372,7 +372,9 @@ def evaluate_target(
         valid_citations += scored["valid_citations"]
         fabricated_citations += scored["fabricated_citations"]
         supported_generated += scored["supported_generated_claims"]
-        if q.get("category") == "temporal_ordering" or q.get("forbidden_or_trap_doc_ids"):
+        if q.get("category") == "temporal_ordering" or q.get(
+            "forbidden_or_trap_doc_ids"
+        ):
             if not q["expect_abstain"]:
                 temporal_total += 1
                 if (
