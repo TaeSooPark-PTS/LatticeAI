@@ -5,6 +5,9 @@ use axum::Router;
 
 use crate::memory_api::shared::{ok_json, BrainState, Query};
 use crate::memory_api::wsos;
+use crate::search_api::literal_error;
+use crate::search_api::temporal_params::SORT_BY_EXPECTED;
+use crate::temporal::{SortBy, TemporalRanking};
 
 use super::briefing;
 use super::search::{self, SearchRequest};
@@ -60,6 +63,14 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
         Ok(limit) => limit,
         Err(refusal) => return refusal,
     };
+    let sort_by = match params.string("sort_by", "", None) {
+        Ok(sort_by) => sort_by,
+        Err(refusal) => return refusal,
+    };
+    let sort_by = match SortBy::parse(Some(&sort_by)) {
+        Ok(sort_by) => sort_by,
+        Err(_) => return literal_error("query", "sort_by", SORT_BY_EXPECTED, &sort_by),
+    };
     let caller = match authenticate(&state, request.headers(), request.uri().query()) {
         Ok(caller) => caller,
         Err(refusal) => return refusal,
@@ -73,6 +84,9 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
     let scope = caller.scope.clone();
     let doc = wsos::load(state.store(), state.data_dir());
     let enable_graph = state.graph_enabled();
+    let now_secs =
+        lattice_core::parse_iso(Some(&now)).unwrap_or_else(crate::routes::naive_local_now);
+    let ranking = TemporalRanking::from_env().with_request(sort_by, false, None, None);
     match state
         .read(move |conn| {
             let request = SearchRequest {
@@ -82,6 +96,8 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
                 state: &doc,
                 limit,
                 enable_graph,
+                now_secs,
+                ranking,
             };
             let (kept, total) = search::groups(conn, &request);
             Ok(search::body(&request, kept, total, &now))

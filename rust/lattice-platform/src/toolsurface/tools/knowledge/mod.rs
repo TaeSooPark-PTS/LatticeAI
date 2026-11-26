@@ -1,4 +1,5 @@
 mod hybrid;
+mod ranking;
 #[cfg(test)]
 mod tests;
 
@@ -9,6 +10,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_agent::tools::sandbox::MAX_FILE_BYTES;
 use lattice_auth::{Identity, OrderedMap};
+use lattice_retrieval::temporal::{SortBy, TemporalRanking};
 use serde_json::{json, Value};
 
 use crate::toolsurface::mcp::{
@@ -164,6 +166,16 @@ pub(crate) fn run_knowledge_search(
     if query.is_empty() {
         return Err(ToolExecError::Message("Query is required.".into()));
     }
+    let sort_by = match args.get("sort_by") {
+        None | Some(Value::Null) => SortBy::Auto,
+        Some(Value::String(raw)) => SortBy::parse(Some(raw)).map_err(ToolExecError::Message)?,
+        Some(other) => {
+            return Err(ToolExecError::Message(format!(
+                "sort_by must be a string, got {other}"
+            )))
+        }
+    };
+    let temporal = TemporalRanking::from_env().with_request(sort_by, false, None, None);
     let (ws, email) = scope_of(state, headers, identity)
         .map_err(|_| ToolExecError::Message("Knowledge search failed.".into()))?;
     let max_results = args.get("max_results").and_then(Value::as_u64).unwrap_or(5) as usize;
@@ -187,6 +199,7 @@ pub(crate) fn run_knowledge_search(
         mode,
         hops,
         include_graph,
+        Some(&temporal),
     )
     .map_err(|_| ToolExecError::Message("Knowledge search failed.".into()))
 }
@@ -349,6 +362,7 @@ pub(crate) async fn obsidian_search(
         mode,
         hops,
         include_graph,
+        None,
     ) {
         Ok(v) => tool_ok(&state.workspace, v),
         Err(r) => r,

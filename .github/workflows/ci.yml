@@ -53,8 +53,8 @@ jobs:
           npm run docs:check-languages
           node scripts/check_ubuntu_runner_compat.mjs --diagnostic
 
-      - name: Browser and VS Code extension tests
-        run: npm run test:browser-extension && npm run test:vscode-extension
+      - name: CLI, browser and VS Code extension tests
+        run: npm run test:cli && npm run test:browser-extension && npm run test:vscode-extension
 
       - name: Run frontend tests (100% coverage)
         # vitest.config.mts pins 100% thresholds on all four metrics.

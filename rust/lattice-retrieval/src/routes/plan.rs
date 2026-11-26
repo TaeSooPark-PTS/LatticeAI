@@ -239,6 +239,7 @@ impl Plan {
                     now_secs: params
                         .optional_instant("now")?
                         .unwrap_or_else(super::naive_local_now),
+                    temporal: params.temporal_ranking()?,
                 })))
             }
         }

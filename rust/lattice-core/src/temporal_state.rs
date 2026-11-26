@@ -108,10 +108,15 @@ fn read_node_rows(
     } else {
         ("NULL, NULL, NULL, NULL".to_string(), "")
     };
+    let created = if columns(conn, "nodes").contains("created_at") {
+        "n.created_at"
+    } else {
+        "NULL"
+    };
     let mut out = HashMap::new();
     for batch in ids.chunks(ID_BATCH) {
         let sql = format!(
-            "SELECT n.id, n.metadata_json, n.created_at, {select} FROM nodes n {join} WHERE n.id IN ({})",
+            "SELECT n.id, n.metadata_json, {created}, {select} FROM nodes n {join} WHERE n.id IN ({})",
             placeholders(batch.len())
         );
         let mut stmt = conn.prepare(&sql)?;

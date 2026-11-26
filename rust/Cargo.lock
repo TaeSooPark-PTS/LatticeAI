@@ -926,6 +926,7 @@ dependencies = [
  "lattice-agent",
  "lattice-auth",
  "lattice-core",
+ "lattice-retrieval",
  "libc",
  "reqwest",
  "rusqlite",

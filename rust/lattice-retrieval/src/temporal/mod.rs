@@ -1,5 +1,6 @@
 pub mod calendar;
 pub mod decay;
+pub mod external;
 pub mod intent;
 pub mod params;
 pub mod plan;
@@ -8,6 +9,7 @@ pub mod run;
 mod stages;
 
 pub use decay::RecencyDecay;
+pub use external::{rank_candidates, RankedCandidates};
 pub use intent::{parse_time_intent, TimeIntent, TimeWindow};
 pub use params::{ranking_from_lookup, TEMPORAL_PARAM_KEYS};
 pub use plan::TemporalPlan;

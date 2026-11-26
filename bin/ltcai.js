@@ -4,6 +4,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { runSearch } = require("./search.js");
 
 const root = path.resolve(__dirname, "..");
 const managedVenv = process.env.LTCAI_NPM_VENV || path.join(os.homedir(), ".ltcai", "npm-python");
@@ -20,6 +21,7 @@ ltcai — Lattice AI front door (lattice-host)
 USAGE:
     ltcai [OPTIONS]
     ltcai doctor
+    ltcai search <query> [--sort relevance|newest] [--limit <n>]
 
 OPTIONS:
     --bind <ADDR>          Bind IP address (default: 127.0.0.1; 0.0.0.0 requires LATTICEAI_REQUIRE_AUTH=true)
@@ -271,34 +273,44 @@ function launchHost(bin, args) {
   });
 }
 
-const parsed = parseArgs(process.argv.slice(2));
+function runFrontDoor() {
+  const parsed = parseArgs(process.argv.slice(2));
 
-if (parsed.help) {
-  process.stdout.write(USAGE);
-  const host = existingHostBinary();
-  if (host) {
-    process.stdout.write("\n");
-    spawnSync(host, ["--help"], { stdio: "inherit" });
+  if (parsed.help) {
+    process.stdout.write(USAGE);
+    const host = existingHostBinary();
+    if (host) {
+      process.stdout.write("\n");
+      spawnSync(host, ["--help"], { stdio: "inherit" });
+    }
+    process.exit(0);
   }
-  process.exit(0);
-}
 
-if (parsed.version) {
-  const host = existingHostBinary();
-  if (host) {
-    spawnSync(host, ["--version"], { stdio: "inherit" });
-  } else {
-    console.log("ltcai (lattice-host front door)");
+  if (parsed.version) {
+    const host = existingHostBinary();
+    if (host) {
+      spawnSync(host, ["--version"], { stdio: "inherit" });
+    } else {
+      console.log("ltcai (lattice-host front door)");
+    }
+    process.exit(0);
   }
-  process.exit(0);
+
+  if (parsed.doctor) {
+    doctor();
+  }
+
+  if (parsed.host) process.env.LATTICEAI_HOST = parsed.host;
+  if (parsed.port) process.env.LATTICEAI_PORT = parsed.port;
+
+  pinWorkerInterpreter();
+  launchHost(ensureHostBinary(), parsed.hostArgs);
 }
 
-if (parsed.doctor) {
-  doctor();
+if (process.argv[2] === "search") {
+  runSearch(process.argv.slice(3)).then((code) => {
+    process.exitCode = code;
+  });
+} else {
+  runFrontDoor();
 }
-
-if (parsed.host) process.env.LATTICEAI_HOST = parsed.host;
-if (parsed.port) process.env.LATTICEAI_PORT = parsed.port;
-
-pinWorkerInterpreter();
-launchHost(ensureHostBinary(), parsed.hostArgs);

@@ -202,6 +202,7 @@ fn run(
                     self_model_tokens: int(spec, "self_model_tokens", 200),
                     scope: graph_scope(spec),
                     now_secs: now,
+                    temporal: None,
                 },
             )
             .expect("document context must not fail on the fixture");

@@ -43,6 +43,7 @@
     "test:frontend:watch": "vitest",
     "test:unit": "node scripts/run_python.mjs -m pytest tests/unit/ -v",
     "test:integration": "node scripts/run_integration_tests.mjs",
+    "test:cli": "node --test tests/ltcai-search.test.cjs",
     "test:browser-extension": "node --check browser-extension/popup.js && node --check browser-extension/capture-page.js && node --test tests/browser-extension.test.cjs",
     "test:visual": "playwright test",
     "test:e2e:sidecar": "node scripts/run_sidecar_e2e.mjs",
@@ -89,6 +90,7 @@
   "private": false,
   "files": [
     "bin/ltcai.js",
+    "bin/search.js",
     "LICENSE",
     "requirements.txt",
     "latticeai/**/*.py",

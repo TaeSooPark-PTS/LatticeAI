@@ -7631,6 +7631,7 @@ export interface components {
         ToolKnowledgeSearchRequest: {
             max_results?: number;
             query: string;
+            sort_by?: string | null;
         };
         ToolPathRequest: {
             approval_token?: string | null;
@@ -10608,6 +10609,7 @@ export interface operations {
             query?: {
                 q?: string;
                 limit?: number;
+                sort_by?: string | null;
             };
             header?: never;
             path?: never;

@@ -654,6 +654,17 @@
           "query": {
             "title": "Query",
             "type": "string"
+          },
+          "sort_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort By"
           }
         },
         "required": [

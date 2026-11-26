@@ -7,6 +7,7 @@ use serde_json::Value;
 use super::store::{clip, py_text};
 use crate::history::{self, HistoryScope};
 use crate::service::{self, Scope};
+use crate::temporal::{ranked_search, TemporalRanking};
 
 const SEARCH_HISTORY_LIMIT: i64 = 2000;
 
@@ -17,6 +18,8 @@ pub(crate) struct SearchRequest<'a> {
     pub(crate) state: &'a Value,
     pub(crate) limit: i64,
     pub(crate) enable_graph: bool,
+    pub(crate) now_secs: f64,
+    pub(crate) ranking: TemporalRanking,
 }
 
 pub(crate) fn groups(conn: &Connection, request: &SearchRequest<'_>) -> (Vec<Value>, i64) {
@@ -51,7 +54,15 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         }),
         include_legacy_global: request.workspace_id.is_none(),
     };
-    let Ok(payload) = service::keyword_search(conn, request.query, request.limit, &scope) else {
+    let Ok(payload) = ranked_search(
+        conn,
+        request.query,
+        request.now_secs,
+        &request.ranking,
+        request.limit,
+        false,
+        |call| service::keyword_search(conn, &call.search_query, call.fetch_limit, &scope),
+    ) else {
         return Vec::new();
     };
     payload
@@ -181,6 +192,8 @@ mod tests {
             state: doc,
             limit,
             enable_graph: true,
+            now_secs: 1_788_000_000.0,
+            ranking: TemporalRanking::default(),
         }
     }
 
