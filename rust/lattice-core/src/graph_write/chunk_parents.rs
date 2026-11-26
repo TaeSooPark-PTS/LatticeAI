@@ -108,6 +108,63 @@ pub fn load_chunk_parents(
     Ok(out)
 }
 
+pub fn export_chunk_parents(conn: &Connection) -> Result<Vec<Value>, CoreError> {
+    if !chunk_parents_exist(conn) {
+        return Ok(Vec::new());
+    }
+    let mut statement = conn.prepare(
+        "SELECT id, source_node, parent_index, text, metadata_json, created_at \
+         FROM chunk_parents ORDER BY source_node, parent_index, id",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(json!({
+            "id": row.get::<_, String>(0)?,
+            "source_node": row.get::<_, String>(1)?,
+            "parent_index": row.get::<_, i64>(2)?,
+            "text": row.get::<_, String>(3)?,
+            "metadata_json": row.get::<_, String>(4)?,
+            "created_at": row.get::<_, String>(5)?,
+        }))
+    })?;
+    Ok(rows.collect::<Result<Vec<_>, _>>()?)
+}
+
+pub fn import_chunk_parents(conn: &Connection, rows: &[Value]) -> Result<usize, CoreError> {
+    if rows.is_empty() {
+        return Ok(0);
+    }
+    conn.execute_batch(CHUNK_PARENTS_SQL)?;
+    let mut written = 0usize;
+    for row in rows {
+        let field = |key: &str| row.get(key).and_then(Value::as_str).unwrap_or("");
+        let metadata = Some(field("metadata_json"))
+            .filter(|raw| serde_json::from_str::<Value>(raw).is_ok())
+            .unwrap_or("{}");
+        written += conn.execute(
+            "INSERT OR REPLACE INTO chunk_parents(\
+               id, source_node, parent_index, text, metadata_json, created_at\
+             ) SELECT ?1, ?2, ?3, ?4, ?5, ?6 \
+             WHERE ?1 <> '' AND EXISTS(SELECT 1 FROM nodes WHERE id = ?2)",
+            rusqlite::params![
+                field("id"),
+                field("source_node"),
+                row.get("parent_index").and_then(Value::as_i64).unwrap_or(0),
+                field("text"),
+                metadata,
+                field("created_at"),
+            ],
+        )?;
+    }
+    Ok(written)
+}
+
+pub fn clear_chunk_parents(conn: &Connection) -> Result<(), CoreError> {
+    if chunk_parents_exist(conn) {
+        conn.execute("DELETE FROM chunk_parents", [])?;
+    }
+    Ok(())
+}
+
 pub(crate) fn write_chunk_parents(
     txn: &Transaction<'_>,
     source_node: &str,

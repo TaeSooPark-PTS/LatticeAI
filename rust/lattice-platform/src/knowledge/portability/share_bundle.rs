@@ -47,6 +47,7 @@ pub(super) fn build_subgraph_bundle(
     let all_edges = array_rows(&export, "edges");
     let all_chunks = array_rows(&export, "chunks");
     let all_prov = array_rows(&export, "ingestion_provenance");
+    let all_parents = array_rows(&export, "chunk_parents");
 
     let prov_by_node: HashMap<&str, &Value> = all_prov
         .iter()
@@ -147,6 +148,15 @@ pub(super) fn build_subgraph_bundle(
         })
         .cloned()
         .collect();
+    let parents: Vec<Value> = all_parents
+        .iter()
+        .filter(|p| {
+            p.get("source_node")
+                .and_then(Value::as_str)
+                .is_some_and(|id| selected_ids.contains(id))
+        })
+        .cloned()
+        .collect();
     let provenance: Vec<Value> = all_prov
         .iter()
         .filter(|p| {
@@ -196,6 +206,12 @@ pub(super) fn build_subgraph_bundle(
     let sig_b64 = state.identity.sign(&sign_bytes);
 
     let mut bundle = canonical_payload;
+    if !parents.is_empty() {
+        let parents = Value::Array(parents);
+        let signed = parents_sign_bytes(&sig_b64, &parents)?;
+        bundle["parents_signature"] = json!(state.identity.sign(&signed));
+        bundle["chunk_parents"] = parents;
+    }
     bundle["signature"] = json!({
         "algorithm": "ed25519",
         "public_key": state.identity.public_key_b64(),
@@ -221,16 +237,7 @@ pub(super) fn verify_subgraph_bundle_signature(bundle: &Value) -> Result<bool, S
     let pub_raw = decode_b64_key32(pub_b64)?;
     let verifying = VerifyingKey::from_bytes(&pub_raw)
         .map_err(|e| format!("Invalid sender Ed25519 key: {e}"))?;
-    let sig_raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(sig_b64.trim())
-        .or_else(|_| B64_STANDARD.decode(sig_b64.trim()))
-        .map_err(|e| format!("Invalid sender signature encoding: {e}"))?;
-    if sig_raw.len() != 64 {
-        return Err("Invalid sender signature length.".into());
-    }
-    let mut sig_arr = [0u8; 64];
-    sig_arr.copy_from_slice(&sig_raw);
-    let signature = Signature::from_bytes(&sig_arr);
+    let signature = decode_signature(sig_b64)?;
 
     let canonical_payload = json!({
         "header": bundle.get("header").cloned().unwrap_or(json!({})),
@@ -245,7 +252,40 @@ pub(super) fn verify_subgraph_bundle_signature(bundle: &Value) -> Result<bool, S
     verifying
         .verify(&payload_bytes, &signature)
         .map_err(|_| "Shared subgraph Ed25519 signature verification failed.".to_string())?;
+    if let Some(parents) = bundle.get("chunk_parents") {
+        let parents_sig = bundle
+            .get("parents_signature")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Shared bundle parent sections are unsigned.".to_string())?;
+        verifying
+            .verify(
+                &parents_sign_bytes(sig_b64, parents)?,
+                &decode_signature(parents_sig)?,
+            )
+            .map_err(|_| "Shared parent section signature verification failed.".to_string())?;
+    }
     Ok(true)
+}
+
+fn parents_sign_bytes(bundle_signature: &str, parents: &Value) -> Result<Vec<u8>, String> {
+    serde_json::to_vec(&json!({
+        "bundle_signature": bundle_signature,
+        "chunk_parents": parents,
+    }))
+    .map_err(|e| format!("Failed to encode parent section payload: {e}"))
+}
+
+fn decode_signature(encoded: &str) -> Result<Signature, String> {
+    let sig_raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded.trim())
+        .or_else(|_| B64_STANDARD.decode(encoded.trim()))
+        .map_err(|e| format!("Invalid sender signature encoding: {e}"))?;
+    if sig_raw.len() != 64 {
+        return Err("Invalid sender signature length.".into());
+    }
+    let mut sig_arr = [0u8; 64];
+    sig_arr.copy_from_slice(&sig_raw);
+    Ok(Signature::from_bytes(&sig_arr))
 }
 
 fn str_list(object: &Map<String, Value>, key: &str) -> Vec<String> {

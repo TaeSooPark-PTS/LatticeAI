@@ -3,6 +3,7 @@ use serde_json::{json, Map, Value};
 use crate::db::CoreError;
 use crate::pytext::truncate_chars;
 
+use super::super::chunk_parents::purge_stale_chunks;
 use super::super::pyaux::{
     scoped_hash_id, scoped_slug_id, sha256_bytes, sha256_text, stamp_sensitivity,
 };
@@ -231,6 +232,9 @@ impl GraphWriter {
                 true,
                 &parent_ids,
             )?;
+            if !request.chunks.is_empty() {
+                purge_stale_chunks(txn, &file_id, &chunk_ids, &parent_ids)?;
+            }
             let concept_ids = self.write_concepts(
                 txn,
                 &request.concepts,

@@ -5,7 +5,7 @@ use crate::pytext::{clean_text, truncate_chars};
 
 use super::super::pyaux::{scoped_slug_id, sha256_text};
 use super::super::types::{EdgeSpec, IngestContentRequest, NodeSpec};
-use super::super::GraphWriter;
+use super::super::{revision::RevisionReplace, GraphWriter};
 use super::IngestOutcome;
 
 pub type RevisionHook<'a> = dyn FnMut(&rusqlite::Transaction<'_>, &str, &[String], &[String]) -> Result<usize, CoreError>
@@ -16,8 +16,8 @@ impl GraphWriter {
         &self,
         request: &IngestContentRequest,
     ) -> Result<IngestOutcome, CoreError> {
-        self.ingest_content_with(request, &mut |_, _, _, _| Ok(0))
-            .map(|(outcome, _)| outcome)
+        self.replace_document_revision(request, &RevisionReplace::default())
+            .map(|revision| revision.ingest)
     }
 
     pub fn ingest_content_with(

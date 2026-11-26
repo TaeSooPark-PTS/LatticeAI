@@ -3,14 +3,15 @@ use std::path::Path;
 
 use base64::engine::general_purpose::STANDARD as B64_STANDARD;
 use base64::Engine;
+use lattice_core::graph_write::chunk_parents::{clear_chunk_parents, import_chunk_parents};
 use rusqlite::params;
 use serde_json::{json, Value};
 
 use super::archive::{GRAPH_EXPORT_ENTRY, SQLITE_ENTRY};
 use super::crypto::validate_zip_entries;
 use super::graph::{
-    blobs_dir, extract_named_file, query_values, replace_live_db, restore_blobs_from_archive,
-    table_count,
+    blobs_dir, export_parents, extract_named_file, query_values, replace_live_db,
+    restore_blobs_from_archive, table_count,
 };
 use super::postgres::stamp;
 use super::PortabilityState;
@@ -23,6 +24,7 @@ pub(super) struct LiveTableCounts {
     pub(super) vector_embeddings: u64,
     pub(super) ingestion_provenance: u64,
     pub(super) knowledge_sources: u64,
+    pub(super) chunk_parents: u64,
 }
 
 pub(super) fn apply_decrypted_payload(
@@ -118,6 +120,9 @@ fn verify_post_restore_counts(
     if expected.contains_key("knowledge_sources") {
         check("knowledge_sources", live.knowledge_sources)?;
     }
+    if expected.contains_key("chunk_parents") {
+        check("chunk_parents", live.chunk_parents)?;
+    }
     Ok(())
 }
 
@@ -144,6 +149,7 @@ fn query_live_counts(path: &Path) -> Result<LiveTableCounts, String> {
         vector_embeddings: table_count(&conn, "vector_embeddings"),
         ingestion_provenance: table_count(&conn, "ingestion_provenance"),
         knowledge_sources: table_count(&conn, "knowledge_sources"),
+        chunk_parents: table_count(&conn, "chunk_parents"),
     })
 }
 
@@ -323,7 +329,7 @@ pub(super) fn export_full_tables(path: &Path) -> Value {
         },
     );
 
-    json!({
+    let mut payload = json!({
         "nodes": nodes,
         "edges": edges,
         "chunks": chunks,
@@ -332,7 +338,12 @@ pub(super) fn export_full_tables(path: &Path) -> Value {
         "ingestion_provenance": ingestion_provenance,
         "nodes_v2": nodes_v2,
         "edges_v2": edges_v2,
-    })
+    });
+    let parents = export_parents(path);
+    if !parents.is_empty() {
+        payload["chunk_parents"] = Value::Array(parents);
+    }
+    payload
 }
 
 pub(super) fn export_counts_json(export_payload: &Value, blob_count: usize) -> Value {
@@ -345,7 +356,7 @@ pub(super) fn export_counts_json(export_payload: &Value, blob_count: usize) -> V
     };
     let vectors = len("vector_embeddings");
     let provenance = len("ingestion_provenance");
-    json!({
+    let mut counts = json!({
         "nodes": len("nodes"),
         "edges": len("edges"),
         "chunks": len("chunks"),
@@ -357,7 +368,11 @@ pub(super) fn export_counts_json(export_payload: &Value, blob_count: usize) -> V
         "nodes_v2": len("nodes_v2"),
         "edges_v2": len("edges_v2"),
         "blobs": blob_count,
-    })
+    });
+    if len("chunk_parents") > 0 {
+        counts["chunk_parents"] = json!(len("chunk_parents"));
+    }
+    counts
 }
 
 fn restore_tables_transactionally(
@@ -372,6 +387,7 @@ fn restore_tables_transactionally(
         .store()
         .with_write_txn(|txn| {
             if clear_existing {
+                clear_chunk_parents(txn)?;
                 for tbl in [
                     "vector_embeddings",
                     "chunks",
@@ -429,6 +445,7 @@ fn restore_tables_transactionally(
                     ],
                 )?;
             }
+            import_chunk_parents(txn, array_rows(data, "chunk_parents"))?;
             for row in array_rows(data, "knowledge_sources") {
                 txn.execute(
                     "INSERT OR REPLACE INTO knowledge_sources (id, root_path, os_type, drive_id, label, status, include_ocr, watch_enabled, consent_json, created_at, updated_at, last_scanned_at)

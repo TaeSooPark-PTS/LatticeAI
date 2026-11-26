@@ -28,6 +28,7 @@ pub struct ImportOutcome {
     pub chunks: usize,
     pub knowledge_sources: usize,
     pub provenance: usize,
+    pub chunk_parents: usize,
     pub dry_run: bool,
     pub imported: bool,
     pub index: Option<RebuildOutcome>,
@@ -42,6 +43,9 @@ impl ImportOutcome {
         map.insert("chunks".into(), json!(self.chunks));
         map.insert("knowledge_sources".into(), json!(self.knowledge_sources));
         map.insert("provenance".into(), json!(self.provenance));
+        if self.chunk_parents > 0 {
+            map.insert("chunk_parents".into(), json!(self.chunk_parents));
+        }
         if self.dry_run {
             map.insert("dry_run".into(), json!(true));
         }
@@ -150,6 +154,7 @@ impl GraphWriter {
         let chunks = array_of(&request.data, "chunks");
         let sources = array_of(&request.data, "knowledge_sources");
         let provenance = array_of(&request.data, "provenance");
+        let parents = array_of(&request.data, "chunk_parents");
 
         if let Some(header) = request.data.get("header").and_then(Value::as_object) {
             if let Some(incoming) = header.get("graph_schema_version").and_then(Value::as_i64) {
@@ -170,6 +175,7 @@ impl GraphWriter {
             chunks: chunks.len(),
             knowledge_sources: sources.len(),
             provenance: provenance.len(),
+            chunk_parents: parents.len(),
             dry_run: request.dry_run,
             imported: false,
             index: None,
@@ -181,6 +187,7 @@ impl GraphWriter {
         let now = self.clock.now_iso();
         self.store.with_write_txn(|txn| {
             if request.mode == "replace" {
+                super::chunk_parents::clear_chunk_parents(txn)?;
                 for table in [
                     "local_file_index",
                     "knowledge_sources",
@@ -217,6 +224,7 @@ impl GraphWriter {
                     },
                 )?;
             }
+            super::chunk_parents::import_chunk_parents(txn, &parents)?;
             for chunk in &chunks {
                 let Some(chunk) = chunk.as_object() else { continue };
                 self.upsert_chunk(
