@@ -46,8 +46,12 @@ pub(crate) async fn run_model_turn(
     let semantic_contract = state
         .read_conn()
         .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));
+    let turn_now = now_secs();
+    let temporal_ranking = lattice_retrieval::temporal::TemporalRanking::from_env();
+    let search_text =
+        lattice_retrieval::temporal::search_text_for(&req.message, turn_now, &temporal_ranking);
     let effective_query =
-        lattice_retrieval::query_embed::effective_hybrid_query(&req.message, false);
+        lattice_retrieval::query_embed::effective_hybrid_query(&search_text, false);
     let query_embed = lattice_retrieval::query_embed::resolve_query_embedding_with_contract(
         semantic_contract,
         state.worker.as_ref().map(ChatWorker::client),
@@ -65,27 +69,36 @@ pub(crate) async fn run_model_turn(
         user_email: effective_email.clone(),
         conversation_id: req.conversation_id.clone(),
         workspace_id: workspace_id.clone(),
-        now_secs: now_secs(),
+        now_secs: turn_now,
         query_embedding: query_embed.query_vector.clone(),
         semantic_degraded: query_embed.degraded_reason.clone(),
+        temporal: Some(temporal_ranking),
         ..Default::default()
     };
     let knowledge = state.read_conn().and_then(|conn| {
-        lattice_retrieval::context::knowledge_search(
+        lattice_retrieval::context::knowledge_search_ranked(
             &conn,
             &LocalEmbeddingModel::default(),
             &context_request,
         )
         .ok()
     });
-    if let Some(mut payload) = knowledge {
+    if let Some((mut payload, plan)) = knowledge {
+        let rerank_query = plan
+            .as_ref()
+            .map(|plan| plan.search_query().to_string())
+            .unwrap_or_else(|| req.message.clone());
         lattice_retrieval::rerank::rerank_report(
             state.worker.as_ref().map(ChatWorker::client),
-            &req.message,
+            &rerank_query,
             &mut payload,
             &lattice_retrieval::rerank::RerankConfig::from_env(),
         )
         .await;
+        if let Some(mut plan) = plan {
+            let limit = lattice_retrieval::context::knowledge_fetch_limit(&context_request);
+            plan.apply_finalize(&mut payload, limit as usize);
+        }
         context_request.knowledge_payload = Some(payload);
     }
     if let Some(conn) = state.read_conn() {

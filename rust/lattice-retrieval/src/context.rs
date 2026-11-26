@@ -90,6 +90,7 @@ pub struct ContextRequest {
     pub semantic_degraded: Option<String>,
     pub knowledge_payload: Option<Value>,
     pub density_aware: bool,
+    pub temporal: Option<crate::temporal::TemporalRanking>,
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -307,26 +308,63 @@ fn assembled_text(sections: &[Section]) -> String {
         .join("\n\n")
 }
 
+fn knowledge_options(request: &ContextRequest, limit: i64) -> ServiceHybridOptions {
+    ServiceHybridOptions {
+        limit,
+        scope: knowledge_scope(request.workspace_id.as_deref()),
+        now_secs: request.now_secs,
+        query_embedding: request.query_embedding.clone(),
+        semantic_degraded: request.semantic_degraded.clone(),
+        ..ServiceHybridOptions::default()
+    }
+}
+
+pub fn knowledge_fetch_limit(request: &ContextRequest) -> i64 {
+    request
+        .knowledge_limit
+        .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64)
+}
+
+pub fn knowledge_search_ranked(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+) -> Result<(Value, Option<crate::temporal::TemporalPlan>), CoreError> {
+    let limit = knowledge_fetch_limit(request);
+    let Some(ranking) = request.temporal.as_ref() else {
+        let options = knowledge_options(request, limit);
+        return Ok((
+            service_hybrid_search(conn, model, &request.query, &options)?,
+            None,
+        ));
+    };
+    let (payload, plan) = crate::temporal::prepare_ranked(
+        conn,
+        &request.query,
+        request.now_secs,
+        ranking,
+        limit,
+        true,
+        |call| {
+            let mut options = knowledge_options(request, call.fetch_limit);
+            options.recency = Some(call.decay);
+            options.include_historical = call.include_historical;
+            service_hybrid_search(conn, model, &call.search_query, &options)
+        },
+    )?;
+    Ok((payload, Some(plan)))
+}
+
 pub fn knowledge_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
     request: &ContextRequest,
 ) -> Result<Value, CoreError> {
-    service_hybrid_search(
-        conn,
-        model,
-        &request.query,
-        &ServiceHybridOptions {
-            limit: request
-                .knowledge_limit
-                .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64),
-            scope: knowledge_scope(request.workspace_id.as_deref()),
-            now_secs: request.now_secs,
-            query_embedding: request.query_embedding.clone(),
-            semantic_degraded: request.semantic_degraded.clone(),
-            ..ServiceHybridOptions::default()
-        },
-    )
+    let (mut payload, plan) = knowledge_search_ranked(conn, model, request)?;
+    if let Some(mut plan) = plan {
+        plan.apply_finalize(&mut payload, knowledge_fetch_limit(request) as usize);
+    }
+    Ok(payload)
 }
 
 pub fn assemble_context(

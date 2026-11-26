@@ -15,6 +15,7 @@ use crate::history::{
 use crate::self_model::DEFAULT_SUMMARY_TOKENS;
 use crate::service::{graph_search, GraphSearchOptions, Scope};
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
+use crate::temporal::{ranked_search, TemporalRanking};
 
 pub const MAX_LIMIT: i64 = 500;
 
@@ -54,10 +55,12 @@ pub enum Plan {
     ServiceHybrid {
         query: String,
         options: Box<ServiceHybridOptions>,
+        ranking: Option<Box<TemporalRanking>>,
     },
     GraphSearch {
         query: String,
         options: GraphSearchOptions,
+        ranking: Option<Box<TemporalRanking>>,
     },
     Relationships(Box<RelationshipQuery>),
     Traverse {
@@ -154,6 +157,7 @@ impl Plan {
                         .unwrap_or_else(super::naive_local_now),
                     ..ServiceHybridOptions::default()
                 }),
+                ranking: params.temporal_ranking()?.map(Box::new),
             }),
             Endpoint::GraphSearch => Ok(Plan::GraphSearch {
                 query: params.required_text(&["query", "q"])?,
@@ -162,6 +166,7 @@ impl Plan {
                     expand_depth: params.optional_int("expand_depth", -1, 3)?.unwrap_or(1),
                     scope: Scope::default(),
                 },
+                ranking: params.temporal_ranking()?.map(Box::new),
             }),
             Endpoint::GraphRelationships => Ok(Plan::Relationships(Box::new(RelationshipQuery {
                 query: params.optional_text("query")?.unwrap_or_default(),
@@ -215,6 +220,7 @@ impl Plan {
                 now_secs: params
                     .optional_instant("now")?
                     .unwrap_or_else(super::naive_local_now),
+                temporal: params.temporal_ranking()?,
                 ..ContextRequest::default()
             }))),
             Endpoint::ContextDocument => {
@@ -241,11 +247,65 @@ impl Plan {
     pub fn run(self, db: &Path) -> Result<Value, CoreError> {
         let conn = open_read_only(db)?;
         match self {
-            Plan::ServiceHybrid { query, options } => {
+            Plan::ServiceHybrid {
+                query,
+                options,
+                ranking: None,
+            } => {
                 let model = LocalEmbeddingModel::from_env();
                 service_hybrid_search(&conn, &model, &query, &options)
             }
-            Plan::GraphSearch { query, options } => graph_search(&conn, &query, &options),
+            Plan::ServiceHybrid {
+                query,
+                options,
+                ranking: Some(ranking),
+            } => {
+                let model = LocalEmbeddingModel::from_env();
+                ranked_search(
+                    &conn,
+                    &query,
+                    options.now_secs,
+                    &ranking,
+                    options.limit,
+                    true,
+                    |call| {
+                        let widened = ServiceHybridOptions {
+                            limit: call.fetch_limit,
+                            keyword_limit: options.keyword_limit.max(call.fetch_limit),
+                            vector_limit: options.vector_limit.max(call.fetch_limit),
+                            graph_limit: options.graph_limit.max(call.fetch_limit),
+                            recency: Some(call.decay),
+                            include_historical: call.include_historical,
+                            ..(*options).clone()
+                        };
+                        service_hybrid_search(&conn, &model, &call.search_query, &widened)
+                    },
+                )
+            }
+            Plan::GraphSearch {
+                query,
+                options,
+                ranking: None,
+            } => graph_search(&conn, &query, &options),
+            Plan::GraphSearch {
+                query,
+                options,
+                ranking: Some(ranking),
+            } => ranked_search(
+                &conn,
+                &query,
+                super::naive_local_now(),
+                &ranking,
+                options.limit,
+                false,
+                |call| {
+                    let widened = GraphSearchOptions {
+                        limit: call.fetch_limit,
+                        ..options.clone()
+                    };
+                    graph_search(&conn, &call.search_query, &widened)
+                },
+            ),
             Plan::Relationships(request) => relationship_search(&conn, &request),
             Plan::Traverse { node_id, options } => traverse(&conn, &node_id, &options),
             Plan::History {
@@ -334,12 +394,31 @@ mod tests {
 
     #[test]
     fn defaults_are_the_python_defaults() {
-        let Plan::ServiceHybrid { options, query } =
-            Plan::build(Endpoint::ServiceHybrid, &bag("?q=hi")).expect("plan")
+        let Plan::ServiceHybrid {
+            options,
+            query,
+            ranking,
+        } = Plan::build(Endpoint::ServiceHybrid, &bag("?q=hi")).expect("plan")
         else {
             panic!("wrong plan");
         };
         assert_eq!(query, "hi");
+        assert!(ranking.is_none(), "no temporal key keeps the parity lane");
+        let Plan::ServiceHybrid { ranking, .. } =
+            Plan::build(Endpoint::ServiceHybrid, &bag("?q=hi&sort_by=newest")).expect("plan")
+        else {
+            panic!("wrong plan");
+        };
+        assert_eq!(
+            ranking.expect("ranked").sort_by,
+            crate::temporal::SortBy::Newest
+        );
+        assert_eq!(
+            Plan::build(Endpoint::ServiceHybrid, &bag("?q=hi&sort_by=oldest"))
+                .unwrap_err()
+                .field,
+            "sort_by"
+        );
         assert_eq!(options.limit, 30);
         assert_eq!(options.keyword_limit, 30);
         assert!(options.weights.is_none());

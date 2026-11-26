@@ -3,8 +3,9 @@ use std::sync::OnceLock;
 
 use fancy_regex::Regex;
 use lattice_core::embeddings::LocalEmbeddingModel;
-use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
+use lattice_retrieval::hybrid::HybridOptions;
 use lattice_retrieval::shape::context_quality_signal;
+use lattice_retrieval::temporal::ranked_hybrid_search;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
@@ -209,7 +210,8 @@ fn build_minimal_context_inner(
         semantic_degraded,
         ..Default::default()
     };
-    let (matches, quality) = match hybrid_search(conn, model, &query, &options) {
+    let ranking = lattice_retrieval::temporal::TemporalRanking::from_env();
+    let (matches, quality) = match ranked_hybrid_search(conn, model, &query, &options, &ranking) {
         Ok(result) => {
             let matches: Vec<Value> = result
                 .get("matches")

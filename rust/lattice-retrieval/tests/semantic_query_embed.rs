@@ -418,3 +418,91 @@ async fn hybrid_search_promotes_the_cross_encoder_favourite_and_reports_it() {
     }
     assert!(rerank_calls.load(Ordering::SeqCst) >= 1);
 }
+
+#[tokio::test]
+async fn sort_by_newest_reorders_after_the_cross_encoder_and_refuses_unknown_modes() {
+    let dir = tempfile::tempdir().unwrap();
+    let model_id = "huggingface:google/embeddinggemma-2:4";
+    let vec_bytes = encode_f32_le(&[1.0, 0.0, 0.0, 0.0]);
+    let (auth, store, config, writer) = build_semantic_fixture(dir.path(), model_id, &vec_bytes, 4);
+    let embed = Router::new()
+        .route("/worker/embed", post(embed_handler))
+        .with_state(MockWorker {
+            calls: Arc::new(AtomicUsize::new(0)),
+            delay: Duration::ZERO,
+            fail: false,
+            model_id: model_id.to_string(),
+            vector: vec![1.0, 0.0, 0.0, 0.0],
+        });
+    let rerank = Router::new()
+        .route("/worker/rerank", post(rerank_handler))
+        .with_state(RerankWorker {
+            rerank_calls: Arc::new(AtomicUsize::new(0)),
+            favourite: "Orbital Telemetry",
+        });
+    let worker_origin = spawn_router(embed.merge(rerank)).await;
+    let state = Arc::new(
+        RetrievalApiState::new(auth, Some(store), config)
+            .with_graph(writer)
+            .with_seam(WorkerSeamClient::new(&worker_origin).unwrap()),
+    );
+    let api_origin = spawn_router(search_api::router(state)).await;
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+
+    for mode in ["", "graphrag"] {
+        let (status, body) = post_json(
+            &client,
+            format!("{api_origin}/api/search/hybrid"),
+            &json!({"query": "satellite telemetry report", "limit": 5, "mode": mode, "sort_by": "newest"}),
+        )
+        .await;
+        assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+        assert_eq!(body["sort_by"], json!("newest"), "{mode}: {body}");
+        let pipeline = body["temporal"]["pipeline"].as_array().unwrap();
+        let rerank_at = pipeline.iter().position(|s| s == "rerank").unwrap();
+        let sort_at = pipeline.iter().position(|s| s == "sort").unwrap();
+        assert!(rerank_at < sort_at);
+        assert_eq!(body["temporal"]["sort"]["applied"], json!("newest"));
+        assert!(body["rerank"].is_object(), "{mode}: {body}");
+        if body["rerank"]["applied"] == json!(true) {
+            let promoted: Vec<&Value> = body["matches"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["rerank_promoted"] == json!(true))
+                .collect();
+            assert!(!promoted.is_empty(), "the gate keeps promoted hits: {body}");
+        }
+    }
+
+    let (status, body) = post_json(
+        &client,
+        format!("{api_origin}/api/search/hybrid"),
+        &json!({"query": "satellite", "sort_by": "oldest"}),
+    )
+    .await;
+    assert_eq!(status, reqwest::StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert_eq!(body["detail"][0]["loc"], json!(["body", "sort_by"]));
+    let refused = client
+        .get(format!(
+            "{api_origin}/api/search/vector?q=satellite&sort_by=oldest"
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), reqwest::StatusCode::UNPROCESSABLE_ENTITY);
+    for path in ["keyword", "vector"] {
+        let (status, body) = post_json(
+            &client,
+            format!("{api_origin}/api/search/{path}"),
+            &json!({"query": "satellite telemetry", "sort_by": "relevance", "include_historical": true}),
+        )
+        .await;
+        assert_eq!(status, reqwest::StatusCode::OK, "{path}: {body}");
+        assert_eq!(
+            body["temporal"]["include_historical"],
+            json!(true),
+            "{path}: {body}"
+        );
+    }
+}

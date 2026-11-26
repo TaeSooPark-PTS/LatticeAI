@@ -38,6 +38,7 @@ pub mod self_model;
 pub mod service;
 pub mod service_hybrid;
 pub mod shape;
+pub mod temporal;
 pub mod vector;
 pub mod vector_alignment;
 pub mod vector_hnsw;

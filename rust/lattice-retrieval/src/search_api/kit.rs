@@ -76,6 +76,16 @@ fn validation_error(problems: &[OrderedMap]) -> Response {
     )
 }
 
+pub fn literal_error(source: &str, name: &str, expected: &str, input: &str) -> Response {
+    validation_error(&[problem(
+        "literal_error",
+        json!([source, name]),
+        &format!("Input should be {expected}"),
+        json!(input),
+        Some(json!({ "expected": expected })),
+    )])
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Query {
     pairs: Vec<(String, String)>,

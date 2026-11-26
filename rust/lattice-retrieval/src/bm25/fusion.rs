@@ -39,6 +39,7 @@ pub struct GraphRagOptions {
     pub now_secs: f64,
     pub include_historical: bool,
     pub query_embedding: Option<QueryVectorOverride>,
+    pub recency: Option<crate::temporal::RecencyDecay>,
 }
 
 impl Default for GraphRagOptions {
@@ -58,6 +59,7 @@ impl Default for GraphRagOptions {
             now_secs: 0.0,
             include_historical: false,
             query_embedding: None,
+            recency: None,
         }
     }
 }
@@ -418,7 +420,14 @@ pub fn hybrid_bm25_vector_graph_search(
         } else {
             0.0
         };
-        let final_score = round6(hybrid_score + rerank_boost);
+        let recency_decay = options.recency.as_ref().map(|decay| {
+            decay.multiplier(
+                c.node.updated_at.as_deref(),
+                options.now_secs,
+                query_class == "recency",
+            )
+        });
+        let final_score = round6((hybrid_score + rerank_boost) * recency_decay.unwrap_or(1.0));
 
         let is_graph_only = c.bm25_rank.is_none() && c.vec_rank.is_none() && c.graph_rank.is_some();
         let meta = safe_loads(c.node.metadata_json.as_deref());
@@ -453,6 +462,7 @@ pub fn hybrid_bm25_vector_graph_search(
                 "rrf_score": round6(rrf_score),
                 "rerank_boost": round6(rerank_boost),
                 "rerank_mode": if rerank_boost > 0.0 { "lexical_phrase_boost" } else { "identity" },
+                "recency_decay": recency_decay,
             }),
         );
         item.insert("matched_terms", json!(c.matched_terms));

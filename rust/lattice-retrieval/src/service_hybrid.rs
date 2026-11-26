@@ -28,6 +28,8 @@ pub struct ServiceHybridOptions {
     pub now_secs: f64,
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
+    pub recency: Option<crate::temporal::RecencyDecay>,
+    pub include_historical: bool,
 }
 
 impl Default for ServiceHybridOptions {
@@ -42,6 +44,8 @@ impl Default for ServiceHybridOptions {
             now_secs: 0.0,
             query_embedding: None,
             semantic_degraded: None,
+            recency: None,
+            include_historical: false,
         }
     }
 }
@@ -206,7 +210,7 @@ pub fn service_hybrid_search(
             options.vector_limit,
             0.0,
             scope,
-            false,
+            options.include_historical,
         )?
     } else if let Some(reason) = options.semantic_degraded.as_ref() {
         serde_json::json!({
@@ -377,7 +381,17 @@ pub fn service_hybrid_search(
         }
     }
 
-    if let Some(half_life) = recency_half_life {
+    if let Some(decay) = options.recency.as_ref() {
+        let recency_class = crate::policy::classify_query(query) == "recency";
+        for fused in order.iter_mut() {
+            let stamp = fused.item.get("updated_at").and_then(Value::as_str);
+            let multiplier = decay.multiplier(stamp, options.now_secs, recency_class);
+            fused
+                .source_scores
+                .insert("age_decay".into(), Value::from(multiplier));
+            fused.score *= multiplier;
+        }
+    } else if let Some(half_life) = recency_half_life {
         for fused in order.iter_mut() {
             let stamp = fused.item.get("updated_at").and_then(Value::as_str);
             let multiplier = if parse_iso(stamp).is_some() {

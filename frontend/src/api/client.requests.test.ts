@@ -120,6 +120,16 @@ describe("hybridSearch", () => {
     expect(calls[1]!.body).toEqual({ query: "b", weights: { vector: 0.7 } });
   });
 
+  it("sends sort_by only when the caller picked an order", async () => {
+    const calls = recordFetch(() => jsonResponse({ matches: [] }));
+
+    await latticeApi.hybridSearch("a", undefined, "newest");
+    await latticeApi.hybridSearchGraphRag("b", 6, "relevance");
+
+    expect(calls[0]!.body).toEqual({ query: "a", sort_by: "newest" });
+    expect(calls[1]!.body).toEqual({ query: "b", mode: "graphrag", limit: 6, sort_by: "relevance" });
+  });
+
   it("still returns an empty match list when the search fails", async () => {
     recordFetch(() => jsonResponse({ detail: "no index" }, 503));
 

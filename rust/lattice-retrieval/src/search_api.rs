@@ -137,11 +137,12 @@ impl RetrievalApiState {
 
 pub(crate) mod handlers;
 pub(crate) mod kit;
+pub(crate) mod temporal_params;
 
 pub use handlers::router;
 pub use kit::{
-    detail, engine_error, graph_disabled, http_error, http_error_with, language, ok, optional,
-    required, FieldSpec, Kind, Model, Query,
+    detail, engine_error, graph_disabled, http_error, http_error_with, language, literal_error, ok,
+    optional, required, FieldSpec, Kind, Model, Query,
 };
 
 #[cfg(test)]

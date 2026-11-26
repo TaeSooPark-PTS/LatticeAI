@@ -120,7 +120,7 @@ fn parse_clock(rest: &str) -> Option<(u32, u32, u32, f64)> {
     Some((hour, minute, second, micros))
 }
 
-fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+pub fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
     let era = if y >= 0 { y } else { y - 399 } / 400;
     let yoe = y - era * 400;

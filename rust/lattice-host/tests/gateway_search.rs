@@ -193,6 +193,41 @@ async fn the_defaults_alone_reproduce_the_default_golden() {
 }
 
 #[tokio::test]
+async fn a_temporal_parameter_opts_a_lane_into_the_ranked_pipeline() {
+    let gateway = gateway().await;
+    for lane in ["hybrid", "keyword", "vector"] {
+        let body = json(
+            client()
+                .get(gateway.url(&format!("/rust/search/{lane}")))
+                .query(&[
+                    ("q", "hybrid retrieval ranking"),
+                    ("now", frozen_now()),
+                    ("sort_by", "newest"),
+                ])
+                .send()
+                .await
+                .expect("request"),
+        )
+        .await;
+        assert_eq!(body["sort_by"], "newest", "{lane}: {body}");
+        assert_eq!(body["temporal"]["pipeline"][3], "rerank", "{lane}");
+        assert_eq!(body["temporal"]["recency_decay"]["always_on"], true);
+        let matches = body["matches"].as_array().expect("matches");
+        assert!(matches.len() <= 12, "{lane}: newest keeps the gated top-k");
+        assert!(matches.iter().all(|m| m["status"] == "active"), "{lane}");
+    }
+    let refused = client()
+        .get(gateway.url("/rust/search/hybrid"))
+        .query(&[("q", "x"), ("sort_by", "oldest")])
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(refused.status(), 422);
+    assert_eq!(json(refused).await["field"], "sort_by");
+    gateway.stop().await;
+}
+
+#[tokio::test]
 async fn without_now_the_ranking_uses_the_system_clock() {
     let gateway = gateway().await;
     let body = json(

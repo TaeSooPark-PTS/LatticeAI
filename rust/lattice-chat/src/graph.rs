@@ -2,8 +2,9 @@ use std::collections::BTreeSet;
 
 use lattice_core::embeddings::LocalEmbeddingModel;
 use lattice_core::read::read_tables;
-use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
+use lattice_retrieval::hybrid::HybridOptions;
 use lattice_retrieval::shape::{context_quality_signal, multimodal_signal};
+use lattice_retrieval::temporal::ranked_hybrid_search;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 
@@ -62,7 +63,8 @@ pub fn build_context_quality_with_query(
         semantic_degraded,
         ..Default::default()
     };
-    match hybrid_search(conn, model, query, &options) {
+    let ranking = lattice_retrieval::temporal::TemporalRanking::from_env();
+    match ranked_hybrid_search(conn, model, query, &options, &ranking) {
         Ok(result) => {
             let matches: Vec<Value> = result
                 .get("matches")

@@ -3,7 +3,7 @@ import "@/i18n/brain";
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BrainCircuit, DatabaseBackup, Layers3, Search, Share2, Sparkles } from "lucide-react";
-import { latticeApi } from "@/api/client";
+import { latticeApi, type SearchSortBy } from "@/api/client";
 import { LazyPanel } from "@/components/ErrorBoundary";
 import { ActionButton, DataPanel, EmptyState, EntityList, LoadingPanel, OperationResult, StatGrid, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -157,8 +157,14 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
   const language = useAppStore((state) => state.language);
   const [query, setQuery] = React.useState("");
   const [multiHop, setMultiHop] = React.useState(false);
+  const [newestFirst, setNewestFirst] = React.useState(false);
   const search = useMutation({
-    mutationFn: () => (multiHop ? latticeApi.hybridSearchGraphRag(query) : latticeApi.hybridSearch(query)),
+    mutationFn: () => {
+      const sortBy: SearchSortBy | undefined = newestFirst ? "newest" : undefined;
+      return multiHop
+        ? latticeApi.hybridSearchGraphRag(query, 12, sortBy)
+        : latticeApi.hybridSearch(query, undefined, sortBy);
+    },
   });
   return (
     <Card>
@@ -167,17 +173,30 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
           <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> {t(language, "brain.search.title")}</CardTitle>
           <CardDescription>{t(language, "brain.search.detail")}</CardDescription>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant={multiHop ? "default" : "outline"}
-          aria-pressed={multiHop}
-          data-testid="toggle-multihop-search"
-          onClick={() => setMultiHop((prev) => !prev)}
-        >
-          <Sparkles className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
-          {t(language, "brain.search.multiHop")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={newestFirst ? "default" : "outline"}
+            aria-pressed={newestFirst}
+            data-testid="toggle-newest-search"
+            title={t(language, "brain.search.newestHint")}
+            onClick={() => setNewestFirst((prev) => !prev)}
+          >
+            {t(language, "brain.search.newest")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={multiHop ? "default" : "outline"}
+            aria-pressed={multiHop}
+            data-testid="toggle-multihop-search"
+            onClick={() => setMultiHop((prev) => !prev)}
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+            {t(language, "brain.search.multiHop")}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">

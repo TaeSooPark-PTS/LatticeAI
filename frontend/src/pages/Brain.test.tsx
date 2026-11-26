@@ -200,12 +200,33 @@ describe("BrainPage", () => {
     await userEvent.type(input, "WAL checkpointer");
     await userEvent.click(screen.getByRole("button", { name: "기억에서 찾기" }));
 
-    await waitFor(() => expect(hybridSearchGraphRag).toHaveBeenCalledWith("WAL checkpointer"));
+    await waitFor(() => expect(hybridSearchGraphRag).toHaveBeenCalledWith("WAL checkpointer", 12, undefined));
     expect(await screen.findByTestId("multihop-synthesis-panel")).toBeTruthy();
     expect(screen.getByText("Reader Lock")).toBeTruthy();
 
     await userEvent.click(screen.getByRole("button", { name: "Reader Lock 노드로 이동" }));
     expect(window.location.hash).toBe("#/knowledge-graph");
+  });
+});
+
+describe("HybridSearch newest-first toggle", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAppStore.setState({ mode: "advanced", language: "ko" } as never);
+  });
+
+  it("asks the backend for sort_by=newest only while the toggle is on", async () => {
+    const hybridSearch = vi.fn().mockResolvedValue(ok({ matches: [{ id: "n1", title: "Refund policy", type: "Document" }] }));
+    render({ hybridSearch });
+    const toggle = await screen.findByTestId("toggle-newest-search");
+    const input = screen.getByPlaceholderText("사람, 문서, 주제로 검색");
+    await userEvent.type(input, "refund");
+    await userEvent.click(screen.getByRole("button", { name: "기억에서 찾기" }));
+    await waitFor(() => expect(hybridSearch).toHaveBeenLastCalledWith("refund", undefined, undefined));
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "기억에서 찾기" }));
+    await waitFor(() => expect(hybridSearch).toHaveBeenLastCalledWith("refund", undefined, "newest"));
   });
 });
 
@@ -280,7 +301,7 @@ describe("search tab: HybridSearch", () => {
 
     await userEvent.type(input, "결과");
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(latticeApi.hybridSearch).toHaveBeenCalledWith("결과"));
+    await waitFor(() => expect(latticeApi.hybridSearch).toHaveBeenCalledWith("결과", undefined, undefined));
     await waitFor(() => expect(screen.getByText("결과 A")).toBeTruthy());
   });
 
