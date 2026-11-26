@@ -37,6 +37,24 @@ impl GraphWriter {
         spec: &NodeSpec,
         supplied: Option<&super::types::SuppliedVector>,
     ) -> Result<String, CoreError> {
+        let kept;
+        let spec = match super::identity::foreign_owner(txn, &spec.id, spec.owner.as_deref())? {
+            Some(owner) => {
+                let mut preserved = spec.clone();
+                preserved
+                    .metadata
+                    .insert("owner".into(), Value::String(owner.clone()));
+                if preserved.raw.contains_key("owner") {
+                    preserved
+                        .raw
+                        .insert("owner".into(), Value::String(owner.clone()));
+                }
+                preserved.owner = Some(owner);
+                kept = preserved;
+                &kept
+            }
+            None => spec,
+        };
         let now = self.clock.now_iso();
         let title_s = truncate_chars(&spec.title, 240);
         let summary_s = truncate_chars(&spec.summary, 1000);

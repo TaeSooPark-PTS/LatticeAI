@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rusqlite::{params, Transaction};
+use rusqlite::{params, OptionalExtension, Transaction};
 use serde_json::Value;
 
 use crate::db::CoreError;
@@ -105,6 +105,24 @@ fn words(txn: &Transaction<'_>, id: &str) -> Result<HashSet<String>, CoreError> 
 fn overlaps(new: &HashSet<String>, old: &HashSet<String>) -> bool {
     let union = new.union(old).count();
     union > 0 && new.intersection(old).count() as f64 / union as f64 >= UPLOAD_MIN_OVERLAP
+}
+
+pub(crate) fn foreign_owner(
+    txn: &Transaction<'_>,
+    id: &str,
+    incoming: Option<&str>,
+) -> Result<Option<String>, CoreError> {
+    let existing: Option<String> = txn
+        .query_row(
+            "SELECT CASE WHEN json_valid(metadata_json)
+                         THEN json_extract(metadata_json, '$.owner') END
+             FROM nodes WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .flatten();
+    Ok(existing.filter(|owner| !owner.is_empty() && Some(owner.as_str()) != incoming))
 }
 
 pub(crate) fn revive_version(

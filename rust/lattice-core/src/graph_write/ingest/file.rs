@@ -133,6 +133,9 @@ impl GraphWriter {
         let mut chunk_ids: Vec<String> = Vec::new();
         let (source_node_id, duplicate) = self.store.with_write_txn(|txn| {
             let duplicate = self.node_exists(txn, &file_id)?;
+            if super::super::identity::foreign_owner(txn, &file_id, owner.as_deref())?.is_some() {
+                return Ok((None, true));
+            }
             self.upsert_node_with_vector(
                 txn,
                 &NodeSpec {

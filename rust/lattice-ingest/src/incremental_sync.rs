@@ -66,6 +66,7 @@ fn find_active_prior_revision(
     source_uri: &str,
     moved_from_uri: Option<&str>,
     workspace_id: Option<&str>,
+    owner: Option<&str>,
     contract: &EmbeddingIndexContract,
 ) -> Result<Option<PriorRevision>, CoreError> {
     let target_ws = workspace_id
@@ -104,7 +105,11 @@ fn find_active_prior_revision(
                     .and_then(Value::as_str)
                     .filter(|w| !w.is_empty())
                     .unwrap_or("legacy-global");
-                if row_ws == target_ws {
+                let foreign = meta
+                    .get("owner")
+                    .and_then(Value::as_str)
+                    .is_some_and(|held| !held.is_empty() && Some(held) != owner);
+                if row_ws == target_ws && !foreign {
                     let version = meta
                         .get(DOCUMENT_VERSION_FIELD)
                         .and_then(Value::as_i64)
@@ -228,6 +233,7 @@ pub fn plan_incremental_sync(
         &req.source_uri,
         req.moved_from_uri.as_deref(),
         req.workspace_id.as_deref(),
+        req.owner.as_deref(),
         contract,
     )?;
 

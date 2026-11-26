@@ -148,3 +148,71 @@ fn a_watched_file_reverted_to_earlier_content_is_current_again() {
     assert!(!superseded(&graph, &first));
     assert!(superseded(&graph, &second));
 }
+
+#[test]
+fn identical_bytes_from_another_user_never_take_over_or_supersede() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graph = writer(dir.path());
+    let upload = |owner: Option<&str>, name: &str, text: &str| {
+        let path = dir.path().join("incoming.txt");
+        std::fs::write(&path, text).expect("write");
+        let mut extracted = Map::new();
+        extracted.insert("content".into(), json!(text));
+        graph
+            .ingest_file_superseding(&IngestFileRequest {
+                path,
+                original_filename: Some(name.into()),
+                source_uri: Some(upload_source_uri(name)),
+                owner: owner.map(str::to_string),
+                extracted,
+                chunks: vec![piece(text)],
+                ..Default::default()
+            })
+            .expect("upload")
+            .node_id
+    };
+    let held = |id: &str| -> (String, String, String) {
+        graph
+            .store()
+            .with_read_conn(|conn| {
+                Ok(conn.query_row(
+                    "SELECT json_extract(n.metadata_json, '$.owner'), v.owner_id, n.title
+                     FROM nodes n JOIN nodes_v2 v ON v.id = n.id WHERE n.id = ?1",
+                    [id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )?)
+            })
+            .expect("held")
+    };
+    let theirs = upload(Some("b@x"), "plan.txt", "alpha beta gamma delta port nine");
+    let original = upload(Some("a@x"), "plan.txt", "alpha beta gamma delta port one");
+    for intruder in [Some("b@x"), None] {
+        assert_eq!(
+            upload(intruder, "stolen.txt", "alpha beta gamma delta port one"),
+            original
+        );
+    }
+    assert_eq!(
+        held(&original),
+        ("a@x".into(), "a@x".into(), "plan.txt".into())
+    );
+    assert!(!superseded(&graph, &original));
+    assert!(!superseded(&graph, &theirs));
+
+    let first = graph
+        .ingest_content_superseding(&note("/v/n.md", "same text", "a@x", "team"))
+        .expect("a");
+    let again = graph
+        .ingest_content_superseding(&note("/v/n.md", "same text", "b@x", "team"))
+        .expect("b");
+    assert_eq!(first.node_id, again.node_id);
+    assert!(again.duplicate);
+    assert_eq!(held(&first.node_id).0, "a@x");
+    assert_eq!(held(&first.node_id).1, "a@x");
+    let source = first.source_node_id.expect("source");
+    graph
+        .ingest_content_superseding(&note("/v/n.md", "their text", "b@x", "team"))
+        .expect("b new");
+    assert_eq!(held(&source).1, "a@x");
+    assert!(!superseded(&graph, &first.node_id));
+}
