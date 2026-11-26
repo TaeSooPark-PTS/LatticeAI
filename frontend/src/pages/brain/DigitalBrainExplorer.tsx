@@ -1,7 +1,7 @@
 import * as React from "react";
 import "@/i18n/brain";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Filter, Focus, LocateFixed, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, Box, Eye, EyeOff, Filter, Focus, LocateFixed, Network, Search, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { DataPanel, EmptyState, EntityList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,21 @@ import { GraphNodeInspector } from "./GraphNodeInspector";
 import { buildExplorerModel, parseGraph, type LabelMode } from "./graphExplorer";
 import { graphTypeLabel } from "./sourceMeta";
 
+const Brain3DCanvas = React.lazy(() =>
+  import("@/features/brain3d/Brain3DCanvas").then((module) => ({ default: module.Brain3DCanvas })),
+);
+
 export function DigitalBrainExplorer({ data }: { data: unknown }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const theme = useAppStore((state) => state.theme);
   const focusedGraphNodeId = useAppStore((state) => state.focusedGraphNodeId);
   const setFocusedGraphNodeId = useAppStore((state) => state.setFocusedGraphNodeId);
+  const graphViewMode = useAppStore((state) => state.graphViewMode);
+  const setGraphViewMode = useAppStore((state) => state.setGraphViewMode);
+  const showSuperseded = useAppStore((state) => state.showSuperseded);
+  const setShowSuperseded = useAppStore((state) => state.setShowSuperseded);
+  const activeFiringTrace = useAppStore((state) => state.activeFiringTrace);
   const parsed = React.useMemo(() => parseGraph(data, language), [data, language, theme]);
   const [search, setSearch] = React.useState("");
   const [groupFilter, setGroupFilter] = React.useState("all");
@@ -127,20 +136,76 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
             {t(language, "graph.conflictsOnly", { count: fmtNumber(parsed.conflictNodeIds.size) })}
           </Button>
         ) : null}
+        <Button
+          type="button"
+          variant={graphViewMode === "3d" ? "default" : "outline"}
+          aria-pressed={graphViewMode === "3d"}
+          aria-label={t(language, "graph.view.toggleAria")}
+          data-testid="graph-view-toggle"
+          onClick={() => setGraphViewMode(graphViewMode === "3d" ? "2d" : "3d")}
+        >
+          {graphViewMode === "3d" ? <Box className="h-4 w-4" aria-hidden="true" /> : <Network className="h-4 w-4" aria-hidden="true" />}
+          {t(language, graphViewMode === "3d" ? "graph.view.3d" : "graph.view.2d")}
+        </Button>
+        <Button
+          type="button"
+          variant={showSuperseded ? "outline" : "default"}
+          aria-pressed={!showSuperseded}
+          data-testid="graph-superseded-toggle"
+          onClick={() => setShowSuperseded(!showSuperseded)}
+        >
+          {showSuperseded ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
+          {t(language, showSuperseded ? "graph.superseded.show" : "graph.superseded.hide")}
+        </Button>
         <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}>
           <LocateFixed className="h-4 w-4" /> {t(language, "graph.fit")}
         </Button>
       </div>
 
-      <div className="graph-explorer-stage">
+      <div className="graph-explorer-stage" data-testid="brain-graph-stage">
         <div className="graph-explorer-canvas-col">
-          <CytoscapeGraph
-            model={model}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            fitSignal={fitSignal}
-            ariaLabel={t(language, "graph.canvas.aria")}
-          />
+          {graphViewMode === "3d" ? (
+            <React.Suspense
+              fallback={
+                <CytoscapeGraph
+                  model={model}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  fitSignal={fitSignal}
+                  ariaLabel={t(language, "graph.canvas.aria")}
+                />
+              }
+            >
+              <Brain3DCanvas
+                nodes={model.visibleNodes}
+                edges={model.visibleEdges}
+                selectedId={selectedId}
+                onSelectNode={setSelectedId}
+                showSuperseded={showSuperseded}
+                firingTrace={activeFiringTrace}
+                resetSignal={fitSignal}
+                variant="explorer"
+                language={language}
+                fallback={
+                  <CytoscapeGraph
+                    model={model}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    fitSignal={fitSignal}
+                    ariaLabel={t(language, "graph.canvas.aria")}
+                  />
+                }
+              />
+            </React.Suspense>
+          ) : (
+            <CytoscapeGraph
+              model={model}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              fitSignal={fitSignal}
+              ariaLabel={t(language, "graph.canvas.aria")}
+            />
+          )}
 
           <div className="graph-explorer-meta">
             <div className="graph-explorer-meta-stats">

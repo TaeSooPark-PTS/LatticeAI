@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import type { Language } from "@/i18n";
+import type { FiringTrace } from "@/features/brain3d/brainGrowth";
 
 export type Theme = "dark" | "light";
 export type WorkspaceMode = "basic" | "advanced" | "admin";
+export type GraphViewMode = "3d" | "2d";
 
 type AppState = {
   theme: Theme;
@@ -11,14 +13,22 @@ type AppState = {
   apiBase: string | null;
   language: Language;
   focusedGraphNodeId: string | null;
+  inspectedNodeId: string | null;
   pendingChatPrompt: string | null;
+  graphViewMode: GraphViewMode;
+  showSuperseded: boolean;
+  activeFiringTrace: FiringTrace | null;
   setTheme: (theme: Theme) => void;
   setMode: (mode: WorkspaceMode) => void;
   setWorkspaceId: (workspaceId: string | null) => void;
   setApiBase: (apiBase: string | null) => void;
   setLanguage: (language: Language) => void;
   setFocusedGraphNodeId: (nodeId: string | null) => void;
+  setInspectedNodeId: (nodeId: string | null) => void;
   setPendingChatPrompt: (prompt: string | null) => void;
+  setGraphViewMode: (mode: GraphViewMode) => void;
+  setShowSuperseded: (show: boolean) => void;
+  setActiveFiringTrace: (trace: FiringTrace | null) => void;
 };
 
 function warnStorage(action: string, err: unknown): void {
@@ -65,6 +75,16 @@ function readLanguage(): Language {
   return browser.startsWith("ko") ? "ko" : "en";
 }
 
+function readGraphViewMode(): GraphViewMode {
+  try {
+    const saved = localStorage.getItem("lattice.graphViewMode");
+    if (saved === "2d" || saved === "3d") return saved;
+  } catch (err) {
+    warnStorage("getItem(lattice.graphViewMode)", err);
+  }
+  return "3d";
+}
+
 export const useAppStore = create<AppState>((set) => ({
   theme: readTheme(),
   mode: readMode(),
@@ -72,7 +92,11 @@ export const useAppStore = create<AppState>((set) => ({
   apiBase: null,
   language: readLanguage(),
   focusedGraphNodeId: null,
+  inspectedNodeId: null,
   pendingChatPrompt: null,
+  graphViewMode: readGraphViewMode(),
+  showSuperseded: true,
+  activeFiringTrace: null,
   setTheme: (theme) => {
     if (typeof document !== "undefined") {
       document.documentElement.dataset.theme = theme;
@@ -121,5 +145,16 @@ export const useAppStore = create<AppState>((set) => ({
     set({ language });
   },
   setFocusedGraphNodeId: (focusedGraphNodeId) => set({ focusedGraphNodeId }),
+  setInspectedNodeId: (inspectedNodeId) => set({ inspectedNodeId }),
   setPendingChatPrompt: (pendingChatPrompt) => set({ pendingChatPrompt }),
+  setGraphViewMode: (graphViewMode) => {
+    try {
+      localStorage.setItem("lattice.graphViewMode", graphViewMode);
+    } catch (err) {
+      warnStorage("setItem(lattice.graphViewMode)", err);
+    }
+    set({ graphViewMode });
+  },
+  setShowSuperseded: (showSuperseded) => set({ showSuperseded }),
+  setActiveFiringTrace: (activeFiringTrace) => set({ activeFiringTrace }),
 }));

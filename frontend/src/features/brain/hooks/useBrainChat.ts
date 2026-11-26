@@ -3,7 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
+import { extractFiringTrace } from "@/features/brain3d/brainGrowth";
 import { t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import { type ApprovalResolution, parseApprovalPayload } from "../approvalFlow";
 import {
   agentPayloadFiles,
@@ -153,6 +155,8 @@ export function useBrainChat({
           onHybridContext: (frame) => {
             const hybridContext = parseHybridContext(frame);
             if (!hybridContext) return;
+            const firing = extractFiringTrace(frame);
+            if (firing) useAppStore.getState().setActiveFiringTrace(firing);
             setMessages((items) => {
               const next = [...items];
               const last = next[next.length - 1];
@@ -235,6 +239,8 @@ export function useBrainChat({
           },
           onTrace: (trace) => {
             if (!trace) return;
+            const firing = extractFiringTrace(trace);
+            if (firing) useAppStore.getState().setActiveFiringTrace(firing);
             onBrainChange("recalling", 0.9);
             triggerBrainRecall();
             if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
