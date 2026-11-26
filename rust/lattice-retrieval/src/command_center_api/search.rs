@@ -15,6 +15,7 @@ pub(crate) struct SearchRequest<'a> {
     pub(crate) query: &'a str,
     pub(crate) user_email: &'a str,
     pub(crate) workspace_id: Option<&'a str>,
+    pub(crate) viewer: Option<&'a str>,
     pub(crate) state: &'a Value,
     pub(crate) limit: i64,
     pub(crate) enable_graph: bool,
@@ -46,12 +47,17 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
     if !request.enable_graph {
         return Vec::new();
     }
-    let scope = Scope {
-        allowed_workspaces: request.workspace_id.map(|id| {
-            let mut set = BTreeSet::new();
-            set.insert(id.to_string());
-            set
+    let allowed_workspaces = match request.workspace_id {
+        Some(id) => lattice_core::workspace_scope(Some(id), request.viewer),
+        None => request.viewer.map(|viewer| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(viewer),
+            )
         }),
+    };
+    let scope = Scope {
+        allowed_workspaces,
         include_legacy_global: request.workspace_id.is_none(),
     };
     let Ok(payload) = ranked_search(
@@ -189,6 +195,7 @@ mod tests {
             query,
             user_email: "",
             workspace_id: None,
+            viewer: None,
             state: doc,
             limit,
             enable_graph: true,

@@ -16,6 +16,7 @@ pub mod redact;
 pub mod temporal;
 pub mod temporal_state;
 pub mod tokens;
+pub mod viewer_scope;
 pub mod worker;
 
 pub use db::{open_read_only, CoreError};
@@ -38,3 +39,4 @@ pub use redact::{
     redact_pii_text, redact_secret_text, redact_secrets, redact_structure, SensitiveFinding,
     PII_REDACTION, REDACTION,
 };
+pub use viewer_scope::{scope_viewer, with_viewer, workspace_scope};

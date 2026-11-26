@@ -251,9 +251,16 @@ pub(crate) async fn hybrid_response(
 ) -> Option<Response> {
     let policy = resolve_hybrid_policy(&state.config.data_dir, effective_email, workspace_id);
     let question = strip_cloud_prefix(&req.message).to_string();
-    let allowed = workspace_id
-        .filter(|id| !id.is_empty())
-        .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let viewer = effective_email.and_then(|email| state.auth.graph_viewer(email));
+    let allowed = match workspace_id.filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer.as_deref()),
+        None => viewer.as_deref().map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     let semantic_contract = state
         .read_conn()
         .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));

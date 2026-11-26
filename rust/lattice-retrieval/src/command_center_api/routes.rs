@@ -82,6 +82,7 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
     }
     let email = caller.email.clone();
     let scope = caller.scope.clone();
+    let viewer = state.graph_viewer(&caller.email);
     let doc = wsos::load(state.store(), state.data_dir());
     let enable_graph = state.graph_enabled();
     let now_secs =
@@ -93,6 +94,7 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
                 query: &query,
                 user_email: &email,
                 workspace_id: scope.as_deref(),
+                viewer: viewer.as_deref(),
                 state: &doc,
                 limit,
                 enable_graph,

@@ -19,11 +19,15 @@ pub struct Sample {
     pub available: bool,
 }
 
-pub async fn graph_sample(state: &BrainState, workspace_id: Option<&str>) -> Sample {
+pub async fn graph_sample(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> Sample {
     if !state.graph_enabled() {
         return Sample::default();
     }
-    let allowed: Option<BTreeSet<String>> = workspace_id.map(|id| BTreeSet::from([id.to_string()]));
+    let allowed: Option<BTreeSet<String>> = state.scoped_workspace(workspace_id, user_email);
     let slice = state
         .read(move |conn| Ok(kg::graph_slice(conn, GRAPH_SAMPLE_LIMIT, allowed.as_ref()).ok()))
         .await

@@ -116,12 +116,10 @@ impl RetrievalApiState {
     }
 
     pub fn allowed_workspaces(&self, identity: &Identity) -> Option<BTreeSet<String>> {
-        if !self.auth.effective_require_auth() || identity.email.is_empty() {
-            return None;
-        }
-        self.scopes
-            .as_ref()
-            .map(|resolver| resolver.allowed_scopes(&identity.email))
+        let viewer = self.auth.graph_viewer(&identity.email)?;
+        self.scopes.as_ref().map(|resolver| {
+            lattice_core::with_viewer(resolver.allowed_scopes(&viewer), Some(&viewer))
+        })
     }
 
     pub fn guard(&self, headers: &HeaderMap) -> Result<(Identity, Scope), Response> {

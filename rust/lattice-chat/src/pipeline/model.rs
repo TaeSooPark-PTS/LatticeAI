@@ -75,6 +75,9 @@ pub(crate) async fn run_model_turn(
         &effective_query,
     )
     .await;
+    let viewer = effective_email
+        .as_deref()
+        .and_then(|email| state.auth.graph_viewer(email));
     let mut context_trace = None;
     let context_budget = lattice_retrieval::context_budget::ContextBudget::from_env(req.max_tokens);
     let mut context_request = lattice_retrieval::ContextRequest {
@@ -88,6 +91,7 @@ pub(crate) async fn run_model_turn(
         user_email: effective_email.clone(),
         conversation_id: req.conversation_id.clone(),
         workspace_id: workspace_id.clone(),
+        viewer: viewer.clone(),
         now_secs: turn_now,
         query_embedding: query_embed.query_vector.clone(),
         semantic_degraded: query_embed.degraded_reason.clone(),
@@ -134,19 +138,21 @@ pub(crate) async fn run_model_turn(
     }
 
     let prepared = if let Some(conn) = state.read_conn() {
-        documents::prepare(
+        documents::prepare_for(
             Some(&conn),
             &req.message,
             &prompt_context,
             workspace_id.as_deref(),
+            viewer.as_deref(),
             now_secs(),
         )
     } else {
-        documents::prepare(
+        documents::prepare_for(
             None,
             &req.message,
             &prompt_context,
             workspace_id.as_deref(),
+            viewer.as_deref(),
             now_secs(),
         )
     };
@@ -184,10 +190,15 @@ pub(crate) async fn run_model_turn(
         }
     }
 
-    let allowed = workspace_id
-        .as_deref()
-        .filter(|id| !id.is_empty())
-        .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let allowed = match workspace_id.as_deref().filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer.as_deref()),
+        None => viewer.as_deref().map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     let conn = state.read_conn();
     let mut trace_seed = build_graph_trace(
         conn.as_ref(),

@@ -355,6 +355,17 @@ pub fn prepare(
     workspace_id: Option<&str>,
     now_secs: f64,
 ) -> DocumentPreparation {
+    prepare_for(conn, message, context, workspace_id, None, now_secs)
+}
+
+pub fn prepare_for(
+    conn: Option<&rusqlite::Connection>,
+    message: &str,
+    context: &str,
+    workspace_id: Option<&str>,
+    viewer: Option<&str>,
+    now_secs: f64,
+) -> DocumentPreparation {
     let is_document = detect_document_intent(message);
     let mut prepared = DocumentPreparation {
         is_document,
@@ -364,14 +375,23 @@ pub fn prepare(
     let Some(conn) = conn.filter(|_| is_document) else {
         return prepared;
     };
+    let allowed_workspaces = match workspace_id.filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer),
+        None => viewer.map(|v| {
+            lattice_core::with_viewer(
+                [lattice_core::DEFAULT_WORKSPACE_ID.to_string()]
+                    .into_iter()
+                    .collect(),
+                Some(v),
+            )
+        }),
+    };
     let request = lattice_retrieval::docgen_context::DocumentContextRequest {
         query: message.to_string(),
         max_results: 10,
         max_hops: 2,
         scope: lattice_retrieval::service::Scope {
-            allowed_workspaces: workspace_id
-                .filter(|id| !id.is_empty())
-                .map(|id| [id.to_string()].into_iter().collect()),
+            allowed_workspaces,
             include_legacy_global: false,
         },
         now_secs,

@@ -288,15 +288,28 @@ async fn brain_entity_timeline(
     Path(entity_id): Path<String>,
     req: Request,
 ) -> Response {
-    let (_email, ws) = match auth_scope(&state, &req, false) {
+    let (email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let viewer = state.graph_viewer(&email);
     let q = Query::from_uri(req.uri());
     let as_of = q.get("as_of").map(str::to_string);
     let res = state
         .store()
         .read(move |conn| {
+            if let Some(ref v) = viewer {
+                let hidden = lattice_core::viewer_scope::foreign_conversation_ids(
+                    conn,
+                    std::slice::from_ref(&entity_id),
+                    v,
+                )?;
+                if hidden.contains(&entity_id) {
+                    return Err(CoreError::InvalidRequest(format!(
+                        "entity not found: '{entity_id}'"
+                    )));
+                }
+            }
             let row: Option<(String, String)> = conn
                 .query_row(
                     "SELECT COALESCE(NULLIF(TRIM(n.title), ''), n.id),
@@ -318,7 +331,40 @@ async fn brain_entity_timeline(
                 }
                 None => entity_id,
             };
-            query_temporal_timeline(conn, Some(&ws), &subject, as_of.as_deref())
+            let mut summary = query_temporal_timeline(conn, Some(&ws), &subject, as_of.as_deref())?;
+            if let Some(ref v) = viewer {
+                let scope = lattice_core::workspace_scope(Some(&ws), Some(v));
+                summary.active_facts = lattice_core::viewer_scope::retain_visible_to_viewer(
+                    conn,
+                    summary.active_facts,
+                    scope.as_ref(),
+                    |f| f.node_id.clone(),
+                )?;
+                summary.historical_facts = lattice_core::viewer_scope::retain_visible_to_viewer(
+                    conn,
+                    summary.historical_facts,
+                    scope.as_ref(),
+                    |f| f.node_id.clone(),
+                )?;
+                summary.unreached_facts = lattice_core::viewer_scope::retain_visible_to_viewer(
+                    conn,
+                    summary.unreached_facts,
+                    scope.as_ref(),
+                    |f| f.node_id.clone(),
+                )?;
+                let visible_ids: std::collections::HashSet<&str> = summary
+                    .active_facts
+                    .iter()
+                    .chain(summary.historical_facts.iter())
+                    .chain(summary.unreached_facts.iter())
+                    .map(|f| f.node_id.as_str())
+                    .collect();
+                summary.classifications.retain(|c| {
+                    visible_ids.contains(c.from_node.as_str())
+                        && visible_ids.contains(c.to_node.as_str())
+                });
+            }
+            Ok(summary)
         })
         .await;
     match res {
@@ -328,10 +374,11 @@ async fn brain_entity_timeline(
 }
 
 async fn brain_relationship_evolution(State(state): State<BrainState>, req: Request) -> Response {
-    let (_email, ws) = match auth_scope(&state, &req, false) {
+    let (email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let viewer = state.graph_viewer(&email);
     let ws_c = ws.clone();
     let res = state
         .store()
@@ -345,7 +392,7 @@ async fn brain_relationship_evolution(State(state): State<BrainState>, req: Requ
                  WHERE COALESCE(NULLIF(TRIM(a.workspace_id), ''), 'personal') = ?1
                  ORDER BY e.created_at DESC LIMIT 200",
             )?;
-            let rows: Vec<Value> = stmt
+            let mut rows: Vec<Value> = stmt
                 .query_map(rusqlite::params![ws_c], |r| {
                     let ev_raw: String = r.get::<_, Option<String>>(6)?.unwrap_or_else(|| "[]".into());
                     let evidence: Value = serde_json::from_str(&ev_raw).unwrap_or_else(|_| json!([]));
@@ -377,6 +424,25 @@ async fn brain_relationship_evolution(State(state): State<BrainState>, req: Requ
                 })?
                 .filter_map(Result::ok)
                 .collect();
+            if let Some(ref v) = viewer {
+                let ids: Vec<String> = rows
+                    .iter()
+                    .flat_map(|row| {
+                        [
+                            row.get("source").and_then(Value::as_str).unwrap_or_default().to_string(),
+                            row.get("target").and_then(Value::as_str).unwrap_or_default().to_string(),
+                        ]
+                    })
+                    .collect();
+                let hidden = lattice_core::viewer_scope::foreign_conversation_ids(conn, &ids, v)?;
+                if !hidden.is_empty() {
+                    rows.retain(|row| {
+                        let s = row.get("source").and_then(Value::as_str).unwrap_or_default();
+                        let t = row.get("target").and_then(Value::as_str).unwrap_or_default();
+                        !hidden.contains(s) && !hidden.contains(t)
+                    });
+                }
+            }
             Ok(rows)
         })
         .await;
@@ -387,10 +453,11 @@ async fn brain_relationship_evolution(State(state): State<BrainState>, req: Requ
 }
 
 async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> Response {
-    let (_email, ws) = match auth_scope(&state, &req, false) {
+    let (email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let viewer = state.graph_viewer(&email);
     let ws_c = ws.clone();
     let res = state
         .store()
@@ -408,6 +475,13 @@ async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> 
                 })?
                 .filter_map(Result::ok)
                 .collect();
+            let scope = lattice_core::workspace_scope(Some(&ws_c), viewer.as_deref());
+            let nodes = lattice_core::viewer_scope::retain_visible_to_viewer(
+                conn,
+                nodes,
+                scope.as_ref(),
+                |(id, _, _)| id.clone(),
+            )?;
             let mut label: HashMap<String, String> = nodes
                 .iter()
                 .map(|(id, _, _)| (id.clone(), id.clone()))
@@ -470,10 +544,11 @@ async fn brain_topic_clusters(State(state): State<BrainState>, req: Request) -> 
 }
 
 async fn brain_knowledge_gaps(State(state): State<BrainState>, req: Request) -> Response {
-    let (_email, ws) = match auth_scope(&state, &req, false) {
+    let (email, ws) = match auth_scope(&state, &req, false) {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let viewer = state.graph_viewer(&email);
     let ws_c = ws.clone();
     let res = state
         .store()
@@ -489,7 +564,7 @@ async fn brain_knowledge_gaps(State(state): State<BrainState>, req: Request) -> 
             )?;
             let mut isolated = Vec::new();
             let mut missing_provenance = Vec::new();
-            for row in stmt
+            let raw_rows: Vec<(String, String, String, i64, String)> = stmt
                 .query_map(rusqlite::params![ws_c], |r| {
                     Ok((
                         r.get::<_, String>(0)?,
@@ -500,7 +575,15 @@ async fn brain_knowledge_gaps(State(state): State<BrainState>, req: Request) -> 
                     ))
                 })?
                 .filter_map(Result::ok)
-            {
+                .collect();
+            let scope = lattice_core::workspace_scope(Some(&ws_c), viewer.as_deref());
+            let rows = lattice_core::viewer_scope::retain_visible_to_viewer(
+                conn,
+                raw_rows,
+                scope.as_ref(),
+                |(id, _, _, _, _)| id.clone(),
+            )?;
+            for row in rows {
                 let (id, title, ntype, deg, src) = row;
                 if deg == 0 {
                     isolated.push(json!({"id": id, "title": title, "type": ntype}));

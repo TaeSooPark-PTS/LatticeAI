@@ -117,10 +117,26 @@ pub fn read_facts(
         facts.push(fact);
     }
     if let Some(allowed) = allowed {
+        let workspaces: BTreeSet<&str> = lattice_core::viewer_scope::workspace_entries(allowed)
+            .map(String::as_str)
+            .collect();
         facts.retain(|fact| match fact.get("workspace_id") {
-            Some(Value::String(workspace)) if !workspace.is_empty() => allowed.contains(workspace),
+            Some(Value::String(workspace)) if !workspace.is_empty() => {
+                workspaces.contains(workspace.as_str())
+            }
             _ => true,
         });
+        facts = lattice_core::viewer_scope::retain_visible_to_viewer(
+            conn,
+            facts,
+            Some(allowed),
+            |fact| {
+                fact.get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string()
+            },
+        )?;
     }
     facts.sort_by(|left, right| {
         let rank = |fact: &OrderedMap| {
@@ -145,11 +161,19 @@ pub fn read_facts(
 pub fn profile(
     conn: &Connection,
     workspace_id: Option<&str>,
+    viewer: Option<&str>,
     user_email: &str,
     now: &str,
 ) -> Result<OrderedMap, CoreError> {
-    let allowed: Option<BTreeSet<String>> =
-        workspace_id.map(|workspace| [workspace.to_string()].into_iter().collect());
+    let allowed: Option<BTreeSet<String>> = match workspace_id {
+        Some(workspace) => lattice_core::workspace_scope(Some(workspace), viewer),
+        None => viewer.map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     let facts = read_facts(conn, allowed.as_ref())?;
     let mut counts = OrderedMap::new();
     for kind in KIND_ORDER {
@@ -287,7 +311,7 @@ mod tests {
     fn the_profile_carries_the_listing_the_summary_and_the_kind_options() {
         let (_dir, conn) = store();
         let body = serde_json::to_value(
-            profile(&conn, Some("personal"), "owner@x", "t").expect("profile"),
+            profile(&conn, Some("personal"), None, "owner@x", "t").expect("profile"),
         )
         .expect("json");
         assert_eq!(body["available"], true);

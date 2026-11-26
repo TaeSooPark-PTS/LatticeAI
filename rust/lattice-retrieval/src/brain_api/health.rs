@@ -8,8 +8,12 @@ use super::pyutil::{self, py_round};
 use super::quality::EdgeQuality;
 use super::sampling::{self, Sample, STALE_DAYS};
 
-pub async fn health_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
-    let sample = sampling::graph_sample(state, workspace_id).await;
+pub async fn health_report(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> OrderedMap {
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     let index_status = read_index_status(state).await;
     build_health_report(
         &sample,

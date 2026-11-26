@@ -17,6 +17,8 @@ impl WorkspaceScopes {
 
     fn ids(listing: &Value) -> BTreeSet<String> {
         listing
+            .get("workspaces")
+            .unwrap_or(listing)
             .as_array()
             .map(|rows| {
                 rows.iter()
@@ -61,6 +63,25 @@ mod tests {
             "an empty or missing id would otherwise become a scope that matches \
              rows carrying no workspace at all"
         );
+    }
+
+    #[test]
+    fn the_service_listing_object_yields_its_workspace_ids() {
+        let listing = json!({
+            "active_workspace": "personal",
+            "workspaces": [
+                {"workspace_id": "personal", "id": "personal", "type": "personal"},
+                {"workspace_id": "org-1", "id": "org-1", "type": "organization"},
+            ],
+            "roles": ["owner"],
+        });
+        assert_eq!(
+            WorkspaceScopes::ids(&listing),
+            BTreeSet::from(["personal".to_string(), "org-1".to_string()]),
+            "list_workspaces answers an object, and reading it as an array left every \
+             signed-in search with no workspace at all"
+        );
+        assert!(WorkspaceScopes::ids(&json!({"workspaces": {}})).is_empty());
     }
 
     #[test]

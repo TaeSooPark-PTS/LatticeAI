@@ -96,6 +96,7 @@ pub fn recall(
         query,
         user_email,
         workspace_id,
+        None,
         limit,
         None,
         None,
@@ -110,6 +111,7 @@ pub fn recall_with_query_vector(
     query: &str,
     user_email: &str,
     workspace_id: Option<&str>,
+    viewer: Option<&str>,
     limit: i64,
     query_embedding: Option<&crate::bm25::QueryVectorOverride>,
     semantic_degraded: Option<&str>,
@@ -158,8 +160,15 @@ pub fn recall_with_query_vector(
         results.push(row);
     }
 
-    let allowed: Option<BTreeSet<String>> =
-        workspace_id.map(|workspace| [workspace.to_string()].into_iter().collect());
+    let allowed: Option<BTreeSet<String>> = match workspace_id {
+        Some(workspace) => lattice_core::workspace_scope(Some(workspace), viewer),
+        None => viewer.map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     if graph_enabled && !q.is_empty() {
         match crate::keyword::search(conn, &search_q, limit, allowed.as_ref(), false) {
             Ok(payload) => {

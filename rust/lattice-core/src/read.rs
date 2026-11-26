@@ -171,9 +171,7 @@ pub fn workspace_membership_sql(
     include_legacy_global: bool,
 ) -> Option<(String, Vec<String>)> {
     let allowed = allowed?;
-    let names: Vec<String> = allowed
-        .iter()
-        .filter(|value| !value.is_empty())
+    let names: Vec<String> = crate::viewer_scope::workspace_entries(allowed)
         .cloned()
         .collect();
     let sees_personal_null = names.iter().any(|name| name == DEFAULT_WORKSPACE_ID);
@@ -192,7 +190,18 @@ pub fn workspace_membership_sql(
     if clauses.is_empty() {
         return Some(("0".into(), Vec::new()));
     }
-    Some((clauses.join(" OR "), params))
+    let membership = clauses.join(" OR ");
+    match crate::viewer_scope::scope_viewer(Some(allowed)) {
+        None => Some((membership, params)),
+        Some(viewer) => {
+            params.push(viewer.to_string());
+            let owner = crate::viewer_scope::owner_visible_sql(
+                &crate::viewer_scope::NODES_V2_OWNER_COLUMNS,
+                "?",
+            );
+            Some((format!("({membership}) AND {owner}"), params))
+        }
+    }
 }
 
 pub fn filter_scoped_nodes<T, F>(
@@ -205,12 +214,10 @@ pub fn filter_scoped_nodes<T, F>(
 where
     F: Fn(&T) -> String,
 {
-    let Some(allowed) = allowed else {
+    let Some(scope) = allowed else {
         return Ok(items);
     };
-    let allowed: BTreeSet<&str> = allowed
-        .iter()
-        .filter(|w| !w.is_empty())
+    let allowed: BTreeSet<&str> = crate::viewer_scope::workspace_entries(scope)
         .map(String::as_str)
         .collect();
     let ids: Vec<String> = items.iter().map(&id_of).collect();
@@ -238,7 +245,7 @@ where
             }
         }
     }
-    Ok(visible)
+    crate::viewer_scope::retain_visible_to_viewer(conn, visible, Some(scope), id_of)
 }
 
 #[cfg(test)]

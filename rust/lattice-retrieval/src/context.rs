@@ -12,13 +12,22 @@ use crate::service::Scope;
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 use crate::shape::truthy;
 
-fn knowledge_scope(workspace_id: Option<&str>) -> Scope {
+fn knowledge_scope(workspace_id: Option<&str>, viewer: Option<&str>) -> Scope {
     match workspace_id.filter(|id| !id.is_empty()) {
         Some(id) => Scope {
-            allowed_workspaces: Some(BTreeSet::from([id.to_string()])),
+            allowed_workspaces: lattice_core::workspace_scope(Some(id), viewer),
             include_legacy_global: false,
         },
-        None => Scope::default(),
+        None => match viewer.and_then(lattice_core::viewer_scope::normalize_viewer) {
+            Some(v) => Scope {
+                allowed_workspaces: Some(lattice_core::with_viewer(
+                    BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                    Some(&v),
+                )),
+                include_legacy_global: true,
+            },
+            None => Scope::default(),
+        },
     }
 }
 
@@ -85,6 +94,7 @@ pub struct ContextRequest {
     pub user_email: Option<String>,
     pub conversation_id: Option<String>,
     pub workspace_id: Option<String>,
+    pub viewer: Option<String>,
     pub now_secs: f64,
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
@@ -344,7 +354,7 @@ fn assembled_text(sections: &[Section]) -> String {
 fn knowledge_options(request: &ContextRequest, limit: i64) -> ServiceHybridOptions {
     ServiceHybridOptions {
         limit,
-        scope: knowledge_scope(request.workspace_id.as_deref()),
+        scope: knowledge_scope(request.workspace_id.as_deref(), request.viewer.as_deref()),
         now_secs: request.now_secs,
         query_embedding: request.query_embedding.clone(),
         semantic_degraded: request.semantic_degraded.clone(),
