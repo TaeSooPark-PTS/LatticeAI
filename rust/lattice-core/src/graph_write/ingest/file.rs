@@ -3,6 +3,7 @@ use serde_json::{json, Map, Value};
 use crate::db::CoreError;
 use crate::pytext::truncate_chars;
 
+use super::super::chunk_parents::purge_stale_chunks;
 use super::super::pyaux::{
     scoped_hash_id, scoped_slug_id, sha256_bytes, sha256_text, stamp_sensitivity,
 };
@@ -12,6 +13,21 @@ use super::{extension_of, IngestOutcome};
 
 impl GraphWriter {
     pub fn ingest_file(&self, request: &IngestFileRequest) -> Result<IngestOutcome, CoreError> {
+        self.write_file(request, false)
+    }
+
+    pub fn ingest_file_superseding(
+        &self,
+        request: &IngestFileRequest,
+    ) -> Result<IngestOutcome, CoreError> {
+        self.write_file(request, true)
+    }
+
+    fn write_file(
+        &self,
+        request: &IngestFileRequest,
+        supersede: bool,
+    ) -> Result<IngestOutcome, CoreError> {
         let data = std::fs::read(&request.path).map_err(|err| {
             CoreError::Io(format!(
                 "cannot read the file being ingested {}: {err}",
@@ -117,6 +133,9 @@ impl GraphWriter {
         let mut chunk_ids: Vec<String> = Vec::new();
         let (source_node_id, duplicate) = self.store.with_write_txn(|txn| {
             let duplicate = self.node_exists(txn, &file_id)?;
+            if super::super::identity::foreign_owner(txn, &file_id, owner.as_deref())?.is_some() {
+                return Ok((None, true));
+            }
             self.upsert_node_with_vector(
                 txn,
                 &NodeSpec {
@@ -215,6 +234,12 @@ impl GraphWriter {
                     },
                 )?;
             }
+            let parent_ids = super::super::chunk_parents::write_chunk_parents(
+                txn,
+                &file_id,
+                &request.parents,
+                &self.clock.now_iso(),
+            )?;
             chunk_ids = self.write_chunks(
                 txn,
                 &request.chunks,
@@ -223,7 +248,19 @@ impl GraphWriter {
                 owner.as_deref(),
                 request.workspace_id.as_deref(),
                 true,
+                &parent_ids,
             )?;
+            if !request.chunks.is_empty() {
+                purge_stale_chunks(txn, &file_id, &chunk_ids, &parent_ids)?;
+            }
+            if supersede {
+                super::super::identity::supersede_prior_versions(
+                    txn,
+                    &file_id,
+                    &filename,
+                    &self.clock.now_iso(),
+                )?;
+            }
             let concept_ids = self.write_concepts(
                 txn,
                 &request.concepts,

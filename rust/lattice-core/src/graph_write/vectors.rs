@@ -354,7 +354,10 @@ impl GraphWriter {
             })?;
             for row in rows {
                 let (chunk_id, parent, chunk_text, metadata_json) = row?;
-                let text = clean_text(chunk_text.as_deref().unwrap_or(""));
+                let text = clean_text(&super::chunk_parents::chunk_index_text_json(
+                    chunk_text.as_deref().unwrap_or(""),
+                    Some(&metadata_json),
+                ));
                 if text.is_empty() {
                     continue;
                 }
@@ -635,7 +638,10 @@ impl GraphWriter {
             })?;
             for row in rows {
                 let (chunk_id, parent, chunk_text, metadata_json) = row?;
-                let text = clean_text(chunk_text.as_deref().unwrap_or(""));
+                let text = clean_text(&super::chunk_parents::chunk_index_text_json(
+                    chunk_text.as_deref().unwrap_or(""),
+                    Some(&metadata_json),
+                ));
                 if text.is_empty() {
                     continue;
                 }

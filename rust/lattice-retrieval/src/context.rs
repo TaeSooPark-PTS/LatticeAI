@@ -1,6 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
+use lattice_core::graph_write::chunk_parents::ChunkParentRow;
 use lattice_core::pytext::truncate_chars;
+use lattice_core::tokens::{estimate_tokens, truncate_to_tokens};
 use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
@@ -10,13 +12,22 @@ use crate::service::Scope;
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 use crate::shape::truthy;
 
-fn knowledge_scope(workspace_id: Option<&str>) -> Scope {
+fn knowledge_scope(workspace_id: Option<&str>, viewer: Option<&str>) -> Scope {
     match workspace_id.filter(|id| !id.is_empty()) {
         Some(id) => Scope {
-            allowed_workspaces: Some(BTreeSet::from([id.to_string()])),
+            allowed_workspaces: lattice_core::workspace_scope(Some(id), viewer),
             include_legacy_global: false,
         },
-        None => Scope::default(),
+        None => match viewer.and_then(lattice_core::viewer_scope::normalize_viewer) {
+            Some(v) => Scope {
+                allowed_workspaces: Some(lattice_core::with_viewer(
+                    BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                    Some(&v),
+                )),
+                include_legacy_global: true,
+            },
+            None => Scope::default(),
+        },
     }
 }
 
@@ -38,11 +49,22 @@ impl Section {
         approx_tokens(&self.content)
     }
 
-    fn as_trace(&self) -> Value {
+    fn measured(&self, density_aware: bool) -> usize {
+        if density_aware {
+            estimate_tokens(&self.content)
+        } else {
+            self.approx_tokens()
+        }
+    }
+
+    fn as_trace(&self, density_aware: bool) -> Value {
         let mut trace = Map::new();
         trace.insert("name".into(), Value::String(self.name.to_string()));
         trace.insert("source".into(), Value::String(self.source.to_string()));
-        trace.insert("approx_tokens".into(), Value::from(self.approx_tokens()));
+        trace.insert(
+            "approx_tokens".into(),
+            Value::from(self.measured(density_aware)),
+        );
         trace.insert("truncated".into(), Value::Bool(self.truncated));
         trace.insert("provenance".into(), Value::Array(self.provenance.clone()));
         Value::Object(trace)
@@ -72,9 +94,35 @@ pub struct ContextRequest {
     pub user_email: Option<String>,
     pub conversation_id: Option<String>,
     pub workspace_id: Option<String>,
+    pub viewer: Option<String>,
     pub now_secs: f64,
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
+    pub knowledge_payload: Option<Value>,
+    pub density_aware: bool,
+    pub temporal: Option<crate::temporal::TemporalRanking>,
+    pub sub_queries: Vec<String>,
+    pub annotate_temporal: bool,
+}
+
+pub const SUB_QUERY_WEIGHT: f64 = 0.9;
+
+pub const EVIDENCE_RULES: &str = "Evidence rules: each item below carries [updated | status]. Prefer the newest item whose status is active. Treat superseded items as history, never as current fact. When items conflict, answer from the newest active one and say what changed and when.";
+
+pub fn evidence_label(item: &Value) -> String {
+    let status = item
+        .get("temporal")
+        .and_then(|temporal| temporal.get("status"))
+        .or_else(|| item.get("status"))
+        .and_then(Value::as_str)
+        .filter(|status| !status.is_empty())
+        .unwrap_or("active");
+    let updated = item
+        .get("updated_at")
+        .and_then(Value::as_str)
+        .filter(|stamp| !stamp.is_empty())
+        .unwrap_or("unknown");
+    format!("[updated: {updated} | status: {status}]")
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -171,15 +219,67 @@ fn artifacts_section(payload: &Value) -> Section {
     }
 }
 
-fn knowledge_section(payload: &Value, limit: i64) -> Section {
+fn knowledge_section(
+    payload: &Value,
+    limit: i64,
+    parents: &BTreeMap<String, ChunkParentRow>,
+    annotate: bool,
+) -> Section {
+    let label = |item: &Value| {
+        if annotate {
+            format!("{} ", evidence_label(item))
+        } else {
+            String::new()
+        }
+    };
     let empty: Vec<Value> = Vec::new();
     let matches = payload
         .get("matches")
         .and_then(Value::as_array)
         .unwrap_or(&empty);
     let mut lines = Vec::new();
-    let mut provenance = Vec::new();
+    let mut provenance: Vec<Value> = Vec::new();
+    let mut emitted_parents: BTreeMap<String, usize> = BTreeMap::new();
     for item in matches.iter().take(limit.max(0) as usize) {
+        let parent = crate::context_parents::parent_id_of(item)
+            .and_then(|id| parents.get(id).map(|row| (id.to_string(), row)));
+        if let Some((parent_id, row)) = parent {
+            if let Some(slot) = emitted_parents.get(&parent_id) {
+                if let Some(Value::Object(record)) = provenance.get_mut(*slot) {
+                    if let Some(Value::Array(children)) = record.get_mut("children") {
+                        children.push(item.get("id").cloned().unwrap_or(Value::Null));
+                    }
+                }
+                continue;
+            }
+            let title = item
+                .get("title")
+                .filter(|value| truthy(value))
+                .or_else(|| item.get("id").filter(|value| truthy(value)))
+                .map(string_of_ref)
+                .unwrap_or_else(|| "item".to_string());
+            let body =
+                truncate_to_tokens(row.text.trim(), crate::context_parents::MAX_PARENT_TOKENS);
+            lines.push(format!("- {}{title}: {body}", label(item)));
+            let mut record = Map::new();
+            record.insert("id".into(), item.get("id").cloned().unwrap_or(Value::Null));
+            record.insert(
+                "score".into(),
+                item.get("score").cloned().unwrap_or(Value::Null),
+            );
+            record.insert(
+                "sources".into(),
+                item.get("sources").cloned().unwrap_or(Value::Null),
+            );
+            record.insert("parent_id".into(), Value::String(parent_id.clone()));
+            record.insert(
+                "children".into(),
+                Value::Array(vec![item.get("id").cloned().unwrap_or(Value::Null)]),
+            );
+            emitted_parents.insert(parent_id, provenance.len());
+            provenance.push(Value::Object(record));
+            continue;
+        }
         let title = item
             .get("title")
             .filter(|value| truthy(value))
@@ -192,9 +292,9 @@ fn knowledge_section(payload: &Value, limit: i64) -> Section {
             .or_else(|| item.get("snippet").filter(|value| truthy(value)));
         let body = truncate_chars(&body_source.map(string_of_ref).unwrap_or_default(), 400);
         lines.push(if body.is_empty() {
-            format!("- {title}")
+            format!("- {}{title}", label(item))
         } else {
-            format!("- {title}: {body}")
+            format!("- {}{title}: {body}", label(item))
         });
         let mut record = Map::new();
         record.insert("id".into(), item.get("id").cloned().unwrap_or(Value::Null));
@@ -208,6 +308,9 @@ fn knowledge_section(payload: &Value, limit: i64) -> Section {
         );
         provenance.push(Value::Object(record));
     }
+    if annotate && !lines.is_empty() {
+        lines.insert(0, EVIDENCE_RULES.to_string());
+    }
     Section {
         name: "Knowledge",
         source: "knowledge",
@@ -217,7 +320,7 @@ fn knowledge_section(payload: &Value, limit: i64) -> Section {
     }
 }
 
-fn apply_budget(sections: &mut [Section], budget: i64) {
+fn apply_budget_with(sections: &mut [Section], budget: i64, density_aware: bool) {
     let budget = budget.max(1) as usize;
     let mut used = 0usize;
     for section in sections.iter_mut() {
@@ -227,11 +330,15 @@ fn apply_budget(sections: &mut [Section], budget: i64) {
             section.truncated = true;
             continue;
         }
-        if section.approx_tokens() > remaining {
-            section.content = truncate_chars(&section.content, remaining * 4);
+        if section.measured(density_aware) > remaining {
+            section.content = if density_aware {
+                truncate_to_tokens(&section.content, remaining)
+            } else {
+                truncate_chars(&section.content, remaining * 4)
+            };
             section.truncated = true;
         }
-        used += section.approx_tokens();
+        used += section.measured(density_aware);
     }
 }
 
@@ -242,6 +349,158 @@ fn assembled_text(sections: &[Section]) -> String {
         .map(|section| format!("[{}]\n{}", section.name, section.content.trim()))
         .collect::<Vec<_>>()
         .join("\n\n")
+}
+
+fn knowledge_options(request: &ContextRequest, limit: i64) -> ServiceHybridOptions {
+    ServiceHybridOptions {
+        limit,
+        scope: knowledge_scope(request.workspace_id.as_deref(), request.viewer.as_deref()),
+        now_secs: request.now_secs,
+        query_embedding: request.query_embedding.clone(),
+        semantic_degraded: request.semantic_degraded.clone(),
+        ..ServiceHybridOptions::default()
+    }
+}
+
+pub fn knowledge_fetch_limit(request: &ContextRequest) -> i64 {
+    request
+        .knowledge_limit
+        .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64)
+}
+
+fn match_key(item: &Value) -> String {
+    string_of(
+        item.get("id")
+            .filter(|value| truthy(value))
+            .or_else(|| item.get("node_id")),
+    )
+}
+
+fn score_of(item: &Value) -> f64 {
+    item.get("score").and_then(Value::as_f64).unwrap_or(0.0)
+}
+
+pub fn merge_query_matches(primary: &mut Value, others: Vec<Value>, limit: usize) {
+    let Some(matches) = primary.get_mut("matches").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let mut positions: BTreeMap<String, usize> = matches
+        .iter()
+        .enumerate()
+        .map(|(position, item)| (match_key(item), position))
+        .collect();
+    for report in others {
+        let Some(found) = report.get("matches").and_then(Value::as_array) else {
+            continue;
+        };
+        for item in found {
+            let mut item = item.clone();
+            let weighted = score_of(&item) * SUB_QUERY_WEIGHT;
+            if let Some(object) = item.as_object_mut() {
+                object.insert("score".into(), Value::from(weighted));
+            }
+            match positions.get(&match_key(&item)) {
+                Some(position) => {
+                    if weighted > score_of(&matches[*position]) {
+                        if let Some(object) = matches[*position].as_object_mut() {
+                            object.insert("score".into(), Value::from(weighted));
+                        }
+                    }
+                }
+                None => {
+                    positions.insert(match_key(&item), matches.len());
+                    matches.push(item);
+                }
+            }
+        }
+    }
+    matches.sort_by(|a, b| {
+        score_of(b)
+            .partial_cmp(&score_of(a))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    matches.truncate(limit);
+    for (index, item) in matches.iter_mut().enumerate() {
+        if let Some(object) = item.as_object_mut() {
+            if object.contains_key("rank") {
+                object.insert("rank".into(), Value::from(index + 1));
+            }
+        }
+    }
+}
+
+fn sub_search_texts(request: &ContextRequest, primary: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for query in &request.sub_queries {
+        let text = match request.temporal.as_ref() {
+            Some(ranking) => crate::temporal::search_text_for(query, request.now_secs, ranking),
+            None => query.trim().to_string(),
+        };
+        if !text.is_empty() && text != primary && !out.contains(&text) {
+            out.push(text);
+        }
+    }
+    out
+}
+
+fn multi_query_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+    primary: &str,
+    options: &ServiceHybridOptions,
+) -> Result<Value, CoreError> {
+    let mut report = service_hybrid_search(conn, model, primary, options)?;
+    let mut others = Vec::new();
+    for query in sub_search_texts(request, primary) {
+        others.push(service_hybrid_search(conn, model, &query, options)?);
+    }
+    if !others.is_empty() {
+        merge_query_matches(&mut report, others, options.limit.clamp(1, 100) as usize);
+    }
+    Ok(report)
+}
+
+pub fn knowledge_search_ranked(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+) -> Result<(Value, Option<crate::temporal::TemporalPlan>), CoreError> {
+    let limit = knowledge_fetch_limit(request);
+    let Some(ranking) = request.temporal.as_ref() else {
+        let options = knowledge_options(request, limit);
+        return Ok((
+            multi_query_search(conn, model, request, &request.query, &options)?,
+            None,
+        ));
+    };
+    let (payload, plan) = crate::temporal::prepare_ranked(
+        conn,
+        &request.query,
+        request.now_secs,
+        ranking,
+        limit,
+        true,
+        |call| {
+            let mut options = knowledge_options(request, call.fetch_limit);
+            options.recency = Some(call.decay);
+            options.include_historical = call.include_historical;
+            multi_query_search(conn, model, request, &call.search_query, &options)
+        },
+    )?;
+    Ok((payload, Some(plan)))
+}
+
+pub fn knowledge_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+) -> Result<Value, CoreError> {
+    let (mut payload, plan) = knowledge_search_ranked(conn, model, request)?;
+    if let Some(mut plan) = plan {
+        plan.apply_finalize(&mut payload, knowledge_fetch_limit(request) as usize);
+    }
+    Ok(payload)
 }
 
 pub fn assemble_context(
@@ -257,20 +516,18 @@ pub fn assemble_context(
         sections.push(artifacts_section(artifacts));
     }
     if request.knowledge {
-        let payload = service_hybrid_search(
-            conn,
-            model,
-            &request.query,
-            &ServiceHybridOptions {
-                limit: request.knowledge_limit,
-                scope: knowledge_scope(request.workspace_id.as_deref()),
-                now_secs: request.now_secs,
-                query_embedding: request.query_embedding.clone(),
-                semantic_degraded: request.semantic_degraded.clone(),
-                ..ServiceHybridOptions::default()
-            },
-        )?;
-        sections.push(knowledge_section(&payload, request.knowledge_limit));
+        let payload = match request.knowledge_payload.as_ref() {
+            Some(prepared) => prepared.clone(),
+            None => knowledge_search(conn, model, request)?,
+        };
+        let parents =
+            crate::context_parents::parents_for_payload(conn, &payload, request.knowledge_limit);
+        sections.push(knowledge_section(
+            &payload,
+            request.knowledge_limit,
+            &parents,
+            request.annotate_temporal,
+        ));
     }
     if let Some(notes) = request.notes.as_ref() {
         sections.push(Section {
@@ -306,15 +563,27 @@ pub fn assemble_context(
     }
 
     sections.retain(|section| !section.content.trim().is_empty());
-    apply_budget(&mut sections, request.budget);
+    let density = request.density_aware;
+    apply_budget_with(&mut sections, request.budget, density);
 
-    let used: usize = sections.iter().map(Section::approx_tokens).sum();
+    let used: usize = sections
+        .iter()
+        .map(|section| section.measured(density))
+        .sum();
     let mut trace = Map::new();
     trace.insert("budget_approx_tokens".into(), Value::from(request.budget));
     trace.insert("used_approx_tokens".into(), Value::from(used));
+    if density {
+        trace.insert("token_estimator".into(), Value::from("density"));
+    }
     trace.insert(
         "sections".into(),
-        Value::Array(sections.iter().map(Section::as_trace).collect()),
+        Value::Array(
+            sections
+                .iter()
+                .map(|section| section.as_trace(density))
+                .collect(),
+        ),
     );
 
     let mut out = Map::new();
@@ -355,7 +624,7 @@ mod tests {
             section("second", &"b".repeat(40)),
             section("third", &"c".repeat(40)),
         ];
-        apply_budget(&mut sections, 12);
+        apply_budget_with(&mut sections, 12, false);
         assert_eq!(sections[0].content.len(), 40);
         assert!(!sections[0].truncated);
         assert_eq!(
@@ -373,11 +642,11 @@ mod tests {
     #[test]
     fn a_budget_below_one_still_admits_one_token() {
         let mut sections = vec![section("first", "abcdefgh")];
-        apply_budget(&mut sections, 0);
+        apply_budget_with(&mut sections, 0, false);
         assert_eq!(sections[0].content, "abcd");
         assert!(sections[0].truncated);
         let mut korean = vec![section("first", "회의 결정 사항입니다")];
-        apply_budget(&mut korean, 1);
+        apply_budget_with(&mut korean, 1, false);
         assert_eq!(
             korean[0].content.chars().count(),
             4,
@@ -442,14 +711,20 @@ mod tests {
             {"id": "n2", "summary": "", "snippet": "from snippet"},
             {"summary": ""},
         ]});
-        let built = knowledge_section(&payload, 5);
+        let built = knowledge_section(&payload, 5, &BTreeMap::new(), false);
         assert_eq!(built.content, "- Title: Body\n- n2: from snippet\n- item");
         assert_eq!(built.provenance[2]["id"], Value::Null);
         assert_eq!(built.provenance[0]["sources"], json!(["keyword"]));
-        assert_eq!(knowledge_section(&payload, 1).content, "- Title: Body");
+        assert_eq!(
+            knowledge_section(&payload, 1, &BTreeMap::new(), false).content,
+            "- Title: Body"
+        );
         let long = json!({"matches": [{"id": "x", "summary": "가".repeat(500)}]});
         assert_eq!(
-            knowledge_section(&long, 5).content.chars().count(),
+            knowledge_section(&long, 5, &BTreeMap::new(), false)
+                .content
+                .chars()
+                .count(),
             400 + "- x: ".len()
         );
     }
@@ -570,5 +845,69 @@ mod tests {
         )
         .unwrap();
         assert_eq!(match_ids(&stamped), vec!["team".to_string()]);
+    }
+
+    #[test]
+    fn a_prepared_knowledge_payload_replaces_the_inline_search_in_its_order() {
+        let (_dir, conn) = knowledge_graph();
+        let model = LocalEmbeddingModel::new(384);
+        let mut request = ContextRequest {
+            query: "phoenix".into(),
+            budget: 2000,
+            knowledge_limit: 5,
+            knowledge: true,
+            ..Default::default()
+        };
+        let searched = knowledge_search(&conn, &model, &request).unwrap();
+        assert_eq!(searched["matches"][0]["id"], json!("note"));
+        request.knowledge_payload = Some(json!({"matches": [
+            {"id": "reranked", "title": "Promoted", "summary": "cross-encoder pick"},
+            {"id": "note", "title": "Phoenix launch notes", "summary": "the phoenix plan"},
+        ]}));
+        let out = assemble_context(&conn, &model, &request).unwrap();
+        assert_eq!(
+            match_ids(&out),
+            vec!["reranked".to_string(), "note".to_string()]
+        );
+        assert!(out["text"]
+            .as_str()
+            .unwrap()
+            .contains("Promoted: cross-encoder pick"));
+    }
+
+    #[test]
+    fn evidence_labels_and_rules_appear_only_when_annotating() {
+        let payload = json!({"matches": [
+            {"id": "n1", "title": "New", "summary": "port 2", "updated_at": "2026-08-01T00:00:00",
+             "temporal": {"status": "active"}},
+            {"id": "n0", "title": "Old", "summary": "port 1", "status": "superseded"},
+        ]});
+        let plain = knowledge_section(&payload, 5, &BTreeMap::new(), false);
+        assert_eq!(plain.content, "- New: port 2\n- Old: port 1");
+        let labelled = knowledge_section(&payload, 5, &BTreeMap::new(), true);
+        assert_eq!(
+            labelled.content,
+            format!(
+                "{EVIDENCE_RULES}\n- [updated: 2026-08-01T00:00:00 | status: active] New: port 2\n- [updated: unknown | status: superseded] Old: port 1"
+            )
+        );
+        assert!(knowledge_section(&json!({}), 5, &BTreeMap::new(), true)
+            .content
+            .is_empty());
+    }
+
+    #[test]
+    fn sub_query_matches_merge_by_id_with_a_discount() {
+        let mut primary = json!({"matches": [{"id": "a", "score": 0.5, "rank": 1}]});
+        let other = json!({"matches": [
+            {"id": "a", "score": 0.4, "rank": 1},
+            {"id": "b", "score": 1.0, "rank": 2},
+        ]});
+        merge_query_matches(&mut primary, vec![other], 5);
+        assert_eq!(primary["matches"][0]["id"], json!("b"));
+        assert_eq!(primary["matches"][0]["score"], json!(0.9));
+        assert_eq!(primary["matches"][0]["rank"], json!(1));
+        assert_eq!(primary["matches"][1]["score"], json!(0.5));
+        assert_eq!(primary["matches"].as_array().map(Vec::len), Some(2));
     }
 }

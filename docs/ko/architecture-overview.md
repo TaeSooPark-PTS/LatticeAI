@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스 기준의 서브시스템 설계 원칙과 구성 개요 문서입니다.
 > 전체 시스템 맵, 크레이트 인벤토리, 정확 버전 산출물 맵은 [`ARCHITECTURE.md`](./ARCHITECTURE.md)(영문 정본: [`ARCHITECTURE.md`](../../ARCHITECTURE.md))를 참고하세요.
 
-현재 릴리스: **14.1.1 — Living Synthesis**.
+현재 릴리스: **14.2.0 — Temporal Synthesis**.
 
 Lattice AI는 로컬 우선(local-first) **디지털 브레인 플랫폼(Digital Brain Platform)**입니다. 아키텍처는 사용자가 소유하는 단일 영속 중심인 단일 라이터 SQLite **지식 그래프(Knowledge Graph)**(`lattice-core::graph_write`)를 축으로 구성됩니다. 모델, 추론 엔진, 도구, 에이전트, 검색 인덱스, 워크플로, UI 표면은 모두 검증된 그래프 컨텍스트 위에서 작동하는 교체 가능한 계층입니다. 모델은 교체 가능하지만 지식은 영속적입니다.
 
@@ -13,7 +13,7 @@ Lattice AI는 로컬 우선(local-first) **디지털 브레인 플랫폼(Digital
 
 - **기본 로컬 우선:** 사용자가 클라우드 에스컬레이션을 명시적으로 활성화하지 않는 한, 지식, 세션, 벡터, 감사 로그는 `local_only` 네트워크 정책 아래 로컬 머신에만 보관됩니다.
 - **단일 라이터 영속성:** 모든 지식 그래프 쓰기는 Rust의 `lattice-core::graph_write::GraphWriter` 및 `Store::write_conn`으로 직렬화됩니다. `.latticebrain` 아카이브 복원 시 스토어 세대 에폭이 증가하여 `lattice-host` 재시작 없이도 기존 풀 커넥션이 안전하게 교체됩니다.
-- **신뢰·제어는 Rust, AI 연산은 Python:** `lattice-host`가 인증(`$scrypt$`·세션·상한 레이트 리미트·CSRF), 워크스페이스 격리, 제안 우선 거버넌스, TOCTOU 방지 워크스페이스 I/O(`safe_io`), 허용 목록 송출을 강제하며, `latticeai.worker_app`은 추론·임베딩·파싱·OCR/ASR·문서 렌더링을 위한 20개 루프백 연산 라우트만 노출합니다.
+- **신뢰·제어는 Rust, AI 연산은 Python:** `lattice-host`가 인증(`$scrypt$`·세션·상한 레이트 리미트·CSRF), 워크스페이스 격리, 제안 우선 거버넌스, TOCTOU 방지 워크스페이스 I/O(`safe_io`), 허용 목록 송출을 강제하며, `latticeai.worker_app`은 추론·임베딩·파싱·OCR/ASR·문서 렌더링을 위한 21개 루프백 연산 라우트만 노출합니다.
 - **모델 비종속 적응형 실행:** 에이전트 하네스(`lattice-agent`)는 모델 이름으로 분기하지 않고 런타임 마이크로 프로빙(`probe.rs`)으로 모델 역량을 실측하여 `standard`, `compact`, `guided` 다이얼을 동일한 fail-closed 권한·검증 게이트 아래 운영합니다.
 - **투명한 역량 및 출처 공개:** 모델 카탈로그 항목은 출처 계층(`Origin Country -> Vendor -> Execution`), 인터넷 요구 사항, 양자화 및 메모리 정보를 1급 필드로 공개합니다.
 - **일관된 모드와 명시적 관리자 권한:** 기본 모드와 고급 모드는 동일한 워크스페이스 기능을 제공하며, 관리자 모드는 사용자·조직·보안 정책·감사 거버넌스 권한을 명시적으로 분리합니다.
@@ -27,7 +27,7 @@ flowchart TD
     Writer["lattice-core::GraphWriter<br/>단일 라이터 이중시간 SQLite WAL"]
     Index["lattice-jobs + lattice-retrieval<br/>BM25F 사이드카 · NativeHnswIndex · 3-way RRF"]
     Harness["lattice-agent<br/>적응형 하네스 · DurableWorkflowStore · 5역할 멀티 에이전트"]
-    Worker["latticeai.worker_app (20개 루프백 라우트)<br/>oMLX · MLX · Ollama · llama.cpp · LM Studio · vLLM"]
+    Worker["latticeai.worker_app (21개 루프백 라우트)<br/>oMLX · MLX · Ollama · llama.cpp · LM Studio · vLLM"]
     Gov["lattice-platform::governance & adminops<br/>검토함 · 변경 제안 · 감사 · 무결성"]
     Surfaces["React/Vite 8 SPA · Tauri 2.11 · VS Code · 브라우저 확장"]
 
@@ -70,9 +70,9 @@ flowchart TD
 | 에이전트 하네스 | `rust/lattice-agent/src/{kernel/,parse/,content/,tools/,surface/,prompts/}` | 범용 적응형 하네스, fail-closed 검증기, 영속 DAG 워크플로, 5역할 멀티 에이전트 세션, TOCTOU 방지 `safe_io` |
 | 플랫폼 표면 | `rust/lattice-platform/src/{workspaceos/,toolsurface/,governance/,knowledge/,modelops/,adminops/,shell/}` | Workspace OS, 네이티브 MCP·도구, 검토함·변경 제안, `.latticebrain` 포터빌리티·Brain Network, 셋업·카탈로그, 관리자 감사 |
 | 채팅 & 잡 | `rust/lattice-chat/src/`, `rust/lattice-jobs/src/` | 근거 기반 채팅, 논블로킹 문서 세션, 상한 클라우드 예산, 백그라운드 임베딩·인덱스 드레인 |
-| Python 연산 워커 | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 20개 루프백 추론·임베딩·파싱·문서 렌더링 라우트 및 크로스플랫폼 엔진 생명주기 |
+| Python 연산 워커 | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 21개 루프백 추론·임베딩·파싱·문서 렌더링 라우트 및 크로스플랫폼 엔진 생명주기 |
 | 프론트엔드 & 확장 | `frontend/src/`, `src-tauri/src/`, `vscode-extension/`, `browser-extension/` | 엄격 TypeScript 7 (`noUncheckedIndexedAccess`) / React / Vite 8 SPA, Tauri 2.11 데스크톱 셸(`PortPolicy::PinnedProduction` 포트 `4825`), VS Code 확장, 브라우저 캡처 확장 |
 
 ## 호환성 및 업그레이드
 
-14.1.1은 SQLite 지식 그래프 스키마, `.latticebrain` 아카이브(v2 KDF), 레거시 `salt:key` 비밀번호 해시(버전화 `$scrypt$` 해시와 병행 검증)에 대해 비파괴적 읽기 호환 업그레이드를 유지하며 Rust와 Python의 타임스탬프를 오프셋 없는 UTC(`YYYY-MM-DDTHH:MM:SS`)로 통일합니다. 기존 워크스페이스 데이터는 파괴적 마이그레이션 없이 보존됩니다.
+14.2.0은 스키마를 추가 방식으로만 바꾸며(`chunk_parents` 테이블은 첫 parent 기록 시 생성) 파괴적 마이그레이션이 없습니다. 청크 색인 텍스트에 문맥 접두어가 포함되므로 문서는 다음 동기화 때 한 번 다시 임베딩되며, `auto` 임베딩 기본값 때문에 활성 임베더가 바뀌면 `reindex_required`가 보고됩니다. 검색 파이프라인, 환경 변수, 한계는 [14.2.0 릴리스 노트](./releases/RELEASE_NOTES_v14.2.0.md)를 참고하세요.

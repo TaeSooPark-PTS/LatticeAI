@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.2.0 - Temporal Synthesis] (2026-11-27)
+
+Rebuilt retrieval around time: token, AST and parent-child chunking with contextual prefixes; EmbeddingGemma 2 through the new `auto` embedding default and optional `rag` extra; cross-encoder reranking with RRF fallback; two-stage temporal ranking with `sort_by`, time-intent prefilters and `SUPERSEDES` handling; history-aware query rewrite, MMR and a Self-RAG gate in chat; a 3D living brain view, fixed-viewport desktop shell and command palette; the `ltcai search` CLI; and fixes for a multi-user conversation leak, upload and folder ownership, and shared-bundle import. Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment.
+
+See [docs/releases/RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md).
+
 # [v14.1.2 - Living Synthesis] (2026-11-25)
 
 Enforced a repository-wide zero-comments standard across every tracked source language: stripped all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives while preserving only machine-parsed shebangs and `/// <reference ... />` directives; resolved every surfaced Ruff, mypy, TypeScript, and Rust Clippy issue directly in source code without weakening any global lint or type-check configuration; wired `npm run check:no-comments` (`scripts/check_no_comments.mjs`) into `npm run lint` and `.github/workflows/ci.yml`; and documented the permanent no-comments policy in `AGENTS.md`, `CONTRIBUTING.md`, and Korean mirrors.
@@ -124,10 +130,11 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.1.2** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.2.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
+- [v14.2.0 - Temporal Synthesis](docs/releases/RELEASE_NOTES_v14.2.0.md)
 - [v14.1.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.1.md)
 - [v14.1.0 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.0.md)

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, Copy, DatabaseZap, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Copy, DatabaseZap, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -57,6 +57,8 @@ export function BrainConversation({
   historyBusyId,
   starterPrompts,
   memoryFeedback,
+  feedbackRecallable,
+  onDismissFeedback,
   ingestionStates,
   emergenceEvents,
   proactiveActivities,
@@ -106,6 +108,8 @@ export function BrainConversation({
   historyBusyId: string | null;
   starterPrompts: string[];
   memoryFeedback: string | null;
+  feedbackRecallable: boolean;
+  onDismissFeedback: () => void;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
   emergenceEvents: EmergenceEvent[];
   proactiveActivities: BrainProactiveActivity[];
@@ -167,6 +171,17 @@ export function BrainConversation({
       onIngestWeb={onIngestWeb}
     />
   );
+
+  const feedbackNotice = memoryFeedback ? (
+    <div className="brain-save-feedback" role="status">
+      <DatabaseZap className="h-3.5 w-3.5" aria-hidden="true" />
+      <span>{memoryFeedback}</span>
+      {feedbackRecallable ? <small>{t(language, "brain.saved.detail")}</small> : null}
+      <button type="button" aria-label={t(language, "brain.feedback.dismiss")} onClick={onDismissFeedback}>
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+    </div>
+  ) : null;
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -307,6 +322,7 @@ export function BrainConversation({
               />
               {modelReady ? null : <ModelMissingNotice language={language} />}
               <CloudBoundaryHint language={language} />
+              {feedbackNotice}
               <BrainComposer
                 language={language}
                 draft={draft}
@@ -443,13 +459,7 @@ export function BrainConversation({
             </div>
           )}
 
-          {memoryFeedback ? (
-            <div className="brain-save-feedback" role="status">
-              <DatabaseZap className="h-3.5 w-3.5" />
-              <span>{memoryFeedback}</span>
-              <small>{t(language, "brain.saved.detail")}</small>
-            </div>
-          ) : null}
+          {hasMessages ? null : feedbackNotice}
 
           {hasMessages ? <details className="brain-utility-drawer" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
             <summary>{t(language, isBasic ? "brain.chatHome.utility.basic" : "brain.chatHome.utility")}</summary>

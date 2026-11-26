@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.1.2 Living Brain 둘러보기](output/release/v14.1.2/gifs/v14.1.2-living-brain-walkthrough.gif)
+![v14.2.0 Living Brain 둘러보기](output/release/v14.2.0/gifs/v14.2.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -26,7 +26,7 @@ Lattice AI는 대화, 파일, 폴더, 노트, 웹 캡처를 내가 소유하는 
 
 ## 왜 Lattice AI인가요?
 
-- **로컬 우선 디지털 브레인 & 하드웨어 자동 맞춤** — 모든 기억, 출처 이력, 그래프 관계는 로컬 SQLite와 이식 가능한 암호화 `.latticebrain` 아카이브에 저장됩니다. 초기 설치 직후 오프라인에서도 결정론적 `lattice-local-hash-v1` 임베딩으로 즉시 동작하며, 기기 사양에 맞는 로컬 **EmbeddingGemma 2**(`768d`) 또는 시맨틱 프로바이더(`mlx-community`, `ggml-org` GGUF, `onnx-community`)로 **실시간 SSE 다운로드 진행률(`MB/s`, `ETA`)**과 함께 매끄럽게 업그레이드할 수 있습니다.
+- **로컬 우선 디지털 브레인 & 하드웨어 자동 맞춤** — 모든 기억, 출처 이력, 그래프 관계는 로컬 SQLite와 이식 가능한 암호화 `.latticebrain` 아카이브에 저장됩니다. 임베딩 기본값은 `auto`입니다. 로컬에 캐시된 **EmbeddingGemma 2**(`768d`, `pip install "ltcai[rag]"` 필요) 같은 모델이나 로컬 Ollama 임베딩 모델이 있으면 사용하고, 없으면 오프라인 결정론적 `lattice-local-hash-v1` 어휘/해시 임베더를 사용합니다. 모델 다운로드는 **실시간 SSE 진행률(`MB/s`, `ETA`)**을 표시합니다.
 - **하이브리드 GraphRAG (BM25F + 벡터 + 2-Hop 지식 그래프 RRF)** — 한국어 조사 제거·CJK 바이그램·식별자 서브워드를 지원하는 필드 가중 Okapi BM25F, 밀집/서브워드 벡터 검색, 1-Hop/2-Hop 지식 그래프 구조 확장(`RELATES_TO`, `MENTIONS`, `PART_OF`, `[[위키링크]]`, `#태그`)을 Reciprocal Rank Fusion(RRF)으로 결합합니다.
 - **제안 우선 안전 자율성 & 검토 센터** — 새 파일 생성 같은 추가 작업은 최소 마찰로 실행되고, 기존 사용자 파일 수정·삭제나 클라우드 추출 기억은 해시 검증된 **검토 센터** 제안으로 스테이징되어 전후 비교(diff) 승인 후에만 반영됩니다. 2B급 소형 로컬 모델도 가이드 프롬프트로 안전하게 동작하며, LLM이 로드되지 않은 상태의 워크플로우/에이전트 시뮬레이션은 모델을 호출하지 않는 **결정론적 LLM-free 동작**임을 명시합니다.
 - **모든 화면에서 하나의 브레인** — **macOS 데스크톱 앱(`.dmg`)**, **웹 스튜디오(`/app`)**, **VS Code / Cursor / Open VSX 확장**, **브라우저 확장**, **`LTCAI` CLI**가 모두 동일한 로컬 브레인을 공유합니다.
@@ -56,7 +56,7 @@ LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.1.2_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.2.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -66,7 +66,16 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 ```
 
 - **Apple Silicon 로컬 모델 (MLX)**: `pip install "ltcai[local]"`
+- **EmbeddingGemma 2와 cross-encoder 재랭킹 (선택)**: `pip install "ltcai[rag]"` (가중치가 이미 캐시되어 있어야 하며 질의 시점에 내려받지 않습니다)
 - **포인터 자동화 도구 (선택)**: `pip install "ltcai[pointer]"`
+
+### 터미널에서 검색
+
+```bash
+ltcai search "릴리스 담당자" --sort newest --limit 5
+```
+
+실행 중인 서버에 질의해 타임스탬프가 있는 랭킹 결과를 출력합니다. 옵션: `--sort relevance|newest`, `--limit 1-100`, `--host`, `--port`. 인증이 필요하면 `LATTICEAI_API_TOKEN`을 설정하세요. 같은 `sort_by` 옵션을 검색 API, 커맨드 검색, MCP `knowledge_search` 도구에서도 사용할 수 있습니다. 이 명령은 npm 패키지에 포함됩니다.
 
 ### 3. 에디터 확장 (VS Code · Cursor · Antigravity)
 
@@ -85,15 +94,15 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v14.1.2/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.1.2/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v14.2.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.2.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v14.1.2/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.1.2/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v14.2.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.2.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v14.1.2/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.1.2/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v14.2.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.2.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v14.1.2/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.1.2/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v14.2.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.2.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v14.1.2/SCREENSHOT_INDEX.md](output/release/v14.1.2/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.1.2/screenshots/01-login.png), [06-capture.png](output/release/v14.1.2/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.2/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v14.2.0/SCREENSHOT_INDEX.md](output/release/v14.2.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.2.0/screenshots/01-login.png), [06-capture.png](output/release/v14.2.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.2.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -103,7 +112,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 | --- | --- | --- |
 | **시작 가이드** | [docs/ko/ONBOARDING.md](docs/ko/ONBOARDING.md) | 처음 5분 제품 흐름 및 첫 실행 보장 |
 | **제품 철학** | [docs/ko/WHY_LATTICE.md](docs/ko/WHY_LATTICE.md) | 개별 AI 모델보다 브레인이 오래 남아야 하는 이유 |
-| **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 20개 라우트 Python AI 워커 |
+| **시스템 아키텍처** | [docs/ko/ARCHITECTURE.md](docs/ko/ARCHITECTURE.md) | `lattice-host` Rust 서버, 단일 `GraphWriter`, 21개 라우트 Python AI 워커 |
 | **기능 현황** | [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md) | 현재 출시된 기능과 정직한 시스템 한계 |
 | **적응형 하네스 벤치마크** | [docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ko/ADAPTIVE_HARNESS_BENCHMARK.md) | 25개 태스크 실측 보고서 (`Qwen2.5-0.5B-Instruct-Q4_K_M` `28.0% → 84.0%`) |
 | **운영 & 셀프 호스팅** | [docs/ko/OPERATIONS.md](docs/ko/OPERATIONS.md) | 저장소 구조, `.latticebrain` 백업/복원, 공개 모드 체크리스트 |
@@ -117,24 +126,27 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **14.1.2 — Living Synthesis**입니다:
+현재 최신 릴리스는 **14.2.0 — Temporal Synthesis**입니다:
 
-- **전 소스 언어 무주석 & 무억제 코드베이스** — Python, TypeScript/JavaScript, Rust, Shell, CSS, HTML 소스 파일에서 기계 필수 지시문(`#!/usr/bin/env ...`, `/// <reference ... />`)을 제외한 모든 주석, 독스트링, JSDoc, 억제 지시문을 제거하고 전역 설정 완화 없이 소스 코드 자체를 수정해 모든 Ruff, mypy, TypeScript, Clippy 검증을 통과했습니다.
-- **영구 무주석 CI 게이트 (`scripts/check_no_comments.mjs`)** — `npm run lint`와 `.github/workflows/ci.yml`에 `npm run check:no-comments`를 연동해 향후 주석·독스트링·억제 지시문 유입을 차단하며 `AGENTS.md`, `CONTRIBUTING.md` 및 한국어 미러 문서에 영구 정책을 명시했습니다.
-- **v14.1.2 기반 위에 구축** — 저장소 전역 `ruff format .` 일관성, 예외 0건 전역 `C901` (`max-complexity = 20`), fail-closed `0 unclaimed` 서버 i18n 래칫, Rust ↔ Python UTC 타임스탬프 통일, TypeScript 7 `noUncheckedIndexedAccess` (Vitest 100%)를 유지합니다.
+- **시간 인식 검색** — 한국어·영어 시간 표현이 날짜 사전 필터가 되고, 최신성 감쇠가 항상 적용되며, 현재 상태 답변에서 구버전(superseded)을 제외하고, `sort_by=relevance|newest`를 지원합니다.
+- **개선된 청크와 랭킹** — 토큰 크기의 parent-child 청크, tree-sitter 코드 분할, 문맥 접두어, RRF 대체를 갖춘 cross-encoder 재랭킹, MMR, 기록이 답을 뒷받침하지 못하면 보류하는 Self-RAG 게이트.
+- **3D 살아있는 Brain과 데스크톱 셸** — 검색 경로를 따라 점등하며 성장하는 3D 뇌, 고정 뷰포트 글래스 작업공간, `Cmd/Ctrl+K` 팔레트.
+- **`ltcai search`와 개인정보 수정** — 터미널에서 검색할 수 있으며, 다중 사용자 모드에서 다른 사용자의 대화 본문을 공유 그래프에서 더 이상 읽을 수 없습니다.
+
+실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했으며, 워크스페이스 안의 문서는 사용자별로 비공개가 아닙니다. 파이프라인 다이어그램, 용어집, 환경 변수, 한계는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.2.0.md)를 참고하세요.
 
 <details>
-<summary>14.1.2 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>14.2.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.1.2.md](docs/ko/releases/RELEASE_NOTES_v14.1.2.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](docs/ko/releases/RELEASE_NOTES_v14.2.0.md).
 
-14.1.2 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+14.2.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-14.1.2-py3-none-any.whl`
-- `dist/ltcai-14.1.2.tar.gz`
-- `ltcai-14.1.2.tgz`
-- `dist/ltcai-14.1.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`
+- `dist/ltcai-14.2.0-py3-none-any.whl`
+- `dist/ltcai-14.2.0.tar.gz`
+- `ltcai-14.2.0.tgz`
+- `dist/ltcai-14.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -147,6 +159,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 - **기본값은 로컬**: SQLite가 실제 운영 브레인 저장소입니다. 클라우드 모델(`cli_oauth` 또는 `api_key`), 모델 다운로드, 브레인 네트워크, 업데이트 확인은 모두 사용자의 명시적 행동이 있어야만 동작합니다.
 - **정직한 검색 & 시뮬레이션**: 로드된 LLM이 없을 때 에이전트/워크플로우 시뮬레이션은 모델을 호출하지 않는 결정론적 동작이며 화면에 명시됩니다. 벡터 검색 기본값은 정확 전수 검색이며 `LATTICEAI_VECTOR_INDEX=hnsw` 설정 시 512개 이상 벡터에서 `hnsw+rescore`를 활성화합니다.
 - **안전한 삭제 & 코드 서명**: 감시 폴더 정리는 확인 후 지식 그래프에서만 제거하며 디스크 원본 파일은 삭제하지 않습니다. macOS `.dmg`는 ad-hoc 서명되므로 첫 실행 시 macOS Gatekeeper 허용 절차가 필요합니다. 남은 개선 항목은 [docs/ko/ROADMAP.md](docs/ko/ROADMAP.md) 및 [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md)에 투명하게 기록합니다.
+- **사용자별 개인정보**: 다중 사용자 모드에서 대화 파생 그래프 노드는 소유자에게만 보입니다. 문서와 업로드는 사용자별이 아니라 워크스페이스 단위로 범위가 정해집니다.
 
 ---
 
@@ -156,6 +169,7 @@ LTCAI                      # http://127.0.0.1:4825/app 웹 스튜디오 실행
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](docs/ko/releases/RELEASE_NOTES_v14.2.0.md) |
 | 14.1.2 | Living Synthesis | [RELEASE_NOTES_v14.1.2.md](docs/ko/releases/RELEASE_NOTES_v14.1.2.md) |
 | 14.1.1 | Living Synthesis | [RELEASE_NOTES_v14.1.1.md](docs/ko/releases/RELEASE_NOTES_v14.1.1.md) |
 | 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](docs/ko/releases/RELEASE_NOTES_v14.1.0.md) |

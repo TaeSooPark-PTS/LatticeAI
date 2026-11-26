@@ -150,6 +150,10 @@ impl NoteReceipt {
     }
 }
 
+fn shares_source_between_items(metadata: &Map<String, Value>) -> bool {
+    metadata.get("format").and_then(Value::as_str) == Some("ics")
+}
+
 #[derive(Debug, Clone)]
 pub struct NoteIngestor {
     graph: GraphWriter,
@@ -192,10 +196,13 @@ impl NoteIngestor {
         }
         let enrichment = note.enrichment_text();
         let mime = enrich::mime_hint(&note.title).unwrap_or_default();
-        let chunks = enrich::chunk_pieces_for(&note.content, &note.title, &mime);
-        let mut embed_texts = Vec::with_capacity(chunks.len() + 1);
+        let chunk_set =
+            crate::chunk_pieces::chunk_set_for(&note.content, &note.title, &mime, &note.title);
+        let parents = chunk_set.parents.clone();
+        let mut embed_texts = Vec::with_capacity(chunk_set.children.len() + 1);
         embed_texts.push(enrichment.clone());
-        embed_texts.extend(chunks.iter().map(|piece| piece.text.clone()));
+        embed_texts.extend(chunk_set.embedding_inputs());
+        let chunks = chunk_set.children;
         let ((extracted, extract_ok), embed_outcome) = tokio::join!(
             enrich::extract_via_seam_status(self.seam.as_ref(), &enrichment, "document"),
             enrich::embed_texts_with_contract(self.seam.as_ref(), &embed_texts),
@@ -209,6 +216,7 @@ impl NoteIngestor {
         request.semantic = extracted.semantic;
         request.embedding = embedding;
         request.chunks = chunks;
+        request.parents = parents;
 
         let graph = self.graph.clone();
         let title = note.title.clone();
@@ -219,7 +227,11 @@ impl NoteIngestor {
         let outline_chunks = request.chunks.clone();
         let written = tokio::task::spawn_blocking(move || {
             let prior_contract = graph.current_index_contract().ok().flatten();
-            let outcome = graph.ingest_content(&request)?;
+            let outcome = if shares_source_between_items(&request.metadata) {
+                graph.ingest_content(&request)?
+            } else {
+                graph.ingest_content_superseding(&request)?
+            };
             let overlay = crate::sections::build_overlay(
                 &outline_chunks,
                 &outcome.chunk_ids,

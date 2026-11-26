@@ -216,7 +216,8 @@ async fn ingest_current_tab(
         let (_title, extracted) = extract_readable_text(model.str("html"));
         text = extracted;
     }
-    if text.is_empty() {
+    let selection_only = text.is_empty();
+    if selection_only {
         text = model.str("selected_text").trim().to_string();
     }
     if text.is_empty() {
@@ -277,8 +278,10 @@ async fn ingest_current_tab(
             .as_ref()
             .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::batch),
     );
-    let mut chunks = crate::local_files_api::enrich::chunk_pieces_for(&text, &title, "text/html");
-    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_set = crate::chunk_pieces::chunk_set_for(&text, &title, "text/html", &title);
+    let parents = chunk_set.parents.clone();
+    let chunk_texts: Vec<String> = chunk_set.embedding_inputs();
+    let mut chunks = chunk_set.children;
     let chunk_embed = if chunk_texts.is_empty() {
         None
     } else {
@@ -319,6 +322,7 @@ async fn ingest_current_tab(
                 captured_at,
                 metadata,
                 chunks,
+                parents,
                 concepts: extracted.concepts,
                 triples: extracted.triples,
                 semantic: extracted.semantic,
@@ -326,7 +330,11 @@ async fn ingest_current_tab(
                 node_type: Some("Document".into()),
                 ..Default::default()
             };
-            let outcome = graph.ingest_content(&request)?;
+            let outcome = if selection_only {
+                graph.ingest_content(&request)?
+            } else {
+                graph.ingest_content_superseding(&request)?
+            };
             let mut supplied = Vec::new();
             if let Some(vector) = request.embedding.as_ref() {
                 if !vector.values.is_empty() && !outcome.node_id.is_empty() {

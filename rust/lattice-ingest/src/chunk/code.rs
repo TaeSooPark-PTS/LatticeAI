@@ -62,7 +62,7 @@ fn starts_with(cleaned: &[char], at: usize, prefix: &str) -> bool {
         .all(|(offset, expected)| cleaned.get(at + offset) == Some(&expected))
 }
 
-fn code_segment_spans(cleaned: &[char]) -> Vec<(usize, usize)> {
+pub(super) fn code_segment_spans(cleaned: &[char]) -> Vec<(usize, usize)> {
     let mut boundaries: std::collections::BTreeSet<usize> =
         [0usize, cleaned.len()].into_iter().collect();
     boundaries.extend(blank_run_ends(cleaned));

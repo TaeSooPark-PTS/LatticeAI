@@ -181,7 +181,7 @@ fs.mkdirSync(gifs, { recursive: true });
 
 const server = spawn(process.execPath, [MOCK_SERVER_ENTRY], {
   cwd: repoRoot,
-  env: { ...process.env, LTCAI_VISUAL_PORT: String(port) },
+  env: { ...process.env, LTCAI_VISUAL_PORT: String(port), LTCAI_VISUAL_BRAIN: "grown" },
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -197,9 +197,9 @@ async function waitForServer() {
   throw new Error(`visual server did not start on ${baseURL}`);
 }
 
-async function shot(page, name) {
+async function shot(page, name, options = {}) {
   await page.waitForTimeout(120);
-  await page.screenshot({ path: path.join(screenshots, name), fullPage: true });
+  await page.screenshot({ path: path.join(screenshots, name), fullPage: true, ...options });
 }
 
 async function preloadRouteChunks(page) {
@@ -246,7 +246,10 @@ async function preloadRouteChunks(page) {
 async function main() {
   await waitForServer();
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 920 },
     recordVideo: { dir: videos, size: { width: 1280, height: 818 } },
@@ -284,7 +287,7 @@ async function main() {
   await page.getByText("모델을 준비하고 시작합니다.").waitFor();
   await page.getByRole("button", { name: "준비하고 시작하기" }).click();
   await page.waitForTimeout(180);
-  await shot(page, "03-install-load-progress.png");
+  await shot(page, "03-install-load-progress.png", { animations: "disabled" });
   await page.locator("main[aria-label='Lattice Brain']").waitFor();
   await shot(page, "04-brain-chat-home.png");
 
@@ -295,13 +298,19 @@ async function main() {
   );
 
   await page.goto(`${baseURL}/app#/knowledge-graph`, { waitUntil: "networkidle" });
-  await page.locator("[data-testid='brain-cytoscape']").waitFor();
-  const graphSearch = page.locator(
-    "input[aria-label='Search knowledge graph'], input[placeholder*='Search'], input[placeholder*='검색']"
-  ).first();
-  if (await graphSearch.count()) {
-    await graphSearch.fill("workspace");
+  const brain3d = page.locator("[data-testid='brain-graph-3d']");
+  await brain3d.locator("canvas").waitFor();
+  const rendering = await brain3d.evaluate((host) => ({
+    nodes: Number(host.getAttribute("data-nodes")),
+    context: Boolean(host.querySelector("canvas")?.getContext("webgl2")),
+  }));
+  if (!rendering.context || rendering.nodes < 100) {
+    throw new Error(
+      `release evidence: the 3D Brain did not render (webgl=${rendering.context}, nodes=${rendering.nodes})`,
+    );
   }
+  await brain3d.evaluate((host) => host.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(1800);
   await shot(page, "05-memory-graph.png");
 
   await page.goto(`${baseURL}/app#/capture`, { waitUntil: "networkidle" });

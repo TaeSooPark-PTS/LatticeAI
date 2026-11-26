@@ -3,8 +3,15 @@ use std::sync::OnceLock;
 
 use fancy_regex::Regex;
 use lattice_core::embeddings::LocalEmbeddingModel;
+use lattice_retrieval::context::{evidence_label, merge_query_matches};
 use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
+use lattice_retrieval::mmr::{diversify, DiversityConfig};
+use lattice_retrieval::query_plan::QueryPlan;
+use lattice_retrieval::self_rag::is_evidence;
 use lattice_retrieval::shape::context_quality_signal;
+use lattice_retrieval::temporal::{
+    ranked_hybrid_search, ranked_search, search_text_for, TemporalRanking,
+};
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
@@ -14,6 +21,8 @@ use crate::pyvalue::{field, text as py_text};
 const PREFERRED_TYPES: [&str; 8] = [
     "Decision", "Concept", "Task", "Document", "File", "CodeFile", "Person", "Feature",
 ];
+
+const BOOKKEEPING_TYPE: &str = "Source";
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MinimalContext {
@@ -117,6 +126,7 @@ pub fn build_minimal_context(
         None,
         None,
         None,
+        None,
     )
 }
 
@@ -140,6 +150,7 @@ pub fn build_minimal_context_with_policy(
         allowed_workspaces,
         now_secs,
         Some(policy),
+        None,
         None,
         None,
     )
@@ -169,6 +180,86 @@ pub fn build_minimal_context_with_policy_and_query(
         Some(policy),
         query_embedding,
         semantic_degraded,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_chat_minimal_context(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    message: &str,
+    plan: &QueryPlan,
+    mode: NetworkMode,
+    top_k: i64,
+    allowed_workspaces: Option<&BTreeSet<String>>,
+    now_secs: f64,
+    policy: &HybridPolicy,
+    query_embedding: Option<lattice_retrieval::QueryVectorOverride>,
+    semantic_degraded: Option<String>,
+    evidence_only: bool,
+) -> MinimalContext {
+    build_minimal_context_inner(
+        conn,
+        model,
+        message,
+        mode,
+        top_k,
+        allowed_workspaces,
+        now_secs,
+        Some(policy),
+        query_embedding,
+        semantic_degraded,
+        Some(ChatSearch {
+            plan,
+            evidence_only,
+        }),
+    )
+}
+
+#[derive(Clone, Copy)]
+struct ChatSearch<'a> {
+    plan: &'a QueryPlan,
+    evidence_only: bool,
+}
+
+fn planned_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    chat: ChatSearch<'_>,
+    options: &HybridOptions,
+    ranking: &TemporalRanking,
+) -> Result<Value, lattice_core::CoreError> {
+    let plan = chat.plan;
+    ranked_search(
+        conn,
+        &plan.standalone,
+        options.now_secs,
+        ranking,
+        options.top_k,
+        true,
+        |call| {
+            let widened = HybridOptions {
+                top_k: call.fetch_limit,
+                recency: Some(call.decay),
+                ..options.clone()
+            };
+            let mut report = hybrid_search(conn, model, &call.search_query, &widened)?;
+            let mut others = Vec::new();
+            for query in &plan.sub_queries {
+                let text = search_text_for(query, options.now_secs, ranking);
+                if !text.is_empty() && text != call.search_query {
+                    others.push(hybrid_search(conn, model, &text, &widened)?);
+                }
+            }
+            merge_query_matches(&mut report, others, call.fetch_limit.max(1) as usize);
+            if chat.evidence_only {
+                if let Some(matches) = report.get_mut("matches").and_then(Value::as_array_mut) {
+                    matches.retain(is_evidence);
+                }
+            }
+            Ok(report)
+        },
     )
 }
 
@@ -184,6 +275,7 @@ fn build_minimal_context_inner(
     policy: Option<&HybridPolicy>,
     query_embedding: Option<lattice_retrieval::QueryVectorOverride>,
     semantic_degraded: Option<String>,
+    chat: Option<ChatSearch<'_>>,
 ) -> MinimalContext {
     let query = message.trim().to_string();
     let keywords = extract_keywords(&query, 12);
@@ -209,7 +301,12 @@ fn build_minimal_context_inner(
         semantic_degraded,
         ..Default::default()
     };
-    let (matches, quality) = match hybrid_search(conn, model, &query, &options) {
+    let ranking = TemporalRanking::from_env();
+    let searched = match chat {
+        Some(chat) => planned_search(conn, model, chat, &options, &ranking),
+        None => ranked_hybrid_search(conn, model, &query, &options, &ranking),
+    };
+    let (matches, quality) = match searched {
         Ok(result) => {
             let matches: Vec<Value> = result
                 .get("matches")
@@ -230,26 +327,31 @@ fn build_minimal_context_inner(
 
     let mut selected: Vec<Value> = matches
         .into_iter()
+        .filter(|node| field(node, "type") != BOOKKEEPING_TYPE)
         .filter(|node| match policy {
             Some(resolved) => blocked_reason_for_policy(node, resolved).is_none(),
             None => blocked_reason(node).is_none(),
         })
         .collect();
-    selected.sort_by(|left, right| {
-        let rank = |node: &Value| {
-            let node_type = field(node, "type");
-            i32::from(!PREFERRED_TYPES.contains(&node_type.as_str()))
-        };
-        rank(left)
-            .cmp(&rank(right))
-            .then_with(|| {
-                (-score_of(left))
-                    .partial_cmp(&-score_of(right))
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .then_with(|| node_id_of(left).cmp(&node_id_of(right)))
-    });
     let keep = top_k.clamp(1, 12) as usize;
+    if chat.is_some() {
+        selected = diversify(selected, keep, &DiversityConfig::from_env()).0;
+    } else {
+        selected.sort_by(|left, right| {
+            let rank = |node: &Value| {
+                let node_type = field(node, "type");
+                i32::from(!PREFERRED_TYPES.contains(&node_type.as_str()))
+            };
+            rank(left)
+                .cmp(&rank(right))
+                .then_with(|| {
+                    (-score_of(left))
+                        .partial_cmp(&-score_of(right))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .then_with(|| node_id_of(left).cmp(&node_id_of(right)))
+        });
+    }
     selected.truncate(keep);
 
     let mut lines: Vec<String> = Vec::new();
@@ -280,8 +382,13 @@ fn build_minimal_context_inner(
                 node_type
             }
         };
+        let label = if chat.is_some() {
+            format!("{} ", evidence_label(node))
+        } else {
+            String::new()
+        };
         lines.push(
-            format!("- [{node_type}] {title}: {summary}")
+            format!("- {label}[{node_type}] {title}: {summary}")
                 .trim_end_matches([':', ' '])
                 .to_string(),
         );

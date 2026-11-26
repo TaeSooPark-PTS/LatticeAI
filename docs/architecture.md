@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite
@@ -108,14 +108,15 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 | Agent Harness | `rust/lattice-agent/src/{kernel/,parse/,content/,tools/,surface/,prompts/}` | Universal Adaptive Harness, fail-closed verifier, durable DAG workflows, 5-role multi-agent session, TOCTOU-safe `safe_io` |
 | Platform Surface | `rust/lattice-platform/src/{workspaceos/,toolsurface/,governance/,knowledge/,modelops/,adminops/,shell/}` | Workspace OS, native MCP & tools, Review Center & proposals, `.latticebrain` portability & Brain Network, setup/catalog, admin audit |
 | Chat & Jobs | `rust/lattice-chat/src/`, `rust/lattice-jobs/src/` | Grounded chat, non-blocking document sessions, bounded cloud budget, background embedding/index drain |
-| Python Compute Worker | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 20-route loopback inference, embeddings, parsing, document rendering, and cross-platform engine lifecycle |
+| Python Compute Worker | `latticeai/worker_app.py`, `latticeai/api/worker_seams.py`, `latticeai/services/{engine_adapters.py,model_runtime/}`, `lattice_brain/` | 21-route loopback inference, embeddings, parsing, document rendering, and cross-platform engine lifecycle |
 | Frontend & Extensions | `frontend/src/`, `src-tauri/src/`, `vscode-extension/`, `browser-extension/` | Strict TypeScript 7 (`noUncheckedIndexedAccess`) / React / Vite 8 SPA, Tauri 2.11 desktop shell (`PortPolicy::PinnedProduction` on `4825`), VS Code extension, browser capture extension |
 
 ## Compatibility & Upgrades
 
-14.1.2 preserves non-destructive, read-compatible upgrades across SQLite
-Knowledge Graph schemas, `.latticebrain` archives (v2 KDF), and legacy
-`salt:key` password hashes (automatically verified alongside versioned
-`$scrypt$` hashes), while keeping Rust and Python timestamps unified on
-offset-free UTC (`YYYY-MM-DDTHH:MM:SS`). Existing workspace data is preserved
-without destructive migrations.
+14.2.0 changes the schema only additively (the `chunk_parents` table is created
+on first parent write) and performs no destructive migration. Documents are
+re-embedded once on their next sync because chunk index text now includes a
+contextual prefix, and the `auto` embedding default can change the active
+embedder, which reports `reindex_required`. See
+[the 14.2.0 release notes](releases/RELEASE_NOTES_v14.2.0.md) for the retrieval
+pipeline, environment variables, and limitations.

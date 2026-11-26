@@ -91,6 +91,12 @@ impl TemporalInterval {
         true
     }
 
+    pub fn has_ended_at_epoch(&self, as_of_epoch: f64) -> bool {
+        parse_temporal_iso(self.valid_until.as_deref())
+            .or_else(|| parse_temporal_iso(self.superseded_at.as_deref()))
+            .is_some_and(|end| as_of_epoch + 1e-6 >= end)
+    }
+
     pub fn overlaps(&self, other: &Self) -> bool {
         let a_start = parse_temporal_iso(self.valid_from.as_deref())
             .or_else(|| parse_temporal_iso(Some(self.recorded_at.as_str())))
@@ -161,7 +167,7 @@ impl TemporalTimelineSummary {
     }
 }
 
-fn read_temporal_interval(
+pub(crate) fn read_temporal_interval(
     meta: &Value,
     created_at: &str,
     v2_superseded_by: Option<&str>,

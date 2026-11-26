@@ -3,7 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
+import { extractFiringTrace } from "@/features/brain3d/brainGrowth";
 import { t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import { type ApprovalResolution, parseApprovalPayload } from "../approvalFlow";
 import {
   agentPayloadFiles,
@@ -31,6 +33,7 @@ export function useBrainChat({
   modelReady,
   onBrainChange,
   setMemoryFeedback,
+  announceSaved,
   beginIngestion,
   completeIngestion,
   failIngestion,
@@ -41,6 +44,7 @@ export function useBrainChat({
   modelReady: boolean;
   onBrainChange: (state: BrainState, intensity?: number) => void;
   setMemoryFeedback: React.Dispatch<React.SetStateAction<string | null>>;
+  announceSaved: (message: string) => void;
   beginIngestion: (sourceType: IngestionSourceType, label: string) => void;
   completeIngestion: (sourceType: IngestionSourceType, data?: unknown) => Promise<{ memories: number; entities: number }>;
   failIngestion: (sourceType: IngestionSourceType, reason: string) => void;
@@ -128,6 +132,7 @@ export function useBrainChat({
     setMessages((items) => [...items, { role: "user", content: text }, { role: "assistant", content: "" }]);
     setImageData(null);
     setStreaming(true);
+    useAppStore.getState().setActiveFiringTrace(null);
     setMemoryFeedback(null);
     beginIngestion("chat", text.slice(0, 120));
     onBrainChange("thinking", 0.96);
@@ -153,6 +158,8 @@ export function useBrainChat({
           onHybridContext: (frame) => {
             const hybridContext = parseHybridContext(frame);
             if (!hybridContext) return;
+            const firing = extractFiringTrace(frame);
+            if (firing) useAppStore.getState().setActiveFiringTrace(firing);
             setMessages((items) => {
               const next = [...items];
               const last = next[next.length - 1];
@@ -235,6 +242,8 @@ export function useBrainChat({
           },
           onTrace: (trace) => {
             if (!trace) return;
+            const firing = extractFiringTrace(trace);
+            if (firing) useAppStore.getState().setActiveFiringTrace(firing);
             onBrainChange("recalling", 0.9);
             triggerBrainRecall();
             if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
@@ -281,7 +290,7 @@ export function useBrainChat({
         }
         setLastRecallQuery(text);
         const counts = await completeIngestion("chat");
-        setMemoryFeedback(t(language, "brain.saved", { topics: counts.entities, memories: counts.memories }));
+        announceSaved(t(language, "brain.saved", { topics: counts.entities, memories: counts.memories }));
         triggerBrainRecall();
         void attachAnswerProof(text);
       }
@@ -382,9 +391,8 @@ export function useBrainChat({
       payload: { answer_preview: trimmed.slice(0, 2000), conversation_id: conversationId || "" },
       provenance: { conversation_id: conversationId || "", source_detail: "brain_chat" },
     });
-    setMemoryFeedback(result.ok
-      ? t(language, "brain.action.saved")
-      : t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
+    if (result.ok) announceSaved(t(language, "brain.action.saved"));
+    else setMemoryFeedback(t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
     return result.ok;
   }
 

@@ -124,7 +124,9 @@ jobs:
               node scripts/check_doc_languages.mjs
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git tag -a "${TAG}" -m "Lattice AI ${TAG} — Living Synthesis" "${SHA}"
+              THEME="$(sed -n 's/^const releaseTheme = "\(.*\)";$/\1/p' scripts/check_current_release_docs.mjs)"
+              test -n "${THEME}"
+              git tag -a "${TAG}" -m "Lattice AI ${TAG} — ${THEME}" "${SHA}"
               git push origin "${TAG}"
               echo "Auto-created and pushed tag ${TAG} at CI-verified commit ${SHA}."
             fi

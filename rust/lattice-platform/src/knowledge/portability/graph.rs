@@ -8,6 +8,7 @@ use axum::http::HeaderMap;
 use axum::response::Response;
 use lattice_auth::OrderedMap;
 use lattice_core::db::tables::state_files;
+use lattice_core::graph_write::chunk_parents::export_chunk_parents;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -23,6 +24,7 @@ pub(super) const BLOBS_PREFIX: &str = "knowledge_graph_blobs/";
 
 fn export_artifact(state: &PortabilityState) -> OrderedMap {
     let (nodes, edges, chunks) = export_rows(&state.config.graph_db_path());
+    let parents = export_parents(&state.config.graph_db_path());
     let mut header = schema_versions();
     header.insert("format", json!(FORMAT));
     let mut ordered = OrderedMap::new();
@@ -40,6 +42,9 @@ fn export_artifact(state: &PortabilityState) -> OrderedMap {
     counts.insert("chunks", json!(chunks.len()));
     counts.insert("knowledge_sources", json!(0));
     counts.insert("provenance", json!(0));
+    if !parents.is_empty() {
+        counts.insert("chunk_parents", json!(parents.len()));
+    }
     ordered.insert("counts", json!(counts));
     let mut artifact = OrderedMap::new();
     artifact.insert("header", json!(ordered));
@@ -48,6 +53,9 @@ fn export_artifact(state: &PortabilityState) -> OrderedMap {
     artifact.insert("chunks", json!(chunks));
     artifact.insert("knowledge_sources", json!([]));
     artifact.insert("provenance", json!([]));
+    if !parents.is_empty() {
+        artifact.insert("chunk_parents", json!(parents));
+    }
     let mut sig = OrderedMap::new();
     sig.insert("algorithm", json!("ed25519"));
     sig.insert("public_key", json!(state.identity.public_key_b64()));
@@ -55,6 +63,16 @@ fn export_artifact(state: &PortabilityState) -> OrderedMap {
     sig.insert("signature", json!(state.identity.sign(b"header")));
     artifact.insert("signature", json!(sig));
     artifact
+}
+
+pub(super) fn export_parents(path: &Path) -> Vec<Value> {
+    if !path.exists() {
+        return Vec::new();
+    }
+    lattice_core::db::open_read_only(path)
+        .ok()
+        .and_then(|conn| export_chunk_parents(&conn).ok())
+        .unwrap_or_default()
 }
 
 fn export_rows(path: &Path) -> (Vec<Value>, Vec<Value>, Vec<Value>) {

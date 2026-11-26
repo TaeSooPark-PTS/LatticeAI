@@ -3,16 +3,29 @@ use serde_json::{json, Map, Value};
 use crate::db::CoreError;
 use crate::pytext::{clean_text, truncate_chars};
 
+use super::super::identity::foreign_owner;
 use super::super::pyaux::{scoped_slug_id, sha256_text};
 use super::super::types::{EdgeSpec, IngestContentRequest, NodeSpec};
-use super::super::GraphWriter;
+use super::super::{revision::RevisionReplace, GraphWriter};
 use super::IngestOutcome;
+
+pub type RevisionHook<'a> = dyn FnMut(&rusqlite::Transaction<'_>, &str, &[String], &[String]) -> Result<usize, CoreError>
+    + 'a;
 
 impl GraphWriter {
     pub fn ingest_content(
         &self,
         request: &IngestContentRequest,
     ) -> Result<IngestOutcome, CoreError> {
+        self.replace_document_revision(request, &RevisionReplace::default())
+            .map(|revision| revision.ingest)
+    }
+
+    pub fn ingest_content_with(
+        &self,
+        request: &IngestContentRequest,
+        after_write: &mut RevisionHook<'_>,
+    ) -> Result<(IngestOutcome, usize), CoreError> {
         let source_type = if request.source_type.is_empty() {
             "text".to_string()
         } else {
@@ -77,8 +90,12 @@ impl GraphWriter {
         }
 
         let mut chunk_ids: Vec<String> = Vec::new();
+        let mut hook_result = 0usize;
         let (source_node_id, duplicate) = self.store.with_write_txn(|txn| {
             let duplicate = self.node_exists(txn, &content_id)?;
+            if foreign_owner(txn, &content_id, request.owner.as_deref())?.is_some() {
+                return Ok((None, true));
+            }
             self.upsert_node_with_vector(
                 txn,
                 &NodeSpec {
@@ -166,6 +183,12 @@ impl GraphWriter {
                     },
                 )?;
             }
+            let parent_ids = super::super::chunk_parents::write_chunk_parents(
+                txn,
+                &content_id,
+                &request.parents,
+                &captured_at,
+            )?;
             chunk_ids = self.write_chunks(
                 txn,
                 &request.chunks,
@@ -174,7 +197,9 @@ impl GraphWriter {
                 request.owner.as_deref(),
                 request.workspace_id.as_deref(),
                 true,
+                &parent_ids,
             )?;
+            hook_result = after_write(txn, &content_id, &chunk_ids, &parent_ids)?;
             let concept_ids = self.write_concepts(
                 txn,
                 &request.concepts,
@@ -254,19 +279,22 @@ impl GraphWriter {
                     crate::embeddings::EmbeddingIndexContract::from_parts(None, model_id, dim);
                 let _ = Self::record_index_contract_in_txn(txn, &contract)?;
             }
-            Ok((source_node_id, duplicate))
+            Ok((Some(source_node_id), duplicate))
         })?;
-        Ok(IngestOutcome {
-            node_id: content_id,
-            node_type,
-            source_node_id: Some(source_node_id),
-            content_hash: Some(content_hash),
-            sha256: None,
-            chunk_count: chunk_ids.len(),
-            chunk_ids,
-            duplicate,
-            captured_at: Some(captured_at),
-            metadata: None,
-        })
+        Ok((
+            IngestOutcome {
+                node_id: content_id,
+                node_type,
+                source_node_id,
+                content_hash: Some(content_hash),
+                sha256: None,
+                chunk_count: chunk_ids.len(),
+                chunk_ids,
+                duplicate,
+                captured_at: Some(captured_at),
+                metadata: None,
+            },
+            hook_result,
+        ))
     }
 }

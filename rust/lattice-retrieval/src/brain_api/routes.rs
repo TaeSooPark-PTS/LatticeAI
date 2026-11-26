@@ -97,7 +97,7 @@ async fn brain_health(State(state): State<BrainState>, request: Request) -> Resp
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    ok_json(&health::health_report(&state, caller.scope.as_deref()).await)
+    ok_json(&health::health_report(&state, &caller.email, caller.scope.as_deref()).await)
 }
 
 async fn brain_insights(State(state): State<BrainState>, request: Request) -> Response {
@@ -105,8 +105,7 @@ async fn brain_insights(State(state): State<BrainState>, request: Request) -> Re
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    let _ = caller.email;
-    ok_json(&digest::insights(&state, caller.scope.as_deref()).await)
+    ok_json(&digest::insights(&state, &caller.email, caller.scope.as_deref()).await)
 }
 
 async fn brain_contradictions(State(state): State<BrainState>, request: Request) -> Response {
@@ -142,7 +141,7 @@ async fn brain_duplicates(State(state): State<BrainState>, request: Request) -> 
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    ok_json(&digest::graph_duplicates(&state, caller.scope.as_deref()).await)
+    ok_json(&digest::graph_duplicates(&state, &caller.email, caller.scope.as_deref()).await)
 }
 
 async fn brain_quality_report(State(state): State<BrainState>, request: Request) -> Response {
@@ -150,7 +149,7 @@ async fn brain_quality_report(State(state): State<BrainState>, request: Request)
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    ok_json(&digest::quality_report(&state, caller.scope.as_deref()).await)
+    ok_json(&digest::quality_report(&state, &caller.email, caller.scope.as_deref()).await)
 }
 
 async fn brain_proactive_brief(State(state): State<BrainState>, request: Request) -> Response {
@@ -166,7 +165,7 @@ async fn brain_importance(State(state): State<BrainState>, request: Request) -> 
         Ok(caller) => caller,
         Err(refusal) => return refusal,
     };
-    ok_json(&digest::importance_report(&state, caller.scope.as_deref()).await)
+    ok_json(&digest::importance_report(&state, &caller.email, caller.scope.as_deref()).await)
 }
 
 async fn brain_synthesize(State(state): State<BrainState>, request: Request) -> Response {

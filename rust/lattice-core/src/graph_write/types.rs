@@ -73,6 +73,13 @@ pub struct ChunkPiece {
     pub embedding: Option<SuppliedVector>,
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct ChunkParentPiece {
+    pub text: String,
+    #[serde(default)]
+    pub fields: Map<String, Value>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConceptSpec {
     pub text: String,
@@ -133,6 +140,8 @@ pub struct IngestContentRequest {
     #[serde(default)]
     pub chunks: Vec<ChunkPiece>,
     #[serde(default)]
+    pub parents: Vec<ChunkParentPiece>,
+    #[serde(default)]
     pub concepts: Vec<ConceptSpec>,
     #[serde(default)]
     pub triples: Vec<TripleSpec>,
@@ -176,6 +185,8 @@ pub struct IngestFileRequest {
     pub structure_nodes: Vec<StructureChild>,
     #[serde(default)]
     pub chunks: Vec<ChunkPiece>,
+    #[serde(default)]
+    pub parents: Vec<ChunkParentPiece>,
     #[serde(default)]
     pub concepts: Vec<ConceptSpec>,
     #[serde(default)]

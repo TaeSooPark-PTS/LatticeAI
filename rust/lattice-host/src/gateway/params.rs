@@ -101,6 +101,19 @@ impl SearchParams {
         }
     }
 
+    pub fn temporal_ranking(
+        &self,
+    ) -> Result<Option<lattice_retrieval::temporal::TemporalRanking>, ParamError> {
+        lattice_retrieval::temporal::ranking_from_lookup(|key| {
+            lattice_retrieval::temporal::TEMPORAL_PARAM_KEYS
+                .iter()
+                .find(|known| **known == key)
+                .and_then(|known| self.first(&[known]))
+                .map(|(_, value)| value)
+        })
+        .map_err(|(field, detail)| ParamError::new(field, detail))
+    }
+
     pub fn optional_int(&self, key: &str, min: i64, max: i64) -> Result<Option<i64>, ParamError> {
         let Some((_, value)) = self.first(&[key]) else {
             return Ok(None);

@@ -7178,8 +7178,12 @@ export interface components {
         };
         GraphSearchRequest: {
             expand_depth?: number;
+            include_historical?: boolean;
             limit?: number;
             query: string;
+            since?: string | null;
+            sort_by?: "relevance" | "newest" | "auto" | null;
+            until?: string | null;
         };
         HTTPValidationError: {
             detail?: components["schemas"]["ValidationError"][];
@@ -7209,9 +7213,13 @@ export interface components {
         HybridSearchRequest: {
             graph_limit?: number;
             image_fusion?: boolean;
+            include_historical?: boolean;
             keyword_limit?: number;
             limit?: number;
             query: string;
+            since?: string | null;
+            sort_by?: "relevance" | "newest" | "auto" | null;
+            until?: string | null;
             vector_limit?: number;
             weights?: {
                 [key: string]: number;
@@ -7463,8 +7471,12 @@ export interface components {
             schema_name?: string;
         };
         SearchRequest: {
+            include_historical?: boolean;
             limit?: number;
             query: string;
+            since?: string | null;
+            sort_by?: "relevance" | "newest" | "auto" | null;
+            until?: string | null;
         };
         SelfModelApplyRequest: {
             item_id: string;
@@ -7619,6 +7631,7 @@ export interface components {
         ToolKnowledgeSearchRequest: {
             max_results?: number;
             query: string;
+            sort_by?: string | null;
         };
         ToolPathRequest: {
             approval_token?: string | null;
@@ -7696,9 +7709,13 @@ export interface components {
             type: string;
         };
         VectorSearchRequest: {
+            include_historical?: boolean;
             limit?: number;
             min_score?: number;
             query: string;
+            since?: string | null;
+            sort_by?: "relevance" | "newest" | "auto" | null;
+            until?: string | null;
         };
         VerifyCloudRequest: {
             force?: boolean;
@@ -10592,6 +10609,7 @@ export interface operations {
             query?: {
                 q?: string;
                 limit?: number;
+                sort_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -13193,6 +13211,10 @@ export interface operations {
                 q: string;
                 limit?: number;
                 image_fusion?: boolean;
+                sort_by?: "relevance" | "newest" | "auto" | null;
+                include_historical?: boolean;
+                since?: string | null;
+                until?: string | null;
             };
             header?: never;
             path?: never;
@@ -13273,6 +13295,10 @@ export interface operations {
             query: {
                 q: string;
                 limit?: number;
+                sort_by?: "relevance" | "newest" | "auto" | null;
+                include_historical?: boolean;
+                since?: string | null;
+                until?: string | null;
             };
             header?: never;
             path?: never;
@@ -13335,6 +13361,10 @@ export interface operations {
                 q: string;
                 limit?: number;
                 min_score?: number;
+                sort_by?: "relevance" | "newest" | "auto" | null;
+                include_historical?: boolean;
+                since?: string | null;
+                until?: string | null;
             };
             header?: never;
             path?: never;

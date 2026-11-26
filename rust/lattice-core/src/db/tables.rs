@@ -199,6 +199,13 @@ pub const TABLES: &[TableOwnership] = &[
         written_by: "lattice-core::graph_write",
         note: "pre-tokenized BM25F field stats sidecar for O(1) retrieval",
     },
+    TableOwnership {
+        file: GRAPH_DB,
+        table: "chunk_parents",
+        owner: Owner::RustPlatform,
+        written_by: "rust/lattice-core/src/graph_write/chunk_parents.rs",
+        note: "v14.2.0 parent-child chunking; created on the first parent write, absent on legacy stores, read tolerantly",
+    },
 ];
 
 pub fn owner_of(table: &str) -> Option<Owner> {

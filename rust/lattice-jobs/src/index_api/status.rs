@@ -124,7 +124,9 @@ pub(crate) fn source_items(conn: &Connection) -> Result<Vec<SourceItem>, CoreErr
         ))
     })?;
     for (id, parent, text, metadata) in rows.filter_map(Result::ok) {
-        let text = clean_text(&text);
+        let text = clean_text(&lattice_core::graph_write::chunk_parents::chunk_index_text(
+            &text, &metadata,
+        ));
         if text.is_empty() {
             continue;
         }

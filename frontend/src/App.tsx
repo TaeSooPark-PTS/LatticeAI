@@ -10,6 +10,7 @@ import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { Brain, Ellipsis, Moon, Sun, X } from "lucide-react";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
+import { BrainVitalPill } from "@/components/BrainVitalPill";
 import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
 import { LazyRoute } from "@/components/ErrorBoundary";
 import { AdminRouteView, PageLoader, resolveAppRoute } from "@/AppRouteView";
@@ -119,6 +120,7 @@ function BrainShell({
         <span className="brain-local-badge" data-testid="brain-local-badge">
           {t(language, "shell.localBadge")}
         </span>
+        <BrainVitalPill language={language} />
 
         <nav className="brain-desktop-nav brain-primary-nav" aria-label={t(language, "shell.menu.nav")}>
           {primaryRoutes.map((item) => {
@@ -149,6 +151,7 @@ function BrainShell({
                   key={item.id}
                   className={`brain-utility-link${item.id === active ? " is-active" : ""}`}
                   href={`#/${item.path}`}
+                  title={t(language, item.labelKey)}
                   aria-current={item.id === active ? "page" : undefined}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />

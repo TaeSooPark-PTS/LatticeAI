@@ -1,8 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { renderPage } from "@/test/renderPage";
 import { BrainHome } from "./BrainHome";
+import { useConversationSession } from "./conversationSession";
 
 
 function renderHome(options: Parameters<typeof renderPage>[1] = {}) {
@@ -67,6 +68,20 @@ describe("BrainHome first entry", () => {
     ]);
     expect(deckIndex).toBeGreaterThan(stationIndex!);
     expect(quietIndex).toBeGreaterThan(deckIndex!);
+  });
+
+  it("shows why a message could not be sent and lets the notice be dismissed", async () => {
+    const { container } = renderHome();
+    await waitFor(() => expect(container.querySelector("textarea")).toBeTruthy());
+
+    fireEvent.change(container.querySelector("textarea")!, { target: { value: "hello" } });
+    fireEvent.keyDown(container.querySelector("textarea")!, { key: "Enter" });
+    await waitFor(() => expect(container.querySelector(".brain-save-feedback")).toBeTruthy());
+    expect(container.querySelector(".brain-save-feedback small")).toBeNull();
+
+    fireEvent.click(container.querySelector(".brain-save-feedback button")!);
+    expect(container.querySelector(".brain-save-feedback")).toBeNull();
+    useConversationSession.getState().resetConversation();
   });
 
   it("opens with the dock closed, so the first screen is the composer", async () => {

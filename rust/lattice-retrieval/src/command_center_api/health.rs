@@ -29,14 +29,13 @@ impl GraphSample {
 
 pub(crate) fn graph_sample(
     conn: &Connection,
-    workspace_id: Option<&str>,
+    allowed: Option<&BTreeSet<String>>,
     enable_graph: bool,
 ) -> GraphSample {
     if !enable_graph {
         return GraphSample::unavailable();
     }
-    let allowed = workspace_id.map(|id| BTreeSet::from([id.to_string()]));
-    let Ok(slice) = kg::graph_slice(conn, GRAPH_SAMPLE_LIMIT, allowed.as_ref()) else {
+    let Ok(slice) = kg::graph_slice(conn, GRAPH_SAMPLE_LIMIT, allowed) else {
         return GraphSample::unavailable();
     };
     let edges = slice

@@ -61,6 +61,8 @@ export type {
   ChronicleTopEntity,
 } from "./chronicle";
 
+export type SearchSortBy = NonNullable<components["schemas"]["HybridSearchRequest"]["sort_by"]>;
+
 export type AdminAuditFilters = {
   q?: string;
   actor?: string;
@@ -342,18 +344,22 @@ export const latticeApi = {
   brainArchiveVerify: (body: { path: string; passphrase: string }) => post("/api/knowledge-graph/archive/verify", body, {}),
   brainArchiveRestore: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/restore", body, {}),
   brainArchiveImport: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/import", body, {}),
-  hybridSearch: async (query: string, weights?: unknown) => {
-    const res = await post<Record<string, unknown>>("/api/search/hybrid", { query, ...(weights ? { weights } : {}) }, { matches: [] });
+  hybridSearch: async (query: string, weights?: unknown, sortBy?: SearchSortBy) => {
+    const res = await post<Record<string, unknown>>(
+      "/api/search/hybrid",
+      { query, ...(weights ? { weights } : {}), ...(sortBy ? { sort_by: sortBy } : {}) },
+      { matches: [] },
+    );
     const data = res.data as Record<string, unknown>;
     if (res.ok && !Array.isArray(data.matches) && Array.isArray(data.results)) {
       return { ...res, data: { ...data, matches: data.results } };
     }
     return res;
   },
-  hybridSearchGraphRag: (query: string, limit = 12) =>
+  hybridSearchGraphRag: (query: string, limit = 12, sortBy?: SearchSortBy) =>
     post<Record<string, unknown>>(
       "/api/search/hybrid",
-      { query, mode: "graphrag", limit },
+      { query, mode: "graphrag", limit, ...(sortBy ? { sort_by: sortBy } : {}) },
       { matches: [], reasoning_paths: [], synthesis: {} },
     ),
   browserReadUrl: (url: string) => post("/api/browser/read-url", { url }, {}),
@@ -422,8 +428,12 @@ export const latticeApi = {
   approveProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/approve`, {}, {}),
   rejectProposal: (itemId: string, reason = "") =>
     post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, reason ? { reason } : {}, {}),
-  commandSearch: (q: string, limit = 8) =>
-    get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
+  commandSearch: (q: string, limit = 8, sortBy?: SearchSortBy) =>
+    get(
+      "/api/command/search",
+      { query: q, groups: [], total: 0 },
+      sortBy ? { q, limit, sort_by: sortBy } : { q, limit },
+    ),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),
   brainVectorFreshness: () => get("/api/brain/vector-freshness", { status: "unavailable", pending_items: 0, total_items: 0, detail: "" }),
   ingestionJobs: () => get("/api/ingestion/jobs", { jobs: [] }),

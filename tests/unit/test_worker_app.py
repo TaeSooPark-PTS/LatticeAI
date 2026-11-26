@@ -36,8 +36,8 @@ def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
     assert len(set(WORKER_ROUTES)) == 9
     assert len(GRAPH_WRITER_ROUTES) == 0
     assert len(WORKER_SEAM_ROUTES) == 2
-    assert len(WORKER_COMPUTE_ROUTES) == 9
-    assert len(worker_route_keys()) == 20
+    assert len(WORKER_COMPUTE_ROUTES) == 10
+    assert len(worker_route_keys()) == 21
 
 
 def test_the_new_seams_are_absent_from_the_committed_product_contract():
@@ -251,9 +251,6 @@ from latticeai.worker_app import create_worker_app
 
 
 def route_rows(routes):
-    # Same duck-typing as _keys() above: FastAPI >= 0.140 wraps included
-    # routers instead of flattening them, and the isinstance-only walk
-    # reports an empty table there rather than failing.
     rows = []
     for route in routes:
         inner = getattr(route, "original_router", None)
@@ -296,4 +293,4 @@ print(json.dumps({
 def test_worker_app_exposes_worker_route_contracts():
     assert len(WORKER_ROUTES) > 0
     assert len(WORKER_COMPUTE_ROUTES) > 0
-    assert len(worker_route_keys()) == 20
+    assert len(worker_route_keys()) == 21

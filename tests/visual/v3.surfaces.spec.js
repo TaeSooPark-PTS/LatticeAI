@@ -68,7 +68,15 @@ test("an empty web capture is not presented as new Brain knowledge", async ({ pa
   await webInput.press("Enter");
 
   await expect(page.locator("body")).toContainText("웹 페이지를 넣지 못했습니다");
-  await expect(page.locator(".brain-ingestion-dock-action").filter({ hasText: "웹" })).toHaveClass(/is-failed/);
+  const webTile = page.locator(".brain-ingestion-dock-action").filter({ hasText: "웹" });
+  await expect(webTile).toHaveClass(/is-failed/);
+  const notice = page.locator(".brain-save-feedback");
+  await expect(notice).toBeInViewport({ ratio: 1 });
+  await expect(notice).not.toContainText("나중에 다시 불러올");
+  await page.waitForTimeout(600);
+  await expect(webTile).toHaveClass(/is-failed/);
+  await notice.getByRole("button", { name: "알림 닫기" }).click();
+  await expect(notice).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -109,7 +117,7 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
 
   await page.locator(".ring-label-right").click();
   await page.getByRole("button", { name: "이 층 자세히 보기" }).click();
-  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.locator("[data-testid='brain-graph-stage']")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -123,7 +131,7 @@ test("memory opens with search and can reveal the connections map", async ({ pag
   await expect(page.getByRole("tab", { name: "연결 지도" })).toHaveCount(0);
   await page.getByTestId("open-connections-map").click();
   await expect(page).toHaveURL(/#\/knowledge-graph$/);
-  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.locator("[data-testid='brain-graph-stage']")).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeVisible();
 

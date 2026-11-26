@@ -42,6 +42,47 @@ pub fn deleted_files(store: &Store, root: &Path) -> Vec<String> {
     fingerprint::missing_under_root(store, root, &present)
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum PruneScope<'a> {
+    Everything,
+    User(&'a str),
+    Watch {
+        owner: Option<&'a str>,
+        workspace_id: Option<&'a str>,
+    },
+}
+
+impl PruneScope<'_> {
+    fn covers(&self, conn: &Connection, node_id: &str) -> bool {
+        if matches!(self, PruneScope::Everything) {
+            return true;
+        }
+        let Ok((owner, workspace)) = conn.query_row(
+            "SELECT COALESCE(json_extract(metadata_json, '$.owner'), ''), \
+                    COALESCE(json_extract(metadata_json, '$.workspace_id'), '') \
+             FROM nodes WHERE id = ?1",
+            [node_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        ) else {
+            return false;
+        };
+        match self {
+            PruneScope::Everything => true,
+            PruneScope::User(user) => owner == *user,
+            PruneScope::Watch {
+                owner: held,
+                workspace_id,
+            } => owner == held.unwrap_or_default() && workspace == workspace_id.unwrap_or_default(),
+        }
+    }
+}
+
+fn scoped_node_ids(conn: &Connection, files: &[String], scope: PruneScope<'_>) -> Vec<String> {
+    let mut ids = node_ids_for_files(conn, files);
+    ids.retain(|id| scope.covers(conn, id));
+    ids
+}
+
 pub fn node_ids_for_files(conn: &Connection, files: &[String]) -> Vec<String> {
     let mut ids = Vec::new();
     let mut seen = HashSet::new();
@@ -149,9 +190,24 @@ pub fn preview_subgraph(conn: &Connection, roots: &[String]) -> PrunePlan {
     }
 }
 
-pub fn prune_deleted(graph: &GraphWriter, root: &Path, confirm: bool) -> Result<Value, String> {
+pub fn prune_deleted(
+    graph: &GraphWriter,
+    root: &Path,
+    confirm: bool,
+    scope: PruneScope<'_>,
+) -> Result<Value, String> {
     let store = graph.store();
-    let files = deleted_files(store, root);
+    let mut files = deleted_files(store, root);
+    if !matches!(scope, PruneScope::Everything) {
+        store
+            .with_read_conn(|conn| {
+                files.retain(|file| {
+                    !scoped_node_ids(conn, std::slice::from_ref(file), scope).is_empty()
+                });
+                Ok(())
+            })
+            .map_err(|error| error.to_string())?;
+    }
     if files.is_empty() {
         return Ok(json!({
             "status": "ok",
@@ -164,7 +220,7 @@ pub fn prune_deleted(graph: &GraphWriter, root: &Path, confirm: bool) -> Result<
     }
     let plan = store
         .with_read_conn(|conn| {
-            let node_ids = node_ids_for_files(conn, &files);
+            let node_ids = scoped_node_ids(conn, &files, scope);
             let mut preview = preview_subgraph(conn, &node_ids);
             preview.files = files.clone();
             Ok(preview)
@@ -183,7 +239,7 @@ pub fn prune_deleted(graph: &GraphWriter, root: &Path, confirm: bool) -> Result<
     }
 
     let roots = store
-        .with_read_conn(|conn| Ok(node_ids_for_files(conn, &files)))
+        .with_read_conn(|conn| Ok(scoped_node_ids(conn, &files, scope)))
         .map_err(|error| error.to_string())?;
     let mut removed_nodes = 0i64;
     for node_id in &roots {
@@ -265,4 +321,68 @@ pub async fn refresh_sidecar(
         "k": 1,
     });
     let _ = seam.post_json("/worker/vector/query", &body).await;
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::worker::{NoteIngestor, NoteSubmission};
+
+    #[tokio::test]
+    async fn a_watch_prunes_only_the_records_of_its_own_owner_and_workspace() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().join("vault");
+        std::fs::create_dir_all(&root).expect("vault");
+        let store = Arc::new(Store::open(&dir.path().join("knowledge_graph.sqlite")).expect("db"));
+        let graph = GraphWriter::open(store, dir.path().join("blobs")).expect("writer");
+        let ingestor = NoteIngestor::new(graph.clone());
+        let uri = root.join("gone.md").display().to_string();
+        let mut ids = Vec::new();
+        for (owner, workspace, text) in [
+            ("a@x", None, "alpha text"),
+            ("b@x", None, "beta text"),
+            ("a@x", Some("team"), "team text"),
+        ] {
+            let note = NoteSubmission {
+                title: "gone.md".into(),
+                content: text.into(),
+                source: Some(uri.clone()),
+                metadata: Map::new(),
+            };
+            let receipt = ingestor
+                .ingest_note(&note, Some(owner), workspace)
+                .await
+                .expect("note");
+            ids.push(receipt.node_id);
+        }
+        let alive = || -> Vec<bool> {
+            ids.iter()
+                .map(|id| {
+                    graph
+                        .store()
+                        .with_read_conn(|conn| {
+                            Ok(conn.query_row(
+                                "SELECT COUNT(*) FROM nodes WHERE id = ?1",
+                                [id],
+                                |row| row.get::<_, i64>(0),
+                            )? > 0)
+                        })
+                        .expect("alive")
+                })
+                .collect()
+        };
+        let stranger = PruneScope::User("c@x");
+        let report = prune_deleted(&graph, &root, true, stranger).expect("stranger");
+        assert_eq!(report["files"], json!([]));
+        assert_eq!(alive(), vec![true, true, true]);
+
+        let watch = PruneScope::Watch {
+            owner: Some("a@x"),
+            workspace_id: None,
+        };
+        prune_deleted(&graph, &root, true, watch).expect("watch");
+        assert_eq!(alive(), vec![false, true, true]);
+    }
 }

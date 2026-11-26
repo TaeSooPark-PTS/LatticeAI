@@ -1,6 +1,7 @@
 const path = require("path");
 
 const { repoRoot } = require("./http.cjs");
+const { grownBrain } = require("./grown_brain.cjs");
 
 const port = Number(process.env.LTCAI_VISUAL_PORT || 4927);
 const appVersion = require(path.join(repoRoot, "package.json")).version;
@@ -134,6 +135,14 @@ const enterpriseOverview = {
     note: "Enterprise governance is disabled in Community.",
   },
 };
+
+if (process.env.LTCAI_VISUAL_BRAIN === "grown") {
+  const grown = grownBrain(graphNodes.slice());
+  graphNodes.push(...grown.nodes);
+  graphEdges.push(...grown.edges);
+  const tally = (items) => items.reduce((counts, item) => ({ ...counts, [item.type]: (counts[item.type] || 0) + 1 }), {});
+  workspaceOs.graph = { nodes: tally(graphNodes), edges: tally(graphEdges) };
+}
 
 module.exports = {
   port,

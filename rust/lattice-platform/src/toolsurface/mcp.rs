@@ -20,7 +20,7 @@ mod http;
 mod protocol;
 mod store;
 
-pub use dispatch::{dispatch, dispatch_for_agent, is_native_tool, DispatchError};
+pub use dispatch::{dispatch, dispatch_for_agent, is_native_tool, DispatchError, NATIVE_TOOLS};
 pub(crate) use http::{
     detail, dump_indent2, json_status, json_text, localized, missing_fields, now_iso_seconds,
     parse_json_object, requested_scope, require_admin, require_user, sha256_hex, value_to_ordered,

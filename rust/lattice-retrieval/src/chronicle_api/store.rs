@@ -31,7 +31,9 @@ pub const ENTITIES_SQL: &str = "
 
 pub const CONNECTIONS_SQL: &str = "
     SELECT e.id AS id,
-           COALESCE(MIN(o.observed_at), e.created_at) AS at
+           COALESCE(MIN(o.observed_at), e.created_at) AS at,
+           e.source AS source,
+           e.target AS target
     FROM edges_v2 e
     LEFT JOIN edge_occurrences o ON o.edge_id = e.id
     WHERE e.source IN (
@@ -42,7 +44,7 @@ pub const CONNECTIONS_SQL: &str = "
             SELECT id FROM nodes_v2
             WHERE (:workspace IS NULL OR workspace_id = :workspace
                    OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = ''))))
-    GROUP BY e.id, e.created_at
+    GROUP BY e.id, e.created_at, e.source, e.target
     ORDER BY at ASC, e.id ASC
 ";
 
@@ -77,7 +79,8 @@ pub const CHANGED_EDGES_SQL: &str = "
            s.label AS source_label,
            t.label AS target_label,
            e.superseded_by AS superseded_by,
-           e.valid_to AS at
+           e.valid_to AS at,
+           e.target AS target_id
     FROM edges_v2 e
     JOIN nodes_v2 s ON s.id = e.source
     JOIN nodes_v2 t ON t.id = e.target
@@ -153,8 +156,42 @@ pub struct AsOfWindow {
     pub edge_count: i64,
 }
 
+fn retain_viewer<T>(
+    conn: &Connection,
+    rows: Vec<T>,
+    viewer: Option<&str>,
+    ids_of: impl Fn(&T) -> Vec<String>,
+) -> Vec<T> {
+    let Some(viewer) = viewer.and_then(lattice_core::viewer_scope::normalize_viewer) else {
+        return rows;
+    };
+    if rows.is_empty() {
+        return rows;
+    }
+    let all_ids: Vec<String> = rows.iter().flat_map(&ids_of).collect();
+    let Ok(hidden) = lattice_core::viewer_scope::foreign_conversation_ids(conn, &all_ids, &viewer)
+    else {
+        return rows;
+    };
+    if hidden.is_empty() {
+        return rows;
+    }
+    rows.into_iter()
+        .filter(|row| !ids_of(row).iter().any(|id| hidden.contains(id)))
+        .collect()
+}
+
 pub fn sources(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<SourceRow> {
-    scoped_rows(conn, graph, SOURCES_SQL, workspace, |row| {
+    sources_for(conn, graph, workspace, None)
+}
+
+pub fn sources_for(
+    conn: &Connection,
+    graph: bool,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Vec<SourceRow> {
+    let rows = scoped_rows(conn, graph, SOURCES_SQL, workspace, |row| {
         Ok(SourceRow {
             id: cell(row, 0)?,
             node_id: cell(row, 1)?,
@@ -162,24 +199,52 @@ pub fn sources(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<S
             source_type: cell(row, 3)?,
             at: cell(row, 4)?,
         })
+    });
+    retain_viewer(conn, rows, viewer, |row| {
+        vec![py_str_or_empty(&row.node_id)]
     })
 }
 
 pub fn entities(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<EntityRow> {
-    scoped_rows(conn, graph, ENTITIES_SQL, workspace, |row| {
+    entities_for(conn, graph, workspace, None)
+}
+
+pub fn entities_for(
+    conn: &Connection,
+    graph: bool,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Vec<EntityRow> {
+    let rows = scoped_rows(conn, graph, ENTITIES_SQL, workspace, |row| {
         Ok(EntityRow {
             id: cell(row, 0)?,
             label: cell(row, 1)?,
             kind: cell(row, 2)?,
             at: cell(row, 3)?,
         })
-    })
+    });
+    retain_viewer(conn, rows, viewer, |row| vec![py_str_or_empty(&row.id)])
 }
 
 pub fn connections(conn: &Connection, graph: bool, workspace: Option<&str>) -> Vec<AtRow> {
-    scoped_rows(conn, graph, CONNECTIONS_SQL, workspace, |row| {
-        Ok(AtRow { at: cell(row, 1)? })
+    connections_for(conn, graph, workspace, None)
+}
+
+pub fn connections_for(
+    conn: &Connection,
+    graph: bool,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Vec<AtRow> {
+    let rows = scoped_rows(conn, graph, CONNECTIONS_SQL, workspace, |row| {
+        Ok((AtRow { at: cell(row, 1)? }, cell(row, 2)?, cell(row, 3)?))
+    });
+    retain_viewer(conn, rows, viewer, |(_, src, dst)| {
+        vec![py_str_or_empty(src), py_str_or_empty(dst)]
     })
+    .into_iter()
+    .map(|(at, _, _)| at)
+    .collect()
 }
 
 pub fn changed_nodes(
@@ -187,14 +252,24 @@ pub fn changed_nodes(
     graph: bool,
     workspace: Option<&str>,
 ) -> Vec<ChangedNodeRow> {
-    scoped_rows(conn, graph, CHANGED_NODES_SQL, workspace, |row| {
+    changed_nodes_for(conn, graph, workspace, None)
+}
+
+pub fn changed_nodes_for(
+    conn: &Connection,
+    graph: bool,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Vec<ChangedNodeRow> {
+    let rows = scoped_rows(conn, graph, CHANGED_NODES_SQL, workspace, |row| {
         Ok(ChangedNodeRow {
             id: cell(row, 0)?,
             label: cell(row, 1)?,
             superseded_by: cell(row, 2)?,
             at: cell(row, 3)?,
         })
-    })
+    });
+    retain_viewer(conn, rows, viewer, |row| vec![py_str_or_empty(&row.id)])
 }
 
 pub fn changed_edges(
@@ -202,15 +277,33 @@ pub fn changed_edges(
     graph: bool,
     workspace: Option<&str>,
 ) -> Vec<ChangedEdgeRow> {
-    scoped_rows(conn, graph, CHANGED_EDGES_SQL, workspace, |row| {
-        Ok(ChangedEdgeRow {
-            node_id: cell(row, 1)?,
-            source_label: cell(row, 2)?,
-            target_label: cell(row, 3)?,
-            superseded_by: cell(row, 4)?,
-            at: cell(row, 5)?,
-        })
+    changed_edges_for(conn, graph, workspace, None)
+}
+
+pub fn changed_edges_for(
+    conn: &Connection,
+    graph: bool,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Vec<ChangedEdgeRow> {
+    let rows = scoped_rows(conn, graph, CHANGED_EDGES_SQL, workspace, |row| {
+        Ok((
+            ChangedEdgeRow {
+                node_id: cell(row, 1)?,
+                source_label: cell(row, 2)?,
+                target_label: cell(row, 3)?,
+                superseded_by: cell(row, 4)?,
+                at: cell(row, 5)?,
+            },
+            cell(row, 6)?,
+        ))
+    });
+    retain_viewer(conn, rows, viewer, |(row, target)| {
+        vec![py_str_or_empty(&row.node_id), py_str_or_empty(target)]
     })
+    .into_iter()
+    .map(|(row, _)| row)
+    .collect()
 }
 
 pub fn messages(conn: &Connection, user_email: &str, workspace: Option<&str>) -> Vec<MessageRow> {
@@ -282,6 +375,16 @@ pub fn as_of(
     limit: i64,
     workspace: Option<&str>,
 ) -> Result<AsOfWindow, CoreError> {
+    as_of_for(conn, stamp, limit, workspace, None)
+}
+
+pub fn as_of_for(
+    conn: &Connection,
+    stamp: &str,
+    limit: i64,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Result<AsOfWindow, CoreError> {
     let limit = limit.clamp(1, 2_000);
     let mut clauses = vec![TEMPORAL_PREDICATE_SQL.to_string()];
     let mut binds: Vec<String> = vec![stamp.to_string(), stamp.to_string()];
@@ -309,6 +412,7 @@ pub fn as_of(
             title: cell(row, 2)?,
         });
     }
+    let nodes = retain_viewer(conn, nodes, viewer, |node| vec![py_str_or_empty(&node.id)]);
     let node_count = nodes.len() as i64;
     let edge_count = edge_count(conn, stamp, &nodes)?;
     Ok(AsOfWindow {

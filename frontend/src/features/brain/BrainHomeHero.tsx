@@ -2,8 +2,14 @@ import * as React from "react";
 import { Map } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
+import { computeBrainGrowth } from "@/features/brain3d/brainGrowth";
 import { t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import type { BrainReadiness, KnowledgeGraphModel, MemoryFragment } from "./types";
+
+const Brain3DCanvas = React.lazy(() =>
+  import("@/features/brain3d/Brain3DCanvas").then((module) => ({ default: module.Brain3DCanvas })),
+);
 
 export const BrainHomeHero = React.memo(function BrainHomeHero({
   language,
@@ -26,8 +32,15 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   onExploreBrain: () => void;
   trailing?: React.ReactNode;
 }) {
+  const graphViewMode = useAppStore((state) => state.graphViewMode);
+  const showSuperseded = useAppStore((state) => state.showSuperseded);
+  const activeFiringTrace = useAppStore((state) => state.activeFiringTrace);
   const memoryCount = Math.max(readiness.signals.memoryCount, memories.length);
   const conceptCount = Math.max(readiness.signals.conceptCount, graph.nodes.length);
+  const growth = React.useMemo(
+    () => computeBrainGrowth(Math.max(conceptCount, graph.nodes.length), Math.max(relationshipCount, graph.edges.length)),
+    [conceptCount, graph.nodes.length, relationshipCount, graph.edges.length],
+  );
   const empty = memoryCount === 0 && conceptCount === 0;
 
   return (
@@ -35,8 +48,24 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
       <div
         className="brain-hero-organism"
         data-growth={readiness.state}
+        data-stage={growth.stage}
         data-testid="brain-hero-organism"
       >
+        {graphViewMode === "3d" && graph.nodes.length > 0 ? (
+          <div className="brain-hero-3d-backdrop" aria-hidden="true">
+            <React.Suspense fallback={null}>
+              <Brain3DCanvas
+                nodes={graph.nodes}
+                edges={graph.edges}
+                showSuperseded={showSuperseded}
+                firingTrace={activeFiringTrace}
+                intensity={intensity}
+                variant="ambient"
+                language={language}
+              />
+            </React.Suspense>
+          </div>
+        ) : null}
         <i className="brain-growth-ring is-inner" aria-hidden="true" />
         <i className="brain-growth-ring is-mid" aria-hidden="true" />
         <i className="brain-growth-ring is-outer" aria-hidden="true" />

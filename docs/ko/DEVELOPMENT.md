@@ -2,9 +2,9 @@
 
 # Lattice AI 개발 가이드
 
-> **상태: 정본 (14.1.2)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
+> **상태: 정본 (14.2.0)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
 
-현재 릴리스: **14.1.2 — Living Synthesis**.
+현재 릴리스: **14.2.0 — Temporal Synthesis**.
 
 이 문서는 기여자 온보딩 경로를 정리합니다: 저장소를 어떻게 실행하는지, 변경 사항이 어디에 들어가야 하는지, 어떤 게이트가 실패하는지, 그리고 제품의 정직성을 지키는 내부 규칙을 다룹니다. 제품 포지셔닝과 5분 첫 실행 흐름은 [README.md](../../README.md)와 [ONBOARDING.md](./ONBOARDING.md)에 있습니다. 지원되는 릴리스 이력(13.0.0 이상)은 [CHANGELOG.md](./CHANGELOG.md)와 [RELEASE.md](./RELEASE.md)에 있으며(`13.x–14.x`는 현대적인 Rust 호스트 + 도메인 그룹 아키텍처 세대이므로 [SECURITY.md](./SECURITY.md)도 `13.x` 및 `14.x`를 지원합니다), 아직 열린 과제는 [ROADMAP.md](./ROADMAP.md)(참고 문서, 정본 아님)에 정리되어 있습니다.
 
@@ -22,7 +22,7 @@ Lattice AI는 어떤 AI 모델로 교체하더라도 사용자의 지식을 영�
 
 ## 10분 빠른 시작
 
-Python 3.11+, Node, Rust 툴체인(`cargo`)이 필요합니다. 제품 본체는 `lattice-host`이며, Python은 호스트가 관리하는 20개 라우트의 연산 워커입니다.
+Python 3.11+, Node, Rust 툴체인(`cargo`)이 필요합니다. 제품 본체는 `lattice-host`이며, Python은 호스트가 관리하는 21개 라우트의 연산 워커입니다.
 
 ```bash
 git clone <this-repo>
@@ -56,11 +56,11 @@ Apple Silicon 로컬 모델 확장(MLX)은 실제로 모델을 로드할 때만 
 | --- | --- | --- |
 | `npm start` | `LTCAI` 바이너리 → [`bin/ltcai.js`](../../bin/ltcai.js) | **제품 본체**: `127.0.0.1:4825`에서 `lattice-host`가 워커를 관리하고 `/app`에서 SPA를 서빙 |
 | `node bin/ltcai.js` | 동일한 바이너리를 직접 호출 | 동일한 제품 본체; `PATH`에 오래된 전역 `LTCAI`가 있을 때 사용 |
-| `npm run dev` | `node scripts/run_python.mjs -m latticeai.cli.entrypoint --reload` | **제품 본체가 아님**. uvicorn `--reload`로 20개 라우트 워커만 띄움(`Lattice AI worker on http://127.0.0.1:4825` 출력). SPA 없음. |
+| `npm run dev` | `node scripts/run_python.mjs -m latticeai.cli.entrypoint --reload` | **제품 본체가 아님**. uvicorn `--reload`로 21개 라우트 워커만 띄움(`Lattice AI worker on http://127.0.0.1:4825` 출력). SPA 없음. |
 
 `scripts/run_python.mjs`는 `.venv/bin/python`을 우선합니다. `bin/ltcai.js`는 `LTCAI_PYTHON`, 관리형 `~/.ltcai/npm-python`, `.venv` 순서로 찾습니다. 둘 다 있을 때는 `LTCAI_PYTHON`으로 워커 인터프리터를 고정하세요.
 
-`bin/ltcai.js`는 `LATTICEAI_HOST_BIN` / `LTCAI_HOST`, `rust/target/release/lattice-host`, `rust/target/debug/lattice-host` 순서로 호스트 바이너리를 찾습니다. 아무것도 없으면 `cargo build -p lattice-host`(디버그)를 실행합니다. 오래된 `rust/target/release/lattice-host`가 최신 디버그 바이너리보다 우선하므로 `-V`가 14.1.2이 아니라면 경로를 지정하거나 `cargo build -p lattice-host --release`로 다시 빌드하세요.
+`bin/ltcai.js`는 `LATTICEAI_HOST_BIN` / `LTCAI_HOST`, `rust/target/release/lattice-host`, `rust/target/debug/lattice-host` 순서로 호스트 바이너리를 찾습니다. 아무것도 없으면 `cargo build -p lattice-host`(디버그)를 실행합니다. 오래된 `rust/target/release/lattice-host`가 최신 디버그 바이너리보다 우선하므로 `-V`가 14.2.0이 아니라면 경로를 지정하거나 `cargo build -p lattice-host --release`로 다시 빌드하세요.
 
 `npm start`와 `npm run dev`를 같은 포트에서 동시에 실행하지 마세요. 워커 진입점은 기본적으로 `LATTICEAI_PORT` 또는 **4825**를 사용합니다. 워커 연산 로직을 반복 개발할 때는 `LATTICEAI_PORT=4835 npm run dev`를 사용하세요(호스트와 짝지을 때는 `--no-spawn`과 워커 포트 지정 사용).
 
@@ -88,7 +88,7 @@ lattice-host            단일 진입점 — 모든 라우트 패밀리 마운�
   lattice-jobs          임베딩 드레인 + 인덱스 API
   lattice-chat          POST /chat
   lattice-auth          사용자 인증 및 권한 정책
-Python worker           연산 전용 — 20개 허용 목록 라우트
+Python worker           연산 전용 — 21개 허용 목록 라우트
 frontend/src            SPA
 ```
 
@@ -99,7 +99,7 @@ frontend/src            SPA
 | **새 제품 API 라우트** | 주제를 나타내는 `lattice-platform` 도메인(`workspaceos/`, `toolsurface/`, `governance/`, `knowledge/`, `modelops/`, `adminops/`). 한 모듈이 한 패밀리를 담당(`MOUNTED: &[(&str, &str)]` + `router(state)`)하고 [`rust/lattice-host/src/gateway/product.rs`](../../rust/lattice-host/src/gateway/product.rs)에 마운트합니다. **페이지 셸**은 `shell/ui_redirects`의 308 리다이렉트로 처리합니다(`require_user`가 필요한 `GET /plugins/sdk`는 `toolsurface::plugins` 예외). | 검색/연대기를 platform에 두지 마세요(`lattice-retrieval`). 수집은 `lattice-ingest`, 채팅은 `lattice-chat`, 인덱스 드레인은 `lattice-jobs`, 인증은 `lattice-auth`, 에이전트 루프 HTTP는 `lattice-agent` `surface/`입니다. 핸들러가 허용 여부를 독자적으로 재판단하면 `lattice_agent::kernel::permission`을 포크한 것이고, 그래프를 직접 열면 제2의 라이터가 됩니다. |
 | **에이전트 툴 추가** | 에이전트 턴 내부에서 도는 도구는 `lattice-agent` `tools/`에서 대상에 맞는 파일(`files`, `vault`, `shell`, `desktop`, `render`, `scaffold`, `local`)에 둡니다. 이름을 `tools::host::MUTATING_TOOLS` 또는 `RENDER_TOOLS`에 추가하고 [`tools/host.rs`](../../rust/lattice-agent/src/tools/host.rs) 디스패처에 분기를 추가하세요. 모든 경로는 `tools::sandbox::Workspace::resolve`로 해석하고 모든 쓰기는 `content::sanitize::sanitize_write_content`를 통과합니다. 기존 기능의 HTTP 노출은 `lattice-platform` `toolsurface/tools/` + `tools::governance_for`로 합니다. | 핸들러 안에 별도 권한 검사를 넣지 마세요(커널이 이미 승인함). 원시 경로에 `std::fs`를 직접 쓰지 마세요. 읽기 전용 연산 핸들러나 포인터 도구(`computer_*`)는 의도적으로 워커(`POST /agent/tool`)에 둡니다. |
 | **파싱 보정 추가** | `lattice-agent` `parse/action.rs`(또는 새 모델 프레임이면 `parse/channel.rs`). 가장 단순하고 리터럴에 가까운 순서대로 체인 끝에 추가하고 **반환되는 `repairs` 목록에 이름을 기록**하세요. CPython 기본 동작(`pyjson`, `pyliteral`, `pyshlex`, `pystr`)은 [`rust/fixtures/agent/`](../../rust/fixtures/agent/FROZEN.md)에 고정되어 있습니다. Python에 없던 새 응답은 **새 키** 아래에 둡니다([`agent_loop/FROZEN.md`](../../rust/fixtures/agent_loop/FROZEN.md)의 `*_extended` 참고). | 조용한 보정은 버그입니다. 모델이 쓰지 않은 도구 이름·경로·인자를 만들어내지 마세요. 의사결정(`kernel/`)이나 파일 본문 복구(`content/`)를 여기에 두지 말고, 동결된 픽스처 행을 제자리에서 수정하지 마세요. |
-| **새 워커 연산** | 임베딩, 파싱, 추출, 렌더링, ASR, LLM 등 순수 연산만 담당합니다. `latticeai/api/worker_compute.py` 또는 [`latticeai/runtime/build_phases/worker_profile.py`](../../latticeai/runtime/build_phases/worker_profile.py)의 `WORKER_ROUTES`/`WORKER_SEAM_ROUTES`에 `(method, path)`를 추가한 뒤 `.venv/bin/python scripts/gen_worker_allowlist_fixture.py`로 커밋된 프로젝션을 재생성하세요. `tests/unit/test_worker_allowlist.py`가 이를 고정하고 `lattice-host`가 [`rust/fixtures/worker_allowlist.json`](../../rust/fixtures/worker_allowlist.json)을 `include_str!`로 포함합니다. 라우트는 총 **20개**이며, 네이티브도 아니고 목록에도 없으면 `404`입니다. | 제품 기능을 워커 라우트로 추가하지 마세요. 워커는 그래프·세션·파일 등 어떤 상태도 저장하지 않습니다. `latticeai.app_factory.build_context`는 제품이 아니라 **워커** 조립 루트이며 임포트 시 MLX/GPU 초기화·싱글톤 생성·파일 쓰기·네트워크 호출이 없어야 합니다. |
+| **새 워커 연산** | 임베딩, 파싱, 추출, 렌더링, ASR, LLM 등 순수 연산만 담당합니다. `latticeai/api/worker_compute.py` 또는 [`latticeai/runtime/build_phases/worker_profile.py`](../../latticeai/runtime/build_phases/worker_profile.py)의 `WORKER_ROUTES`/`WORKER_SEAM_ROUTES`에 `(method, path)`를 추가한 뒤 `.venv/bin/python scripts/gen_worker_allowlist_fixture.py`로 커밋된 프로젝션을 재생성하세요. `tests/unit/test_worker_allowlist.py`가 이를 고정하고 `lattice-host`가 [`rust/fixtures/worker_allowlist.json`](../../rust/fixtures/worker_allowlist.json)을 `include_str!`로 포함합니다. 라우트는 총 **21개**이며, 네이티브도 아니고 목록에도 없으면 `404`입니다. | 제품 기능을 워커 라우트로 추가하지 마세요. 워커는 그래프·세션·파일 등 어떤 상태도 저장하지 않습니다. `latticeai.app_factory.build_context`는 제품이 아니라 **워커** 조립 루트이며 임포트 시 MLX/GPU 초기화·싱글톤 생성·파일 쓰기·네트워크 호출이 없어야 합니다. |
 | **프론트 화면 / 패널** | 라우트 화면은 `frontend/src/pages/`(`Brain`, `Capture`, `Chronicle`, `Act`, `Library`, `System`), 기능 패널은 `frontend/src/features/<area>/`, 공통 크롬은 `frontend/src/components/`, 해시 라우트는 `frontend/src/routes.ts`에 둡니다. 문구는 `frontend/src/i18n/`에서 `registerCopy`로 등록하며 한국어를 먼저 작성하고 영어 쌍을 같은 모듈에 둡니다(`t()`는 `COPY.ko`로 폴백). 색상은 [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css)의 `hsl(var(--token))`만 사용하고, 실패한 `ApiResult`는 항상 오류/사용 불가 상태로 표시합니다. Vitest 테스트를 함께 배치하며 커버리지 하한은 `all: true` 기준 100%입니다. | TSX에 사용자 노출 한글/영문 리터럴을 직접 쓰지 마세요(`scripts/check_i18n_literals.mjs`). 등록하지 않은 i18n 네임스페이스를 임포트하지 마세요(`check:i18n-namespaces`). 기본 첫 화면에 런타임 지표나 관리자 도구를 넣지 마세요. `frontend/src/api/openapi.ts`는 손으로 편집하지 말고 `npm run frontend:openapi`로 재생성하세요. |
 | **지식 그래프 쓰기** | 오직 [`lattice_core::graph_write::GraphWriter`](../../rust/lattice-core/src/graph_write/mod.rs)만 사용합니다. 프로덕션 `open()`은 워크스페이스가 생략된 쓰기에 `"personal"`을 자동 기록합니다. 청크, 개념, 트리플, 임베딩은 요청 데이터로 전달되며 라이터는 절대 모델을 호출하지 않습니다. | 다른 크레이트에서 `knowledge_graph.sqlite`를 쓰기 모드로 열지 마세요. 은퇴한 `/worker/graph/mutate`를 쓰지 마세요. `with_parts`는 동결 골든 패리티 전용이며 제품 코드용이 아닙니다. |
 | **검증 / 골든** | 각 픽스처 패밀리의 `FROZEN.md` 규칙을 따릅니다: **Agent kernel**([`rust/fixtures/agent/`](../../rust/fixtures/agent/FROZEN.md)), **Agent loop**([`rust/fixtures/agent_loop/`](../../rust/fixtures/agent_loop/FROZEN.md)), **Retrieval / embeddings**([`rust/fixtures/golden/`](../../rust/fixtures/golden/FROZEN.md)), **Graph writes**([`rust/fixtures/graph_write/`](../../rust/fixtures/graph_write/FROZEN.md)), **Chunking**([`rust/fixtures/chunking/`](../../rust/fixtures/chunking/FROZEN.md)), **HTTP replay**([`rust/fixtures/http/`](../../rust/fixtures/http/FROZEN.md)). Python 워커는 `npm run test:unit`, SPA는 `npm run test:frontend`, 비주얼은 `npm run test:visual`, 통합 테스트는 `npm run test:integration`으로 실행합니다. | 동결된 기대값은 불가침입니다. 이식 코드가 어긋나면 이식 코드를 고치세요. 의도된 신규 동작은 기존 행을 덮어쓰지 말고 **새 키**나 새 파일에 기록하세요. |
@@ -170,7 +170,7 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 
 ### 릴리스 증거 바인딩
 
-`scripts/check_release_evidence_bound.mjs`는 `output/release/v14.1.2/SCREENSHOT_INDEX.md`가 현재 `static/app/asset-manifest.json` 다이제스트와 비주얼 목 서버 지문과 일치하는지 확인합니다. 수정하려면 `npm run build:assets` 후 `npm run release:evidence`를 실행하세요.
+`scripts/check_release_evidence_bound.mjs`는 `output/release/v14.2.0/SCREENSHOT_INDEX.md`가 현재 `static/app/asset-manifest.json` 다이제스트와 비주얼 목 서버 지문과 일치하는지 확인합니다. 수정하려면 `npm run build:assets` 후 `npm run release:evidence`를 실행하세요.
 
 ## 내부 원칙
 
@@ -197,12 +197,12 @@ Python(`[tool.coverage.report] fail_under = 90`, `pyproject.toml`)은 **라인 �
 
 릴리스·배포 예제는 항상 정확한 대상 버전 파일명을 사용해야 하며 와일드카드(`dist/*`) 업로드 명령을 문서화하지 마세요.
 
-14.1.2 릴리스 작업의 정확한 아티팩트 파일명은 다음과 같습니다.
+14.2.0 릴리스 작업의 정확한 아티팩트 파일명은 다음과 같습니다.
 
-- `dist/ltcai-14.1.2-py3-none-any.whl`
-- `dist/ltcai-14.1.2.tar.gz`
-- `ltcai-14.1.2.tgz`
-- `dist/ltcai-14.1.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`
+- `dist/ltcai-14.2.0-py3-none-any.whl`
+- `dist/ltcai-14.2.0.tar.gz`
+- `ltcai-14.2.0.tgz`
+- `dist/ltcai-14.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
 
 DMG는 ad-hoc 서명(실질적으로 미서명) 상태이며, `npm run release:validate`는 Developer ID 서명이 아니라 파일명과 존재 여부를 검사합니다.

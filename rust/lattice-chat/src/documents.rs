@@ -355,6 +355,17 @@ pub fn prepare(
     workspace_id: Option<&str>,
     now_secs: f64,
 ) -> DocumentPreparation {
+    prepare_for(conn, message, context, workspace_id, None, now_secs)
+}
+
+pub fn prepare_for(
+    conn: Option<&rusqlite::Connection>,
+    message: &str,
+    context: &str,
+    workspace_id: Option<&str>,
+    viewer: Option<&str>,
+    now_secs: f64,
+) -> DocumentPreparation {
     let is_document = detect_document_intent(message);
     let mut prepared = DocumentPreparation {
         is_document,
@@ -364,17 +375,27 @@ pub fn prepare(
     let Some(conn) = conn.filter(|_| is_document) else {
         return prepared;
     };
+    let allowed_workspaces = match workspace_id.filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer),
+        None => viewer.map(|v| {
+            lattice_core::with_viewer(
+                [lattice_core::DEFAULT_WORKSPACE_ID.to_string()]
+                    .into_iter()
+                    .collect(),
+                Some(v),
+            )
+        }),
+    };
     let request = lattice_retrieval::docgen_context::DocumentContextRequest {
         query: message.to_string(),
         max_results: 10,
         max_hops: 2,
         scope: lattice_retrieval::service::Scope {
-            allowed_workspaces: workspace_id
-                .filter(|id| !id.is_empty())
-                .map(|id| [id.to_string()].into_iter().collect()),
+            allowed_workspaces,
             include_legacy_global: false,
         },
         now_secs,
+        temporal: Some(lattice_retrieval::temporal::TemporalRanking::from_env()),
         ..Default::default()
     };
     let Ok(retrieval) = lattice_retrieval::retrieve_context_for_generation(conn, &request) else {
@@ -479,6 +500,42 @@ fn base64_decode(text: &str) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn document_preparation_leaves_superseded_sources_out() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT,
+                                metadata_json TEXT, created_at TEXT, updated_at TEXT);
+             CREATE TABLE edges(id TEXT PRIMARY KEY, from_node TEXT, to_node TEXT, type TEXT,
+                                weight REAL, metadata_json TEXT, created_at TEXT);
+             INSERT INTO nodes VALUES
+               ('old','Document','Okapi policy v1','okapi refund policy','{}',
+                '2026-01-01T00:00:00','2026-01-01T00:00:00'),
+               ('new','Document','Okapi policy v2','okapi refund policy','{}',
+                '2026-08-01T00:00:00','2026-08-01T00:00:00');
+             INSERT INTO edges VALUES ('e1','new','old','SUPERSEDES',1.0,'{}',
+                '2026-08-01T00:00:00');",
+        )
+        .unwrap();
+        let prepared = prepare(
+            Some(&conn),
+            "write a report about the okapi refund policy",
+            "",
+            None,
+            1_790_000_000.0,
+        );
+        assert!(
+            prepared.context.contains("Okapi policy v2"),
+            "{}",
+            prepared.context
+        );
+        assert!(
+            !prepared.context.contains("Okapi policy v1"),
+            "{}",
+            prepared.context
+        );
+    }
 
     #[test]
     fn short_messages_never_read_as_document_requests() {

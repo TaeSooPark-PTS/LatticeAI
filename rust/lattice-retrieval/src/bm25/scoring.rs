@@ -151,6 +151,7 @@ pub(crate) fn row_to_node(row: &rusqlite::Row<'_>) -> rusqlite::Result<NodeRow> 
 pub(crate) struct NodesV2SchemaInfo {
     pub exists: bool,
     pub has_workspace_id: bool,
+    pub has_owner_id: bool,
     pub has_visibility: bool,
     pub has_superseded_by: bool,
     pub has_importance_score: bool,
@@ -166,6 +167,7 @@ pub(crate) fn detect_nodes_v2_schema(conn: &Connection) -> Result<NodesV2SchemaI
         let col: String = row.get(1)?;
         match col.as_str() {
             "workspace_id" => info.has_workspace_id = true,
+            "owner_id" => info.has_owner_id = true,
             "visibility" => info.has_visibility = true,
             "superseded_by" => info.has_superseded_by = true,
             "importance_score" => info.has_importance_score = true,
@@ -216,13 +218,16 @@ pub(crate) fn build_workspace_sql_predicate(
     scope: &Scope,
 ) -> Option<(String, Vec<SqlValue>)> {
     let allowed = scope.allowed_workspaces.as_ref()?;
+    let names: Vec<String> = lattice_core::viewer_scope::workspace_entries(allowed)
+        .cloned()
+        .collect();
     let legacy_or_personal = |inner: String| -> String {
         match presence_guard {
             Some(guard) => format!("(({guard}) AND {inner})"),
             None => inner,
         }
     };
-    if allowed.is_empty() {
+    if names.is_empty() {
         let clause = if scope.include_legacy_global {
             legacy_or_personal(format!("({ws_expr} IS NULL OR {ws_expr} = '')"))
         } else {
@@ -230,11 +235,13 @@ pub(crate) fn build_workspace_sql_predicate(
         };
         return Some((clause, Vec::new()));
     }
-    let placeholders = std::iter::repeat_n("?", allowed.len())
+    let placeholders = std::iter::repeat_n("?", names.len())
         .collect::<Vec<_>>()
         .join(", ");
-    let params: Vec<SqlValue> = allowed.iter().cloned().map(SqlValue::Text).collect();
-    let allows_personal = allowed.contains(lattice_core::DEFAULT_WORKSPACE_ID);
+    let allows_personal = names
+        .iter()
+        .any(|name| name == lattice_core::DEFAULT_WORKSPACE_ID);
+    let params: Vec<SqlValue> = names.into_iter().map(SqlValue::Text).collect();
     let clause = if scope.include_legacy_global || allows_personal {
         legacy_or_personal(format!(
             "({ws_expr} IN ({placeholders}) OR {ws_expr} IS NULL OR {ws_expr} = '')"
@@ -316,6 +323,20 @@ pub(crate) fn build_node_scope_sql(
     {
         clauses.push(ws_clause);
         params.extend(ws_params);
+    }
+
+    if let Some(viewer) = lattice_core::scope_viewer(scope.allowed_workspaces.as_ref()) {
+        if schema.exists && schema.has_owner_id {
+            let node_type_col = format!("{node_alias}.type");
+            let metadata_col = format!("{node_alias}.metadata_json");
+            let cols = lattice_core::viewer_scope::OwnerColumns {
+                owner: "v2.owner_id",
+                node_type: &node_type_col,
+                metadata: &metadata_col,
+            };
+            clauses.push(lattice_core::viewer_scope::owner_visible_sql(&cols, "?"));
+            params.push(SqlValue::Text(viewer.to_string()));
+        }
     }
 
     let retired_pred = format!(

@@ -21,8 +21,10 @@ use crate::history::{error_body, history_scope, json_body};
 use crate::intents::{self, current_url, direct_file_action, no_model_response, HistoryMeta};
 use crate::state::ChatState;
 
+mod abstain;
 mod answers;
 pub(crate) mod model;
+mod retrieval;
 
 use model::run_model_turn;
 

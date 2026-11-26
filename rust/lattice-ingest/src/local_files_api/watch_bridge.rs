@@ -558,7 +558,11 @@ async fn scan_one_watch(
     let pruned = if diff.removed.is_empty() {
         json!({"status": "ok", "files": [], "removed": {"nodes": 0}})
     } else {
-        super::prune::prune_deleted(ingestor.graph(), Path::new(root), true)
+        let scope = super::prune::PruneScope::Watch {
+            owner: owner.filter(|value| !value.is_empty()),
+            workspace_id: workspace_id.filter(|value| !value.is_empty()),
+        };
+        super::prune::prune_deleted(ingestor.graph(), Path::new(root), true, scope)
             .unwrap_or_else(|detail| json!({"status": "error", "detail": detail}))
     };
     let status = if errors.is_empty() {

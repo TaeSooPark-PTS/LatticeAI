@@ -3,9 +3,6 @@ use lattice_core::graph_write::types::{ChunkPiece, ExtractReply, SuppliedVector}
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
 
-use crate::chunk::{chunk_meta_fields, typed_chunks_default};
-use crate::strategy::chunk_strategy_for;
-
 pub(crate) use super::upload_parse::{encode_base64, mime_hint, needs_parse, unwrap_upload};
 
 pub(crate) const EXTRACT_PATH: &str = "/worker/extract";
@@ -368,21 +365,6 @@ pub(crate) async fn embed_texts_with_contract(
     })
 }
 
-pub(crate) fn chunk_pieces_for(text: &str, filename: &str, mime: &str) -> Vec<ChunkPiece> {
-    if text.trim().is_empty() {
-        return Vec::new();
-    }
-    let strategy = chunk_strategy_for(filename, mime);
-    typed_chunks_default(text, strategy)
-        .into_iter()
-        .map(|chunk| ChunkPiece {
-            text: chunk.text.clone(),
-            fields: chunk_meta_fields(&chunk),
-            embedding: None,
-        })
-        .collect()
-}
-
 pub(crate) fn attach_chunk_embeddings_from_batch(
     mut chunks: Vec<ChunkPiece>,
     batch: Option<&SeamEmbedBatch>,
@@ -426,7 +408,13 @@ mod tests {
 
     #[test]
     fn chunk_pieces_carry_strategy_fields() {
-        let pieces = chunk_pieces_for("hello world from lattice", "note.md", "text/markdown");
+        let pieces = crate::chunk_pieces::chunk_set_for(
+            "hello world from lattice",
+            "note.md",
+            "text/markdown",
+            "note.md",
+        )
+        .children;
         assert_eq!(pieces.len(), 1);
         assert_eq!(pieces[0].fields["strategy"], json!("markdown"));
         assert!(pieces[0].embedding.is_none());
@@ -434,7 +422,9 @@ mod tests {
 
     #[test]
     fn attach_accepts_semantic_provider_vectors_and_rejects_dim_mismatch() {
-        let pieces = chunk_pieces_for("hello world from lattice", "note.txt", "");
+        let pieces =
+            crate::chunk_pieces::chunk_set_for("hello world from lattice", "note.txt", "", "note")
+                .children;
         let semantic_batch = SeamEmbedBatch {
             contract: EmbeddingIndexContract::from_semantic(
                 "huggingface",

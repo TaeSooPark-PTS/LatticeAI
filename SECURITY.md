@@ -5,17 +5,18 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **13.0.0 through 14.1.2** (the
+The public Git tree keeps release history from **13.0.0 through 14.2.0** (the
 modern Rust-host and domain-grouped architecture era). Security support follows
 that same product era: **the 14.x and 13.x lines receive fixes.**
 
 | Version | Support |
 | --- | --- |
-| 14.1.x (latest) | Supported |
+| 14.2.x (latest) | Supported |
+| 14.1.x | Supported |
 | 14.0.x | Supported |
 | 13.9.x | Supported |
 | 13.8.x | Supported |
@@ -49,7 +50,7 @@ path requires explicit opt-in.
 
 The Rust product server (`lattice-host`) owns all trust boundaries across **422
 native operations (41 route families)** and supervises the loopback-only Python
-AI compute worker (`latticeai.worker_app`), which is restricted to **20**
+AI compute worker (`latticeai.worker_app`), which is restricted to **21**
 allow-listed compute routes (`rust/fixtures/worker_allowlist.json`, pinned from
 both Python and Rust; all non-native unallowlisted paths answer `404`). Security
 responsibilities map to explicit domain addresses:
@@ -195,6 +196,16 @@ Network peer exchange, update checks, marketplace refreshes, or consented
 | `LATTICEAI_REQUIRE_AUTH` | Optional, default off on loopback | Forces authentication in local mode; required for public or non-loopback binds |
 | `LATTICEAI_INVITE_GATE_ENABLED` | Optional, default off | Enables signed invitation onboarding without reopening unrestricted registration |
 | `LATTICEAI_INVITE_CODE` | Recommended with invite gate | Operator-generated random invite code (otherwise a private per-install value is generated; no shared default) |
+
+## Multi-User Data Scoping (14.2.0)
+
+- Conversation-derived graph nodes owned by another user are hidden from graph,
+  search, context, memory, brain, chronicle, and command center reads when
+  authentication is required (`rust/lattice-core/src/viewer_scope.rs`). Earlier
+  versions let one signed-in user retrieve another user's chat text.
+- Documents and uploads are scoped by workspace only; there is no per-user
+  privacy for them inside a workspace.
+- Administrator export, backup, and share routes are not viewer-filtered.
 
 ## Public Deployment Guidance
 

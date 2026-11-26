@@ -2,17 +2,17 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use lattice_core::db::CoreError;
 use lattice_core::embeddings::{EmbeddingIndexContract, LocalEmbeddingModel};
+use lattice_core::graph_write::chunk_parents::chunk_index_text_json;
 use lattice_core::graph_write::pyaux::sha256_text;
 use lattice_core::graph_write::types::{
-    ChunkPiece, IngestContentRequest, IngestionRecord, SuppliedVector,
+    ChunkParentPiece, ChunkPiece, IngestContentRequest, IngestionRecord, SuppliedVector,
 };
-use lattice_core::graph_write::GraphWriter;
+use lattice_core::graph_write::{GraphWriter, RevisionReplace};
 use lattice_core::pytext::clean_text;
-use lattice_core::temporal::stamp_temporal_fact;
 use rusqlite::params;
 use serde_json::{json, Map, Value};
 
-use crate::local_files_api::enrich;
+use crate::chunk_pieces::{chunk_set_for, embedding_inputs};
 use crate::sections;
 use crate::worker::{NOTE_SOURCE_TYPE, PIPELINE_NAME};
 
@@ -40,6 +40,15 @@ pub struct IncrementalSyncReceipt {
     pub embedder_calls: usize,
     pub embedded_text_count: usize,
     pub duplicate: bool,
+    pub document_version: i64,
+    pub purged_chunks: usize,
+}
+
+pub const DOCUMENT_VERSION_FIELD: &str = "document_version";
+
+fn index_hash(text: &str, metadata_json: Option<&str>) -> Option<String> {
+    let cleaned = clean_text(&chunk_index_text_json(text, metadata_json));
+    (!cleaned.is_empty()).then(|| sha256_text(&cleaned))
 }
 
 #[derive(Debug)]
@@ -49,6 +58,7 @@ struct PriorRevision {
     chunk_hashes: BTreeSet<String>,
     cached_vectors: BTreeMap<String, Vec<f64>>,
     doc_vector: Option<(String, Vec<f64>)>,
+    document_version: i64,
 }
 
 fn find_active_prior_revision(
@@ -56,6 +66,7 @@ fn find_active_prior_revision(
     source_uri: &str,
     moved_from_uri: Option<&str>,
     workspace_id: Option<&str>,
+    owner: Option<&str>,
     contract: &EmbeddingIndexContract,
 ) -> Result<Option<PriorRevision>, CoreError> {
     let target_ws = workspace_id
@@ -74,7 +85,7 @@ fn find_active_prior_revision(
     };
 
     writer.store().with_read_conn(|conn| {
-        let mut chosen: Option<(String, String)> = None;
+        let mut chosen: Option<(String, String, i64)> = None;
         for uri in &candidate_uris {
             let mut stmt = conn.prepare(
                 "SELECT id, metadata_json FROM nodes
@@ -94,8 +105,17 @@ fn find_active_prior_revision(
                     .and_then(Value::as_str)
                     .filter(|w| !w.is_empty())
                     .unwrap_or("legacy-global");
-                if row_ws == target_ws {
-                    chosen = Some((id, uri.clone()));
+                let foreign = meta
+                    .get("owner")
+                    .and_then(Value::as_str)
+                    .is_some_and(|held| !held.is_empty() && Some(held) != owner);
+                if row_ws == target_ws && !foreign {
+                    let version = meta
+                        .get(DOCUMENT_VERSION_FIELD)
+                        .and_then(Value::as_i64)
+                        .filter(|v| *v > 0)
+                        .unwrap_or(1);
+                    chosen = Some((id, uri.clone(), version));
                     break;
                 }
             }
@@ -104,19 +124,22 @@ fn find_active_prior_revision(
             }
         }
 
-        let Some((prev_id, prev_uri)) = chosen else {
+        let Some((prev_id, prev_uri, document_version)) = chosen else {
             return Ok(None);
         };
 
         let decoder = LocalEmbeddingModel::new(contract.dimension);
         let mut chunk_hashes = BTreeSet::new();
         {
-            let mut c_stmt = conn.prepare("SELECT text FROM chunks WHERE source_node = ?1")?;
-            let rows = c_stmt.query_map(params![prev_id], |r| r.get::<_, String>(0))?;
+            let mut c_stmt =
+                conn.prepare("SELECT text, metadata_json FROM chunks WHERE source_node = ?1")?;
+            let rows = c_stmt.query_map(params![prev_id], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+            })?;
             for row in rows {
-                let cleaned = clean_text(&row?);
-                if !cleaned.is_empty() {
-                    chunk_hashes.insert(sha256_text(&cleaned));
+                let (text, metadata_json) = row?;
+                if let Some(hash) = index_hash(&text, metadata_json.as_deref()) {
+                    chunk_hashes.insert(hash);
                 }
             }
         }
@@ -163,6 +186,7 @@ fn find_active_prior_revision(
             chunk_hashes,
             cached_vectors,
             doc_vector,
+            document_version,
         }))
     })
 }
@@ -172,6 +196,7 @@ pub struct IncrementalSyncPlan {
     req: IncrementalSyncRequest,
     prior: Option<PriorRevision>,
     chunks: Vec<ChunkPiece>,
+    parents: Vec<ChunkParentPiece>,
     new_hash_set: BTreeSet<String>,
     reused_chunks: usize,
     missing_chunk_indices: Vec<usize>,
@@ -208,13 +233,17 @@ pub fn plan_incremental_sync(
         &req.source_uri,
         req.moved_from_uri.as_deref(),
         req.workspace_id.as_deref(),
+        req.owner.as_deref(),
         contract,
     )?;
 
-    let mut chunks: Vec<ChunkPiece> = enrich::chunk_pieces_for(&req.text, &req.title, "");
-    let new_hashes: Vec<String> = chunks
+    let chunk_set = chunk_set_for(&req.text, &req.title, "", &req.title);
+    let parents = chunk_set.parents;
+    let mut chunks: Vec<ChunkPiece> = chunk_set.children;
+    let index_texts = embedding_inputs(&chunks);
+    let new_hashes: Vec<String> = index_texts
         .iter()
-        .map(|p| sha256_text(&clean_text(&p.text)))
+        .map(|text| sha256_text(&clean_text(text)))
         .collect();
     let new_hash_set: BTreeSet<String> = new_hashes.iter().cloned().collect();
 
@@ -251,11 +280,14 @@ pub fn plan_incremental_sync(
                 embedder_calls: 0,
                 embedded_text_count: 0,
                 duplicate: true,
+                document_version: prev.document_version,
+                purged_chunks: 0,
             };
             return Ok(IncrementalSyncPlan {
                 req: req.clone(),
                 prior,
                 chunks,
+                parents,
                 new_hash_set,
                 reused_chunks: receipt.reused_chunks,
                 missing_chunk_indices: Vec::new(),
@@ -307,7 +339,7 @@ pub fn plan_incremental_sync(
             reused_chunks += 1;
         } else {
             missing_chunk_indices.push(idx);
-            batch_inputs.push(piece.text.clone());
+            batch_inputs.push(index_texts[idx].clone());
         }
     }
 
@@ -315,6 +347,7 @@ pub fn plan_incremental_sync(
         req: req.clone(),
         prior,
         chunks,
+        parents,
         new_hash_set,
         reused_chunks,
         missing_chunk_indices,
@@ -381,6 +414,16 @@ pub fn commit_incremental_sync(
     let new_hash_set = &plan.new_hash_set;
     let prior = plan.prior;
 
+    let content_hash = sha256_text(&format!(
+        "{NOTE_SOURCE_TYPE}|{}|{}",
+        req.source_uri, req.text
+    ));
+    let document_version = match &prior {
+        None => 1,
+        Some(prev) if prev_matches_content(prev, req, &content_hash) => prev.document_version,
+        Some(prev) => prev.document_version + 1,
+    };
+
     let mut meta = req.metadata.clone();
     if let Some(moved) = &req.moved_from_uri {
         meta.insert("moved_from_uri".into(), json!(moved));
@@ -390,6 +433,8 @@ pub fn commit_incremental_sync(
         "incremental_reembedded_chunks".into(),
         json!(missing_chunk_indices.len()),
     );
+    meta.insert(DOCUMENT_VERSION_FIELD.into(), json!(document_version));
+    meta.insert("parent_chunks".into(), json!(plan.parents.len()));
 
     let ingest_req = IngestContentRequest {
         source_type: NOTE_SOURCE_TYPE.into(),
@@ -402,11 +447,26 @@ pub fn commit_incremental_sync(
         metadata: meta.clone(),
         node_type: Some("Document".into()),
         chunks: chunks.clone(),
+        parents: plan.parents.clone(),
         embedding: doc_embedding.clone(),
         ..Default::default()
     };
 
-    let outcome = writer.ingest_content(&ingest_req)?;
+    let recorded_at = req
+        .modified_at
+        .clone()
+        .filter(|at| !at.trim().is_empty())
+        .unwrap_or_else(|| writer.clock().now_iso());
+    let revision = writer.replace_document_revision(
+        &ingest_req,
+        &RevisionReplace {
+            prior_node_id: prior.as_ref().map(|prev| prev.node_id.clone()),
+            subject: req.title.clone(),
+            recorded_at,
+        },
+    )?;
+    let purged_chunks = revision.purged_chunks;
+    let outcome = revision.ingest;
     let overlay = sections::build_overlay(
         chunks,
         &outcome.chunk_ids,
@@ -440,43 +500,6 @@ pub fn commit_incremental_sync(
             resolved_move = Some(prev.source_uri.clone());
         }
         removed_chunks = prev.chunk_hashes.difference(new_hash_set).count();
-        if prev.node_id != outcome.node_id {
-            let now_iso = req
-                .modified_at
-                .clone()
-                .unwrap_or_else(|| "2026-11-19T00:00:00Z".into());
-            writer.store().with_write_txn(|txn| {
-                stamp_temporal_fact(
-                    txn,
-                    &outcome.node_id,
-                    &req.title,
-                    &now_iso,
-                    None,
-                    &now_iso,
-                    Some(&prev.node_id),
-                )?;
-                txn.execute(
-                    "DELETE FROM vector_embeddings
-                     WHERE item_id IN (SELECT id FROM chunks WHERE source_node = ?1)
-                        OR item_id = ?1",
-                    params![prev.node_id],
-                )?;
-                let old_chunk_ids: Vec<String> = {
-                    let mut st = txn.prepare("SELECT id FROM chunks WHERE source_node = ?1")?;
-                    let rows = st.query_map(params![prev.node_id], |r| r.get::<_, String>(0))?;
-                    rows.collect::<Result<Vec<_>, _>>()?
-                };
-                txn.execute(
-                    "DELETE FROM chunks WHERE source_node = ?1",
-                    params![prev.node_id],
-                )?;
-                for cid in &old_chunk_ids {
-                    txn.execute("DELETE FROM nodes WHERE id = ?1", params![cid])?;
-                    let _ = txn.execute("DELETE FROM nodes_v2 WHERE id = ?1", params![cid]);
-                }
-                Ok(())
-            })?;
-        }
     }
 
     let _ = writer.record_ingestion(&IngestionRecord {
@@ -510,7 +533,26 @@ pub fn commit_incremental_sync(
         embedder_calls,
         embedded_text_count,
         duplicate: outcome.duplicate,
+        document_version,
+        purged_chunks,
     })
+}
+
+fn prev_matches_content(
+    prev: &PriorRevision,
+    req: &IncrementalSyncRequest,
+    content_hash: &str,
+) -> bool {
+    let ws_scope = req
+        .workspace_id
+        .as_deref()
+        .filter(|w| !w.is_empty())
+        .unwrap_or("legacy-global");
+    let expected = format!(
+        "webdoc:{}",
+        &sha256_text(&format!("{ws_scope}|{content_hash}"))[..24]
+    );
+    prev.node_id == expected
 }
 
 pub fn sync_document_incremental<F>(
@@ -537,6 +579,7 @@ where
 pub fn reconcile_deleted_uris(
     writer: &GraphWriter,
     deleted_uris: &[String],
+    owner: Option<&str>,
     workspace_id: Option<&str>,
 ) -> Result<usize, CoreError> {
     let target_ws = workspace_id
@@ -563,7 +606,11 @@ pub fn reconcile_deleted_uris(
                     .and_then(Value::as_str)
                     .filter(|w| !w.is_empty())
                     .unwrap_or("legacy-global");
-                if ws == target_ws {
+                let held = meta
+                    .get("owner")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if ws == target_ws && held == owner.unwrap_or_default() {
                     matched.push(id);
                 }
             }
@@ -714,9 +761,69 @@ mod tests {
         let deleted = reconcile_deleted_uris(
             &writer,
             &["/vault/archive/handbook.md".to_string()],
+            Some("owner@local"),
             Some("personal"),
         )
         .expect("reconcile delete");
         assert_eq!(deleted, 1);
+    }
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use std::sync::Arc;
+
+    use lattice_core::db::Store;
+
+    use super::*;
+
+    #[test]
+    fn another_owners_sync_or_delete_of_the_same_path_leaves_the_document_alone() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(Store::open(&dir.path().join("knowledge_graph.sqlite")).expect("db"));
+        let writer = GraphWriter::open(store, dir.path().join("blobs")).expect("writer");
+        let contract = LocalEmbeddingModel::new(384).contract();
+        let sync = |owner: &str, text: &str| {
+            sync_document_incremental(
+                &writer,
+                &IncrementalSyncRequest {
+                    title: "plan.md".into(),
+                    text: text.into(),
+                    source_uri: "/vault/plan.md".into(),
+                    moved_from_uri: None,
+                    workspace_id: None,
+                    owner: Some(owner.into()),
+                    modified_at: None,
+                    metadata: Map::new(),
+                },
+                &contract,
+                |texts| Ok(texts.iter().map(|_| vec![0.5; 384]).collect()),
+            )
+            .expect("sync")
+        };
+        let chunks = |id: &str| -> i64 {
+            writer
+                .store()
+                .with_read_conn(|conn| {
+                    Ok(conn.query_row(
+                        "SELECT COUNT(*) FROM chunks WHERE source_node = ?1",
+                        [id],
+                        |row| row.get(0),
+                    )?)
+                })
+                .expect("count")
+        };
+        let first = sync("a@x", "port is one");
+        let second = sync("b@x", "port is two");
+        assert_eq!(second.previous_node_id, None);
+        assert_eq!(second.purged_chunks, 0);
+        assert_eq!(chunks(&first.node_id), 1);
+
+        let removed =
+            reconcile_deleted_uris(&writer, &["/vault/plan.md".to_string()], Some("b@x"), None)
+                .expect("delete");
+        assert_eq!(removed, 1);
+        assert_eq!(chunks(&first.node_id), 1);
+        assert_eq!(chunks(&second.node_id), 0);
     }
 }

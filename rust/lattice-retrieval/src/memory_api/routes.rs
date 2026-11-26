@@ -163,6 +163,7 @@ async fn proof_of(
         let graph = state.graph_enabled();
         let email = caller.email.clone();
         let scope = caller.scope.clone();
+        let viewer = state.graph_viewer(&caller.email);
         let wsos_state = snapshot.state.clone();
         let text = query.clone();
         let resolution = if graph {
@@ -179,6 +180,7 @@ async fn proof_of(
                     &text,
                     &email,
                     scope.as_deref(),
+                    viewer.as_deref(),
                     limit,
                     resolution.query_vector.as_ref(),
                     resolution.degraded_reason.as_deref(),
@@ -302,6 +304,7 @@ async fn memory_recall(State(state): State<BrainState>, request: Request) -> Res
     let graph = state.graph_enabled();
     let email = caller.email.clone();
     let scope = caller.scope.clone();
+    let viewer = state.graph_viewer(&caller.email);
     let wsos_state = snapshot.state;
     let resolution = if graph && !query.trim().is_empty() {
         crate::query_embed::resolve_query_embedding(state.store(), state.seam(), &query).await
@@ -317,6 +320,7 @@ async fn memory_recall(State(state): State<BrainState>, request: Request) -> Res
                 &query,
                 &email,
                 scope.as_deref(),
+                viewer.as_deref(),
                 limit,
                 resolution.query_vector.as_ref(),
                 resolution.degraded_reason.as_deref(),
@@ -475,9 +479,12 @@ async fn self_model_profile(State(state): State<BrainState>, request: Request) -
     }
     let scope = caller.scope.clone();
     let email = caller.email.clone();
+    let viewer = state.graph_viewer(&caller.email);
     let now = state.now();
     match state
-        .read(move |conn| self_model::profile(conn, scope.as_deref(), &email, &now))
+        .read(move |conn| {
+            self_model::profile(conn, scope.as_deref(), viewer.as_deref(), &email, &now)
+        })
         .await
     {
         Ok(payload) => ok_json(&payload),

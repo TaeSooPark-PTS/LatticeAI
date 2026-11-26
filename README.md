@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.1.2 Living Brain walkthrough](output/release/v14.1.2/gifs/v14.1.2-living-brain-walkthrough.gif)
+![v14.2.0 Living Brain walkthrough](output/release/v14.2.0/gifs/v14.2.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -26,7 +26,7 @@ Lattice AI is a **local-first Digital Brain** that unifies your conversations, f
 
 ## Why Lattice AI
 
-- **Local-First Digital Brain & Hardware Auto-Fit** — All memories, provenance, and graph relationships live locally in SQLite and portable encrypted `.latticebrain` archives. Fresh installs work offline out-of-the-box with deterministic `lattice-local-hash-v1` lexical/hash embeddings and upgrade seamlessly to hardware-sized local **EmbeddingGemma 2** (`768d`) or configured semantic providers (`mlx-community`, `ggml-org` GGUF, `onnx-community`) with **live SSE download progress (`MB/s` & `ETA`)**.
+- **Local-First Digital Brain & Hardware Auto-Fit** — All memories, provenance, and graph relationships live locally in SQLite and portable encrypted `.latticebrain` archives. Embeddings default to `auto`: a locally cached model such as **EmbeddingGemma 2** (`768d`, needs `pip install "ltcai[rag]"`) or a local Ollama embedding model is used when available, otherwise the deterministic offline `lattice-local-hash-v1` lexical/hash embedder. Model downloads show **live SSE progress (`MB/s` & `ETA`)**.
 - **Hybrid GraphRAG (BM25F + Vector + 2-Hop Knowledge Graph RRF)** — Combines field-weighted Okapi BM25F (with Korean particle stripping, CJK bigrams, and identifier subwords), dense/subword vector recall, and 1-hop/2-hop Knowledge Graph structural expansion (`RELATES_TO`, `MENTIONS`, `PART_OF`, `[[wikilinks]]`, `#tags`) via Reciprocal Rank Fusion — backed by graph-aware agent skills and MCP search tools.
 - **Proposal-First Safe Autonomy & Review Center** — Additive creations run with minimal friction; edits or deletions of existing user files and cloud-extracted memories stage as hash-verified **Review Center** proposals with side-by-side diffs before applying. Even small 2B-class local models can safely act via guided prompts, and workflow/agent simulation without a loaded LLM is explicitly **deterministic** and **LLM-free** (it does not call a model).
 - **One Brain Across Every Surface** — Use the **macOS Desktop App (`.dmg`)**, the **Web Studio (`/app`)**, the **VS Code / Cursor / Open VSX Extension**, the **Browser Extension**, or the **`LTCAI` CLI** against the same local Brain.
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_14.1.2_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_14.2.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -66,7 +66,16 @@ LTCAI                      # opens the Web Studio at http://127.0.0.1:4825/app
 ```
 
 - **Apple Silicon local models (MLX)**: `pip install "ltcai[local]"`
+- **EmbeddingGemma 2 and cross-encoder reranking (optional)**: `pip install "ltcai[rag]"` (weights must already be cached; they are not fetched at query time)
 - **Pointer automation tools (optional)**: `pip install "ltcai[pointer]"`
+
+### Search From the Terminal
+
+```bash
+ltcai search "release owner" --sort newest --limit 5
+```
+
+Queries a running server and prints ranked results with timestamps. Options: `--sort relevance|newest`, `--limit 1-100`, `--host`, `--port`; set `LATTICEAI_API_TOKEN` when authentication is required. The same `sort_by` option is accepted by the search API, command search, and the MCP `knowledge_search` tool. The command ships with the npm package.
 
 ### 3. Editor Extension (VS Code · Cursor · Antigravity)
 
@@ -85,15 +94,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v14.1.2/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.1.2/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v14.2.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.2.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v14.1.2/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.1.2/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v14.2.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.2.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v14.1.2/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.1.2/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v14.2.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.2.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v14.1.2/screenshots/13-chronicle.png) | ![Settings](output/release/v14.1.2/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v14.2.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.2.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v14.1.2/SCREENSHOT_INDEX.md](output/release/v14.1.2/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.1.2/screenshots/01-login.png), [06-capture.png](output/release/v14.1.2/screenshots/06-capture.png), [07-model-library.png](output/release/v14.1.2/screenshots/07-model-library.png)).
+Full visual index: [output/release/v14.2.0/SCREENSHOT_INDEX.md](output/release/v14.2.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.2.0/screenshots/01-login.png), [06-capture.png](output/release/v14.2.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.2.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -103,7 +112,7 @@ Full visual index: [output/release/v14.1.2/SCREENSHOT_INDEX.md](output/release/v
 | --- | --- | --- |
 | **Getting Started** | [docs/ONBOARDING.md](docs/ONBOARDING.md) | 5-minute product flow and first-run guarantees |
 | **Product Philosophy** | [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) | Why the Brain outlives any individual AI model |
-| **System Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) | `lattice-host` Rust server, single `GraphWriter`, and 20-route Python AI worker |
+| **System Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) | `lattice-host` Rust server, single `GraphWriter`, and 21-route Python AI worker |
 | **Feature Matrix** | [FEATURE_STATUS.md](FEATURE_STATUS.md) | Current shipped capabilities and honest system boundaries |
 | **Adaptive Harness Benchmark** | [docs/ADAPTIVE_HARNESS_BENCHMARK.md](docs/ADAPTIVE_HARNESS_BENCHMARK.md) | 25-task empirical study (`28.0% → 84.0%` on `Qwen2.5-0.5B-Instruct-Q4_K_M`) |
 | **Operations & Self-Hosting** | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Storage layout, `.latticebrain` backup/restore, and public mode checklist |
@@ -117,24 +126,27 @@ Full visual index: [output/release/v14.1.2/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **14.1.2 — Living Synthesis**:
+The current release is **14.2.0 — Temporal Synthesis**:
 
-- **Zero-Comments & Suppression-Free Codebase** — Removed all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives across Python, TypeScript/JavaScript, Rust, Shell, CSS, and HTML source files (preserving only machine-parsed shebangs and `/// <reference ... />`), and resolved every surfaced Ruff, mypy, TypeScript, and Rust Clippy issue directly in source code without weakening any global config.
-- **Permanent No-Comments CI Gate (`scripts/check_no_comments.mjs`)** — Enforces zero comments/docstrings/suppressions across all tracked source files via `npm run check:no-comments` in `npm run lint` and `.github/workflows/ci.yml`, backed by permanent rules in `AGENTS.md`, `CONTRIBUTING.md`, and Korean mirrors.
-- **Built on v14.1.2 Foundation** — Repository-wide `ruff format .` hygiene, global `C901` (`max-complexity = 20`) with zero exemptions, fail-closed `0 unclaimed` server i18n ratchet, unified Rust ↔ Python UTC timestamps, and strict TypeScript 7 `noUncheckedIndexedAccess` at 100% Vitest coverage.
+- **Time-aware retrieval** — Time expressions in Korean and English become date prefilters, recency decay is always applied, superseded versions are excluded from current-state answers, and `sort_by=relevance|newest` is available.
+- **Better chunks and ranking** — Token-sized parent-child chunks, tree-sitter code splitting, contextual prefixes, cross-encoder reranking with RRF fallback, MMR, and a Self-RAG gate that abstains when your records do not support an answer.
+- **3D living brain and desktop shell** — A growing 3D brain that lights up along the retrieval path, a fixed-viewport glass workspace, and a `Cmd/Ctrl+K` palette.
+- **`ltcai search` and privacy fixes** — Search from the terminal; another user's conversation text is no longer readable from the shared graph in multi-user mode.
+
+Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment, and documents inside a workspace are not private per user. See the [release notes](docs/releases/RELEASE_NOTES_v14.2.0.md) for the pipeline diagram, glossary, environment variables, and limitations.
 
 <details>
-<summary>Release notes & exact 14.1.2 distribution artifacts</summary>
+<summary>Release notes & exact 14.2.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 14.1.2 must use exact filenames:
+Expected artifacts for 14.2.0 must use exact filenames:
 
-- `dist/ltcai-14.1.2-py3-none-any.whl`
-- `dist/ltcai-14.1.2.tar.gz`
-- `ltcai-14.1.2.tgz`
-- `dist/ltcai-14.1.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`
+- `dist/ltcai-14.2.0-py3-none-any.whl`
+- `dist/ltcai-14.2.0.tar.gz`
+- `ltcai-14.2.0.tgz`
+- `dist/ltcai-14.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -147,6 +159,7 @@ Do not use wildcard artifact uploads. Package registry publishing runs via `.git
 - **Local by default**: SQLite is the live Brain store; cloud models (`cli_oauth` or `api_key` probed via `GET /models`), model downloads, Brain Network, and update checks require explicit user action.
 - **Honest retrieval & simulation**: When no LLM is loaded, agent and workflow simulation is deterministic and LLM-free (it does not call a model) and is labeled as such. Exact brute-force vector search is the default (`LATTICEAI_VECTOR_INDEX=hnsw` opts into `hnsw+rescore` at 512+ vectors).
 - **Safe deletion & signing**: Watch prune removes vanished files from the Knowledge Graph only after confirmation (never from disk). The macOS `.dmg` is ad-hoc signed, so first launch uses the standard Gatekeeper allow step. Remaining honest gaps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) and [FEATURE_STATUS.md](FEATURE_STATUS.md).
+- **Per-user privacy**: In multi-user mode, conversation-derived graph nodes are visible only to their owner. Documents and uploads are scoped by workspace, not per user.
 
 ---
 
@@ -156,6 +169,7 @@ Public release history in this repository covers `v13.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md) |
 | 14.1.2 | Living Synthesis | [RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md) |
 | 14.1.1 | Living Synthesis | [RELEASE_NOTES_v14.1.1.md](docs/releases/RELEASE_NOTES_v14.1.1.md) |
 | 14.1.0 | Living Synthesis | [RELEASE_NOTES_v14.1.0.md](docs/releases/RELEASE_NOTES_v14.1.0.md) |

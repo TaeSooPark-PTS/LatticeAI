@@ -7,7 +7,7 @@ use lattice_auth::OrderedMap;
 use lattice_core::embeddings::LocalEmbeddingModel;
 use serde_json::{json, Value};
 
-use crate::boundary::{request_network_mode, NetworkMode};
+use crate::boundary::{request_network_mode, strip_cloud_prefix, NetworkMode};
 use crate::contracts::ChatRequest;
 use crate::documents;
 use crate::graph::{
@@ -21,7 +21,9 @@ use crate::state::ChatState;
 use crate::stream::frame_channel;
 use crate::worker::{ChatWorker, FrameReader, LlmFrame};
 
-use super::answers::{document_response, hybrid_response, persist_answer};
+use super::abstain::{abstention_response, local_only_evidence_message};
+use super::answers::{document_response, hybrid_response, persist_answer, CloudRetrieval};
+use super::retrieval::{prior_user_messages, retrieve_gated, CHAT_KNOWLEDGE_LIMIT, IMAGE_MARKER};
 use super::{file_path_count, now_secs, recent_context};
 
 #[allow(clippy::too_many_arguments)]
@@ -44,32 +46,88 @@ pub(crate) async fn run_model_turn(
     let semantic_contract = state
         .read_conn()
         .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));
+    let query_plan = lattice_retrieval::query_plan::plan_query(
+        strip_cloud_prefix(&req.message),
+        &prior_user_messages(
+            &state,
+            effective_email.as_deref(),
+            req.conversation_id.as_deref(),
+            workspace_id.as_deref(),
+        ),
+    );
+    let grounding_required = lattice_retrieval::self_rag::enabled()
+        && req.context.as_deref().is_none_or(str::is_empty)
+        && req.image_data.is_none()
+        && !documents::detect_document_intent(&req.message)
+        && lattice_retrieval::self_rag::requires_grounding(&query_plan.original);
+    let turn_now = now_secs();
+    let temporal_ranking = lattice_retrieval::temporal::TemporalRanking::from_env();
+    let search_text = lattice_retrieval::temporal::search_text_for(
+        &query_plan.standalone,
+        turn_now,
+        &temporal_ranking,
+    );
     let effective_query =
-        lattice_retrieval::query_embed::effective_hybrid_query(&req.message, false);
+        lattice_retrieval::query_embed::effective_hybrid_query(&search_text, false);
     let query_embed = lattice_retrieval::query_embed::resolve_query_embedding_with_contract(
         semantic_contract,
         state.worker.as_ref().map(ChatWorker::client),
         &effective_query,
     )
     .await;
+    let viewer = effective_email
+        .as_deref()
+        .and_then(|email| state.auth.graph_viewer(email));
     let mut context_trace = None;
+    let context_budget = lattice_retrieval::context_budget::ContextBudget::from_env(req.max_tokens);
+    let mut context_request = lattice_retrieval::ContextRequest {
+        query: query_plan.standalone.clone(),
+        sub_queries: query_plan.sub_queries.clone(),
+        annotate_temporal: true,
+        budget: context_budget.budget_tokens as i64,
+        density_aware: true,
+        knowledge: true,
+        knowledge_limit: CHAT_KNOWLEDGE_LIMIT,
+        user_email: effective_email.clone(),
+        conversation_id: req.conversation_id.clone(),
+        workspace_id: workspace_id.clone(),
+        viewer: viewer.clone(),
+        now_secs: turn_now,
+        query_embedding: query_embed.query_vector.clone(),
+        semantic_degraded: query_embed.degraded_reason.clone(),
+        temporal: Some(temporal_ranking),
+        ..Default::default()
+    };
+    let gated = retrieve_gated(&state, &query_plan, &context_request, grounding_required).await;
+    let cloud_plan = gated.plan_for(&query_plan);
+    let historical = gated.found.as_ref().is_some_and(|found| found.historical);
+    let mut diversity = Value::Null;
+    if let Some(found) = gated.found {
+        diversity = found.diversity;
+        context_request.knowledge_limit = found
+            .payload
+            .get("matches")
+            .and_then(Value::as_array)
+            .map_or(0, |matches| matches.len() as i64);
+        context_request.knowledge_payload = Some(found.payload);
+    }
     if let Some(conn) = state.read_conn() {
-        let request = lattice_retrieval::ContextRequest {
-            query: req.message.clone(),
-            budget: 2000,
-            knowledge: true,
-            user_email: effective_email.clone(),
-            conversation_id: req.conversation_id.clone(),
-            workspace_id: workspace_id.clone(),
-            now_secs: now_secs(),
-            query_embedding: query_embed.query_vector.clone(),
-            semantic_degraded: query_embed.degraded_reason.clone(),
-            ..Default::default()
-        };
+        let request = context_request;
         if let Ok(assembled) =
             lattice_retrieval::assemble_context(&conn, &LocalEmbeddingModel::default(), &request)
         {
-            context_trace = assembled.get("trace").cloned();
+            context_trace = assembled.get("trace").cloned().map(|mut trace| {
+                if let Some(object) = trace.as_object_mut() {
+                    object.insert(
+                        "context_window_tokens".into(),
+                        json!(context_budget.window_tokens),
+                    );
+                    object.insert("query_plan".into(), query_plan.as_json());
+                    object.insert("diversity".into(), diversity.clone());
+                    object.insert("self_rag".into(), gated.report.clone());
+                }
+                trace
+            });
             if let Some(text) = assembled.get("text").and_then(Value::as_str) {
                 if !text.is_empty() {
                     prompt_context.push_str("\n\n");
@@ -80,19 +138,21 @@ pub(crate) async fn run_model_turn(
     }
 
     let prepared = if let Some(conn) = state.read_conn() {
-        documents::prepare(
+        documents::prepare_for(
             Some(&conn),
             &req.message,
             &prompt_context,
             workspace_id.as_deref(),
+            viewer.as_deref(),
             now_secs(),
         )
     } else {
-        documents::prepare(
+        documents::prepare_for(
             None,
             &req.message,
             &prompt_context,
             workspace_id.as_deref(),
+            viewer.as_deref(),
             now_secs(),
         )
     };
@@ -130,14 +190,19 @@ pub(crate) async fn run_model_turn(
         }
     }
 
-    let allowed = workspace_id
-        .as_deref()
-        .filter(|id| !id.is_empty())
-        .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let allowed = match workspace_id.as_deref().filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer.as_deref()),
+        None => viewer.as_deref().map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     let conn = state.read_conn();
     let mut trace_seed = build_graph_trace(
         conn.as_ref(),
-        &req.message,
+        &query_plan.standalone,
         &prompt_context,
         TRACE_LIMIT,
         allowed.as_ref(),
@@ -150,7 +215,7 @@ pub(crate) async fn run_model_turn(
     let context_quality = build_context_quality_with_query(
         conn.as_ref(),
         &LocalEmbeddingModel::default(),
-        &req.message,
+        &query_plan.standalone,
         allowed.as_ref(),
         QUALITY_LIMIT,
         now_secs(),
@@ -160,11 +225,12 @@ pub(crate) async fn run_model_turn(
     if let Some(object) = trace_seed.as_object_mut() {
         object.insert("context_quality".into(), context_quality.clone());
     }
-    if context_quality
-        .get("nodes")
-        .and_then(Value::as_i64)
-        .unwrap_or(0)
-        > 0
+    if gated.abstention.is_none()
+        && context_quality
+            .get("nodes")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+            > 0
     {
         if let Some(funnel) = state.funnel.as_ref() {
             funnel.record_recall_success();
@@ -172,7 +238,7 @@ pub(crate) async fn run_model_turn(
     }
 
     let history_message = if req.image_data.is_some() {
-        format!("{}\n[Image attached]", req.message)
+        format!("{}{IMAGE_MARKER}", req.message)
     } else {
         req.message.clone()
     };
@@ -185,6 +251,22 @@ pub(crate) async fn run_model_turn(
     };
     persist_entry(&state, "user", &history_message, &meta).await;
     state.notify("user", &req.message, req.source.as_deref());
+
+    if let Some(verdict) = gated.abstention.as_ref() {
+        return abstention_response(
+            &state,
+            &req,
+            &model_id,
+            verdict.message(language),
+            json!(verdict.reason),
+            &trace_seed,
+            &context_quality,
+            effective_email.as_deref(),
+            workspace_id.as_deref(),
+            &meta,
+        )
+        .await;
+    }
 
     if let Some(response) = document_response(
         &state,
@@ -234,6 +316,11 @@ pub(crate) async fn run_model_turn(
                         effective_email.as_deref(),
                         workspace_id.as_deref(),
                         &meta,
+                        CloudRetrieval {
+                            plan: &cloud_plan,
+                            grounding_required,
+                            historical,
+                        },
                     )
                     .await
                     {
@@ -241,6 +328,21 @@ pub(crate) async fn run_model_turn(
                     }
                 }
             }
+        }
+        if model_id.is_empty() && grounding_required {
+            return abstention_response(
+                &state,
+                &req,
+                &model_id,
+                local_only_evidence_message(language),
+                json!("evidence_not_shareable"),
+                &trace_seed,
+                &context_quality,
+                effective_email.as_deref(),
+                workspace_id.as_deref(),
+                &meta,
+            )
+            .await;
         }
     }
 

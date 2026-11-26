@@ -2,7 +2,7 @@
 
 # Privacy
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -23,6 +23,14 @@ Stored local data can include:
 - audit logs and admin operation events;
 - backups and encrypted `.latticebrain` archives;
 - model/runtime status metadata.
+
+## Multi-User Visibility
+
+When authentication is required, graph nodes derived from conversations (chats,
+messages, AI responses, and items extracted from them) are readable only by the
+user who owns them. Documents and uploads are scoped by workspace, not per user:
+every member of a workspace, including the shared `personal` workspace, can read
+them. Administrator exports and backups contain all data.
 
 ## What Can Leave The Machine
 

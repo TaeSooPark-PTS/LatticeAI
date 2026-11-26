@@ -210,6 +210,22 @@ impl BrainState {
         )
     }
 
+    pub fn graph_viewer(&self, user: &str) -> Option<String> {
+        self.auth.graph_viewer(user)
+    }
+
+    pub fn scoped_workspace(
+        &self,
+        workspace_id: Option<&str>,
+        user: &str,
+    ) -> Option<BTreeSet<String>> {
+        let viewer = self.graph_viewer(user);
+        match workspace_id.filter(|id| !id.is_empty()) {
+            Some(id) => lattice_core::workspace_scope(Some(id), viewer.as_deref()),
+            None => viewer.and_then(|v| self.allowed_workspaces(&v)),
+        }
+    }
+
     pub fn allowed_workspaces(&self, user: &str) -> Option<BTreeSet<String>> {
         let state = wsos::load(&self.store, self.data_dir());
         let identity = if user.is_empty() { None } else { Some(user) };
@@ -222,7 +238,10 @@ impl BrainState {
         if allowed.is_empty() && identity.is_none() {
             return None;
         }
-        Some(allowed)
+        Some(lattice_core::with_viewer(
+            allowed,
+            self.graph_viewer(user).as_deref(),
+        ))
     }
 
     pub async fn read<T, F>(&self, work: F) -> Result<T, Response>

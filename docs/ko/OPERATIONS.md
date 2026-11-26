@@ -1,8 +1,8 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./OPERATIONS.md)
 
-# Lattice AI — 운영 가이드 (v14.1.2)
+# Lattice AI — 운영 가이드 (v14.2.0)
 
-> **상태: 정본 (14.1.2)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
+> **상태: 정본 (14.2.0)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
 > 초기 노드별 Markdown 그래프가 아니라 SQLite 라이브 Brain 스토어와 워크스페이스
 > 스코핑을 반영합니다.
 
@@ -144,6 +144,12 @@ pip install --upgrade ltcai
 - `knowledge_graph.sqlite` Knowledge Graph: SQLite 스키마 마이그레이션은 부팅 시
   적용되며 읽기 호환성/롤백/동등성 테스트로 보호됩니다.
 
+### 6.4 14.2.0 업그레이드
+- `LATTICEAI_EMBEDDING_PROVIDER` 기본값이 `auto`입니다. 이전 동작을 유지하려면 `hash`로 설정하세요. 임베더가 바뀌면 `reindex_required`가 보고됩니다.
+- 선택 모델: `pip install "ltcai[rag]"` 후 `google/embeddinggemma-2`와 `BAAI/bge-reranker-v2-m3`를 미리 캐시하세요.
+- 기존 문서는 다음 동기화 때 한 번 다시 임베딩됩니다. 파괴적 마이그레이션은 없습니다.
+- 새 검색 설정 전체는 [14.2.0 릴리스 노트](./releases/RELEASE_NOTES_v14.2.0.md#환경-변수)를 참고하세요.
+
 ## 7. 공개 서버 체크리스트
 
 공개 인터넷에 노출할 경우 반드시 확인:
@@ -164,6 +170,7 @@ pip install --upgrade ltcai
 ## 8. 사용자 데이터 격리 및 임베딩/모델 운영
 
 - 대화 히스토리는 `user_email` 필드로 필터링됩니다.
+- 인증이 필수인 환경에서는 대화 파생 그래프 노드도 소유자 기준으로 필터링합니다. 문서와 업로드는 워크스페이스 범위로만 구분됩니다.
 - **사용자별 `AGENT_ROOT` 격리**: 에이전트 작업 디렉터리는 더 이상 단일 공유
   디렉터리가 아닙니다. Rust 호스트/에이전트 런타임(`IsolatedRootSpec`,
   `resolve_isolated_agent_root`, `LoopRoutesState::isolated`)이 서버 측에서

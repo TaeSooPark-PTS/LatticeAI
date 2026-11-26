@@ -24,15 +24,16 @@ pub async fn briefing(
     let doc = wsos::load(state.store(), state.data_dir());
     let email = user_email.to_string();
     let scope = workspace_id.map(str::to_string);
+    let allowed = state.scoped_workspace(workspace_id, user_email);
     let graph = state.graph_enabled();
     let db_path = state.store().path().display().to_string();
     let now_utc = state.now_utc();
 
     let snapshot = state
         .read(move |conn| {
-            let knowledge = knowledge_section(conn, graph, scope.as_deref());
+            let knowledge = knowledge_section(conn, graph, allowed.as_ref());
             let conversations = conversation_section(conn, &email, scope.as_deref());
-            let sample = health::graph_sample(conn, scope.as_deref(), graph);
+            let sample = health::graph_sample(conn, allowed.as_ref(), graph);
             let health = health::health_report(conn, &db_path, &sample, graph, now_utc);
             let hygiene = hygiene_section(conn, graph, &db_path, now_utc);
             Ok((knowledge, conversations, health, hygiene))
@@ -96,7 +97,7 @@ fn json(map: &OrderedMap) -> Value {
 fn knowledge_section(
     conn: &rusqlite::Connection,
     graph: bool,
-    workspace_id: Option<&str>,
+    allowed: Option<&std::collections::BTreeSet<String>>,
 ) -> OrderedMap {
     let mut out = OrderedMap::new();
     if !graph {
@@ -104,12 +105,7 @@ fn knowledge_section(
         out.insert("recent", Value::Array(Vec::new()));
         return out;
     }
-    let allowed = workspace_id.map(|id| {
-        let mut set = std::collections::BTreeSet::new();
-        set.insert(id.to_string());
-        set
-    });
-    let Ok(slice) = kg::graph_slice(conn, 50, allowed.as_ref()) else {
+    let Ok(slice) = kg::graph_slice(conn, 50, allowed) else {
         out.insert("available", Value::Bool(false));
         out.insert("recent", Value::Array(Vec::new()));
         return out;

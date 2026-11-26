@@ -14,7 +14,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**14.1.2 — Living Synthesis** aligns the full Lattice AI stack with a repository-wide zero-comments standard (`npm run check:no-comments`), suppression-free refactoring, repository-wide Python formatting (`ruff format --check .`), global McCabe `<= 20` with zero `C901` exemptions, fail-closed server i18n ratcheting (`0 unclaimed`), unified Rust ↔ Python offset-free UTC timestamps, fail-fast Tauri production port pinning (`4825`), TypeScript 7 `noUncheckedIndexedAccess` at 100% Vitest coverage, PR Playwright visual smoke, and the hardened VS Code extension (optional Bearer authentication via `ltcai.authToken` / `LATTICEAI_API_TOKEN`, TTL single-use approval token cache, HTTP/SSE stream timeouts, live configuration reload via `onDidChangeConfiguration`, sync poll overlap protection, and cross-platform VSIX packaging via `scripts/vsix-cli.mjs`). Full disclosure is in `docs/releases/RELEASE_NOTES_v14.1.2.md`.
+**14.2.0 — Temporal Synthesis** keeps the extension in step with a Lattice AI host that adds time-aware retrieval, token-sized parent-child chunking, cross-encoder reranking with RRF fallback, chat grounding gates, a 3D living brain view, the `ltcai search` CLI, and a multi-user conversation privacy fix. The extension's own features are unchanged. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.2.0.md`.
 
 **The core protocol remains backward-compatible.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before; cloud escalation and MCP live on the host, not in the editor.
 

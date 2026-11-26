@@ -7,6 +7,8 @@ use serde_json::Value;
 
 use super::service::{text_or, MAX_RECALL_THUMBNAIL_CHARS};
 use super::wsos;
+use crate::temporal::external::{candidate, slot_of};
+use crate::temporal::{rank_candidates, TemporalRanking};
 
 type Row = OrderedMap;
 
@@ -94,6 +96,7 @@ pub fn recall(
         query,
         user_email,
         workspace_id,
+        None,
         limit,
         None,
         None,
@@ -108,17 +111,21 @@ pub fn recall_with_query_vector(
     query: &str,
     user_email: &str,
     workspace_id: Option<&str>,
+    viewer: Option<&str>,
     limit: i64,
     query_embedding: Option<&crate::bm25::QueryVectorOverride>,
     semantic_degraded: Option<&str>,
 ) -> Result<OrderedMap, CoreError> {
     let q = lattice_core::pytext::strip(query);
-    let tokens = query_tokens(&q);
+    let now_secs = crate::routes::naive_local_now();
+    let ranking = TemporalRanking::from_env();
+    let search_q = crate::temporal::search_text_for(&q, now_secs, &ranking);
+    let tokens = query_tokens(&search_q);
     let mut results: Vec<Row> = Vec::new();
     let mut errors: Vec<Failure> = Vec::new();
 
     let user = Some(user_email).filter(|value| !value.is_empty());
-    for memory in wsos::search_memories(state, &q, user, limit, workspace_id) {
+    for memory in wsos::search_memories(state, &search_q, user, limit, workspace_id) {
         let tags = wsos::tag_text(&memory);
         let matched = matched_terms(
             &tokens,
@@ -139,6 +146,10 @@ pub fn recall_with_query_vector(
         row.insert("kind", memory.get("kind").cloned().unwrap_or(Value::Null));
         row.insert("score", Value::from(lexical_score(&tokens, &matched)));
         row.insert("matched_terms", terms(&matched));
+        stamp(
+            &mut row,
+            [memory.get("updated_at"), memory.get("created_at")],
+        );
         row.insert(
             "tags",
             match memory.get("tags") {
@@ -149,10 +160,17 @@ pub fn recall_with_query_vector(
         results.push(row);
     }
 
-    let allowed: Option<BTreeSet<String>> =
-        workspace_id.map(|workspace| [workspace.to_string()].into_iter().collect());
+    let allowed: Option<BTreeSet<String>> = match workspace_id {
+        Some(workspace) => lattice_core::workspace_scope(Some(workspace), viewer),
+        None => viewer.map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     if graph_enabled && !q.is_empty() {
-        match crate::keyword::search(conn, &q, limit, allowed.as_ref(), false) {
+        match crate::keyword::search(conn, &search_q, limit, allowed.as_ref(), false) {
             Ok(payload) => {
                 let hits = payload
                     .get("matches")
@@ -193,6 +211,7 @@ pub fn recall_with_query_vector(
                     );
                     row.insert("score", Value::from(lexical_score(&tokens, &matched)));
                     row.insert("matched_terms", terms(&matched));
+                    stamp(&mut row, [hit.get("updated_at"), None]);
                     visual_fields(hit, &mut row);
                     results.push(row);
                 }
@@ -217,7 +236,7 @@ pub fn recall_with_query_vector(
                     vector: &ovr.vector,
                     is_hash_fallback: ovr.is_hash_fallback,
                 },
-                &q,
+                &search_q,
                 &crate::vector::VectorSearchOptions {
                     limit,
                     min_score: 0.0,
@@ -226,7 +245,7 @@ pub fn recall_with_query_vector(
                 },
             )
         } else {
-            crate::vector::vector_search(conn, &model, &q, limit, 0.0)
+            crate::vector::vector_search(conn, &model, &search_q, limit, 0.0)
         };
         let hits = match vector_result {
             Ok(payload) => {
@@ -348,6 +367,7 @@ pub fn recall_with_query_vector(
                     if !locator.is_empty() {
                         row.insert("locator", Value::String(locator));
                     }
+                    stamp(&mut row, [hit.get("updated_at"), None]);
                     visual_fields(hit, &mut row);
                     results.push(row);
                     if !node_id.is_empty() {
@@ -401,8 +421,9 @@ pub fn recall_with_query_vector(
             .partial_cmp(&scored(left))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    let passed = results.len() as i64;
     let cap = limit.clamp(1, 100) as usize;
+    let (results, temporal) = temporal_order(conn, &q, now_secs, &ranking, results, cap)?;
+    let passed = results.len() as i64;
 
     let mut gate = OrderedMap::new();
     gate.insert("candidates", Value::from(candidates));
@@ -447,7 +468,60 @@ pub fn recall_with_query_vector(
         ),
     );
     out.insert("quality_gate", json(&gate));
+    out.insert("temporal", temporal);
     Ok(out)
+}
+
+fn stamp(row: &mut Row, sources: [Option<&Value>; 2]) {
+    let updated = sources
+        .into_iter()
+        .flatten()
+        .find(|value| value.as_str().is_some_and(|text| !text.is_empty()))
+        .cloned()
+        .unwrap_or(Value::Null);
+    row.insert("updated_at", updated);
+}
+
+fn temporal_order(
+    conn: &Connection,
+    query: &str,
+    now_secs: f64,
+    ranking: &TemporalRanking,
+    rows: Vec<Row>,
+    cap: usize,
+) -> Result<(Vec<Row>, Value), CoreError> {
+    if rows.is_empty() {
+        return Ok((rows, Value::Null));
+    }
+    let candidates: Vec<Value> = rows
+        .iter()
+        .enumerate()
+        .map(|(slot, row)| {
+            let id = crate::shape::py_str(row.get("id").unwrap_or(&Value::Null));
+            candidate(
+                slot,
+                &id,
+                row.get("score").and_then(Value::as_f64).unwrap_or(0.0),
+                row.get("updated_at").and_then(Value::as_str),
+            )
+        })
+        .collect();
+    let total = candidates.len();
+    let mut ranked = rank_candidates(Some(conn), query, now_secs, ranking, candidates, total)?;
+    if ranked.sort == crate::temporal::SortBy::Newest {
+        ranked.matches.truncate(cap);
+    }
+    let mut slots: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
+    let ordered = ranked
+        .matches
+        .iter()
+        .filter_map(|item| {
+            let mut row = slots.get_mut(slot_of(item)?)?.take()?;
+            row.insert("status", item.get("status").cloned().unwrap_or(Value::Null));
+            Some(row)
+        })
+        .collect();
+    Ok((ordered, ranked.report))
 }
 
 fn first_nonempty(hit: &Value, keys: &[&str], fallback: &str) -> String {

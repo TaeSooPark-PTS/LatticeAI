@@ -249,7 +249,7 @@ class Config:
                 env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False
             ),
             model_download_timeout=_int(env, "LATTICEAI_MODEL_DOWNLOAD_TIMEOUT", 300),
-            embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash")
+            embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "auto")
             .strip()
             .lower(),
             embedding_profile=_value(env, "LATTICEAI_EMBEDDING_PROFILE", "")

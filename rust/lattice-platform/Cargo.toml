@@ -14,6 +14,7 @@ reqwest = { workspace = true }
 lattice-core = { workspace = true }
 lattice-auth = { path = "../lattice-auth" }
 lattice-agent = { workspace = true }
+lattice-retrieval = { path = "../lattice-retrieval" }
 tower-http = { version = "0.6", features = ["fs"] }
 # WP-I4 (static/UI): the invite gate's cookie is an HMAC-SHA256 over an expiry
 # and a `secrets.token_urlsafe` nonce, verbatim from `api/static_routes.py`.

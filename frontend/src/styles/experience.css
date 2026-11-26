@@ -19,4 +19,7 @@
 
 @import "./experience/home-canvas.css";
 
+@import "./experience/brain-3d.css";
+@import "./experience/desktop-hud.css";
+
 @import "./experience/affordance.css";

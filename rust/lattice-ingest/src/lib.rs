@@ -3,6 +3,7 @@
 pub mod api;
 pub mod browser_api;
 pub mod chunk;
+pub mod chunk_pieces;
 pub mod document_structure;
 mod document_structure_parsers;
 pub mod filters;
@@ -22,6 +23,7 @@ pub use api::{router, IngestApiConfig, CHUNK_PATH, PLAN_PATH};
 pub use chunk::{
     chunk_meta_fields, typed_chunks, Chunk, ChunkMeta, DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE,
 };
+pub use chunk_pieces::{chunk_set_for, chunk_set_with, embedding_inputs, ChunkSet};
 pub use document_structure::{
     extract_document_structure, persist_structure_and_multimodal_overlay, DocumentStructurePlan,
     OcrVisionObservation, OcrVisionProvider,

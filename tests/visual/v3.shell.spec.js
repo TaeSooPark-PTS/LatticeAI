@@ -7,7 +7,7 @@ const PLAIN_MODE_ROUTES = [
   { hash: "#/models", ready: "h1.page-title" },
   { hash: "#/settings", ready: "h1.page-title" },
   { hash: "#/hybrid-search", ready: "h1" },
-  { hash: "#/knowledge-graph", ready: "[data-testid='brain-cytoscape']" },
+  { hash: "#/knowledge-graph", ready: "[data-testid='brain-graph-stage']" },
   { hash: "#/review", ready: "h1.page-title" },
   { hash: "#/agents", ready: "h1.page-title" },
   { hash: "#/pipeline", ready: "h1.page-title" },

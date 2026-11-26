@@ -5,6 +5,33 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.2.0] - 2026-11-27 — Temporal Synthesis
+
+### 추가됨
+- parent-child 섹션, 결정적 문맥 접두어, Rust·Python·TypeScript·JavaScript tree-sitter 분할을 갖춘 토큰 기준 청킹과 추가형 `chunk_parents` 테이블(내보내기/가져오기, 공유 번들, 아카이브 그래프 내보내기에 포함).
+- 워커 라우트 `POST /worker/rerank`(워커 라우트 21개)와 RRF 대체를 갖춘 cross-encoder 재랭킹, 새 `rag` extra.
+- 시간 랭킹: 시간 의도 사전 필터, 최신성 감쇠, superseded 정책, `sort_by`·`include_historical`·`since`·`until`. 커맨드 검색, MCP `knowledge_search`, `obsidian_search`의 `sort_by`, 문서 컨텍스트와 메모리 recall의 시간 랭킹.
+- 감시 동기화, 노트 수집, 브라우저 현재 탭 캡처, 업로드의 `SUPERSEDES` 표시(뒤의 세 경로는 이전 버전 내용 보존).
+- 채팅 질의 재작성과 하위 질의, 문서당 상한을 둔 MMR, 근거 라벨, 답변 보류를 포함한 Self-RAG 게이트.
+- `ltcai search` CLI 명령과 CI의 `npm run test:cli`.
+- 3D 살아있는 Brain 화면, 고정 뷰포트 데스크톱 셸, 프로스티드 글래스 HUD, Brain Vital Pill, 커맨드 팔레트 기능.
+- 검색 평가의 Recency Accuracy, Recall@K, MRR, NDCG 보고.
+
+### 변경됨
+- `LATTICEAI_EMBEDDING_PROVIDER` 기본값이 `auto`가 되었습니다(이전 `hash`).
+- 채팅 컨텍스트 예산이 `LATTICEAI_CONTEXT_WINDOW_TOKENS`에 비례하며, 로컬 채팅 컨텍스트에 지식 검색 결과가 포함됩니다.
+- 같은 노드를 다시 수집하면 해당 노드의 오래된 청크·벡터·통계를 삭제합니다.
+
+### 수정됨
+- 다중 사용자 개인정보: 다른 사용자의 대화 파생 그래프 노드를 더 이상 읽을 수 없습니다.
+- 로그인 검색의 워크스페이스 목록이 비는 문제를 수정했습니다.
+- 재수집이 다른 사용자의 내용을 가져가지 않고, 폴더 정리는 소유자 범위이며, 업로드는 소유자·워크스페이스를 기록하고 멤버십을 확인합니다.
+- 이웃 노드 없는 청크 문서의 공유 번들 수락 시 외래 키 오류를 수정했습니다(이미 발급된 번들 포함).
+- 어휘 벡터를 시맨틱 모델 이름으로 반환하던 임시 임베딩 백엔드를 제거했습니다.
+- 화면: 상단 내비게이션 라벨이 줄바꿈되거나 컨트롤을 화면 밖으로 밀지 않습니다. 수집 상태 메시지가 입력창을 움직이거나 첨부 메뉴를 닫지 않고, 실패한 추가에 나중에 다시 불러올 수 있다고 안내하지 않습니다. 밝은 테마의 3D Brain이 검은 패널로 보이지 않으며, 휴대폰 폭의 홈과 검토함, 관리자 화면, 연대기 슬라이더 손잡이가 겹치거나 잘리지 않습니다.
+
+상세 내용과 한계: [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](./releases/RELEASE_NOTES_v14.2.0.md).
+
 ## [14.1.2] - 2026-11-25 — Living Synthesis
 
 ### 변경됨

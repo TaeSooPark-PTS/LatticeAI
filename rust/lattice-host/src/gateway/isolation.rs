@@ -465,6 +465,7 @@ fn classify_surface(path: &str) -> Option<SurfaceKind> {
         || path == "/api/activity/runs"
         || path == "/automations/runs/combined"
         || path.starts_with("/api/browser/")
+        || path == "/upload/document"
         || path.starts_with("/api/review-queue")
         || path.starts_with("/api/proposals")
         || path.starts_with("/api/hooks")
@@ -589,5 +590,19 @@ pub async fn enforce_agent_isolation(
     match router.oneshot(req).await {
         Ok(resp) => resp,
         Err(never) => match never {},
+    }
+}
+
+#[cfg(test)]
+mod upload_scope_tests {
+    use super::*;
+
+    #[test]
+    fn uploads_pass_the_workspace_membership_check() {
+        assert!(matches!(
+            classify_surface("/upload/document"),
+            Some(SurfaceKind::WorkspaceScoped)
+        ));
+        assert!(write_intent_for(&Method::POST, "/upload/document"));
     }
 }

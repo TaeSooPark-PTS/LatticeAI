@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
+use axum::extract::State;
+use axum::http::HeaderMap;
 use lattice_agent::tools::sandbox::Workspace;
-use lattice_auth::{AuthConfig, AuthState, Clock};
+use lattice_auth::{AuthConfig, AuthState, Clock, Identity};
+use serde_json::{json, Value};
 
 use super::hybrid::search_notes_with_options;
-use super::save_note;
-use crate::toolsurface::tools::ToolsState;
+use super::{run_knowledge_search, save_note};
+use crate::toolsurface::tools::{ToolExecError, ToolsState};
 
 #[test]
 fn hybrid_note_search_surfaces_bm25f_and_wikilink_graph_subgraph() {
@@ -44,6 +47,7 @@ fn hybrid_note_search_surfaces_bm25f_and_wikilink_graph_subgraph() {
         Some("hybrid"),
         Some(2),
         true,
+        None,
     )
     .expect("hybrid search");
 
@@ -68,4 +72,129 @@ fn hybrid_note_search_surfaces_bm25f_and_wikilink_graph_subgraph() {
     assert_eq!(subgraph["hops"], 2);
     assert!(!subgraph["nodes"].as_array().unwrap().is_empty());
     assert!(!subgraph["edges"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn obsidian_search_ranks_notes_by_recency_and_sort_by() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut config = AuthConfig::from_map(&HashMap::new(), None);
+    config.data_dir = tmp.path().to_path_buf();
+    config.require_auth = false;
+    let auth = AuthState::with_clock(config, Clock::frozen(1_700_000_000.0));
+    let workspace = Workspace::new(tmp.path()).expect("workspace");
+    let mut state = ToolsState::new(auth, workspace, tmp.path());
+    state.require_auth = false;
+    for (title, content, days) in [
+        (
+            "alpha",
+            "zebrafish rollout zebrafish rollout zebrafish rollout",
+            200,
+        ),
+        ("beta", "zebrafish tank cleaned, nothing about plans", 1),
+    ] {
+        let saved = save_note(&state, "", "", content, Some(title), true).expect("save");
+        age(saved["path"].as_str().expect("path"), days);
+    }
+    for (sort_by, first) in [("relevance", "alpha.md"), ("newest", "beta.md")] {
+        let body =
+            json!({"query": "zebrafish rollout", "mode": "hybrid", "sort_by": sort_by}).to_string();
+        let response =
+            super::obsidian_search(State(state.clone()), HeaderMap::new(), body.into()).await;
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&bytes);
+        let at = text.find("alpha.md").expect("alpha");
+        let other = text.find("beta.md").expect("beta");
+        assert_eq!(at < other, first == "alpha.md", "{text}");
+        assert!(text.contains("updated_at"), "{text}");
+    }
+    let refused = super::obsidian_search(
+        State(state.clone()),
+        HeaderMap::new(),
+        json!({"query": "zebrafish", "sort_by": "oldest"})
+            .to_string()
+            .into(),
+    )
+    .await;
+    assert!(refused.status().is_client_error());
+}
+
+fn age(path: &str, days: u64) {
+    let when = std::time::SystemTime::now() - std::time::Duration::from_secs(days * 86_400);
+    std::fs::File::options()
+        .write(true)
+        .open(path)
+        .expect("open note")
+        .set_modified(when)
+        .expect("mtime");
+}
+
+#[test]
+fn mcp_knowledge_search_ranks_notes_by_recency_and_sort_by() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut config = AuthConfig::from_map(&HashMap::new(), None);
+    config.data_dir = tmp.path().to_path_buf();
+    let auth = AuthState::with_clock(config, Clock::frozen(1_700_000_000.0));
+    let workspace = Workspace::new(tmp.path()).expect("workspace");
+    let mut state = ToolsState::new(auth, workspace, tmp.path());
+    state.require_auth = false;
+    for (title, content, days) in [
+        (
+            "alpha",
+            "zebrafish rollout zebrafish rollout zebrafish rollout",
+            200,
+        ),
+        ("beta", "zebrafish tank cleaned, nothing about plans", 1),
+    ] {
+        let saved = save_note(&state, "", "", content, Some(title), false).expect("save");
+        age(saved["path"].as_str().expect("path"), days);
+    }
+    let identity = Identity::local_owner();
+    let search = |args: Value| run_knowledge_search(&state, &identity, &HeaderMap::new(), &args);
+    let order = |report: &Value| -> Vec<String> {
+        report["results"]
+            .as_array()
+            .expect("results")
+            .iter()
+            .map(|item| item["relative_path"].as_str().expect("path").to_string())
+            .collect()
+    };
+
+    let relevance = search(json!({
+        "query": "zebrafish rollout", "mode": "hybrid", "sort_by": "relevance"
+    }))
+    .expect("relevance");
+    assert_eq!(relevance["sort_by"], "relevance");
+    assert_eq!(order(&relevance)[0], "00_Raw/alpha.md");
+
+    let newest = search(json!({
+        "query": "zebrafish rollout", "mode": "hybrid", "sort_by": "newest"
+    }))
+    .expect("newest");
+    assert_eq!(newest["sort_by"], "newest");
+    assert_eq!(order(&newest)[0], "00_Raw/beta.md");
+    assert!(newest["results"][0]["updated_at"].is_string());
+    assert_eq!(newest["results"][0]["status"], "active");
+    assert_eq!(newest["subgraph"]["nodes"][0]["id"], "00_Raw/beta.md");
+
+    let plain = search(json!({"query": "zebrafish", "max_results": 1})).expect("plain");
+    assert_eq!(order(&plain), vec!["00_Raw/beta.md".to_string()]);
+
+    let refused = search(json!({"query": "zebrafish", "sort_by": "oldest"}));
+    assert!(matches!(
+        refused,
+        Err(ToolExecError::Message(message)) if message.starts_with("sort_by must be one of")
+    ));
+    assert!(search(json!({"query": "zebrafish", "sort_by": 3})).is_err());
+
+    let schema = crate::toolsurface::mcp::NATIVE_TOOLS
+        .iter()
+        .find(|tool| tool.name == "knowledge_search")
+        .expect("tool")
+        .input_schema_value();
+    assert_eq!(
+        schema["properties"]["sort_by"]["enum"],
+        json!(["relevance", "newest", "auto"])
+    );
 }

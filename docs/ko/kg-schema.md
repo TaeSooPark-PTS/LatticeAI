@@ -2,7 +2,7 @@
 
 # Knowledge Graph 스키마
 
-현재 릴리스: **14.1.2 — Living Synthesis**.
+현재 릴리스: **14.2.0 — Temporal Synthesis**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22  
 구현: `lattice_brain/graph/schema.py`
@@ -264,9 +264,17 @@ v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 삭제하지 않는�
 
 ---
 
+## 시간 상태와 parent 청크 (v14.2.0)
+
+- `chunk_parents(id, source_node, parent_index, text, metadata_json, created_at)`는 첫 parent 기록 시 생성되는 추가형 테이블이며 `source_node` 삭제 시 함께 삭제됩니다. child 청크는 메타데이터에 `parent_id`를 가집니다.
+- `SUPERSEDES` 엣지는 새 버전에서 이전 버전을 가리킵니다. 검색은 노드 메타데이터, 수명주기, 들어오는 엣지에서 `status`(`active` / `superseded`), `valid_from`, `valid_until`, `superseded_by`를 읽습니다.
+- 감시 폴더 문서는 `document_version`을 기록하고 교체된 리비전의 청크를 삭제합니다. 노트, 브라우저 탭, 업로드 재수집은 이전 버전을 보존하고 superseded로 표시합니다.
+
+---
+
 ## 임베딩
 
-- 차원: 환경 변수 `LATTICEAI_EMBED_DIM` (기본 `1024`)
+- 차원: 활성 임베더가 결정(EmbeddingGemma 2는 768, 해시 대체는 384). `LATTICEAI_VECTOR_DIM`으로 재지정
 - 저장: SQLite `BLOB` 컬럼, `struct.pack('<{n}f', …)` 직렬화
 - 검색: 기본은 **정확 스캔(`brute`)** 코사인이다. v12.0.0부터
   `LATTICEAI_VECTOR_INDEX=hnsw`를 켜면 워커 사이드카

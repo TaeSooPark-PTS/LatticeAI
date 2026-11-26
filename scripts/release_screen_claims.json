@@ -20,6 +20,36 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.2.0": {
+    "_why": [
+      "Temporal Synthesis (14.2.0) changes every captured screen on purpose.",
+      "The design tokens moved from the jade palette to cobalt (light) and cyan",
+      "on obsidian (dark), so onboarding, product pages and the admin console are",
+      "repainted even where their layout is unchanged.",
+      "",
+      "Layout changes: the app is now a fixed-viewport shell, so captures show",
+      "one viewport instead of a full-length page; the top bar carries the Brain",
+      "Vital Pill; the home hero has an ambient 3D backdrop; Memory Graph shows",
+      "the 3D brain instead of the 2D graph.",
+      "",
+      "05 and 06 and other data-bearing screens are captured against the mock",
+      "server's opt-in grown sample graph (LTCAI_VISUAL_BRAIN=grown), so node and",
+      "record counts are sample data and not comparable with 14.1.2."
+    ],
+    "01-login.png": {},
+    "02-recommended-models.png": {},
+    "03-install-load-progress.png": {},
+    "04-brain-chat-home.png": {},
+    "05-memory-graph.png": {},
+    "06-capture.png": {},
+    "07-model-library.png": {},
+    "08-system.png": {},
+    "09-automation-runs.png": {},
+    "10-admin-console.png": {},
+    "11-knowledge-journey.png": {},
+    "12-review-center.png": {},
+    "13-chronicle.png": {}
+  },
   "14.1.2": {
     "_why": [
       "Living Synthesis (14.1.2) strips all human-written comments, docstrings,",

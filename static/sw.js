@@ -1,4 +1,4 @@
-const CACHE = "lattice-v1412";
+const CACHE = "lattice-v1420";
 const MANIFEST_URL = "/static/app/asset-manifest.json";
 
 const SHELL = [

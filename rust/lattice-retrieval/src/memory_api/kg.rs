@@ -369,7 +369,10 @@ pub(crate) fn source_items(conn: &Connection) -> Result<Vec<SourceItem>, CoreErr
             let mut metadata =
                 safe_loads(row.get::<_, Option<String>>("metadata_json")?.as_deref());
             let raw: Option<String> = row.get("text")?;
-            let text = clean_text(raw.as_deref().unwrap_or_default());
+            let text = clean_text(&lattice_core::graph_write::chunk_parents::chunk_index_text(
+                raw.as_deref().unwrap_or_default(),
+                &metadata,
+            ));
             if text.is_empty() {
                 continue;
             }

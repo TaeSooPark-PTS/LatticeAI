@@ -12,6 +12,7 @@ use crate::docgen::{
 use crate::self_model::{summary_for_prompt, DEFAULT_SUMMARY_TOKENS};
 use crate::service::Scope;
 use crate::shape::{context_quality_signal, multimodal_signal, truthy};
+use crate::temporal::{ranked_search, TemporalRanking};
 
 pub const DEFAULT_DOCUMENT_CONTEXT_BUDGET: i64 = 2000;
 
@@ -29,6 +30,7 @@ pub struct DocumentContextRequest {
     pub self_model_tokens: i64,
     pub scope: Scope,
     pub now_secs: f64,
+    pub temporal: Option<TemporalRanking>,
 }
 
 impl Default for DocumentContextRequest {
@@ -42,6 +44,7 @@ impl Default for DocumentContextRequest {
             self_model_tokens: DEFAULT_SUMMARY_TOKENS,
             scope: Scope::default(),
             now_secs: 0.0,
+            temporal: None,
         }
     }
 }
@@ -172,13 +175,7 @@ pub fn retrieve_context_for_generation(
         request.budget - approx_tokens(&format!("{profile}\n\n")) as i64
     };
 
-    let results = search_for_document_generation(
-        conn,
-        &query,
-        request.max_results,
-        &request.scope,
-        request.now_secs,
-    )?;
+    let (results, temporal) = generation_candidates(conn, request, &query)?;
     if results.is_empty() {
         return fallback_result(conn, request, &query, &profile, knowledge_budget);
     }
@@ -200,7 +197,7 @@ pub fn retrieve_context_for_generation(
 
     let mut trace_sections = self_model_trace(&profile);
     trace_sections.extend(sections.iter().map(section_trace));
-    Ok(serde_json::json!({
+    let mut payload = serde_json::json!({
         "query": query,
         "context_markdown": assembled,
         "sources": sources,
@@ -219,7 +216,60 @@ pub fn retrieve_context_for_generation(
             "used_approx_tokens": approx_tokens(&assembled),
             "sections": trace_sections,
         },
-    }))
+    });
+    if let (Some(report), Some(object)) = (temporal, payload.as_object_mut()) {
+        object.insert("temporal".into(), report);
+    }
+    Ok(payload)
+}
+
+fn generation_candidates(
+    conn: &Connection,
+    request: &DocumentContextRequest,
+    query: &str,
+) -> Result<(Vec<Value>, Option<Value>), CoreError> {
+    let search = |text: &str, limit: i64| {
+        search_for_document_generation(conn, text, limit, &request.scope, request.now_secs)
+    };
+    let Some(ranking) = request.temporal.as_ref() else {
+        return Ok((search(query, request.max_results)?, None));
+    };
+    let limit = if request.max_results == 0 {
+        10
+    } else {
+        request.max_results.clamp(1, 50)
+    };
+    let mut report = ranked_search(
+        conn,
+        query,
+        request.now_secs,
+        ranking,
+        limit,
+        false,
+        |call| {
+            let mut found = search(&call.search_query, call.fetch_limit)?;
+            for item in found.iter_mut() {
+                if let Some(object) = item.as_object_mut() {
+                    let score = object.get("hybrid_score").cloned().unwrap_or(Value::Null);
+                    object.insert("score".into(), score);
+                }
+            }
+            Ok(serde_json::json!({ "matches": found }))
+        },
+    )?;
+    let mut matches = report
+        .get_mut("matches")
+        .and_then(Value::as_array_mut)
+        .map(std::mem::take)
+        .unwrap_or_default();
+    for item in matches.iter_mut() {
+        if let Some(object) = item.as_object_mut() {
+            if let Some(score) = object.remove("score") {
+                object.insert("hybrid_score".into(), score);
+            }
+        }
+    }
+    Ok((matches, report.get("temporal").cloned()))
 }
 
 fn fallback_result(

@@ -89,7 +89,7 @@ pub async fn contradictions(
         })
         .collect();
 
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     let mut edge_items: Vec<Value> = Vec::new();
     for edge in &sample.edges {
         if pyutil::field_text(edge, "type")
@@ -191,7 +191,7 @@ pub async fn consolidate(
         .map(|candidate| candidate.id.clone())
         .collect();
 
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     let duplicate_edge_ids: Vec<String> = EdgeQuality::detect_duplicate_edges(&sample.edges)
         .into_iter()
         .filter(|id| !id.is_empty())

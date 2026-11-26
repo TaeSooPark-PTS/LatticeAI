@@ -29,6 +29,7 @@ pub struct HybridOptions {
     pub now_secs: f64,
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
+    pub recency: Option<crate::temporal::RecencyDecay>,
 }
 
 impl Default for HybridOptions {
@@ -44,6 +45,7 @@ impl Default for HybridOptions {
             now_secs: 0.0,
             query_embedding: None,
             semantic_degraded: None,
+            recency: None,
         }
     }
 }
@@ -426,7 +428,15 @@ pub fn hybrid_search(
         entry.score = round6(fused);
     }
 
-    if let Some(half_life) = recency_half_life {
+    if let Some(decay) = options.recency.as_ref() {
+        let recency_class = crate::policy::classify_query(&query) == "recency";
+        for entry in entries.iter_mut() {
+            let multiplier =
+                decay.multiplier(entry.updated_at.as_str(), options.now_secs, recency_class);
+            entry.age_decay = Some(multiplier);
+            entry.score = round6(entry.score * multiplier);
+        }
+    } else if let Some(half_life) = recency_half_life {
         for entry in entries.iter_mut() {
             let stamp = entry.updated_at.as_str();
             let multiplier = if parse_iso(stamp).is_some() {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { useAppStore } from "@/store/appStore";
 import { useConversationSession } from "./conversationSession";
 
 describe("conversation session", () => {
@@ -28,6 +29,31 @@ describe("conversation session", () => {
 
     expect(useConversationSession.getState().conversationId).toBeNull();
     expect(useConversationSession.getState().messages).toEqual([]);
+  });
+
+  it("drops the retrieval highlight when the conversation or workspace changes", () => {
+    const trace = { nodeIds: ["n1"], edges: [], timestamp: 1 };
+    const fire = () => useAppStore.getState().setActiveFiringTrace(trace);
+    const fired = () => useAppStore.getState().activeFiringTrace;
+
+    fire();
+    useConversationSession.getState().setConversationId("first");
+    expect(fired()).toBe(trace);
+    useConversationSession.getState().setConversationId("first");
+    expect(fired()).toBe(trace);
+    useConversationSession.getState().setConversationId("second");
+    expect(fired()).toBeNull();
+
+    fire();
+    useConversationSession.getState().resetConversation();
+    expect(fired()).toBeNull();
+
+    useAppStore.getState().setWorkspaceId("ws-a");
+    fire();
+    useAppStore.getState().setWorkspaceId("ws-a");
+    expect(fired()).toBe(trace);
+    useAppStore.getState().setWorkspaceId(null);
+    expect(fired()).toBeNull();
   });
 
   it("resets the local-only override with the conversation", () => {

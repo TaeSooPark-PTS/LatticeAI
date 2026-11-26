@@ -47,6 +47,7 @@ pub(super) fn build_subgraph_bundle(
     let all_edges = array_rows(&export, "edges");
     let all_chunks = array_rows(&export, "chunks");
     let all_prov = array_rows(&export, "ingestion_provenance");
+    let all_parents = array_rows(&export, "chunk_parents");
 
     let prov_by_node: HashMap<&str, &Value> = all_prov
         .iter()
@@ -62,7 +63,7 @@ pub(super) fn build_subgraph_bundle(
         .collect();
 
     let mut selected_ids: HashSet<String> = HashSet::new();
-    let mut excluded_local_only = 0usize;
+    let mut blocked_ids: HashSet<&str> = HashSet::new();
 
     for node in all_nodes {
         let Some(nid) = node.get("id").and_then(Value::as_str) else {
@@ -83,18 +84,19 @@ pub(super) fn build_subgraph_bundle(
             continue;
         }
         if is_node_share_blocked(node) {
-            excluded_local_only += 1;
+            blocked_ids.insert(nid);
             continue;
         }
         selected_ids.insert(nid.to_string());
     }
 
+    let node_lookup: HashMap<&str, &Value> = all_nodes
+        .iter()
+        .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
+        .collect();
+
     if include_neighbors && !selected_ids.is_empty() {
         let seeds = selected_ids.clone();
-        let node_lookup: HashMap<&str, &Value> = all_nodes
-            .iter()
-            .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
-            .collect();
         for edge in all_edges {
             let from = edge.get("from_node").and_then(Value::as_str).unwrap_or("");
             let to = edge.get("to_node").and_then(Value::as_str).unwrap_or("");
@@ -111,7 +113,7 @@ pub(super) fn build_subgraph_bundle(
                         continue;
                     }
                     if is_node_share_blocked(node) {
-                        excluded_local_only += 1;
+                        blocked_ids.insert(nb);
                     } else {
                         selected_ids.insert(nb.to_string());
                     }
@@ -119,6 +121,36 @@ pub(super) fn build_subgraph_bundle(
             }
         }
     }
+
+    let mut withheld_chunks: HashSet<&str> = HashSet::new();
+    let mut withheld_parents: HashSet<String> = HashSet::new();
+    let mut chunk_nodes: Vec<&str> = Vec::new();
+    for chunk in all_chunks {
+        let source = chunk.get("source_node").and_then(Value::as_str);
+        let Some(cid) = chunk.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+        if !source.is_some_and(|id| selected_ids.contains(id)) {
+            continue;
+        }
+        let Some(node) = node_lookup.get(cid) else {
+            continue;
+        };
+        let blocked = is_node_share_blocked(node);
+        if blocked {
+            blocked_ids.insert(cid);
+        }
+        if blocked || belongs_to_other_workspace(node, workspace_id) {
+            withheld_chunks.insert(cid);
+            if let Some(parent) = metadata_of(chunk).get("parent_id").and_then(Value::as_str) {
+                withheld_parents.insert(parent.to_string());
+            }
+        } else {
+            chunk_nodes.push(cid);
+        }
+    }
+    selected_ids.extend(chunk_nodes.into_iter().map(str::to_string));
+    let excluded_local_only = blocked_ids.len();
 
     let nodes: Vec<Value> = all_nodes
         .iter()
@@ -144,6 +176,23 @@ pub(super) fn build_subgraph_bundle(
             c.get("source_node")
                 .and_then(Value::as_str)
                 .is_some_and(|id| selected_ids.contains(id))
+                && !c
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| withheld_chunks.contains(id))
+        })
+        .cloned()
+        .collect();
+    let parents: Vec<Value> = all_parents
+        .iter()
+        .filter(|p| {
+            p.get("source_node")
+                .and_then(Value::as_str)
+                .is_some_and(|id| selected_ids.contains(id))
+                && !p
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| withheld_parents.contains(id))
         })
         .cloned()
         .collect();
@@ -196,6 +245,12 @@ pub(super) fn build_subgraph_bundle(
     let sig_b64 = state.identity.sign(&sign_bytes);
 
     let mut bundle = canonical_payload;
+    if !parents.is_empty() {
+        let parents = Value::Array(parents);
+        let signed = parents_sign_bytes(&sig_b64, &parents)?;
+        bundle["parents_signature"] = json!(state.identity.sign(&signed));
+        bundle["chunk_parents"] = parents;
+    }
     bundle["signature"] = json!({
         "algorithm": "ed25519",
         "public_key": state.identity.public_key_b64(),
@@ -221,16 +276,7 @@ pub(super) fn verify_subgraph_bundle_signature(bundle: &Value) -> Result<bool, S
     let pub_raw = decode_b64_key32(pub_b64)?;
     let verifying = VerifyingKey::from_bytes(&pub_raw)
         .map_err(|e| format!("Invalid sender Ed25519 key: {e}"))?;
-    let sig_raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(sig_b64.trim())
-        .or_else(|_| B64_STANDARD.decode(sig_b64.trim()))
-        .map_err(|e| format!("Invalid sender signature encoding: {e}"))?;
-    if sig_raw.len() != 64 {
-        return Err("Invalid sender signature length.".into());
-    }
-    let mut sig_arr = [0u8; 64];
-    sig_arr.copy_from_slice(&sig_raw);
-    let signature = Signature::from_bytes(&sig_arr);
+    let signature = decode_signature(sig_b64)?;
 
     let canonical_payload = json!({
         "header": bundle.get("header").cloned().unwrap_or(json!({})),
@@ -245,7 +291,40 @@ pub(super) fn verify_subgraph_bundle_signature(bundle: &Value) -> Result<bool, S
     verifying
         .verify(&payload_bytes, &signature)
         .map_err(|_| "Shared subgraph Ed25519 signature verification failed.".to_string())?;
+    if let Some(parents) = bundle.get("chunk_parents") {
+        let parents_sig = bundle
+            .get("parents_signature")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Shared bundle parent sections are unsigned.".to_string())?;
+        verifying
+            .verify(
+                &parents_sign_bytes(sig_b64, parents)?,
+                &decode_signature(parents_sig)?,
+            )
+            .map_err(|_| "Shared parent section signature verification failed.".to_string())?;
+    }
     Ok(true)
+}
+
+fn parents_sign_bytes(bundle_signature: &str, parents: &Value) -> Result<Vec<u8>, String> {
+    serde_json::to_vec(&json!({
+        "bundle_signature": bundle_signature,
+        "chunk_parents": parents,
+    }))
+    .map_err(|e| format!("Failed to encode parent section payload: {e}"))
+}
+
+fn decode_signature(encoded: &str) -> Result<Signature, String> {
+    let sig_raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded.trim())
+        .or_else(|_| B64_STANDARD.decode(encoded.trim()))
+        .map_err(|e| format!("Invalid sender signature encoding: {e}"))?;
+    if sig_raw.len() != 64 {
+        return Err("Invalid sender signature length.".into());
+    }
+    let mut sig_arr = [0u8; 64];
+    sig_arr.copy_from_slice(&sig_raw);
+    Ok(Signature::from_bytes(&sig_arr))
 }
 
 fn str_list(object: &Map<String, Value>, key: &str) -> Vec<String> {
@@ -271,11 +350,7 @@ fn is_node_share_blocked(node: &Value) -> bool {
     {
         return true;
     }
-    let meta_str = node
-        .get("metadata_json")
-        .and_then(Value::as_str)
-        .unwrap_or("{}");
-    let meta: Value = serde_json::from_str(meta_str).unwrap_or(json!({}));
+    let meta = metadata_of(node);
     for flag in HARD_BLOCK_METADATA_FLAGS {
         if meta.get(*flag).and_then(Value::as_bool) == Some(true) {
             return true;
@@ -292,15 +367,31 @@ fn matches_workspace_boundary(
     let Some(wanted) = workspace_id else {
         return true;
     };
-    let meta_str = node
+    match explicit_workspace(&metadata_of(node)) {
+        Some(ws) => ws == wanted,
+        None => include_legacy_global || wanted == "personal",
+    }
+}
+
+fn belongs_to_other_workspace(node: &Value, workspace_id: Option<&str>) -> bool {
+    let meta = metadata_of(node);
+    workspace_id
+        .zip(explicit_workspace(&meta))
+        .is_some_and(|(wanted, ws)| ws != wanted)
+}
+
+fn explicit_workspace(meta: &Value) -> Option<&str> {
+    meta.get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|ws| !ws.is_empty())
+}
+
+fn metadata_of(row: &Value) -> Value {
+    let raw = row
         .get("metadata_json")
         .and_then(Value::as_str)
         .unwrap_or("{}");
-    let meta: Value = serde_json::from_str(meta_str).unwrap_or(json!({}));
-    match meta.get("workspace_id").and_then(Value::as_str) {
-        Some(ws) if !ws.is_empty() => ws == wanted,
-        _ => include_legacy_global || wanted == "personal",
-    }
+    serde_json::from_str(raw).unwrap_or(json!({}))
 }
 
 pub(in crate::knowledge::portability) fn emit_portability_audit(

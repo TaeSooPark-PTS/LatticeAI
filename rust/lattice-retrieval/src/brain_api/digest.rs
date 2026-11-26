@@ -7,8 +7,12 @@ use super::pyutil;
 use super::sampling::{self, Sample, RECENT_DAYS, STALE_DAYS};
 use super::{consistency, proactive};
 
-pub async fn insights(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
-    let sample = sampling::graph_sample(state, workspace_id).await;
+pub async fn insights(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> OrderedMap {
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     build_insights(&sample, &state.now(), state.now_utc())
 }
 
@@ -127,7 +131,7 @@ pub async fn garden_overview(
     workspace_id: Option<&str>,
     limit: i64,
 ) -> OrderedMap {
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     let found = consistency::contradictions(state, user_email, workspace_id).await;
     let items = found
         .get("items")
@@ -229,12 +233,16 @@ pub fn build_garden(
     out
 }
 
-pub async fn graph_duplicates(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
+pub async fn graph_duplicates(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
         return duplicates_unavailable(&now);
     }
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     if !sample.available {
         return duplicates_unavailable(&now);
     }
@@ -259,12 +267,16 @@ fn duplicates_unavailable(now: &str) -> OrderedMap {
     out
 }
 
-pub async fn importance_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
+pub async fn importance_report(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
         return importance_unavailable(&now);
     }
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     if !sample.available {
         return importance_unavailable(&now);
     }
@@ -282,19 +294,23 @@ fn importance_unavailable(now: &str) -> OrderedMap {
     out
 }
 
-pub async fn quality_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
+pub async fn quality_report(
+    state: &BrainState,
+    user_email: &str,
+    workspace_id: Option<&str>,
+) -> OrderedMap {
     let now = state.now();
     if !state.graph_enabled() {
         return quality_unavailable(&now);
     }
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     if !sample.available {
         return quality_unavailable(&now);
     }
     let mut result = proactive::quality_report(&sample, &now, state.now_utc());
     result.insert("available", Value::Bool(true));
 
-    let importance = importance_report(state, workspace_id).await;
+    let importance = importance_report(state, user_email, workspace_id).await;
     let candidates = importance
         .get("candidates")
         .and_then(Value::as_array)

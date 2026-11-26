@@ -51,8 +51,17 @@ async fn overview(State(state): State<BrainState>, request: Request) -> Response
     let graph = state.graph_enabled();
     let email = caller.email.clone();
     let scope = caller.scope.clone();
+    let viewer = state.graph_viewer(&caller.email);
     match state
-        .read(move |conn| Ok(service::overview(conn, graph, &email, scope.as_deref())))
+        .read(move |conn| {
+            Ok(service::overview_for(
+                conn,
+                graph,
+                &email,
+                scope.as_deref(),
+                viewer.as_deref(),
+            ))
+        })
         .await
     {
         Ok(body) => ok_json(&body),
@@ -75,8 +84,18 @@ async fn day(
     let graph = state.graph_enabled();
     let email = caller.email.clone();
     let scope = caller.scope.clone();
+    let viewer = state.graph_viewer(&caller.email);
     match state
-        .read(move |conn| Ok(service::day(conn, graph, &day, &email, scope.as_deref())))
+        .read(move |conn| {
+            Ok(service::day_for(
+                conn,
+                graph,
+                &day,
+                &email,
+                scope.as_deref(),
+                viewer.as_deref(),
+            ))
+        })
         .await
     {
         Ok(body) => ok_json(&body),
@@ -102,8 +121,11 @@ async fn as_of(State(state): State<BrainState>, request: Request) -> Response {
     };
     let graph = state.graph_enabled();
     let scope = caller.scope.clone();
+    let viewer = state.graph_viewer(&caller.email);
     match state
-        .read(move |conn| service::as_of(conn, graph, &stamp, scope.as_deref()))
+        .read(move |conn| {
+            service::as_of_for(conn, graph, &stamp, scope.as_deref(), viewer.as_deref())
+        })
         .await
     {
         Ok(body) => ok_json(&body),

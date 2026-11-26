@@ -160,20 +160,30 @@ pub fn overview(
     user_email: &str,
     workspace: Option<&str>,
 ) -> Ordered {
+    overview_for(conn, graph, user_email, workspace, None)
+}
+
+pub fn overview_for(
+    conn: &Connection,
+    graph: bool,
+    user_email: &str,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Ordered {
     let mut days: BTreeMap<String, [i64; 4]> = BTreeMap::new();
     let mut totals = [0_i64; 4];
     let (mut earliest, mut latest) = (None, None);
 
     let lanes: [Vec<Value>; 3] = [
-        store::sources(conn, graph, workspace)
+        store::sources_for(conn, graph, workspace, viewer)
             .into_iter()
             .map(|row| row.at)
             .collect(),
-        store::entities(conn, graph, workspace)
+        store::entities_for(conn, graph, workspace, viewer)
             .into_iter()
             .map(|row| row.at)
             .collect(),
-        store::connections(conn, graph, workspace)
+        store::connections_for(conn, graph, workspace, viewer)
             .into_iter()
             .map(|row| row.at)
             .collect(),
@@ -255,11 +265,22 @@ pub fn day(
     user_email: &str,
     workspace: Option<&str>,
 ) -> Ordered {
-    let sources: Vec<store::SourceRow> = store::sources(conn, graph, workspace)
+    day_for(conn, graph, day, user_email, workspace, None)
+}
+
+pub fn day_for(
+    conn: &Connection,
+    graph: bool,
+    day: &str,
+    user_email: &str,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Ordered {
+    let sources: Vec<store::SourceRow> = store::sources_for(conn, graph, workspace, viewer)
         .into_iter()
         .filter(|row| on_day(&row.at, day))
         .collect();
-    let entities: Vec<store::EntityRow> = store::entities(conn, graph, workspace)
+    let entities: Vec<store::EntityRow> = store::entities_for(conn, graph, workspace, viewer)
         .into_iter()
         .filter(|row| on_day(&row.at, day))
         .collect();
@@ -268,14 +289,16 @@ pub fn day(
         .filter(|row| on_day(&row.at, day))
         .collect();
     let conversations = conversation_cards(&messages);
-    let changed_nodes: Vec<store::ChangedNodeRow> = store::changed_nodes(conn, graph, workspace)
-        .into_iter()
-        .filter(|row| on_day(&row.at, day))
-        .collect();
-    let changed_edges: Vec<store::ChangedEdgeRow> = store::changed_edges(conn, graph, workspace)
-        .into_iter()
-        .filter(|row| on_day(&row.at, day))
-        .collect();
+    let changed_nodes: Vec<store::ChangedNodeRow> =
+        store::changed_nodes_for(conn, graph, workspace, viewer)
+            .into_iter()
+            .filter(|row| on_day(&row.at, day))
+            .collect();
+    let changed_edges: Vec<store::ChangedEdgeRow> =
+        store::changed_edges_for(conn, graph, workspace, viewer)
+            .into_iter()
+            .filter(|row| on_day(&row.at, day))
+            .collect();
     let changes = change_cards(&changed_nodes, &changed_edges);
 
     let source_cards: Vec<Ordered> = sources
@@ -347,10 +370,20 @@ pub fn as_of(
     stamp: &str,
     workspace: Option<&str>,
 ) -> Result<Ordered, CoreError> {
+    as_of_for(conn, graph, stamp, workspace, None)
+}
+
+pub fn as_of_for(
+    conn: &Connection,
+    graph: bool,
+    stamp: &str,
+    workspace: Option<&str>,
+    viewer: Option<&str>,
+) -> Result<Ordered, CoreError> {
     if !graph {
         return Ok(empty_as_of(stamp));
     }
-    let window = store::as_of(conn, stamp, AS_OF_LIMIT, workspace)?;
+    let window = store::as_of_for(conn, stamp, AS_OF_LIMIT, workspace, viewer)?;
     let ids: Vec<String> = window.nodes.iter().map(|node| py_str(&node.id)).collect();
     let scores = store::importance(conn, &ids)?;
     let mut ranked: Vec<&store::AsOfNode> = window.nodes.iter().collect();

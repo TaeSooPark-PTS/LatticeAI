@@ -92,6 +92,8 @@ function renderConversation(
     historyBusyId: null,
     starterPrompts: ["오늘 브리핑", "내 일정 정리", "메모 검색"],
     memoryFeedback: null,
+    feedbackRecallable: false,
+    onDismissFeedback: vi.fn(),
     ingestionStates: emptyIngestionStates,
     emergenceEvents: [],
     proactiveActivities: [],
@@ -152,6 +154,17 @@ describe("BrainConversation empty home", () => {
     fireEvent.click(pill);
     expect(props.onDraftChange).toHaveBeenCalledWith("오늘 브리핑");
     expect(props.onSendText).not.toHaveBeenCalled();
+  });
+
+  it("promises later recall only for a real save and lets the notice be dismissed", () => {
+    const failed = renderConversation({ memoryFeedback: "웹 페이지를 넣지 못했습니다" });
+    expect(screen.getByRole("status").textContent).not.toContain(t("ko", "brain.saved.detail"));
+    fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.feedback.dismiss") }));
+    expect(failed.props.onDismissFeedback).toHaveBeenCalledTimes(1);
+    failed.unmount();
+
+    renderConversation({ memoryFeedback: "기억했어요", feedbackRecallable: true });
+    expect(screen.getByRole("status").textContent).toContain(t("ko", "brain.saved.detail"));
   });
 
   it("sends a suggested question immediately and clears the draft", () => {

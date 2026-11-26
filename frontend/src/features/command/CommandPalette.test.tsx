@@ -269,6 +269,35 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
     expect(screen.queryByTestId("command-palette")).toBeNull();
   });
+
+  it("toggles sort_by between relevance and newest and switches graph view mode", async () => {
+    mockBriefing({ sections: {}, quick_actions: [] });
+    const searchSpy = vi.spyOn(latticeApi, "commandSearch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      source: "api",
+      data: { query: "temporal", total: 0, groups: [] },
+    } as never);
+
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ graphViewMode: "3d" });
+
+    renderWithClient(<CommandPalette language="en" initialOpen />);
+    const toggleSort = screen.getByTestId("command-sort-toggle");
+    expect(toggleSort.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(toggleSort);
+    expect(toggleSort.getAttribute("aria-pressed")).toBe("true");
+
+    await userEvent.type(screen.getByRole("textbox"), "temporal");
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith("temporal", 8, "newest");
+    });
+
+    await userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.click(await screen.findByText("Switch Knowledge Graph 3D / 2D"));
+    expect(useAppStore.getState().graphViewMode).toBe("2d");
+    expect(window.location.hash).toBe("#/knowledge-graph");
+  });
 });
 
 describe("DailyBriefingPanel", () => {
@@ -406,5 +435,22 @@ describe("DailyBriefingPanel", () => {
 describe("revealBriefingPanel", () => {
   it("does nothing when the panel is not on screen", () => {
     expect(() => revealBriefingPanel(null)).not.toThrow();
+  });
+});
+
+describe("CommandPalette view and sort round trips", () => {
+  it("returns to relevance sorting and switches a 2d graph back to 3d", async () => {
+    mockBriefing({ sections: {}, quick_actions: [] });
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ graphViewMode: "2d" });
+
+    renderWithClient(<CommandPalette language="en" initialOpen />);
+    const toggleSort = screen.getByTestId("command-sort-toggle");
+    await userEvent.click(toggleSort);
+    await userEvent.click(toggleSort);
+    expect(toggleSort.getAttribute("aria-pressed")).toBe("false");
+
+    await userEvent.click(await screen.findByText("Switch Knowledge Graph 3D / 2D"));
+    expect(useAppStore.getState().graphViewMode).toBe("3d");
   });
 });

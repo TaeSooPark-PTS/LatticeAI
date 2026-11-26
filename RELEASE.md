@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.2.0 — Temporal Synthesis (2026-11-27)
+
+Rebuilt retrieval around time: token, AST and parent-child chunking with contextual prefixes; EmbeddingGemma 2 through the new `auto` embedding default and optional `rag` extra; cross-encoder reranking with RRF fallback; two-stage temporal ranking with `sort_by`, time-intent prefilters and `SUPERSEDES` handling; history-aware query rewrite, MMR and a Self-RAG gate in chat; a 3D living brain view, fixed-viewport desktop shell and command palette; the `ltcai search` CLI; and fixes for a multi-user conversation leak, upload and folder ownership, and shared-bundle import. Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md).
+
+Build artifacts: `dist/ltcai-14.2.0-py3-none-any.whl`, `dist/ltcai-14.2.0.tar.gz`, `ltcai-14.2.0.tgz`, `dist/ltcai-14.2.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`.
+
 ## v14.1.2 — Living Synthesis (2026-11-25)
 
 Enforced a repository-wide zero-comments standard across all tracked source files: stripped all human-written inline comments, block comments, docstrings, JSDoc, and suppression directives (`# noqa`, `# type: ignore`, `// @ts-expect-error`, `// eslint-disable`, `/* @vite-ignore */`, etc.) while preserving only machine-parsed directives (`#!/usr/bin/env ...` and `/// <reference ... />`); resolved every surfaced lint, type-check, and Clippy issue directly in source code without weakening any global config; added `npm run check:no-comments` (`scripts/check_no_comments.mjs`) to `npm run lint` and `.github/workflows/ci.yml`; and documented the permanent no-comments policy in `AGENTS.md`, `CONTRIBUTING.md`, and their Korean mirrors.

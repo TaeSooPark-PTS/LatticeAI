@@ -6,6 +6,33 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.2.0] - 2026-11-27 — Temporal Synthesis
+
+### Added
+- Token-based chunking with parent-child sections, deterministic contextual prefixes, tree-sitter splitting for Rust, Python, TypeScript and JavaScript, and the additive `chunk_parents` table (included in export/import, share bundles and archive graph export).
+- Worker route `POST /worker/rerank` (21 worker routes) and cross-encoder reranking with RRF fallback; new `rag` extra.
+- Temporal ranking: time-intent prefilter, recency decay, superseded policy, `sort_by`, `include_historical`, `since`, `until`; `sort_by` on command search, MCP `knowledge_search` and `obsidian_search`; temporal ranking for document context and memory recall.
+- `SUPERSEDES` marking for watch sync, note ingestion, browser current-tab capture and uploads (older versions of the latter three are kept).
+- Chat query rewrite and sub-queries, MMR with a per-document cap, evidence labels, Self-RAG gate with abstention.
+- `ltcai search` CLI command; `npm run test:cli` in CI.
+- 3D living brain view, fixed-viewport desktop shell, frosted-glass HUD, Brain Vital Pill and command palette additions.
+- Recency Accuracy, Recall@K, MRR and NDCG reporting in retrieval evaluation.
+
+### Changed
+- `LATTICEAI_EMBEDDING_PROVIDER` defaults to `auto` (was `hash`).
+- Chat context budget scales with `LATTICEAI_CONTEXT_WINDOW_TOKENS`; chat local context now includes knowledge matches.
+- Same-node re-ingest purges that node's stale chunks, vectors and statistics.
+
+### Fixed
+- Multi-user privacy: another user's conversation-derived graph nodes are no longer readable.
+- Signed-in searches no longer end up with an empty workspace list.
+- Re-ingest no longer takes over another user's content; folder pruning is owner-scoped; uploads record owner and workspace and check membership.
+- Accepting a shared bundle with a chunked document and no neighbour nodes no longer fails with a foreign key error, including already issued bundles.
+- Removed placeholder embedding backends that returned lexical vectors under semantic model names.
+- Interface: top navigation labels no longer wrap or push controls off screen; the ingestion status message no longer moves the composer, closes the attach menu or promises later recall for a failed add; the light-theme 3D brain is no longer a black panel; phone-width home and Review Center, the admin console and the Chronicle slider handle are no longer overlapped or clipped.
+
+Details and limitations: [docs/releases/RELEASE_NOTES_v14.2.0.md](releases/RELEASE_NOTES_v14.2.0.md).
+
 ## [14.1.2] - 2026-11-25 — Living Synthesis
 
 ### Changed

@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "14.1.2",
+  "version": "14.2.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -43,6 +43,7 @@
     "test:frontend:watch": "vitest",
     "test:unit": "node scripts/run_python.mjs -m pytest tests/unit/ -v",
     "test:integration": "node scripts/run_integration_tests.mjs",
+    "test:cli": "node --test tests/ltcai-search.test.cjs",
     "test:browser-extension": "node --check browser-extension/popup.js && node --check browser-extension/capture-page.js && node --test tests/browser-extension.test.cjs",
     "test:visual": "playwright test",
     "test:e2e:sidecar": "node scripts/run_sidecar_e2e.mjs",
@@ -89,6 +90,7 @@
   "private": false,
   "files": [
     "bin/ltcai.js",
+    "bin/search.js",
     "LICENSE",
     "requirements.txt",
     "latticeai/**/*.py",
@@ -140,6 +142,7 @@
     "react-dom": "^19.2.7",
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.6.0",
+    "three": "^0.187.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -154,6 +157,7 @@
     "@types/node": "26.6.6",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^5.1.1",
     "autoprefixer": "^10.5.0",

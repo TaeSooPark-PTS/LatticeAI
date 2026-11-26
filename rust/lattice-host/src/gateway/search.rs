@@ -9,6 +9,7 @@ use lattice_core::{open_read_only, LocalEmbeddingModel};
 use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
 use lattice_retrieval::keyword::search as keyword_search;
 use lattice_retrieval::routes::{brain_not_found, naive_local_now};
+use lattice_retrieval::temporal::{ranked_hybrid_search, ranked_search, TemporalRanking};
 use lattice_retrieval::vector::vector_search;
 use serde_json::Value;
 
@@ -41,15 +42,20 @@ enum Plan {
     Hybrid {
         query: String,
         options: Box<HybridOptions>,
+        ranking: Option<Box<TemporalRanking>>,
     },
     Keyword {
         query: String,
         limit: i64,
+        now: f64,
+        ranking: Option<Box<TemporalRanking>>,
     },
     Vector {
         query: String,
         limit: i64,
         min_score: f64,
+        now: f64,
+        ranking: Option<Box<TemporalRanking>>,
     },
 }
 
@@ -58,10 +64,11 @@ impl Plan {
         let query = params.required_text(&["query", "q"])?;
         let limit = params.optional_int("limit", 1, MAX_LIMIT)?;
         let min_score = params.optional_float("min_score", 0.0, 1.0)?;
+        let now = params.optional_instant("now")?;
+        let ranking = params.temporal_ranking()?.map(Box::new);
         Ok(match engine {
             Engine::Hybrid => {
                 let top_k = params.optional_int("top_k", 1, MAX_LIMIT)?;
-                let now = params.optional_instant("now")?;
                 let floor = params.optional_float("min_vector_score", 0.0, 1.0)?;
                 Plan::Hybrid {
                     query,
@@ -74,16 +81,21 @@ impl Plan {
                         now_secs: now.unwrap_or_else(naive_local_now),
                         ..HybridOptions::default()
                     }),
+                    ranking,
                 }
             }
             Engine::Keyword => Plan::Keyword {
                 query,
                 limit: limit.unwrap_or(DEFAULT_LIMIT),
+                now: now.unwrap_or_else(naive_local_now),
+                ranking,
             },
             Engine::Vector => Plan::Vector {
                 query,
                 limit: limit.unwrap_or(DEFAULT_LIMIT),
                 min_score: min_score.unwrap_or(0.0),
+                now: now.unwrap_or_else(naive_local_now),
+                ranking,
             },
         })
     }
@@ -92,13 +104,52 @@ impl Plan {
         let conn = open_read_only(db).map_err(|err| err.to_string())?;
         let model = LocalEmbeddingModel::from_env();
         match self {
-            Plan::Hybrid { query, options } => hybrid_search(&conn, &model, &query, &options),
-            Plan::Keyword { query, limit } => keyword_search(&conn, &query, limit, None, false),
+            Plan::Hybrid {
+                query,
+                options,
+                ranking: None,
+            } => hybrid_search(&conn, &model, &query, &options),
+            Plan::Hybrid {
+                query,
+                options,
+                ranking: Some(ranking),
+            } => ranked_hybrid_search(&conn, &model, &query, &options, &ranking),
+            Plan::Keyword {
+                query,
+                limit,
+                ranking: None,
+                ..
+            } => keyword_search(&conn, &query, limit, None, false),
+            Plan::Keyword {
+                query,
+                limit,
+                now,
+                ranking: Some(ranking),
+            } => ranked_search(&conn, &query, now, &ranking, limit, false, |call| {
+                keyword_search(&conn, &call.search_query, call.fetch_limit, None, false)
+            }),
             Plan::Vector {
                 query,
                 limit,
                 min_score,
+                ranking: None,
+                ..
             } => vector_search(&conn, &model, &query, limit, min_score),
+            Plan::Vector {
+                query,
+                limit,
+                min_score,
+                now,
+                ranking: Some(ranking),
+            } => ranked_search(&conn, &query, now, &ranking, limit, false, |call| {
+                vector_search(
+                    &conn,
+                    &model,
+                    &call.search_query,
+                    call.fetch_limit,
+                    min_score,
+                )
+            }),
         }
         .map_err(|err| err.to_string())
     }
@@ -291,6 +342,8 @@ mod tests {
         let plan = Plan::Keyword {
             query: "hi".into(),
             limit: 5,
+            now: 0.0,
+            ranking: None,
         };
         let err = plan
             .run(&dir.path().join("knowledge_graph.sqlite"))

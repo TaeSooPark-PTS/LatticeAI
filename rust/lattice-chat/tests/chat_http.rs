@@ -202,6 +202,32 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
+            "/worker/rerank",
+            post({
+                let seams = seams.clone();
+                move |Json(body): Json<Value>| {
+                    let seams = seams.clone();
+                    async move {
+                        seams.hit("/worker/rerank");
+                        let scores: Vec<f64> = body["documents"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(|doc| {
+                                if doc.as_str().unwrap_or("").contains("Rollback") {
+                                    0.9
+                                } else {
+                                    0.1
+                                }
+                            })
+                            .collect();
+                        axum::Json(json!({"scores": scores, "model_id": "cross-encoder:fixture"}))
+                    }
+                }
+            }),
+        )
+        .route(
             "/worker/extract",
             post({
                 let seams = seams.clone();
@@ -787,6 +813,63 @@ async fn with_model_stream_passthrough_records_then_dones() {
             .unwrap_or_default()
             .starts_with("audit-"),
         "the event id is R2's, not a second format"
+    );
+}
+
+#[tokio::test]
+async fn a_model_turn_reranks_its_knowledge_through_the_worker_seam() {
+    let install = Install::start(
+        vec!["demo".into()],
+        Some("demo".into()),
+        vec!["data: {\"text\":\"ok\"}\n\n".to_string()],
+    )
+    .await;
+    let conn = Connection::open(&install.graph_db).expect("db");
+    for (id, title, summary) in [
+        (
+            "phx-1",
+            "Phoenix launch plan",
+            "Phoenix launch checklist and owners",
+        ),
+        (
+            "phx-2",
+            "Phoenix Rollback",
+            "Phoenix launch rollback procedure",
+        ),
+    ] {
+        conn.execute(
+            "INSERT INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at) \
+             VALUES (?1, 'Document', ?2, ?3, '{}', '{}', '2026-08-01T00:00:00', '2026-08-01T00:00:00')",
+            rusqlite::params![id, title, summary],
+        )
+        .expect("node");
+        conn.execute(
+            "INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs, workspace_id, created_at, updated_at) \
+             VALUES (?1, 'Document', 'Document', ?2, ?3, '{}', 'personal', '2026-08-01T00:00:00', '2026-08-01T00:00:00')",
+            rusqlite::params![id, title, summary],
+        )
+        .expect("node v2");
+    }
+    drop(conn);
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(20))
+        .build()
+        .expect("client");
+    let response = client
+        .post(format!("{}/chat", install.origin))
+        .header("cookie", format!("session_token={}", install.token))
+        .header("content-type", "application/json")
+        .body(r#"{"message":"phoenix launch","stream":true,"model":"demo"}"#)
+        .send()
+        .await
+        .expect("chat");
+    assert_eq!(response.status(), StatusCode::OK);
+    let _ = response.text().await.expect("body");
+    assert_eq!(
+        install.seams.count("/worker/rerank"),
+        1,
+        "the knowledge candidates are rescored once by the cross-encoder seam"
     );
 }
 

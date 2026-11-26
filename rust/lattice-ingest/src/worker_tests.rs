@@ -366,3 +366,47 @@ async fn a_bad_worker_origin_is_named_rather_than_swallowed() {
          so the native incremental sync is licensed and runs"
     );
 }
+
+#[tokio::test]
+async fn re_ingesting_a_note_supersedes_it_but_calendar_events_stay_independent() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let ingestor = NoteIngestor::new(writer(dir.path()));
+    let mut ids = Vec::new();
+    for (uri, format, text) in [
+        ("/v/plan.md", None, "port is one"),
+        ("/v/plan.md", None, "port is two"),
+        ("/v/team.ics", Some("ics"), "Event: standup"),
+        ("/v/team.ics", Some("ics"), "Event: retro"),
+    ] {
+        let mut metadata = Map::new();
+        if let Some(format) = format {
+            metadata.insert("format".into(), Value::from(format));
+        }
+        let note = NoteSubmission {
+            title: "plan".into(),
+            content: text.into(),
+            source: Some(uri.into()),
+            metadata,
+        };
+        let receipt = ingestor.ingest_note(&note, None, None).await.expect("note");
+        ids.push(receipt.node_id);
+    }
+    let superseded: Vec<bool> = ids
+        .iter()
+        .map(|id| {
+            ingestor
+                .graph()
+                .store()
+                .with_read_conn(|conn| {
+                    Ok(conn.query_row(
+                        "SELECT json_extract(metadata_json, '$.superseded_by') IS NOT NULL \
+                         FROM nodes WHERE id = ?1",
+                        [id],
+                        |row| row.get(0),
+                    )?)
+                })
+                .expect("state")
+        })
+        .collect();
+    assert_eq!(superseded, vec![true, false, false, false]);
+}

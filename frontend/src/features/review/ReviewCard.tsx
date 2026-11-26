@@ -112,7 +112,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   return (
     <article aria-labelledby={titleId} className="review-card">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 pb-3">
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1 basis-60 space-y-1">
           <h3 id={titleId} className="font-bold text-base text-foreground">{item.title}</h3>
           {item.summary ? <p className="text-xs leading-relaxed text-muted-foreground">{item.summary}</p> : null}
         </div>

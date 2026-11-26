@@ -49,21 +49,34 @@ jobs:
           from pathlib import Path
 
           report = json.loads(Path("rag_eval_report.json").read_text(encoding="utf-8"))
+          retrieval = report.get("retrieval", {})
+          def pct(value):
+              return f"{value*100:.1f}%" if isinstance(value, (int, float)) else "-"
           lines = [
               "## Nightly Real-Model RAG Evaluation Summary",
               f"- Dataset: `{report['dataset_version']}`",
               "",
-              "| Provider | Location | Model | Status | Claim Support | Unsupported | Fabricated Citations | Abstention Acc |",
-              "|---|---|---|---|---|---|---|---|",
+              "### Retrieval (temporal-aware baseline)",
+              "",
+              "| Recall@5 | Recall@10 | MRR | NDCG@10 | Recency Accuracy | Temporal Cases |",
+              "|---|---|---|---|---|---|",
+              f"| {pct(retrieval.get('recall_at_5'))} | {pct(retrieval.get('recall_at_10'))} | {retrieval.get('mrr', 0):.3f} | {retrieval.get('ndcg_at_10', 0):.3f} | {pct(retrieval.get('recency_accuracy'))} | {retrieval.get('temporal_cases', '-')} |",
+              "",
+              "### Generation",
+              "",
+              "| Provider | Location | Model | Status | Claim Support | Faithfulness | Recency Accuracy | Unsupported | Fabricated Citations | Abstention Acc |",
+              "|---|---|---|---|---|---|---|---|---|---|",
           ]
           for r in report.get("results", []):
               status = r.get("status", "unknown")
-              csr = f"{r['claim_support_rate']*100:.1f}%" if "claim_support_rate" in r else "-"
+              csr = pct(r.get("claim_support_rate"))
+              faith = pct(r.get("faithfulness"))
+              recency = pct(r.get("recency_accuracy"))
               unsup = str(r.get("unsupported_claims", "-"))
               fab = str(r.get("fabricated_citations", "-"))
-              abst = f"{r['abstention_accuracy']*100:.1f}%" if "abstention_accuracy" in r else "-"
+              abst = pct(r.get("abstention_accuracy"))
               lines.append(
-                  f"| {r.get('provider')} | {r.get('execution_location')} | `{r.get('model_id')}` | `{status}` | {csr} | {unsup} | {fab} | {abst} |"
+                  f"| {r.get('provider')} | {r.get('execution_location')} | `{r.get('model_id')}` | `{status}` | {csr} | {faith} | {recency} | {unsup} | {fab} | {abst} |"
               )
           summary_path = Path(
               __import__("os").environ.get("GITHUB_STEP_SUMMARY", "/tmp/rag_eval_summary.md")

@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.1.2)
+# Lattice AI 기능 현황 (v14.2.0)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.1.2 — Living Synthesis**.
+현재 릴리스: **14.2.0 — Temporal Synthesis**.
 
-이 문서는 `v14.1.2` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.2.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---
@@ -16,7 +16,7 @@
 Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영속적인 핵심 자산은 모델이 아니라 사용자의 브레인(대화, 문서, 의사결정, 기억, 출처, 지식 그래프 구조)이며, 로컬 또는 옵트인 클라우드 모델은 그 브레인 위에서 언제든 교체할 수 있는 런타임입니다.
 
 - **첫 화면은 대시보드가 아니라 조용한 작업 공간입니다**: 살아 있는 Brain과 컴포저가 데스크톱(`1280×800`)과 모바일(`390×780`) 첫 뷰포트에 함께 자리하고, 자료 수집은 컴포저 안에 통합됩니다. 일상 목적지(대화 · 자료 · 기억)와 관리 목적지(작업 · AI 모델 · 설정)가 명확히 분리되어 있습니다.
-- **단일 관문(One Door) Rust 제품 서버**: `lattice-host`가 9개 Rust 크레이트에 걸쳐 41개 패밀리, **422개 네이티브 오퍼레이션**을 직접 서빙하고, 단일 `GraphWriter` / `Store::write_conn` 풀로 모든 지식 그래프 쓰기를 소유하며, 20개 연산 전용 라우트의 루프백 Python AI 워커를 감독합니다.
+- **단일 관문(One Door) Rust 제품 서버**: `lattice-host`가 9개 Rust 크레이트에 걸쳐 41개 패밀리, **422개 네이티브 오퍼레이션**을 직접 서빙하고, 단일 `GraphWriter` / `Store::write_conn` 풀로 모든 지식 그래프 쓰기를 소유하며, 21개 연산 전용 라우트의 루프백 Python AI 워커를 감독합니다.
 - **정직한 근거와 제안 우선 거버넌스**: 하이브리드 검색은 문맥 품질과 주장 단위 근거 검증을 투명하게 노출합니다. 새 파일 생성은 최소 마찰로 실행되고, 기존 사용자 파일 수정·삭제, 자기모델 갱신, 모순 해결, 폴더 정리, 클라우드 지식 반영은 모두 해시 검증을 거치는 검토함(Review Center) 제안으로 스테이징됩니다.
 - **명시적 자율성과 네트워크 경계**: `PermissionMode`(`strict` / `trusted` / `bypass`)와 `NetworkBoundaryMode`(`local_only` 기본 / `cloud_allowed` 옵트인)가 서로 독립적으로 동작하며, 파괴적 명령 서킷 브레이커와 민감 노드 필터는 어떤 모드에서도 해제되지 않습니다.
 
@@ -26,7 +26,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 
 | 영역 | 상태 | 설명 |
 | --- | --- | --- |
-| **단일 관문 Rust 제품 서버** | 현재 제공 | 9개 워크스페이스 크레이트(`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`)가 41개 패밀리, **422개 네이티브 오퍼레이션**을 서빙합니다. Python AI 워커는 허용 목록(`rust/fixtures/worker_allowlist.json`)에 등록된 **20개 연산 라우트**만 처리하며, 그 외 비네이티브 경로는 `404`를 반환합니다. |
+| **단일 관문 Rust 제품 서버** | 현재 제공 | 9개 워크스페이스 크레이트(`lattice-host`, `lattice-core`, `lattice-auth`, `lattice-agent`, `lattice-retrieval`, `lattice-ingest`, `lattice-jobs`, `lattice-platform`, `lattice-chat`)가 41개 패밀리, **422개 네이티브 오퍼레이션**을 서빙합니다. Python AI 워커는 허용 목록(`rust/fixtures/worker_allowlist.json`)에 등록된 **21개 연산 라우트**만 처리하며, 그 외 비네이티브 경로는 `404`를 반환합니다. |
 | **정본 크레이트 도메인 구조** | 현재 제공 | `lattice-agent`는 6개 그룹(`kernel`/`parse`/`content`/`tools`/`surface`/`prompts`), `lattice-platform`은 7개 도메인(`workspaceos`/`toolsurface`/`governance`/`adminops`/`knowledge`/`modelops`/`shell`)으로 구성되며, `13.7.2` 이후 모든 호출자가 정본 도메인 경로를 직접 사용하고 `domain_boundaries.rs`가 경계를 검증합니다. |
 | **통합 UTC 시계 & 단일 라이터 SQLite** | 현재 제공 | 모든 지식 그래프 쓰기는 `lattice-core::graph_write::GraphWriter`와 `Store::write_conn`으로 직렬화됩니다. Rust(`clock.rs`, `libc` `unsafe` 0건)와 Python(`lattice_brain/utils.py`, `_kg_fsutil.py`)이 오프셋 없는 UTC 타임스탬프(`YYYY-MM-DDTHH:MM:SS`)로 통일되어 `Asia/Seoul`, `America/New_York`, `UTC` 환경에서 편차가 없습니다. `.latticebrain` 복원 시 스토어 세대 에폭이 증가해 재시작 없이 즉시 반영됩니다. |
 | **Brain Home & 일상 표면** | 현재 제공 | 살아 있는 Brain 성장 링, 컴포저 중심 작업 흐름, 하단 연속성 바(지난 대화 · 현황 · 기억 지도 · 기능), 라우트별 `React.lazy` 분할(초기 JS gzip `<= 150 KiB`), 라우트별 i18n 네임스페이스(`ko` 기본 + `en`), 라우트/패널 `ErrorBoundary` 격리를 제공합니다. 엄격 TypeScript 7.0.2(`noUncheckedIndexedAccess`)와 Vitest 100% 커버리지(`113`개 파일, `1,852`개 테스트)를 유지합니다. |
@@ -57,12 +57,17 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **멀티모달(이미지 · 오디오 · 비디오)** | 옵트인(기본 꺼짐) | `allow_multimodal` 활성화 시 `Image`/`ImageText`, `Audio`, `Video`(`Modality::Video` + `ffmpeg` 키프레임 + `.srt`/`.vtt`)를 지원합니다. OCR(`pytesseract`), VLM 캡션, 비전 임베딩, 음성 전사기, `ffmpeg`는 번들되지 않으며 미설치 시 가짜 출력 없이 `unavailable`로 보고합니다. |
 | **PostgreSQL 백엔드** | 계획됨(Planned) | 공식 로컬 라이브 저장소는 SQLite WAL입니다. PostgreSQL/pgvector는 드라이런 계획 및 수동 실행 CI 가드만 존재하는 계획 단계입니다. |
 | **텔레그램 브리지 & SSO/OIDC 로그인 콜백** | 제거됨 (11.6.0) | 제품 서버가 Rust(`lattice-host`)로 전환되면서 함께 은퇴했습니다. 비밀번호 로그인, 세션, `$scrypt$` 해싱, 레이트 리미팅, CSRF, SSO 설정 표면은 `lattice-auth`에서 네이티브로 유지됩니다. |
-| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.1.2_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
+| **시간 인식 검색 & 청킹** | 현재 제공 | 문맥 접두어를 갖춘 토큰 크기의 parent-child 청크, tree-sitter 코드 분할, 시간 의도 사전 필터, 최신성 감쇠, `SUPERSEDES` 처리, `sort_by=relevance\|newest`, `ltcai search`. |
+| **재랭킹 & 채팅 근거 게이트** | 현재 제공(reranker는 `rag` extra 필요) | RRF 대체를 갖춘 `POST /worker/rerank` cross-encoder 재랭킹, 문서당 상한을 둔 MMR, Self-RAG 답변 보류. 실제 reranker·EmbeddingGemma 2 로딩은 빌드 환경에서 검증하지 못했습니다. |
+| **3D 살아있는 Brain & 데스크톱 셸** | 현재 제공 | 검색 점등과 2D 대체를 갖춘 3D 그래프, 고정 뷰포트 셸, Brain Vital Pill, 도킹 근거 패널, `Cmd/Ctrl+K` 팔레트. |
+| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.2.0_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
 
 ---
 
 ## 알려진 한계 (정직한 경계)
 
+- **검색 모델 미검증:** 14.2.0에서 실제 EmbeddingGemma 2와 `bge-reranker-v2-m3` 로딩은 실행해 보지 못했습니다. 실패하면 해시 임베딩과 RRF 순서로 대체합니다.
+- **워크스페이스 내 문서의 사용자별 비공개 없음:** 다중 사용자 뷰어 필터는 대화 파생 노드에만 적용됩니다.
 - **소형 모델의 어려운 과제 내용 품질**: 범용 적응형 에이전트 하네스가 기계적 실행 안정성을 크게 높였지만(`Qwen2.5-0.5B-Instruct-Q4_K_M` 기준 `28.0% → 84.0%`), 0.5B~2B 모델은 개방형 과제에서 유창하지만 불완전한 요약을 생성할 수 있으며 fail-closed 검증기가 이를 `NEEDS_REVIEW`로 격리합니다.
 - **클라우드 `api_key` 라이브 과금 경계**: `api_key` 경로는 무과금 `GET /models` 프로브로 연결성을 검증하고 실패 시 fail-closed 합니다. CI에서는 과금 채팅 완성 호출을 실행하지 않으며 라이브 E2E는 무과금 `cli_oauth`로 검증합니다.
 - **macOS DMG 코드 서명**: `.github/workflows/release.yml`은 `APPLE_CERTIFICATE` 시크릿 구성 시 Developer ID 서명 및 공증을 수행하고, 미구성 시 ad-hoc 서명(최초 실행 시 Gatekeeper 허용 필요)으로 폴백합니다. `npm run release:validate`는 파일명과 존재 여부만 검증합니다.
@@ -80,9 +85,9 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 
 ## Git에 유지되는 릴리스 이력 범위 (`v13.0.0+`)
 
-이 저장소는 현대화된 Rust 호스트 및 도메인 그룹 아키텍처 세대(`v13.0.0`부터 `v14.1.2`까지)의 공개 릴리스 이력을 유지합니다:
+이 저장소는 현대화된 Rust 호스트 및 도메인 그룹 아키텍처 세대(`v13.0.0`부터 `v14.2.0`까지)의 공개 릴리스 이력을 유지합니다:
 
-- `14.1.2` · `14.1.2` · `14.1.0` · `14.0.0`
+- `14.2.0` · `14.1.2` · `14.1.1` · `14.1.0` · `14.0.0`
 - `13.9.0` · `13.8.0` · `13.7.2` · `13.7.1` · `13.7.0` · `13.6.0` · `13.5.0` · `13.4.2` · `13.4.1` · `13.4.0` · `13.3.1` · `13.3.0` · `13.2.1` · `13.2.0` · `13.1.0` · `13.0.0`
 
 상세 변경 이력은 [`CHANGELOG.md`](./CHANGELOG.md), 아키텍처는 [`ARCHITECTURE.md`](./ARCHITECTURE.md), 보안 지원 범위는 [`SECURITY.md`](./SECURITY.md)를 참고하세요.

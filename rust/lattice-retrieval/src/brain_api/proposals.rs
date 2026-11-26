@@ -26,7 +26,7 @@ pub async fn synthesize(
     user_email: &str,
     workspace_id: Option<&str>,
 ) -> OrderedMap {
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     if !sample.available {
         return no_queue(
             "synthesis needs both the knowledge graph and the review queue",
@@ -110,7 +110,7 @@ pub async fn propose_contradictions(
     user_email: &str,
     workspace_id: Option<&str>,
 ) -> OrderedMap {
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     if !sample.available {
         return no_queue(
             "contradiction proposals need both the knowledge graph and the review queue",
@@ -318,7 +318,7 @@ pub async fn resolve_contradiction(
 
 pub async fn proactive_brief(
     state: &BrainState,
-    _user_email: &str,
+    user_email: &str,
     workspace_id: Option<&str>,
 ) -> OrderedMap {
     let mut section = OrderedMap::new();
@@ -340,7 +340,7 @@ pub async fn proactive_brief(
             .to_string();
         *by_kind.entry(kind).or_default() += 1;
     }
-    let sample = sampling::graph_sample(state, workspace_id).await;
+    let sample = sampling::graph_sample(state, user_email, workspace_id).await;
     let counts = serde_json::json!({
         "contradictions": by_kind.get(CONTRADICTION_KIND).copied().unwrap_or(0),
         "concepts": by_kind.get(CONCEPT_KIND).copied().unwrap_or(0),

@@ -6,10 +6,10 @@
 > with the current release. Subsystem design principles and operational views
 > live in [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **14.1.2 — Living Synthesis**.
+Current release: **14.2.0 — Temporal Synthesis**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
-Rust product host (`lattice-host`), a 20-route loopback Python AI compute worker
+Rust product host (`lattice-host`), a 21-route loopback Python AI compute worker
 (`latticeai.worker_app`), a private SQLite Knowledge Graph, a model-agnostic
 Adaptive Agent Harness, and a strict TypeScript 7 / React / Vite 8 UI.
 
@@ -30,7 +30,7 @@ flowchart TB
 
   subgraph host["Lattice Host — the product server (Rust, 127.0.0.1)"]
     direction TB
-    door["One Door: 422 native operations · 41 route families<br/>anything not native and not on the 20-route allowlist ⇒ 404"]
+    door["One Door: 422 native operations · 41 route families<br/>anything not native and not on the 21-route allowlist ⇒ 404"]
     subgraph crates["Nine Workspace Crates"]
       direction TB
       plat["lattice-platform (317 ops · 7 domains)<br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
@@ -57,10 +57,10 @@ flowchart TB
     trust ~~~ mode ~~~ net ~~~ breakers
   end
 
-  subgraph worker["Python AI Worker — compute only (latticeai.worker_app · 20 routes)"]
+  subgraph worker["Python AI Worker — compute only (latticeai.worker_app · 21 routes)"]
     direction LR
     llm["Inference<br/>/agent/llm · /worker/llm/stream<br/>oMLX · MLX · Ollama · llama.cpp · LM Studio · vLLM"]
-    compute["Compute seams<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query}"]
+    compute["Compute seams<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,vector/query,rerank}"]
     catalog["Model & Engine Catalog<br/>/models · /engines/* · /worker/sysinfo · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -77,7 +77,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  door -- "20 allow-listed routes only" --> gates
+  door -- "21 allow-listed routes only" --> gates
   gates --> worker
   corec -- "single writer (Rust)" --> data
   crates -- "WAL reads" --> data
@@ -140,11 +140,25 @@ flowchart LR
   before answering, and workspace-scoped integrity checks, entity merges,
   knowledge corrections, and shadow embedding cutovers run through `brain_api`.
 
+### Temporal retrieval and grounding (14.2.0)
+
+Production ingest writes token-sized parent-child chunks with contextual
+prefixes (`lattice-ingest/src/chunk/`, parents in `chunk_parents`). Ranked
+retrieval runs `temporal_prefilter -> fusion_with_recency_decay ->
+superseded_policy -> rerank -> relevance_gate -> sort`
+(`lattice-retrieval/src/temporal/`); the cross-encoder is the worker route
+`POST /worker/rerank` with an RRF fallback. Chat adds a rule-based query plan,
+MMR with a per-document cap, and a Self-RAG abstention gate before parent
+expansion and a window-scaled token budget. Conversation-derived nodes are
+filtered by viewer in multi-user mode (`lattice-core/src/viewer_scope.rs`).
+Diagram, environment variables, and limits:
+[docs/releases/RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md).
+
 ## Python AI Worker & Cross-Platform Model Runtime
 
 `latticeai.worker_app` (`create_worker_app`) is a loopback-only compute worker
-serving **20** allow-listed routes (`/agent/{llm,tool}`,
-`/worker/{llm/stream,sysinfo,embed,extract,parse,asr,render/{docx,pdf,pptx,xlsx},vector/query}`,
+serving **21** allow-listed routes (`/agent/{llm,tool}`,
+`/worker/{llm/stream,sysinfo,embed,extract,parse,asr,render/{docx,pdf,pptx,xlsx},vector/query,rerank}`,
 `/models*`, `/engines/*`, `GET /api/embeddings/status`, `/health`) with
 `worker_resilience.py` (`x-lattice-idempotency-key` coalescing and unary timeout
 isolation), `ContextVar`-scoped LLM router dependency injection
@@ -232,13 +246,13 @@ security primitives (`latticeai.core.security`).
 
 ## Release Artifact Map
 
-14.1.2 exact artifact names:
+14.2.0 exact artifact names:
 
-- Python wheel: `dist/ltcai-14.1.2-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.1.2.tar.gz`
-- npm tarball: `ltcai-14.1.2.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.1.2.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.1.2_aarch64.dmg`
+- Python wheel: `dist/ltcai-14.2.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.2.0.tar.gz`
+- npm tarball: `ltcai-14.2.0.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.2.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
 
 ## Known Boundaries
 

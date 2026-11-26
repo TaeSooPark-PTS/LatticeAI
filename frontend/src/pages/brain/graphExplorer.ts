@@ -13,6 +13,8 @@ export type GraphNode = {
   source: string;
   importance: number;
   degree: number;
+  status?: string;
+  updatedAt?: string;
   searchText: string;
   raw: Record<string, unknown>;
 };
@@ -172,8 +174,10 @@ export function parseGraph(data: unknown, language: Language = "en"): ParsedGrap
     const summary = plainText(field(node, ["summary", "description", "snippet"]))
       || plainText(field(metadata, ["summary", "description", "relative_path", "filename"]));
     const source = field(node, ["source", "path"]) || field(metadata, ["source", "relative_path", "filename"]);
+    const status = field(node, ["status"]) || field(metadata, ["lifecycle_status", "status"]) || (field(metadata, ["superseded_by"]) ? "superseded" : "active");
+    const updatedAt = field(node, ["updated_at", "created_at"]) || field(metadata, ["updated_at", "created_at", "captured_at"]);
     const searchText = [id, label, type, summary, source, Object.keys(metadata).join(" ")].join(" ").toLowerCase();
-    return [{ id, label, type, group: groupForType(type), summary, source, importance, degree: nodeDegree, searchText, raw: node }];
+    return [{ id, label, type, group: groupForType(type), summary, source, importance, degree: nodeDegree, status, updatedAt, searchText, raw: node }];
   });
   const conflictNodeIds = new Set<string>();
   edges.forEach((edge) => {

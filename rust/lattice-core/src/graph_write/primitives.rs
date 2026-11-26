@@ -13,6 +13,15 @@ pub(crate) use super::projection_v2::{
     delete_nodes_v2, project_edge_v2, project_node_v2, EdgeProjection, NodeProjection,
 };
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ChunkRowWrite<'a> {
+    pub chunk_id: &'a str,
+    pub source_node: &'a str,
+    pub text: &'a str,
+    pub index_text: &'a str,
+    pub metadata: &'a Map<String, Value>,
+}
+
 impl GraphWriter {
     pub(crate) fn upsert_node(
         &self,
@@ -28,6 +37,24 @@ impl GraphWriter {
         spec: &NodeSpec,
         supplied: Option<&super::types::SuppliedVector>,
     ) -> Result<String, CoreError> {
+        let kept;
+        let spec = match super::identity::foreign_owner(txn, &spec.id, spec.owner.as_deref())? {
+            Some(owner) => {
+                let mut preserved = spec.clone();
+                preserved
+                    .metadata
+                    .insert("owner".into(), Value::String(owner.clone()));
+                if preserved.raw.contains_key("owner") {
+                    preserved
+                        .raw
+                        .insert("owner".into(), Value::String(owner.clone()));
+                }
+                preserved.owner = Some(owner);
+                kept = preserved;
+                &kept
+            }
+            None => spec,
+        };
         let now = self.clock.now_iso();
         let title_s = truncate_chars(&spec.title, 240);
         let summary_s = truncate_chars(&spec.summary, 1000);
@@ -193,18 +220,32 @@ impl GraphWriter {
         text: &str,
         metadata: &Map<String, Value>,
     ) -> Result<(), CoreError> {
-        self.upsert_chunk_with_vector(txn, chunk_id, source_node, text, metadata, None)
+        self.upsert_chunk_with_vector(
+            txn,
+            &ChunkRowWrite {
+                chunk_id,
+                source_node,
+                text,
+                index_text: text,
+                metadata,
+            },
+            None,
+        )
     }
 
     pub(crate) fn upsert_chunk_with_vector(
         &self,
         txn: &Transaction<'_>,
-        chunk_id: &str,
-        source_node: &str,
-        text: &str,
-        metadata: &Map<String, Value>,
+        row: &ChunkRowWrite<'_>,
         supplied: Option<&super::types::SuppliedVector>,
     ) -> Result<(), CoreError> {
+        let ChunkRowWrite {
+            chunk_id,
+            source_node,
+            text,
+            index_text,
+            metadata,
+        } = *row;
         txn.execute(
             "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) \
              VALUES (?, ?, ?, ?, ?)",
@@ -227,7 +268,7 @@ impl GraphWriter {
                 item_id: chunk_id.to_string(),
                 item_type: "chunk".into(),
                 source_node: chunk_id.to_string(),
-                text: text.to_string(),
+                text: index_text.to_string(),
                 metadata: vector_metadata,
             },
             supplied,

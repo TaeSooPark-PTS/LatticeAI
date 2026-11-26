@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useAppStore } from "@/store/appStore";
 import type { Message } from "./types";
 
 type ConversationSessionState = {
@@ -19,7 +20,16 @@ export const useConversationSession = create<ConversationSessionState>((set) => 
     set((state) => ({
       messages: typeof updater === "function" ? updater(state.messages) : updater,
     })),
-  setConversationId: (conversationId) => set({ conversationId }),
+  setConversationId: (conversationId) =>
+    set((state) => {
+      if (state.conversationId && state.conversationId !== conversationId) {
+        useAppStore.getState().setActiveFiringTrace(null);
+      }
+      return { conversationId };
+    }),
   setPreferLocalOnly: (preferLocalOnly) => set({ preferLocalOnly }),
-  resetConversation: () => set({ messages: [], conversationId: null, preferLocalOnly: false }),
+  resetConversation: () => {
+    useAppStore.getState().setActiveFiringTrace(null);
+    set({ messages: [], conversationId: null, preferLocalOnly: false });
+  },
 }));

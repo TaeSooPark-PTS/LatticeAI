@@ -25,7 +25,9 @@ from .fallback import (
     DEFAULT_FALLBACK_DIM as DEFAULT_FALLBACK_DIM,
 )
 from .fallback import (
-    FallbackTextEmbedder,
+    FallbackTextEmbedder as FallbackTextEmbedder,
+)
+from .fallback import (
     HashEmbeddingProvider,
 )
 from .fallback import (
@@ -58,6 +60,58 @@ def _wants_e5_prefix(model: str) -> bool:
 
 def _wants_embeddinggemma_prefix(model: str) -> bool:
     return "embeddinggemma" in str(model or "").lower()
+
+
+EMBEDDINGGEMMA_2_RUNTIME: Tuple[Tuple[str, Tuple[int, int]], ...] = (
+    ("sentence-transformers", (6, 1)),
+    ("transformers", (5, 18)),
+)
+
+EMBEDDINGGEMMA_2_TEXT_ONLY: Dict[str, Any] = {
+    "vision_config": None,
+    "audio_config": None,
+}
+
+
+def _is_embeddinggemma_2(model: str) -> bool:
+    lowered = str(model or "").lower()
+    return "embeddinggemma-2" in lowered and not lowered.startswith("mlx-community/")
+
+
+def _version_tuple(raw: str) -> Tuple[int, int]:
+    parts: List[int] = []
+    for piece in str(raw or "").split(".")[:2]:
+        digits = "".join(ch for ch in piece if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    while len(parts) < 2:
+        parts.append(0)
+    return parts[0], parts[1]
+
+
+def embeddinggemma_2_runtime_gap(
+    version_of: Optional[Callable[[str], str]] = None,
+) -> str:
+    if version_of is None:
+        from importlib.metadata import PackageNotFoundError, version
+
+        def version_of(name: str) -> str:
+            try:
+                return version(name)
+            except PackageNotFoundError:
+                return ""
+
+    gaps: List[str] = []
+    for package, floor in EMBEDDINGGEMMA_2_RUNTIME:
+        found = version_of(package)
+        if not found or _version_tuple(found) < floor:
+            gaps.append(f"{package}>={floor[0]}.{floor[1]} (found {found or 'none'})")
+    if not gaps:
+        return ""
+    return (
+        "EmbeddingGemma 2 needs "
+        + ", ".join(gaps)
+        + "; install it with pip install 'ltcai[rag]'"
+    )
 
 
 def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
@@ -173,6 +227,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         )
         snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map))
 
+        gemma_2 = _is_embeddinggemma_2(self._model_name)
         try:
             from sentence_transformers import SentenceTransformer
 
@@ -180,19 +235,28 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 "sentence_transformers."
             )
             if is_real_st:
+                if gemma_2:
+                    gap = embeddinggemma_2_runtime_gap()
+                    if gap:
+                        raise EmbeddingUnavailable(gap)
                 target = str(snapshot) if snapshot is not None else self._model_name
-                encoder = SentenceTransformer(target, local_files_only=True)
+                options: Dict[str, Any] = {"local_files_only": True}
+                if gemma_2:
+                    options["config_kwargs"] = dict(EMBEDDINGGEMMA_2_TEXT_ONLY)
+                encoder = SentenceTransformer(target, **options)
             else:
                 encoder = SentenceTransformer(self._model_name)
             self._encoder = ("sentence_transformers", encoder, None)
             return self._encoder
         except ImportError:
-            pass
+            if gemma_2:
+                raise EmbeddingUnavailable(embeddinggemma_2_runtime_gap())
+        except EmbeddingUnavailable:
+            raise
         except Exception as exc:
-            if snapshot is None or self._cfg.extra.get("require_runtime"):
-                raise EmbeddingUnavailable(
-                    f"Hugging Face embedding model unavailable: {exc}"
-                ) from exc
+            raise EmbeddingUnavailable(
+                f"Hugging Face embedding model unavailable: {exc}"
+            ) from exc
 
         try:
             from transformers import AutoModel, AutoTokenizer
@@ -217,10 +281,9 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         except ImportError:
             pass
         except Exception as exc:
-            if snapshot is None or self._cfg.extra.get("require_runtime"):
-                raise EmbeddingUnavailable(
-                    f"Hugging Face embedding model unavailable: {exc}"
-                ) from exc
+            raise EmbeddingUnavailable(
+                f"Hugging Face embedding model unavailable: {exc}"
+            ) from exc
 
         if not is_mlx_repo:
             try:
@@ -232,18 +295,9 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             except ImportError:
                 pass
             except Exception as exc:
-                if snapshot is None or self._cfg.extra.get("require_runtime"):
-                    raise EmbeddingUnavailable(
-                        f"Hugging Face embedding model unavailable: {exc}"
-                    ) from exc
-
-        if snapshot is not None and not self._cfg.extra.get("require_runtime"):
-            self._encoder = (
-                "local_snapshot",
-                FallbackTextEmbedder(dim=self.dim),
-                snapshot,
-            )
-            return self._encoder
+                raise EmbeddingUnavailable(
+                    f"Hugging Face embedding model unavailable: {exc}"
+                ) from exc
 
         raise EmbeddingUnavailable(
             f"Hugging Face embedding model '{self._model_name}' unavailable: "
@@ -317,8 +371,6 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     result = model(mx.array([ids]))
                     out.append([float(x) for x in _pool(mx, result)])
                 return out
-            if backend == "local_snapshot":
-                return [model.embed(text) for text in texts]
             raise EmbeddingUnavailable(f"unsupported Hugging Face backend: {backend}")
         except EmbeddingUnavailable:
             raise
@@ -380,19 +432,6 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             self._encoder = ("mlx_embeddings", model, tokenizer)
             return self._encoder
         except ImportError as exc:
-            env_map = (
-                self._cfg.extra.get("env")
-                if isinstance(self._cfg.extra, dict)
-                else None
-            )
-            snapshot = _snapshot_dir(self._cfg.model, hf_cache_roots(env_map))
-            if snapshot is not None and not self._cfg.extra.get("require_runtime"):
-                self._encoder = (
-                    "local_snapshot",
-                    FallbackTextEmbedder(dim=self.dim),
-                    snapshot,
-                )
-                return self._encoder
             raise EmbeddingUnavailable(
                 f"MLX embedding model unavailable: {exc}"
             ) from exc
@@ -411,8 +450,6 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
 
     def _embed_raw(self, texts: Sequence[str]) -> List[List[float]]:
         backend, model, tokenizer = self._load()
-        if backend == "local_snapshot":
-            return [model.embed(text) for text in texts]
         try:
             import mlx.core as mx
 
@@ -693,6 +730,14 @@ class ResolvedEmbedder:
         return payload
 
 
+def _fallback_hash(dim: int, extra: Optional[Dict[str, Any]]) -> HashEmbeddingProvider:
+    if isinstance(extra, dict) and "fallback_dim" in extra:
+        return HashEmbeddingProvider(
+            dim=int(extra.get("fallback_dim") or DEFAULT_EMBEDDING_DIM)
+        )
+    return HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
+
+
 def resolve_embedder(
     provider: str = "",
     *,
@@ -735,6 +780,7 @@ def resolve_embedder(
                 detected=detection,
             )
         extra_with_env = dict(extra or {})
+        extra_with_env.setdefault("fallback_dim", int(dim or 0))
         if env_map is not None:
             extra_with_env.setdefault("env", env_map)
         result = resolve_embedder(
@@ -780,7 +826,7 @@ def resolve_embedder(
         KeyError,
         AttributeError,
     ) as exc:
-        fallback = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
+        fallback = _fallback_hash(dim, extra)
         return ResolvedEmbedder(
             fallback,
             requested,
@@ -806,7 +852,7 @@ def resolve_embedder(
     else:
         health = {"status": "unknown", "detail": "not probed"}
     if probe and health.get("status") != "ok":
-        fallback = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
+        fallback = _fallback_hash(dim, extra)
         return ResolvedEmbedder(
             fallback,
             requested,

@@ -1,9 +1,11 @@
 use std::path::{Path, PathBuf};
 
 use axum::response::Response;
+use lattice_retrieval::temporal::TemporalRanking;
 use serde_json::{json, Value};
 
 use super::super::ToolsState;
+use super::ranking::{apply_ranking, search_text, CANDIDATE_CAP};
 use super::{knowledge_root, walkdir_md};
 
 fn is_hangul_ch(c: char) -> bool {
@@ -170,10 +172,17 @@ pub(super) fn search_notes_with_options(
     mode: Option<&str>,
     hops: Option<usize>,
     include_graph: bool,
+    temporal: Option<&TemporalRanking>,
 ) -> Result<Value, Response> {
     let root = knowledge_root(&state.brain_dir, workspace_id, email)?;
     let max_results = max_results.clamp(1, 20);
-    let ql = query.to_lowercase();
+    let searched = search_text(query, temporal);
+    let ql = searched.to_lowercase();
+    let wanted = if temporal.is_some() {
+        CANDIDATE_CAP
+    } else {
+        max_results
+    };
 
     let rich_mode = include_graph
         || hops.is_some()
@@ -226,9 +235,20 @@ pub(super) fn search_notes_with_options(
                 }
             }
         }
-        walk(&root, &root, &ql, max_results, &mut results);
+        walk(
+            &root,
+            &root,
+            &ql,
+            if temporal.is_some() {
+                usize::MAX
+            } else {
+                max_results
+            },
+            &mut results,
+        );
         if !results.is_empty() {
-            let mut result = json!({"query": query, "results": results});
+            let mut result = json!({"query": query});
+            apply_ranking(&mut result, results, query, temporal, max_results)?;
             if obsidian {
                 result["vault_root"] = json!(root.to_string_lossy());
             }
@@ -265,9 +285,9 @@ pub(super) fn search_notes_with_options(
         });
     }
 
-    let q_terms = tokenize_vault_bm25(query);
+    let q_terms = tokenize_vault_bm25(&searched);
     let embedder = lattice_core::FallbackTextEmbedder::default();
-    let q_vec = embedder.embed(query);
+    let q_vec = embedder.embed(&searched);
 
     let n_docs = (notes.len() as f64).max(1.0);
     let mut title_tfs: Vec<std::collections::HashMap<String, usize>> =
@@ -476,8 +496,7 @@ pub(super) fn search_notes_with_options(
     ranked.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
 
     let mut results = Vec::new();
-    let mut subgraph_nodes = Vec::new();
-    for (score, idx) in ranked.into_iter().take(max_results) {
+    for (score, idx) in ranked.into_iter().take(wanted) {
         let note = &notes[idx];
         let mut item = json!({
             "path": note.path.to_string_lossy(),
@@ -493,21 +512,33 @@ pub(super) fn search_notes_with_options(
             item["tags"] = json!(note.tags);
             item["graph_hop"] = json!(note_hops[idx]);
             item["graph_relations"] = json!(note_relations[idx]);
-            subgraph_nodes.push(json!({
-                "id": note.relative_path,
-                "title": note.stem_lower,
-                "hop": note_hops[idx],
-                "tags": note.tags,
-            }));
         }
         results.push(item);
     }
 
-    let mut result = json!({"query": query, "results": results});
+    let mut result = json!({"query": query});
+    apply_ranking(&mut result, results, query, temporal, max_results)?;
     if obsidian {
         result["vault_root"] = json!(root.to_string_lossy());
     }
     if rich_mode {
+        let subgraph_nodes: Vec<Value> = result["results"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|item| {
+                let relative = item.get("relative_path")?.as_str()?;
+                let idx = notes
+                    .iter()
+                    .position(|note| note.relative_path == relative)?;
+                Some(json!({
+                    "id": relative,
+                    "title": notes[idx].stem_lower,
+                    "hop": note_hops[idx],
+                    "tags": notes[idx].tags,
+                }))
+            })
+            .collect();
         result["mode"] = json!(mode.unwrap_or("hybrid"));
         result["subgraph"] = json!({
             "hops": max_hops,

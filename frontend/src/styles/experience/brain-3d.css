@@ -1,0 +1,83 @@
+.brain-3d-host {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--lt-radius-xl);
+}
+
+.brain-3d-host.is-explorer {
+  height: 32rem;
+  min-height: 24rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: radial-gradient(circle at 50% 42%, hsl(217 64% 16% / 0.45), hsl(var(--background)) 76%);
+  cursor: grab;
+}
+
+.brain-3d-host.is-explorer:active {
+  cursor: grabbing;
+}
+
+:root[data-theme="light"] .brain-3d-host.is-explorer {
+  background: radial-gradient(circle at 50% 42%, hsl(214 82% 94% / 0.85), hsl(var(--background)) 78%);
+}
+
+.brain-3d-host.is-ambient {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.brain-3d-canvas-element {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+:root:not([data-theme="light"]) .brain-3d-host.is-explorer .brain-3d-canvas-element {
+  mix-blend-mode: screen;
+}
+
+.brain-3d-hemisphere-legend {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.65rem;
+  left: 0.75rem;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.brain-3d-hemisphere-legend > span {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface-overlay) / 0.72);
+  backdrop-filter: blur(12px);
+  color: hsl(var(--muted-foreground));
+  padding: 0.22rem 0.65rem;
+  font-size: var(--lt-type-caption);
+  font-weight: 600;
+}
+
+.brain-3d-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 2rem;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+.brain-hero-3d-backdrop {
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  border-radius: 50%;
+  opacity: 0.72;
+  pointer-events: none;
+  overflow: hidden;
+}

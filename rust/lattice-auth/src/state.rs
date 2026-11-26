@@ -198,6 +198,11 @@ impl AuthState {
         self.config.require_auth || self.config.externally_reachable
     }
 
+    pub fn graph_viewer(&self, email: &str) -> Option<String> {
+        let email = email.trim();
+        (self.effective_require_auth() && !email.is_empty()).then(|| email.to_string())
+    }
+
     pub fn extract_bearer_token(&self, headers: &HeaderMap) -> Option<String> {
         let authorization = headers
             .get("authorization")
@@ -433,6 +438,16 @@ mod tests {
         assert!(identity.can("admin:users"));
         assert!(state.require_admin(&HeaderMap::new()).is_ok());
         assert!(format!("{state:?}").contains("trusted_local_owner: true"));
+    }
+
+    #[test]
+    fn the_graph_viewer_exists_only_for_a_signed_in_user_in_multi_user_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        let single = build(&[], dir.path());
+        assert_eq!(single.graph_viewer("a@b.com"), None);
+        let multi = build(&[("LATTICEAI_REQUIRE_AUTH", "1")], dir.path());
+        assert_eq!(multi.graph_viewer(" a@b.com "), Some("a@b.com".to_string()));
+        assert_eq!(multi.graph_viewer("  "), None);
     }
 
     #[test]

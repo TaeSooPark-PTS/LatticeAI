@@ -30,11 +30,13 @@ pub struct RagEvalCaseResult {
     pub retrieved_ids: Vec<String>,
     pub recall_at_5: f64,
     pub recall_at_10: f64,
+    pub reciprocal_rank: f64,
     pub ndcg_at_10: f64,
     pub citation_precision: f64,
     pub citation_recall: f64,
     pub faithfulness: f64,
     pub answer_relevance: f64,
+    pub recency_correct: Option<bool>,
     pub retired_leaked: usize,
     pub latency_ms: f64,
 }
@@ -52,11 +54,14 @@ pub struct RagEvalReport {
     pub total_queries: usize,
     pub recall_at_5: f64,
     pub recall_at_10: f64,
+    pub mrr: f64,
     pub ndcg_at_10: f64,
     pub citation_precision: f64,
     pub citation_recall: f64,
     pub faithfulness: f64,
     pub answer_relevance: f64,
+    pub recency_accuracy: f64,
+    pub temporal_cases: usize,
     pub superseded_exclusion_rate: f64,
     pub korean_recall_at_5: f64,
     pub korean_ndcg_at_10: f64,
@@ -76,6 +81,34 @@ pub fn recall_at_k(retrieved: &[String], expected: &[String], k: usize) -> f64 {
         .filter(|id| top.contains(id.as_str()))
         .count();
     hits as f64 / expected.len() as f64
+}
+
+pub fn reciprocal_rank(retrieved: &[String], expected: &[String]) -> f64 {
+    if expected.is_empty() {
+        return 1.0;
+    }
+    let wanted: HashSet<&str> = expected.iter().map(String::as_str).collect();
+    retrieved
+        .iter()
+        .position(|id| wanted.contains(id.as_str()))
+        .map(|idx| 1.0 / (idx + 1) as f64)
+        .unwrap_or(0.0)
+}
+
+pub fn recency_correct(retrieved: &[String], current: &[String], stale: &[String]) -> bool {
+    let current_set: HashSet<&str> = current.iter().map(String::as_str).collect();
+    let stale_set: HashSet<&str> = stale.iter().map(String::as_str).collect();
+    let first_current = retrieved
+        .iter()
+        .position(|id| current_set.contains(id.as_str()));
+    let first_stale = retrieved
+        .iter()
+        .position(|id| stale_set.contains(id.as_str()));
+    match (first_current, first_stale) {
+        (Some(cur), Some(old)) => cur < old,
+        (Some(_), None) => true,
+        _ => false,
+    }
 }
 
 pub fn ndcg_at_k(
@@ -422,6 +455,30 @@ pub fn build_default_eval_fixture(
             importance: 0.88,
             updated_at: "2026-02-20T00:00:00Z",
         },
+        DocSeed {
+            id: "temporal-release-owner-2026",
+            node_type: "Decision",
+            title: "Release train owner handover 2026",
+            summary: "As of 2026-01-15 the release train owner is Lee Jiwon, who signs every tagged release and approves the publish workflow.",
+            tags: &["release", "owner", "temporal"],
+            ws: workspace_id,
+            lifecycle: "active",
+            superseded_by: None,
+            importance: 0.87,
+            updated_at: "2026-01-15T00:00:00Z",
+        },
+        DocSeed {
+            id: "temporal-release-owner-2024",
+            node_type: "Decision",
+            title: "Release train owner handover 2024",
+            summary: "In 2024 the release train owner was Kim Minsoo, who signed tagged releases before the 2026 handover.",
+            tags: &["release", "owner", "temporal"],
+            ws: workspace_id,
+            lifecycle: "superseded",
+            superseded_by: Some("temporal-release-owner-2026"),
+            importance: 0.45,
+            updated_at: "2026-03-30T00:00:00Z",
+        },
     ];
 
     let hash_model = LocalEmbeddingModel::default();
@@ -543,6 +600,15 @@ pub fn build_default_eval_fixture(
             retired_trap_ids: vec![],
             required_claim_terms: vec!["NEEDS_REVIEW".to_string(), "citations".to_string()],
         },
+        RagEvalCase {
+            id: "temporal-current-owner".to_string(),
+            category: "temporal_conflict".to_string(),
+            query: "Who is the current release train owner after the handover".to_string(),
+            expected_ids: vec!["temporal-release-owner-2026".to_string()],
+            supporting_ids: vec![],
+            retired_trap_ids: vec!["temporal-release-owner-2024".to_string()],
+            required_claim_terms: vec!["Lee Jiwon".to_string(), "release".to_string()],
+        },
     ];
 
     Ok((conn, summarize_latencies_ms(ingest_latencies_ms), cases))
@@ -620,6 +686,16 @@ pub fn run_default_rag_evaluation(
 
         let r5 = recall_at_k(&ids, &case.expected_ids, 5);
         let r10 = recall_at_k(&ids, &case.expected_ids, 10);
+        let rr = reciprocal_rank(&ids, &case.expected_ids);
+        let recency = if case.retired_trap_ids.is_empty() {
+            None
+        } else {
+            Some(recency_correct(
+                &ids,
+                &case.expected_ids,
+                &case.retired_trap_ids,
+            ))
+        };
         let ndcg = ndcg_at_k(&ids, &case.expected_ids, &case.supporting_ids, 10);
         let (cit_p, cit_r) =
             citation_precision_recall(&ids, &case.expected_ids, &case.supporting_ids, 3);
@@ -642,11 +718,13 @@ pub fn run_default_rag_evaluation(
             retrieved_ids: ids,
             recall_at_5: r5,
             recall_at_10: r10,
+            reciprocal_rank: rr,
             ndcg_at_10: ndcg,
             citation_precision: cit_p,
             citation_recall: cit_r,
             faithfulness: faith,
             answer_relevance: rel,
+            recency_correct: recency,
             retired_leaked: leaked,
             latency_ms: elapsed_ms,
         });
@@ -658,11 +736,20 @@ pub fn run_default_rag_evaluation(
         .filter(|r| r.category.starts_with("korean") || r.category == "mixed_kr_en")
         .collect();
     let ko_n = ko_cases.len().max(1) as f64;
+    let temporal: Vec<bool> = results.iter().filter_map(|r| r.recency_correct).collect();
+    let recency_accuracy = if temporal.is_empty() {
+        1.0
+    } else {
+        temporal.iter().filter(|ok| **ok).count() as f64 / temporal.len() as f64
+    };
 
     Ok(RagEvalReport {
         total_queries: results.len(),
         recall_at_5: results.iter().map(|r| r.recall_at_5).sum::<f64>() / n,
         recall_at_10: results.iter().map(|r| r.recall_at_10).sum::<f64>() / n,
+        mrr: results.iter().map(|r| r.reciprocal_rank).sum::<f64>() / n,
+        recency_accuracy,
+        temporal_cases: temporal.len(),
         ndcg_at_10: results.iter().map(|r| r.ndcg_at_10).sum::<f64>() / n,
         citation_precision: results.iter().map(|r| r.citation_precision).sum::<f64>() / n,
         citation_recall: results.iter().map(|r| r.citation_recall).sum::<f64>() / n,

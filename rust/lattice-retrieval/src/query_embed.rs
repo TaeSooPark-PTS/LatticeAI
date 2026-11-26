@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use lattice_core::db::Store;
 use lattice_core::embedding_contract::EmbeddingIndexContract;
+use lattice_core::embeddings::QueryEmbeddingPlan;
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::pytext::clean_text;
 use lattice_core::worker::WorkerSeamClient;
@@ -137,8 +138,9 @@ pub async fn resolve_query_embedding_with_contract(
     if trimmed.is_empty() {
         return QueryEmbedResolution::default();
     }
-    let Some(contract) = contract else {
-        return QueryEmbedResolution::default();
+    let contract = match QueryEmbeddingPlan::for_contract(contract.as_ref()) {
+        QueryEmbeddingPlan::Neural(active) => active,
+        QueryEmbeddingPlan::LocalFallback(_) => return QueryEmbedResolution::default(),
     };
     let Some(seam) = seam else {
         return QueryEmbedResolution {
@@ -162,10 +164,19 @@ pub async fn resolve_query_embedding_with_contract(
         .await
     {
         Ok(payload) => match parse_query_embed_payload(&payload) {
-            Ok(query_vector) => QueryEmbedResolution {
-                semantic_contract: Some(contract),
-                query_vector: Some(query_vector),
-                degraded_reason: None,
+            Ok(query_vector) => match contract
+                .query_vector_mismatch(&query_vector.model_id, query_vector.vector.len())
+            {
+                Some(reason) => QueryEmbedResolution {
+                    semantic_contract: Some(contract),
+                    query_vector: None,
+                    degraded_reason: Some(format!("query_embed_contract_mismatch: {reason}")),
+                },
+                None => QueryEmbedResolution {
+                    semantic_contract: Some(contract),
+                    query_vector: Some(query_vector),
+                    degraded_reason: None,
+                },
             },
             Err(reason) => QueryEmbedResolution {
                 semantic_contract: Some(contract),

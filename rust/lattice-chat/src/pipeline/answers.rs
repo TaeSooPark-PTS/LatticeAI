@@ -220,6 +220,23 @@ pub(crate) async fn document_response(
     ))
 }
 
+pub(crate) struct CloudRetrieval<'a> {
+    pub plan: &'a lattice_retrieval::query_plan::QueryPlan,
+    pub grounding_required: bool,
+    pub historical: bool,
+}
+
+fn cloud_system_prompt(minimal: &MinimalContext) -> String {
+    if minimal.compact_text.is_empty() {
+        return crate::cloud::HYBRID_SYSTEM_PROMPT.to_string();
+    }
+    format!(
+        "{} {}",
+        crate::cloud::HYBRID_SYSTEM_PROMPT,
+        lattice_retrieval::context::EVIDENCE_RULES
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn hybrid_response(
     state: &ChatState,
@@ -230,16 +247,30 @@ pub(crate) async fn hybrid_response(
     effective_email: Option<&str>,
     workspace_id: Option<&str>,
     meta: &HistoryMeta<'_>,
+    retrieval: CloudRetrieval<'_>,
 ) -> Option<Response> {
     let policy = resolve_hybrid_policy(&state.config.data_dir, effective_email, workspace_id);
     let question = strip_cloud_prefix(&req.message).to_string();
-    let allowed = workspace_id
-        .filter(|id| !id.is_empty())
-        .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let viewer = effective_email.and_then(|email| state.auth.graph_viewer(email));
+    let allowed = match workspace_id.filter(|id| !id.is_empty()) {
+        Some(id) => lattice_core::workspace_scope(Some(id), viewer.as_deref()),
+        None => viewer.as_deref().map(|v| {
+            lattice_core::with_viewer(
+                BTreeSet::from([lattice_core::DEFAULT_WORKSPACE_ID.to_string()]),
+                Some(v),
+            )
+        }),
+    };
     let semantic_contract = state
         .read_conn()
         .and_then(|conn| lattice_retrieval::query_embed::active_semantic_contract(&conn));
-    let effective_query = lattice_retrieval::query_embed::effective_hybrid_query(&question, false);
+    let search_text = lattice_retrieval::temporal::search_text_for(
+        &retrieval.plan.standalone,
+        now_secs(),
+        &lattice_retrieval::temporal::TemporalRanking::from_env(),
+    );
+    let effective_query =
+        lattice_retrieval::query_embed::effective_hybrid_query(&search_text, false);
     let query_embed = lattice_retrieval::query_embed::resolve_query_embedding_with_contract(
         semantic_contract,
         state.worker.as_ref().map(|w| w.client()),
@@ -247,10 +278,11 @@ pub(crate) async fn hybrid_response(
     )
     .await;
     let minimal = if let Some(conn) = state.read_conn() {
-        crate::cloud::build_minimal_context_with_policy_and_query(
+        crate::cloud::build_chat_minimal_context(
             &conn,
             &LocalEmbeddingModel::default(),
             &question,
+            retrieval.plan,
             mode,
             6,
             allowed.as_ref(),
@@ -258,6 +290,7 @@ pub(crate) async fn hybrid_response(
             &policy,
             query_embed.query_vector,
             query_embed.degraded_reason,
+            retrieval.grounding_required,
         )
     } else {
         MinimalContext {
@@ -270,11 +303,24 @@ pub(crate) async fn hybrid_response(
             ..Default::default()
         }
     };
+    if retrieval.grounding_required
+        && (minimal.node_ids.is_empty()
+            || !lattice_retrieval::self_rag::assess(
+                &retrieval.plan.standalone,
+                &minimal.nodes,
+                &Default::default(),
+                retrieval.historical,
+                false,
+            )
+            .sufficient)
+    {
+        return None;
+    }
     let key = scope_key(effective_email, workspace_id);
     let budget = budget_for(&key);
     let cloud_question = lattice_core::redact_pii_and_secrets(&question);
     let composed = crate::cloud::compose_prompt(
-        crate::cloud::HYBRID_SYSTEM_PROMPT,
+        &cloud_system_prompt(&minimal),
         &cloud_question,
         &minimal.compact_text,
     );
@@ -374,8 +420,9 @@ pub(crate) async fn hybrid_response(
         let mut answer = String::new();
         let (piece_tx, mut piece_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
         let mut on_piece = move |piece: &str| piece_tx.send(piece.to_string()).is_ok();
+        let system = cloud_system_prompt(&minimal);
         let call = provider.stream(
-            crate::cloud::HYBRID_SYSTEM_PROMPT,
+            &system,
             &cloud_question,
             &minimal.compact_text,
             &mut on_piece,
@@ -591,7 +638,7 @@ async fn hybrid_json(
     let mut answer = String::new();
     let result = provider
         .stream(
-            crate::cloud::HYBRID_SYSTEM_PROMPT,
+            &cloud_system_prompt(&minimal),
             question,
             &minimal.compact_text,
             &mut |piece| {

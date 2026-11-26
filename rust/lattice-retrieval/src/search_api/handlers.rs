@@ -10,6 +10,10 @@ use lattice_core::LocalEmbeddingModel;
 use serde_json::{json, Map, Value};
 use std::sync::Arc;
 
+use super::temporal_params::{
+    include_historical_field, ranking_from_model, ranking_from_query, since_field, sort_by_field,
+    until_field,
+};
 use super::{
     engine_error, ok, optional, required, FieldSpec, Kind, Model, Query, RetrievalApiState,
     DEFAULT_IMAGE_FUSION_WEIGHT, IMAGE_FUSION_DISABLED, IMAGE_FUSION_GATE_DETAIL,
@@ -20,6 +24,9 @@ use crate::service::{
     graph_search, keyword_search, vector_search_aligned_service, GraphSearchOptions,
 };
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions, DEFAULT_HYBRID_WEIGHTS};
+use crate::temporal::{
+    prepare_ranked, ranked_search, search_text_for, TemporalPlan, TemporalRanking,
+};
 
 pub fn router(state: Arc<RetrievalApiState>) -> Router {
     Router::new()
@@ -42,6 +49,10 @@ pub(crate) const SEARCH_REQUEST: &[FieldSpec] = &[
     optional("limit", Kind::Int),
     optional("mode", Kind::OptStr),
     optional("bm25f", Kind::Bool),
+    sort_by_field(),
+    include_historical_field(),
+    since_field(),
+    until_field(),
 ];
 
 pub(crate) const HYBRID_REQUEST: &[FieldSpec] = &[
@@ -56,18 +67,30 @@ pub(crate) const HYBRID_REQUEST: &[FieldSpec] = &[
     optional("fusion_strategy", Kind::OptStr),
     optional("bm25f", Kind::Bool),
     optional("expand_depth", Kind::Int),
+    sort_by_field(),
+    include_historical_field(),
+    since_field(),
+    until_field(),
 ];
 
 const VECTOR_REQUEST: &[FieldSpec] = &[
     required("query", Kind::Str(1)),
     optional("limit", Kind::Int),
     optional("min_score", Kind::Float),
+    sort_by_field(),
+    include_historical_field(),
+    since_field(),
+    until_field(),
 ];
 
 const GRAPH_SEARCH_REQUEST: &[FieldSpec] = &[
     required("query", Kind::Str(1)),
     optional("limit", Kind::Int),
     optional("expand_depth", Kind::Int),
+    sort_by_field(),
+    include_historical_field(),
+    since_field(),
+    until_field(),
 ];
 
 const GRAPH_NODE_REQUEST: &[FieldSpec] = &[
@@ -94,6 +117,26 @@ where
     store.read(work).await.map_err(engine_error)
 }
 
+struct HybridRequest {
+    query: String,
+    limit: i64,
+    keyword_limit: i64,
+    vector_limit: i64,
+    graph_limit: i64,
+    expand_depth: i64,
+    weights: Option<Map<String, Value>>,
+    image_fusion: bool,
+    ranking: TemporalRanking,
+}
+
+fn wants_graphrag(bm25f: bool, mode: &str) -> bool {
+    bm25f
+        || matches!(
+            mode.trim().to_ascii_lowercase().as_str(),
+            "graphrag" | "bm25_graph_rrf" | "bm25_vector_graph_rrf" | "bm25f"
+        )
+}
+
 async fn hybrid_get(
     State(state): State<Arc<RetrievalApiState>>,
     headers: HeaderMap,
@@ -108,21 +151,32 @@ async fn hybrid_get(
         (Ok(q), Ok(limit), Ok(fusion)) => (q, limit, fusion),
         (Err(refusal), _, _) | (_, Err(refusal), _) | (_, _, Err(refusal)) => return refusal,
     };
+    let ranking = match ranking_from_query(&query) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
     let mode = query.str_or("mode", "");
     let bm25f = query.bool_or("bm25f", false).unwrap_or(false);
     let (_identity, scope) = match state.guard(&headers) {
         Ok(pair) => pair,
         Err(refusal) => return refusal,
     };
-    if bm25f
-        || matches!(
-            mode.trim().to_ascii_lowercase().as_str(),
-            "graphrag" | "bm25_graph_rrf" | "bm25_vector_graph_rrf" | "bm25f"
-        )
-    {
-        return hybrid_graphrag(&state, scope, q, limit, 30, 30, 30, 2, image_fusion).await;
+    let graphrag = wants_graphrag(bm25f, &mode);
+    let request = HybridRequest {
+        query: q,
+        limit,
+        keyword_limit: 30,
+        vector_limit: 30,
+        graph_limit: 30,
+        expand_depth: 2,
+        weights: None,
+        image_fusion,
+        ranking,
+    };
+    if graphrag {
+        return hybrid_graphrag(&state, scope, request).await;
     }
-    hybrid(&state, scope, q, limit, 30, 30, 30, None, image_fusion).await
+    hybrid(&state, scope, request).await
 }
 
 async fn hybrid_post(
@@ -134,6 +188,10 @@ async fn hybrid_post(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
+    let ranking = match ranking_from_model(&model) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
     let (_identity, scope) = match state.guard(&headers) {
         Ok(pair) => pair,
         Err(refusal) => return refusal,
@@ -142,93 +200,42 @@ async fn hybrid_post(
         .opt_str("mode")
         .or_else(|| model.opt_str("fusion_strategy"))
         .unwrap_or_default();
-    let bm25f = model.bool("bm25f", false);
-    if bm25f
-        || matches!(
-            mode.trim().to_ascii_lowercase().as_str(),
-            "graphrag" | "bm25_graph_rrf" | "bm25_vector_graph_rrf" | "bm25f"
-        )
-    {
-        return hybrid_graphrag(
-            &state,
-            scope,
-            model.str("query").to_string(),
-            model.int("limit", 30),
-            model.int("keyword_limit", 30),
-            model.int("vector_limit", 30),
-            model.int("graph_limit", 30),
-            model.int("expand_depth", 2),
-            model.bool("image_fusion", false),
-        )
-        .await;
+    let graphrag = wants_graphrag(model.bool("bm25f", false), mode);
+    let request = HybridRequest {
+        query: model.str("query").to_string(),
+        limit: model.int("limit", 30),
+        keyword_limit: model.int("keyword_limit", 30),
+        vector_limit: model.int("vector_limit", 30),
+        graph_limit: model.int("graph_limit", 30),
+        expand_depth: model.int("expand_depth", 2),
+        weights: (!graphrag).then(|| pinned_weights(model.get("weights"))),
+        image_fusion: model.bool("image_fusion", false),
+        ranking,
+    };
+    if graphrag {
+        return hybrid_graphrag(&state, scope, request).await;
     }
-    let weights = pinned_weights(model.get("weights"));
-    hybrid(
-        &state,
-        scope,
-        model.str("query").to_string(),
-        model.int("limit", 30),
-        model.int("keyword_limit", 30),
-        model.int("vector_limit", 30),
-        model.int("graph_limit", 30),
-        Some(weights),
-        model.bool("image_fusion", false),
-    )
-    .await
+    hybrid(&state, scope, request).await
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn hybrid_graphrag(
+async fn finish_ranked(
     state: &RetrievalApiState,
-    scope: Scope,
-    query: String,
+    outcome: Result<(Value, TemporalPlan), Response>,
     limit: i64,
-    keyword_limit: i64,
-    vector_limit: i64,
-    graph_limit: i64,
-    expand_depth: i64,
     image_fusion: bool,
 ) -> Response {
-    let store = match state.require_graph() {
-        Ok(store) => Arc::clone(store),
+    let (mut report, mut plan) = match outcome {
+        Ok(pair) => pair,
         Err(refusal) => return refusal,
     };
-    let effective = crate::query_embed::effective_graphrag_query(&query);
-    let resolution =
-        crate::query_embed::resolve_query_embedding(&store, state.seam(), &effective).await;
-    let now = crate::routes::naive_local_now();
-    let graph_config = crate::bm25::GraphRagConfig {
-        max_hops: expand_depth.clamp(1, 2) as usize,
-        ..Default::default()
-    };
-    let options = crate::bm25::GraphRagOptions {
-        limit,
-        bm25_limit: keyword_limit,
-        vector_limit,
-        graph_limit,
-        graph_config,
-        scope,
-        now_secs: now,
-        query_embedding: resolution.query_vector,
-        ..crate::bm25::GraphRagOptions::default()
-    };
-    let engine_query = query.clone();
-    let degraded = resolution.degraded_reason;
-    let outcome = run(state, move |conn| {
-        let model = LocalEmbeddingModel::from_env();
-        let mut out =
-            crate::bm25::hybrid_bm25_vector_graph_search(conn, &model, &engine_query, &options)?;
-        if let (Some(reason), Some(object)) = (degraded.as_ref(), out.as_object_mut()) {
-            object.insert("vector_provider_status".into(), json!("degraded"));
-            object.insert("vector_degraded_reason".into(), json!(reason));
-        }
-        Ok(out)
-    })
+    crate::rerank::rerank_report(
+        state.seam(),
+        plan.search_query(),
+        &mut report,
+        &crate::rerank::RerankConfig::from_env(),
+    )
     .await;
-    let mut report = match outcome {
-        Ok(value) => value,
-        Err(refusal) => return refusal,
-    };
+    plan.apply_finalize(&mut report, limit.clamp(1, 100) as usize);
     if image_fusion {
         if let Some(object) = report.as_object_mut() {
             object.insert(
@@ -238,6 +245,69 @@ async fn hybrid_graphrag(
         }
     }
     ok(&report)
+}
+
+async fn hybrid_graphrag(
+    state: &RetrievalApiState,
+    scope: Scope,
+    request: HybridRequest,
+) -> Response {
+    let store = match state.require_graph() {
+        Ok(store) => Arc::clone(store),
+        Err(refusal) => return refusal,
+    };
+    let now = crate::routes::naive_local_now();
+    let search_text = search_text_for(&request.query, now, &request.ranking);
+    let effective = crate::query_embed::effective_graphrag_query(&search_text);
+    let resolution =
+        crate::query_embed::resolve_query_embedding(&store, state.seam(), &effective).await;
+    let graph_config = crate::bm25::GraphRagConfig {
+        max_hops: request.expand_depth.clamp(1, 2) as usize,
+        ..Default::default()
+    };
+    let HybridRequest {
+        query,
+        limit,
+        keyword_limit,
+        vector_limit,
+        graph_limit,
+        image_fusion,
+        ranking,
+        ..
+    } = request;
+    let degraded = resolution.degraded_reason;
+    let query_vector = resolution.query_vector;
+    let outcome = run(state, move |conn| {
+        prepare_ranked(conn, &query, now, &ranking, limit, true, |call| {
+            let options = crate::bm25::GraphRagOptions {
+                limit: call.fetch_limit,
+                bm25_limit: keyword_limit.max(call.fetch_limit),
+                vector_limit: vector_limit.max(call.fetch_limit),
+                graph_limit: graph_limit.max(call.fetch_limit),
+                graph_config,
+                scope,
+                now_secs: now,
+                include_historical: call.include_historical,
+                query_embedding: query_vector,
+                recency: Some(call.decay),
+                ..crate::bm25::GraphRagOptions::default()
+            };
+            let model = LocalEmbeddingModel::from_env();
+            let mut out = crate::bm25::hybrid_bm25_vector_graph_search(
+                conn,
+                &model,
+                &call.search_query,
+                &options,
+            )?;
+            if let (Some(reason), Some(object)) = (degraded.as_ref(), out.as_object_mut()) {
+                object.insert("vector_provider_status".into(), json!("degraded"));
+                object.insert("vector_degraded_reason".into(), json!(reason));
+            }
+            Ok(out)
+        })
+    })
+    .await;
+    finish_ranked(state, outcome, limit, image_fusion).await
 }
 
 pub(crate) fn pinned_weights(supplied: Option<&Value>) -> Map<String, Value> {
@@ -250,56 +320,50 @@ pub(crate) fn pinned_weights(supplied: Option<&Value>) -> Map<String, Value> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn hybrid(
-    state: &RetrievalApiState,
-    scope: Scope,
-    query: String,
-    limit: i64,
-    keyword_limit: i64,
-    vector_limit: i64,
-    graph_limit: i64,
-    weights: Option<Map<String, Value>>,
-    image_fusion: bool,
-) -> Response {
+async fn hybrid(state: &RetrievalApiState, scope: Scope, request: HybridRequest) -> Response {
     let store = match state.require_graph() {
         Ok(store) => Arc::clone(store),
         Err(refusal) => return refusal,
     };
-    let effective = crate::query_embed::effective_hybrid_query(&query, weights.is_some());
+    let now = crate::routes::naive_local_now();
+    let search_text = search_text_for(&request.query, now, &request.ranking);
+    let effective =
+        crate::query_embed::effective_hybrid_query(&search_text, request.weights.is_some());
     let resolution =
         crate::query_embed::resolve_query_embedding(&store, state.seam(), &effective).await;
-    let now = crate::routes::naive_local_now();
-    let options = ServiceHybridOptions {
+    let HybridRequest {
+        query,
         limit,
         keyword_limit,
         vector_limit,
         graph_limit,
         weights,
-        scope,
-        now_secs: now,
-        query_embedding: resolution.query_vector,
-        semantic_degraded: resolution.degraded_reason,
-    };
-    let engine_query = query.clone();
+        image_fusion,
+        ranking,
+        ..
+    } = request;
     let outcome = run(state, move |conn| {
-        let model = LocalEmbeddingModel::from_env();
-        service_hybrid_search(conn, &model, &engine_query, &options)
+        prepare_ranked(conn, &query, now, &ranking, limit, true, |call| {
+            let widen = |requested: i64| requested.max(call.fetch_limit).clamp(1, 100);
+            let options = ServiceHybridOptions {
+                limit: call.fetch_limit,
+                keyword_limit: widen(keyword_limit),
+                vector_limit: widen(vector_limit),
+                graph_limit: widen(graph_limit),
+                weights,
+                scope,
+                now_secs: now,
+                query_embedding: resolution.query_vector,
+                semantic_degraded: resolution.degraded_reason,
+                recency: Some(call.decay),
+                include_historical: call.include_historical,
+            };
+            let model = LocalEmbeddingModel::from_env();
+            service_hybrid_search(conn, &model, &call.search_query, &options)
+        })
     })
     .await;
-    let mut report = match outcome {
-        Ok(value) => value,
-        Err(refusal) => return refusal,
-    };
-    if image_fusion {
-        if let Some(object) = report.as_object_mut() {
-            object.insert(
-                "multimodal".into(),
-                json!({ "image_fusion": image_report() }),
-            );
-        }
-    }
-    ok(&report)
+    finish_ranked(state, outcome, limit, image_fusion).await
 }
 
 pub(crate) fn image_report() -> Value {
@@ -338,11 +402,15 @@ async fn keyword_get(
         (Ok(q), Ok(limit)) => (q, limit),
         (Err(refusal), _) | (_, Err(refusal)) => return refusal,
     };
+    let ranking = match ranking_from_query(&query) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
     let (_identity, scope) = match state.guard(&headers) {
         Ok(pair) => pair,
         Err(refusal) => return refusal,
     };
-    keyword(&state, scope, q, limit).await
+    keyword(&state, scope, q, limit, ranking).await
 }
 
 async fn keyword_post(
@@ -354,6 +422,10 @@ async fn keyword_post(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
+    let ranking = match ranking_from_model(&model) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
     let (_identity, scope) = match state.guard(&headers) {
         Ok(pair) => pair,
         Err(refusal) => return refusal,
@@ -363,13 +435,23 @@ async fn keyword_post(
         scope,
         model.str("query").to_string(),
         model.int("limit", 30),
+        ranking,
     )
     .await
 }
 
-async fn keyword(state: &RetrievalApiState, scope: Scope, query: String, limit: i64) -> Response {
+async fn keyword(
+    state: &RetrievalApiState,
+    scope: Scope,
+    query: String,
+    limit: i64,
+    ranking: TemporalRanking,
+) -> Response {
+    let now = crate::routes::naive_local_now();
     match run(state, move |conn| {
-        keyword_search(conn, &query, limit, &scope)
+        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
+            keyword_search(conn, &call.search_query, call.fetch_limit, &scope)
+        })
     })
     .await
     {
@@ -396,7 +478,11 @@ async fn vector_get(
         (Ok(q), Ok(limit), Ok(min_score)) => (q, limit, min_score),
         (Err(refusal), _, _) | (_, Err(refusal), _) | (_, _, Err(refusal)) => return refusal,
     };
-    vector(&state, scope, q, limit, min_score).await
+    let ranking = match ranking_from_query(&query) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
+    vector(&state, scope, q, limit, min_score, ranking).await
 }
 
 async fn vector_post(
@@ -412,12 +498,17 @@ async fn vector_post(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
+    let ranking = match ranking_from_model(&model) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
+    };
     vector(
         &state,
         scope,
         model.str("query").to_string(),
         model.int("limit", 30),
         model.float("min_score", 0.0),
+        ranking,
     )
     .await
 }
@@ -428,13 +519,16 @@ async fn vector(
     query: String,
     limit: i64,
     min_score: f64,
+    ranking: TemporalRanking,
 ) -> Response {
     let store = match state.require_graph() {
         Ok(store) => Arc::clone(store),
         Err(refusal) => return refusal,
     };
+    let now = crate::routes::naive_local_now();
+    let search_text = search_text_for(&query, now, &ranking);
     let resolution =
-        crate::query_embed::resolve_query_embedding(&store, state.seam(), &query).await;
+        crate::query_embed::resolve_query_embedding(&store, state.seam(), &search_text).await;
     match run(state, move |conn| {
         if let Some(reason) = resolution.degraded_reason.as_ref() {
             return Ok(json!({
@@ -445,16 +539,26 @@ async fn vector(
                 "matches": [],
             }));
         }
-        let model = LocalEmbeddingModel::from_env();
-        let query_input = match resolution.query_vector.as_ref() {
-            Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
-                model_id: &ovr.model_id,
-                vector: &ovr.vector,
-                is_hash_fallback: ovr.is_hash_fallback,
-            },
-            None => crate::vector::VectorQueryInput::Model(&model),
-        };
-        vector_search_aligned_service(conn, query_input, &query, limit, min_score, &scope, false)
+        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
+            let model = LocalEmbeddingModel::from_env();
+            let query_input = match resolution.query_vector.as_ref() {
+                Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
+                    model_id: &ovr.model_id,
+                    vector: &ovr.vector,
+                    is_hash_fallback: ovr.is_hash_fallback,
+                },
+                None => crate::vector::VectorQueryInput::Model(&model),
+            };
+            vector_search_aligned_service(
+                conn,
+                query_input,
+                &call.search_query,
+                call.fetch_limit,
+                min_score,
+                &scope,
+                call.include_historical,
+            )
+        })
     })
     .await
     {
@@ -476,13 +580,26 @@ async fn graph_search_post(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
-    let query = model.str("query").to_string();
-    let options = GraphSearchOptions {
-        limit: model.int("limit", 30),
-        expand_depth: model.int("expand_depth", 1),
-        scope,
+    let ranking = match ranking_from_model(&model) {
+        Ok(ranking) => ranking,
+        Err(refusal) => return refusal,
     };
-    match run(&state, move |conn| graph_search(conn, &query, &options)).await {
+    let query = model.str("query").to_string();
+    let limit = model.int("limit", 30);
+    let expand_depth = model.int("expand_depth", 1);
+    let now = crate::routes::naive_local_now();
+    match run(&state, move |conn| {
+        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
+            let options = GraphSearchOptions {
+                limit: call.fetch_limit,
+                expand_depth,
+                scope,
+            };
+            graph_search(conn, &call.search_query, &options)
+        })
+    })
+    .await
+    {
         Ok(value) => ok(&value),
         Err(refusal) => refusal,
     }

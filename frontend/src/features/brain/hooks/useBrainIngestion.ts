@@ -44,6 +44,7 @@ export function useBrainIngestion({
   requestDetails,
   setLastRecallQuery,
   setMemoryFeedback,
+  announceSaved,
   onBrainChange,
 }: {
   language: Language;
@@ -55,6 +56,7 @@ export function useBrainIngestion({
   requestDetails: () => void;
   setLastRecallQuery: React.Dispatch<React.SetStateAction<string>>;
   setMemoryFeedback: React.Dispatch<React.SetStateAction<string | null>>;
+  announceSaved: (message: string) => void;
   onBrainChange: (state: BrainState, intensity?: number) => void;
 }) {
   const qc = useQueryClient();
@@ -218,14 +220,14 @@ export function useBrainIngestion({
         failIngestion("file", reason);
         return;
       }
-      setMemoryFeedback(t(language, "brain.upload.saved", { name: file.name }));
+      announceSaved(t(language, "brain.upload.saved", { name: file.name }));
       setLastRecallQuery(file.name);
       await completeIngestion("file", result.data);
       triggerBrainRecall();
     } finally {
       setUploadingDocument(false);
     }
-  }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback, uploadingDocument]);
+  }, [announceSaved, beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback, uploadingDocument]);
 
   const connectFolder = React.useCallback(async (path: string) => {
     const target = path.trim();
@@ -240,11 +242,11 @@ export function useBrainIngestion({
       failIngestion("folder", reason);
       return;
     }
-    setMemoryFeedback(t(language, "brain.ingest.folder.saved", { path: target }));
+    announceSaved(t(language, "brain.ingest.folder.saved", { path: target }));
     setLastRecallQuery(target);
     await completeIngestion("folder", result.data);
     triggerBrainRecall();
-  }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
+  }, [announceSaved, beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
   const pickFolder = React.useCallback(async () => {
     const selection = await pickFolderSelection();
@@ -282,11 +284,12 @@ export function useBrainIngestion({
       failIngestion("folder", "empty");
       return;
     }
-    setMemoryFeedback(t(language, "brain.ingest.folder.browserSaved", { name: folderName, count: added }));
+    announceSaved(t(language, "brain.ingest.folder.browserSaved", { name: folderName, count: added }));
     setLastRecallQuery(folderName);
     await completeIngestion("folder", lastResult?.data);
     triggerBrainRecall();
   }, [
+    announceSaved,
     beginIngestion,
     completeIngestion,
     connectFolder,
@@ -310,11 +313,11 @@ export function useBrainIngestion({
       failIngestion("note", reason);
       return;
     }
-    setMemoryFeedback(t(language, "brain.ingest.note.saved"));
+    announceSaved(t(language, "brain.ingest.note.saved"));
     setLastRecallQuery(content.slice(0, 120));
     await completeIngestion("note", result.data);
     triggerBrainRecall();
-  }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
+  }, [announceSaved, beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
   const ingestWeb = React.useCallback(async (url: string) => {
     const target = url.trim();
@@ -333,11 +336,11 @@ export function useBrainIngestion({
       failIngestion("web", reason);
       return;
     }
-    setMemoryFeedback(t(language, "brain.ingest.web.saved", { url: target }));
+    announceSaved(t(language, "brain.ingest.web.saved", { url: target }));
     setLastRecallQuery(target);
     await completeIngestion("web", result.data);
     triggerBrainRecall();
-  }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
+  }, [announceSaved, beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
   return {
     ingestionStates,

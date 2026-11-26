@@ -1,7 +1,9 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowDownUp,
   Bot,
+  Box,
   Command,
   CornerDownLeft,
   Database,
@@ -11,7 +13,7 @@ import {
   Sunrise,
   Workflow,
 } from "lucide-react";
-import { latticeApi } from "@/api/client";
+import { latticeApi, type SearchSortBy } from "@/api/client";
 import { asArray } from "@/lib/utils";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { t, type Language } from "@/i18n";
@@ -27,7 +29,7 @@ type PaletteItem = {
   icon: React.ReactNode;
   target: string;
   focusNodeId?: string;
-  action?: "open-briefing" | "toggle-language";
+  action?: "open-briefing" | "toggle-language" | "toggle-graph-view";
 };
 
 type SearchGroup = { kind: string; items: Record<string, unknown>[] };
@@ -49,6 +51,7 @@ function useDebounced(value: string, delayMs: number) {
 export function CommandPalette({ language, initialOpen = false }: { language: Language; initialOpen?: boolean }) {
   const [open, setOpen] = React.useState(initialOpen);
   const [query, setQuery] = React.useState("");
+  const [sortBy, setSortBy] = React.useState<SearchSortBy>("relevance");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounced(query.trim(), 220);
@@ -78,8 +81,11 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   }, [open]);
 
   const searchQ = useQuery({
-    queryKey: ["commandSearch", debouncedQuery],
-    queryFn: () => latticeApi.commandSearch(debouncedQuery),
+    queryKey: ["commandSearch", debouncedQuery, sortBy],
+    queryFn: () =>
+      sortBy === "newest"
+        ? latticeApi.commandSearch(debouncedQuery, 8, "newest")
+        : latticeApi.commandSearch(debouncedQuery),
     enabled: open && debouncedQuery.length > 0,
   });
 
@@ -131,6 +137,14 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
         title: t(language, "command.action.openGraph"),
         icon: <Database className="h-4 w-4" />,
         target: "/knowledge-graph",
+      });
+      proactive.push({
+        id: "proactive-graph-view",
+        group: "proactive",
+        title: t(language, "command.action.toggleGraphView"),
+        icon: <Box className="h-4 w-4" />,
+        target: "/knowledge-graph",
+        action: "toggle-graph-view",
       });
       proactive.push({
         id: "proactive-language",
@@ -203,6 +217,12 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
         useAppStore.getState().setLanguage(language === "ko" ? "en" : "ko");
         return;
       }
+      if (item.action === "toggle-graph-view") {
+        const current = useAppStore.getState().graphViewMode;
+        useAppStore.getState().setGraphViewMode(current === "3d" ? "2d" : "3d");
+        navigateHash("/knowledge-graph");
+        return;
+      }
       if (item.focusNodeId) {
         useAppStore.getState().setFocusedGraphNodeId(item.focusNodeId);
       }
@@ -267,6 +287,17 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
             autoComplete="off"
             spellCheck={false}
           />
+          <button
+            type="button"
+            className={`command-palette-sort-btn ${sortBy === "newest" ? "is-newest" : ""}`}
+            data-testid="command-sort-toggle"
+            aria-pressed={sortBy === "newest"}
+            aria-label={t(language, "command.sort.aria")}
+            onClick={() => setSortBy((prev) => (prev === "newest" ? "relevance" : "newest"))}
+          >
+            <ArrowDownUp className="h-3 w-3" aria-hidden="true" />
+            <span>{t(language, sortBy === "newest" ? "command.sort.newest" : "command.sort.relevance")}</span>
+          </button>
           <span className="command-palette-hint" aria-hidden="true">
             <Command className="h-3 w-3" />
             {t(language, "command.shortcutKey")}

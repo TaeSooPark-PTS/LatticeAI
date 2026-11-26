@@ -120,6 +120,16 @@ describe("hybridSearch", () => {
     expect(calls[1]!.body).toEqual({ query: "b", weights: { vector: 0.7 } });
   });
 
+  it("sends sort_by only when the caller picked an order", async () => {
+    const calls = recordFetch(() => jsonResponse({ matches: [] }));
+
+    await latticeApi.hybridSearch("a", undefined, "newest");
+    await latticeApi.hybridSearchGraphRag("b", 6, "relevance");
+
+    expect(calls[0]!.body).toEqual({ query: "a", sort_by: "newest" });
+    expect(calls[1]!.body).toEqual({ query: "b", mode: "graphrag", limit: 6, sort_by: "relevance" });
+  });
+
   it("still returns an empty match list when the search fails", async () => {
     recordFetch(() => jsonResponse({ detail: "no index" }, 503));
 
@@ -228,6 +238,7 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1"), method: "POST", path: "/api/proposals/p1/reject", body: {} },
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1", "아님"), method: "POST", path: "/api/proposals/p1/reject", body: { reason: "아님" } },
   { name: "commandSearch", invoke: () => api.commandSearch("찾기"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8" } },
+  { name: "commandSearch", invoke: () => api.commandSearch("찾기", 8, "newest"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8", sort_by: "newest" } },
   { name: "brainHealth", invoke: () => api.brainHealth(), method: "GET", path: "/api/brain/health" },
   { name: "brainVectorFreshness", invoke: () => api.brainVectorFreshness(), method: "GET", path: "/api/brain/vector-freshness" },
   { name: "ingestionJobs", invoke: () => api.ingestionJobs(), method: "GET", path: "/api/ingestion/jobs" },
