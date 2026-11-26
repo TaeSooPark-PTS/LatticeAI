@@ -4,78 +4,73 @@
   
 
   
-  --bg: 92 6% 8%;
-  --bg-elevated: 100 6% 11%;
-  --background: 92 6% 8%;
-  --surface: 100 6% 12%;
-  --surface-raised: 100 6% 14%;
-  --surface-sunken: 92 6% 7%;
-  --surface-overlay: 100 7% 13%;
-  --surface-glass: 100 6% 12%; 
-  --card: 100 6% 12%;
-  --card-foreground: 43 28% 93%;
-  --muted: 96 6% 17%;
-  --input: 90 6% 24%;
+  --bg: 226 30% 7%;
+  --bg-elevated: 226 24% 11%;
+  --background: 226 30% 7%;
+  --surface: 226 22% 12%;
+  --surface-raised: 226 22% 15%;
+  --surface-sunken: 228 32% 5%;
+  --surface-overlay: 226 24% 12%;
+  --surface-glass: 226 26% 11%;
+  --card: 226 22% 12%;
+  --card-foreground: 215 28% 95%;
+  --muted: 225 18% 18%;
+  --input: 224 18% 25%;
 
-  
-  --fg: 43 26% 94%;
-  --fg-muted: 46 8% 66%;
-  --fg-faint: 46 6% 50%;
-  --faint: 46 6% 50%;
-  --foreground: 43 26% 94%;
-  --muted-foreground: 46 8% 66%;
+  --fg: 215 28% 95%;
+  --fg-muted: 218 14% 68%;
+  --fg-faint: 218 10% 52%;
+  --faint: 218 10% 52%;
+  --foreground: 215 28% 95%;
+  --muted-foreground: 218 14% 68%;
 
-  
-  --primary: 163 38% 52%;
-  --primary-foreground: 100 8% 9%;
-  --secondary: 96 6% 18%;
-  --secondary-foreground: 43 26% 94%;
-  --accent: 163 38% 52%;
-  --ring: 163 38% 52%;
-  --border: 90 7% 20%;
-  --border-subtle: 90 6% 16%;
-  --border-strong: 90 8% 28%;
+  --primary: 187 72% 52%;
+  --primary-foreground: 226 34% 8%;
+  --secondary: 225 18% 19%;
+  --secondary-foreground: 215 28% 95%;
+  --accent: 187 72% 52%;
+  --ring: 187 72% 52%;
+  --border: 224 18% 22%;
+  --border-subtle: 225 18% 17%;
+  --border-strong: 222 18% 30%;
 
-  
-  --brain-core: 36 60% 56%;
-  --brain-halo: 40 54% 72%;
-  --brain-shade: 92 10% 6%;
-  --brain-sheen: 40 55% 96%;
+  --brain-core: 190 82% 56%;
+  --brain-halo: 268 72% 72%;
+  --brain-shade: 226 34% 6%;
+  --brain-sheen: 200 85% 96%;
 
-  
-  --memory: 168 48% 58%;
-  --knowledge: 205 55% 66%;
-  --connection: 278 44% 72%;
-  --map: 34 42% 70%;
-  --ask: 205 55% 66%;
-  --act: 30 66% 62%;
-  --library: 195 45% 62%;
+  --memory: 174 68% 54%;
+  --knowledge: 205 78% 64%;
+  --connection: 268 68% 70%;
+  --map: 38 72% 66%;
+  --ask: 205 78% 64%;
+  --act: 30 78% 62%;
+  --library: 195 68% 60%;
 
-  
-  --success: 158 48% 54%;
-  --warning: 38 76% 60%;
-  --danger: 8 70% 64%;
-  --destructive: 8 70% 64%;
-  --destructive-foreground: 30 40% 97%;
-  --warning-ink: 38 72% 68%;
-  --danger-ink: 8 72% 70%;
+  --success: 158 58% 52%;
+  --warning: 38 82% 60%;
+  --danger: 6 76% 62%;
+  --destructive: 6 76% 62%;
+  --destructive-foreground: 215 35% 98%;
+  --warning-ink: 38 80% 68%;
+  --danger-ink: 6 78% 70%;
 
-  
-  --shadow-ink: 92 12% 3%;
-  --scrim: 92 12% 3% / 0.42;
+  --shadow-ink: 228 40% 2%;
+  --scrim: 228 40% 2% / 0.52;
 
-  
   --elev-0: none;
-  --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.22), 0 4px 14px hsl(var(--shadow-ink) / 0.18);
-  --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.2), 0 16px 36px hsl(var(--shadow-ink) / 0.28);
-  --elev-3: 0 8px 22px hsl(var(--shadow-ink) / 0.24), 0 28px 56px hsl(var(--shadow-ink) / 0.34);
-  --elev-4: 0 16px 40px hsl(var(--shadow-ink) / 0.3), 0 40px 84px hsl(var(--shadow-ink) / 0.42);
-  --elev-inset: inset 0 1px 2px hsl(var(--shadow-ink) / 0.34);
-  --elev-ring: 0 0 0 3px hsl(var(--primary) / 0.2);
-  --elev-focus: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 0 4px hsl(var(--primary) / 0.16);
+  --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.28), 0 4px 14px hsl(var(--shadow-ink) / 0.22);
+  --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.24), 0 16px 36px hsl(var(--shadow-ink) / 0.34);
+  --elev-3: 0 8px 22px hsl(var(--shadow-ink) / 0.28), 0 28px 56px hsl(var(--shadow-ink) / 0.4);
+  --elev-4: 0 16px 40px hsl(var(--shadow-ink) / 0.34), 0 40px 84px hsl(var(--shadow-ink) / 0.48);
+  --elev-inset: inset 0 1px 2px hsl(var(--shadow-ink) / 0.36);
+  --elev-ring: 0 0 0 3px hsl(var(--primary) / 0.22);
+  --elev-focus: 0 0 0 1px hsl(var(--primary) / 0.55), 0 0 0 4px hsl(var(--primary) / 0.18);
 
-  
-  --grad-field: radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 56%);
+  --grad-field:
+    radial-gradient(64% 48% at 18% 8%, hsl(190 80% 52% / 0.1) 0%, transparent 60%),
+    radial-gradient(58% 46% at 84% 12%, hsl(268 72% 66% / 0.1) 0%, transparent 62%),
+    radial-gradient(118% 82% at 50% -10%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 62%);
   --grad-surface: linear-gradient(180deg, hsl(var(--surface-raised)) 0%, hsl(var(--surface)) 100%);
   --grad-hero: radial-gradient(ellipse at 50% 8%, hsl(var(--brain-core) / 0.11) 0%, hsl(var(--primary) / 0.05) 44%, transparent 72%);
   --grad-accent: linear-gradient(180deg, hsl(var(--primary) / 0.14), transparent);
@@ -152,64 +147,59 @@
   
 
   
-  --bg: 42 28% 94%;
-  --bg-elevated: 40 70% 98%;
-  --background: 42 28% 94%;
-  --surface: 40 80% 99%;
-  --surface-raised: 40 100% 100%;
-  --surface-sunken: 42 24% 92%;
-  --surface-overlay: 40 80% 99%;
-  --surface-glass: 40 80% 99%;
-  --card: 40 80% 99%;
-  --card-foreground: 40 10% 12%;
-  --muted: 42 22% 91%;
-  --input: 41 16% 76%;
+  --bg: 220 30% 95%;
+  --bg-elevated: 220 45% 98%;
+  --background: 220 30% 95%;
+  --surface: 0 0% 100%;
+  --surface-raised: 0 0% 100%;
+  --surface-sunken: 220 26% 92%;
+  --surface-overlay: 220 40% 99%;
+  --surface-glass: 220 45% 99%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 24% 13%;
+  --muted: 220 22% 91%;
+  --input: 220 18% 78%;
 
-  
-  --fg: 40 10% 12%;
-  --fg-muted: 41 8% 38%;
-  --fg-faint: 41 6% 50%;
-  --faint: 41 6% 50%;
-  --foreground: 40 10% 12%;
-  --muted-foreground: 41 8% 38%;
+  --fg: 224 24% 13%;
+  --fg-muted: 222 14% 40%;
+  --fg-faint: 222 10% 52%;
+  --faint: 222 10% 52%;
+  --foreground: 224 24% 13%;
+  --muted-foreground: 222 14% 40%;
 
-  
-  --primary: 167 46% 27%;
-  --primary-foreground: 40 40% 98%;
-  --secondary: 43 20% 91%;
-  --secondary-foreground: 228 22% 16%;
-  --accent: 167 46% 27%;
-  --ring: 167 46% 32%;
-  --border: 41 18% 84%;
-  --border-subtle: 41 16% 90%;
-  --border-strong: 41 16% 74%;
+  --primary: 221 76% 45%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 220 22% 91%;
+  --secondary-foreground: 224 24% 15%;
+  --accent: 221 76% 45%;
+  --ring: 221 76% 48%;
+  --border: 220 18% 85%;
+  --border-subtle: 220 18% 90%;
+  --border-strong: 220 16% 75%;
 
-  
-  --brain-core: 36 59% 47%;
-  --brain-halo: 38 57% 62%;
-  --brain-shade: 35 22% 28%;
-  --brain-sheen: 40 80% 99%;
+  --brain-core: 217 78% 48%;
+  --brain-halo: 262 64% 58%;
+  --brain-shade: 224 22% 28%;
+  --brain-sheen: 210 80% 99%;
 
-  
-  --memory: 172 48% 32%;
-  --knowledge: 210 56% 40%;
-  --connection: 276 40% 48%;
-  --map: 32 48% 42%;
-  --ask: 210 56% 40%;
-  --act: 28 72% 40%;
-  --library: 198 48% 36%;
+  --memory: 176 58% 34%;
+  --knowledge: 217 72% 46%;
+  --connection: 268 58% 52%;
+  --map: 32 60% 42%;
+  --ask: 217 72% 46%;
+  --act: 28 74% 42%;
+  --library: 198 58% 38%;
 
-  
-  --success: 158 54% 28%;
-  --warning: 34 82% 32%;
-  --danger: 8 64% 42%;
-  --destructive: 8 64% 42%;
-  --destructive-foreground: 40 40% 98%;
-  --warning-ink: 34 82% 32%;
-  --danger-ink: 8 64% 42%;
+  --success: 158 56% 30%;
+  --warning: 34 84% 34%;
+  --danger: 6 68% 44%;
+  --destructive: 6 68% 44%;
+  --destructive-foreground: 210 40% 98%;
+  --warning-ink: 34 84% 34%;
+  --danger-ink: 6 68% 44%;
 
-  --shadow-ink: 35 18% 22%;
-  --scrim: 35 16% 12% / 0.28;
+  --shadow-ink: 224 24% 22%;
+  --scrim: 224 24% 12% / 0.28;
 
   --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.05), 0 4px 12px hsl(var(--shadow-ink) / 0.06);
   --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.06), 0 14px 28px hsl(var(--shadow-ink) / 0.09);
@@ -217,7 +207,10 @@
   --elev-4: 0 16px 36px hsl(var(--shadow-ink) / 0.1), 0 36px 72px hsl(var(--shadow-ink) / 0.16);
   --elev-inset: inset 0 1px 2px hsl(var(--shadow-ink) / 0.08);
 
-  --grad-field: radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 58%);
+  --grad-field:
+    radial-gradient(64% 48% at 18% 8%, hsl(217 78% 58% / 0.08) 0%, transparent 60%),
+    radial-gradient(58% 46% at 84% 12%, hsl(262 64% 62% / 0.07) 0%, transparent 62%),
+    radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 58%);
   --grad-hero: radial-gradient(ellipse at 50% 8%, hsl(var(--brain-core) / 0.08) 0%, hsl(var(--primary) / 0.04) 44%, transparent 72%);
   --grad-cta: linear-gradient(180deg, color-mix(in srgb, hsl(var(--primary)) 82%, white), hsl(var(--primary)));
 }

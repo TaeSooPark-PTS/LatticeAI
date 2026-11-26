@@ -468,7 +468,7 @@ export function SourceChunkModal(
 
   return (
     <div
-      className="file-preview-backdrop"
+      className="file-preview-backdrop evidence-drawer-backdrop"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -476,7 +476,7 @@ export function SourceChunkModal(
     >
       <div
         ref={trapRef}
-        className="file-preview-modal source-chunk-modal"
+        className="file-preview-modal source-chunk-modal evidence-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={t(language, "brain.sourceModal.aria", { title })}

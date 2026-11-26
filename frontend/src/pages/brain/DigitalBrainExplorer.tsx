@@ -1,7 +1,7 @@
 import * as React from "react";
 import "@/i18n/brain";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Box, Eye, EyeOff, Filter, Focus, LocateFixed, Network, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, Box, Eye, EyeOff, Filter, Focus, LocateFixed, Network, Search, Sparkles, X } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { DataPanel, EmptyState, EntityList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -251,11 +251,25 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
           </div>
         </div>
 
-        <aside className="graph-explorer-aside">
+        <aside
+          className={`graph-explorer-aside${selectedId ? " is-docked-open" : ""}`}
+          data-testid="graph-inspector-drawer"
+        >
           {selectedId ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> {t(language, "graph.focus.title")}</CardTitle>
+            <Card className="graph-inspector-card">
+              <CardHeader className="graph-inspector-head">
+                <div className="graph-inspector-head-row">
+                  <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> {t(language, "graph.focus.title")}</CardTitle>
+                  <button
+                    type="button"
+                    className="graph-inspector-close"
+                    data-testid="graph-inspector-close"
+                    aria-label={t(language, "graph.inspector.close")}
+                    onClick={() => setSelectedId(null)}
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
                 <CardDescription>{t(language, "graph.focus.desc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

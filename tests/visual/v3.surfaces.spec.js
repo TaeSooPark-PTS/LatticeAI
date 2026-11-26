@@ -109,7 +109,7 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
 
   await page.locator(".ring-label-right").click();
   await page.getByRole("button", { name: "이 층 자세히 보기" }).click();
-  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.locator("[data-testid='brain-graph-stage']")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -123,7 +123,7 @@ test("memory opens with search and can reveal the connections map", async ({ pag
   await expect(page.getByRole("tab", { name: "연결 지도" })).toHaveCount(0);
   await page.getByTestId("open-connections-map").click();
   await expect(page).toHaveURL(/#\/knowledge-graph$/);
-  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.locator("[data-testid='brain-graph-stage']")).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeVisible();
 

@@ -118,7 +118,7 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
 
   await livingBrain.click();
   await expect(page.locator("body")).toContainText("기억 사이의 연결을 살펴보세요");
-  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.locator("[data-testid='brain-graph-stage']")).toBeVisible();
   await expect(page.getByPlaceholder(GRAPH_SEARCH_PLACEHOLDER)).toBeVisible();
   expect(errors).toEqual([]);
 });

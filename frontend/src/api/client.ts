@@ -428,8 +428,12 @@ export const latticeApi = {
   approveProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/approve`, {}, {}),
   rejectProposal: (itemId: string, reason = "") =>
     post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, reason ? { reason } : {}, {}),
-  commandSearch: (q: string, limit = 8) =>
-    get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
+  commandSearch: (q: string, limit = 8, sortBy?: SearchSortBy) =>
+    get(
+      "/api/command/search",
+      { query: q, groups: [], total: 0 },
+      sortBy ? { q, limit, sort_by: sortBy } : { q, limit },
+    ),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),
   brainVectorFreshness: () => get("/api/brain/vector-freshness", { status: "unavailable", pending_items: 0, total_items: 0, detail: "" }),
   ingestionJobs: () => get("/api/ingestion/jobs", { jobs: [] }),
