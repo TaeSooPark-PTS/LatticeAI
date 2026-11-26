@@ -122,7 +122,7 @@ pub(crate) async fn ingest(
         .scope_for(&identity)
         .allowed_workspaces
         .as_ref()
-        .and_then(|set| set.iter().next().cloned());
+        .and_then(default_write_workspace);
     let role = {
         let given = model.str("role");
         if given.is_empty() {
@@ -248,4 +248,25 @@ pub(crate) async fn ingest(
         }
     }
     ok(&outcome.to_json())
+}
+
+fn default_write_workspace(allowed: &std::collections::BTreeSet<String>) -> Option<String> {
+    allowed
+        .get(lattice_core::DEFAULT_WORKSPACE_ID)
+        .or_else(|| allowed.iter().next())
+        .cloned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_unscoped_ingest_stays_personal_even_when_another_workspace_sorts_first() {
+        let allowed = ["org-1", "personal"].map(str::to_string).into();
+        assert_eq!(
+            default_write_workspace(&allowed).as_deref(),
+            Some("personal")
+        );
+    }
 }

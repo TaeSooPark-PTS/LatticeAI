@@ -579,6 +579,7 @@ where
 pub fn reconcile_deleted_uris(
     writer: &GraphWriter,
     deleted_uris: &[String],
+    owner: Option<&str>,
     workspace_id: Option<&str>,
 ) -> Result<usize, CoreError> {
     let target_ws = workspace_id
@@ -605,7 +606,11 @@ pub fn reconcile_deleted_uris(
                     .and_then(Value::as_str)
                     .filter(|w| !w.is_empty())
                     .unwrap_or("legacy-global");
-                if ws == target_ws {
+                let held = meta
+                    .get("owner")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if ws == target_ws && held == owner.unwrap_or_default() {
                     matched.push(id);
                 }
             }
@@ -756,9 +761,69 @@ mod tests {
         let deleted = reconcile_deleted_uris(
             &writer,
             &["/vault/archive/handbook.md".to_string()],
+            Some("owner@local"),
             Some("personal"),
         )
         .expect("reconcile delete");
         assert_eq!(deleted, 1);
+    }
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use std::sync::Arc;
+
+    use lattice_core::db::Store;
+
+    use super::*;
+
+    #[test]
+    fn another_owners_sync_or_delete_of_the_same_path_leaves_the_document_alone() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(Store::open(&dir.path().join("knowledge_graph.sqlite")).expect("db"));
+        let writer = GraphWriter::open(store, dir.path().join("blobs")).expect("writer");
+        let contract = LocalEmbeddingModel::new(384).contract();
+        let sync = |owner: &str, text: &str| {
+            sync_document_incremental(
+                &writer,
+                &IncrementalSyncRequest {
+                    title: "plan.md".into(),
+                    text: text.into(),
+                    source_uri: "/vault/plan.md".into(),
+                    moved_from_uri: None,
+                    workspace_id: None,
+                    owner: Some(owner.into()),
+                    modified_at: None,
+                    metadata: Map::new(),
+                },
+                &contract,
+                |texts| Ok(texts.iter().map(|_| vec![0.5; 384]).collect()),
+            )
+            .expect("sync")
+        };
+        let chunks = |id: &str| -> i64 {
+            writer
+                .store()
+                .with_read_conn(|conn| {
+                    Ok(conn.query_row(
+                        "SELECT COUNT(*) FROM chunks WHERE source_node = ?1",
+                        [id],
+                        |row| row.get(0),
+                    )?)
+                })
+                .expect("count")
+        };
+        let first = sync("a@x", "port is one");
+        let second = sync("b@x", "port is two");
+        assert_eq!(second.previous_node_id, None);
+        assert_eq!(second.purged_chunks, 0);
+        assert_eq!(chunks(&first.node_id), 1);
+
+        let removed =
+            reconcile_deleted_uris(&writer, &["/vault/plan.md".to_string()], Some("b@x"), None)
+                .expect("delete");
+        assert_eq!(removed, 1);
+        assert_eq!(chunks(&first.node_id), 1);
+        assert_eq!(chunks(&second.node_id), 0);
     }
 }

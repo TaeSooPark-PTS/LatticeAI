@@ -223,9 +223,10 @@ pub(super) async fn folder_prune(
         Ok(model) => model,
         Err(refusal) => return refusal,
     };
-    if let Err(refusal) = state.require_user(&headers) {
-        return refusal;
-    }
+    let user = match state.require_user(&headers) {
+        Ok(user) => user,
+        Err(refusal) => return refusal,
+    };
     let lang = language(&headers);
     if let Err(refusal) = state.require_graph(lang) {
         return refusal;
@@ -238,7 +239,12 @@ pub(super) async fn folder_prune(
         return http_error(503, "capture.ingestion_disabled", lang);
     };
     let confirm = model.bool("confirm", false);
-    match super::prune::prune_deleted(&graph, std::path::Path::new(&path), confirm) {
+    let scope = if user.is_empty() {
+        super::prune::PruneScope::Everything
+    } else {
+        super::prune::PruneScope::User(&user)
+    };
+    match super::prune::prune_deleted(&graph, std::path::Path::new(&path), confirm, scope) {
         Ok(value) => ok(&value),
         Err(message) => detail(400, &message),
     }
