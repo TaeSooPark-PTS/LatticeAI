@@ -59,6 +59,9 @@ function setup(
     setMemoryFeedback: ((value: unknown) => {
       feedback.push(typeof value === "function" ? "(updater)" : (value as string | null));
     }) as never,
+    announceSaved: (message: string) => {
+      feedback.push(message);
+    },
     onBrainChange: (state: string) => brainStates.push(state),
     ...overrides,
   };

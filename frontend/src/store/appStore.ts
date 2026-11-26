@@ -13,7 +13,6 @@ type AppState = {
   apiBase: string | null;
   language: Language;
   focusedGraphNodeId: string | null;
-  inspectedNodeId: string | null;
   pendingChatPrompt: string | null;
   graphViewMode: GraphViewMode;
   showSuperseded: boolean;
@@ -24,7 +23,6 @@ type AppState = {
   setApiBase: (apiBase: string | null) => void;
   setLanguage: (language: Language) => void;
   setFocusedGraphNodeId: (nodeId: string | null) => void;
-  setInspectedNodeId: (nodeId: string | null) => void;
   setPendingChatPrompt: (prompt: string | null) => void;
   setGraphViewMode: (mode: GraphViewMode) => void;
   setShowSuperseded: (show: boolean) => void;
@@ -92,7 +90,6 @@ export const useAppStore = create<AppState>((set) => ({
   apiBase: null,
   language: readLanguage(),
   focusedGraphNodeId: null,
-  inspectedNodeId: null,
   pendingChatPrompt: null,
   graphViewMode: readGraphViewMode(),
   showSuperseded: true,
@@ -130,7 +127,7 @@ export const useAppStore = create<AppState>((set) => ({
         warnStorage("removeItem(lattice.workspace)", err);
       }
     }
-    set({ workspaceId });
+    set((state) => (state.workspaceId === workspaceId ? { workspaceId } : { workspaceId, activeFiringTrace: null }));
   },
   setApiBase: (apiBase) => set({ apiBase }),
   setLanguage: (language) => {
@@ -145,7 +142,6 @@ export const useAppStore = create<AppState>((set) => ({
     set({ language });
   },
   setFocusedGraphNodeId: (focusedGraphNodeId) => set({ focusedGraphNodeId }),
-  setInspectedNodeId: (inspectedNodeId) => set({ inspectedNodeId }),
   setPendingChatPrompt: (pendingChatPrompt) => set({ pendingChatPrompt }),
   setGraphViewMode: (graphViewMode) => {
     try {

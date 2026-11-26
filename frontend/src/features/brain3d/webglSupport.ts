@@ -2,10 +2,6 @@ let cachedWebGL: boolean | null = null;
 
 export function detectWebGLSupport(): boolean {
   if (cachedWebGL !== null) return cachedWebGL;
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    cachedWebGL = false;
-    return false;
-  }
   try {
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: false })
@@ -26,6 +22,6 @@ export function resetWebGLSupportCacheForTest(): void {
 }
 
 export function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  if (typeof window.matchMedia !== "function") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

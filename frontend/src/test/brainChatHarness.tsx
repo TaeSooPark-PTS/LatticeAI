@@ -27,6 +27,9 @@ export function setup(overrides: Partial<Parameters<typeof useBrainChat>[0]> = {
     setMemoryFeedback: ((value: unknown) => {
       memoryFeedback.push(typeof value === "function" ? "(updater)" : (value as string | null));
     }) as never,
+    announceSaved: (message: string) => {
+      memoryFeedback.push(message);
+    },
     beginIngestion: vi.fn(),
     completeIngestion: vi.fn().mockResolvedValue({ memories: 3, entities: 2 }),
     failIngestion: vi.fn(),

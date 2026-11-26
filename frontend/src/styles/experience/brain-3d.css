@@ -34,6 +34,10 @@
   height: 100%;
 }
 
+:root:not([data-theme="light"]) .brain-3d-host.is-explorer .brain-3d-canvas-element {
+  mix-blend-mode: screen;
+}
+
 .brain-3d-hemisphere-legend {
   position: absolute;
   right: 0.75rem;

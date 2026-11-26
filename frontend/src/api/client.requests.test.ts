@@ -238,6 +238,7 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1"), method: "POST", path: "/api/proposals/p1/reject", body: {} },
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1", "아님"), method: "POST", path: "/api/proposals/p1/reject", body: { reason: "아님" } },
   { name: "commandSearch", invoke: () => api.commandSearch("찾기"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8" } },
+  { name: "commandSearch", invoke: () => api.commandSearch("찾기", 8, "newest"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8", sort_by: "newest" } },
   { name: "brainHealth", invoke: () => api.brainHealth(), method: "GET", path: "/api/brain/health" },
   { name: "brainVectorFreshness", invoke: () => api.brainVectorFreshness(), method: "GET", path: "/api/brain/vector-freshness" },
   { name: "ingestionJobs", invoke: () => api.ingestionJobs(), method: "GET", path: "/api/ingestion/jobs" },

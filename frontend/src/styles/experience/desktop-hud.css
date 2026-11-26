@@ -73,6 +73,138 @@
   border: 1px solid hsl(var(--border) / 0.62);
 }
 
+.brain-chat-home-card.is-empty-home .brain-save-feedback {
+  position: fixed;
+  top: calc(var(--experience-header-height) + 0.5rem);
+  left: 50%;
+  z-index: var(--lt-z-overlay);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  width: min(36rem, calc(100vw - 2rem));
+  margin: 0;
+  transform: translateX(-50%);
+  border: 1px solid hsl(var(--memory) / 0.5);
+  background: hsl(var(--surface-overlay));
+  box-shadow: var(--elev-3);
+  overflow-wrap: anywhere;
+}
+
+.brain-chat-home-card.has-messages > .brain-save-feedback {
+  flex: 0 0 auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-block: 0.35rem 0;
+  overflow-wrap: anywhere;
+}
+
+.brain-save-feedback button {
+  grid-column: 3;
+  grid-row: 1;
+  display: inline-flex;
+  width: 1.9rem;
+  height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--lt-radius-md);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.brain-save-feedback button:hover,
+.brain-save-feedback button:focus-visible {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.brain-topbar {
+  flex-wrap: nowrap;
+  padding-inline: max(1rem, calc((100vw - 92rem) / 2));
+}
+
+.brain-more-popover {
+  right: max(1rem, calc((100vw - 92rem) / 2));
+}
+
+.brain-shell-brand,
+.brain-nav-link,
+.brain-utility-link,
+.brain-more-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.brain-desktop-nav {
+  margin-left: clamp(0.5rem, 2vw, 2.5rem);
+}
+
+@media (min-width: 761px) and (max-width: 1599px) {
+  .brain-local-badge {
+    display: none;
+  }
+}
+
+@media (min-width: 1120px) and (max-width: 1359px) {
+  .brain-utility-link > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .brain-utility-link {
+    min-width: 2.35rem;
+    justify-content: center;
+  }
+}
+
+.review-inbox {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.brain-space > .admin-console {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 760px) {
+  .brain-shell-page > .brain-shell-content > .space-y-5 {
+    padding-inline: 0.85rem;
+  }
+
+  .brain-station-toolbar {
+    justify-content: center;
+  }
+
+  .brain-station-toolbar .brain-quick-dial,
+  .brain-station-toolbar .brain-quick-segments {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .brain-space .brain-shell-page:has(.brain-shell-content) {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .brain-shell-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .brain-shell-content:has(.brain-chat-home-card.is-empty-home) :is(.brain-home, .brain-conversation, .brain-chat-home-layout, .brain-chat-home-card.is-empty-home, .brain-centered-home, .brain-home-station) {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: auto;
+  }
+}
+
 .command-palette-sort-btn {
   display: inline-flex;
   align-items: center;

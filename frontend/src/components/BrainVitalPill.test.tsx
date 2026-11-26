@@ -41,3 +41,13 @@ describe("BrainVitalPill", () => {
     expect(pill.getAttribute("href")).toBe("#/knowledge-graph");
   });
 });
+
+describe("extractGraphCounts with irregular payloads", () => {
+  it("accepts plain numbers and skips entries that are not positive counts", () => {
+    expect(extractGraphCounts({ nodes: 7.4, edges: -2 })).toEqual({ nodes: 7, edges: 0 });
+    expect(extractGraphCounts({ total_nodes: -1, nodes: { Topic: 2, Bad: "x", Gone: -4 }, edges: "many" })).toEqual({
+      nodes: 2,
+      edges: 0,
+    });
+  });
+});

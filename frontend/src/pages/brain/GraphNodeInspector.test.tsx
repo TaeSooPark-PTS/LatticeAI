@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n/brain";
 import { DigitalBrainExplorer } from "./DigitalBrainExplorer";
 import { GraphNodeInspector } from "./GraphNodeInspector";
@@ -185,5 +185,37 @@ describe("GraphNodeInspector & DigitalBrainExplorer ergonomics", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(conflictBtn.getAttribute("aria-pressed")).toBe("false");
     fireEvent.keyDown(window, { key: "Escape" });
+  });
+});
+
+describe("DigitalBrainExplorer view controls", () => {
+  afterEach(() => {
+    useAppStore.setState({ graphViewMode: "3d", showSuperseded: true });
+  });
+
+  it("switches between 3d and 2d, hides superseded memories and closes the inspector", async () => {
+    useAppStore.setState({ graphViewMode: "3d", showSuperseded: true, focusedGraphNodeId: "n1", language: "ko" });
+    renderPage(<DigitalBrainExplorer data={SAMPLE_GRAPH} />, {
+      api: { graphNodeInspect: ok({ node: { id: "n1" }, neighborhood: { nodes: [], edges: [] } }) },
+    });
+
+    const view = screen.getByTestId("graph-view-toggle");
+    expect(view.getAttribute("aria-pressed")).toBe("true");
+    await userEvent.click(view);
+    expect(useAppStore.getState().graphViewMode).toBe("2d");
+    expect(view.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(view);
+    expect(useAppStore.getState().graphViewMode).toBe("3d");
+
+    const superseded = screen.getByTestId("graph-superseded-toggle");
+    await userEvent.click(superseded);
+    expect(useAppStore.getState().showSuperseded).toBe(false);
+    expect(superseded.getAttribute("aria-pressed")).toBe("true");
+    await userEvent.click(superseded);
+    expect(useAppStore.getState().showSuperseded).toBe(true);
+
+    await userEvent.click(await screen.findByTestId("graph-inspector-close"));
+    expect(screen.queryByTestId("graph-node-inspector")).toBeNull();
+    expect(screen.getByTestId("graph-inspector-drawer").className).not.toContain("is-docked-open");
   });
 });

@@ -151,6 +151,7 @@ function BrainShell({
                   key={item.id}
                   className={`brain-utility-link${item.id === active ? " is-active" : ""}`}
                   href={`#/${item.path}`}
+                  title={t(language, item.labelKey)}
                   aria-current={item.id === active ? "page" : undefined}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />

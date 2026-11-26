@@ -122,7 +122,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
             />
             {outcome.status === "ready" && (
               <section
-                className="ritual-embedding-recommendation mt-4 rounded-xl border border-border bg-background/60 p-4"
+                className="ritual-embedding-recommendation mt-4 rounded-xl border border-border bg-background/60 p-4 text-left"
                 data-testid="flow-embedding-recommendation"
                 aria-label={t(language, "flow.recommend.embedding.aria")}
               >

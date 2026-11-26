@@ -39,6 +39,11 @@ export function BrainHome({
   const memoriesQ = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
   const graphQ = useQuery({ queryKey: ["graphPreview"], queryFn: () => latticeApi.graphPreview(48) });
   const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const [recallableFeedback, setRecallableFeedback] = React.useState<string | null>(null);
+  const announceSaved = React.useCallback((message: string) => {
+    setMemoryFeedback(message);
+    setRecallableFeedback(message);
+  }, []);
   const history = useBrainHistory({ language, setMemoryFeedback });
 
   const memoryFragments = React.useMemo(
@@ -69,6 +74,7 @@ export function BrainHome({
     requestDetails: proof.requestDetails,
     setLastRecallQuery: proof.setLastRecallQuery,
     setMemoryFeedback,
+    announceSaved,
     onBrainChange,
   });
   const chat = useBrainChat({
@@ -76,6 +82,7 @@ export function BrainHome({
     modelReady,
     onBrainChange,
     setMemoryFeedback,
+    announceSaved,
     beginIngestion: ingestion.beginIngestion,
     completeIngestion: ingestion.completeIngestion,
     failIngestion: ingestion.failIngestion,
@@ -163,6 +170,8 @@ export function BrainHome({
         historyBusyId={history.historyBusyId}
         starterPrompts={starterPrompts}
         memoryFeedback={memoryFeedback}
+        feedbackRecallable={memoryFeedback !== null && memoryFeedback === recallableFeedback}
+        onDismissFeedback={() => setMemoryFeedback(null)}
         ingestionStates={ingestion.ingestionStates}
         emergenceEvents={ingestion.emergenceEvents}
         proactiveActivities={chat.proactiveActivities}

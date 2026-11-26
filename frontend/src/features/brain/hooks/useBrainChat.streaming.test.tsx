@@ -2,8 +2,9 @@ import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
-import { abortError, fakeChatStream } from "@/test/fakeChatStream";
+import { abortError, fakeChatStream, type FakeChatFrame } from "@/test/fakeChatStream";
 import { setup } from "@/test/brainChatHarness";
+import { useAppStore } from "@/store/appStore";
 import { useConversationSession } from "../conversationSession";
 
 
@@ -601,5 +602,39 @@ describe("useBrainChat regenerate edges", () => {
     });
 
     expect(result.current.messages).toEqual([]);
+  });
+});
+
+describe("useBrainChat retrieval firing", () => {
+  beforeEach(() => {
+    useAppStore.setState({ activeFiringTrace: null });
+  });
+
+  async function ask(frames: FakeChatFrame[]) {
+    const stream = fakeChatStream({ frames });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+    const view = setup();
+    await act(async () => {
+      await view.result.current.sendText("질문");
+    });
+    return view;
+  }
+
+  it("publishes the nodes a trace frame or hybrid context matched", async () => {
+    await ask([{ kind: "trace", trace: { graph_nodes: ["a"], graph_edges: [{ from: "a", to: "b" }] } }]);
+    expect(useAppStore.getState().activeFiringTrace).toMatchObject({ nodeIds: ["a", "b"] });
+
+    await ask([{ kind: "hybridContext", frame: { type: "hybrid_context", node_ids: ["h1"], matched_nodes: ["h1"] } }]);
+    expect(useAppStore.getState().activeFiringTrace).toMatchObject({ nodeIds: ["h1"] });
+
+    const { result } = await ask([{ kind: "hybridContext", frame: { type: "hybrid_context", keywords: ["k"] } }]);
+    expect(result.current.messages.at(-1)?.hybridContext?.keywords).toEqual(["k"]);
+    expect(useAppStore.getState().activeFiringTrace).toBeNull();
+  });
+
+  it("does not leave the previous question's nodes firing under an answer that matched nothing", async () => {
+    useAppStore.setState({ activeFiringTrace: { nodeIds: ["stale"], edges: [], timestamp: 1 } });
+    await ask([{ kind: "trace", trace: { mode: "none" } }, { kind: "chunk", text: "답" }]);
+    expect(useAppStore.getState().activeFiringTrace).toBeNull();
   });
 });

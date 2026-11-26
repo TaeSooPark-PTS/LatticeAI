@@ -33,6 +33,7 @@ export function useBrainChat({
   modelReady,
   onBrainChange,
   setMemoryFeedback,
+  announceSaved,
   beginIngestion,
   completeIngestion,
   failIngestion,
@@ -43,6 +44,7 @@ export function useBrainChat({
   modelReady: boolean;
   onBrainChange: (state: BrainState, intensity?: number) => void;
   setMemoryFeedback: React.Dispatch<React.SetStateAction<string | null>>;
+  announceSaved: (message: string) => void;
   beginIngestion: (sourceType: IngestionSourceType, label: string) => void;
   completeIngestion: (sourceType: IngestionSourceType, data?: unknown) => Promise<{ memories: number; entities: number }>;
   failIngestion: (sourceType: IngestionSourceType, reason: string) => void;
@@ -130,6 +132,7 @@ export function useBrainChat({
     setMessages((items) => [...items, { role: "user", content: text }, { role: "assistant", content: "" }]);
     setImageData(null);
     setStreaming(true);
+    useAppStore.getState().setActiveFiringTrace(null);
     setMemoryFeedback(null);
     beginIngestion("chat", text.slice(0, 120));
     onBrainChange("thinking", 0.96);
@@ -287,7 +290,7 @@ export function useBrainChat({
         }
         setLastRecallQuery(text);
         const counts = await completeIngestion("chat");
-        setMemoryFeedback(t(language, "brain.saved", { topics: counts.entities, memories: counts.memories }));
+        announceSaved(t(language, "brain.saved", { topics: counts.entities, memories: counts.memories }));
         triggerBrainRecall();
         void attachAnswerProof(text);
       }
@@ -388,9 +391,8 @@ export function useBrainChat({
       payload: { answer_preview: trimmed.slice(0, 2000), conversation_id: conversationId || "" },
       provenance: { conversation_id: conversationId || "", source_detail: "brain_chat" },
     });
-    setMemoryFeedback(result.ok
-      ? t(language, "brain.action.saved")
-      : t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
+    if (result.ok) announceSaved(t(language, "brain.action.saved"));
+    else setMemoryFeedback(t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
     return result.ok;
   }
 

@@ -240,11 +240,11 @@ export function layoutBrainHemispheres(
 ): Brain3DPoint[] {
   const volume = growth.hemisphereVolume * 2.15;
   const fissure = 0.24 * growth.hemisphereVolume;
-  return nodes.map((node, index) => {
+  return nodes.map((node) => {
     const normalizedType = node.type.trim().toLowerCase();
     const hemisphere = classifyHemisphere(normalizedType);
     const sign = hemisphere === "left" ? -1 : 1;
-    const seed = hashString(`${node.id}:${index}`);
+    const seed = hashString(node.id);
     const u = seededUnit(seed, 1);
     const v = seededUnit(seed, 2);
     const w = seededUnit(seed, 3);

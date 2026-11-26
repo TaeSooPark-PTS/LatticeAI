@@ -3,6 +3,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import {
+  computeBrainGrowth,
   computeOneHopHighlight,
   type Brain3DEdgeInput,
   type Brain3DPoint,
@@ -37,6 +38,8 @@ export class Brain3DSceneController {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private composer: EffectComposer | null = null;
+  private bloomPass: UnrealBloomPass | null = null;
+  private ambientLight: THREE.AmbientLight;
   private brainGroup: THREE.Group;
   private nodeMesh: THREE.InstancedMesh | null = null;
   private edgeLines: THREE.LineSegments | null = null;
@@ -48,7 +51,7 @@ export class Brain3DSceneController {
   private pointIndex = new Map<string, Brain3DPoint>();
   private edges: Brain3DEdgeInput[] = [];
   private sparkSlots: SparkSlot[] = [];
-  private growth: BrainGrowthMetrics | null = null;
+  private growth: BrainGrowthMetrics = computeBrainGrowth(0, 0);
   private selectedId: string | null = null;
   private showSuperseded = true;
   private firingTrace: FiringTrace | null = null;
@@ -110,7 +113,8 @@ export class Brain3DSceneController {
     canvas.style.display = "block";
     this.container.appendChild(canvas);
 
-    this.scene.add(new THREE.AmbientLight(this.isDark ? 0xb4d0ff : 0xffffff, this.isDark ? 0.95 : 1.15));
+    this.ambientLight = new THREE.AmbientLight(this.isDark ? 0xb4d0ff : 0xffffff, this.isDark ? 0.95 : 1.15);
+    this.scene.add(this.ambientLight);
     const keyLight = new THREE.PointLight(0x38bdf8, 2.2, 32);
     keyLight.position.set(6, 5, 7);
     this.scene.add(keyLight);
@@ -128,7 +132,9 @@ export class Brain3DSceneController {
       try {
         const composer = new EffectComposer(this.renderer);
         composer.addPass(new RenderPass(this.scene, this.camera));
-        composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), this.isDark ? 0.58 : 0.24, 0.42, 0.35));
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), this.isDark ? 0.58 : 0.24, 0.42, 0.35);
+        composer.addPass(bloomPass);
+        this.bloomPass = bloomPass;
         this.composer = composer;
       } catch {
         this.composer = null;
@@ -148,6 +154,7 @@ export class Brain3DSceneController {
     canvas.addEventListener("pointerdown", this.handlePointerDown);
     window.addEventListener("pointermove", this.handlePointerMove);
     window.addEventListener("pointerup", this.handlePointerUp);
+    window.addEventListener("pointercancel", this.handlePointerCancel);
     canvas.addEventListener("wheel", this.handleWheel, { passive: false });
   }
 
@@ -187,6 +194,10 @@ export class Brain3DSceneController {
     }
   };
 
+  private handlePointerCancel = (): void => {
+    this.dragging = false;
+  };
+
   private handleWheel = (event: WheelEvent): void => {
     event.preventDefault();
     this.targetDistance = Math.max(3.2, Math.min(18, this.targetDistance + event.deltaY * 0.005));
@@ -210,6 +221,12 @@ export class Brain3DSceneController {
     this.edgeMaterial.uniforms.uGlowStrength!.value = isDark ? 1.35 : 0.95;
     this.edgeMaterial.blending = isDark ? THREE.AdditiveBlending : THREE.NormalBlending;
     this.edgeMaterial.needsUpdate = true;
+    this.renderer.toneMappingExposure = isDark ? 1.18 : 1.0;
+    this.ambientLight.color.setHex(isDark ? 0xb4d0ff : 0xffffff);
+    this.ambientLight.intensity = isDark ? 0.95 : 1.15;
+    this.sparkMaterial.uniforms.uSize!.value = isDark ? 18.0 : 14.0;
+    if (this.bloomPass) this.bloomPass.strength = isDark ? 0.58 : 0.24;
+    this.rebuildNodes();
     this.rebuildDust();
   }
 
@@ -240,7 +257,7 @@ export class Brain3DSceneController {
       }
     } else {
       this.desiredLookTarget.set(0, 0, 0);
-      this.targetDistance = this.ambientOnly ? 7.2 : 8.4;
+      this.targetDistance = this.ambientOnly ? 9.6 : 8.4;
     }
     this.rebuildNodes();
     this.rebuildEdges();
@@ -258,14 +275,19 @@ export class Brain3DSceneController {
     this.desiredLookTarget.set(0, 0, 0);
     this.targetYaw = 0.35;
     this.targetPitch = 0.22;
-    this.targetDistance = this.ambientOnly ? 7.2 : 8.4;
+    this.targetDistance = this.ambientOnly ? 9.6 : 8.4;
+  }
+
+  private releaseNodeMesh(mesh: THREE.InstancedMesh): void {
+    mesh.geometry.dispose();
+    (mesh.material as THREE.Material).dispose();
+    mesh.dispose();
   }
 
   private rebuildNodes(): void {
     if (this.nodeMesh) {
       this.brainGroup.remove(this.nodeMesh);
-      this.nodeMesh.geometry.dispose();
-      (this.nodeMesh.material as THREE.Material).dispose();
+      this.releaseNodeMesh(this.nodeMesh);
       this.nodeMesh = null;
     }
     const count = this.points.length;
@@ -276,7 +298,7 @@ export class Brain3DSceneController {
       roughness: 0.25,
       metalness: 0.15,
       emissive: new THREE.Color(this.isDark ? 0x0ea5e9 : 0x2563eb),
-      emissiveIntensity: (this.growth?.luminosity ?? 0.8) * (this.isDark ? 0.55 : 0.2),
+      emissiveIntensity: this.growth.luminosity * (this.isDark ? 0.55 : 0.2),
     });
     const mesh = new THREE.InstancedMesh(geometry, material, count);
     const highlight = computeOneHopHighlight(this.selectedId, this.edges);
@@ -313,7 +335,7 @@ export class Brain3DSceneController {
     }
 
     mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.instanceColor!.needsUpdate = true;
     this.brainGroup.add(mesh);
     this.nodeMesh = mesh;
   }
@@ -342,9 +364,8 @@ export class Brain3DSceneController {
     let offset = 0;
     for (let i = 0; i < this.edges.length; i += 1) {
       const edge = this.edges[i]!;
-      const src = this.pointIndex.get(edge.source);
-      const dst = this.pointIndex.get(edge.target);
-      if (!src || !dst) continue;
+      const src = this.pointIndex.get(edge.source)!;
+      const dst = this.pointIndex.get(edge.target)!;
 
       const isFiring = firingEdgeKeys.has(`${edge.source}->${edge.target}`)
         || (firingNodes.has(edge.source) && firingNodes.has(edge.target));
@@ -382,10 +403,10 @@ export class Brain3DSceneController {
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions.subarray(0, offset * 3), 3));
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors.subarray(0, offset * 3), 3));
-    geometry.setAttribute("aPulse", new THREE.BufferAttribute(pulses.subarray(0, offset), 1));
-    geometry.setAttribute("aAlpha", new THREE.BufferAttribute(alphas.subarray(0, offset), 1));
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute("aPulse", new THREE.BufferAttribute(pulses, 1));
+    geometry.setAttribute("aAlpha", new THREE.BufferAttribute(alphas, 1));
 
     const lines = new THREE.LineSegments(geometry, this.edgeMaterial);
     this.brainGroup.add(lines);
@@ -455,7 +476,7 @@ export class Brain3DSceneController {
       (this.dustPoints.material as THREE.Material).dispose();
       this.dustPoints = null;
     }
-    const count = this.growth?.dustCount ?? 90;
+    const count = this.growth.dustCount;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i += 1) {
       const angle = i * 2.39996;
@@ -494,7 +515,7 @@ export class Brain3DSceneController {
       this.camera.lookAt(this.lookTarget);
 
       if (!this.reducedMotion) {
-        const baseScale = this.growth?.scale ?? 1;
+        const baseScale = this.growth.scale;
         const breathe = 1 + Math.sin(elapsed * (1.2 + this.activityIntensity * 0.6)) * 0.018;
         this.brainGroup.scale.setScalar(baseScale * breathe);
         if (this.dustPoints) {
@@ -519,7 +540,7 @@ export class Brain3DSceneController {
         posAttr.needsUpdate = true;
       }
 
-      if (this.composer) {
+      if (this.composer && this.isDark) {
         this.composer.render();
       } else {
         this.renderer.render(this.scene, this.camera);
@@ -530,17 +551,17 @@ export class Brain3DSceneController {
 
   public dispose(): void {
     this.destroyed = true;
-    if (this.rafId) window.cancelAnimationFrame(this.rafId);
+    window.cancelAnimationFrame(this.rafId);
     this.resizeObserver?.disconnect();
     const canvas = this.renderer.domElement;
     canvas.removeEventListener("pointerdown", this.handlePointerDown);
     window.removeEventListener("pointermove", this.handlePointerMove);
     window.removeEventListener("pointerup", this.handlePointerUp);
+    window.removeEventListener("pointercancel", this.handlePointerCancel);
     canvas.removeEventListener("wheel", this.handleWheel);
-    if (this.nodeMesh) {
-      this.nodeMesh.geometry.dispose();
-      (this.nodeMesh.material as THREE.Material).dispose();
-    }
+    if (this.nodeMesh) this.releaseNodeMesh(this.nodeMesh);
+    this.composer?.passes.forEach((pass) => pass.dispose());
+    this.composer?.dispose();
     if (this.edgeLines) this.edgeLines.geometry.dispose();
     if (this.sparkPoints) this.sparkPoints.geometry.dispose();
     if (this.dustPoints) {
@@ -550,6 +571,7 @@ export class Brain3DSceneController {
     this.edgeMaterial.dispose();
     this.sparkMaterial.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     canvas.remove();
   }
 }

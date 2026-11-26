@@ -480,3 +480,13 @@ describe("resolveTokenColor", () => {
     document.documentElement.style.removeProperty("--knowledge");
   });
 });
+
+describe("parseGraph lifecycle status", () => {
+  it("treats a node that was replaced as superseded when no status says otherwise", () => {
+    const parsed = parseGraph(
+      { nodes: [{ id: "old", metadata: { superseded_by: "new" } }, { id: "new" }], edges: [] },
+      "en",
+    );
+    expect(parsed.nodes.map((node) => node.status)).toEqual(["superseded", "active"]);
+  });
+});

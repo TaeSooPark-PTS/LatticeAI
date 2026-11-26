@@ -437,3 +437,20 @@ describe("revealBriefingPanel", () => {
     expect(() => revealBriefingPanel(null)).not.toThrow();
   });
 });
+
+describe("CommandPalette view and sort round trips", () => {
+  it("returns to relevance sorting and switches a 2d graph back to 3d", async () => {
+    mockBriefing({ sections: {}, quick_actions: [] });
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ graphViewMode: "2d" });
+
+    renderWithClient(<CommandPalette language="en" initialOpen />);
+    const toggleSort = screen.getByTestId("command-sort-toggle");
+    await userEvent.click(toggleSort);
+    await userEvent.click(toggleSort);
+    expect(toggleSort.getAttribute("aria-pressed")).toBe("false");
+
+    await userEvent.click(await screen.findByText("Switch Knowledge Graph 3D / 2D"));
+    expect(useAppStore.getState().graphViewMode).toBe("3d");
+  });
+});

@@ -185,3 +185,39 @@ describe("when localStorage is unavailable", () => {
     }
   });
 });
+
+describe("graph view preferences", () => {
+  it("defaults to 3d, restores a stored choice and ignores an unknown one", async () => {
+    expect((await freshStore()).getState().graphViewMode).toBe("3d");
+    localStorage.setItem("lattice.graphViewMode", "2d");
+    expect((await freshStore()).getState().graphViewMode).toBe("2d");
+    localStorage.setItem("lattice.graphViewMode", "4d");
+    expect((await freshStore()).getState().graphViewMode).toBe("3d");
+  });
+
+  it("persists the view mode but keeps superseded and firing state in memory", async () => {
+    const store = await freshStore();
+    store.getState().setGraphViewMode("2d");
+    expect(localStorage.getItem("lattice.graphViewMode")).toBe("2d");
+    const trace = { nodeIds: ["a"], edges: [], timestamp: 1 };
+    store.getState().setShowSuperseded(false);
+    store.getState().setActiveFiringTrace(trace);
+    expect(store.getState()).toMatchObject({ graphViewMode: "2d", showSuperseded: false, activeFiringTrace: trace });
+    expect(localStorage.length).toBe(1);
+  });
+
+  it("survives storage that refuses to read or write the view mode", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage disabled");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage disabled");
+    });
+    const store = await freshStore();
+    expect(store.getState().graphViewMode).toBe("3d");
+    store.getState().setGraphViewMode("2d");
+    expect(store.getState().graphViewMode).toBe("2d");
+    expect(warn).toHaveBeenCalledWith("appStore localStorage.setItem(lattice.graphViewMode) failed", expect.any(Error));
+  });
+});

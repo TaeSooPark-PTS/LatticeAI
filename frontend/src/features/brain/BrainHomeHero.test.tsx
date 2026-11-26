@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import { makeGraph, makeReadiness } from "@/test/brainFixtures";
 import type { MemoryFragment } from "./types";
 import { BrainHomeHero, BrainStatsBadge } from "./BrainHomeHero";
@@ -124,6 +125,22 @@ describe("BrainHomeHero", () => {
     const { props } = renderHero();
     fireEvent.click(screen.getByTestId("living-brain"));
     expect(props.onExploreBrain).toHaveBeenCalled();
+  });
+});
+
+describe("BrainHomeHero 3d backdrop", () => {
+  afterEach(() => {
+    useAppStore.setState({ graphViewMode: "3d" });
+  });
+
+  it("loads the ambient brain behind the orb only in 3d mode", async () => {
+    useAppStore.setState({ graphViewMode: "3d" });
+    renderHero();
+    const backdrop = await screen.findByTestId("brain-ambient-3d-fallback");
+    expect(backdrop.closest(".brain-hero-3d-backdrop")?.getAttribute("aria-hidden")).toBe("true");
+
+    act(() => useAppStore.setState({ graphViewMode: "2d" }));
+    expect(screen.queryByTestId("brain-ambient-3d-fallback")).toBeNull();
   });
 });
 

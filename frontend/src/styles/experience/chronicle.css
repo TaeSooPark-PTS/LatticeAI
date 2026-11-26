@@ -65,8 +65,9 @@
 
 .chronicle-growth-chart {
   display: block;
-  width: 100%;
+  width: calc(100% - 1.5rem);
   height: 100%;
+  margin-inline: auto;
 }
 
 .chronicle-growth-area {
@@ -84,7 +85,7 @@
 
 .chronicle-growth-track {
   position: absolute;
-  inset: 0;
+  inset: 0 0.75rem;
   cursor: ew-resize;
   touch-action: none;
 }
