@@ -63,7 +63,7 @@ pub(super) fn build_subgraph_bundle(
         .collect();
 
     let mut selected_ids: HashSet<String> = HashSet::new();
-    let mut excluded_local_only = 0usize;
+    let mut blocked_ids: HashSet<&str> = HashSet::new();
 
     for node in all_nodes {
         let Some(nid) = node.get("id").and_then(Value::as_str) else {
@@ -84,18 +84,19 @@ pub(super) fn build_subgraph_bundle(
             continue;
         }
         if is_node_share_blocked(node) {
-            excluded_local_only += 1;
+            blocked_ids.insert(nid);
             continue;
         }
         selected_ids.insert(nid.to_string());
     }
 
+    let node_lookup: HashMap<&str, &Value> = all_nodes
+        .iter()
+        .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
+        .collect();
+
     if include_neighbors && !selected_ids.is_empty() {
         let seeds = selected_ids.clone();
-        let node_lookup: HashMap<&str, &Value> = all_nodes
-            .iter()
-            .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
-            .collect();
         for edge in all_edges {
             let from = edge.get("from_node").and_then(Value::as_str).unwrap_or("");
             let to = edge.get("to_node").and_then(Value::as_str).unwrap_or("");
@@ -112,7 +113,7 @@ pub(super) fn build_subgraph_bundle(
                         continue;
                     }
                     if is_node_share_blocked(node) {
-                        excluded_local_only += 1;
+                        blocked_ids.insert(nb);
                     } else {
                         selected_ids.insert(nb.to_string());
                     }
@@ -120,6 +121,36 @@ pub(super) fn build_subgraph_bundle(
             }
         }
     }
+
+    let mut withheld_chunks: HashSet<&str> = HashSet::new();
+    let mut withheld_parents: HashSet<String> = HashSet::new();
+    let mut chunk_nodes: Vec<&str> = Vec::new();
+    for chunk in all_chunks {
+        let source = chunk.get("source_node").and_then(Value::as_str);
+        let Some(cid) = chunk.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+        if !source.is_some_and(|id| selected_ids.contains(id)) {
+            continue;
+        }
+        let Some(node) = node_lookup.get(cid) else {
+            continue;
+        };
+        let blocked = is_node_share_blocked(node);
+        if blocked {
+            blocked_ids.insert(cid);
+        }
+        if blocked || belongs_to_other_workspace(node, workspace_id) {
+            withheld_chunks.insert(cid);
+            if let Some(parent) = metadata_of(chunk).get("parent_id").and_then(Value::as_str) {
+                withheld_parents.insert(parent.to_string());
+            }
+        } else {
+            chunk_nodes.push(cid);
+        }
+    }
+    selected_ids.extend(chunk_nodes.into_iter().map(str::to_string));
+    let excluded_local_only = blocked_ids.len();
 
     let nodes: Vec<Value> = all_nodes
         .iter()
@@ -145,6 +176,10 @@ pub(super) fn build_subgraph_bundle(
             c.get("source_node")
                 .and_then(Value::as_str)
                 .is_some_and(|id| selected_ids.contains(id))
+                && !c
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| withheld_chunks.contains(id))
         })
         .cloned()
         .collect();
@@ -154,6 +189,10 @@ pub(super) fn build_subgraph_bundle(
             p.get("source_node")
                 .and_then(Value::as_str)
                 .is_some_and(|id| selected_ids.contains(id))
+                && !p
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| withheld_parents.contains(id))
         })
         .cloned()
         .collect();
@@ -311,11 +350,7 @@ fn is_node_share_blocked(node: &Value) -> bool {
     {
         return true;
     }
-    let meta_str = node
-        .get("metadata_json")
-        .and_then(Value::as_str)
-        .unwrap_or("{}");
-    let meta: Value = serde_json::from_str(meta_str).unwrap_or(json!({}));
+    let meta = metadata_of(node);
     for flag in HARD_BLOCK_METADATA_FLAGS {
         if meta.get(*flag).and_then(Value::as_bool) == Some(true) {
             return true;
@@ -332,15 +367,31 @@ fn matches_workspace_boundary(
     let Some(wanted) = workspace_id else {
         return true;
     };
-    let meta_str = node
+    match explicit_workspace(&metadata_of(node)) {
+        Some(ws) => ws == wanted,
+        None => include_legacy_global || wanted == "personal",
+    }
+}
+
+fn belongs_to_other_workspace(node: &Value, workspace_id: Option<&str>) -> bool {
+    let meta = metadata_of(node);
+    workspace_id
+        .zip(explicit_workspace(&meta))
+        .is_some_and(|(wanted, ws)| ws != wanted)
+}
+
+fn explicit_workspace(meta: &Value) -> Option<&str> {
+    meta.get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|ws| !ws.is_empty())
+}
+
+fn metadata_of(row: &Value) -> Value {
+    let raw = row
         .get("metadata_json")
         .and_then(Value::as_str)
         .unwrap_or("{}");
-    let meta: Value = serde_json::from_str(meta_str).unwrap_or(json!({}));
-    match meta.get("workspace_id").and_then(Value::as_str) {
-        Some(ws) if !ws.is_empty() => ws == wanted,
-        _ => include_legacy_global || wanted == "personal",
-    }
+    serde_json::from_str(raw).unwrap_or(json!({}))
 }
 
 pub(in crate::knowledge::portability) fn emit_portability_audit(

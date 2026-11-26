@@ -1,3 +1,4 @@
+use rusqlite::{OptionalExtension, Transaction};
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
@@ -227,6 +228,7 @@ impl GraphWriter {
             super::chunk_parents::import_chunk_parents(txn, &parents)?;
             for chunk in &chunks {
                 let Some(chunk) = chunk.as_object() else { continue };
+                self.restore_missing_chunk_node(txn, chunk)?;
                 self.upsert_chunk(
                     txn,
                     &text_of(chunk, "id"),
@@ -339,6 +341,63 @@ impl GraphWriter {
             include_chunks: true,
         })?);
         Ok(outcome)
+    }
+}
+
+impl GraphWriter {
+    fn restore_missing_chunk_node(
+        &self,
+        txn: &Transaction<'_>,
+        chunk: &Map<String, Value>,
+    ) -> Result<(), CoreError> {
+        let chunk_id = text_of(chunk, "id");
+        if self.node_exists(txn, &chunk_id)? {
+            return Ok(());
+        }
+        let source_node = text_of(chunk, "source_node");
+        let document: Option<(String, String)> = txn
+            .query_row(
+                "SELECT title, metadata_json FROM nodes WHERE id = ?1",
+                rusqlite::params![source_node],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+        let Some((title, document_metadata)) = document else {
+            return Ok(());
+        };
+        let mut metadata =
+            crate::pytext::safe_loads(chunk.get("metadata_json").and_then(Value::as_str));
+        metadata.insert("source_node".into(), json!(source_node));
+        if let Some(workspace) =
+            crate::pytext::safe_loads(Some(&document_metadata)).get("workspace_id")
+        {
+            metadata.insert("workspace_id".into(), workspace.clone());
+        }
+        let position = metadata.get("index").and_then(Value::as_u64).unwrap_or(0) + 1;
+        let text = optional_text(chunk, "text").unwrap_or_default();
+        self.upsert_node(
+            txn,
+            &NodeSpec {
+                id: chunk_id.clone(),
+                node_type: "Chunk".into(),
+                title: format!("{title} chunk {position}"),
+                summary: crate::pytext::truncate_chars(&text, 500),
+                metadata,
+                ..NodeSpec::default()
+            },
+        )?;
+        self.upsert_edge(
+            txn,
+            &EdgeSpec {
+                from_node: source_node,
+                to_node: chunk_id,
+                edge_type: "포함함".into(),
+                weight: 1.0,
+                metadata: Map::new(),
+                legacy_label: None,
+            },
+        )?;
+        Ok(())
     }
 }
 

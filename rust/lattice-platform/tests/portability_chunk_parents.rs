@@ -131,7 +131,25 @@ impl Install {
             .expect("hashes")
     }
 
+    fn execute(&self, sql: &str) {
+        self.graph
+            .store()
+            .with_write_txn(|txn| Ok(txn.execute(sql, [])?))
+            .expect("execute");
+    }
+
+    fn text(&self, sql: &str) -> String {
+        self.graph
+            .store()
+            .with_read_conn(|conn| Ok(conn.query_row(sql, [], |row| row.get(0))?))
+            .expect("text")
+    }
+
     fn seed(&self, with_parents: bool) -> String {
+        self.seed_in("personal", with_parents)
+    }
+
+    fn seed_in(&self, workspace: &str, with_parents: bool) -> String {
         let child = |text: &str| {
             let mut fields = Map::new();
             fields.insert("context_prefix".into(), json!("Document: guide"));
@@ -157,7 +175,7 @@ impl Install {
                 source_type: "note".into(),
                 title: "guide".into(),
                 text: "alpha section beta section".into(),
-                workspace_id: Some("personal".into()),
+                workspace_id: Some(workspace.into()),
                 chunks: vec![child("alpha section"), child("beta section")],
                 parents,
                 ..Default::default()
@@ -362,4 +380,181 @@ async fn a_shared_subgraph_signs_stages_and_merges_parent_sections() {
         )
         .await;
     assert_eq!(reply["signature_verified"], json!(true));
+}
+
+fn node_types(bundle: &Value) -> Vec<String> {
+    let mut types: Vec<String> = bundle["nodes"]
+        .as_array()
+        .expect("nodes")
+        .iter()
+        .map(|node| node["type"].as_str().unwrap_or_default().to_string())
+        .collect();
+    types.sort();
+    types
+}
+
+async fn export(source: &Install, request: Value) -> Value {
+    let shared = source
+        .ok("/api/knowledge-graph/share/export", request)
+        .await;
+    assert_eq!(shared["signature_verified"], json!(true));
+    shared["bundle"].clone()
+}
+
+async fn accept(target: &Install, bundle: &Value) {
+    let staged = target
+        .ok(
+            "/api/knowledge-graph/share/import",
+            json!({"artifact": bundle}),
+        )
+        .await;
+    assert_eq!(staged["signature_verified"], json!(true));
+    let proposal = staged["proposal_id"].as_str().expect("proposal");
+    target
+        .ok(
+            &format!("/api/knowledge-graph/share/proposals/{proposal}/accept"),
+            json!({}),
+        )
+        .await;
+}
+
+fn assert_chunked_document(target: &Install) {
+    assert_eq!(target.count("SELECT COUNT(*) FROM chunks"), 2);
+    assert_eq!(
+        target.count(
+            "SELECT COUNT(*) FROM chunks c JOIN nodes n ON n.id = c.id WHERE n.type = 'Chunk'"
+        ),
+        2
+    );
+    assert_eq!(
+        target.count(
+            "SELECT COUNT(*) FROM edges e JOIN chunks c \
+             ON e.from_node = c.source_node AND e.to_node = c.id"
+        ),
+        2
+    );
+    assert_eq!(
+        target.count("SELECT COUNT(*) FROM vector_embeddings WHERE item_type = 'chunk'"),
+        2
+    );
+}
+
+#[tokio::test]
+async fn a_chunked_document_is_accepted_without_neighbors() {
+    let source = Install::start().await;
+    let node_id = source.seed(true);
+    let bundle = export(&source, json!({"node_ids": [node_id]})).await;
+    assert_eq!(node_types(&bundle).len(), 3, "{:?}", node_types(&bundle));
+    assert_eq!(
+        node_types(&bundle)
+            .iter()
+            .filter(|kind| *kind == "Chunk")
+            .count(),
+        2
+    );
+
+    let target = Install::start().await;
+    accept(&target, &bundle).await;
+    assert_chunked_document(&target);
+    assert_eq!(target.count("SELECT COUNT(*) FROM nodes"), 3);
+    assert_eq!(target.parents(), source.parents());
+    assert_eq!(target.linked_chunks(), 2);
+    assert_eq!(target.chunk_hashes(), source.chunk_hashes());
+}
+
+#[tokio::test]
+async fn an_already_issued_bundle_without_chunk_nodes_is_accepted() {
+    for with_parents in [true, false] {
+        let source = Install::start().await;
+        let node_id = source.seed(with_parents);
+        source.execute("DELETE FROM nodes WHERE type = 'Chunk'");
+        let bundle = export(&source, json!({"node_ids": [node_id]})).await;
+        assert_eq!(node_types(&bundle).len(), 1);
+        assert_eq!(bundle["chunks"].as_array().map(Vec::len), Some(2));
+
+        let target = Install::start().await;
+        accept(&target, &bundle).await;
+        assert_chunked_document(&target);
+        assert_eq!(target.count("SELECT COUNT(*) FROM nodes"), 3);
+        assert_eq!(
+            target.count(
+                "SELECT COUNT(*) FROM nodes WHERE type = 'Chunk' \
+                 AND json_extract(metadata_json, '$.workspace_id') = 'personal'"
+            ),
+            2
+        );
+        assert_eq!(target.parents(), source.parents());
+    }
+}
+
+#[tokio::test]
+async fn a_document_reached_as_a_neighbor_brings_its_chunk_nodes() {
+    let source = Install::start().await;
+    let node_id = source.seed(false);
+    let neighbor: String = source.text(&format!(
+        "SELECT from_node FROM edges WHERE to_node = '{node_id}' \
+         UNION SELECT to_node FROM edges WHERE from_node = '{node_id}' \
+         AND to_node NOT IN (SELECT id FROM chunks) LIMIT 1"
+    ));
+    let bundle = export(
+        &source,
+        json!({"node_ids": [neighbor], "include_neighbors": true}),
+    )
+    .await;
+
+    let target = Install::start().await;
+    accept(&target, &bundle).await;
+    assert_chunked_document(&target);
+}
+
+#[tokio::test]
+async fn chunk_nodes_follow_the_workspace_of_their_document() {
+    let source = Install::start().await;
+    let node_id = source.seed_in("team", false);
+    source.execute(
+        "UPDATE nodes SET metadata_json = json_remove(metadata_json, '$.workspace_id') \
+         WHERE type = 'Chunk'",
+    );
+    let bundle = export(
+        &source,
+        json!({"node_ids": [node_id], "workspace_id": "team"}),
+    )
+    .await;
+    assert_eq!(node_types(&bundle).len(), 3);
+
+    source.execute(
+        "UPDATE nodes SET metadata_json = json_set(metadata_json, '$.workspace_id', 'other') \
+         WHERE id = (SELECT id FROM chunks ORDER BY id LIMIT 1)",
+    );
+    let bounded = export(
+        &source,
+        json!({"node_ids": [node_id], "workspace_id": "team"}),
+    )
+    .await;
+    assert_eq!(node_types(&bounded).len(), 2);
+    assert_eq!(bounded["chunks"].as_array().map(Vec::len), Some(1));
+}
+
+#[tokio::test]
+async fn a_local_only_chunk_stays_out_of_the_bundle() {
+    let source = Install::start().await;
+    let node_id = source.seed(true);
+    source.execute(
+        "UPDATE nodes SET metadata_json = json_set(metadata_json, '$.local_only', json('true')) \
+         WHERE id = (SELECT id FROM chunks ORDER BY id LIMIT 1)",
+    );
+    let shared = source
+        .ok(
+            "/api/knowledge-graph/share/export",
+            json!({"node_ids": [node_id]}),
+        )
+        .await;
+    assert_eq!(shared["excluded_local_only"], json!(1));
+    let bundle = &shared["bundle"];
+    assert_eq!(bundle["chunks"].as_array().map(Vec::len), Some(1));
+    assert!(bundle.get("chunk_parents").is_none());
+
+    let target = Install::start().await;
+    accept(&target, bundle).await;
+    assert_eq!(target.count("SELECT COUNT(*) FROM chunks"), 1);
 }
