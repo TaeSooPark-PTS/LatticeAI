@@ -91,6 +91,28 @@ pub struct ContextRequest {
     pub knowledge_payload: Option<Value>,
     pub density_aware: bool,
     pub temporal: Option<crate::temporal::TemporalRanking>,
+    pub sub_queries: Vec<String>,
+    pub annotate_temporal: bool,
+}
+
+pub const SUB_QUERY_WEIGHT: f64 = 0.9;
+
+pub const EVIDENCE_RULES: &str = "Evidence rules: each item below carries [updated | status]. Prefer the newest item whose status is active. Treat superseded items as history, never as current fact. When items conflict, answer from the newest active one and say what changed and when.";
+
+pub fn evidence_label(item: &Value) -> String {
+    let status = item
+        .get("temporal")
+        .and_then(|temporal| temporal.get("status"))
+        .or_else(|| item.get("status"))
+        .and_then(Value::as_str)
+        .filter(|status| !status.is_empty())
+        .unwrap_or("active");
+    let updated = item
+        .get("updated_at")
+        .and_then(Value::as_str)
+        .filter(|stamp| !stamp.is_empty())
+        .unwrap_or("unknown");
+    format!("[updated: {updated} | status: {status}]")
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -191,7 +213,15 @@ fn knowledge_section(
     payload: &Value,
     limit: i64,
     parents: &BTreeMap<String, ChunkParentRow>,
+    annotate: bool,
 ) -> Section {
+    let label = |item: &Value| {
+        if annotate {
+            format!("{} ", evidence_label(item))
+        } else {
+            String::new()
+        }
+    };
     let empty: Vec<Value> = Vec::new();
     let matches = payload
         .get("matches")
@@ -220,7 +250,7 @@ fn knowledge_section(
                 .unwrap_or_else(|| "item".to_string());
             let body =
                 truncate_to_tokens(row.text.trim(), crate::context_parents::MAX_PARENT_TOKENS);
-            lines.push(format!("- {title}: {body}"));
+            lines.push(format!("- {}{title}: {body}", label(item)));
             let mut record = Map::new();
             record.insert("id".into(), item.get("id").cloned().unwrap_or(Value::Null));
             record.insert(
@@ -252,9 +282,9 @@ fn knowledge_section(
             .or_else(|| item.get("snippet").filter(|value| truthy(value)));
         let body = truncate_chars(&body_source.map(string_of_ref).unwrap_or_default(), 400);
         lines.push(if body.is_empty() {
-            format!("- {title}")
+            format!("- {}{title}", label(item))
         } else {
-            format!("- {title}: {body}")
+            format!("- {}{title}: {body}", label(item))
         });
         let mut record = Map::new();
         record.insert("id".into(), item.get("id").cloned().unwrap_or(Value::Null));
@@ -267,6 +297,9 @@ fn knowledge_section(
             item.get("sources").cloned().unwrap_or(Value::Null),
         );
         provenance.push(Value::Object(record));
+    }
+    if annotate && !lines.is_empty() {
+        lines.insert(0, EVIDENCE_RULES.to_string());
     }
     Section {
         name: "Knowledge",
@@ -325,6 +358,99 @@ pub fn knowledge_fetch_limit(request: &ContextRequest) -> i64 {
         .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64)
 }
 
+fn match_key(item: &Value) -> String {
+    string_of(
+        item.get("id")
+            .filter(|value| truthy(value))
+            .or_else(|| item.get("node_id")),
+    )
+}
+
+fn score_of(item: &Value) -> f64 {
+    item.get("score").and_then(Value::as_f64).unwrap_or(0.0)
+}
+
+pub fn merge_query_matches(primary: &mut Value, others: Vec<Value>, limit: usize) {
+    let Some(matches) = primary.get_mut("matches").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let mut positions: BTreeMap<String, usize> = matches
+        .iter()
+        .enumerate()
+        .map(|(position, item)| (match_key(item), position))
+        .collect();
+    for report in others {
+        let Some(found) = report.get("matches").and_then(Value::as_array) else {
+            continue;
+        };
+        for item in found {
+            let mut item = item.clone();
+            let weighted = score_of(&item) * SUB_QUERY_WEIGHT;
+            if let Some(object) = item.as_object_mut() {
+                object.insert("score".into(), Value::from(weighted));
+            }
+            match positions.get(&match_key(&item)) {
+                Some(position) => {
+                    if weighted > score_of(&matches[*position]) {
+                        if let Some(object) = matches[*position].as_object_mut() {
+                            object.insert("score".into(), Value::from(weighted));
+                        }
+                    }
+                }
+                None => {
+                    positions.insert(match_key(&item), matches.len());
+                    matches.push(item);
+                }
+            }
+        }
+    }
+    matches.sort_by(|a, b| {
+        score_of(b)
+            .partial_cmp(&score_of(a))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    matches.truncate(limit);
+    for (index, item) in matches.iter_mut().enumerate() {
+        if let Some(object) = item.as_object_mut() {
+            if object.contains_key("rank") {
+                object.insert("rank".into(), Value::from(index + 1));
+            }
+        }
+    }
+}
+
+fn sub_search_texts(request: &ContextRequest, primary: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for query in &request.sub_queries {
+        let text = match request.temporal.as_ref() {
+            Some(ranking) => crate::temporal::search_text_for(query, request.now_secs, ranking),
+            None => query.trim().to_string(),
+        };
+        if !text.is_empty() && text != primary && !out.contains(&text) {
+            out.push(text);
+        }
+    }
+    out
+}
+
+fn multi_query_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    request: &ContextRequest,
+    primary: &str,
+    options: &ServiceHybridOptions,
+) -> Result<Value, CoreError> {
+    let mut report = service_hybrid_search(conn, model, primary, options)?;
+    let mut others = Vec::new();
+    for query in sub_search_texts(request, primary) {
+        others.push(service_hybrid_search(conn, model, &query, options)?);
+    }
+    if !others.is_empty() {
+        merge_query_matches(&mut report, others, options.limit.clamp(1, 100) as usize);
+    }
+    Ok(report)
+}
+
 pub fn knowledge_search_ranked(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -334,7 +460,7 @@ pub fn knowledge_search_ranked(
     let Some(ranking) = request.temporal.as_ref() else {
         let options = knowledge_options(request, limit);
         return Ok((
-            service_hybrid_search(conn, model, &request.query, &options)?,
+            multi_query_search(conn, model, request, &request.query, &options)?,
             None,
         ));
     };
@@ -349,7 +475,7 @@ pub fn knowledge_search_ranked(
             let mut options = knowledge_options(request, call.fetch_limit);
             options.recency = Some(call.decay);
             options.include_historical = call.include_historical;
-            service_hybrid_search(conn, model, &call.search_query, &options)
+            multi_query_search(conn, model, request, &call.search_query, &options)
         },
     )?;
     Ok((payload, Some(plan)))
@@ -390,6 +516,7 @@ pub fn assemble_context(
             &payload,
             request.knowledge_limit,
             &parents,
+            request.annotate_temporal,
         ));
     }
     if let Some(notes) = request.notes.as_ref() {
@@ -574,17 +701,17 @@ mod tests {
             {"id": "n2", "summary": "", "snippet": "from snippet"},
             {"summary": ""},
         ]});
-        let built = knowledge_section(&payload, 5, &BTreeMap::new());
+        let built = knowledge_section(&payload, 5, &BTreeMap::new(), false);
         assert_eq!(built.content, "- Title: Body\n- n2: from snippet\n- item");
         assert_eq!(built.provenance[2]["id"], Value::Null);
         assert_eq!(built.provenance[0]["sources"], json!(["keyword"]));
         assert_eq!(
-            knowledge_section(&payload, 1, &BTreeMap::new()).content,
+            knowledge_section(&payload, 1, &BTreeMap::new(), false).content,
             "- Title: Body"
         );
         let long = json!({"matches": [{"id": "x", "summary": "가".repeat(500)}]});
         assert_eq!(
-            knowledge_section(&long, 5, &BTreeMap::new())
+            knowledge_section(&long, 5, &BTreeMap::new(), false)
                 .content
                 .chars()
                 .count(),
@@ -736,5 +863,41 @@ mod tests {
             .as_str()
             .unwrap()
             .contains("Promoted: cross-encoder pick"));
+    }
+
+    #[test]
+    fn evidence_labels_and_rules_appear_only_when_annotating() {
+        let payload = json!({"matches": [
+            {"id": "n1", "title": "New", "summary": "port 2", "updated_at": "2026-08-01T00:00:00",
+             "temporal": {"status": "active"}},
+            {"id": "n0", "title": "Old", "summary": "port 1", "status": "superseded"},
+        ]});
+        let plain = knowledge_section(&payload, 5, &BTreeMap::new(), false);
+        assert_eq!(plain.content, "- New: port 2\n- Old: port 1");
+        let labelled = knowledge_section(&payload, 5, &BTreeMap::new(), true);
+        assert_eq!(
+            labelled.content,
+            format!(
+                "{EVIDENCE_RULES}\n- [updated: 2026-08-01T00:00:00 | status: active] New: port 2\n- [updated: unknown | status: superseded] Old: port 1"
+            )
+        );
+        assert!(knowledge_section(&json!({}), 5, &BTreeMap::new(), true)
+            .content
+            .is_empty());
+    }
+
+    #[test]
+    fn sub_query_matches_merge_by_id_with_a_discount() {
+        let mut primary = json!({"matches": [{"id": "a", "score": 0.5, "rank": 1}]});
+        let other = json!({"matches": [
+            {"id": "a", "score": 0.4, "rank": 1},
+            {"id": "b", "score": 1.0, "rank": 2},
+        ]});
+        merge_query_matches(&mut primary, vec![other], 5);
+        assert_eq!(primary["matches"][0]["id"], json!("b"));
+        assert_eq!(primary["matches"][0]["score"], json!(0.9));
+        assert_eq!(primary["matches"][0]["rank"], json!(1));
+        assert_eq!(primary["matches"][1]["score"], json!(0.5));
+        assert_eq!(primary["matches"].as_array().map(Vec::len), Some(2));
     }
 }
