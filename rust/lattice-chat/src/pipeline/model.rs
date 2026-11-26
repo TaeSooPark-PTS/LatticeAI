@@ -55,9 +55,11 @@ pub(crate) async fn run_model_turn(
     )
     .await;
     let mut context_trace = None;
+    let context_budget = lattice_retrieval::context_budget::ContextBudget::from_env(req.max_tokens);
     let mut context_request = lattice_retrieval::ContextRequest {
         query: req.message.clone(),
-        budget: 2000,
+        budget: context_budget.budget_tokens as i64,
+        density_aware: true,
         knowledge: true,
         knowledge_limit: CHAT_KNOWLEDGE_LIMIT,
         user_email: effective_email.clone(),
@@ -91,7 +93,15 @@ pub(crate) async fn run_model_turn(
         if let Ok(assembled) =
             lattice_retrieval::assemble_context(&conn, &LocalEmbeddingModel::default(), &request)
         {
-            context_trace = assembled.get("trace").cloned();
+            context_trace = assembled.get("trace").cloned().map(|mut trace| {
+                if let Some(object) = trace.as_object_mut() {
+                    object.insert(
+                        "context_window_tokens".into(),
+                        json!(context_budget.window_tokens),
+                    );
+                }
+                trace
+            });
             if let Some(text) = assembled.get("text").and_then(Value::as_str) {
                 if !text.is_empty() {
                     prompt_context.push_str("\n\n");

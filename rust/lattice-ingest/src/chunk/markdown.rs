@@ -19,7 +19,7 @@ fn heading_at(cleaned: &[char], start: usize) -> Option<(usize, String)> {
     Some((level, cleaned[body..end].iter().collect()))
 }
 
-fn markdown_section_spans(cleaned: &[char]) -> Vec<(usize, usize, Option<String>)> {
+pub(super) fn markdown_section_spans(cleaned: &[char]) -> Vec<(usize, usize, Option<String>)> {
     let mut spans: Vec<(usize, usize, Option<String>)> = Vec::new();
     let mut stack: Vec<(usize, String)> = Vec::new();
     let mut prev_start = 0usize;

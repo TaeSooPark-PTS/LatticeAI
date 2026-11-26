@@ -376,7 +376,13 @@ pub fn extract_doc_field_strings(
     let mut body_parts: Vec<String> = vec![summary_str.to_string()];
 
     for key in [
-        "tags", "concepts", "headings", "keywords", "category", "aliases",
+        "tags",
+        "concepts",
+        "headings",
+        "keywords",
+        "category",
+        "aliases",
+        "context_prefix",
     ] {
         if let Some(val) = meta.get(key) {
             match val {

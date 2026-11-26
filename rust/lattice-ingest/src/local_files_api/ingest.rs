@@ -543,10 +543,16 @@ pub(super) async fn upload_document(
         &extracted_map,
         None,
     );
-    let mut chunks =
-        super::enrich::chunk_pieces_for(&text, &filename, mime.as_deref().unwrap_or(""));
+    let chunk_set = crate::chunk_pieces::chunk_set_for(
+        &text,
+        &filename,
+        mime.as_deref().unwrap_or(""),
+        &filename,
+    );
+    let parents = chunk_set.parents;
+    let mut chunks = chunk_set.children;
     chunks.extend(structure_plan.table_chunks.clone());
-    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_texts: Vec<String> = crate::chunk_pieces::embedding_inputs(&chunks);
     let chunk_embed = if chunk_texts.is_empty() {
         None
     } else {
@@ -592,6 +598,7 @@ pub(super) async fn upload_document(
         structure: structure_plan.structure.clone(),
         structure_nodes: structure_plan.structure_nodes.clone(),
         chunks,
+        parents,
         concepts: extracted.concepts,
         triples: extracted.triples,
         semantic: extracted.semantic,

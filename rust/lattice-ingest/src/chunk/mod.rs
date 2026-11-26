@@ -1,6 +1,15 @@
+pub mod ast;
+pub mod budget;
 pub mod code;
+pub mod contextual;
 pub mod markdown;
+pub mod pack;
+pub mod plan;
 pub mod prose;
+pub mod segments;
+
+pub use budget::{ChunkMode, ChunkingConfig, TokenBudget};
+pub use plan::{plan_chunks, ChunkPlan, PlannedChunk, PlannedParent, TOKEN_CHUNKER};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};

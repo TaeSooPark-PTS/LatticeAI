@@ -14,6 +14,7 @@ pub mod pytext;
 pub mod read;
 pub mod redact;
 pub mod temporal;
+pub mod tokens;
 pub mod worker;
 
 pub use db::{open_read_only, CoreError};

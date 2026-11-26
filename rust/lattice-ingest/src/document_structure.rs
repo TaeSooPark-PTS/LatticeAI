@@ -542,11 +542,13 @@ Figure 1: ![로컬 루프백 게이트웨이 토폴로지](diagrams/onedoor.png)
                 .expect("store"),
         );
         let writer = GraphWriter::open(store, dir.path().join("blobs")).expect("writer");
-        let mut chunks = crate::local_files_api::enrich::chunk_pieces_for(
+        let mut chunks = crate::chunk_pieces::chunk_set_for(
             md_with_table,
             "architecture_spec.pdf",
             "text/markdown",
-        );
+            "architecture_spec.pdf",
+        )
+        .children;
         chunks.extend(plan.table_chunks.clone());
 
         let outcome = writer

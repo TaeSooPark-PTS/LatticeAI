@@ -1,6 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
+use lattice_core::graph_write::chunk_parents::ChunkParentRow;
 use lattice_core::pytext::truncate_chars;
+use lattice_core::tokens::{estimate_tokens, truncate_to_tokens};
 use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
@@ -38,11 +40,22 @@ impl Section {
         approx_tokens(&self.content)
     }
 
-    fn as_trace(&self) -> Value {
+    fn measured(&self, density_aware: bool) -> usize {
+        if density_aware {
+            estimate_tokens(&self.content)
+        } else {
+            self.approx_tokens()
+        }
+    }
+
+    fn as_trace(&self, density_aware: bool) -> Value {
         let mut trace = Map::new();
         trace.insert("name".into(), Value::String(self.name.to_string()));
         trace.insert("source".into(), Value::String(self.source.to_string()));
-        trace.insert("approx_tokens".into(), Value::from(self.approx_tokens()));
+        trace.insert(
+            "approx_tokens".into(),
+            Value::from(self.measured(density_aware)),
+        );
         trace.insert("truncated".into(), Value::Bool(self.truncated));
         trace.insert("provenance".into(), Value::Array(self.provenance.clone()));
         Value::Object(trace)
@@ -76,6 +89,7 @@ pub struct ContextRequest {
     pub query_embedding: Option<crate::bm25::QueryVectorOverride>,
     pub semantic_degraded: Option<String>,
     pub knowledge_payload: Option<Value>,
+    pub density_aware: bool,
 }
 
 fn string_of(value: Option<&Value>) -> String {
@@ -172,15 +186,59 @@ fn artifacts_section(payload: &Value) -> Section {
     }
 }
 
-fn knowledge_section(payload: &Value, limit: i64) -> Section {
+fn knowledge_section(
+    payload: &Value,
+    limit: i64,
+    parents: &BTreeMap<String, ChunkParentRow>,
+) -> Section {
     let empty: Vec<Value> = Vec::new();
     let matches = payload
         .get("matches")
         .and_then(Value::as_array)
         .unwrap_or(&empty);
     let mut lines = Vec::new();
-    let mut provenance = Vec::new();
+    let mut provenance: Vec<Value> = Vec::new();
+    let mut emitted_parents: BTreeMap<String, usize> = BTreeMap::new();
     for item in matches.iter().take(limit.max(0) as usize) {
+        let parent = crate::context_parents::parent_id_of(item)
+            .and_then(|id| parents.get(id).map(|row| (id.to_string(), row)));
+        if let Some((parent_id, row)) = parent {
+            if let Some(slot) = emitted_parents.get(&parent_id) {
+                if let Some(Value::Object(record)) = provenance.get_mut(*slot) {
+                    if let Some(Value::Array(children)) = record.get_mut("children") {
+                        children.push(item.get("id").cloned().unwrap_or(Value::Null));
+                    }
+                }
+                continue;
+            }
+            let title = item
+                .get("title")
+                .filter(|value| truthy(value))
+                .or_else(|| item.get("id").filter(|value| truthy(value)))
+                .map(string_of_ref)
+                .unwrap_or_else(|| "item".to_string());
+            let body =
+                truncate_to_tokens(row.text.trim(), crate::context_parents::MAX_PARENT_TOKENS);
+            lines.push(format!("- {title}: {body}"));
+            let mut record = Map::new();
+            record.insert("id".into(), item.get("id").cloned().unwrap_or(Value::Null));
+            record.insert(
+                "score".into(),
+                item.get("score").cloned().unwrap_or(Value::Null),
+            );
+            record.insert(
+                "sources".into(),
+                item.get("sources").cloned().unwrap_or(Value::Null),
+            );
+            record.insert("parent_id".into(), Value::String(parent_id.clone()));
+            record.insert(
+                "children".into(),
+                Value::Array(vec![item.get("id").cloned().unwrap_or(Value::Null)]),
+            );
+            emitted_parents.insert(parent_id, provenance.len());
+            provenance.push(Value::Object(record));
+            continue;
+        }
         let title = item
             .get("title")
             .filter(|value| truthy(value))
@@ -218,7 +276,7 @@ fn knowledge_section(payload: &Value, limit: i64) -> Section {
     }
 }
 
-fn apply_budget(sections: &mut [Section], budget: i64) {
+fn apply_budget_with(sections: &mut [Section], budget: i64, density_aware: bool) {
     let budget = budget.max(1) as usize;
     let mut used = 0usize;
     for section in sections.iter_mut() {
@@ -228,11 +286,15 @@ fn apply_budget(sections: &mut [Section], budget: i64) {
             section.truncated = true;
             continue;
         }
-        if section.approx_tokens() > remaining {
-            section.content = truncate_chars(&section.content, remaining * 4);
+        if section.measured(density_aware) > remaining {
+            section.content = if density_aware {
+                truncate_to_tokens(&section.content, remaining)
+            } else {
+                truncate_chars(&section.content, remaining * 4)
+            };
             section.truncated = true;
         }
-        used += section.approx_tokens();
+        used += section.measured(density_aware);
     }
 }
 
@@ -284,7 +346,13 @@ pub fn assemble_context(
             Some(prepared) => prepared.clone(),
             None => knowledge_search(conn, model, request)?,
         };
-        sections.push(knowledge_section(&payload, request.knowledge_limit));
+        let parents =
+            crate::context_parents::parents_for_payload(conn, &payload, request.knowledge_limit);
+        sections.push(knowledge_section(
+            &payload,
+            request.knowledge_limit,
+            &parents,
+        ));
     }
     if let Some(notes) = request.notes.as_ref() {
         sections.push(Section {
@@ -320,15 +388,27 @@ pub fn assemble_context(
     }
 
     sections.retain(|section| !section.content.trim().is_empty());
-    apply_budget(&mut sections, request.budget);
+    let density = request.density_aware;
+    apply_budget_with(&mut sections, request.budget, density);
 
-    let used: usize = sections.iter().map(Section::approx_tokens).sum();
+    let used: usize = sections
+        .iter()
+        .map(|section| section.measured(density))
+        .sum();
     let mut trace = Map::new();
     trace.insert("budget_approx_tokens".into(), Value::from(request.budget));
     trace.insert("used_approx_tokens".into(), Value::from(used));
+    if density {
+        trace.insert("token_estimator".into(), Value::from("density"));
+    }
     trace.insert(
         "sections".into(),
-        Value::Array(sections.iter().map(Section::as_trace).collect()),
+        Value::Array(
+            sections
+                .iter()
+                .map(|section| section.as_trace(density))
+                .collect(),
+        ),
     );
 
     let mut out = Map::new();
@@ -369,7 +449,7 @@ mod tests {
             section("second", &"b".repeat(40)),
             section("third", &"c".repeat(40)),
         ];
-        apply_budget(&mut sections, 12);
+        apply_budget_with(&mut sections, 12, false);
         assert_eq!(sections[0].content.len(), 40);
         assert!(!sections[0].truncated);
         assert_eq!(
@@ -387,11 +467,11 @@ mod tests {
     #[test]
     fn a_budget_below_one_still_admits_one_token() {
         let mut sections = vec![section("first", "abcdefgh")];
-        apply_budget(&mut sections, 0);
+        apply_budget_with(&mut sections, 0, false);
         assert_eq!(sections[0].content, "abcd");
         assert!(sections[0].truncated);
         let mut korean = vec![section("first", "회의 결정 사항입니다")];
-        apply_budget(&mut korean, 1);
+        apply_budget_with(&mut korean, 1, false);
         assert_eq!(
             korean[0].content.chars().count(),
             4,
@@ -456,14 +536,20 @@ mod tests {
             {"id": "n2", "summary": "", "snippet": "from snippet"},
             {"summary": ""},
         ]});
-        let built = knowledge_section(&payload, 5);
+        let built = knowledge_section(&payload, 5, &BTreeMap::new());
         assert_eq!(built.content, "- Title: Body\n- n2: from snippet\n- item");
         assert_eq!(built.provenance[2]["id"], Value::Null);
         assert_eq!(built.provenance[0]["sources"], json!(["keyword"]));
-        assert_eq!(knowledge_section(&payload, 1).content, "- Title: Body");
+        assert_eq!(
+            knowledge_section(&payload, 1, &BTreeMap::new()).content,
+            "- Title: Body"
+        );
         let long = json!({"matches": [{"id": "x", "summary": "가".repeat(500)}]});
         assert_eq!(
-            knowledge_section(&long, 5).content.chars().count(),
+            knowledge_section(&long, 5, &BTreeMap::new())
+                .content
+                .chars()
+                .count(),
             400 + "- x: ".len()
         );
     }

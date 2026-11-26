@@ -160,6 +160,7 @@ impl GraphWriter {
                 request.user_email.as_deref(),
                 request.workspace_id.as_deref(),
                 false,
+                &[],
             )?;
             let mut source_meta = Map::new();
             source_meta.insert("source".into(), json!(request.source));

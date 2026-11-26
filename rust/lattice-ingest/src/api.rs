@@ -131,6 +131,7 @@ fn build_plan(
     let mut total_chunks: u64 = 0;
     let mut total_chars: u64 = 0;
     let mut total_bytes: u64 = 0;
+    let chunking = crate::chunk::ChunkingConfig::from_env();
     for file in files.iter().take(limit) {
         total_bytes += file.size;
         let strategy = chunk_strategy_for(&file.relative_path, "");
@@ -159,12 +160,19 @@ fn build_plan(
             let text = std::fs::read(&file.path)
                 .map(|bytes| decode_utf8_ignore(&bytes))
                 .unwrap_or_default();
-            let chunks = typed_chunks(&text, strategy, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP);
+            let planned = crate::chunk::plan_chunks(
+                &text,
+                &file.relative_path,
+                "",
+                &file.relative_path,
+                &chunking,
+            );
             let chars = py_strip(&text).chars().count() as u64;
             total_chars += chars;
-            total_chunks += chunks.len() as u64;
+            total_chunks += planned.children.len() as u64;
             entry.insert("chars".into(), Value::from(chars));
-            entry.insert("chunks".into(), Value::from(chunks.len()));
+            entry.insert("chunks".into(), Value::from(planned.children.len()));
+            entry.insert("parents".into(), Value::from(planned.parents.len()));
         }
         reported.push(Value::Object(entry));
     }
@@ -181,6 +189,7 @@ fn build_plan(
             "chars": total_chars,
             "chunks": total_chunks,
             "by_strategy": by_strategy,
+            "chunk_mode": chunking.mode.as_str(),
         },
         "files": reported,
     }))

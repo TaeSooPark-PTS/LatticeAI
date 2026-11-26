@@ -192,10 +192,13 @@ impl NoteIngestor {
         }
         let enrichment = note.enrichment_text();
         let mime = enrich::mime_hint(&note.title).unwrap_or_default();
-        let chunks = enrich::chunk_pieces_for(&note.content, &note.title, &mime);
-        let mut embed_texts = Vec::with_capacity(chunks.len() + 1);
+        let chunk_set =
+            crate::chunk_pieces::chunk_set_for(&note.content, &note.title, &mime, &note.title);
+        let parents = chunk_set.parents.clone();
+        let mut embed_texts = Vec::with_capacity(chunk_set.children.len() + 1);
         embed_texts.push(enrichment.clone());
-        embed_texts.extend(chunks.iter().map(|piece| piece.text.clone()));
+        embed_texts.extend(chunk_set.embedding_inputs());
+        let chunks = chunk_set.children;
         let ((extracted, extract_ok), embed_outcome) = tokio::join!(
             enrich::extract_via_seam_status(self.seam.as_ref(), &enrichment, "document"),
             enrich::embed_texts_with_contract(self.seam.as_ref(), &embed_texts),
@@ -209,6 +212,7 @@ impl NoteIngestor {
         request.semantic = extracted.semantic;
         request.embedding = embedding;
         request.chunks = chunks;
+        request.parents = parents;
 
         let graph = self.graph.clone();
         let title = note.title.clone();

@@ -164,6 +164,7 @@ impl GraphWriter {
         owner: Option<&str>,
         workspace_id: Option<&str>,
         scope_node_metadata: bool,
+        parent_ids: &[String],
     ) -> Result<Vec<String>, CoreError> {
         let mut ids = Vec::with_capacity(chunks.len());
         for (index, piece) in chunks.iter().enumerate() {
@@ -179,6 +180,13 @@ impl GraphWriter {
             }
             for (key, value) in &piece.fields {
                 node_metadata.insert(key.clone(), value.clone());
+            }
+            let parent_id = super::chunk_parents::resolve_parent_id(&piece.fields, parent_ids);
+            if let Some(parent_id) = parent_id.as_ref() {
+                node_metadata.insert(
+                    super::chunk_parents::PARENT_ID_FIELD.into(),
+                    json!(parent_id),
+                );
             }
             self.upsert_node(
                 txn,
@@ -200,12 +208,22 @@ impl GraphWriter {
             for (key, value) in &piece.fields {
                 chunk_metadata.insert(key.clone(), value.clone());
             }
+            if let Some(parent_id) = parent_id {
+                chunk_metadata.insert(
+                    super::chunk_parents::PARENT_ID_FIELD.into(),
+                    json!(parent_id),
+                );
+            }
+            let index_text = super::chunk_parents::chunk_index_text(&piece.text, &piece.fields);
             self.upsert_chunk_with_vector(
                 txn,
-                &chunk_id,
-                source_node,
-                &piece.text,
-                &chunk_metadata,
+                &super::primitives::ChunkRowWrite {
+                    chunk_id: &chunk_id,
+                    source_node,
+                    text: &piece.text,
+                    index_text: &index_text,
+                    metadata: &chunk_metadata,
+                },
                 piece.embedding.as_ref(),
             )?;
             self.upsert_edge(

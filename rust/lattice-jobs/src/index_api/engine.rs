@@ -398,14 +398,23 @@ fn embed_items_on(
             }
         }
         if let Ok(mut statement) = conn.prepare(
-            "SELECT c.id, c.text FROM chunks c WHERE c.source_node=? \
+            "SELECT c.id, c.text, c.metadata_json FROM chunks c WHERE c.source_node=? \
              ORDER BY c.created_at ASC, c.id ASC",
         ) {
             if let Ok(rows) = statement.query_map([node_id], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
             }) {
                 for row in rows.flatten() {
-                    let text = lattice_core::pytext::clean_text(row.1.as_deref().unwrap_or(""));
+                    let text = lattice_core::pytext::clean_text(
+                        &lattice_core::graph_write::chunk_parents::chunk_index_text_json(
+                            row.1.as_deref().unwrap_or(""),
+                            row.2.as_deref(),
+                        ),
+                    );
                     if !text.is_empty() {
                         items.push((node_id.clone(), row.0, text));
                     }

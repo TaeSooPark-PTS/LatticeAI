@@ -1,3 +1,4 @@
+pub mod chunk_parents;
 pub mod clock;
 pub mod curator;
 pub mod dump;
@@ -13,6 +14,7 @@ mod ingest;
 mod primitives;
 mod projection_v2;
 mod provenance;
+mod revision;
 mod vectors;
 mod vectors_contract;
 
@@ -27,6 +29,7 @@ pub use lifecycle::{
     read_lifecycle_from_metadata, KnowledgeLifecycleMetadata, KnowledgeLifecycleState,
     KnowledgeLifecycleUpdate, LifecycleHistoryEntry,
 };
+pub use revision::{RevisionOutcome, RevisionReplace};
 pub use types::IngestStatus;
 
 #[derive(Debug, Clone)]

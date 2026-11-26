@@ -215,6 +215,12 @@ impl GraphWriter {
                     },
                 )?;
             }
+            let parent_ids = super::super::chunk_parents::write_chunk_parents(
+                txn,
+                &file_id,
+                &request.parents,
+                &self.clock.now_iso(),
+            )?;
             chunk_ids = self.write_chunks(
                 txn,
                 &request.chunks,
@@ -223,6 +229,7 @@ impl GraphWriter {
                 owner.as_deref(),
                 request.workspace_id.as_deref(),
                 true,
+                &parent_ids,
             )?;
             let concept_ids = self.write_concepts(
                 txn,

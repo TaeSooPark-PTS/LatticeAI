@@ -26,6 +26,8 @@ pub const DUMP_TABLES: [&str; 14] = [
 
 pub const FTS_TABLE: &str = "node_fts";
 
+pub const OPTIONAL_TABLES: [(&str, &str); 1] = [("chunk_parents", "id")];
+
 const DUMP_ORDER: [(&str, &str); 14] = [
     ("graph_meta", "key"),
     ("kg_meta", "key"),
@@ -67,6 +69,7 @@ pub fn dump_store(
         .iter()
         .filter(|name| {
             !DUMP_TABLES.contains(&name.as_str())
+                && !OPTIONAL_TABLES.iter().any(|(table, _)| table == name)
                 && !SKIPPED.contains(&name.as_str())
                 && !SKIPPED_PREFIXES
                     .iter()
@@ -93,6 +96,17 @@ pub fn dump_store(
             substitutions,
         )?;
         dump.insert(table.into(), Value::Array(rows));
+    }
+    for (table, key) in OPTIONAL_TABLES {
+        if present.iter().any(|name| name == table) {
+            let rows = select_rows(
+                conn,
+                &format!("SELECT * FROM {table} ORDER BY {key}"),
+                blobs,
+                substitutions,
+            )?;
+            dump.insert(table.into(), Value::Array(rows));
+        }
     }
     if present.iter().any(|name| name == FTS_TABLE) {
         let rows = select_rows(

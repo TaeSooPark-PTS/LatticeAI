@@ -277,8 +277,10 @@ async fn ingest_current_tab(
             .as_ref()
             .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::batch),
     );
-    let mut chunks = crate::local_files_api::enrich::chunk_pieces_for(&text, &title, "text/html");
-    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_set = crate::chunk_pieces::chunk_set_for(&text, &title, "text/html", &title);
+    let parents = chunk_set.parents.clone();
+    let chunk_texts: Vec<String> = chunk_set.embedding_inputs();
+    let mut chunks = chunk_set.children;
     let chunk_embed = if chunk_texts.is_empty() {
         None
     } else {
@@ -319,6 +321,7 @@ async fn ingest_current_tab(
                 captured_at,
                 metadata,
                 chunks,
+                parents,
                 concepts: extracted.concepts,
                 triples: extracted.triples,
                 semantic: extracted.semantic,
