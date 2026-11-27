@@ -7,12 +7,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM
+from latticeai.core.hf_revisions import resolve_revision
 
 from .autodetect import (
     AUTO_PROVIDER,
     _snapshot_dir,
     detect_embedder,
     hf_cache_roots,
+    pinned_model_target,
     resolve_auto_provider,
 )
 from .base import (
@@ -216,11 +218,16 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
         is_mlx_repo = self._model_name.startswith(
             "mlx-community/"
         ) or self._model_name.endswith("-mlx")
+        env_map = (
+            self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+        )
         if is_mlx_repo:
             try:
                 from mlx_embeddings.utils import load as mlx_load
 
-                model, tokenizer = mlx_load(self._model_name)
+                model, tokenizer = mlx_load(
+                    pinned_model_target(self._model_name, env_map, self.model_revision)
+                )
                 self._encoder = ("mlx_embeddings", model, tokenizer)
                 return self._encoder
             except ImportError:
@@ -230,10 +237,10 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     f"Hugging Face MLX embedding model unavailable: {exc}"
                 ) from exc
 
-        env_map = (
-            self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
-        )
-        snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map))
+        snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map), env_map)
+        revision = resolve_revision(
+            self._model_name, override=self.model_revision, env=env_map
+        ).revision
 
         gemma_2 = _is_embeddinggemma_2(self._model_name)
         try:
@@ -249,6 +256,8 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                         raise EmbeddingUnavailable(gap)
                 target = str(snapshot) if snapshot is not None else self._model_name
                 options: Dict[str, Any] = {"local_files_only": True}
+                if snapshot is None:
+                    options["revision"] = revision
                 if gemma_2:
                     options["config_kwargs"] = dict(EMBEDDINGGEMMA_2_TEXT_ONLY)
                 encoder = SentenceTransformer(target, **options)
@@ -282,8 +291,13 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                     raise ImportError("torch is required for local transformers")
 
                 target = str(snapshot) if snapshot is not None else self._model_name
-                tokenizer = AutoTokenizer.from_pretrained(target, local_files_only=True)
-                model = AutoModel.from_pretrained(target, local_files_only=True)
+                pinned = {"revision": revision} if snapshot is None else {}
+                tokenizer = AutoTokenizer.from_pretrained(
+                    target, local_files_only=True, **pinned
+                )
+                model = AutoModel.from_pretrained(
+                    target, local_files_only=True, **pinned
+                )
             else:
                 tokenizer = AutoTokenizer.from_pretrained(self._model_name)
                 model = AutoModel.from_pretrained(self._model_name)
@@ -300,7 +314,13 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             try:
                 from mlx_embeddings.utils import load as mlx_load
 
-                model, tokenizer = mlx_load(self._model_name)
+                model, tokenizer = mlx_load(
+                    str(snapshot)
+                    if snapshot is not None
+                    else pinned_model_target(
+                        self._model_name, env_map, self.model_revision
+                    )
+                )
                 self._encoder = ("mlx_embeddings", model, tokenizer)
                 return self._encoder
             except ImportError:

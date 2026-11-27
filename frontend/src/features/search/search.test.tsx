@@ -123,3 +123,40 @@ describe("source feedback", () => {
     expect(screen.getByRole("alert").textContent).toBe("출처 표시를 저장하지 못했어요.");
   });
 });
+
+describe("search result actions", () => {
+  it("opens the source of a node result and closes it again", async () => {
+    const read = vi.spyOn(latticeApi, "graphNode").mockResolvedValue(
+      ok({ node: { title: "예산 문서", summary: "본문" } }) as never,
+    );
+    render(<SearchResults language="ko" query="q" data={{ matches: [{ id: "c1", node_id: "n1", title: "예산" }] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "예산: 원문 보기" }));
+    expect(read).toHaveBeenCalledWith("n1");
+    expect(await screen.findByText("본문")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "원문 닫기" }));
+    expect(screen.queryByTestId("source-chunk-modal")).toBeNull();
+  });
+
+  it("hands a question about the result to the chat", async () => {
+    window.location.hash = "";
+    render(<SearchResults language="ko" query="q" data={{ matches: [{ id: "n1", title: "예산" }] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "예산: 이것에 대해 묻기" }));
+    expect(useAppStore.getState().pendingChatPrompt).toBe("‘예산’에 대해 알려 주세요.");
+    expect(window.location.hash).toBe("#/brain");
+  });
+
+  it("offers only the actions that can work", () => {
+    render(
+      <SearchResults
+        language="ko"
+        query="q"
+        data={{ matches: [{ id: "m1", item_type: "memory", title: "메모" }, { node_id: "n2" }, { path: "/a.md" }] }}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "메모: 원문 보기" })).toBeNull();
+    expect(screen.getByRole("button", { name: "메모: 이것에 대해 묻기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "#2: 원문 보기" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "#2: 이것에 대해 묻기" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "#3: 원문 보기" })).toBeNull();
+  });
+});

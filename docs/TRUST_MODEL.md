@@ -2,7 +2,7 @@
 
 # Lattice AI Trust Model
 
-Current release: **14.5.0 — Living Automations**.
+Current release: **14.6.0 — Within Your Scope**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

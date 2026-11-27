@@ -358,6 +358,7 @@ impl GraphWriter {
                     .unwrap_or(crate::read::DEFAULT_WORKSPACE_ID)
                     .to_string(),
                 owner,
+                visibility: super::super::ingest_visibility("Document", &Default::default()),
                 duplicate,
             });
         }

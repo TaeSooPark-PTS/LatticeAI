@@ -9,8 +9,7 @@ use super::pyutil;
 
 pub const SYNTHESIS_SOURCE: &str = "kg_change_digest";
 
-pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<String> {
-    let doc = wsos::load(state.store(), state.data_dir());
+fn synthesis_items(doc: &Value, workspace_id: Option<&str>) -> Vec<Value> {
     wsos::scoped(
         doc.get("review_items")
             .and_then(Value::as_array)
@@ -20,48 +19,50 @@ pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<Str
     )
     .into_iter()
     .filter(|item| item.get("source").and_then(Value::as_str) == Some(SYNTHESIS_SOURCE))
-    .filter(|item| {
-        let status = item
-            .get("effective_status")
-            .or_else(|| item.get("status"))
-            .and_then(Value::as_str)
-            .unwrap_or("pending");
-        matches!(status, "pending" | "snoozed")
-    })
-    .filter_map(|item| {
-        item.get("payload")
-            .and_then(|p| p.get("proposal_key").or_else(|| p.get("key")))
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .or_else(|| {
-                item.get("kind")
-                    .and_then(Value::as_str)
-                    .map(|kind| format!("{kind}:{}", pyutil::text_of(item.get("title"))))
-            })
-    })
     .collect()
 }
 
-pub fn pending_synthesis(state: &Value, workspace_id: Option<&str>) -> Vec<Value> {
-    wsos::scoped(
-        state
-            .get("review_items")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default(),
-        workspace_id,
-    )
-    .into_iter()
-    .filter(|item| item.get("source").and_then(Value::as_str) == Some(SYNTHESIS_SOURCE))
-    .filter(|item| {
-        let status = item
-            .get("effective_status")
-            .or_else(|| item.get("status"))
-            .and_then(Value::as_str)
-            .unwrap_or("pending");
-        status == "pending"
-    })
-    .collect()
+fn proposal_key(item: &Value) -> Option<String> {
+    item.get("payload")
+        .and_then(|p| p.get("proposal_key").or_else(|| p.get("key")))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| {
+            item.get("kind")
+                .and_then(Value::as_str)
+                .map(|kind| format!("{kind}:{}", pyutil::text_of(item.get("title"))))
+        })
+}
+
+pub fn open_keys_in(doc: &Value, workspace_id: Option<&str>, now_utc: f64) -> BTreeSet<String> {
+    synthesis_items(doc, workspace_id)
+        .into_iter()
+        .filter(|item| {
+            matches!(
+                wsos::review_effective_status(item, now_utc).as_str(),
+                "pending" | "snoozed"
+            )
+        })
+        .filter_map(|item| proposal_key(&item))
+        .collect()
+}
+
+pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<String> {
+    let doc = wsos::load(state.store(), state.data_dir());
+    open_keys_in(&doc, workspace_id, state.now_utc())
+}
+
+pub fn pending_synthesis(state: &Value, workspace_id: Option<&str>, now_utc: f64) -> Vec<Value> {
+    synthesis_items(state, workspace_id)
+        .into_iter()
+        .filter(|item| wsos::review_effective_status(item, now_utc) == "pending")
+        .map(|mut item| {
+            if let Some(object) = item.as_object_mut() {
+                object.insert("effective_status".into(), Value::String("pending".into()));
+            }
+            item
+        })
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -126,7 +127,6 @@ pub fn create_review(
             "kind": kind,
             "payload": payload,
             "provenance": {"pipeline": "brain-synthesis", "proposal_key": key},
-            "effective_status": "pending",
             "snoozed_until": null,
             "user_email": if user_email.is_empty() { Value::Null } else { Value::String(user_email.to_string()) },
             "workspace_id": workspace,
@@ -146,8 +146,12 @@ pub fn create_review(
     if write.is_err() {
         return None;
     }
-    let item = created?;
+    let mut item = created?;
     wsos::record_review_event(&item, "create");
+    let effective = wsos::review_effective_status(&item, state.now_utc());
+    if let Some(object) = item.as_object_mut() {
+        object.insert("effective_status".into(), Value::String(effective));
+    }
     Some(item)
 }
 
@@ -200,3 +204,7 @@ pub fn load_review_item(
     .into_iter()
     .find(|row| row.get("id").and_then(Value::as_str) == Some(item_id))
 }
+
+#[cfg(test)]
+#[path = "desk_tests.rs"]
+mod tests;

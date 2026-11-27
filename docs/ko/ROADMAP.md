@@ -47,6 +47,7 @@
 | **과금 `api_key` 라이브 완료 계약 테스트** | `api_key` 모드는 무과금 `GET /models` 라이브 프로브로 검증하고 실패 시 fail-closed 하며, 실제 채팅 E2E는 무과금 `cli_oauth`(`agy`/`grok`)와 목 계약 테스트로 커버됩니다. | S | **P2** | 전용 CI API 예산 확보 시 수동/예약 라이브 완료 스모크 1건을 추가하고 요청 단위 `local_only` 우선을 유지합니다. |
 | **`LATTICEAI_VECTOR_INDEX` 기본값 전환 (`brute` → `hnsw`)** | 512개 이상 벡터 + 워커 연결 시 `hnsw+rescore`가 자동 시도되고 `NativeHnswIndex`도 LRU 상한을 갖추었지만, 장시간 연속 수집·삭제 환경의 recall@10 재검증 전까지 환경 변수 기본값은 `brute`로 유지합니다. | M | **P2** | `rag_eval_v1.json` 기반 연속 수집·삭제 recall@10 벤치마크 검증 후 기본값을 전환합니다. |
 | **야간 실모델 RAG 평가 전용 러너** | `.github/workflows/nightly-rag-eval.yml`이 구성되어 엔드포인트 미설정 시 정직하게 `skipped`/`unavailable`을 보고하지만, 호스티드 GitHub 러너에는 Apple Silicon MLX/로컬 GPU가 없습니다. | L | **P2** | 셀프 호스티드 GPU/Apple Silicon 러너 또는 관리형 평가 엔드포인트를 연결해 야간 실모델 점수를 자동 발행합니다. |
+| **워크스페이스 내 비공개 문서** | 소유자 전용 문서가 구현되어 있지 않습니다. `rust/lattice-core` 뷰어 범위에 가시성 규칙이 없고, 파일 id가 콘텐츠+워크스페이스 해시라 동일 콘텐츠가 소유자 간 중복 제거(dedup)되며, 개념 노드 출처가 소유자를 추적하지 않고, 관리자 파일 목록·내보내기·chronicle/briefing·이벤트·에이전트 파일 도구가 소유자 범위로 감사되지 않았습니다. | L | **P2** | `rust/lattice-core` 뷰어 범위에 문서별 가시성 규칙을 추가하고, 콘텐츠 id를 소유자 범위로 만들며, 개념 노드 출처에 소유자를 기록하고, 관리자 파일 목록·내보내기·chronicle/briefing·이벤트·에이전트 파일 도구를 해당 규칙으로 감사합니다. |
 
 ---
 
@@ -54,9 +55,8 @@
 
 | 항목 | 남은 이유 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
-| **승인 게이트 기반 원본 이미지 뷰어** | `Image` 인용은 동의 없는 디스크 노출을 피하기 위해 96px 인라인 `data:image/` 썸네일(24 KB 상한)만 표시합니다. | M | P3 | 무승인 미리보기로 인라인 썸네일을 유지하면서 `/local/serve` 기반 명시적 승인 원본 미리보기 모달을 검토합니다. |
 | **Self-Model 추출용 선택적 LLM `refiner`** | 현재 한/영 구문 테이블 추출은 모든 후보가 검토함을 거치므로 안전하지만, 비정형 표현을 놓칠 수 있습니다. | M | P3 | 기능 플래그 뒤 선택적 로컬 모델 `refiner`를 연결하되 제안 우선 승인을 유지합니다. |
-| **Self-Model `open_keys`의 `snoozed` 정합성** | 현재 `pending` 제안만 중복 체크하므로 보류(snoozed) 항목과의 관계를 명시 결정해야 합니다. | S | P3 | 회귀 테스트와 함께 `snoozed`가 중복 제안을 억제할지 명시적으로 결정합니다. |
+| **Self-Model `open_keys`의 `snoozed` 정합성** | `desk::open_keys_in`은 이미 `snoozed`를 열린 항목으로 취급해 중복 재제안을 억제하지만(보류 제안이 같은 키의 재제안을 막음), 이 결정을 고정하는 회귀 테스트가 없습니다. | S | P3 | `rust/lattice-retrieval`에 `snoozed` 억제를 고정하는 회귀 테스트를 추가(또는 필터 변경)하고 결과를 여기에 기록합니다. |
 | **전용 Brain Network 공유 UI** | X25519/Ed25519 선택 서브그래프 공유는 `LATTICEAI_BRAIN_NETWORK=1` 아래 검토함으로 동작하며 독립 피어 관리 화면은 아직 없습니다. | M | P3 | 다중 기기 공유가 프로토타입 단계를 벗어날 때 Brain 내 전용 피어/공유 서랍을 추가합니다. |
 | **PostgreSQL / pgvector 라이브 마이그레이션** | SQLite WAL이 정본 단일 라이터이며 Postgres 내보내기/상태와 `postgres-integration.yml`은 `Planned` 상태입니다. | L | P3 | 다중 노드 조직 배포 수요가 발생할 때 구현하되, 무설정 로컬 기본값으로 SQLite를 유지합니다. |
 | **네이티브 OS 포인터 액추에이터** | 6개 포인터 도구는 옵트인 `pip install "ltcai[pointer]"`(`pyautogui`)로 Python 워커에서 실행됩니다. | L | P3 | 크로스플랫폼 네이티브 Rust 접근성/입력 계층이 우선순위가 될 때까지 옵트인 워커 실행을 유지합니다. |

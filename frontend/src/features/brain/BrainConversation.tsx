@@ -131,7 +131,7 @@ export function BrainConversation({
   onUploadDocument: (file: File) => void;
   onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
-  onIngestNote: (note: string) => void;
+  onIngestNote: (note: string) => Promise<boolean>;
   onIngestWeb: (url: string) => void;
   onVerifyModelContinuity: () => void;
   onSend: () => void;
@@ -567,6 +567,13 @@ function findLastAssistantIndex(messages: Message[]): number {
   return -1;
 }
 
+const SAVE_BRAIN_LABELS = {
+  idle: "brain.message.saveBrain",
+  saving: "brain.message.savingBrain",
+  saved: "brain.message.savedBrain",
+  failed: "brain.message.saveBrainFailed",
+};
+
 function MessageActions({
   language,
   content,
@@ -584,10 +591,11 @@ function MessageActions({
   canFollowUp: boolean;
   onFollowUp: (text: string) => void;
   onCreateActionItem: (content: string) => void;
-  onSaveToBrain: (content: string) => void;
+  onSaveToBrain: (content: string) => Promise<boolean>;
 }) {
   const [copied, setCopied] = React.useState(false);
-  const [savedBrain, setSavedBrain] = React.useState(false);
+  const [brainSave, setBrainSave] = React.useState<{ content: string; status: "saving" | "saved" | "failed" } | null>(null);
+  const saveStatus = brainSave?.content === content ? brainSave.status : "idle";
   const followUps = React.useMemo(
     () => [
       { labelKey: "brain.message.followup.checklist", promptKey: "brain.message.followup.checklist.prompt" },
@@ -605,9 +613,10 @@ function MessageActions({
     } catch {}
   }
 
-  function saveBrain() {
-    onSaveToBrain(content);
-    setSavedBrain(true);
+  async function saveBrain() {
+    setBrainSave({ content, status: "saving" });
+    const saved = await onSaveToBrain(content);
+    setBrainSave({ content, status: saved ? "saved" : "failed" });
   }
 
   return (
@@ -625,12 +634,13 @@ function MessageActions({
       <button
         type="button"
         data-testid="message-save-brain"
-        aria-label={t(language, "brain.message.saveBrainAria")}
-        disabled={savedBrain}
-        onClick={saveBrain}
+        aria-label={saveStatus === "idle" ? t(language, "brain.message.saveBrainAria") : undefined}
+        aria-busy={saveStatus === "saving"}
+        disabled={saveStatus === "saving" || saveStatus === "saved"}
+        onClick={() => void saveBrain()}
       >
         <DatabaseZap className="h-3 w-3" aria-hidden="true" />
-        {savedBrain ? t(language, "brain.message.savedBrain") : t(language, "brain.message.saveBrain")}
+        <span aria-live="polite">{t(language, SAVE_BRAIN_LABELS[saveStatus])}</span>
       </button>
       {canFollowUp ? (
         <button type="button" aria-label={t(language, "brain.message.saveTaskAria")} onClick={() => onCreateActionItem(content)}>

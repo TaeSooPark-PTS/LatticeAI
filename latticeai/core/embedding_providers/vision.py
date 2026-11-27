@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
+from .autodetect import pinned_model_target
 from .base import (
     EmbeddingProvider,
     EmbeddingUnavailable,
@@ -113,7 +114,7 @@ class MLXVisionEmbeddingProvider(VisionEmbeddingProvider):
         try:
             import mlx_clip
 
-            self._encoder = mlx_clip.load(self._cfg.model)
+            self._encoder = mlx_clip.load(pinned_model_target(self._cfg.model))
         except Exception as exc:
             raise EmbeddingUnavailable(f"MLX vision model unavailable: {exc}") from exc
         return self._encoder

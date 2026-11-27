@@ -249,6 +249,36 @@ pub const REVIEW_TIMELINE_AREA: &str = "review";
 pub const REVIEW_ITEM_CREATED_EVENT: &str = "review_item_created";
 pub const REVIEW_ITEM_UPDATED_EVENT: &str = "review_item_updated";
 
+pub fn review_snooze_expiry_secs(until: &str) -> Option<f64> {
+    let parsed = crate::chronicle_api::pytime::parse_iso(until)?;
+    let naive = parsed.naive;
+    let days = lattice_core::pytext::days_from_civil(naive.year as i64, naive.month, naive.day);
+    let local = days as f64 * 86_400.0
+        + naive.hour as f64 * 3_600.0
+        + naive.minute as f64 * 60.0
+        + naive.second as f64;
+    Some(local - parsed.offset_secs.unwrap_or(0) as f64)
+}
+
+pub fn review_effective_status(item: &Value, now_utc_secs: f64) -> String {
+    let status = item
+        .get("status")
+        .and_then(Value::as_str)
+        .filter(|status| !status.is_empty())
+        .unwrap_or("pending");
+    if status != "snoozed" {
+        return status.to_string();
+    }
+    let expiry = item
+        .get("snoozed_until")
+        .and_then(Value::as_str)
+        .and_then(review_snooze_expiry_secs);
+    match expiry {
+        Some(until) if until <= now_utc_secs => "pending".into(),
+        _ => "snoozed".into(),
+    }
+}
+
 pub fn record_review_event(item: &Value, action: &str) {
     let Some(writer) = state_writer() else {
         return;

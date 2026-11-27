@@ -4,6 +4,8 @@ import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { isRecord } from "@/lib/utils";
 
+export const DOCUMENT_FETCH_LIMIT = 200;
+
 export type CaptureMethod = "files" | "local" | "browser";
 
 export const captureMethods: Array<{ id: CaptureMethod; labelKey: string; icon: typeof Upload; path: string }> = [

@@ -43,7 +43,27 @@ pub struct BrainIngestEvent {
     pub source_type: String,
     pub workspace_id: String,
     pub owner: Option<String>,
+    pub visibility: String,
     pub duplicate: bool,
+}
+
+pub fn ingest_visibility(
+    node_type: &str,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> String {
+    let from_conversation = metadata
+        .get("source_node")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|source| {
+            crate::viewer_scope::CONVERSATION_SOURCE_PREFIXES
+                .iter()
+                .any(|prefix| source.starts_with(prefix))
+        });
+    if from_conversation || crate::viewer_scope::CONVERSATION_NODE_TYPES.contains(&node_type) {
+        "private".into()
+    } else {
+        "workspace".into()
+    }
 }
 
 pub type IngestListener = Arc<dyn Fn(&BrainIngestEvent) + Send + Sync>;
@@ -156,5 +176,22 @@ impl GraphWriter {
             .filter(|value| !value.is_empty())
             .map(str::to_string)
             .or_else(|| self.default_workspace.clone())
+    }
+}
+
+#[cfg(test)]
+mod ingest_visibility_tests {
+    #[test]
+    fn conversation_nodes_stay_private_and_documents_are_workspace_visible() {
+        for node_type in crate::viewer_scope::CONVERSATION_NODE_TYPES {
+            assert_eq!(
+                super::ingest_visibility(node_type, &Default::default()),
+                "private"
+            );
+        }
+        let mut metadata = serde_json::Map::new();
+        assert_eq!(super::ingest_visibility("Document", &metadata), "workspace");
+        metadata.insert("source_node".into(), "message:1".into());
+        assert_eq!(super::ingest_visibility("Document", &metadata), "private");
     }
 }

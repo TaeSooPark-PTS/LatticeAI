@@ -2,7 +2,7 @@
 
 # Knowledge Graph Schema
 
-Current release: **14.5.0 — Living Automations**.
+Current release: **14.6.0 — Within Your Scope**.
 
 Spec reference: `lattice_ai_full_spec.pptx` slides 20, 21, and 22  
 Implementation: `lattice_brain/graph/schema.py`

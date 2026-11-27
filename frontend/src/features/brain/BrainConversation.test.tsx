@@ -437,3 +437,26 @@ describe("BrainConversation utility drawer", () => {
     expect(screen.queryByLabelText(t("ko", "brain.aria.overview"))).toBeNull();
   });
 });
+
+describe("BrainConversation save to Brain", () => {
+  it("shows saving, then failed with retry, then saved only after the save resolves", async () => {
+    const settle: Array<(saved: boolean) => void> = [];
+    const onIngestNote = vi.fn(() => new Promise<boolean>((resolve) => settle.push(resolve)));
+    renderConversation({ messages: [{ role: "assistant", content: "기억할 답변" }], onIngestNote });
+    const save = screen.getByTestId("message-save-brain") as HTMLButtonElement;
+
+    fireEvent.click(save);
+    expect(save.textContent).toBe(t("ko", "brain.message.savingBrain"));
+    expect(save.disabled).toBe(true);
+
+    await act(async () => settle[0]!(false));
+    expect(save.textContent).toBe(t("ko", "brain.message.saveBrainFailed"));
+    expect(save.disabled).toBe(false);
+
+    fireEvent.click(save);
+    await act(async () => settle[1]!(true));
+    expect(save.textContent).toBe(t("ko", "brain.message.savedBrain"));
+    expect(save.disabled).toBe(true);
+    expect(onIngestNote).toHaveBeenCalledTimes(2);
+  });
+});

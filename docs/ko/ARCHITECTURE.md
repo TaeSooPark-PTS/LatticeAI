@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
 > 서브시스템 설계 원칙과 운영 관점 개요는 [`docs/ko/architecture-overview.md`](./architecture-overview.md)를 참고하세요.
 
-현재 릴리스: **14.5.0 — Living Automations**.
+현재 릴리스: **14.6.0 — Within Your Scope**.
 
 Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 21개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 

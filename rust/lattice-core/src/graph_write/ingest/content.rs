@@ -291,6 +291,7 @@ impl GraphWriter {
                     .unwrap_or(crate::read::DEFAULT_WORKSPACE_ID)
                     .to_string(),
                 owner: request.owner.clone(),
+                visibility: super::super::ingest_visibility(&node_type, &request.metadata),
                 duplicate,
             });
         }

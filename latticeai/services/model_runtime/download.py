@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set
 
+from latticeai.core.hf_revisions import resolve_revision
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
 from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
@@ -312,9 +313,7 @@ def estimate_eta_seconds(
     return elapsed * (100.0 - percent) / percent
 
 
-def _build_hf_api() -> Any:
-    from huggingface_hub import HfApi
-
+def _hf_hub_access_kwargs() -> Dict[str, Any]:
     env_endpoint = (
         os.environ.get("HF_ENDPOINT")
         or os.environ.get("HUGGINGFACE_HUB_ENDPOINT")
@@ -326,17 +325,18 @@ def _build_hf_api() -> Any:
         or os.environ.get("HUGGINGFACE_TOKEN")
         or ""
     ).strip()
-    if env_endpoint or env_token:
-        kwargs: Dict[str, Any] = {}
-        if env_endpoint:
-            kwargs["endpoint"] = env_endpoint.rstrip("/")
-        if env_token:
-            kwargs["token"] = env_token
-        try:
-            return HfApi(**kwargs)
-        except TypeError:
-            quiet()
-    return HfApi()
+    kwargs: Dict[str, Any] = {}
+    if env_endpoint:
+        kwargs["endpoint"] = env_endpoint.rstrip("/")
+    if env_token:
+        kwargs["token"] = env_token
+    return kwargs
+
+
+def _build_hf_api() -> Any:
+    from huggingface_hub import HfApi
+
+    return HfApi(**_hf_hub_access_kwargs())
 
 
 def _call_hf_hub_download(
@@ -346,47 +346,24 @@ def _call_hf_hub_download(
     filename: str,
     local_dir: str,
     tqdm_class: Any,
+    revision: Optional[str] = None,
 ) -> str:
     os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
-    env_endpoint = (
-        os.environ.get("HF_ENDPOINT")
-        or os.environ.get("HUGGINGFACE_HUB_ENDPOINT")
-        or ""
-    ).strip()
-    env_token = (
-        os.environ.get("HF_TOKEN")
-        or os.environ.get("HUGGING_FACE_HUB_TOKEN")
-        or os.environ.get("HUGGINGFACE_TOKEN")
-        or ""
-    ).strip()
-    if env_endpoint or env_token:
-        extra: Dict[str, Any] = {}
-        if env_endpoint:
-            extra["endpoint"] = env_endpoint.rstrip("/")
-        if env_token:
-            extra["token"] = env_token
-        try:
-            return hf_hub_download_fn(
-                repo_id=repo_id,
-                filename=filename,
-                local_dir=local_dir,
-                tqdm_class=tqdm_class,
-                **extra,
-            )
-        except TypeError:
-            quiet()
     return hf_hub_download_fn(
         repo_id=repo_id,
         filename=filename,
         local_dir=local_dir,
         tqdm_class=tqdm_class,
+        revision=revision,
+        **_hf_hub_access_kwargs(),
     )
 
 
 def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
     api = _build_hf_api()
+    revision = resolve_revision(repo_id).revision
     try:
-        info = api.model_info(repo_id, files_metadata=True)
+        info = api.model_info(repo_id, revision=revision, files_metadata=True)
         files = []
         for sibling in getattr(info, "siblings", []) or []:
             name = str(getattr(sibling, "rfilename", "") or "").strip()
@@ -395,8 +372,6 @@ def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
             files.append({"name": name, "size": int(getattr(sibling, "size", 0) or 0)})
         if files:
             return files
-    except TypeError:
-        quiet()
     except Exception as e:
         if is_gated_or_auth_error(e):
             raise
@@ -404,7 +379,7 @@ def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
 
     return [
         {"name": str(name), "size": 0}
-        for name in api.list_repo_files(repo_id)
+        for name in api.list_repo_files(repo_id, revision=revision)
         if str(name).strip()
     ]
 
@@ -464,6 +439,7 @@ def _download_single_hf_repo(
 
     target_dir = hf_model_dir(active_repo)
     target_dir.mkdir(parents=True, exist_ok=True)
+    revision_request = resolve_revision(active_repo)
     started_at = time.time()
     fallback_kwargs: Dict[str, Any] = (
         {"gated_fallback": True, "fallback_repo": active_repo} if used_fallback else {}
@@ -618,6 +594,7 @@ def _download_single_hf_repo(
             filename=filename,
             local_dir=str(target_dir),
             tqdm_class=tqdm_class,
+            revision=revision_request.revision,
         )
         if size <= 0:
             try:
@@ -673,6 +650,8 @@ def _download_single_hf_repo(
         "model": active_repo,
         "path": str(target_dir),
         "cached": False,
+        "revision": revision_request.revision,
+        "revision_source": revision_request.source,
     }
     if used_fallback:
         result.update(

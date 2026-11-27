@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, Callable, Dict, Optional, Tuple
 
+from .autodetect import pinned_model_target
 from .base import EmbeddingUnavailable, _load_dotted
 
 VISION_CAPTION_TARGET_ENV = "LATTICEAI_VISION_CAPTION_TARGET"
@@ -49,7 +50,7 @@ class MLXVisionCaptioner(VisionCaptioner):
         try:
             from mlx_vlm import load as vlm_load
 
-            model, processor = vlm_load(self.model_id)
+            model, processor = vlm_load(pinned_model_target(self.model_id))
             self._loaded = (model, processor)
         except Exception as exc:
             raise EmbeddingUnavailable(

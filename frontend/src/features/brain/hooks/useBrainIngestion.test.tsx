@@ -368,7 +368,7 @@ describe("ingestNote and ingestWeb", () => {
   it("ignores an empty note", async () => {
     const { result } = setup();
     await act(async () => {
-      await result.current.ingestNote("   ");
+      expect(await result.current.ingestNote("   ")).toBe(false);
     });
     expect(latticeApi.ingestNote).not.toHaveBeenCalled();
   });
@@ -376,7 +376,7 @@ describe("ingestNote and ingestWeb", () => {
   it("saves a note and remembers it as the recall query", async () => {
     const { result, setLastRecallQuery, feedback } = setup({}, { ingestNote: ok({ node_id: "note-1" }) });
     await act(async () => {
-      await result.current.ingestNote(" 오늘 회의: 출시일 확정 ");
+      expect(await result.current.ingestNote(" 오늘 회의: 출시일 확정 ")).toBe(true);
     });
     expect(latticeApi.ingestNote).toHaveBeenCalledWith("오늘 회의: 출시일 확정", "오늘 회의: 출시일 확정");
     expect(feedback.at(-1)).toBe(t("ko", "brain.ingest.note.saved"));
@@ -387,7 +387,7 @@ describe("ingestNote and ingestWeb", () => {
   it("reports a note failure with the reason or a plain fallback", async () => {
     const { result, feedback } = setup({}, { ingestNote: fail("저장 공간 부족", null) });
     await act(async () => {
-      await result.current.ingestNote("메모");
+      expect(await result.current.ingestNote("메모")).toBe(false);
     });
     expect(feedback.at(-1)).toBe(t("ko", "brain.ingest.note.failed", { reason: "저장 공간 부족" }));
     expect(result.current.ingestionStates.note).toMatchObject({ stage: "error" });

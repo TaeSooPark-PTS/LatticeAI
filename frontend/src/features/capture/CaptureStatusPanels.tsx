@@ -3,6 +3,7 @@ import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList, StructuredView } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocumentLibrary } from "@/features/capture/DocumentLibrary";
 import { FolderMemoryHealthCard } from "@/features/capture/FolderMemoryHealth";
 import { t } from "@/i18n";
 import { asArray, fmtNumber } from "@/lib/utils";
@@ -91,16 +92,7 @@ export function RecentCapturePanel() {
 
   return (
     <div className="capture-secondary-column space-y-4">
-      <DataPanel title={t(language, "capture.files.uploaded")} result={docs.data}>
-        {(data) => (
-          <div className="space-y-3">
-            <EntityList items={(data as Record<string, unknown>).documents || data} titleKey="filename" metaKey="ingest_state" limit={12} />
-            <div className="rounded-md border border-border bg-background/55 p-3 text-sm text-muted-foreground">
-              {t(language, "capture.files.completed")}
-            </div>
-          </div>
-        )}
-      </DataPanel>
+      <DocumentLibrary result={docs.data} onRetry={() => void docs.refetch()} />
       <FolderMemoryHealthCard language={language} />
       <DataPanel title={t(language, "capture.local.sources")} result={local.data}>
         {(data) => (

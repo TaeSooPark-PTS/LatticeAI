@@ -239,7 +239,22 @@ summary {
 .brain-shell-actions {
   display: flex;
   align-items: center;
+}
+
+.brain-command-button {
+  flex-shrink: 0;
   margin-left: auto;
+}
+
+@media (min-width: 761px) and (max-width: 959px) {
+  .brain-topbar .brain-nav-link {
+    padding: 0 0.45rem;
+  }
+
+  .brain-topbar .brain-nav-link .nav-icon,
+  .brain-topbar .brain-more-button span {
+    display: none;
+  }
 }
 
 

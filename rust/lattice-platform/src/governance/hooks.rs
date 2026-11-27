@@ -42,73 +42,13 @@ pub(crate) const HOOK_KINDS: &[&str] = &[
 pub(crate) const BRAIN_EVENT_TRIGGERS: &str = "user:brain-event-triggers";
 
 pub(crate) fn builtin_hooks() -> Vec<Value> {
-    vec![
-        json!({
-            "id": "builtin:redact-secrets",
-            "name": "Redact secrets",
-            "kind": "pre_run",
-            "order": 10,
-            "description": "Strip secret-like fields (token, password, api_key…) from agent context packets before a run.",
-            "binding": "lattice_brain.runtime.multi_agent._redact",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:research-memory-snapshot",
-            "name": "Research memory snapshot",
-            "kind": "agent",
-            "order": 20,
-            "description": "Capture a short-term memory snapshot after the researcher stage gathers context.",
-            "binding": "lattice_brain.runtime.multi_agent.default_role_runner",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:tool-permission-gate",
-            "name": "Tool permission gate",
-            "kind": "pre_tool",
-            "order": 10,
-            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:sensitive-data-guard",
-            "name": "Sensitive-data guard",
-            "kind": "pre_tool",
-            "order": 20,
-            "description": "Classify outgoing content for sensitive data before tool execution.",
-            "binding": "server_app.classify_sensitive_message",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:audit-agent-run",
-            "name": "Audit agent run",
-            "kind": "post_run",
-            "order": 10,
-            "description": "Append every completed agent run to the workspace audit log.",
-            "binding": "lattice_brain.runtime.agent_runtime.AgentRuntime.start",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:workflow-replay-log",
-            "name": "Workflow replay log",
-            "kind": "post_workflow",
-            "order": 10,
-            "description": "Record each workflow run's timeline so it can be replayed step by step.",
-            "binding": "latticeai.api.workflow_designer",
-            "managed": "platform"
-        }),
-        json!({
-            "id": "builtin:pipeline-index-status",
-            "name": "Pipeline index status",
-            "kind": "post_index",
-            "order": 10,
-            "description": "Publish ingest / embed / graph-build pipeline state to the retrieval index status.",
-            "binding": "latticeai.api.search",
-            "managed": "platform"
-        }),
-    ]
+    catalog::BUILTIN_HOOKS
+        .iter()
+        .map(catalog::BuiltinHook::to_json)
+        .collect()
 }
 
+mod catalog;
 mod sink;
 mod store;
 pub use sink::NativeHookSink;

@@ -40,6 +40,122 @@ pub(crate) struct Automation {
     pub prompt: Option<String>,
     pub unsupported: Vec<String>,
     pub recipe_id: Option<String>,
+    pub event_filter: BrainEventFilter,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum OwnerScope {
+    #[default]
+    SelfOnly,
+    Workspace,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct BrainEventFilter {
+    pub owner_scope: OwnerScope,
+    pub source_types: Vec<String>,
+    pub title_contains: Option<String>,
+}
+
+const SHARED_VISIBILITIES: &[&str] = &["workspace", "shared", "organization", "org", "public"];
+
+fn normalized(value: Option<&str>) -> Option<String> {
+    value
+        .map(|text| text.trim().to_lowercase())
+        .filter(|text| !text.is_empty())
+}
+
+impl BrainEventFilter {
+    pub(crate) fn from_config(config: &Map<String, Value>) -> Self {
+        let owner_scope = match config.get("owner_scope").and_then(Value::as_str) {
+            Some(scope) if scope.trim() == "workspace" => OwnerScope::Workspace,
+            _ => OwnerScope::SelfOnly,
+        };
+        let source_types = config
+            .get("source_types")
+            .and_then(Value::as_array)
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|row| normalized(row.as_str()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let title_contains = normalized(config.get("title_contains").and_then(Value::as_str));
+        Self {
+            owner_scope,
+            source_types,
+            title_contains,
+        }
+    }
+
+    pub(crate) fn admits(
+        &self,
+        workflow_owner: Option<&str>,
+        item_owner: Option<&str>,
+        visibility: Option<&str>,
+        source_type: &str,
+        title: &str,
+    ) -> bool {
+        let workflow_owner = normalized(workflow_owner);
+        let item_owner = normalized(item_owner);
+        let same_owner = workflow_owner == item_owner;
+        let owner_ok = match self.owner_scope {
+            OwnerScope::SelfOnly => same_owner,
+            OwnerScope::Workspace => {
+                same_owner
+                    || normalized(visibility)
+                        .is_some_and(|value| SHARED_VISIBILITIES.contains(&value.as_str()))
+            }
+        };
+        if !owner_ok {
+            return false;
+        }
+        if !self.source_types.is_empty() {
+            let Some(kind) = normalized(Some(source_type)) else {
+                return false;
+            };
+            if !self.source_types.contains(&kind) {
+                return false;
+            }
+        }
+        match &self.title_contains {
+            Some(needle) => title.to_lowercase().contains(needle.as_str()),
+            None => true,
+        }
+    }
+}
+
+pub(crate) fn brain_event_config_errors(node: &Value) -> Vec<String> {
+    let config = config_of(Some(node));
+    if config.get("trigger").and_then(Value::as_str) != Some("brain_event") {
+        return Vec::new();
+    }
+    let id = node.get("id").and_then(Value::as_str).unwrap_or("");
+    let mut errors = Vec::new();
+    if let Some(scope) = config.get("owner_scope") {
+        if !matches!(scope.as_str(), Some("self" | "workspace")) {
+            errors.push(format!(
+                "trigger '{id}': owner_scope must be 'self' or 'workspace'"
+            ));
+        }
+    }
+    if let Some(sources) = config.get("source_types") {
+        let valid = sources.as_array().is_some_and(|rows| {
+            rows.iter()
+                .all(|row| row.as_str().is_some_and(|text| !text.trim().is_empty()))
+        });
+        if !valid {
+            errors.push(format!(
+                "trigger '{id}': source_types must be a list of non-empty strings"
+            ));
+        }
+    }
+    if let Some(title) = config.get("title_contains") {
+        if !title.is_string() {
+            errors.push(format!("trigger '{id}': title_contains must be a string"));
+        }
+    }
+    errors
 }
 
 impl Automation {
@@ -146,6 +262,7 @@ pub(crate) fn automation_of(workflow: &Value) -> Option<Automation> {
         prompt: text(agent.get("prompt")).or_else(|| text(agent.get("goal"))),
         unsupported,
         recipe_id: text(metadata.get("recipe_id")),
+        event_filter: BrainEventFilter::from_config(&trigger),
     })
 }
 

@@ -8,7 +8,7 @@ import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Ellipsis, Moon, Sun, X } from "lucide-react";
+import { Brain, Ellipsis, Moon, Search, Sun, X } from "lucide-react";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
 import { BrainVitalPill } from "@/components/BrainVitalPill";
 import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
@@ -138,6 +138,18 @@ function BrainShell({
             );
           })}
         </nav>
+
+        <button
+          type="button"
+          className="brain-theme-toggle brain-command-button"
+          data-testid="topbar-command-button"
+          aria-label={t(language, "command.title")}
+          aria-haspopup="dialog"
+          title={t(language, "command.title")}
+          onClick={() => window.dispatchEvent(new Event("lattice:open-command"))}
+        >
+          <Search aria-hidden="true" />
+        </button>
 
         <div className="brain-shell-actions">
           <nav

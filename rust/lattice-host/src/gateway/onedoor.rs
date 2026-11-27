@@ -124,6 +124,7 @@ impl OneDoorState {
                     source_type: event.source_type.clone(),
                     workspace_id: event.workspace_id.clone(),
                     owner: event.owner.clone(),
+                    visibility: Some(event.visibility.clone()),
                 };
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)

@@ -2,7 +2,7 @@
 
 # LatticeAI Project AGENTS.md
 
-Current release: **14.5.0 — Living Automations**.
+Current release: **14.6.0 — Within Your Scope**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

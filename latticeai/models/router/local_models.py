@@ -3,6 +3,13 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from latticeai.core.hf_revisions import (
+    REVISION_UNPINNED,
+    fetch_pinned_snapshot,
+    find_cached_snapshot,
+    resolve_revision,
+)
+
 HF_MODELS_ROOT = Path.home() / ".ltcai" / "hf-models"
 
 
@@ -11,25 +18,11 @@ def hf_model_dir(repo_id: str) -> Path:
 
 
 def hf_cache_model_dir(repo_id: str) -> Optional[Path]:
-    cache_root = (
-        Path.home()
-        / ".cache"
-        / "huggingface"
-        / "hub"
-        / f"models--{repo_id.replace('/', '--')}"
+    cache_root = Path.home() / ".cache" / "huggingface" / "hub"
+    found = find_cached_snapshot(
+        resolve_revision(repo_id), [cache_root], _looks_like_hf_model_dir
     )
-    snapshots = cache_root / "snapshots"
-    if not snapshots.exists():
-        return None
-    candidates = sorted(
-        (item for item in snapshots.iterdir() if item.is_dir()),
-        key=lambda item: item.stat().st_mtime,
-        reverse=True,
-    )
-    for snapshot in candidates:
-        if _looks_like_hf_model_dir(snapshot):
-            return snapshot
-    return None
+    return found.path if found is not None else None
 
 
 def _looks_like_hf_model_dir(path: Path) -> bool:
@@ -55,7 +48,10 @@ def _resolve_local_hf_model(model_id: str) -> str:
     cached_dir = hf_cache_model_dir(model_id)
     if cached_dir is not None:
         return str(cached_dir)
-    return model_id
+    request = resolve_revision(model_id)
+    if request.source == REVISION_UNPINNED:
+        return model_id
+    return str(fetch_pinned_snapshot(request).path)
 
 
 def _is_gemma4_model_id(model_id: str) -> bool:

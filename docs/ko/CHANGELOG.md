@@ -5,6 +5,25 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.6.0] - 2026-11-28 — Within Your Scope
+
+### 변경
+- `brain_event` 자동화의 기본 범위가 소유자 범위(`owner_scope: "self"`)로 바뀌었습니다. `"workspace"` 범위는 다른 사람이 소유한 공유 항목에서만 실행되며, 개인 항목이나 대화 항목에서는 실행되지 않고 워크스페이스 경계를 넘지 않습니다. 동료의 업로드를 감시하던 다중 사용자 트리거는 Workspace 범위로 설정해야 합니다.
+- 새 `source_types`·`title_contains` 자동화 필터와 UI 양식(`BrainEventTriggerForm.tsx`)이 추가되었습니다.
+- 훅 카탈로그가 `executed`, `implementation`, `not_executed_reason` 필드를 보고합니다.
+
+### 수정
+- 기각되거나 승인된 종합 제안이 `pending`으로 남아 재제안을 막던 문제(오래된 `effective_status`)를 고쳤습니다.
+- Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용됩니다(`LATTICEAI_HF_REVISIONS`로 재정의 가능). endpoint·token·revision을 떨어뜨리던 조용한 `TypeError` 재시도를 제거했습니다. 이미 받은 모델은 다시 고정되지 않으며, 고정되지 않은 저장소는 여전히 `main`을 사용합니다.
+
+### 추가
+- 명령 팔레트에서 대화 결과를 열고 상단 바 버튼이 추가되었습니다. 검색 결과에서 바로 작업할 수 있으며, 기억 관리자(보기·추가·검색·잊기), 정직한 "Brain에 저장" 상태, 필터·미리보기가 있는 문서 라이브러리, 취소 포함 실행 이력 필터가 추가되었습니다.
+- HNSW 교체(churn) 재현율 테스트.
+
+알려진 공백: 워크스페이스 안의 비공개 문서는 아직 구현되지 않았습니다(docs/ROADMAP.md 참고).
+
+상세 내용: [docs/ko/releases/RELEASE_NOTES_v14.6.0.md](releases/RELEASE_NOTES_v14.6.0.md).
+
 ## [14.5.0] - 2026-11-27 — Living Automations
 
 ### 추가됨

@@ -366,6 +366,15 @@ describe("the more menu keeps the keyboard inside it", () => {
 });
 
 describe("shell chrome", () => {
+  it("opens the command palette from the top bar", async () => {
+    const opened = vi.fn();
+    window.addEventListener("lattice:open-command", opened);
+    renderApp("#/brain");
+    fireEvent.click(await screen.findByTestId("topbar-command-button"));
+    expect(opened).toHaveBeenCalledTimes(1);
+    window.removeEventListener("lattice:open-command", opened);
+  });
+
   it("sends the skip link straight to the main region", async () => {
     renderApp("#/capture");
     await screen.findByTestId("page-capture");

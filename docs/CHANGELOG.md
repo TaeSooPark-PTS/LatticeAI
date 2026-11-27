@@ -6,6 +6,25 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.6.0] - 2026-11-28 — Within Your Scope
+
+### Changed
+- `brain_event` automations default to owner scope (`owner_scope: "self"`). The `"workspace"` scope fires on shared items owned by others, never on private or conversation items, and never across workspaces. Multi-user triggers that watched colleagues' uploads must set the Workspace scope.
+- New `source_types` and `title_contains` automation filters, with a UI form (`BrainEventTriggerForm.tsx`).
+- The hooks catalog reports `executed`, `implementation`, and `not_executed_reason` fields.
+
+### Fixed
+- Dismissed or approved synthesis proposals no longer stay `pending` and block re-proposals (stale `effective_status`).
+- Hugging Face revision pinning is applied on download and load paths (`LATTICEAI_HF_REVISIONS` overrides). Silent `TypeError` retries that dropped endpoint, token, or revision were removed. Already downloaded models are not re-pinned; unpinned repositories still use `main`.
+
+### Added
+- Command palette opens conversation hits and has a top-bar button; actionable search results; memory manager (view, add, search, forget); honest "Save to Brain" status; document library with filter and preview; run history filters including cancelled, show more, and an error state.
+- HNSW churn recall test.
+
+Known gap: private documents inside a workspace are not implemented (see docs/ROADMAP.md).
+
+Details: [docs/releases/RELEASE_NOTES_v14.6.0.md](releases/RELEASE_NOTES_v14.6.0.md).
+
 ## [14.5.0] - 2026-11-27 — Living Automations
 
 ### Added

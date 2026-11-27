@@ -2,7 +2,7 @@
 
 # Why Lattice AI Exists
 
-Current release: **14.5.0 — Living Automations**.
+Current release: **14.6.0 — Within Your Scope**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

@@ -3,7 +3,16 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+from latticeai.core.hf_revisions import (
+    REVISION_UNPINNED,
+    CachedSnapshot,
+    RevisionRequest,
+    fetch_pinned_snapshot,
+    find_cached_snapshot,
+    resolve_revision,
+)
 
 AUTO_PROVIDER = "auto"
 AUTODETECT_ENV = "LATTICEAI_EMBEDDING_AUTODETECT"
@@ -102,31 +111,72 @@ def _has_model_files(directory: Path) -> bool:
     )
 
 
-def _snapshot_dir(repo_id: str, roots: List[Path]) -> Optional[Path]:
-    flattened = "models--" + repo_id.replace("/", "--")
-    for root in roots:
-        snapshots = root / flattened / "snapshots"
-        if snapshots.is_dir():
-            for snapshot in sorted(snapshots.iterdir()):
-                if _has_model_files(snapshot):
-                    return snapshot
-        for direct in (root / repo_id, root / flattened):
-            if _has_model_files(direct):
-                return direct
-    return None
+def cached_snapshot(
+    request: RevisionRequest, roots: List[Path]
+) -> Optional[CachedSnapshot]:
+    return find_cached_snapshot(request, roots, _has_model_files)
+
+
+def _snapshot_dir(
+    repo_id: str, roots: List[Path], env: Optional[Mapping[str, str]] = None
+) -> Optional[Path]:
+    found = cached_snapshot(resolve_revision(repo_id, env=env), roots)
+    return found.path if found is not None else None
+
+
+def revision_report(
+    repo_id: str, roots: List[Path], env: Optional[Mapping[str, str]] = None
+) -> Dict[str, Any]:
+    request = resolve_revision(repo_id, env=env)
+    found = cached_snapshot(request, roots)
+    if found is None:
+        return {
+            "snapshot": None,
+            "revision": request.revision,
+            "revision_source": request.source,
+        }
+    return {
+        "snapshot": found.path,
+        "revision": found.revision,
+        "revision_source": found.source,
+    }
+
+
+def _is_hub_repo_id(model: str) -> bool:
+    parts = model.split("/")
+    return len(parts) == 2 and all(parts) and not model.startswith((".", "~"))
+
+
+def pinned_model_target(
+    model: str,
+    env: Optional[Dict[str, str]] = None,
+    override: Optional[str] = None,
+) -> str:
+    raw = str(model or "").strip()
+    if not _is_hub_repo_id(raw) or Path(raw).expanduser().exists():
+        return raw
+    request = resolve_revision(raw, override=override, env=env)
+    if request.source == REVISION_UNPINNED:
+        return raw
+    found = cached_snapshot(request, hf_cache_roots(env))
+    if found is not None:
+        return str(found.path)
+    return str(fetch_pinned_snapshot(request).path)
 
 
 def detect_local_hf(env: Optional[Dict[str, str]] = None) -> Detection:
     roots = hf_cache_roots(env)
     candidates: List[Dict[str, Any]] = []
     for repo_id, dim, prefixed in LOCAL_HF_MODELS:
-        snapshot = _snapshot_dir(repo_id, roots)
+        report = revision_report(repo_id, roots, env)
         candidates.append(
             {
                 "provider": "huggingface",
                 "model": repo_id,
                 "dim": dim,
-                "downloaded": snapshot is not None,
+                "downloaded": report["snapshot"] is not None,
+                "revision": report["revision"],
+                "revision_source": report["revision_source"],
                 "e5_prefixes": prefixed,
             }
         )
@@ -151,13 +201,15 @@ def detect_local_mlx(env: Optional[Dict[str, str]] = None) -> Detection:
     roots = hf_cache_roots(env)
     candidates: List[Dict[str, Any]] = []
     for repo_id, dim, prefixed in LOCAL_MLX_MODELS:
-        snapshot = _snapshot_dir(repo_id, roots)
+        report = revision_report(repo_id, roots, env)
         candidates.append(
             {
                 "provider": "mlx",
                 "model": repo_id,
                 "dim": dim,
-                "downloaded": snapshot is not None,
+                "downloaded": report["snapshot"] is not None,
+                "revision": report["revision"],
+                "revision_source": report["revision_source"],
                 "e5_prefixes": prefixed,
             }
         )
@@ -302,9 +354,12 @@ __all__ = [
     "OLLAMA_EMBEDDING_MODELS",
     "Detection",
     "autodetect_enabled",
+    "cached_snapshot",
     "detect_embedder",
     "detect_local_hf",
     "detect_local_mlx",
+    "pinned_model_target",
+    "revision_report",
     "detect_ollama",
     "hf_cache_roots",
     "resolve_auto_provider",
