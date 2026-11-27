@@ -13,10 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AutomationSuggestions } from "@/features/act/AutomationSuggestions";
 import { InstalledAutomations } from "@/features/act/InstalledAutomations";
-import { firstString } from "@/features/act/actHelpers";
+import { downloadJson, firstString } from "@/features/act/actHelpers";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
+
+const WorkflowRunHistory = React.lazy(() =>
+  import("./WorkflowRunHistory").then((module) => ({ default: module.WorkflowRunHistory })),
+);
 
 const WorkflowGraph = React.lazy(() =>
   import("./WorkflowGraph").then((module) => ({ default: module.WorkflowGraph })),
@@ -166,6 +170,9 @@ export function WorkflowsPanel() {
           );
         }}
       </DataPanel>
+      <LazyPanel language={language} resetKey="workflow-history">
+        <WorkflowRunHistory language={language} workflows={workflows} />
+      </LazyPanel>
       {mode === "basic" ? (
         <DataPanel
           title={t(language, "act.trigger.title")}
@@ -207,8 +214,16 @@ export function WorkflowsPanel() {
                 <div key={id} className="rounded-md border border-border p-3">
                   <div className="font-medium">{String(workflow.name || id)}</div>
                   <div className="mt-2 flex gap-2">
-                    <ActionButton label={t(language, "act.workflow.run")} action={() => latticeApi.runWorkflow(id)} invalidate={["workflowRuns"]} />
-                    <ActionButton label={t(language, "act.workflow.export")} action={() => latticeApi.exportWorkflow(id)} />
+                    <ActionButton label={t(language, "act.workflow.run")} action={() => latticeApi.runWorkflow(id)} invalidate={["workflowRuns", "workflowDefinitionRuns", "activityRuns"]} />
+                    <ActionButton
+                      label={t(language, "act.workflow.export")}
+                      successLabel={t(language, "act.workflow.downloaded")}
+                      action={async () => {
+                        const result = await latticeApi.exportWorkflow(id);
+                        if (result.ok) downloadJson(result.data, String(workflow.name || id));
+                        return result;
+                      }}
+                    />
                   </div>
                 </div>
               );

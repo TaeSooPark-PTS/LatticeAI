@@ -18,6 +18,8 @@ import {
 
 export { browserFolderNameFromFiles, hasDesktopFolderPicker, readJourney, uploadResultDetail };
 
+const ImportPanel = React.lazy(() => import("@/features/capture/ImportPanel"));
+
 export function CapturePage({ initialTab }: { initialTab?: string }) {
   const language = useAppStore((state) => state.language);
   const [method, setMethod] = React.useState<CaptureMethod>(() => normalizeCaptureMethod(initialTab));
@@ -63,6 +65,10 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
           {method === "browser" ? <WebIntake /> : null}
         </div>
       </section>
+
+      <React.Suspense fallback={<p role="status" className="text-sm text-muted-foreground">{t(language, "ui.loading")}</p>}>
+        <ImportPanel />
+      </React.Suspense>
 
       <div className="capture-secondary">
         <PipelinePanel />

@@ -13,7 +13,7 @@ use super::definition::{
     export_workflow, import_workflow, legacy_steps_from_nodes, validate_definition,
 };
 use super::recipes::{build_recipe_workflow, find_installed_recipe, recipe_as_dict, RECIPES};
-use super::time::now_iso;
+use super::time::{now_epoch, now_iso};
 use super::{
     is_awaiting_approval, ok, require_user, resume_paused, scope_from_request, start_run,
     store_data_dir, WorkflowDesignerState, ACTIVE_STATUSES, DEFAULT_WORKSPACE_ID,
@@ -153,6 +153,7 @@ pub(crate) async fn create_definition(
         &scope,
         graph_node_id,
     );
+    state.triggers.sync_armed(now_epoch());
     let mut body = OrderedMap::new();
     body.insert(
         "workflow",
@@ -214,6 +215,7 @@ pub(crate) async fn update_definition(
         object.get("metadata").cloned(),
     ) {
         Ok(workflow) => {
+            state.triggers.sync_armed(now_epoch());
             let mut body = OrderedMap::new();
             body.insert("workflow", workflow);
             Ok(ok(&body))
@@ -474,11 +476,13 @@ pub(crate) async fn trigger_status(
     headers: HeaderMap,
 ) -> Result<Response, Response> {
     require_user(&state, &headers)?;
+    let scope = scope_from_request(&headers, None);
+    let armed = state.triggers.armed_rows(Some(&scope));
     let mut body = OrderedMap::new();
-    body.insert("running", json!(true));
+    body.insert("running", json!(state.triggers.is_running()));
     body.insert("tick_seconds", json!(state.trigger_tick_seconds));
     body.insert("tz", json!(state.trigger_tz));
-    body.insert("armed", json!([]));
+    body.insert("armed", json!(armed));
     Ok(ok(&body))
 }
 
@@ -571,6 +575,7 @@ pub(crate) async fn install_recipe(
         &scope,
         graph_node_id,
     );
+    state.triggers.sync_armed(now_epoch());
     let mut body = OrderedMap::new();
     body.insert(
         "workflow",

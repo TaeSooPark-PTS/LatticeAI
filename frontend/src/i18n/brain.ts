@@ -8,6 +8,7 @@ import { brainEvidenceCopy } from "./brain/evidence";
 import { brainCareCopy } from "./brain/care";
 import { brainGovernanceCopy } from "./brain/governance";
 import { brainSelfModelCopy } from "./brain/selfModel";
+import { brainSearchFiltersCopy } from "./brain/searchFilters";
 import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
@@ -23,6 +24,7 @@ export const brainCopy: NamespaceCopy = {
     ...brainCareCopy.ko,
     ...brainGovernanceCopy.ko,
     ...brainSelfModelCopy.ko,
+    ...brainSearchFiltersCopy.ko,
   },
   en: {
     ...brainHomeCopy.en,
@@ -35,6 +37,7 @@ export const brainCopy: NamespaceCopy = {
     ...brainCareCopy.en,
     ...brainGovernanceCopy.en,
     ...brainSelfModelCopy.en,
+    ...brainSearchFiltersCopy.en,
   },
 };
 

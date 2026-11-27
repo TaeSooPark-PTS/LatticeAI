@@ -230,6 +230,38 @@ describe("HybridSearch newest-first toggle", () => {
   });
 });
 
+describe("HybridSearch filters", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAppStore.setState({ mode: "advanced", language: "ko" } as never);
+  });
+
+  it("sends the filters with an explicit order and blocks a reversed range", async () => {
+    const hybridSearch = vi.fn().mockResolvedValue(ok({ matches: [] }));
+    const hybridSearchGraphRag = vi.fn().mockResolvedValue(ok({ matches: [] }));
+    render({ hybridSearch, hybridSearchGraphRag });
+    const input = await screen.findByPlaceholderText("사람, 문서, 주제로 검색");
+    await userEvent.type(input, "refund");
+    await userEvent.type(screen.getByLabelText("수정일 시작"), "2026-03-01");
+    await userEvent.type(input, "{Enter}");
+    await waitFor(() => expect(hybridSearch).toHaveBeenLastCalledWith("refund", undefined, "relevance", { since: "2026-03-01" }));
+    await userEvent.click(screen.getByTestId("toggle-multihop-search"));
+    await userEvent.click(screen.getByRole("button", { name: "기억에서 찾기" }));
+    await waitFor(() => expect(hybridSearchGraphRag).toHaveBeenLastCalledWith("refund", 12, "relevance", { since: "2026-03-01" }));
+    await userEvent.type(screen.getByLabelText("수정일 끝"), "2026-02-01");
+    await userEvent.type(input, "{Enter}");
+    expect(screen.getByRole("button", { name: "기억에서 찾기" }).hasAttribute("disabled")).toBe(true);
+    expect(hybridSearch).toHaveBeenCalledTimes(1);
+    expect(hybridSearchGraphRag).toHaveBeenCalledTimes(1);
+  });
+
+  it("says it is working while a search is in flight", async () => {
+    render({ hybridSearch: vi.fn(() => new Promise(() => {})) });
+    await userEvent.type(await screen.findByPlaceholderText("사람, 문서, 주제로 검색"), "x{Enter}");
+    expect(await screen.findByText("불러오는 중…")).toBeTruthy();
+  });
+});
+
 describe("standalone status panels (kept for future advanced views)", () => {
   beforeEach(() => {
     useAppStore.setState({ mode: "advanced", language: "ko" } as never);

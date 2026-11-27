@@ -4,6 +4,7 @@ import { workspaceActCopy } from "./workspace/act";
 import { workspaceAdminCopy } from "./workspace/admin";
 import { workspaceCaptureCopy } from "./workspace/capture";
 import { workspaceReviewCopy } from "./workspace/review";
+import { workspaceActReviewCopy } from "./workspace/actReview";
 import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
@@ -15,6 +16,7 @@ export const workspaceCopy: NamespaceCopy = {
     ...workspaceAdminCopy.ko,
     ...workspaceCaptureCopy.ko,
     ...workspaceReviewCopy.ko,
+    ...workspaceActReviewCopy.ko,
   },
   en: {
     ...workspaceLibraryCopy.en,
@@ -23,6 +25,7 @@ export const workspaceCopy: NamespaceCopy = {
     ...workspaceAdminCopy.en,
     ...workspaceCaptureCopy.en,
     ...workspaceReviewCopy.en,
+    ...workspaceActReviewCopy.en,
   },
 };
 

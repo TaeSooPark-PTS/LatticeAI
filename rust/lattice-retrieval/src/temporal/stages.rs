@@ -12,11 +12,11 @@ use super::SortBy;
 use crate::bm25::KnowledgeLifecycleStatus;
 use crate::shape::parent_node_id;
 
-fn score_of(item: &Value) -> f64 {
+pub(super) fn score_of(item: &Value) -> f64 {
     item.get("score").and_then(Value::as_f64).unwrap_or(0.0)
 }
 
-fn set_score(item: &mut Value, score: f64) {
+pub(super) fn set_score(item: &mut Value, score: f64) {
     if let Some(object) = item.as_object_mut() {
         object.insert("score".into(), json!(round6(score)));
     }
@@ -26,11 +26,11 @@ fn object_of(item: &Value) -> Map<String, Value> {
     item.as_object().cloned().unwrap_or_default()
 }
 
-fn owner_id(item: &Value) -> String {
+pub(super) fn owner_id(item: &Value) -> String {
     parent_node_id(&object_of(item))
 }
 
-fn own_id(item: &Value) -> String {
+pub(super) fn own_id(item: &Value) -> String {
     item.get("node_id")
         .or_else(|| item.get("id"))
         .and_then(Value::as_str)
@@ -38,7 +38,7 @@ fn own_id(item: &Value) -> String {
         .to_string()
 }
 
-fn updated_epoch(item: &Value) -> Option<f64> {
+pub(super) fn updated_epoch(item: &Value) -> Option<f64> {
     parse_iso(item.get("updated_at").and_then(Value::as_str))
 }
 
@@ -172,6 +172,7 @@ impl TemporalPlan {
                 "fallback": if all_superseded && !self.historical { Some("all_candidates_superseded") } else { None },
             }),
         );
+        self.annotate_signals(conn, &mut kept)?;
         by_score_desc(&mut kept);
         let kept = self.restrict_to_validity(kept);
         Ok(self.restrict_to_window(kept))
@@ -277,6 +278,7 @@ impl TemporalPlan {
         let limit = pool.max(1);
         let answer = answer.clamp(1, limit);
         let candidates = matches.len();
+        self.demote_flagged(&mut matches);
         if self.sort == SortBy::Newest {
             let max_score = matches.iter().map(score_of).fold(0.0, f64::max);
             let cap = self.ranking.gate.top_k.min(answer);
@@ -285,12 +287,7 @@ impl TemporalPlan {
                 .filter(|item| self.passes_gate(item, max_score))
                 .take(cap)
                 .collect();
-            relevant.sort_by(|a, b| match (updated_epoch(a), updated_epoch(b)) {
-                (Some(left), Some(right)) => right.partial_cmp(&left).unwrap_or(Ordering::Equal),
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
-                (None, None) => Ordering::Equal,
-            });
+            self.order_newest(&mut relevant);
             matches = relevant;
         } else {
             matches.truncate(limit);
@@ -302,6 +299,7 @@ impl TemporalPlan {
                 "requested": self.ranking.sort_by.as_str(),
                 "applied": self.sort.as_str(),
                 "order": if self.sort == SortBy::Newest { "rerank_then_relevance_gate_then_updated_at_desc" } else { "rerank_then_relevance" },
+                "trust_order": (self.sort == SortBy::Newest).then_some(super::signals::TRUST_ORDER),
                 "top_k": self.ranking.gate.top_k,
                 "min_relevance_ratio": self.ranking.gate.min_ratio,
                 "candidates": candidates,

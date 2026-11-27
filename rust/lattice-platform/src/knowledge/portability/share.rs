@@ -78,6 +78,10 @@ pub(crate) async fn share_status(
 #[path = "share_bundle.rs"]
 mod bundle;
 pub(super) use bundle::emit_portability_audit;
+pub(super) use bundle::{
+    belongs_to_other_workspace, foreign_conversation_nodes, is_node_share_blocked,
+    matches_workspace_boundary, metadata_of, node_workspace, v2_workspaces,
+};
 use bundle::{build_subgraph_bundle, verify_subgraph_bundle_signature, ShareViewer};
 
 fn sender_is_paired_peer(state: &PortabilityState, bundle: &Value) -> bool {

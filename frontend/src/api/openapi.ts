@@ -2255,6 +2255,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge-graph/export-vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["export_vault_api_knowledge_graph_export_vault_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge-graph/import": {
         parameters: {
             query?: never;
@@ -7708,6 +7724,9 @@ export interface components {
             msg: string;
             type: string;
         };
+        VaultExportRequest: {
+            workspace_id?: string | null;
+        };
         VectorSearchRequest: {
             include_historical?: boolean;
             limit?: number;
@@ -11823,6 +11842,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    export_vault_api_knowledge_graph_export_vault_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VaultExportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
         };

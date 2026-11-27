@@ -5,12 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BrainCircuit, DatabaseBackup, Layers3, Search, Share2, Sparkles } from "lucide-react";
 import { latticeApi, type SearchSortBy } from "@/api/client";
 import { LazyPanel } from "@/components/ErrorBoundary";
-import { ActionButton, DataPanel, EmptyState, EntityList, LoadingPanel, OperationResult, StatGrid, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, LoadingPanel, OperationResult, StatGrid, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchFilters } from "@/features/search/SearchFilters";
+import { SearchResults } from "@/features/search/SearchResults";
+import { EMPTY_SEARCH_FILTERS, isReversedRange, searchFilterBody } from "@/features/search/searchFilterModel";
 import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
 import { MultiHopSynthesisView } from "@/features/brain/MultiHopSynthesisView";
 import { SelfModelPanel } from "@/features/brain/SelfModelPanel";
@@ -158,14 +161,18 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
   const [query, setQuery] = React.useState("");
   const [multiHop, setMultiHop] = React.useState(false);
   const [newestFirst, setNewestFirst] = React.useState(false);
+  const [filters, setFilters] = React.useState(EMPTY_SEARCH_FILTERS);
   const search = useMutation({
     mutationFn: () => {
-      const sortBy: SearchSortBy | undefined = newestFirst ? "newest" : undefined;
+      const body = searchFilterBody(filters);
+      const sortBy: SearchSortBy | undefined = newestFirst ? "newest" : body ? "relevance" : undefined;
+      const extra: [] | [NonNullable<typeof body>] = body ? [body] : [];
       return multiHop
-        ? latticeApi.hybridSearchGraphRag(query, 12, sortBy)
-        : latticeApi.hybridSearch(query, undefined, sortBy);
+        ? latticeApi.hybridSearchGraphRag(query, 12, sortBy, ...extra)
+        : latticeApi.hybridSearch(query, undefined, sortBy, ...extra);
     },
   });
+  const canSearch = Boolean(query.trim()) && !isReversedRange(filters);
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
@@ -200,9 +207,11 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input placeholder={t(language, "brain.search.placeholder")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && search.mutate()} />
-          <Button onClick={() => search.mutate()} disabled={!query.trim() || search.isPending}>{t(language, "brain.search.cta")}</Button>
+          <Input placeholder={t(language, "brain.search.placeholder")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && canSearch && search.mutate()} />
+          <Button onClick={() => search.mutate()} disabled={!canSearch || search.isPending}>{t(language, "brain.search.cta")}</Button>
         </div>
+        <SearchFilters language={language} value={filters} onChange={setFilters} />
+        {search.isPending ? <p role="status" className="text-sm text-muted-foreground">{t(language, "ui.loading")}</p> : null}
         {search.data ? (
           <DataPanel title={t(language, "brain.search.results")} result={search.data}>
             {(data) => (
@@ -214,7 +223,7 @@ function HybridSearch({ onOpenGraphNode }: { onOpenGraphNode: (nodeId: string) =
                     onSelectNode={(nodeId) => onOpenGraphNode(nodeId)}
                   />
                 ) : null}
-                <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={12} />
+                <SearchResults language={language} data={data as Record<string, unknown>} query={query} />
               </div>
             )}
           </DataPanel>

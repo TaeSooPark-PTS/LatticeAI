@@ -232,3 +232,13 @@ describe("BrainHomeDock briefing request", () => {
     await waitFor(() => expect(useAppStore.getState().briefingRequested).toBe(false));
   });
 });
+
+describe("BrainHomeDock conversation library", () => {
+  it("loads the full library on demand and returns to the recent list", async () => {
+    renderDock({}, { api: { chatHistory: () => Promise.resolve(ok([])) } });
+    fireEvent.click(rail("conversations"));
+    fireEvent.click(screen.getByTestId("brain-history-library-open"));
+    fireEvent.click(await screen.findByRole("button", { name: t("ko", "brain.history.library.back") }));
+    expect(screen.getByTestId("brain-history-library-open")).toBeInTheDocument();
+  });
+});

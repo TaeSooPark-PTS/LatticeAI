@@ -804,3 +804,7 @@
     transition: none;
   }
 }
+
+.capture-import .capture-method-switch {
+  padding: 0;
+}

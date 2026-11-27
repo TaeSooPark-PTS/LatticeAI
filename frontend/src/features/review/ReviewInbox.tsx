@@ -5,6 +5,7 @@ import { EmptyState, LoadingPanel, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
+import { BulkReviewBar, isBulkEligible } from "./BulkReviewBar";
 import { ReviewCard } from "./ReviewCard";
 import {
   defaultSnoozeUntil,
@@ -28,6 +29,13 @@ export function ReviewInbox() {
     }),
   });
   const items = reviews.data?.data.items || [];
+  const [picked, setPicked] = React.useState<string[]>([]);
+  const selected = picked.filter((id) => items.some((item) => item.id === id && isBulkEligible(item)));
+  const refresh = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["automationReviews"] }),
+    qc.invalidateQueries({ queryKey: ["proposalCounts"] }),
+    qc.invalidateQueries({ queryKey: ["pendingProposals"] }),
+  ]);
   const proposalCounts = useQuery({
     queryKey: ["proposalCounts"],
     queryFn: latticeApi.proposalCounts,
@@ -83,11 +91,7 @@ export function ReviewInbox() {
         return next;
       });
     }
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["automationReviews"] }),
-      qc.invalidateQueries({ queryKey: ["proposalCounts"] }),
-      qc.invalidateQueries({ queryKey: ["pendingProposals"] }),
-    ]);
+    await refresh();
     return result;
   };
 
@@ -135,7 +139,14 @@ export function ReviewInbox() {
           />
         </div>
       </div>
-      <div className="pt-2">
+      <div className="space-y-2 pt-2">
+        <BulkReviewBar
+          language={language}
+          items={reviews.data?.ok ? items : []}
+          selected={selected}
+          onSelectedChange={setPicked}
+          onDone={refresh}
+        />
         {reviews.isError || (reviews.data && !reviews.data.ok) ? (
           <EmptyState
             title={t(language, "review.inbox.loadError")}
@@ -156,12 +167,22 @@ export function ReviewInbox() {
         ) : (
           <div className="flex flex-col gap-3">
             {items.map((item) => (
-              <ReviewCard
-                key={item.id}
-                item={item}
-                feedback={runFeedback[item.id]}
-                onAction={actOnReview}
-              />
+              <div key={item.id} className="flex items-start gap-3">
+                {isBulkEligible(item) ? (
+                  <input
+                    type="checkbox"
+                    className="mt-5"
+                    aria-label={t(language, "review.bulk.selectItem", { title: item.title })}
+                    checked={selected.includes(item.id)}
+                    onChange={(event) =>
+                      setPicked(event.target.checked ? [...selected, item.id] : selected.filter((id) => id !== item.id))
+                    }
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <ReviewCard item={item} feedback={runFeedback[item.id]} onAction={actOnReview} />
+                </div>
+              </div>
             ))}
           </div>
         )}

@@ -12,7 +12,7 @@ use super::{DEFAULT_WORKSPACE_ID, TERMINAL_STATUSES};
 
 pub(crate) struct WorkflowStore {
     pub(crate) path: PathBuf,
-    os: Arc<WorkspaceOsStore>,
+    pub(crate) os: Arc<WorkspaceOsStore>,
 }
 
 impl WorkflowStore {

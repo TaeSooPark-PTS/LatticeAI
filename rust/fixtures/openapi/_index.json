@@ -64,10 +64,10 @@
     {
       "family": "portability_network",
       "file": "portability_network.json",
-      "operations": 60,
-      "paths": 54,
-      "schemas": 34,
-      "sha256": "f136d7c4a0ffaa5917942ec9dd819e84b7b14c2fccd04ade39829954b20b1737"
+      "operations": 61,
+      "paths": 55,
+      "schemas": 35,
+      "sha256": "874a85f01135748a7190e392001ae739df93d1d7dbc2144547c8408ffe8ccf3a"
     },
     {
       "family": "review_proposals",
@@ -129,8 +129,8 @@
   "spec_version": "14.4.0",
   "totals": {
     "families": 13,
-    "operations": 473,
-    "paths": 430,
-    "schemas": 180
+    "operations": 474,
+    "paths": 431,
+    "schemas": 181
   }
 }

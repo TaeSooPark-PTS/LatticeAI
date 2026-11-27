@@ -7,6 +7,19 @@ export function firstString(...values: unknown[]): string {
   return "";
 }
 
+export const ACTIVE_RUN_STATUSES = ["queued", "running", "cancelling", "awaiting_approval"];
+
+export function downloadJson(data: unknown, name: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${name.replace(/[\\/:*?"<>|]+/g, "-").trim() || "workflow"}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function runStatusLabel(status: string, language: Language) {
   const key = `act.runStatus.${status}`;
   const label = t(language, key);

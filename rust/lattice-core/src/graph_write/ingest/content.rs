@@ -88,6 +88,7 @@ impl GraphWriter {
         for (key, value) in &request.metadata {
             node_meta.insert(key.clone(), value.clone());
         }
+        super::super::frontmatter::stamp_frontmatter(&mut node_meta, &text);
 
         let mut chunk_ids: Vec<String> = Vec::new();
         let mut hook_result = 0usize;
@@ -281,6 +282,18 @@ impl GraphWriter {
             }
             Ok((Some(source_node_id), duplicate))
         })?;
+        if !duplicate {
+            self.notify_ingest(super::super::BrainIngestEvent {
+                node_id: content_id.clone(),
+                title,
+                source_type,
+                workspace_id: workspace
+                    .unwrap_or(crate::read::DEFAULT_WORKSPACE_ID)
+                    .to_string(),
+                owner: request.owner.clone(),
+                duplicate,
+            });
+        }
         Ok((
             IngestOutcome {
                 node_id: content_id,

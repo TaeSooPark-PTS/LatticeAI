@@ -263,17 +263,18 @@ async fn run(options: Options) -> Result<(), String> {
         lattice_host::gateway::allowlist::Allowlist::shared().len(),
     ));
 
-    let graph = state
+    let product = state
         .product()
-        .ok_or_else(|| "product surface missing after open_product".to_string())?
-        .graph
-        .clone();
+        .ok_or_else(|| "product surface missing after open_product".to_string())?;
+    let graph = product.graph.clone();
+    let triggers = product.workflow_designer.triggers();
     let scheduler =
         mounts::scheduler_with_graph(&supervisor.worker_origin(), supervisor.client(), graph);
     let state = Arc::new(state.with_jobs(Arc::clone(&scheduler)));
 
     let run_jobs = jobs_should_run(&options, std::env::var(mounts::JOBS_ENV).ok().as_deref());
     let (jobs_stop_tx, jobs_stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let (triggers_stop_tx, triggers_stop_rx) = tokio::sync::oneshot::channel::<()>();
     let jobs_task = run_jobs.then(|| {
         log(&format!(
             "jobs scheduler every {}s against {} (autoresume {})",
@@ -287,6 +288,12 @@ async fn run(options: Options) -> Result<(), String> {
         ));
         Arc::clone(&scheduler).spawn(async move {
             let _ = jobs_stop_rx.await;
+        })
+    });
+    let triggers_task = run_jobs.then(|| {
+        log("automation trigger scheduler started");
+        Arc::clone(&triggers).spawn_loop(async move {
+            let _ = triggers_stop_rx.await;
         })
     });
     if !run_jobs {
@@ -313,7 +320,11 @@ async fn run(options: Options) -> Result<(), String> {
         serve_gateway_with_auth_guard(listener, state, require_auth, shutdown_signal()).await;
     let _ = start_task.await;
     let _ = jobs_stop_tx.send(());
+    let _ = triggers_stop_tx.send(());
     if let Some(handle) = jobs_task {
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), handle).await;
+    }
+    if let Some(handle) = triggers_task {
         let _ = tokio::time::timeout(std::time::Duration::from_secs(5), handle).await;
     }
     let final_status = supervisor.stop().await;

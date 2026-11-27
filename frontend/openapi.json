@@ -4804,6 +4804,23 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VaultExportRequest": {
+        "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "VaultExportRequest",
+        "type": "object"
+      },
       "VectorSearchRequest": {
         "properties": {
           "include_historical": {
@@ -10488,6 +10505,35 @@
           }
         },
         "summary": "Export Graph File"
+      }
+    },
+    "/api/knowledge-graph/export-vault": {
+      "post": {
+        "operationId": "export_vault_api_knowledge_graph_export_vault_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultExportRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Obsidian-compatible Markdown vault as a ZIP archive"
+          }
+        },
+        "summary": "Export Markdown Vault"
       }
     },
     "/api/knowledge-graph/import": {

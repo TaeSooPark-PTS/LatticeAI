@@ -426,3 +426,17 @@ describe("InlineCitationMarkers", () => {
     expect(document.activeElement).toBe(marker);
   });
 });
+
+describe("AnswerProofCard source feedback", () => {
+  it("offers feedback for a stored source and not for a placeholder id", () => {
+    render(
+      <AnswerProofCard
+        language="ko"
+        proof={proof({ citations: [citation(), citation({ id: "recall-1", title: "임시" })] })}
+        messageId="m-feedback"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "예산 계획: 좋은 출처가 아니라고 표시" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "임시: 좋은 출처가 아니라고 표시" })).toBeNull();
+  });
+});

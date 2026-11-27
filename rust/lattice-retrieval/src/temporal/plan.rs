@@ -1,4 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+use lattice_core::correction_signals::ActiveCorrection;
 
 use lattice_core::{parse_iso, CoreError};
 use rusqlite::Connection;
@@ -26,6 +28,8 @@ pub struct TemporalPlan {
     pub sort: SortBy,
     pub historical: bool,
     pub report: Map<String, Value>,
+    pub trust: HashMap<String, super::trust::TrustAssessment>,
+    pub feedback: HashMap<String, ActiveCorrection>,
 }
 
 fn explicit_window(ranking: &TemporalRanking) -> Option<TimeWindow> {
@@ -128,6 +132,8 @@ impl TemporalPlan {
             sort,
             historical,
             report,
+            trust: HashMap::new(),
+            feedback: HashMap::new(),
         })
     }
 

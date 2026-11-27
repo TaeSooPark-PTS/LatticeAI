@@ -43,6 +43,14 @@ module.exports = function handleShell({ req, res, url, pathname }) {
     { id: "conv-hybrid", title: "How hybrid search ranks", updated_at: "2026-06-06T13:20:00" },
     { id: "conv-reindex", title: "Reindex the workspace", updated_at: "2026-06-06T11:05:00" },
   ]);
+  if (pathname === "/history/search") {
+    const query = url.searchParams.get("q") || "";
+    return json(res, { query, results: query ? [{
+      conversation_id: "conv-hybrid",
+      title: "How does hybrid search rank results?",
+      messages: [{ role: "user", content: "How does hybrid search rank results?", timestamp: "2026-06-06T13:19:00" }],
+    }] : [] });
+  }
   if (pathname.startsWith("/history/conversations/")) {
     if (req.method === "DELETE") return json(res, { removed: 1, kept: 0 });
     const id = pathname.slice("/history/conversations/".length);
