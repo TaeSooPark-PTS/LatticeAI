@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import os
+import threading
 
 import pytest
 
@@ -43,6 +44,13 @@ def test_router_import_sets_default_mlx_draft_kind(monkeypatch):
 
 def test_gemma4_26b_load_retries_mlx_lm_when_mlx_vlm_fails(monkeypatch):
     calls = []
+    resolver_threads = []
+
+    def fake_resolve(model_id):
+        resolver_threads.append(threading.current_thread())
+        return model_id
+
+    monkeypatch.setattr(router_loading, "_resolve_local_hf_model", fake_resolve)
 
     def fake_vlm_load(model_id):
         calls.append(("mlx_vlm", model_id))
@@ -67,10 +75,15 @@ def test_gemma4_26b_load_retries_mlx_lm_when_mlx_vlm_fails(monkeypatch):
     assert calls[0][1] == calls[1][1]
     assert "gemma-4-26b-a4b-it-4bit" in calls[0][1]
     assert llm._cache["mlx-community/gemma-4-26b-a4b-it-4bit"][3] == "mlx_lm"
+    assert resolver_threads
+    assert threading.main_thread() not in resolver_threads
 
 
 def test_gemma4_12b_unified_does_not_retry_unsupported_mlx_lm(monkeypatch):
     calls = []
+    monkeypatch.setattr(
+        router_loading, "_resolve_local_hf_model", lambda model_id: model_id
+    )
 
     def fake_vlm_load(model_id):
         calls.append(("mlx_vlm", model_id))

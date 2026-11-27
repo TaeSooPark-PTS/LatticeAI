@@ -5,7 +5,7 @@
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.5.0 — Living Automations**.
+Current release: **14.6.0 — Within Your Scope**.
 
 This document records the live product capabilities and honest boundaries of
 Lattice AI as of `v14.5.0`. Public release history is maintained from `v13.0.0`
@@ -124,16 +124,18 @@ replaceable runtimes over that Brain.
   content. Image/video observation helpers stay under Brain Core unit tests
   without a standalone HTTP route.
 - **Image evidence thumbnails:** Evidence cards render 96px inline `data:image/`
-  thumbnails capped at 24 KB rather than exposing raw disk paths without
-  explicit `/local/serve` approval.
+  thumbnails capped at 24 KB by default. The original image is served through
+  `/local/serve` only after an explicit approval click (consent-gated viewer,
+  `CitationVisual` tests).
 - **Local-export-only interop bridges:** Notion API, IMAP, and macOS
   Calendar/Mail live connectors are intentionally out of scope; interop bridges
   ingest user-exported local files only.
 - **Pointer tools (`pyautogui`):** The six pointer tools execute in the Python
   worker (`pip install "ltcai[pointer]"`) rather than a native Rust OS actuator.
 - **Self-Model extraction scope:** Phrase-table extraction (EN/KO) is
-  proposal-first with no LLM `refiner` wired yet, and `open_keys` filters
-  `pending` proposals only.
+  proposal-first with no LLM `refiner` wired yet. `open_keys` treats both
+  `pending` and `snoozed` proposals as open (suppressing duplicates); the
+  `snoozed` decision is not yet pinned by a regression test.
 - **Coverage floor asymmetry:** Frontend Vitest enforces 100% across statements,
   branches, functions, and lines (`all: true`); Python CI enforces a `>= 90%`
   line-coverage floor.

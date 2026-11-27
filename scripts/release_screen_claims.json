@@ -20,6 +20,16 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.6.0": {
+    "_why": [
+      "Within Your Scope (14.6.0) adds a top-bar search button, memory manager,",
+      "document library, run history filters, trigger filter form and actionable",
+      "search results, all behind interaction or below the fold.",
+      "",
+      "No static initial-load screen layout was redesigned in 14.6.0; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.5.0": {
     "_why": [
       "Living Automations (14.5.0) adds the unified Import Sources panel on Capture",

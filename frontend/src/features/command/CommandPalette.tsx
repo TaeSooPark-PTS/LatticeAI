@@ -18,6 +18,7 @@ import { asArray } from "@/lib/utils";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { t, type Language } from "@/i18n";
 import { commandRoutes } from "@/routes";
+import { LEGACY_CONVERSATION_ID } from "@/features/brain/library/searchResults";
 import { navigateHash } from "@/features/brain/navigation";
 import { useAppStore } from "@/store/appStore";
 
@@ -29,6 +30,7 @@ type PaletteItem = {
   icon: React.ReactNode;
   target: string;
   focusNodeId?: string;
+  conversationId?: string;
   action?: "open-briefing" | "toggle-language" | "toggle-graph-view";
 };
 
@@ -179,13 +181,15 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
             focusNodeId: rawId || undefined,
           });
         } else if (group.kind === "conversation") {
+          const conversationId = String(raw.conversation_id || LEGACY_CONVERSATION_ID);
           remote.push({
-            id: `conv-${String(raw.conversation_id ?? remote.length)}`,
+            id: `conv-${remote.length}-${conversationId}`,
             group: "conversation",
             title: String(raw.snippet || ""),
             detail: String(raw.timestamp || "").slice(0, 10),
             icon: <MessageCircle className="h-4 w-4" />,
             target: "/brain",
+            conversationId,
           });
         } else if (group.kind === "automation") {
           remote.push({
@@ -225,6 +229,9 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
       }
       if (item.focusNodeId) {
         useAppStore.getState().setFocusedGraphNodeId(item.focusNodeId);
+      }
+      if (item.conversationId) {
+        useAppStore.getState().setPendingConversationId(item.conversationId);
       }
       if (item.action === "open-briefing") {
         useAppStore.getState().setBriefingRequested(true);

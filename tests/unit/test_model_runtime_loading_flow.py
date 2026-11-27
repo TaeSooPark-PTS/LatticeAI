@@ -358,7 +358,7 @@ def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: P
     monkeypatch.setitem(sys.modules, "tqdm", types.ModuleType("tqdm"))
     monkeypatch.setitem(sys.modules, "tqdm.auto", fake_tqdm)
 
-    def fake_download(*, repo_id, filename, local_dir, tqdm_class=None):
+    def fake_download(*, repo_id, filename, local_dir, tqdm_class=None, revision=None):
         dest = Path(local_dir) / filename
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(b"xx")

@@ -83,6 +83,9 @@ pub(crate) fn validate_definition(workflow: &Value) -> Vec<String> {
                 nid.unwrap_or("None")
             ));
         }
+        if ntype == Some("trigger") {
+            errors.extend(super::triggers::brain_event_config_errors(node));
+        }
         let mut targets: Vec<Option<&Value>> = Vec::new();
         if ntype == Some("condition") {
             match node.get("branches").and_then(Value::as_object) {

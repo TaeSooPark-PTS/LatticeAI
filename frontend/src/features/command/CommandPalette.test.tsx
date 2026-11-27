@@ -457,3 +457,30 @@ describe("CommandPalette view and sort round trips", () => {
     expect(useAppStore.getState().graphViewMode).toBe("3d");
   });
 });
+
+describe("CommandPalette conversation hits", () => {
+  it("asks Brain Home to open the chosen conversation, including the legacy one", async () => {
+    mockBriefing({ sections: {} }, false);
+    vi.spyOn(latticeApi, "commandSearch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      source: "api",
+      data: {
+        groups: [{ kind: "conversation", items: [
+          { conversation_id: "c7", snippet: "예산 회의" },
+          { conversation_id: "", snippet: "예전 대화" },
+        ] }],
+      },
+    } as never);
+    const { useAppStore } = await import("@/store/appStore");
+    for (const [snippet, id] of [["예산 회의", "c7"], ["예전 대화", "legacy-previous-history"]]) {
+      const view = renderWithClient(<CommandPalette language="ko" initialOpen />);
+      await userEvent.type(screen.getByRole("textbox"), "예");
+      await userEvent.click(await screen.findByText(snippet!));
+      expect(useAppStore.getState().pendingConversationId).toBe(id);
+      expect(window.location.hash).toBe("#/brain");
+      view.unmount();
+    }
+    useAppStore.setState({ pendingConversationId: null });
+  });
+});

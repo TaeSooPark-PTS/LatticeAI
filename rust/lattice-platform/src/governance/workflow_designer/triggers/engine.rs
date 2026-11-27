@@ -27,6 +27,7 @@ pub struct BrainEventPayload {
     pub source_type: String,
     pub workspace_id: String,
     pub owner: Option<String>,
+    pub visibility: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -294,6 +295,15 @@ impl TriggerEngine {
                     continue;
                 };
                 if auto.kind != TriggerKind::BrainEvent || auto.workspace_id != event_workspace {
+                    continue;
+                }
+                if !auto.event_filter.admits(
+                    auto.user_email.as_deref(),
+                    event.owner.as_deref(),
+                    event.visibility.as_deref(),
+                    &event.source_type,
+                    &event.title,
+                ) {
                     continue;
                 }
                 let entry = states

@@ -5,26 +5,44 @@ import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstalledAutomations } from "@/features/act/InstalledAutomations";
 import { ACTIVE_RUN_STATUSES, approvalActionLabel, firstString, humanRunTitle, runStatusLabel } from "@/features/act/actHelpers";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
 
+const ACTIVITY_LIMIT = 100;
+const PAGE_SIZE = 10;
+
+const RUN_FILTERS = {
+  active: ["queued", "pending", "running", "cancelling"],
+  approval: ["awaiting_approval", "waiting_approval"],
+  done: ["ok", "retried_ok", "succeed", "succeeded", "complet", "complete", "completed"],
+  failed: ["failed", "error", "rejected", "interrupted"],
+  cancelled: ["cancelled"],
+};
+
+type RunFilter = "all" | keyof typeof RUN_FILTERS;
+
 export function RunsListPanel() {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const workflows = useQuery({ queryKey: ["workflowRuns"], queryFn: latticeApi.workflowRuns });
-  const activity = useQuery({ queryKey: ["activityRuns"], queryFn: () => latticeApi.activityRuns(20) });
+  const activity = useQuery({ queryKey: ["activityRuns"], queryFn: () => latticeApi.activityRuns(ACTIVITY_LIMIT) });
   const pending = useQuery({ queryKey: ["permissions"], queryFn: latticeApi.permissionsPending });
 
-  const activityData = (activity.data?.data || activity.data) as Record<string, unknown> | undefined;
+  const activityData = activity.data?.data as Record<string, unknown> | undefined;
   const activityRuns = asArray<Record<string, unknown>>(activityData?.runs);
   const agentRuns = asArray<Record<string, unknown>>((runtime.data?.data as Record<string, unknown>)?.runs);
   const workflowRuns = asArray<Record<string, unknown>>((workflows.data?.data as Record<string, unknown>)?.runs);
 
-  const combinedRuns = activityRuns.length > 0 ? activityRuns : [
+  const activityError = activity.data && !activity.data.ok ? activity.data.error || t(language, "ui.status.unavailable") : "";
+  const fallbackError = [runtime.data, workflows.data].find((result) => result && !result.ok);
+  const useActivity = !activityError && activityRuns.length > 0;
+  const loading = !activity.data || (!useActivity && (!runtime.data || !workflows.data));
+  const combinedRuns = useActivity ? activityRuns : [
     ...agentRuns.map((r) => ({ ...r, source: "agent" })),
     ...workflowRuns.map((r) => ({ ...r, source: "workflow" })),
   ];
@@ -61,9 +79,33 @@ export function RunsListPanel() {
 
       <InstalledAutomations language={language} />
 
-      <DataPanel title={t(language, "act.panel.combinedRuns")} result={activity.data?.ok !== false ? activity.data : runtime.data}>
-        {() => <RunList runs={combinedRuns} kind="combined" />}
-      </DataPanel>
+      <Card className="data-panel overflow-hidden">
+        <CardHeader>
+          <CardTitle>{t(language, "act.panel.combinedRuns")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {activityError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 p-3 text-sm">
+              <div>
+                <p className="font-medium">{t(language, "act.runs.loadError")}</p>
+                <p className="text-xs text-muted-foreground">{activityError}</p>
+                {combinedRuns.length ? <p className="text-xs text-muted-foreground">{t(language, "act.runs.partial")}</p> : null}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void activity.refetch()}>{t(language, "act.runs.retry")}</Button>
+            </div>
+          ) : null}
+          {!loading && !useActivity && fallbackError ? (
+            <p role="alert" className="text-sm text-warning">
+              {t(language, "act.runs.sourceError", { reason: fallbackError.error || t(language, "ui.status.unavailable") })}
+            </p>
+          ) : null}
+          {loading ? <p role="status" className="text-sm text-muted-foreground">{t(language, "ui.loading")}</p> : null}
+          {!loading && (combinedRuns.length > 0 || (!activityError && !fallbackError)) ? <RunList runs={combinedRuns} /> : null}
+          {useActivity && activityRuns.length >= ACTIVITY_LIMIT ? (
+            <p className="text-xs text-muted-foreground">{t(language, "act.runs.capped", { count: ACTIVITY_LIMIT })}</p>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -128,17 +170,41 @@ function WorkflowRunActions({ runId, status, language }: { runId: string; status
   );
 }
 
-function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" | "combined" }) {
+function RunList({ runs }: { runs: Array<Record<string, unknown>> }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
+  const [filter, setFilter] = React.useState<RunFilter>("all");
+  const [visible, setVisible] = React.useState(PAGE_SIZE);
   if (!runs.length) return <EntityList items={[]} />;
+  const matching = filter === "all" ? runs : runs.filter((run) => RUN_FILTERS[filter].includes(String(run.status || "")));
   return (
     <div className="grid gap-2">
-      {runs.slice(0, 10).map((run, index) => {
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          {t(language, "act.runs.filter")}
+          <select
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+            value={filter}
+            onChange={(event) => {
+              setFilter(event.target.value as RunFilter);
+              setVisible(PAGE_SIZE);
+            }}
+          >
+            {(["all", "active", "approval", "done", "failed", "cancelled"] as const).map((option) => (
+              <option key={option} value={option}>{t(language, `act.runs.filter.${option}`)}</option>
+            ))}
+          </select>
+        </label>
+        <span role="status" className="text-xs tabular-nums text-muted-foreground">
+          {t(language, "act.runs.count", { shown: Math.min(visible, matching.length), total: matching.length })}
+        </span>
+      </div>
+      {matching.length ? null : <p className="text-sm text-muted-foreground">{t(language, "act.runs.noMatch")}</p>}
+      {matching.slice(0, visible).map((run, index) => {
         const id = String(run.run_id || run.id);
         const status = String(run.status || "");
         const label = runStatusLabel(status, language);
-        const isWorkflow = run.source === "workflow" || kind === "workflow" || Boolean(run.workflow_id);
+        const isWorkflow = run.source === "workflow" || Boolean(run.workflow_id);
         const title = humanRunTitle(run)
           || (mode === "basic" ? t(language, "act.run.fallbackName", { index: index + 1 }) : shortId(id, 18));
         const isSuccess = /^(ok|retried_ok|succeed(?:ed)?|complet(?:e|ed)?)$/i.test(status);
@@ -157,6 +223,9 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
           </div>
         );
       })}
+      {matching.length > visible ? (
+        <Button variant="outline" onClick={() => setVisible(visible + PAGE_SIZE)}>{t(language, "act.runs.more")}</Button>
+      ) : null}
     </div>
   );
 }

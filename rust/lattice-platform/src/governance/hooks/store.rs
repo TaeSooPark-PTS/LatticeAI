@@ -90,7 +90,7 @@ fn write_file_pre_runs(fixture_hook_id: Option<&str>) -> Vec<Value> {
             "duration_ms": 1,
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": builtin_binding("builtin:tool-permission-gate"),
             "started_at": now,
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -105,7 +105,7 @@ fn write_file_pre_runs(fixture_hook_id: Option<&str>) -> Vec<Value> {
             "duration_ms": 1,
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": builtin_binding("builtin:sensitive-data-guard"),
             "started_at": now,
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -144,6 +144,12 @@ fn write_file_pre_runs(fixture_hook_id: Option<&str>) -> Vec<Value> {
         "target_kind": "post_tool"
     }));
     rows
+}
+
+fn builtin_binding(id: &str) -> &'static str {
+    super::catalog::builtin(id)
+        .map(super::catalog::BuiltinHook::binding)
+        .unwrap_or(super::catalog::NOT_EXECUTED)
 }
 
 fn load_hooks(path: &std::path::Path) -> (Vec<Value>, serde_json::Map<String, Value>) {
@@ -186,7 +192,7 @@ fn ensure_brain_event_trigger(custom: &mut Vec<Value>) {
         "id": BRAIN_EVENT_TRIGGERS,
         "name": "brain-event-triggers",
         "kind": "post_tool",
-        "description": "Fires brain_event workflow triggers when knowledge enters the brain.",
+        "description": super::catalog::BRAIN_EVENT_TRIGGERS_DESCRIPTION,
         "command": "",
         "order": 100,
         "enabled": true,
@@ -287,14 +293,19 @@ impl HooksStore {
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
+        let executed = hook
+            .get("executed")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         if let Some(obj) = hook.as_object_mut() {
             obj.insert("advisory".into(), json!(managed != "platform"));
             obj.insert(
                 "note".into(),
-                json!(if managed == "platform" {
-                    "Enforced by its owning subsystem; the registry controls visibility and ordering."
-                } else {
-                    "User-registered hook: listed, ordered and inspectable; runs advisory in this build."
+                json!(match (managed == "platform", executed) {
+                    (true, true) => "Enforced by its owning subsystem; the registry controls visibility and ordering.",
+                    (true, false) => "Listed for visibility only: no subsystem runs this hook in this build.",
+                    (false, true) => "User-registered hook: runs its command when its event fires.",
+                    (false, false) => "User-registered hook: not run automatically in this build; a command runs only when you run or fire it yourself.",
                 }),
             );
         }
@@ -509,7 +520,11 @@ fn materialize(inner: &HooksInner) -> Vec<Value> {
                 obj.insert("order".into(), order.clone());
             }
             obj.insert("removable".into(), json!(false));
-            obj.insert("executable".into(), json!(true));
+            let executed = obj
+                .get("executed")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            obj.insert("executable".into(), json!(executed));
             obj.insert("advisory".into(), json!(false));
         }
         hooks.push(hook);
@@ -532,10 +547,20 @@ fn materialize(inner: &HooksInner) -> Vec<Value> {
                 .and_then(Value::as_str)
                 .map(|s| !s.trim().is_empty())
                 .unwrap_or(false);
-            let executable = has_command
-                || custom.get("id").and_then(Value::as_str) == Some(BRAIN_EVENT_TRIGGERS);
-            obj.insert("executable".into(), json!(executable));
-            obj.insert("advisory".into(), json!(!executable));
+            if custom.get("id").and_then(Value::as_str) == Some(BRAIN_EVENT_TRIGGERS) {
+                obj.insert(
+                    "description".into(),
+                    json!(super::catalog::BRAIN_EVENT_TRIGGERS_DESCRIPTION),
+                );
+            }
+            let runs_on_event = has_command
+                && matches!(
+                    custom.get("kind").and_then(Value::as_str),
+                    Some("pre_tool" | "post_tool")
+                );
+            obj.insert("executable".into(), json!(has_command));
+            obj.insert("executed".into(), json!(runs_on_event));
+            obj.insert("advisory".into(), json!(!has_command));
         }
         hooks.push(hook);
     }

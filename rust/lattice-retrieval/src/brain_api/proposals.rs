@@ -330,7 +330,7 @@ pub async fn proactive_brief(
     section.insert("generated_at", Value::String(state.now()));
 
     let doc = wsos::load(state.store(), state.data_dir());
-    let pending = pending_synthesis(&doc, workspace_id);
+    let pending = pending_synthesis(&doc, workspace_id, state.now_utc());
     let mut by_kind: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
     for item in &pending {
         let kind = item

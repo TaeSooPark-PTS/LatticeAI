@@ -5629,7 +5629,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "14.5.0"
+    "version": "14.6.0"
   },
   "openapi": "3.1.0",
   "paths": {

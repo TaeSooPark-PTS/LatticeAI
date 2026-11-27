@@ -4,7 +4,7 @@
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.5.0 — Living Automations**.
+현재 릴리스: **14.6.0 — Within Your Scope**.
 
 이 문서는 `v14.5.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
@@ -74,10 +74,10 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 - **벡터 백엔드 환경 변수 기본값**: `LATTICEAI_VECTOR_INDEX` 기본값은 `brute`이며(512개 이상 벡터 + 워커 연결 시 `hnsw+rescore` 자동 시도), 기본 환경 변수 전환은 연속 수집 환경의 라이브 recall@10 검증을 전제로 합니다. `quantized` int8 백엔드는 10k 행 기준 메모리 절감 대비 약 2.2배 느려 기본 권장 대상이 아닙니다.
 - **Hugging Face 런타임 커밋 고정 백로그**: `scripts/verify_hf_model_registry.py`는 가중치 다운로드 없이 Hub 메타데이터와 크기를 정적 검증하지만, `model_runtime/download.py`와 `embedding_providers/text.py`의 런타임 다운로드에는 기본 불변 `revision=` 고정이 아직 전 경로에 적용되지 않았습니다([`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md)에 Bandit `B615`로 추적 중).
 - **비전·음성 모델 및 `ffmpeg` 미번들**: OCR, VLM 캡션, 공유 공간 비전 임베딩, 음성 전사기, `ffmpeg`는 선택적 외부 의존성이며 부재 시 가짜 값을 만들지 않고 `unavailable`로 보고합니다. 이미지·비디오 관찰 헬퍼는 별도 HTTP 라우트 없이 Brain Core 단위 테스트로 유지됩니다.
-- **이미지 근거 썸네일**: 근거 카드는 명시적 `/local/serve` 승인 없이 디스크 원본 경로를 노출하지 않기 위해 96px 인라인 `data:image/` 썸네일(24 KB 상한)만 렌더링합니다.
+- **이미지 근거 썸네일**: 근거 카드는 기본적으로 96px 인라인 `data:image/` 썸네일(24 KB 상한)만 렌더링하며, 원본 이미지는 사용자가 명시적으로 승인한 뒤에만 `/local/serve`로 제공됩니다(동의 게이트 뷰어, `CitationVisual` 테스트).
 - **로컬 내보내기 전용 상호운용 브리지**: Notion API, IMAP, macOS 캘린더/메일 실시간 연동은 의도적으로 범위 밖이며 사용자가 내보낸 로컬 파일만 수집합니다.
 - **포인터 도구(`pyautogui`)**: 6개 포인터 도구는 네이티브 Rust OS 액추에이터가 아니라 Python 워커(`pip install "ltcai[pointer]"`)에서 실행됩니다.
-- **자기모델 추출 범위**: 한/영 구문 테이블 기반 제안 우선 추출이며 LLM `refiner`는 미연결 상태이고 `open_keys`는 `pending` 제안만 필터링합니다.
+- **자기모델 추출 범위**: 한/영 구문 테이블 기반 제안 우선 추출이며 LLM `refiner`는 미연결 상태입니다. `open_keys`는 `pending`과 `snoozed` 제안을 모두 열린 항목으로 취급해 중복을 억제하지만, `snoozed` 결정을 고정하는 회귀 테스트는 아직 없습니다.
 - **커버리지 하한 비대칭**: 프론트엔드 Vitest는 구문·분기·함수·라인 100%(`all: true`)를 강제하고, Python CI는 라인 커버리지 90% 하한을 적용합니다.
 - **로컬 OS 보안 경계**: 디스크 수준 데이터 보호는 OS 사용자 계정, 디스크 암호화, 외부 백업 정책에 의존합니다.
 

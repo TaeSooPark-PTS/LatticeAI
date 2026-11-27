@@ -21,6 +21,11 @@ export const brainSearchFiltersCopy: NamespaceCopy = {
     "brain.sourceFeedback.undoAria": "{title}: 출처 표시 되돌리기",
     "brain.sourceFeedback.marked": "좋지 않은 출처로 기록했어요.",
     "brain.sourceFeedback.failed": "출처 표시를 저장하지 못했어요.",
+    "brain.searchResult.open": "원문 보기",
+    "brain.searchResult.openAria": "{title}: 원문 보기",
+    "brain.searchResult.ask": "이것에 대해 묻기",
+    "brain.searchResult.askAria": "{title}: 이것에 대해 묻기",
+    "brain.searchResult.askPrompt": "‘{title}’에 대해 알려 주세요.",
   },
   en: {
     "brain.filters.legend": "Search filters",
@@ -42,5 +47,10 @@ export const brainSearchFiltersCopy: NamespaceCopy = {
     "brain.sourceFeedback.undoAria": "{title}: undo the source mark",
     "brain.sourceFeedback.marked": "Recorded as a poor source.",
     "brain.sourceFeedback.failed": "The source mark could not be saved.",
+    "brain.searchResult.open": "Open source",
+    "brain.searchResult.openAria": "{title}: open source",
+    "brain.searchResult.ask": "Ask about this",
+    "brain.searchResult.askAria": "{title}: ask about this",
+    "brain.searchResult.askPrompt": "Tell me about \"{title}\".",
   },
 };

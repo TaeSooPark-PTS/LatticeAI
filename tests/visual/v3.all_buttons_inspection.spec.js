@@ -1,6 +1,25 @@
 const { test, expect } = require("@playwright/test");
 const { trackPageErrors, bypassProductFlow, openBrain } = require("./v3_helpers");
 
+const openDialogs = (page) => page.locator("[role='dialog']:visible, [role='alertdialog']:visible");
+
+async function closeDialogs(page) {
+  const dialogs = openDialogs(page);
+  for (let depth = 0; depth < 3 && (await dialogs.count()) > 0; depth++) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(50);
+  }
+  await expect(dialogs).toHaveCount(0);
+}
+
+async function clickThenClose(page, button) {
+  const opensDialog = (await button.getAttribute("aria-haspopup")) === "dialog";
+  await button.click({ timeout: 3000 });
+  if (opensDialog) await expect(openDialogs(page).first()).toBeVisible();
+  else await page.waitForTimeout(100);
+  await closeDialogs(page);
+}
+
 test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
   test("1. Onboarding flow: Wake -> Login -> Model Recommendations (with Google EmbeddingGemma 2) -> Install & Skip", async ({ page }) => {
     const errors = trackPageErrors(page);
@@ -188,8 +207,9 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     const count = await graphButtons.count();
     for (let i = 0; i < Math.min(count, 10); i++) {
       const btn = graphButtons.nth(i);
+      await closeDialogs(page);
       if (await btn.isVisible() && await btn.isEnabled()) {
-        await btn.click().catch(() => {});
+        await clickThenClose(page, btn);
       }
     }
 
@@ -214,11 +234,11 @@ test.describe("Full Comprehensive Button-by-Button UI Inspection", () => {
     const count = await buttons.count();
     for (let i = 0; i < count; i++) {
       const btn = buttons.nth(i);
+      await closeDialogs(page);
       if (await btn.isVisible() && await btn.isEnabled()) {
         const text = await btn.innerText().catch(() => "");
         if (!/초기화|Reset|Delete|Clear/i.test(text)) {
-          await btn.click().catch(() => {});
-          await page.waitForTimeout(50);
+          await clickThenClose(page, btn);
         }
       }
     }

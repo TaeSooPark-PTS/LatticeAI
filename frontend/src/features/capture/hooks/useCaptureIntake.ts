@@ -12,6 +12,7 @@ import {
   isAbortError,
   normalizeWebUrl,
   readJourney,
+  DOCUMENT_FETCH_LIMIT,
 } from "../captureDomain";
 
 async function uploadFiles(files: File[], setQueue: React.Dispatch<React.SetStateAction<UploadQueueItem[]>>) {
@@ -196,7 +197,7 @@ export function useCapturePipeline() {
 }
 
 export function useRecentCaptures() {
-  const docs = useQuery({ queryKey: ["documents"], queryFn: () => latticeApi.documents(200) });
+  const docs = useQuery({ queryKey: ["documents"], queryFn: () => latticeApi.documents(DOCUMENT_FETCH_LIMIT) });
   const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
   const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
   return { docs, local, agent };

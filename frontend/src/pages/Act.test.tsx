@@ -371,14 +371,14 @@ describe("ActPage", () => {
       expect(await screen.findByText("중지했어요")).toBeTruthy();
     });
 
-    it("falls back to runtime data for the combined panel when the activity feed fails", async () => {
+    it("shows the activity feed failure instead of swapping in runtime data silently", async () => {
       render({
         activityRuns: fail("unavailable", { runs: [] }),
         agentRuntime: ok({ runtime: { ready: true }, runs: [] }),
       }, {}, { initialTab: "runs" });
       const heading = await screen.findByText("최근 실행 기록");
       const panel = heading.closest(".data-panel") as HTMLElement;
-      await waitFor(() => expect(within(panel).getByText("연결됨")).toBeTruthy());
+      await waitFor(() => expect(within(panel).getByRole("alert").textContent).toContain("unavailable"));
     });
 
     it("switches from the runs sub-tab back to the review sub-tab", async () => {

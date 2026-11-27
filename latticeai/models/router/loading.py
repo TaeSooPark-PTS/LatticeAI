@@ -219,9 +219,13 @@ class _LoadingMixin(_Core):
         self._enforce_local_model_limit(cache_key)
         print(f"⏳ Loading local model stack: {cache_key}...")
         loop = asyncio.get_event_loop()
-        target_model_id = _resolve_local_hf_model(model_id)
+        target_model_id = await loop.run_in_executor(
+            None, _resolve_local_hf_model, model_id
+        )
         target_draft_model_id = (
-            _resolve_local_hf_model(draft_model_id) if draft_model_id else None
+            await loop.run_in_executor(None, _resolve_local_hf_model, draft_model_id)
+            if draft_model_id
+            else None
         )
 
         def _load():

@@ -101,6 +101,13 @@ export function BrainHome({
     setPendingChatPrompt(null);
   }, [pendingChatPrompt, chat.setDraft, setPendingChatPrompt]);
 
+  const pendingConversationId = useAppStore((state) => state.pendingConversationId);
+  React.useEffect(() => {
+    if (!pendingConversationId || chat.streaming || history.historyBusyId) return;
+    useAppStore.getState().setPendingConversationId(null);
+    void history.resumeConversation(pendingConversationId, false);
+  }, [pendingConversationId, chat.streaming, history.historyBusyId, history.resumeConversation]);
+
   const openDepth = React.useCallback((depth: number) => {
     triggerBrainRecall();
     onBrainChange("recalling", 0.82);
@@ -193,7 +200,7 @@ export function BrainHome({
         onUploadDocument={(file) => void ingestion.uploadDocument(file)}
         onPickFolder={() => void ingestion.pickFolder()}
         onConnectFolder={(path) => void ingestion.connectFolder(path)}
-        onIngestNote={(note) => void ingestion.ingestNote(note)}
+        onIngestNote={ingestion.ingestNote}
         onIngestWeb={(url) => void ingestion.ingestWeb(url)}
         onVerifyModelContinuity={() => void proof.verifyModelContinuity()}
         onSend={() => void chat.send()}

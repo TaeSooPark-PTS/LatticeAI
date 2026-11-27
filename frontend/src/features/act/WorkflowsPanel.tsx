@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AutomationSuggestions } from "@/features/act/AutomationSuggestions";
+import { BrainEventTriggerForm } from "@/features/act/BrainEventTriggerForm";
 import { InstalledAutomations } from "@/features/act/InstalledAutomations";
 import { downloadJson, firstString } from "@/features/act/actHelpers";
 import { useAppStore } from "@/store/appStore";
@@ -225,6 +226,7 @@ export function WorkflowsPanel() {
                       }}
                     />
                   </div>
+                  <BrainEventTriggerForm workflow={workflow} language={language} />
                 </div>
               );
             }) : <EntityList items={[]} />}

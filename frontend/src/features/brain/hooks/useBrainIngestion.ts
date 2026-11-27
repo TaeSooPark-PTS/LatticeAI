@@ -302,7 +302,7 @@ export function useBrainIngestion({
 
   const ingestNote = React.useCallback(async (note: string) => {
     const content = note.trim();
-    if (!content) return;
+    if (!content) return false;
     setMemoryFeedback(t(language, "brain.ingest.note.pending"));
     onBrainChange("recalling", 0.84);
     beginIngestion("note", content.slice(0, 80));
@@ -311,12 +311,13 @@ export function useBrainIngestion({
       const reason = result.error || "unavailable";
       setMemoryFeedback(t(language, "brain.ingest.note.failed", { reason }));
       failIngestion("note", reason);
-      return;
+      return false;
     }
     announceSaved(t(language, "brain.ingest.note.saved"));
     setLastRecallQuery(content.slice(0, 120));
     await completeIngestion("note", result.data);
     triggerBrainRecall();
+    return true;
   }, [announceSaved, beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
   const ingestWeb = React.useCallback(async (url: string) => {

@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.6.0 - Within Your Scope] (2026-11-28)
+
+`brain_event` 자동화는 이제 기본적으로 소유자 범위(`owner_scope: "self"`)로 동작합니다. `"workspace"` 범위는 다른 사람이 소유한 공유 항목에서만 실행되며, 개인 항목이나 대화 항목에서는 절대 실행되지 않고 워크스페이스 경계를 넘지 않습니다. 동료의 업로드를 감시하던 기존 다중 사용자 트리거는 **Workspace** 범위로 설정해야 합니다. 단일 사용자 설치에는 영향이 없습니다. 새 `source_types`·`title_contains` 필터가 UI 양식과 함께 추가되었습니다. 수정: 기각되거나 승인된 종합 제안이 `pending`으로 남아 재제안을 막던 문제(오래된 `effective_status`)를 고쳤습니다. Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용되며(`LATTICEAI_HF_REVISIONS`로 재정의 가능), endpoint·token·revision을 떨어뜨리던 조용한 `TypeError` 재시도를 제거했습니다. 이미 받은 모델은 다시 고정되지 않으며, 고정되지 않은 저장소는 여전히 `main`을 사용합니다. 훅 카탈로그는 `executed`, `implementation`, `not_executed_reason` 필드로 실제 실행 여부를 정직하게 보고합니다.
+
+상세 내용: [docs/ko/releases/RELEASE_NOTES_v14.6.0.md](./releases/RELEASE_NOTES_v14.6.0.md).
+
 # [v14.5.0 - Living Automations] (2026-11-27)
 
 `workflow_designer/triggers/`와 `GraphWriter` 수집 후크 기반의 실제 예약(`interval`) 및 브레인 이벤트(`brain_event`) 자동화, 검토 센터 초안 스테이징, 실제 `GET /workflows/api/triggers` `armed` 응답을 출시했습니다. 출처·신뢰 등급 기반 "최신" 랭킹과 인용 피드백 점수 조정을 도입하고, `POST /api/portability/vault` Markdown/Obsidian 볼트 내보내기(`431` 경로 / `474` 오퍼레이션), 캡처 가져오기 소스 UI, 대화 라이브러리(검색·전체·Markdown 내보내기), 워크플로 실행 이력/리플레이, 내보내기·중지 결함 수정, 검토 일괄 처리, 검색 필터, 원클릭 출처 피드백을 추가했습니다.

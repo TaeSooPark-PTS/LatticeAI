@@ -12,6 +12,7 @@ _SANDBOX_MARKER = "LATTICEAI_TEST_SANDBOX_HOME"
 def pytest_configure(config) -> None:
     global _SANDBOX_HOME
     os.environ["LATTICEAI_RERANKER"] = "off"
+    os.environ["HF_HUB_OFFLINE"] = "1"
     if os.environ.get(_SANDBOX_MARKER):
         return
     _SANDBOX_HOME = tempfile.mkdtemp(prefix="lattice-test-home-")

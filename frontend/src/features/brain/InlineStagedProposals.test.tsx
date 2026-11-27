@@ -149,7 +149,7 @@ describe("InlineStagedProposals & Chat Insight Promotion", () => {
     expect(saveBtn.textContent).toContain("Brain에 기억하기");
     await userEvent.click(saveBtn);
     await waitFor(() => expect(ingestNote).toHaveBeenCalled());
+    await waitFor(() => expect(saveBtn.textContent).toContain("Brain에 저장됨"));
     expect(saveBtn.disabled).toBe(true);
-    expect(saveBtn.textContent).toContain("Brain에 저장됨");
   });
 });

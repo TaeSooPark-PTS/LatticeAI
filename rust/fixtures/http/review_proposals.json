@@ -3002,9 +3002,15 @@
             "name": "Redact secrets",
             "kind": "pre_run",
             "order": 10,
-            "description": "Strip secret-like fields (token, password, api_key…) from agent context packets before a run.",
-            "binding": "lattice_brain.runtime.multi_agent._redact",
+            "description": "Redact PII and secret-like values from agent loop trace events before they are stored or exported.",
+            "binding": "lattice_agent::kernel::trace::LoopTrace::record",
             "managed": "platform",
+            "executed": true,
+            "implementation": {
+              "file": "lattice-agent/src/kernel/trace.rs",
+              "symbol": "record"
+            },
+            "not_executed_reason": null,
             "source": "builtin",
             "enabled": true,
             "removable": false,
@@ -3017,12 +3023,15 @@
             "kind": "post_run",
             "order": 10,
             "description": "Append every completed agent run to the workspace audit log.",
-            "binding": "lattice_brain.runtime.agent_runtime.AgentRuntime.start",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "Agent runs are recorded only when a client posts them to the workspace runs API; the loop does not append them on completion.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           },
           {
@@ -3030,9 +3039,15 @@
             "name": "Tool permission gate",
             "kind": "pre_tool",
             "order": 10,
-            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "description": "Refuse a native tool call the caller's role is not allowed to make, before the tool runs.",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "managed": "platform",
+            "executed": true,
+            "implementation": {
+              "file": "lattice-agent/src/tools/authorize.rs",
+              "symbol": "check_role"
+            },
+            "not_executed_reason": null,
             "source": "builtin",
             "enabled": true,
             "removable": false,
@@ -3045,12 +3060,15 @@
             "kind": "pre_tool",
             "order": 20,
             "description": "Classify outgoing content for sensitive data before tool execution.",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "Sensitive-data classification runs on chat turns and audit views, not before tool execution.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           },
           {
@@ -3067,6 +3085,7 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           },
           {
@@ -3083,13 +3102,14 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           },
           {
             "id": "user:brain-event-triggers",
             "name": "brain-event-triggers",
             "kind": "post_tool",
-            "description": "Fires brain_event workflow triggers when knowledge enters the brain.",
+            "description": "Listed for visibility only: brain_event workflow triggers fire from the graph writer's ingest listener, not from this hook.",
             "command": "",
             "order": 100,
             "enabled": true,
@@ -3098,8 +3118,9 @@
             "created_at": "@ts",
             "source": "user",
             "removable": true,
-            "executable": true,
-            "advisory": false
+            "executable": false,
+            "executed": false,
+            "advisory": true
           },
           {
             "id": "builtin:workflow-replay-log",
@@ -3107,8 +3128,14 @@
             "kind": "post_workflow",
             "order": 10,
             "description": "Record each workflow run's timeline so it can be replayed step by step.",
-            "binding": "latticeai.api.workflow_designer",
+            "binding": "lattice_platform::governance::workflow_designer::WorkflowStore::record_workflow_run",
             "managed": "platform",
+            "executed": true,
+            "implementation": {
+              "file": "lattice-platform/src/governance/workflow_designer/store.rs",
+              "symbol": "record_workflow_run"
+            },
+            "not_executed_reason": null,
             "source": "builtin",
             "enabled": true,
             "removable": false,
@@ -3121,12 +3148,15 @@
             "kind": "post_index",
             "order": 10,
             "description": "Publish ingest / embed / graph-build pipeline state to the retrieval index status.",
-            "binding": "latticeai.api.search",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "Index status is computed when the status endpoints are read; nothing is published after indexing.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           },
           {
@@ -3135,12 +3165,15 @@
             "kind": "agent",
             "order": 20,
             "description": "Capture a short-term memory snapshot after the researcher stage gathers context.",
-            "binding": "lattice_brain.runtime.multi_agent.default_role_runner",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "No researcher stage runs in this build; memory snapshots are created only through the memory snapshot API.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           }
         ],
@@ -3217,9 +3250,15 @@
             "name": "Tool permission gate",
             "kind": "pre_tool",
             "order": 10,
-            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "description": "Refuse a native tool call the caller's role is not allowed to make, before the tool runs.",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "managed": "platform",
+            "executed": true,
+            "implementation": {
+              "file": "lattice-agent/src/tools/authorize.rs",
+              "symbol": "check_role"
+            },
+            "not_executed_reason": null,
             "source": "builtin",
             "enabled": true,
             "removable": false,
@@ -3232,12 +3271,15 @@
             "kind": "pre_tool",
             "order": 20,
             "description": "Classify outgoing content for sensitive data before tool execution.",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "Sensitive-data classification runs on chat turns and audit views, not before tool execution.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           },
           {
@@ -3254,6 +3296,7 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           },
           {
@@ -3270,6 +3313,7 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           }
         ],
@@ -3421,7 +3465,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3436,7 +3480,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3466,7 +3510,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3481,7 +3525,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3511,7 +3555,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3526,7 +3570,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3556,7 +3600,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3571,7 +3615,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3601,7 +3645,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3616,7 +3660,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3646,7 +3690,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3661,7 +3705,7 @@
             "duration_ms": "@any",
             "blocked": false,
             "source": "builtin",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "started_at": "@ts",
             "target_event": "tool.write_file",
             "target_kind": "pre_tool"
@@ -3742,8 +3786,9 @@
           "source": "user",
           "removable": true,
           "executable": false,
+          "executed": false,
           "advisory": true,
-          "note": "User-registered hook: listed, ordered and inspectable; runs advisory in this build."
+          "note": "User-registered hook: not run automatically in this build; a command runs only when you run or fire it yourself."
         }
       }
     },
@@ -3841,6 +3886,7 @@
           "source": "user",
           "removable": true,
           "executable": false,
+          "executed": false,
           "advisory": true
         }
       }
@@ -3972,6 +4018,7 @@
           "source": "user",
           "removable": true,
           "executable": false,
+          "executed": false,
           "advisory": true
         }
       }
@@ -4075,9 +4122,15 @@
             "name": "Tool permission gate",
             "kind": "pre_tool",
             "order": 10,
-            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
-            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "description": "Refuse a native tool call the caller's role is not allowed to make, before the tool runs.",
+            "binding": "lattice_agent::tools::authorize::check_role",
             "managed": "platform",
+            "executed": true,
+            "implementation": {
+              "file": "lattice-agent/src/tools/authorize.rs",
+              "symbol": "check_role"
+            },
+            "not_executed_reason": null,
             "source": "builtin",
             "enabled": true,
             "removable": false,
@@ -4098,6 +4151,7 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           },
           {
@@ -4106,12 +4160,15 @@
             "kind": "pre_tool",
             "order": 20,
             "description": "Classify outgoing content for sensitive data before tool execution.",
-            "binding": "server_app.classify_sensitive_message",
+            "binding": "not_executed",
             "managed": "platform",
+            "executed": false,
+            "implementation": null,
+            "not_executed_reason": "Sensitive-data classification runs on chat turns and audit views, not before tool execution.",
             "source": "builtin",
             "enabled": true,
             "removable": false,
-            "executable": true,
+            "executable": false,
             "advisory": false
           },
           {
@@ -4128,6 +4185,7 @@
             "source": "user",
             "removable": true,
             "executable": false,
+            "executed": false,
             "advisory": true
           }
         ],

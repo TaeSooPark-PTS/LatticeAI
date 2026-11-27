@@ -256,10 +256,10 @@ def test_hf_repo_files_with_sizes(monkeypatch):
         siblings = [Sib("a.bin", 10), Sib("", 1), Sib("dir/", 2), Sib("b.bin", None)]
 
     class Api:
-        def model_info(self, repo_id, files_metadata=True):
+        def model_info(self, repo_id, revision=None, files_metadata=True):
             return Info()
 
-        def list_repo_files(self, repo_id):
+        def list_repo_files(self, repo_id, revision=None):
             return ["fallback.bin", ""]
 
     hub = types.ModuleType("huggingface_hub")
@@ -269,10 +269,10 @@ def test_hf_repo_files_with_sizes(monkeypatch):
     assert any(item["name"] == "a.bin" for item in files)
 
     class TypeApi:
-        def model_info(self, repo_id, files_metadata=True):
+        def model_info(self, repo_id, revision=None, files_metadata=True):
             raise TypeError("no metadata")
 
-        def list_repo_files(self, repo_id):
+        def list_repo_files(self, repo_id, revision=None):
             return ["listed.bin"]
 
     hub.HfApi = lambda: TypeApi()
@@ -280,10 +280,10 @@ def test_hf_repo_files_with_sizes(monkeypatch):
     assert files[0]["name"] == "listed.bin"
 
     class BoomApi:
-        def model_info(self, repo_id, files_metadata=True):
+        def model_info(self, repo_id, revision=None, files_metadata=True):
             raise RuntimeError("hub down")
 
-        def list_repo_files(self, repo_id):
+        def list_repo_files(self, repo_id, revision=None):
             return ["x.bin"]
 
     hub.HfApi = lambda: BoomApi()
@@ -294,10 +294,10 @@ def test_hf_repo_files_with_sizes(monkeypatch):
         siblings = []
 
     class EmptyApi:
-        def model_info(self, repo_id, files_metadata=True):
+        def model_info(self, repo_id, revision=None, files_metadata=True):
             return EmptyInfo()
 
-        def list_repo_files(self, repo_id):
+        def list_repo_files(self, repo_id, revision=None):
             return ["z.bin"]
 
     hub.HfApi = lambda: EmptyApi()
@@ -339,7 +339,7 @@ def test_download_hf_model_missing_hub_and_uncached(tmp_path: Path, monkeypatch)
     monkeypatch.setitem(sys.modules, "tqdm", types.ModuleType("tqdm"))
     monkeypatch.setitem(sys.modules, "tqdm.auto", fake_tqdm)
 
-    def fake_download(*, repo_id, filename, local_dir, tqdm_class=None):
+    def fake_download(*, repo_id, filename, local_dir, tqdm_class=None, revision=None):
         dest = Path(local_dir) / filename
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(b"data")

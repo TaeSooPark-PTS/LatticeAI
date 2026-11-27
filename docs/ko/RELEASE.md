@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.6.0 — Within Your Scope (2026-11-28)
+
+`brain_event` 자동화는 이제 기본적으로 소유자 범위(`owner_scope: "self"`)로 동작합니다. `"workspace"` 범위는 다른 사람이 소유한 공유 항목에서만 실행되며, 개인 항목이나 대화 항목에서는 절대 실행되지 않고 워크스페이스 경계를 넘지 않습니다. 동료의 업로드를 감시하던 기존 다중 사용자 트리거는 **Workspace** 범위로 설정해야 합니다. 단일 사용자 설치에는 영향이 없습니다. 새 `source_types`·`title_contains` 필터가 UI 양식과 함께 추가되었습니다. 수정: 기각되거나 승인된 종합 제안이 `pending`으로 남아 재제안을 막던 문제(오래된 `effective_status`)를 고쳤습니다. Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용되며(`LATTICEAI_HF_REVISIONS`로 재정의 가능), endpoint·token·revision을 떨어뜨리던 조용한 `TypeError` 재시도를 제거했습니다. 이미 받은 모델은 다시 고정되지 않으며, 고정되지 않은 저장소는 여전히 `main`을 사용합니다. 훅 카탈로그는 `executed`, `implementation`, `not_executed_reason` 필드로 실제 실행 여부를 정직하게 보고합니다. UI: 명령 팔레트에서 대화 결과를 열 수 있고 상단 바 버튼이 추가되었으며, 검색 결과에서 바로 작업할 수 있습니다. 기억 관리자(보기·추가·검색·잊기), 정직한 "Brain에 저장" 상태, 필터와 미리보기가 있는 문서 라이브러리, 취소 포함 필터·더 보기·오류 상태가 있는 실행 이력이 추가되었습니다. 테스트에 HNSW 교체(churn) 재현율 테스트가 추가되었습니다. 알려진 공백: 워크스페이스 안의 비공개 문서는 아직 구현되지 않았습니다(docs/ROADMAP.md 참고). 이번 릴리스는 비공개 업로드를 제공하지 않으며 그런 주장을 하지 않습니다.
+
+릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.6.0.md](./releases/RELEASE_NOTES_v14.6.0.md).
+
+빌드 산출물은 `dist/ltcai-14.6.0-py3-none-any.whl`, `dist/ltcai-14.6.0.tar.gz`, `ltcai-14.6.0.tgz`, `dist/ltcai-14.6.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.6.0_aarch64.dmg`입니다.
+
 ## v14.5.0 — Living Automations (2026-11-27)
 
 활성화된 `interval` 및 `brain_event` 자동화가 `workflow_designer/triggers/` 스케줄러와 `GraphWriter` 수집 후크를 통해 실제로 실행되어 검토 센터에 초안을 올리고 `GET /workflows/api/triggers`에 실제 `armed` 목록을 반환합니다. 출처·신뢰 등급 기반 "최신" 랭킹(`temporal/trust.rs`, `frontmatter.rs`, 구형 SQLite 호환)과 인용 피드백 랭킹 반영(`correction_signals.rs`, `temporal/signals.rs`)을 도입했습니다. `POST /api/portability/vault` Markdown/Obsidian 볼트 내보내기(`431` 경로 / `474` 오퍼레이션), 캡처 가져오기 소스 UI(Obsidian/Notion/Git/Mail), 대화 라이브러리(검색·전체·Markdown 내보내기), 워크플로 실행 이력/리플레이, 내보내기·중지 결함 수정, 검토 일괄 처리, 검색 필터, 원클릭 출처 피드백을 출시했습니다.

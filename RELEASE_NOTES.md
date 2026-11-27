@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.6.0 - Within Your Scope] (2026-11-28)
+
+`brain_event` automations are now owner-scoped by default (`owner_scope: "self"`). A `"workspace"` scope fires on shared items owned by others, never on private or conversation items, and never across workspaces. Existing multi-user triggers that watched colleagues' uploads must be set to the **Workspace** scope; single-user installs are unaffected. New `source_types` and `title_contains` filters ship with a UI form. Fixed: dismissed or approved synthesis proposals no longer stay `pending` and block re-proposals (stale `effective_status`). Hugging Face revision pinning is now applied on download and load paths (`LATTICEAI_HF_REVISIONS` overrides); silent `TypeError` retries that dropped endpoint, token, or revision were removed. Models already downloaded are not re-pinned, and unpinned repositories still use `main`. The hooks catalog reports honest `executed`, `implementation`, and `not_executed_reason` fields.
+
+See [docs/releases/RELEASE_NOTES_v14.6.0.md](docs/releases/RELEASE_NOTES_v14.6.0.md).
+
 # [v14.5.0 - Living Automations] (2026-11-27)
 
 Shipped live scheduled (`interval`) and event-driven (`brain_event`) automations backed by `workflow_designer/triggers/`, `GraphWriter` post-ingest dispatch, Review Center draft staging, and real `armed` rows on `GET /workflows/api/triggers`; added provenance/trust-aware "latest" ranking and active citation feedback demotion/boost in `lattice-core` and `lattice-retrieval`; added `POST /api/portability/vault` Markdown/Obsidian ZIP export with Settings UI (`431` paths / `474` operations); and added Capture Import Sources UI (Obsidian/Notion/Git/Mail), searchable Conversation Library with Markdown export, workflow run history/replay, export/stop fixes, bulk review actions, search filters, and one-click "not a good source" feedback.
@@ -148,7 +154,7 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.5.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.6.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 

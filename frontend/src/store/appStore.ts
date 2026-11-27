@@ -14,6 +14,7 @@ type AppState = {
   language: Language;
   focusedGraphNodeId: string | null;
   pendingChatPrompt: string | null;
+  pendingConversationId: string | null;
   briefingRequested: boolean;
   graphViewMode: GraphViewMode;
   showSuperseded: boolean;
@@ -25,6 +26,7 @@ type AppState = {
   setLanguage: (language: Language) => void;
   setFocusedGraphNodeId: (nodeId: string | null) => void;
   setPendingChatPrompt: (prompt: string | null) => void;
+  setPendingConversationId: (conversationId: string | null) => void;
   setBriefingRequested: (requested: boolean) => void;
   setGraphViewMode: (mode: GraphViewMode) => void;
   setShowSuperseded: (show: boolean) => void;
@@ -93,6 +95,7 @@ export const useAppStore = create<AppState>((set) => ({
   language: readLanguage(),
   focusedGraphNodeId: null,
   pendingChatPrompt: null,
+  pendingConversationId: null,
   briefingRequested: false,
   graphViewMode: readGraphViewMode(),
   showSuperseded: true,
@@ -146,6 +149,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setFocusedGraphNodeId: (focusedGraphNodeId) => set({ focusedGraphNodeId }),
   setPendingChatPrompt: (pendingChatPrompt) => set({ pendingChatPrompt }),
+  setPendingConversationId: (pendingConversationId) => set({ pendingConversationId }),
   setBriefingRequested: (briefingRequested) => set({ briefingRequested }),
   setGraphViewMode: (graphViewMode) => {
     try {

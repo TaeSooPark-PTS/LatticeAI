@@ -14,6 +14,7 @@ import {
 } from "./base";
 import { cloudStatus } from "./cloud";
 import { selfModelApi } from "./selfModel";
+import { memoryApi } from "./memory";
 import { actReviewApi } from "./actReview";
 import {
   resumeAgentApproval,
@@ -617,5 +618,6 @@ export const latticeApi = {
   activityRuns: (limit = 20) => get("/api/activity/runs", { runs: [] }, { limit }),
   adminHealthSummary: () => get("/admin/health-summary", { status: "ok", issue_count: 0, issues: [] }),
   ...selfModelApi,
+  ...memoryApi,
   ...actReviewApi,
 };

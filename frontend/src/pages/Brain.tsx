@@ -17,6 +17,7 @@ import { EMPTY_SEARCH_FILTERS, isReversedRange, searchFilterBody } from "@/featu
 import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
 import { MultiHopSynthesisView } from "@/features/brain/MultiHopSynthesisView";
 import { SelfModelPanel } from "@/features/brain/SelfModelPanel";
+import { MemoryListPanel } from "@/features/brain/MemoryListPanel";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber } from "@/lib/utils";
@@ -286,6 +287,8 @@ function UnifiedMemoryPanel() {
       </Card>
 
       <SelfModelPanel />
+
+      <MemoryListPanel />
 
       <Card>
         <CardHeader

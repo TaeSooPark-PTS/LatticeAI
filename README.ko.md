@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.5.0 Living Brain 둘러보기](output/release/v14.5.0/gifs/v14.5.0-living-brain-walkthrough.gif)
+![v14.6.0 Living Brain 둘러보기](output/release/v14.6.0/gifs/v14.6.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.5.0_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.6.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -94,15 +94,15 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v14.5.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.5.0/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v14.6.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.6.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v14.5.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.5.0/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v14.6.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.6.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v14.5.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.5.0/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v14.6.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.6.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v14.5.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.5.0/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v14.6.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.6.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v14.5.0/SCREENSHOT_INDEX.md](output/release/v14.5.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.5.0/screenshots/01-login.png), [06-capture.png](output/release/v14.5.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.5.0/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v14.6.0/SCREENSHOT_INDEX.md](output/release/v14.6.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.6.0/screenshots/01-login.png), [06-capture.png](output/release/v14.6.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.6.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -126,26 +126,26 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **14.5.0 — Living Automations**입니다:
+현재 최신 릴리스는 **14.6.0 — Within Your Scope**입니다:
 
-- **살아있는 자동화** — 활성화된 `interval` 및 `brain_event` 워크플로가 `workflow_designer/triggers/` 스케줄러와 `GraphWriter` 수집 이벤트 훅을 통해 실제로 실행되어 검토 센터에 초안을 올리고 `GET /workflows/api/triggers`에 실제 `armed` 목록을 반환합니다.
-- **신뢰 등급 기반 "최신" 랭킹 및 인용 피드백** — 프론트매터, 수명주기 검증, 확정된 교정, 수집 출처로 노드를 `Verified` / `Normal` / `Draft`로 분류하며, `wrong_source` / `useful` 판정이 검색 순위에 직접 반영됩니다.
-- **Markdown / Obsidian 볼트 내보내기 및 워크스페이스 UX** — `POST /api/portability/vault`로 워크스페이스 지식을 시크릿 마스킹된 Obsidian 볼트 ZIP으로 내보내고, 캡처 가져오기 UI(Obsidian/Notion/Git/Mail), 대화 라이브러리(검색·전체·Markdown 내보내기), 실행 이력/리플레이, 검토 일괄 처리, 검색 필터, 원클릭 출처 피드백을 추가했습니다.
+- **소유자 범위 자동화** — `brain_event` 자동화는 기본적으로 본인 항목에만 실행됩니다. 동료의 공유 항목에 반응하려면 **Workspace** 범위를 선택하세요. 개인 항목과 대화 항목은 소유자나 워크스페이스를 넘어 실행되지 않습니다.
+- **정직한 수정** — 기각되거나 승인된 종합 제안이 재제안을 막지 않도록 고쳤고, Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용되며, 훅 카탈로그가 실제 실행 여부를 밝힙니다.
+- **일상 UI** — 명령 팔레트에서 대화 결과를 열 수 있고, 검색 결과에서 바로 작업할 수 있으며, 기억 관리자·문서 라이브러리·실행 이력에 필터와 제어가 추가되었습니다.
 
-상세 내용과 검증 결과는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.5.0.md)를 참고하세요.
+상세 내용과 검증 결과는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.6.0.md)를 참고하세요.
 
 <details>
-<summary>14.5.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>14.6.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.5.0.md](docs/ko/releases/RELEASE_NOTES_v14.5.0.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.6.0.md](docs/ko/releases/RELEASE_NOTES_v14.5.0.md).
 
-14.5.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+14.6.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-14.5.0-py3-none-any.whl`
-- `dist/ltcai-14.5.0.tar.gz`
-- `ltcai-14.5.0.tgz`
-- `dist/ltcai-14.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.5.0_aarch64.dmg`
+- `dist/ltcai-14.6.0-py3-none-any.whl`
+- `dist/ltcai-14.6.0.tar.gz`
+- `ltcai-14.6.0.tgz`
+- `dist/ltcai-14.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.6.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -168,6 +168,7 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.6.0 | Within Your Scope | [RELEASE_NOTES_v14.6.0.md](docs/ko/releases/RELEASE_NOTES_v14.6.0.md) |
 | 14.5.0 | Living Automations | [RELEASE_NOTES_v14.5.0.md](docs/ko/releases/RELEASE_NOTES_v14.5.0.md) |
 | 14.4.0 | Measured Retrieval | [RELEASE_NOTES_v14.4.0.md](docs/ko/releases/RELEASE_NOTES_v14.4.0.md) |
 | 14.3.0 | Temporal Synthesis | [RELEASE_NOTES_v14.3.0.md](docs/ko/releases/RELEASE_NOTES_v14.3.0.md) |

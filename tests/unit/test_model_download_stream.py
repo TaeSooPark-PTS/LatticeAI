@@ -136,7 +136,9 @@ def test_download_hf_model_unauthenticated_proactive_mirror_fallback(
         ],
     )
 
-    def fake_hf_download(*, repo_id, filename, local_dir, tqdm_class=None):
+    def fake_hf_download(
+        *, repo_id, filename, local_dir, tqdm_class=None, revision=None
+    ):
         p = Path(local_dir) / filename
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"x" * 512)
