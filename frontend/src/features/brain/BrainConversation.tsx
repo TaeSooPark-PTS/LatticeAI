@@ -311,15 +311,18 @@ export function BrainConversation({
                     </div>
                   );
                 })}
+                <details className="brain-chat-followup" data-testid="brain-chat-followup">
+                  <summary>{t(language, "brain.automation.title")}</summary>
+                  <BrainMemoryAutomation
+                    language={language}
+                    brief={brief}
+                    activities={proactiveActivities}
+                    streaming={streaming}
+                    onAction={onProactiveAction}
+                  />
+                </details>
               </div>
 
-              <BrainMemoryAutomation
-                language={language}
-                brief={brief}
-                activities={proactiveActivities}
-                streaming={streaming}
-                onAction={onProactiveAction}
-              />
               {modelReady ? null : <ModelMissingNotice language={language} />}
               <CloudBoundaryHint language={language} />
               {feedbackNotice}

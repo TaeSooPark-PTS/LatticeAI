@@ -122,7 +122,7 @@ const NEGATION_MARKERS: &[&str] = &[
     "아니",
 ];
 
-fn content_tokens(text: &str) -> Vec<String> {
+pub fn content_tokens(text: &str) -> Vec<String> {
     let stop: BTreeSet<&str> = STOPWORDS.iter().copied().collect();
     tokenize_bm25_cjk(text)
         .into_iter()
@@ -258,7 +258,7 @@ pub fn split_answer_claims(answer: &str) -> Vec<String> {
     claims
 }
 
-fn build_abstention_messages(reason: AbstentionReason) -> (String, String) {
+pub fn build_abstention_messages(reason: AbstentionReason) -> (String, String) {
     match reason {
         AbstentionReason::NoRetrievedEvidence => (
             "I do not know based on the current Brain: no relevant knowledge was found.".to_string(),

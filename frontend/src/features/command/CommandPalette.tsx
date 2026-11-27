@@ -226,15 +226,25 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
       if (item.focusNodeId) {
         useAppStore.getState().setFocusedGraphNodeId(item.focusNodeId);
       }
-      navigateHash(item.target);
       if (item.action === "open-briefing") {
-        window.dispatchEvent(new Event("lattice:open-briefing"));
+        useAppStore.getState().setBriefingRequested(true);
       }
+      navigateHash(item.target);
     },
     [close, language],
   );
 
+  const activeOptionRef = React.useRef<HTMLButtonElement>(null);
+  const keyboardMoveRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!keyboardMoveRef.current) return;
+    keyboardMoveRef.current = false;
+    activeOptionRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex]);
+
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    keyboardMoveRef.current = event.key === "ArrowDown" || event.key === "ArrowUp";
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((index) => Math.min(index + 1, Math.max(items.length - 1, 0)));
@@ -319,6 +329,7 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
               <React.Fragment key={item.id}>
                 {header}
                 <button
+                  ref={index === activeIndex ? activeOptionRef : undefined}
                   type="button"
                   role="option"
                   aria-selected={index === activeIndex}

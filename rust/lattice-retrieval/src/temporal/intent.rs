@@ -47,6 +47,7 @@ impl TimeWindow {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimeIntent {
     pub window: Option<TimeWindow>,
+    pub as_of: Option<TimeWindow>,
     pub version: Option<String>,
     pub latest: bool,
     pub historical: bool,
@@ -64,6 +65,10 @@ struct Patterns {
     abs_since_en: Regex,
     abs_before_en: Regex,
     abs_ko: Regex,
+    as_of_en: Regex,
+    as_of_ko: Regex,
+    in_year_en: Regex,
+    year_ko: Regex,
     version: Regex,
     on_date: Regex,
     ko_date: Regex,
@@ -88,6 +93,16 @@ fn patterns() -> &'static Patterns {
         ),
         abs_ko: build(
             r"(?:(\d{4})[-./](\d{1,2})(?:[-./](\d{1,2}))?|(\d{4})년\s*(\d{1,2})월(?:\s*(\d{1,2})일)?)\s*(이후|부터|이전|까지)",
+        ),
+        as_of_en: build(
+            r"(?i)\bas\s+of\s+((?:19|20|21)\d{2})(?:[-./](\d{1,2})(?:[-./](\d{1,2}))?)?(?![\d])",
+        ),
+        as_of_ko: build(
+            r"(?<!\d)((?:19|20|21)\d{2})(?:[-./](\d{1,2})(?:[-./](\d{1,2}))?|년(?:\s*(\d{1,2})월(?:\s*(\d{1,2})일)?)?)?\s*기준",
+        ),
+        in_year_en: build(r"(?i)\b(?:in|during)\s+((?:19|20|21)\d{2})\b(?![-./]\d)"),
+        year_ko: build(
+            r"(?<!\d)((?:19|20|21)\d{2})년(?!\s*\d{1,2}\s*월)(?!\s*(?:이후|부터|이전|까지))",
         ),
         version: build(
             r"(?i)\b(?:since|after|from)\s+(?:v|version\s*)(\d+(?:\.\d+){0,2})\b|\bv(\d+(?:\.\d+){0,2})\s*(?:버전\s*)?(?:이후|부터)",
@@ -196,6 +211,54 @@ fn absolute_window(scan: &mut Scan, p: &Patterns) -> Option<TimeWindow> {
     None
 }
 
+fn year_span(year: i64) -> Option<(f64, f64)> {
+    Some((date_epoch(year, 1, 1)?, date_epoch(year + 1, 1, 1)?))
+}
+
+fn calendar_span(year: i64, month: Option<u32>, day: Option<u32>) -> Option<(f64, f64)> {
+    match month {
+        Some(month) => span_of(year, month, day),
+        None => year_span(year),
+    }
+}
+
+fn as_of_span(groups: &Groups, first: usize) -> Option<(f64, f64)> {
+    let year = group_num(groups, first)?;
+    let month = group_num(groups, first + 1).and_then(|m| u32::try_from(m).ok());
+    let day = group_num(groups, first + 2).and_then(|d| u32::try_from(d).ok());
+    calendar_span(year, month, day)
+}
+
+fn explicit_as_of(scan: &mut Scan, p: &Patterns) -> Option<TimeWindow> {
+    if let Some(groups) = scan.take(&p.as_of_en, true) {
+        let (since, until) = as_of_span(&groups, 1)?;
+        return Some(window(Some(since), Some(until), "as_of"));
+    }
+    if let Some(groups) = scan.take(&p.as_of_ko, true) {
+        let month_group = if group_num(&groups, 2).is_some() {
+            2
+        } else {
+            4
+        };
+        let year = group_num(&groups, 1)?;
+        let month = group_num(&groups, month_group).and_then(|m| u32::try_from(m).ok());
+        let day = group_num(&groups, month_group + 1).and_then(|d| u32::try_from(d).ok());
+        let (since, until) = calendar_span(year, month, day)?;
+        return Some(window(Some(since), Some(until), "as_of"));
+    }
+    None
+}
+
+fn year_as_of(scan: &mut Scan, p: &Patterns) -> Option<TimeWindow> {
+    for pattern in [&p.in_year_en, &p.year_ko] {
+        if let Some(groups) = scan.take(pattern, true) {
+            let (since, until) = year_span(group_num(&groups, 1)?)?;
+            return Some(window(Some(since), Some(until), "as_of_year"));
+        }
+    }
+    None
+}
+
 fn window(since: Option<f64>, until: Option<f64>, label: &str) -> TimeWindow {
     TimeWindow {
         since,
@@ -260,7 +323,11 @@ pub fn parse_time_intent(query: &str, now: f64) -> TimeIntent {
             .flatten()
             .or_else(|| groups.get(2).cloned().flatten());
     }
+    intent.as_of = explicit_as_of(&mut scan, p);
     intent.window = absolute_window(&mut scan, p).or_else(|| relative_window(&mut scan, p, now));
+    if intent.as_of.is_none() {
+        intent.as_of = year_as_of(&mut scan, p);
+    }
     intent.latest = scan.take(&p.latest, false).is_some();
     if intent.window.is_none() && !intent.latest && scan.take(&p.recent, false).is_some() {
         intent.window = Some(window(

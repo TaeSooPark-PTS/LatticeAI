@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.2.0)
+# Lattice AI 기능 현황 (v14.3.0)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.2.0 — Temporal Synthesis**.
+현재 릴리스: **14.3.0 — Temporal Synthesis**.
 
-이 문서는 `v14.2.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.3.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---
@@ -60,7 +60,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **시간 인식 검색 & 청킹** | 현재 제공 | 문맥 접두어를 갖춘 토큰 크기의 parent-child 청크, tree-sitter 코드 분할, 시간 의도 사전 필터, 최신성 감쇠, `SUPERSEDES` 처리, `sort_by=relevance\|newest`, `ltcai search`. |
 | **재랭킹 & 채팅 근거 게이트** | 현재 제공(reranker는 `rag` extra 필요) | RRF 대체를 갖춘 `POST /worker/rerank` cross-encoder 재랭킹, 문서당 상한을 둔 MMR, Self-RAG 답변 보류. 실제 reranker·EmbeddingGemma 2 로딩은 빌드 환경에서 검증하지 못했습니다. |
 | **3D 살아있는 Brain & 데스크톱 셸** | 현재 제공 | 검색 점등과 2D 대체를 갖춘 3D 그래프, 고정 뷰포트 셸, Brain Vital Pill, 도킹 근거 패널, `Cmd/Ctrl+K` 팔레트. |
-| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.2.0_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
+| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.3.0_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
 
 ---
 

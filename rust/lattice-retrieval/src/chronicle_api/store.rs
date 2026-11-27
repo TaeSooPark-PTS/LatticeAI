@@ -171,7 +171,7 @@ fn retain_viewer<T>(
     let all_ids: Vec<String> = rows.iter().flat_map(&ids_of).collect();
     let Ok(hidden) = lattice_core::viewer_scope::foreign_conversation_ids(conn, &all_ids, &viewer)
     else {
-        return rows;
+        return Vec::new();
     };
     if hidden.is_empty() {
         return rows;
@@ -668,5 +668,24 @@ mod tests {
         assert_eq!(py_float(&Value::from("nope")), 0.0);
         assert_eq!(py_float(&Value::Bool(true)), 1.0);
         assert_eq!(py_str(&Value::Bool(false)), "False");
+    }
+
+    #[test]
+    fn viewer_filter_fails_closed_when_owner_column_missing() {
+        let conn = Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            "CREATE TABLE nodes_v2(id TEXT, label TEXT, type TEXT, workspace_id TEXT, \
+             created_at TEXT, updated_at TEXT);
+             CREATE TABLE knowledge_sources(id TEXT, node_id TEXT, title TEXT, \
+             source_type TEXT, created_at TEXT, updated_at TEXT);
+             INSERT INTO nodes_v2(id, label, type, workspace_id, created_at, updated_at) \
+             VALUES ('n1', 'Secret', 'Document', 'team', '2026-01-01', '2026-01-01');
+             INSERT INTO knowledge_sources(id, node_id, title, source_type, created_at, updated_at) \
+             VALUES ('s1', 'n1', 'Secret', 'file', '2026-01-01', '2026-01-01');",
+        )
+        .expect("schema");
+
+        let rows = sources_for(&conn, true, Some("team"), Some("alice@example.com"));
+        assert!(rows.is_empty());
     }
 }

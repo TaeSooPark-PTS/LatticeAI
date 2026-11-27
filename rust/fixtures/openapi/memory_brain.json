@@ -1996,7 +1996,7 @@
   },
   "schema_count": 19,
   "source": "frontend/openapi.json",
-  "spec_version": "14.2.0",
+  "spec_version": "14.3.0",
   "summary": "Memory manager, brain intelligence, garden, chronicle, command center and evidence actions.",
   "target": "lattice-retrieval / lattice-platform",
   "wp": "R5"

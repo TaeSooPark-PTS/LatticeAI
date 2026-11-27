@@ -6,6 +6,26 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.3.0] - 2026-11-27 — Temporal Synthesis
+
+### Added
+- Chat-path RAG evaluation ratchet (`rust/lattice-retrieval/src/rag_eval_chat.rs`) gating 248 answerable queries and 32 workspace-boundary queries under both constant and `valid_from` timestamp modes (`R@5 >= 0.98`, `MRR >= 0.85 / 0.83`, `nDCG@10 >= 0.87 / 0.86`, per-category floors, `0` leaks, `1.0` superseded exclusion).
+- True `as_of` point-in-time valid-time filtering, year-only date parsing, and `as_of` state evaluation across `lattice-retrieval` and `ContextRequest`.
+- Dedicated hardened share-bundle importer (`rust/lattice-core/src/graph_write/share_import.rs`) with collision-safe ID handling, workspace/owner pinning, node type allow-listing, and `knowledge_sources` exclusion.
+- Expression indexes on `nodes(json_extract(metadata_json, '$.source_uri'))` and `nodes(json_extract(metadata_json, '$.filename'))` for O(log N) supersede-on-ingest identity lookups.
+- Playwright visual regression tests for post-send desktop chat layout (`1024×640`, `1280×720`, `1440×900`) and cross-route `Cmd/Ctrl+K` "Today's briefing".
+
+### Changed
+- Chat keyword retrieval now uses IDF/BM25F relevance scoring and unions rule concepts with fallback query tokens, lifting chat `R@5` from `0.9194` to `>=0.98`, `MRR` from `0.6122` to `>=0.85`, `nDCG@10` from `0.6826` to `>=0.87`, and `temporal_ordering` `R@5` from `0.600` to `>=0.99` (`MRR` `0.267` to `>=0.79`).
+- Self-RAG sufficiency gate now checks term coverage consistently with grounding tokenization to prevent false sufficiency on ungrounded entity-only overlap.
+
+### Fixed
+- **Desktop chat collapse after first answer:** moved post-answer automation/feedback blocks into the scrollable stream so messages and composer remain visible across `1024×640`, `1280×720`, and `1440×900`.
+- **Command palette & 2D Memory Graph:** wired `Cmd/Ctrl+K` "Today's briefing" through `appStore` so it opens from any route; applied "Show superseded" in `buildExplorerModel` for both 2D and 3D views; added `scrollIntoView` for palette keyboard navigation.
+- **Multi-user privacy & integrity:** filtered foreign conversation nodes out of share bundle exports; scoped temporal prefilter and version anchor queries by workspace and viewer; pushed workspace/viewer scope into SQL `WHERE` before `LIMIT` in `graph_view`, `graph_slice`, and `/api/graph/search`; and made Chronicle viewer filtering fail closed on SQL errors.
+
+Details and metrics: [docs/releases/RELEASE_NOTES_v14.3.0.md](releases/RELEASE_NOTES_v14.3.0.md).
+
 ## [14.2.0] - 2026-11-27 — Temporal Synthesis
 
 ### Added

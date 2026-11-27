@@ -2,7 +2,7 @@
 
 # Lattice AI Onboarding
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.3.0 — Temporal Synthesis**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

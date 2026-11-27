@@ -20,6 +20,20 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.3.0": {
+    "_why": [
+      "Temporal Synthesis (14.3.0) fixes interactive frontend defects (post-send",
+      "desktop chat collapse, Cmd+K Today's briefing drawer routing, 2D Memory",
+      "Graph Show superseded filtering, and command palette keyboard scroll),",
+      "upgrades chat retrieval ranking, as-of temporal semantics, Self-RAG",
+      "abstention, and chat-path RAG CI floors, and hardens multi-user privacy",
+      "across share bundle export/import, temporal prefilters, scope-before-LIMIT",
+      "reads, Chronicle fail-closed viewer filtering, and supersede identity indexing.",
+      "",
+      "No static initial-load screen layout was redesigned in 14.3.0; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.2.0": {
     "_why": [
       "Temporal Synthesis (14.2.0) changes every captured screen on purpose.",

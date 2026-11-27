@@ -161,8 +161,10 @@ describe("CommandPalette", () => {
       sections: { review: { pending: 3 }, suggestions: { count: 2 } },
       quick_actions: [],
     });
-    const opened = vi.fn();
-    window.addEventListener("lattice:open-briefing", opened);
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ briefingRequested: false });
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
     renderWithClient(<CommandPalette language="ko" initialOpen />);
     await screen.findByText("지금 바로");
 
@@ -171,14 +173,16 @@ describe("CommandPalette", () => {
 
     await userEvent.type(input, "{ArrowDown}");
     expect(screen.getAllByRole("option")[1]!.getAttribute("aria-selected")).toBe("true");
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "nearest" });
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(screen.getAllByRole("option")[1]);
     await userEvent.type(input, "{ArrowUp}");
     expect(screen.getAllByRole("option")[0]!.getAttribute("aria-selected")).toBe("true");
 
     await userEvent.type(input, "{Enter}");
     expect(window.location.hash).toBe("#/brain");
-    expect(opened).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().briefingRequested).toBe(true);
     expect(screen.queryByTestId("command-palette")).toBeNull();
-    window.removeEventListener("lattice:open-briefing", opened);
+    useAppStore.setState({ briefingRequested: false });
   });
 
   it("says when nothing matched, and Enter on an empty list does nothing", async () => {
@@ -407,6 +411,8 @@ describe("DailyBriefingPanel", () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     mockBriefing({ sections: { conversations: { questions: 4 } }, quick_actions: [] });
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ briefingRequested: true });
 
     renderWithClient(
       <details>
@@ -414,13 +420,10 @@ describe("DailyBriefingPanel", () => {
         <DailyBriefingPanel language="ko" />
       </details>,
     );
-    expect(screen.queryByText("질문")).toBeNull();
-
-    fireEvent(window, new Event("lattice:open-briefing"));
-
     await screen.findByText("질문");
     expect(document.querySelector("details")?.getAttribute("open")).toBe("");
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(useAppStore.getState().briefingRequested).toBe(false);
   });
 
   it("collapses again when its own summary is clicked", async () => {

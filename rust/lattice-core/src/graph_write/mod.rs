@@ -6,6 +6,7 @@ pub mod identity;
 pub mod lifecycle;
 pub mod pyaux;
 pub mod schema;
+pub mod share_import;
 pub mod taxonomy;
 pub mod types;
 

@@ -422,6 +422,10 @@ pub fn recall_with_query_vector(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     let cap = limit.clamp(1, 100) as usize;
+    let ranking = ranking.with_scope(crate::service::Scope {
+        allowed_workspaces: allowed,
+        include_legacy_global: false,
+    });
     let (results, temporal) = temporal_order(conn, &q, now_secs, &ranking, results, cap)?;
     let passed = results.len() as i64;
 

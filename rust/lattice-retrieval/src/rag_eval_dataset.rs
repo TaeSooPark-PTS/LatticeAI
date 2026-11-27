@@ -94,20 +94,37 @@ pub fn load_versioned_dataset(path: &Path) -> Result<VersionedRagDataset, CoreEr
     Ok(ds)
 }
 
-pub fn evaluate_versioned_dataset_retrieval(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdatedAtMode {
+    Constant,
+    ValidFrom,
+}
+
+pub const SEED_STAMP: &str = "2026-04-01T00:00:00";
+
+fn updated_at_for(doc: &RagEvalDatasetDocument, mode: UpdatedAtMode) -> String {
+    match (mode, doc.valid_from.as_deref()) {
+        (UpdatedAtMode::ValidFrom, Some(valid_from)) if !valid_from.trim().is_empty() => {
+            valid_from.trim().trim_end_matches('Z').to_string()
+        }
+        _ => SEED_STAMP.to_string(),
+    }
+}
+
+pub fn seed_versioned_dataset(
     dataset: &VersionedRagDataset,
-    live_target: Option<&LiveModelTarget>,
-) -> Result<VersionedDatasetEvalReport, CoreError> {
+    embedder: &LocalEmbeddingModel,
+    mode: UpdatedAtMode,
+) -> Result<Connection, CoreError> {
     let mut conn = Connection::open_in_memory()?;
     {
         let tx = conn.transaction()?;
-        bootstrap(&tx, "2026-04-01T00:00:00")?;
+        bootstrap(&tx, SEED_STAMP)?;
         tx.commit()?;
     }
-    let embedder = LocalEmbeddingModel::new(384);
     let model_name = embedder.model_id().to_string();
-
     for doc in &dataset.documents {
+        let stamp = updated_at_for(doc, mode);
         let meta = serde_json::json!({
             "workspace_id": doc.workspace_id,
             "source_uri": doc.source_uri,
@@ -118,12 +135,12 @@ pub fn evaluate_versioned_dataset_retrieval(
         .to_string();
         conn.execute(
             "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
-             VALUES (?1, 'Document', ?2, ?3, '{}', ?4, '2026-04-01T00:00:00', '2026-04-01T00:00:00')",
-            params![doc.doc_id, doc.title, doc.text, meta],
+             VALUES (?1, 'Document', ?2, ?3, '{}', ?4, ?5, ?5)",
+            params![doc.doc_id, doc.title, doc.text, meta, stamp],
         )?;
         conn.execute(
             "INSERT INTO nodes_v2(id, type, label, summary, attrs, workspace_id, superseded_by, valid_from, valid_to, importance_score, created_at, updated_at)
-             VALUES (?1, 'Document', ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0.8, '2026-04-01T00:00:00', '2026-04-01T00:00:00')",
+             VALUES (?1, 'Document', ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0.8, ?9, ?9)",
             params![
                 doc.doc_id,
                 doc.title,
@@ -133,6 +150,7 @@ pub fn evaluate_versioned_dataset_retrieval(
                 doc.superseded_by,
                 doc.valid_from,
                 doc.valid_to,
+                stamp,
             ],
         )?;
         let vec_f32 = embedder.embed(&format!("{} {}", doc.title, doc.text));
@@ -142,10 +160,20 @@ pub fn evaluate_versioned_dataset_retrieval(
         }
         conn.execute(
             "INSERT INTO vector_embeddings(item_id, item_type, source_node, text_hash, embedding, embedding_dim, embedding_model, metadata_json, indexed_at)
-             VALUES (?1, 'node', ?1, 'h', ?2, 384, ?3, '{}', '2026-04-01T00:00:00')",
-            params![doc.doc_id, blob, model_name],
+             VALUES (?1, 'node', ?1, 'h', ?2, 384, ?3, '{}', ?4)",
+            params![doc.doc_id, blob, model_name, SEED_STAMP],
         )?;
     }
+    Ok(conn)
+}
+
+pub fn evaluate_versioned_dataset_retrieval(
+    dataset: &VersionedRagDataset,
+    live_target: Option<&LiveModelTarget>,
+) -> Result<VersionedDatasetEvalReport, CoreError> {
+    let embedder = LocalEmbeddingModel::new(384);
+    let model_name = embedder.model_id().to_string();
+    let conn = seed_versioned_dataset(dataset, &embedder, UpdatedAtMode::Constant)?;
 
     let mut cat_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut answerable_n = 0usize;
@@ -321,14 +349,16 @@ mod tests {
         assert_eq!(report.superseded_exclusion_rate, 1.0);
         assert_eq!(report.duplication_rate, 0.0);
         assert!(
-            report.recall_at_5 >= 0.85,
+            report.recall_at_5 >= 0.96,
             "recall@5={}",
             report.recall_at_5
         );
         assert!(
-            report.recall_at_10 >= 0.90,
+            report.recall_at_10 >= 0.98,
             "recall@10={}",
             report.recall_at_10
         );
+        assert!(report.mrr >= 0.82, "mrr={}", report.mrr);
+        assert!(report.ndcg_at_10 >= 0.84, "ndcg@10={}", report.ndcg_at_10);
     }
 }

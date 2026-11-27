@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.2.0 Living Brain walkthrough](output/release/v14.2.0/gifs/v14.2.0-living-brain-walkthrough.gif)
+![v14.3.0 Living Brain walkthrough](output/release/v14.3.0/gifs/v14.3.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_14.2.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_14.3.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -94,15 +94,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v14.2.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.2.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v14.3.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.3.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v14.2.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.2.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v14.3.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.3.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v14.2.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.2.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v14.3.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.3.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v14.2.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.2.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v14.3.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.3.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v14.2.0/SCREENSHOT_INDEX.md](output/release/v14.2.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.2.0/screenshots/01-login.png), [06-capture.png](output/release/v14.2.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.2.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v14.3.0/SCREENSHOT_INDEX.md](output/release/v14.3.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.3.0/screenshots/01-login.png), [06-capture.png](output/release/v14.3.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.3.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -126,27 +126,26 @@ Full visual index: [output/release/v14.2.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **14.2.0 — Temporal Synthesis**:
+The current release is **14.3.0 — Temporal Synthesis**:
 
-- **Time-aware retrieval** — Time expressions in Korean and English become date prefilters, recency decay is always applied, superseded versions are excluded from current-state answers, and `sort_by=relevance|newest` is available.
-- **Better chunks and ranking** — Token-sized parent-child chunks, tree-sitter code splitting, contextual prefixes, cross-encoder reranking with RRF fallback, MMR, and a Self-RAG gate that abstains when your records do not support an answer.
-- **3D living brain and desktop shell** — A growing 3D brain that lights up along the retrieval path, a fixed-viewport glass workspace, and a `Cmd/Ctrl+K` palette.
-- **`ltcai search` and privacy fixes** — Search from the terminal; another user's conversation text is no longer readable from the shared graph in multi-user mode.
+- **Chat retrieval & temporal accuracy** — IDF/BM25F relevance ranking in chat (`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`), true `as_of` point-in-time valid-time filtering and year-only parsing (`temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`), stricter Self-RAG coverage abstention, and CI chat-path ratchet floors.
+- **Multi-user privacy & integrity hardening** — Viewer-filtered share bundle exports, hardened share bundle imports (no overwrite of existing local IDs, workspace/owner pinning, no `knowledge_sources` injection, conversation types blocked), workspace/viewer-scoped temporal prefilters, scope-before-`LIMIT` graph/brain/search queries, fail-closed Chronicle viewer filtering, and indexed supersede-on-ingest identity lookups.
+- **Desktop chat & explorer UX fixes** — Fixed desktop chat stream collapse after the first answer across `1024×640`, `1280×720`, and `1440×900`; wired `Cmd/Ctrl+K` "Today's briefing" across routes; applied the "Show superseded" toggle to 2D Memory Graph; and added `scrollIntoView` for command palette keyboard navigation.
 
-Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment, and documents inside a workspace are not private per user. See the [release notes](docs/releases/RELEASE_NOTES_v14.2.0.md) for the pipeline diagram, glossary, environment variables, and limitations.
+Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment, and documents inside a workspace are not private per user. See the [release notes](docs/releases/RELEASE_NOTES_v14.3.0.md) for details, RAG metrics, and limitations.
 
 <details>
-<summary>Release notes & exact 14.2.0 distribution artifacts</summary>
+<summary>Release notes & exact 14.3.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.3.0.md](docs/releases/RELEASE_NOTES_v14.3.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 14.2.0 must use exact filenames:
+Expected artifacts for 14.3.0 must use exact filenames:
 
-- `dist/ltcai-14.2.0-py3-none-any.whl`
-- `dist/ltcai-14.2.0.tar.gz`
-- `ltcai-14.2.0.tgz`
-- `dist/ltcai-14.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
+- `dist/ltcai-14.3.0-py3-none-any.whl`
+- `dist/ltcai-14.3.0.tar.gz`
+- `ltcai-14.3.0.tgz`
+- `dist/ltcai-14.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.3.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -169,6 +168,7 @@ Public release history in this repository covers `v13.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 14.3.0 | Temporal Synthesis | [RELEASE_NOTES_v14.3.0.md](docs/releases/RELEASE_NOTES_v14.3.0.md) |
 | 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md) |
 | 14.1.2 | Living Synthesis | [RELEASE_NOTES_v14.1.2.md](docs/releases/RELEASE_NOTES_v14.1.2.md) |
 | 14.1.1 | Living Synthesis | [RELEASE_NOTES_v14.1.1.md](docs/releases/RELEASE_NOTES_v14.1.1.md) |

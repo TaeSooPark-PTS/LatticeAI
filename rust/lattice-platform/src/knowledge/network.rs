@@ -49,9 +49,7 @@ impl NetworkState {
         let identity = Arc::new(DeviceIdentity::load_or_create(
             &config.state_file(state_files::DEVICE_IDENTITY),
         ));
-        let peers = Arc::new(PeerRegistry::open(
-            config.data_dir().join("brain_peers.json"),
-        ));
+        let peers = Arc::new(PeerRegistry::open(config.data_dir().join(PEERS_FILE)));
         Self {
             auth,
             config: Arc::new(config),
@@ -321,6 +319,8 @@ impl DeviceIdentity {
         encode_b64(&self.x25519_public_bytes())
     }
 }
+
+pub const PEERS_FILE: &str = "brain_peers.json";
 
 pub struct PeerRegistry {
     path: PathBuf,

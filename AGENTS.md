@@ -2,7 +2,7 @@
 
 # LatticeAI Project AGENTS.md
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.3.0 — Temporal Synthesis**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

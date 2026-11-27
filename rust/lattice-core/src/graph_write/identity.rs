@@ -11,6 +11,23 @@ const UPLOAD_URI_PREFIX: &str = "upload://";
 const LEGACY_UPLOAD_MARKER: &str = "lattice-upload-";
 const UPLOAD_MIN_OVERLAP: f64 = 0.5;
 
+pub const SAME_SOURCE_URI_SQL: &str = "SELECT id, metadata_json FROM nodes
+     WHERE id <> ?1
+       AND type = (SELECT type FROM nodes WHERE id = ?1)
+       AND CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.source_uri') END = ?2";
+
+pub const SAME_FILENAME_SQL: &str = "SELECT id, metadata_json FROM nodes
+     WHERE id <> ?1
+       AND type = (SELECT type FROM nodes WHERE id = ?1)
+       AND CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.filename') END = ?2";
+
+pub const SAME_DOCUMENT_INDEX_SQL: &str = "
+CREATE INDEX IF NOT EXISTS idx_nodes_type_source_uri ON nodes(
+  type, (CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.source_uri') END));
+CREATE INDEX IF NOT EXISTS idx_nodes_type_filename ON nodes(
+  type, (CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.filename') END));
+";
+
 pub fn upload_source_uri(filename: &str) -> String {
     format!("{UPLOAD_URI_PREFIX}{filename}")
 }
@@ -60,18 +77,13 @@ fn other_versions(txn: &Transaction<'_>, id: &str) -> Result<Vec<Version>, CoreE
     if field(&meta, "source_uri").is_empty() {
         return Ok(Vec::new());
     }
-    let (key, value) = if field(&meta, "source_uri").starts_with(UPLOAD_URI_PREFIX) {
-        ("$.filename", field(&meta, "filename"))
+    let (sql, value) = if field(&meta, "source_uri").starts_with(UPLOAD_URI_PREFIX) {
+        (SAME_FILENAME_SQL, field(&meta, "filename"))
     } else {
-        ("$.source_uri", field(&meta, "source_uri"))
+        (SAME_SOURCE_URI_SQL, field(&meta, "source_uri"))
     };
-    let mut statement = txn.prepare(
-        "SELECT id, metadata_json FROM nodes
-         WHERE id <> ?1
-           AND type = (SELECT type FROM nodes WHERE id = ?1)
-           AND CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, ?2) END = ?3",
-    )?;
-    let rows = statement.query_map(params![id, key, value], |row| {
+    let mut statement = txn.prepare(sql)?;
+    let rows = statement.query_map(params![id, value], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;
     let mut out = Vec::new();

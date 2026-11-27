@@ -11,6 +11,34 @@ fn is_platform_conversation_object(name: &str) -> bool {
         || name.starts_with("sqlite_autoindex_conversation_messages_")
 }
 
+const SAME_DOCUMENT_INDEXES: [&str; 2] = ["idx_nodes_type_filename", "idx_nodes_type_source_uri"];
+
+fn is_same_document_index(name: &str) -> bool {
+    SAME_DOCUMENT_INDEXES.contains(&name)
+}
+
+fn without_same_document_indexes(schema: &Value) -> Value {
+    let mut trimmed = schema.clone();
+    if let Some(objects) = trimmed["objects"].as_array_mut() {
+        objects.retain(|object| !is_same_document_index(object["name"].as_str().unwrap_or("")));
+    }
+    trimmed
+}
+
+fn same_document_indexes(schema: &Value) -> Vec<String> {
+    schema["objects"]
+        .as_array()
+        .map(|objects| {
+            objects
+                .iter()
+                .filter_map(|object| object["name"].as_str())
+                .filter(|name| is_same_document_index(name))
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn fixture(name: &str) -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -76,7 +104,7 @@ fn a_fresh_rust_install_creates_the_schema_python_emits() {
     }
     for object in actual_objects {
         let name = object["name"].as_str().expect("a name");
-        if is_platform_conversation_object(name) {
+        if is_platform_conversation_object(name) || is_same_document_index(name) {
             continue;
         }
         assert!(
@@ -138,9 +166,11 @@ fn opening_a_python_built_brain_migrates_nothing() {
     let after = (schema_master(&store), row_counts(&store));
 
     assert_eq!(
-        after.0, before.0,
-        "opening a Python-built Brain changed the schema"
+        without_same_document_indexes(&after.0),
+        before.0,
+        "opening a Python-built Brain changed the schema beyond the additive identity indexes"
     );
+    assert_eq!(same_document_indexes(&after.0), SAME_DOCUMENT_INDEXES);
     assert_eq!(
         after.1, before.1,
         "opening a Python-built Brain changed the data"
@@ -151,7 +181,7 @@ fn opening_a_python_built_brain_migrates_nothing() {
         .expect("set_node_sensitivity");
     assert_eq!(outcome["ok"], Value::Bool(true));
     assert_eq!(
-        schema_master(&store).get("objects"),
+        without_same_document_indexes(&schema_master(&store)).get("objects"),
         before.0.get("objects"),
         "a Rust write changed the schema"
     );

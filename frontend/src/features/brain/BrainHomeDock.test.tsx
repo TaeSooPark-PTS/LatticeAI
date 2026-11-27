@@ -220,3 +220,15 @@ describe("BrainHomeDock drawer", () => {
     expect(drawer()).toBeNull();
   });
 });
+
+describe("BrainHomeDock briefing request", () => {
+  it("opens the stats drawer and lets the briefing panel consume the request", async () => {
+    const { useAppStore } = await import("@/store/appStore");
+    useAppStore.setState({ briefingRequested: true });
+    const { props } = renderDock();
+    expect(await screen.findByTestId("daily-briefing")).toBeTruthy();
+    expect(props.onRequestDetails).toHaveBeenCalled();
+    expect(rail("stats")).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(useAppStore.getState().briefingRequested).toBe(false));
+  });
+});

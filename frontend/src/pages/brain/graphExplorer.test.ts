@@ -362,6 +362,34 @@ describe("parseGraph payload variants", () => {
   });
 });
 
+describe("buildExplorerModel superseded facts", () => {
+  const parsed = parseGraph({
+    nodes: [
+      { id: "now", title: "Now", type: "concept", importance: 0.9 },
+      { id: "old", title: "Old", type: "concept", importance: 0.9, status: "superseded" },
+    ],
+    edges: [{ from: "now", to: "old", type: "SUPERSEDES" }],
+  });
+
+  it("keeps superseded nodes by default", () => {
+    expect(model(parsed).visibleNodes.map((node) => node.id).sort()).toEqual(["now", "old"]);
+  });
+
+  it("drops superseded nodes, their edges and their counts when hidden", () => {
+    const result = model(parsed, { showSuperseded: false });
+    expect(result.visibleNodes.map((node) => node.id)).toEqual(["now"]);
+    expect(result.visibleEdges).toEqual([]);
+    expect(result.elements.map((element) => element.data.id)).toEqual(["now"]);
+    expect(result.groups[0]).toMatchObject({ count: 1, visibleCount: 1 });
+    expect(result.hiddenByFilters).toBe(1);
+  });
+
+  it("reports a group emptied by the filter as zero", () => {
+    const only = parseGraph({ nodes: [{ id: "old", type: "concept", status: "superseded" }], edges: [] });
+    expect(model(only, { showSuperseded: false }).groups[0]).toMatchObject({ count: 0, visibleCount: 0 });
+  });
+});
+
 describe("buildExplorerModel hand-built graphs", () => {
   const gnode = (over: Partial<GraphNode> & { id: string }): GraphNode => ({
     label: over.id,

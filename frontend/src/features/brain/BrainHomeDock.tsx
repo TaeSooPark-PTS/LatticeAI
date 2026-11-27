@@ -117,6 +117,15 @@ export function BrainHomeDock({
     setTab((current) => (current === next && open ? null : next));
   };
 
+  const briefingRequested = useAppStore((state) => state.briefingRequested);
+  const requestDetailsRef = React.useRef(onRequestDetails);
+  requestDetailsRef.current = onRequestDetails;
+  React.useEffect(() => {
+    if (!briefingRequested) return;
+    requestDetailsRef.current();
+    setTab("stats");
+  }, [briefingRequested]);
+
   const tabs: DockTab[] = ["conversations", "stats", "map", "features"];
 
   return (

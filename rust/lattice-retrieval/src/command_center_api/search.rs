@@ -64,7 +64,7 @@ fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
         conn,
         request.query,
         request.now_secs,
-        &request.ranking,
+        &request.ranking.clone().with_scope(scope.clone()),
         request.limit,
         false,
         |call| service::keyword_search(conn, &call.search_query, call.fetch_limit, &scope),

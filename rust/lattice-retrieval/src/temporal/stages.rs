@@ -7,6 +7,7 @@ use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 
 use super::plan::TemporalPlan;
+use super::prefilter::{explicit_validity, Validity};
 use super::SortBy;
 use crate::bm25::KnowledgeLifecycleStatus;
 use crate::shape::parent_node_id;
@@ -98,12 +99,22 @@ impl TemporalPlan {
         recency_class: bool,
     ) -> Result<Vec<Value>, CoreError> {
         let ids: Vec<String> = matches.iter().map(owner_id).collect();
-        let states = node_temporal_states(conn, &ids, self.now_secs)?;
+        let as_of_epoch = self.as_of_epoch();
+        let states = node_temporal_states(conn, &ids, as_of_epoch.unwrap_or(self.now_secs))?;
+        let validity = match as_of_epoch {
+            Some(_) => explicit_validity(conn, &ids)?,
+            None => Default::default(),
+        };
         let penalty = KnowledgeLifecycleStatus::Superseded.multiplier();
         let mut annotated: Vec<(Value, bool)> = Vec::with_capacity(matches.len());
         for mut item in matches {
-            let state = states.get(&owner_id(&item)).cloned().unwrap_or_default();
-            let superseded = state.is_superseded();
+            let owner = owner_id(&item);
+            let state = states.get(&owner).cloned().unwrap_or_default();
+            let bounds = validity.get(&owner).copied().unwrap_or_default();
+            let superseded = match (as_of_epoch, bounds.until) {
+                (Some(at), Some(until)) => until <= at,
+                _ => state.is_superseded(),
+            };
             if !decay_in_engine {
                 let multiplier = self.ranking.decay.multiplier(
                     item.get("updated_at").and_then(Value::as_str),
@@ -117,10 +128,11 @@ impl TemporalPlan {
                 }
             }
             if let Some(object) = item.as_object_mut() {
-                let status = if state.status.is_empty() {
-                    "active"
-                } else {
-                    state.status
+                let status = match (as_of_epoch, superseded) {
+                    (Some(_), true) => "superseded",
+                    (Some(_), false) => "active",
+                    _ if state.status.is_empty() => "active",
+                    _ => state.status,
                 };
                 object.insert("status".into(), json!(status));
                 let mut temporal = state.as_json();
@@ -128,6 +140,11 @@ impl TemporalPlan {
                     block.insert("status".into(), json!(status));
                 }
                 object.insert("temporal".into(), temporal);
+            }
+            if as_of_epoch.is_some() && !self.valid_at_as_of(bounds) {
+                if let Some(object) = item.as_object_mut() {
+                    object.insert("as_of_invalid".into(), json!(true));
+                }
             }
             annotated.push((item, superseded));
         }
@@ -156,7 +173,55 @@ impl TemporalPlan {
             }),
         );
         by_score_desc(&mut kept);
+        let kept = self.restrict_to_validity(kept);
         Ok(self.restrict_to_window(kept))
+    }
+
+    fn valid_at_as_of(&self, bounds: Validity) -> bool {
+        let Some(span) = self.as_of.as_ref() else {
+            return true;
+        };
+        let starts_in_time = match (bounds.from, span.until) {
+            (Some(from), Some(end)) => from < end,
+            _ => true,
+        };
+        let still_valid = match (bounds.until, span.since) {
+            (Some(until), Some(start)) => until > start,
+            _ => true,
+        };
+        starts_in_time && still_valid
+    }
+
+    fn restrict_to_validity(&mut self, matches: Vec<Value>) -> Vec<Value> {
+        if self.as_of.is_none() {
+            return matches;
+        }
+        let invalid =
+            |item: &Value| item.get("as_of_invalid").and_then(Value::as_bool) == Some(true);
+        let candidates = matches.len();
+        let valid = matches.iter().filter(|item| !invalid(item)).count();
+        let fallback = (valid == 0 && candidates > 0).then_some("no_candidates_valid_at_as_of");
+        self.report.insert(
+            "validity".into(),
+            json!({
+                "applied": fallback.is_none(),
+                "rule": "valid_from < as_of_until AND valid_to > as_of_since",
+                "candidates": candidates,
+                "valid": valid,
+                "fallback": fallback,
+            }),
+        );
+        let keep_all = fallback.is_some();
+        matches
+            .into_iter()
+            .filter(|item| keep_all || !invalid(item))
+            .map(|mut item| {
+                if let Some(object) = item.as_object_mut() {
+                    object.remove("as_of_invalid");
+                }
+                item
+            })
+            .collect()
     }
 
     fn restrict_to_window(&mut self, matches: Vec<Value>) -> Vec<Value> {

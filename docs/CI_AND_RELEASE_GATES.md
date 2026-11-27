@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> **Status: canonical** — updated 2026-11-27. Current release: **14.2.0 — Temporal Synthesis**.
+> **Status: canonical** — updated 2026-11-27. Current release: **14.3.0 — Temporal Synthesis**.
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection

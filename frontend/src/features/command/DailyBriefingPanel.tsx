@@ -4,6 +4,7 @@ import { ArrowRight, ChevronDown, Sunrise } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import { navigateHash } from "@/features/brain/navigation";
 
 type QuickAction = { id: string; kind: string; count: number; target: string };
@@ -26,7 +27,7 @@ function section(data: Record<string, unknown>, key: string): Record<string, unk
 export function revealBriefingPanel(root: HTMLElement | null) {
   if (!root) return;
   root.closest("details")?.setAttribute("open", "");
-  window.setTimeout(() => root.scrollIntoView?.({ behavior: "smooth", block: "center" }), 0);
+  window.setTimeout(() => root.scrollIntoView?.({ behavior: "smooth", block: "start" }), 0);
 }
 
 export function DailyBriefingPanel({
@@ -44,14 +45,13 @@ export function DailyBriefingPanel({
     enabled: expanded,
   });
 
+  const requested = useAppStore((state) => state.briefingRequested);
   React.useEffect(() => {
-    const onOpen = () => {
-      setExpanded(true);
-      revealBriefingPanel(rootRef.current);
-    };
-    window.addEventListener("lattice:open-briefing", onOpen);
-    return () => window.removeEventListener("lattice:open-briefing", onOpen);
-  }, []);
+    if (!requested) return;
+    useAppStore.getState().setBriefingRequested(false);
+    setExpanded(true);
+    revealBriefingPanel(rootRef.current);
+  }, [requested]);
 
   const data = (briefingQ.data?.data || {}) as Record<string, unknown>;
   const briefingEmpty =

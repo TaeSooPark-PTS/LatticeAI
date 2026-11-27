@@ -368,6 +368,7 @@ const CONVERSATION_SCHEMA_SQL: &str = "
 pub fn bootstrap(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     guard_db_format(txn)?;
     txn.execute_batch(LEGACY_SCHEMA_SQL)?;
+    txn.execute_batch(super::identity::SAME_DOCUMENT_INDEX_SQL)?;
     txn.execute(
         "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
         rusqlite::params!["schema_version", GRAPH_SCHEMA_VERSION.to_string()],

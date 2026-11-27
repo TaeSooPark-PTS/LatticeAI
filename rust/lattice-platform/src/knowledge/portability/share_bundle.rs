@@ -13,9 +13,15 @@ use crate::adminops::admin::enterprise::emit_sanitized_governance_audit;
 use crate::http_reply;
 use crate::knowledge::network_boundary::{HARD_BLOCK_METADATA_FLAGS, HARD_BLOCK_NODE_TYPES};
 
+pub(super) struct ShareViewer {
+    pub viewer: Option<String>,
+    pub require_workspace: bool,
+}
+
 pub(super) fn build_subgraph_bundle(
     state: &PortabilityState,
     object: &Map<String, Value>,
+    scope: &ShareViewer,
 ) -> Result<(Value, Value, usize), String> {
     let node_ids = str_list(object, "node_ids");
     let node_types = str_list(object, "node_types");
@@ -40,8 +46,14 @@ pub(super) fn build_subgraph_bundle(
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|s| !s.is_empty());
+    if scope.require_workspace && workspace_id.is_none() {
+        return Err("workspace_id is required to share knowledge when sign-in is required.".into());
+    }
 
     let db_path = state.config.graph_db_path();
+    let conn = lattice_core::db::open_read_only(&db_path).ok();
+    let column_workspaces = conn.as_ref().map(v2_workspaces).unwrap_or_default();
+    let ws_of = |node: &Value| node_workspace(node, &column_workspaces);
     let export = export_full_tables(&db_path);
     let all_nodes = array_rows(&export, "nodes");
     let all_edges = array_rows(&export, "edges");
@@ -80,7 +92,7 @@ pub(super) fn build_subgraph_bundle(
         if !(matches_id || matches_type || matches_source) {
             continue;
         }
-        if !matches_workspace_boundary(node, workspace_id, include_legacy_global) {
+        if !matches_workspace_boundary(ws_of(node), workspace_id, include_legacy_global) {
             continue;
         }
         if is_node_share_blocked(node) {
@@ -94,9 +106,19 @@ pub(super) fn build_subgraph_bundle(
         .iter()
         .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
         .collect();
+    let hide_foreign = |ids: &mut HashSet<String>| -> Result<(), String> {
+        let Some(viewer) = scope.viewer.as_deref() else {
+            return Ok(());
+        };
+        let hidden = foreign_conversation_nodes(conn.as_ref(), &node_lookup, ids, viewer)?;
+        ids.retain(|id| !hidden.contains(id));
+        Ok(())
+    };
+    hide_foreign(&mut selected_ids)?;
 
     if include_neighbors && !selected_ids.is_empty() {
         let seeds = selected_ids.clone();
+        let mut neighbors: HashSet<String> = HashSet::new();
         for edge in all_edges {
             let from = edge.get("from_node").and_then(Value::as_str).unwrap_or("");
             let to = edge.get("to_node").and_then(Value::as_str).unwrap_or("");
@@ -109,22 +131,25 @@ pub(super) fn build_subgraph_bundle(
             };
             if let Some(nb) = neighbor {
                 if let Some(node) = node_lookup.get(nb) {
-                    if !matches_workspace_boundary(node, workspace_id, include_legacy_global) {
+                    if !matches_workspace_boundary(ws_of(node), workspace_id, include_legacy_global)
+                    {
                         continue;
                     }
                     if is_node_share_blocked(node) {
                         blocked_ids.insert(nb);
                     } else {
-                        selected_ids.insert(nb.to_string());
+                        neighbors.insert(nb.to_string());
                     }
                 }
             }
         }
+        hide_foreign(&mut neighbors)?;
+        selected_ids.extend(neighbors);
     }
 
     let mut withheld_chunks: HashSet<&str> = HashSet::new();
     let mut withheld_parents: HashSet<String> = HashSet::new();
-    let mut chunk_nodes: Vec<&str> = Vec::new();
+    let mut chunk_nodes: HashSet<String> = HashSet::new();
     for chunk in all_chunks {
         let source = chunk.get("source_node").and_then(Value::as_str);
         let Some(cid) = chunk.get("id").and_then(Value::as_str) else {
@@ -140,16 +165,29 @@ pub(super) fn build_subgraph_bundle(
         if blocked {
             blocked_ids.insert(cid);
         }
-        if blocked || belongs_to_other_workspace(node, workspace_id) {
+        if blocked || belongs_to_other_workspace(ws_of(node), workspace_id) {
             withheld_chunks.insert(cid);
             if let Some(parent) = metadata_of(chunk).get("parent_id").and_then(Value::as_str) {
                 withheld_parents.insert(parent.to_string());
             }
         } else {
-            chunk_nodes.push(cid);
+            chunk_nodes.insert(cid.to_string());
         }
     }
-    selected_ids.extend(chunk_nodes.into_iter().map(str::to_string));
+    let candidate_chunks = chunk_nodes.clone();
+    hide_foreign(&mut chunk_nodes)?;
+    for chunk in all_chunks {
+        let Some(cid) = chunk.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+        if candidate_chunks.contains(cid) && !chunk_nodes.contains(cid) {
+            withheld_chunks.insert(cid);
+            if let Some(parent) = metadata_of(chunk).get("parent_id").and_then(Value::as_str) {
+                withheld_parents.insert(parent.to_string());
+            }
+        }
+    }
+    selected_ids.extend(chunk_nodes);
     let excluded_local_only = blocked_ids.len();
 
     let nodes: Vec<Value> = all_nodes
@@ -360,30 +398,100 @@ fn is_node_share_blocked(node: &Value) -> bool {
 }
 
 fn matches_workspace_boundary(
-    node: &Value,
+    node_workspace: Option<String>,
     workspace_id: Option<&str>,
     include_legacy_global: bool,
 ) -> bool {
     let Some(wanted) = workspace_id else {
         return true;
     };
-    match explicit_workspace(&metadata_of(node)) {
+    match node_workspace {
         Some(ws) => ws == wanted,
         None => include_legacy_global || wanted == "personal",
     }
 }
 
-fn belongs_to_other_workspace(node: &Value, workspace_id: Option<&str>) -> bool {
-    let meta = metadata_of(node);
+fn belongs_to_other_workspace(node_workspace: Option<String>, workspace_id: Option<&str>) -> bool {
     workspace_id
-        .zip(explicit_workspace(&meta))
+        .zip(node_workspace)
         .is_some_and(|(wanted, ws)| ws != wanted)
 }
 
-fn explicit_workspace(meta: &Value) -> Option<&str> {
+fn node_workspace(node: &Value, column_workspaces: &HashMap<String, String>) -> Option<String> {
+    let meta = metadata_of(node);
     meta.get("workspace_id")
         .and_then(Value::as_str)
         .filter(|ws| !ws.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            node.get("id")
+                .and_then(Value::as_str)
+                .and_then(|id| column_workspaces.get(id))
+                .cloned()
+        })
+}
+
+fn v2_workspaces(conn: &rusqlite::Connection) -> HashMap<String, String> {
+    let Ok(mut stmt) = conn.prepare(
+        "SELECT id, workspace_id FROM nodes_v2 \
+         WHERE workspace_id IS NOT NULL AND workspace_id <> ''",
+    ) else {
+        return HashMap::new();
+    };
+    let Ok(rows) = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get(1)?))) else {
+        return HashMap::new();
+    };
+    rows.flatten().collect()
+}
+
+fn foreign_conversation_nodes(
+    conn: Option<&rusqlite::Connection>,
+    node_lookup: &HashMap<&str, &Value>,
+    ids: &HashSet<String>,
+    viewer: &str,
+) -> Result<HashSet<String>, String> {
+    let Some(viewer) = lattice_core::viewer_scope::normalize_viewer(viewer) else {
+        return Ok(HashSet::new());
+    };
+    if ids.is_empty() {
+        return Ok(HashSet::new());
+    }
+    let conn = conn.ok_or_else(|| SCOPE_UNVERIFIED.to_string())?;
+    let wanted: Vec<String> = ids.iter().cloned().collect();
+    let mut hidden = lattice_core::viewer_scope::foreign_conversation_ids(conn, &wanted, &viewer)
+        .map_err(|_| SCOPE_UNVERIFIED.to_string())?;
+    hidden.extend(wanted.into_iter().filter(|id| {
+        node_lookup
+            .get(id.as_str())
+            .is_some_and(|node| legacy_foreign_conversation(node, &viewer))
+    }));
+    Ok(hidden)
+}
+
+const SCOPE_UNVERIFIED: &str = "Conversation ownership could not be verified; nothing was shared.";
+
+fn legacy_foreign_conversation(node: &Value, viewer: &str) -> bool {
+    let meta = metadata_of(node);
+    let text = |key: &str| {
+        meta.get(key)
+            .and_then(Value::as_str)
+            .map(|value| value.trim().to_lowercase())
+            .filter(|value| !value.is_empty())
+    };
+    let ntype = node.get("type").and_then(Value::as_str).unwrap_or("");
+    let Some(owner) =
+        text("user_email").or_else(|| text("owner").filter(|owner| !owner.starts_with("user:")))
+    else {
+        return false;
+    };
+    let derived = lattice_core::viewer_scope::CONVERSATION_NODE_TYPES.contains(&ntype)
+        || text("source_node").is_some_and(|source| {
+            lattice_core::viewer_scope::CONVERSATION_SOURCE_PREFIXES
+                .iter()
+                .any(|prefix| source.starts_with(prefix))
+        })
+        || (ntype == "Person" && text("email").as_deref() == Some(owner.as_str()));
+    derived && owner != viewer
 }
 
 fn metadata_of(row: &Value) -> Value {

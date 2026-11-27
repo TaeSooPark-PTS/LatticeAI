@@ -278,33 +278,41 @@ async fn hybrid_graphrag(
     let degraded = resolution.degraded_reason;
     let query_vector = resolution.query_vector;
     let outcome = run(state, move |conn| {
-        prepare_ranked(conn, &query, now, &ranking, limit, true, |call| {
-            let options = crate::bm25::GraphRagOptions {
-                limit: call.fetch_limit,
-                bm25_limit: keyword_limit.max(call.fetch_limit),
-                vector_limit: vector_limit.max(call.fetch_limit),
-                graph_limit: graph_limit.max(call.fetch_limit),
-                graph_config,
-                scope,
-                now_secs: now,
-                include_historical: call.include_historical,
-                query_embedding: query_vector,
-                recency: Some(call.decay),
-                ..crate::bm25::GraphRagOptions::default()
-            };
-            let model = LocalEmbeddingModel::from_env();
-            let mut out = crate::bm25::hybrid_bm25_vector_graph_search(
-                conn,
-                &model,
-                &call.search_query,
-                &options,
-            )?;
-            if let (Some(reason), Some(object)) = (degraded.as_ref(), out.as_object_mut()) {
-                object.insert("vector_provider_status".into(), json!("degraded"));
-                object.insert("vector_degraded_reason".into(), json!(reason));
-            }
-            Ok(out)
-        })
+        prepare_ranked(
+            conn,
+            &query,
+            now,
+            &ranking.clone().with_scope(scope.clone()),
+            limit,
+            true,
+            |call| {
+                let options = crate::bm25::GraphRagOptions {
+                    limit: call.fetch_limit,
+                    bm25_limit: keyword_limit.max(call.fetch_limit),
+                    vector_limit: vector_limit.max(call.fetch_limit),
+                    graph_limit: graph_limit.max(call.fetch_limit),
+                    graph_config,
+                    scope,
+                    now_secs: now,
+                    include_historical: call.include_historical,
+                    query_embedding: query_vector,
+                    recency: Some(call.decay),
+                    ..crate::bm25::GraphRagOptions::default()
+                };
+                let model = LocalEmbeddingModel::from_env();
+                let mut out = crate::bm25::hybrid_bm25_vector_graph_search(
+                    conn,
+                    &model,
+                    &call.search_query,
+                    &options,
+                )?;
+                if let (Some(reason), Some(object)) = (degraded.as_ref(), out.as_object_mut()) {
+                    object.insert("vector_provider_status".into(), json!("degraded"));
+                    object.insert("vector_degraded_reason".into(), json!(reason));
+                }
+                Ok(out)
+            },
+        )
     })
     .await;
     finish_ranked(state, outcome, limit, image_fusion).await
@@ -343,24 +351,33 @@ async fn hybrid(state: &RetrievalApiState, scope: Scope, request: HybridRequest)
         ..
     } = request;
     let outcome = run(state, move |conn| {
-        prepare_ranked(conn, &query, now, &ranking, limit, true, |call| {
-            let widen = |requested: i64| requested.max(call.fetch_limit).clamp(1, 100);
-            let options = ServiceHybridOptions {
-                limit: call.fetch_limit,
-                keyword_limit: widen(keyword_limit),
-                vector_limit: widen(vector_limit),
-                graph_limit: widen(graph_limit),
-                weights,
-                scope,
-                now_secs: now,
-                query_embedding: resolution.query_vector,
-                semantic_degraded: resolution.degraded_reason,
-                recency: Some(call.decay),
-                include_historical: call.include_historical,
-            };
-            let model = LocalEmbeddingModel::from_env();
-            service_hybrid_search(conn, &model, &call.search_query, &options)
-        })
+        prepare_ranked(
+            conn,
+            &query,
+            now,
+            &ranking.clone().with_scope(scope.clone()),
+            limit,
+            true,
+            |call| {
+                let widen = |requested: i64| requested.max(call.fetch_limit).clamp(1, 100);
+                let options = ServiceHybridOptions {
+                    limit: call.fetch_limit,
+                    keyword_limit: widen(keyword_limit),
+                    vector_limit: widen(vector_limit),
+                    graph_limit: widen(graph_limit),
+                    weights,
+                    scope,
+                    now_secs: now,
+                    query_embedding: resolution.query_vector,
+                    semantic_degraded: resolution.degraded_reason,
+                    recency: Some(call.decay),
+                    include_historical: call.include_historical,
+                    ..ServiceHybridOptions::default()
+                };
+                let model = LocalEmbeddingModel::from_env();
+                service_hybrid_search(conn, &model, &call.search_query, &options)
+            },
+        )
     })
     .await;
     finish_ranked(state, outcome, limit, image_fusion).await
@@ -449,9 +466,15 @@ async fn keyword(
 ) -> Response {
     let now = crate::routes::naive_local_now();
     match run(state, move |conn| {
-        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
-            keyword_search(conn, &call.search_query, call.fetch_limit, &scope)
-        })
+        ranked_search(
+            conn,
+            &query,
+            now,
+            &ranking.clone().with_scope(scope.clone()),
+            limit,
+            false,
+            |call| keyword_search(conn, &call.search_query, call.fetch_limit, &scope),
+        )
     })
     .await
     {
@@ -539,26 +562,34 @@ async fn vector(
                 "matches": [],
             }));
         }
-        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
-            let model = LocalEmbeddingModel::from_env();
-            let query_input = match resolution.query_vector.as_ref() {
-                Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
-                    model_id: &ovr.model_id,
-                    vector: &ovr.vector,
-                    is_hash_fallback: ovr.is_hash_fallback,
-                },
-                None => crate::vector::VectorQueryInput::Model(&model),
-            };
-            vector_search_aligned_service(
-                conn,
-                query_input,
-                &call.search_query,
-                call.fetch_limit,
-                min_score,
-                &scope,
-                call.include_historical,
-            )
-        })
+        ranked_search(
+            conn,
+            &query,
+            now,
+            &ranking.clone().with_scope(scope.clone()),
+            limit,
+            false,
+            |call| {
+                let model = LocalEmbeddingModel::from_env();
+                let query_input = match resolution.query_vector.as_ref() {
+                    Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
+                        model_id: &ovr.model_id,
+                        vector: &ovr.vector,
+                        is_hash_fallback: ovr.is_hash_fallback,
+                    },
+                    None => crate::vector::VectorQueryInput::Model(&model),
+                };
+                vector_search_aligned_service(
+                    conn,
+                    query_input,
+                    &call.search_query,
+                    call.fetch_limit,
+                    min_score,
+                    &scope,
+                    call.include_historical,
+                )
+            },
+        )
     })
     .await
     {
@@ -589,14 +620,23 @@ async fn graph_search_post(
     let expand_depth = model.int("expand_depth", 1);
     let now = crate::routes::naive_local_now();
     match run(&state, move |conn| {
-        ranked_search(conn, &query, now, &ranking, limit, false, |call| {
-            let options = GraphSearchOptions {
-                limit: call.fetch_limit,
-                expand_depth,
-                scope,
-            };
-            graph_search(conn, &call.search_query, &options)
-        })
+        ranked_search(
+            conn,
+            &query,
+            now,
+            &ranking.clone().with_scope(scope.clone()),
+            limit,
+            false,
+            |call| {
+                let options = GraphSearchOptions {
+                    limit: call.fetch_limit,
+                    expand_depth,
+                    scope,
+                    ..GraphSearchOptions::default()
+                };
+                graph_search(conn, &call.search_query, &options)
+            },
+        )
     })
     .await
     {

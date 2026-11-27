@@ -243,23 +243,6 @@ const SMALL_TALK: &[&str] = &[
     "수고했어",
 ];
 
-const KOREAN_PARTICLES: &[&str] = &[
-    "에서는",
-    "에서",
-    "에게",
-    "으로",
-    "부터",
-    "까지",
-    "이랑",
-    "하고",
-    "은요",
-    "는요",
-    "은",
-    "는",
-    "을",
-    "를",
-];
-
 const KOREAN_LEADERS: &[&str] = &["그럼", "그러면", "그리고", "그래서", "근데", "그런데", "또"];
 
 const ENGLISH_LEADERS: &[&str] = &[
@@ -349,24 +332,6 @@ impl QueryPlan {
     }
 }
 
-fn is_hangul(c: char) -> bool {
-    ('\u{AC00}'..='\u{D7A3}').contains(&c)
-}
-
-fn strip_particle(token: &str) -> &str {
-    if !token.chars().any(is_hangul) {
-        return token;
-    }
-    for particle in KOREAN_PARTICLES {
-        if let Some(stem) = token.strip_suffix(particle) {
-            if stem.chars().count() >= 2 {
-                return stem;
-            }
-        }
-    }
-    token
-}
-
 fn raw_tokens(text: &str) -> impl Iterator<Item = &str> {
     text.split(|c: char| !(c.is_alphanumeric() || matches!(c, '_' | '-' | '.' | '\'' | '/')))
         .map(|token| token.trim_matches(['.', '-', '\'', '/', '_']))
@@ -381,7 +346,7 @@ pub fn content_terms(text: &str) -> Vec<String> {
         if STOPWORDS.contains(&lower.as_str()) {
             continue;
         }
-        let stem = strip_particle(token);
+        let stem = crate::concepts::strip_korean_particle(token);
         let stem_lower = stem.to_lowercase();
         if STOPWORDS.contains(&stem_lower.as_str()) {
             continue;
@@ -443,7 +408,7 @@ pub fn is_follow_up(message: &str) -> bool {
     let korean_ellipsis = ["은", "는", "은요", "는요"]
         .iter()
         .any(|tail| bare.ends_with(tail))
-        && bare.chars().any(is_hangul);
+        && bare.chars().any(crate::concepts::is_hangul);
     if korean_ellipsis && terms <= FOLLOW_UP_MAX_TERMS {
         return true;
     }

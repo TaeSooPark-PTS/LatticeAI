@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스 기준의 서브시스템 설계 원칙과 구성 개요 문서입니다.
 > 전체 시스템 맵, 크레이트 인벤토리, 정확 버전 산출물 맵은 [`ARCHITECTURE.md`](./ARCHITECTURE.md)(영문 정본: [`ARCHITECTURE.md`](../../ARCHITECTURE.md))를 참고하세요.
 
-현재 릴리스: **14.2.0 — Temporal Synthesis**.
+현재 릴리스: **14.3.0 — Temporal Synthesis**.
 
 Lattice AI는 로컬 우선(local-first) **디지털 브레인 플랫폼(Digital Brain Platform)**입니다. 아키텍처는 사용자가 소유하는 단일 영속 중심인 단일 라이터 SQLite **지식 그래프(Knowledge Graph)**(`lattice-core::graph_write`)를 축으로 구성됩니다. 모델, 추론 엔진, 도구, 에이전트, 검색 인덱스, 워크플로, UI 표면은 모두 검증된 그래프 컨텍스트 위에서 작동하는 교체 가능한 계층입니다. 모델은 교체 가능하지만 지식은 영속적입니다.
 
@@ -75,4 +75,4 @@ flowchart TD
 
 ## 호환성 및 업그레이드
 
-14.2.0은 스키마를 추가 방식으로만 바꾸며(`chunk_parents` 테이블은 첫 parent 기록 시 생성) 파괴적 마이그레이션이 없습니다. 청크 색인 텍스트에 문맥 접두어가 포함되므로 문서는 다음 동기화 때 한 번 다시 임베딩되며, `auto` 임베딩 기본값 때문에 활성 임베더가 바뀌면 `reindex_required`가 보고됩니다. 검색 파이프라인, 환경 변수, 한계는 [14.2.0 릴리스 노트](./releases/RELEASE_NOTES_v14.2.0.md)를 참고하세요.
+14.3.0은 `nodes`의 `source_uri`·`filename` 표현식 인덱스를 추가 방식으로만 반영하며 파괴적 마이그레이션이 없습니다. 시간 사전 필터와 그래프·브레인·검색 `LIMIT` 조회에 워크스페이스·뷰어 범위를 선적용하고, 공유 번들 내보내기/가져오기를 강화했으며, 채팅 검색의 IDF/BM25F 관련도 랭킹, `as_of` 유효기간 평가, 엄격한 Self-RAG 보류 및 데스크톱 UX 수정을 포함합니다. 상세 내용과 RAG 지표는 [14.3.0 릴리스 노트](./releases/RELEASE_NOTES_v14.3.0.md)를 참고하세요.

@@ -216,3 +216,33 @@ fn identical_bytes_from_another_user_never_take_over_or_supersede() {
     assert_eq!(held(&source).1, "a@x");
     assert!(!superseded(&graph, &first.node_id));
 }
+
+#[test]
+fn the_same_document_lookup_is_served_by_an_expression_index() {
+    use lattice_core::graph_write::identity::{SAME_FILENAME_SQL, SAME_SOURCE_URI_SQL};
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graph = writer(dir.path());
+    graph
+        .ingest_content_superseding(&note("/v/plan.md", "port is 1", "a@x", "team"))
+        .expect("ingest");
+    for (sql, index) in [
+        (SAME_SOURCE_URI_SQL, "idx_nodes_type_source_uri"),
+        (SAME_FILENAME_SQL, "idx_nodes_type_filename"),
+    ] {
+        let plan: Vec<String> = graph
+            .store()
+            .with_read_conn(|conn| {
+                let mut stmt = conn.prepare(&format!("EXPLAIN QUERY PLAN {sql}"))?;
+                let rows = stmt.query_map(["n1", "/v/plan.md"], |row| row.get::<_, String>(3))?;
+                Ok(rows.collect::<Result<Vec<_>, _>>()?)
+            })
+            .expect("plan");
+        let outer = plan
+            .iter()
+            .find(|step| step.contains("nodes") && !step.contains("PRIMARY KEY"))
+            .cloned()
+            .unwrap_or_default();
+        assert!(outer.contains(&format!("USING INDEX {index}")), "{plan:?}");
+        assert!(!plan.iter().any(|step| step == "SCAN nodes"), "{plan:?}");
+    }
+}

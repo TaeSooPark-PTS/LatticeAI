@@ -101,3 +101,34 @@ test("fixed-viewport desktop shell, frosted glass HUD, vital pill, command palet
 
   expect(errors).toEqual([]);
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1024, height: 640 }]) {
+  test(`after the first answer the messages and composer stay on screen at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    const errors = trackPageErrors(page);
+    await page.setViewportSize(viewport);
+    await openBrain(page);
+
+    const composer = page.getByPlaceholder("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요");
+    await composer.fill("How does hybrid search rank results?");
+    await page.getByRole("button", { name: "보내기", exact: true }).click();
+    await expect(page.locator(".brain-message.assistant")).toContainText("Hybrid retrieval");
+    await expect(page.locator(".brain-save-feedback")).toBeVisible();
+
+    await expect(composer).toBeInViewport({ ratio: 1 });
+    const streamHeight = await page.locator(".brain-stream").evaluate((node) => node.clientHeight);
+    expect(streamHeight).toBeGreaterThanOrEqual(Math.round(viewport.height * 0.2));
+    expect(errors).toEqual([]);
+  });
+}
+
+test("today's briefing from the command palette is visible from another screen", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+  await page.goto("/app#/settings");
+  await expect(page.locator("header.brain-topbar")).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-palette").getByRole("option", { name: /오늘의 브리핑/ }).click();
+  await expect(page.getByTestId("daily-briefing")).toBeInViewport();
+  await expect(page.locator("#daily-briefing-details")).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -165,6 +165,7 @@ impl Plan {
                     limit: params.optional_int("limit", 1, 100)?.unwrap_or(30),
                     expand_depth: params.optional_int("expand_depth", -1, 3)?.unwrap_or(1),
                     scope: Scope::default(),
+                    ..GraphSearchOptions::default()
                 },
                 ranking: params.temporal_ranking()?.map(Box::new),
             }),
@@ -221,6 +222,9 @@ impl Plan {
                     .optional_instant("now")?
                     .unwrap_or_else(super::naive_local_now),
                 temporal: params.temporal_ranking()?,
+                as_of: params
+                    .optional_instant("as_of")?
+                    .map(crate::temporal::calendar::iso),
                 ..ContextRequest::default()
             }))),
             Endpoint::ContextDocument => {
@@ -266,7 +270,7 @@ impl Plan {
                     &conn,
                     &query,
                     options.now_secs,
-                    &ranking,
+                    &ranking.clone().with_scope(options.scope.clone()),
                     options.limit,
                     true,
                     |call| {
@@ -296,7 +300,7 @@ impl Plan {
                 &conn,
                 &query,
                 super::naive_local_now(),
-                &ranking,
+                &ranking.clone().with_scope(options.scope.clone()),
                 options.limit,
                 false,
                 |call| {

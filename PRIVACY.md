@@ -2,7 +2,7 @@
 
 # Privacy
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.3.0 — Temporal Synthesis**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.3.0 - Temporal Synthesis] (2026-11-27)
+
+Fixed post-send desktop chat collapse, `Cmd/Ctrl+K` "Today's briefing" cross-route opening, 2D Memory Graph "Show superseded" filtering, and command palette keyboard scrolling; upgraded chat retrieval with IDF/BM25F relevance ranking, true `as_of` valid-time evaluation and year-only parsing, stricter Self-RAG coverage abstention, and CI chat-path ratchet floors (`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`); and hardened multi-user privacy and integrity across share bundle export/import, scoped temporal prefilters, scope-before-`LIMIT` graph/brain/search queries, fail-closed Chronicle viewer filtering, and indexed supersede-on-ingest identity lookups.
+
+See [docs/releases/RELEASE_NOTES_v14.3.0.md](docs/releases/RELEASE_NOTES_v14.3.0.md).
+
 # [v14.2.0 - Temporal Synthesis] (2026-11-27)
 
 Rebuilt retrieval around time: token, AST and parent-child chunking with contextual prefixes; EmbeddingGemma 2 through the new `auto` embedding default and optional `rag` extra; cross-encoder reranking with RRF fallback; two-stage temporal ranking with `sort_by`, time-intent prefilters and `SUPERSEDES` handling; history-aware query rewrite, MMR and a Self-RAG gate in chat; a 3D living brain view, fixed-viewport desktop shell and command palette; the `ltcai search` CLI; and fixes for a multi-user conversation leak, upload and folder ownership, and shared-bundle import. Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment.
@@ -130,10 +136,11 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.2.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.3.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 
+- [v14.3.0 - Temporal Synthesis](docs/releases/RELEASE_NOTES_v14.3.0.md)
 - [v14.2.0 - Temporal Synthesis](docs/releases/RELEASE_NOTES_v14.2.0.md)
 - [v14.1.2 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](docs/releases/RELEASE_NOTES_v14.1.1.md)
