@@ -14,7 +14,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**14.2.0 — Temporal Synthesis** keeps the extension in step with a Lattice AI host that adds time-aware retrieval, token-sized parent-child chunking, cross-encoder reranking with RRF fallback, chat grounding gates, a 3D living brain view, the `ltcai search` CLI, and a multi-user conversation privacy fix. The extension's own features are unchanged. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.2.0.md`.
+**14.3.0 — Temporal Synthesis** keeps the extension in step with a Lattice AI host that upgrades chat retrieval ranking and `as_of` temporal evaluation, tightens Self-RAG abstention with CI chat-path RAG floors, hardens multi-user privacy across share bundle export/import, temporal prefilters, scope-before-`LIMIT` reads, and Chronicle fail-closed filtering, and fixes desktop chat and explorer UX. The extension's own features are unchanged. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.3.0.md`.
 
 **The core protocol remains backward-compatible.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before; cloud escalation and MCP live on the host, not in the editor.
 
