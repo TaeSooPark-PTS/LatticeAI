@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스 기준의 서브시스템 설계 원칙과 구성 개요 문서입니다.
 > 전체 시스템 맵, 크레이트 인벤토리, 정확 버전 산출물 맵은 [`ARCHITECTURE.md`](./ARCHITECTURE.md)(영문 정본: [`ARCHITECTURE.md`](../../ARCHITECTURE.md))를 참고하세요.
 
-현재 릴리스: **14.3.0 — Temporal Synthesis**.
+현재 릴리스: **14.4.0 — Measured Retrieval**.
 
 Lattice AI는 로컬 우선(local-first) **디지털 브레인 플랫폼(Digital Brain Platform)**입니다. 아키텍처는 사용자가 소유하는 단일 영속 중심인 단일 라이터 SQLite **지식 그래프(Knowledge Graph)**(`lattice-core::graph_write`)를 축으로 구성됩니다. 모델, 추론 엔진, 도구, 에이전트, 검색 인덱스, 워크플로, UI 표면은 모두 검증된 그래프 컨텍스트 위에서 작동하는 교체 가능한 계층입니다. 모델은 교체 가능하지만 지식은 영속적입니다.
 

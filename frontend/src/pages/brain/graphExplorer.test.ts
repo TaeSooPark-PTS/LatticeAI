@@ -1,7 +1,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildExplorerModel, graphGroupColor, graphInkColor, parseGraph, resolveTokenColor, type GraphEdge, type GraphNode, type ParsedGraph } from "./graphExplorer";
+import { buildExplorerModel, graphGroupColor, graphInkColor, nodeDisplayLabels, parseGraph, resolveTokenColor, type GraphEdge, type GraphNode, type ParsedGraph } from "./graphExplorer";
 
 const NO_COLLAPSE = new Set<string>();
 
@@ -516,5 +516,19 @@ describe("parseGraph lifecycle status", () => {
       "en",
     );
     expect(parsed.nodes.map((node) => node.status)).toEqual(["superseded", "active"]);
+  });
+});
+
+describe("nodeDisplayLabels", () => {
+  it("keeps only elements that carry a visible label", () => {
+    const labels = nodeDisplayLabels({
+      elements: [
+        { data: { id: "a", displayLabel: "Atlas" } },
+        { data: { id: "b", displayLabel: "" } },
+        { data: { id: "edge", source: "a", target: "b" } },
+        { data: { displayLabel: "orphan" } },
+      ],
+    });
+    expect([...labels]).toEqual([["a", "Atlas"]]);
   });
 });

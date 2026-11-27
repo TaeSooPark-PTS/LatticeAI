@@ -2,7 +2,7 @@
 
 # Community And Plugins
 
-Current release: **14.3.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 LatticeAI defines a clear path from a local-first Rust-host Digital Brain
 platform to a governed product ecosystem. The immediate goal is small and

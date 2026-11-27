@@ -505,14 +505,14 @@
     },
     "sources": {
       "lexical": 7,
-      "vector": 21
+      "vector": 36
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 69,
+      "embedded_rows": 36,
       "exhaustive": true,
       "truncated": false
     }

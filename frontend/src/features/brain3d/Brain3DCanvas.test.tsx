@@ -4,7 +4,7 @@ import { t } from "@/i18n";
 import "@/i18n/brain";
 import { useAppStore } from "@/store/appStore";
 import { gpu, resetGpu } from "@/test/threeHarness";
-import { Brain3DCanvas } from "./Brain3DCanvas";
+import { Brain3DCanvas, CONTEXT_RESTORE_GRACE_MS } from "./Brain3DCanvas";
 import { Brain3DSceneController } from "./Brain3DScene";
 import { resetWebGLSupportCacheForTest } from "./webglSupport";
 
@@ -134,7 +134,51 @@ describe("Brain3DCanvas with WebGL", () => {
     expect(host.className).toBe("brain-3d-host is-ambient extra");
     expect(host.getAttribute("aria-hidden")).toBe("true");
     expect(host.getAttribute("role")).toBeNull();
+    expect(host.querySelector('[role="status"]')).toBeNull();
     expect(host.querySelector(".brain-3d-hemisphere-legend")).toBeNull();
     expect(gpu.renderers[0]!.parameters.antialias).toBe(false);
+  });
+});
+
+describe("Brain3DCanvas context loss", () => {
+  beforeEach(() => {
+    enableWebGL();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const lose = () => act(() => {
+    gpu.renderers.at(-1)!.domElement.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
+  });
+
+  it("announces the pause and clears it when the context returns in time", () => {
+    render(<Brain3DCanvas nodes={nodes} edges={edges} language="en" fallback={<div data-testid="custom-2d-fallback" />} />);
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    lose();
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe(t("en", "graph.canvas3d.contextLost"));
+    act(() => {
+      gpu.renderers.at(-1)!.domElement.dispatchEvent(new Event("webglcontextrestored"));
+    });
+    act(() => {
+      vi.advanceTimersByTime(CONTEXT_RESTORE_GRACE_MS * 2);
+    });
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("");
+    expect(screen.queryByTestId("custom-2d-fallback")).toBeNull();
+  });
+
+  it("switches to the 2D fallback when the context stays lost", () => {
+    render(<Brain3DCanvas nodes={nodes} edges={edges} language="en" fallback={<div data-testid="custom-2d-fallback" />} />);
+    lose();
+    act(() => {
+      vi.advanceTimersByTime(CONTEXT_RESTORE_GRACE_MS);
+    });
+    expect(screen.getByTestId("custom-2d-fallback")).toBeTruthy();
+    expect(gpu.renderers.at(-1)!.disposed).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
 
 # Why Lattice AI Exists
 
-Current release: **14.3.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

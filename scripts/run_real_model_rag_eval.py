@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
 import time
@@ -161,104 +160,14 @@ def score_grounded_answer(
     }
 
 
-def _doc_visible(doc: dict[str, Any], workspace_id: str, as_of: str | None) -> bool:
-    if doc.get("workspace_id") != workspace_id:
-        return False
-    valid_from = doc.get("valid_from") or ""
-    valid_to = doc.get("valid_to")
-    if as_of:
-        return valid_from <= as_of and (not valid_to or as_of < valid_to)
-    return not doc.get("superseded_by") and not valid_to
-
-
-def rank_documents(
-    dataset: dict[str, Any], query: dict[str, Any], k: int = 10
-) -> list[str]:
-    q_tokens = _content_tokens(query["query"])
-    scored: list[tuple[float, str, str]] = []
-    for doc in dataset["documents"]:
-        if not _doc_visible(doc, query["workspace_id"], query.get("as_of")):
-            continue
-        d_tokens = _content_tokens(f"{doc.get('title', '')} {doc.get('text', '')}")
-        overlap = len(q_tokens & d_tokens)
-        if overlap == 0:
-            continue
-        score = overlap / max(len(q_tokens), 1)
-        scored.append((score, str(doc.get("valid_from") or ""), str(doc["doc_id"])))
-    scored.sort(key=lambda item: (-item[0], _neg_time(item[1]), item[2]))
-    return [doc_id for _, _, doc_id in scored[:k]]
-
-
-def _neg_time(stamp: str) -> str:
-    return "".join(chr(0x10FFFF - ord(ch)) for ch in stamp)
-
-
-def reciprocal_rank(ranked: list[str], relevant: list[str]) -> float:
-    wanted = set(relevant)
-    for idx, doc_id in enumerate(ranked):
-        if doc_id in wanted:
-            return 1.0 / (idx + 1)
-    return 0.0
-
-
-def recall_at_k(ranked: list[str], relevant: list[str], k: int) -> float:
-    if not relevant:
-        return 1.0
-    top = set(ranked[:k])
-    return sum(1 for doc_id in relevant if doc_id in top) / len(relevant)
-
-
-def ndcg_at_k(ranked: list[str], relevant: list[str], k: int) -> float:
-    if not relevant:
-        return 1.0
-    wanted = set(relevant)
-    dcg = sum(
-        1.0 / math.log2(idx + 2)
-        for idx, doc_id in enumerate(ranked[:k])
-        if doc_id in wanted
-    )
-    idcg = sum(1.0 / math.log2(idx + 2) for idx in range(min(len(wanted), k)))
-    return dcg / idcg if idcg > 0 else 0.0
-
-
-def recency_correct(ranked: list[str], current: list[str], stale: list[str]) -> bool:
-    cur = next((i for i, d in enumerate(ranked) if d in set(current)), None)
-    old = next((i for i, d in enumerate(ranked) if d in set(stale)), None)
-    if cur is None:
-        return False
-    return old is None or cur < old
-
-
-def evaluate_retrieval(dataset: dict[str, Any], k: int = 10) -> dict[str, Any]:
-    recalls_5: list[float] = []
-    recalls_k: list[float] = []
-    rrs: list[float] = []
-    ndcgs: list[float] = []
-    recency: list[bool] = []
-    for query in dataset["queries"]:
-        if query.get("expect_abstain"):
-            continue
-        relevant = list(query.get("supporting_span_doc_ids") or [])
-        if not relevant:
-            continue
-        ranked = rank_documents(dataset, query, k)
-        recalls_5.append(recall_at_k(ranked, relevant, 5))
-        recalls_k.append(recall_at_k(ranked, relevant, k))
-        rrs.append(reciprocal_rank(ranked, relevant))
-        ndcgs.append(ndcg_at_k(ranked, relevant, k))
-        traps = list(query.get("forbidden_or_trap_doc_ids") or [])
-        if traps:
-            recency.append(recency_correct(ranked, relevant, traps))
-    n = max(len(rrs), 1)
+def load_retrieval_report(path: str) -> dict[str, Any]:
+    if not path:
+        return {"status": "not_run", "reason": "no --retrieval-report given"}
+    report = json.loads(Path(path).read_text(encoding="utf-8"))
     return {
-        "retriever": "lexical_temporal_baseline",
-        "queries_evaluated": len(rrs),
-        "recall_at_5": sum(recalls_5) / n,
-        f"recall_at_{k}": sum(recalls_k) / n,
-        "mrr": sum(rrs) / n,
-        f"ndcg_at_{k}": sum(ndcgs) / n,
-        "temporal_cases": len(recency),
-        "recency_accuracy": (sum(recency) / len(recency)) if recency else 1.0,
+        "status": "executed",
+        "retriever": "product_chat_path_hash_embedder",
+        **report,
     }
 
 
@@ -438,6 +347,11 @@ def main() -> None:
     parser.add_argument(
         "--cloud-api-key", default=os.environ.get("LATTICE_EVAL_CLOUD_API_KEY", "")
     )
+    parser.add_argument(
+        "--retrieval-report",
+        default="",
+        help="JSON written by the lattice-retrieval chat-path evaluation",
+    )
     args = parser.parse_args()
 
     dataset = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
@@ -467,7 +381,7 @@ def main() -> None:
         json.dumps(
             {
                 "dataset_version": dataset["dataset_version"],
-                "retrieval": evaluate_retrieval(dataset),
+                "retrieval": load_retrieval_report(args.retrieval_report),
                 "results": results,
             },
             indent=2,

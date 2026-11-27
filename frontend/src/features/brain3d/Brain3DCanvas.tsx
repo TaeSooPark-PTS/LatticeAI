@@ -24,7 +24,12 @@ export type Brain3DCanvasProps = {
   language: Language;
   className?: string;
   fallback?: React.ReactNode;
+  labels?: ReadonlyMap<string, string>;
 };
+
+export const CONTEXT_RESTORE_GRACE_MS = 3000;
+
+const NO_LABELS: ReadonlyMap<string, string> = new Map();
 
 export function Brain3DCanvas({
   nodes,
@@ -39,11 +44,13 @@ export function Brain3DCanvas({
   language,
   className,
   fallback,
+  labels = NO_LABELS,
 }: Brain3DCanvasProps) {
   const theme = useAppStore((state) => state.theme);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const controllerRef = React.useRef<Brain3DSceneController | null>(null);
   const [webglReady, setWebglReady] = React.useState<boolean>(() => detectWebGLSupport());
+  const [contextLost, setContextLost] = React.useState(false);
   const growth = React.useMemo(() => computeBrainGrowth(nodes.length, edges.length), [nodes.length, edges.length]);
   const points = React.useMemo(() => layoutBrainHemispheres(nodes, growth), [nodes, growth]);
   const onSelectRef = React.useRef(onSelectNode);
@@ -59,6 +66,8 @@ export function Brain3DCanvas({
         ambientOnly: variant === "ambient",
         reducedMotion: prefersReducedMotion(),
         onSelectNode: (id) => onSelectRef.current?.(id),
+        onContextLost: () => setContextLost(true),
+        onContextRestored: () => setContextLost(false),
       });
       controllerRef.current = controller;
     } catch {
@@ -71,6 +80,12 @@ export function Brain3DCanvas({
   }, [webglReady, variant]);
 
   React.useEffect(() => {
+    if (!contextLost || !webglReady) return;
+    const timer = window.setTimeout(() => setWebglReady(false), CONTEXT_RESTORE_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [contextLost, webglReady]);
+
+  React.useEffect(() => {
     controllerRef.current?.setTheme(theme === "dark");
   }, [theme]);
 
@@ -81,6 +96,10 @@ export function Brain3DCanvas({
   React.useEffect(() => {
     controllerRef.current?.setSelection(selectedId);
   }, [selectedId]);
+
+  React.useEffect(() => {
+    controllerRef.current?.setLabels(labels);
+  }, [labels]);
 
   React.useEffect(() => {
     controllerRef.current?.setFiring(firingTrace, intensity);
@@ -118,6 +137,13 @@ export function Brain3DCanvas({
       aria-label={variant === "explorer" ? t(language, "graph.canvas3d.aria") : undefined}
       aria-hidden={variant === "ambient" ? true : undefined}
     >
+      {variant === "explorer" ? (
+        <div role="status">
+          {contextLost ? (
+            <div className="brain-3d-context-lost">{t(language, "graph.canvas3d.contextLost")}</div>
+          ) : null}
+        </div>
+      ) : null}
       {variant === "explorer" ? (
         <div className="brain-3d-hemisphere-legend" aria-hidden="true">
           <span>{t(language, "graph.hemisphere.left")}</span>

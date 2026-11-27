@@ -115,7 +115,7 @@
         "updated_at": "2026-07-28T09:00:00"
       },
       {
-        "fusion": "lexical",
+        "fusion": "both",
         "id": "self:habit:b2",
         "metadata": {
           "confidence": 0.6,
@@ -140,6 +140,75 @@
       },
       {
         "fusion": "vector",
+        "id": "legacy:global-note",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "legacy:global-note",
+        "rank": 6,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
+        "title": "Legacy global note",
+        "type": "Document",
+        "updated_at": "2026-06-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "org:lattice",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Organization"
+          }
+        },
+        "node_id": "org:lattice",
+        "rank": 7,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "page:onboarding",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:onboarding",
+        "rank": 8,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "page:proposal-outline",
         "metadata": {
           "parent_node_id": null,
@@ -149,7 +218,7 @@
           }
         },
         "node_id": "page:proposal-outline",
-        "rank": 6,
+        "rank": 9,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -160,6 +229,68 @@
         "title": "제안서 목차",
         "type": "Page",
         "updated_at": "2026-07-21T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:preference:c3",
+        "metadata": {
+          "confidence": 0.8,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "preference",
+          "signal": "ko_prefer",
+          "vector": {
+            "confidence": 0.8,
+            "node_type": "Preference",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "preference",
+            "signal": "ko_prefer",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:preference:c3",
+        "rank": 10,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "설명은 짧고 근거를 먼저",
+        "title": "설명은 짧고 근거를 먼저",
+        "type": "Preference",
+        "updated_at": "2026-07-04T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:root",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "root",
+          "vector": {
+            "node_type": "Self",
+            "self_model": true,
+            "self_model_kind": "root"
+          }
+        },
+        "node_id": "self:root",
+        "rank": 11,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
       },
       {
         "fusion": "vector",
@@ -184,7 +315,7 @@
           "workspace_id": null
         },
         "node_id": "self:trait:e5",
-        "rank": 7,
+        "rank": 12,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -195,6 +326,75 @@
         "title": "검색 품질 담당자",
         "type": "Self",
         "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "slide:fusion",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:fusion",
+        "rank": 13,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "tie:d",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:d",
+        "rank": 14,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "",
+        "title": "Tie candidate D",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "tie:e",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:e",
+        "rank": 15,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "",
+        "title": "Tie candidate E",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
       }
     ],
     "mode": "hybrid",
@@ -211,14 +411,14 @@
     },
     "sources": {
       "lexical": 2,
-      "vector": 6
+      "vector": 15
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 69,
+      "embedded_rows": 15,
       "exhaustive": true,
       "truncated": false
     }

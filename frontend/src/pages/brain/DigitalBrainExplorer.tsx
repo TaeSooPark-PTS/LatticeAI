@@ -13,7 +13,7 @@ import { t } from "@/i18n";
 import { fmtNumber } from "@/lib/utils";
 import { CytoscapeGraph } from "./CytoscapeGraph";
 import { GraphNodeInspector } from "./GraphNodeInspector";
-import { buildExplorerModel, parseGraph, type LabelMode } from "./graphExplorer";
+import { buildExplorerModel, nodeDisplayLabels, parseGraph, type LabelMode } from "./graphExplorer";
 import { graphTypeLabel } from "./sourceMeta";
 
 const Brain3DCanvas = React.lazy(() =>
@@ -80,6 +80,8 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
     conflictsOnly,
     showSuperseded,
   }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode, conflictsOnly, showSuperseded]);
+
+  const labels = React.useMemo(() => nodeDisplayLabels(model), [model]);
 
   const selected = parsed.nodes.find((node) => node.id === selectedId);
   const selectedGroup = selectedId?.startsWith("group:") ? model.groups.find((group) => group.id === selectedId.replace("group:", "")) : null;
@@ -179,6 +181,7 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
             >
               <Brain3DCanvas
                 nodes={model.visibleNodes}
+                labels={labels}
                 edges={model.visibleEdges}
                 selectedId={selectedId}
                 onSelectNode={setSelectedId}

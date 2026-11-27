@@ -208,6 +208,35 @@ fn parse_scores(payload: &Value, expected: usize) -> Result<Vec<f64>, String> {
         .collect()
 }
 
+pub fn rerank_candidate_count(
+    query: &str,
+    matches: &[Value],
+    config: &RerankConfig,
+) -> Result<usize, &'static str> {
+    let candidates = matches.len().min(config.candidates);
+    if !config.enabled {
+        return Err("rerank_disabled");
+    }
+    if query.trim().is_empty() || candidates < 2 {
+        return Err("rerank_too_few_candidates");
+    }
+    Ok(candidates)
+}
+
+pub fn rerank_candidate_documents(
+    matches: &[Value],
+    candidates: usize,
+) -> Result<Vec<String>, &'static str> {
+    let documents: Vec<String> = matches[..candidates.min(matches.len())]
+        .iter()
+        .map(candidate_text)
+        .collect();
+    if documents.iter().all(String::is_empty) {
+        return Err("rerank_candidates_without_text");
+    }
+    Ok(documents)
+}
+
 pub async fn rerank_matches(
     seam: Option<&WorkerSeamClient>,
     query: &str,
@@ -215,21 +244,21 @@ pub async fn rerank_matches(
     config: &RerankConfig,
 ) -> RerankOutcome {
     let started = Instant::now();
-    let candidates = matches.len().min(config.candidates);
-    if !config.enabled {
-        return RerankOutcome::fallback("rerank_disabled", candidates, started);
-    }
+    let candidates = match rerank_candidate_count(query, matches, config) {
+        Ok(candidates) => candidates,
+        Err(reason) => {
+            let candidates = matches.len().min(config.candidates);
+            return RerankOutcome::fallback(reason, candidates, started);
+        }
+    };
     let query = query.trim();
-    if query.is_empty() || candidates < 2 {
-        return RerankOutcome::fallback("rerank_too_few_candidates", candidates, started);
-    }
     let Some(seam) = seam else {
         return RerankOutcome::fallback("rerank_seam_unavailable", candidates, started);
     };
-    let documents: Vec<String> = matches[..candidates].iter().map(candidate_text).collect();
-    if documents.iter().all(String::is_empty) {
-        return RerankOutcome::fallback("rerank_candidates_without_text", candidates, started);
-    }
+    let documents = match rerank_candidate_documents(matches, candidates) {
+        Ok(documents) => documents,
+        Err(reason) => return RerankOutcome::fallback(reason, candidates, started),
+    };
     let client = seam.clone().with_timeout(config.timeout);
     let body = json!({"query": query, "documents": documents});
     let policy = WorkerRetryPolicy {

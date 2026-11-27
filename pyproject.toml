@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "14.3.0"
+version = "14.4.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -99,11 +99,16 @@ local = [
 ]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 # Neural retrieval on the worker: google/embeddinggemma-2 (768d, Apache-2.0)
-# needs sentence-transformers>=6.1 and transformers>=5.18; the cross-encoder
+# needs sentence-transformers>=6.1, transformers>=5.18 and torchvision (its
+# processor imports it even for text-only use); the cross-encoder
 # reranker (BAAI/bge-reranker-v2-m3) loads through the same runtime. Weights
 # are never fetched at query time; absent runtime or weights degrade to the
 # 384d lattice-local-hash embedding and the RRF order.
-rag = ["sentence-transformers>=6.1.0", "transformers>=5.18.0"]
+rag = [
+  "sentence-transformers>=6.1.0",
+  "transformers>=5.18.0",
+  "torchvision>=0.20",
+]
 # Pointer actuation (the six pyautogui tools on the worker). Not a core
 # dependency: a stock install answers capabilities.pointer_tools=false and
 # the tools stay "unavailable". `pip install "ltcai[pointer]"` opts in.

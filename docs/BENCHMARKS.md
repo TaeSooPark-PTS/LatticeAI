@@ -120,3 +120,27 @@ not parse.
 - Any cloud model (no keys are used; live mode targets local endpoints only).
 - A representative sample of "all models" — scripted tiers are archetypes, not a
   statistical population. For real numbers on a specific model, use `live` mode.
+
+
+## Real-model retrieval evaluation (v14.4.0)
+
+Measured on `datasets/rag_eval_v1.json` (`rag-eval-v1.0.0`, 40 documents, 320 queries, 248 answerable), Apple Silicon (MPS), `sentence-transformers` 6.3.0, `transformers` 5.24.1, `torch` 2.15.0. Workspace boundary leaks were 0 and the superseded exclusion rate 1.0 in all six runs.
+
+| Mode | Retriever | Recall@5 | MRR | nDCG@10 |
+| --- | --- | :---: | :---: | :---: |
+| Constant timestamps | Hash embedder | 0.9839 | 0.9026 | 0.9009 |
+| Constant timestamps | EmbeddingGemma 2 | 1.0000 | 0.8770 | 0.8924 |
+| Constant timestamps | EmbeddingGemma 2 + reranker | 1.0000 | 0.9859 | 0.9806 |
+| `valid_from` timestamps | Hash embedder | 0.9859 | 0.8858 | 0.8887 |
+| `valid_from` timestamps | EmbeddingGemma 2 | 1.0000 | 0.8575 | 0.8785 |
+| `valid_from` timestamps | EmbeddingGemma 2 + reranker | 1.0000 | 0.9671 | 0.9666 |
+
+Latency on the same machine: query embedding p95 20 ms (312 ms in an earlier run), reranking 19 candidates p50 313 ms and p95 349 ms, first rerank call 1.6–1.9 s.
+
+Reproduce (needs `pip install "ltcai[rag]"` and cached weights):
+
+```bash
+HF_HUB_OFFLINE=1 python scripts/run_neural_retrieval_eval.py --out report.json
+```
+
+The dataset is small and synthetic: the numbers compare retriever configurations and do not predict quality on a personal brain. This evaluation runs manually on cached weights; the CI gates remain deterministic and hash-based.

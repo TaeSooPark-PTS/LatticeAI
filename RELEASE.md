@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.4.0 — Measured Retrieval (2026-11-27)
+
+First release measured with the real EmbeddingGemma 2 and `BAAI/bge-reranker-v2-m3` weights. Fixed the defects that measurement exposed: "latest" questions keep the answer (recency only reorders the answer), workspace scope is applied before the top-k cut in the no-worker vector lane, hybrid search, memory recall and the HNSW index, `LATTICEAI_RERANK_CANDIDATES` up to 64 works, the reranker is warmed at worker start, and concurrent cold requests load the embedding model once. `pip install "ltcai[rag]"` installs `torchvision`. The v14.3.0 hash gates, which were measured with the vector lane inactive, are re-measured with the seeding fixed and raised, and the chat-path and nightly evaluations use the product retriever. 3D Living Brain labels follow the label mode, WebGL context loss pauses and resumes rendering, and hover picking runs at most once per frame.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.4.0.md](docs/releases/RELEASE_NOTES_v14.4.0.md).
+
+Build artifacts: `dist/ltcai-14.4.0-py3-none-any.whl`, `dist/ltcai-14.4.0.tar.gz`, `ltcai-14.4.0.tgz`, `dist/ltcai-14.4.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.4.0_aarch64.dmg`.
+
 ## v14.3.0 — Temporal Synthesis (2026-11-27)
 
 Fixed post-send desktop chat collapse, `Cmd/Ctrl+K` "Today's briefing" cross-route drawer opening, 2D Memory Graph "Show superseded" filtering, and command palette keyboard scrolling; upgraded chat retrieval with IDF/BM25F relevance ranking, true `as_of` point-in-time valid-time filtering and year-only parsing, stricter Self-RAG coverage abstention, and CI chat-path ratchet floors (`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`); and closed six multi-user privacy and integrity findings across share bundle export/import, scoped temporal prefilters, scope-before-`LIMIT` graph/brain/search queries, fail-closed Chronicle viewer filtering, and indexed supersede-on-ingest identity lookups.

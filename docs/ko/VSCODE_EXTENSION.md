@@ -12,7 +12,7 @@ Lattice AI 확장은 VS Code, Cursor, VSCodium을 로컬 우선 Digital Brain에
 
 ## 현재 릴리스
 
-**14.2.0 — Temporal Synthesis**는 시간 인식 검색, 토큰 크기의 parent-child 청킹, RRF 대체를 갖춘 cross-encoder 재랭킹, 채팅 근거 게이트, 3D 살아있는 Brain 화면, `ltcai search` CLI, 다중 사용자 대화 개인정보 수정이 추가된 Lattice AI 호스트에 맞춘 버전입니다. 확장 자체 기능은 바뀌지 않았습니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](./releases/RELEASE_NOTES_v14.2.0.md)에서 확인할 수 있습니다.
+**14.4.0 — Measured Retrieval**은 실제 EmbeddingGemma 2 및 `BAAI/bge-reranker-v2-m3` 가중치로 검색을 측정하고, 그 측정에서 드러난 검색 결함을 고친 Lattice AI 호스트에 맞춘 버전입니다. 상세 내역은 [docs/ko/releases/RELEASE_NOTES_v14.4.0.md](./releases/RELEASE_NOTES_v14.4.0.md)에서 확인할 수 있습니다.
 
 **핵심 프로토콜은 기존과 호환됩니다.** 동기화, 상태, 회상, 임시 제안, `POST /agent`(`stream:true`), `strict`/`trusted`/`bypass` 모드는 이전과 동일하게 동작하며, 클라우드 에스컬레이션과 MCP는 에디터가 아닌 호스트에서 실행됩니다.
 

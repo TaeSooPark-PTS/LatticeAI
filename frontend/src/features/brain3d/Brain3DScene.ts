@@ -10,6 +10,7 @@ import {
   type BrainGrowthMetrics,
   type FiringTrace,
 } from "./brainGrowth";
+import { LabelOverlay } from "./labelOverlay";
 import { createDustMaterial, createSparkMaterial, createSynapseEdgeMaterial } from "./brainShaders";
 
 export type Brain3DSceneOptions = {
@@ -18,6 +19,8 @@ export type Brain3DSceneOptions = {
   ambientOnly: boolean;
   reducedMotion: boolean;
   onSelectNode?: (nodeId: string | null) => void;
+  onContextLost?: () => void;
+  onContextRestored?: () => void;
 };
 
 type SparkSlot = {
@@ -60,6 +63,10 @@ export class Brain3DSceneController {
   private ambientOnly: boolean;
   private reducedMotion: boolean;
   private onSelectNode?: (nodeId: string | null) => void;
+  private onContextLost?: () => void;
+  private onContextRestored?: () => void;
+  private overlay: LabelOverlay | null = null;
+  private labels: ReadonlyMap<string, string> = new Map();
   private rafId = 0;
   private destroyed = false;
   private clock = new THREE.Clock();
@@ -69,6 +76,7 @@ export class Brain3DSceneController {
   private dragMoved = false;
   private lastX = 0;
   private lastY = 0;
+  private pendingHover: { clientX: number; clientY: number } | null = null;
   private yaw = 0.35;
   private pitch = 0.22;
   private targetYaw = 0.35;
@@ -85,6 +93,8 @@ export class Brain3DSceneController {
     this.ambientOnly = options.ambientOnly;
     this.reducedMotion = options.reducedMotion;
     this.onSelectNode = options.onSelectNode;
+    this.onContextLost = options.onContextLost;
+    this.onContextRestored = options.onContextRestored;
 
     const width = Math.max(160, this.container.clientWidth || 320);
     const height = Math.max(160, this.container.clientHeight || 240);
@@ -139,8 +149,11 @@ export class Brain3DSceneController {
       } catch {
         this.composer = null;
       }
+      this.overlay = new LabelOverlay(this.container);
       this.bindEvents(canvas);
     }
+    canvas.addEventListener("webglcontextlost", this.handleContextLost);
+    canvas.addEventListener("webglcontextrestored", this.handleContextRestored);
 
     if (typeof ResizeObserver !== "undefined") {
       this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -156,6 +169,55 @@ export class Brain3DSceneController {
     window.addEventListener("pointerup", this.handlePointerUp);
     window.addEventListener("pointercancel", this.handlePointerCancel);
     canvas.addEventListener("wheel", this.handleWheel, { passive: false });
+    canvas.addEventListener("pointermove", this.handleHover);
+    canvas.addEventListener("pointerleave", this.handleHoverEnd);
+  }
+
+  private handleContextLost = (event: Event): void => {
+    event.preventDefault();
+    window.cancelAnimationFrame(this.rafId);
+    this.rafId = 0;
+    this.handleHoverEnd();
+    this.onContextLost?.();
+  };
+
+  private handleContextRestored = (): void => {
+    if (this.destroyed || this.rafId) return;
+    this.clock.getDelta();
+    this.startLoop();
+    this.onContextRestored?.();
+  };
+
+  private pickPoint(clientX: number, clientY: number): { point: Brain3DPoint; x: number; y: number } | null {
+    if (!this.nodeMesh) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    this.pointer.x = (x / rect.width) * 2 - 1;
+    this.pointer.y = -(y / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const instanceId = this.raycaster.intersectObject(this.nodeMesh, false)[0]?.instanceId;
+    const point = typeof instanceId === "number" ? this.points[instanceId] : undefined;
+    return point ? { point, x, y } : null;
+  }
+
+  private handleHover = (event: PointerEvent): void => {
+    this.pendingHover = { clientX: event.clientX, clientY: event.clientY };
+  };
+
+  private handleHoverEnd = (): void => {
+    this.pendingHover = null;
+    this.overlay?.hideTooltip();
+  };
+
+  private flushHover(): void {
+    if (!this.pendingHover) return;
+    const { clientX, clientY } = this.pendingHover;
+    this.pendingHover = null;
+    const hit = this.dragging ? null : this.pickPoint(clientX, clientY);
+    if (hit) this.overlay?.showTooltip(hit.point.label, hit.x, hit.y);
+    else this.overlay?.hideTooltip();
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
@@ -179,19 +241,9 @@ export class Brain3DSceneController {
   private handlePointerUp = (event: PointerEvent): void => {
     if (!this.dragging) return;
     this.dragging = false;
-    if (!this.dragMoved && this.nodeMesh && this.onSelectNode) {
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-        this.raycaster.setFromCamera(this.pointer, this.camera);
-        const hits = this.raycaster.intersectObject(this.nodeMesh, false);
-        const instanceId = hits[0]?.instanceId;
-        if (typeof instanceId === "number" && this.points[instanceId]) {
-          this.onSelectNode(this.points[instanceId]!.id);
-        }
-      }
-    }
+    if (this.dragMoved || !this.onSelectNode) return;
+    const hit = this.pickPoint(event.clientX, event.clientY);
+    if (hit) this.onSelectNode(hit.point.id);
   };
 
   private handlePointerCancel = (): void => {
@@ -245,6 +297,16 @@ export class Brain3DSceneController {
     this.rebuildEdges();
     this.rebuildSparks();
     this.rebuildDust();
+    this.rebuildLabels();
+  }
+
+  public setLabels(labels: ReadonlyMap<string, string>): void {
+    this.labels = labels;
+    this.rebuildLabels();
+  }
+
+  private rebuildLabels(): void {
+    this.overlay?.setLabels(this.points, this.labels, this.selectedId);
   }
 
   public setSelection(selectedId: string | null): void {
@@ -261,6 +323,7 @@ export class Brain3DSceneController {
     }
     this.rebuildNodes();
     this.rebuildEdges();
+    this.rebuildLabels();
   }
 
   public setFiring(trace: FiringTrace | null, intensity: number): void {
@@ -545,6 +608,16 @@ export class Brain3DSceneController {
       } else {
         this.renderer.render(this.scene, this.camera);
       }
+      this.flushHover();
+      if (this.overlay) {
+        const { clientWidth, clientHeight } = this.renderer.domElement;
+        this.overlay.update(
+          this.camera,
+          this.brainGroup.matrixWorld,
+          clientWidth || this.container.clientWidth,
+          clientHeight || this.container.clientHeight,
+        );
+      }
     };
     this.rafId = window.requestAnimationFrame(tick);
   }
@@ -559,6 +632,11 @@ export class Brain3DSceneController {
     window.removeEventListener("pointerup", this.handlePointerUp);
     window.removeEventListener("pointercancel", this.handlePointerCancel);
     canvas.removeEventListener("wheel", this.handleWheel);
+    canvas.removeEventListener("pointermove", this.handleHover);
+    canvas.removeEventListener("pointerleave", this.handleHoverEnd);
+    canvas.removeEventListener("webglcontextlost", this.handleContextLost);
+    canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
+    this.overlay?.dispose();
     if (this.nodeMesh) this.releaseNodeMesh(this.nodeMesh);
     this.composer?.passes.forEach((pass) => pass.dispose());
     this.composer?.dispose();

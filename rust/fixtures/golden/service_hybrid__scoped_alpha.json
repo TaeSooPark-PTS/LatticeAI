@@ -15,15 +15,25 @@
         "embedding_dim": 384,
         "embedding_model": "lattice-local-hash-v1:384",
         "mode": "vector",
+        "provider_status": "hash_fallback",
         "query": "hybrid retrieval ranking",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 69,
-          "candidates_total": 69,
+          "candidates_scanned": 36,
+          "candidates_total": 36,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
-        }
+        },
+        "reindex_required": false,
+        "stored_models": [
+          {
+            "dim": 384,
+            "is_hash": true,
+            "model_id": "lattice-local-hash-v1:384",
+            "row_count": 69
+          }
+        ]
       }
     },
     "matches": [
@@ -385,6 +395,7 @@
         "fusion": {
           "query_class": "fact",
           "sources": [
+            "vector",
             "graph"
           ],
           "weights": {
@@ -403,34 +414,202 @@
               "type": "DISCUSSES",
               "weight": 0.95
             }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "meeting:weekly",
-              "id": "edge:805dbdc114935dd71cf9bb89",
-              "to": "dec:fusion-alpha",
-              "type": "DISCUSSES",
-              "weight": 0.95
-            }
           }
         ],
         "id": "meeting:weekly",
         "item_type": "node",
-        "metadata": {},
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Meeting"
+          }
+        },
         "node_id": "meeting:weekly",
         "rank": 8,
-        "score": 0.1125,
+        "score": 0.1285,
         "source_scores": {
-          "graph": 0.45
+          "graph": 0.45,
+          "vector": 0.038778
         },
         "sources": [
+          "vector",
           "graph"
         ],
         "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
         "title": "주간 회의 2026-07-14",
         "type": "Meeting",
         "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:jiwon",
+              "id": "edge:22fe3b50b2c1aeaec62c9510",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          }
+        ],
+        "id": "person:jiwon",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "role": "owner",
+          "vector": {
+            "node_type": "Person",
+            "role": "owner"
+          }
+        },
+        "node_id": "person:jiwon",
+        "rank": 9,
+        "score": 0.072917,
+        "source_scores": {
+          "graph": 0.225,
+          "vector": 0.041204
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "task:parity-harness",
+              "id": "edge:114efd07a566c6c3774cf8c6",
+              "to": "dec:rust-foundation",
+              "type": "MENTIONS",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "dec:rust-foundation",
+        "item_type": "node",
+        "metadata": {
+          "category": "platform",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "platform",
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:rust-foundation",
+        "rank": 10,
+        "score": 0.070043,
+        "source_scores": {
+          "graph": 0.225,
+          "vector": 0.031513
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:8a2e9fe01b4f40450ebd1211",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.84
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:118aa0fc1ce3333002ab7296",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.87
+            }
+          }
+        ],
+        "id": "doc:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "docs/proposal.md",
+          "vector": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "node_type": "Document",
+            "relative_path": "docs/proposal.md"
+          }
+        },
+        "node_id": "doc:proposal",
+        "rank": 11,
+        "score": 0.069583,
+        "source_scores": {
+          "graph": 0.225,
+          "vector": 0.022828
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
       },
       {
         "fusion": {
@@ -466,7 +645,7 @@
           "workspace_id": "ws-alpha"
         },
         "node_id": "self:decision:a1",
-        "rank": 9,
+        "rank": 12,
         "score": 0.064888,
         "source_scores": {
           "vector": 0.162221
@@ -478,187 +657,6 @@
         "title": "문서는 한국어로 쓴다",
         "type": "Decision",
         "updated_at": "2026-07-02T09:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "fact",
-          "sources": [
-            "graph"
-          ],
-          "weights": {
-            "graph": 0.25,
-            "keyword": 0.35,
-            "vector": 0.4
-          }
-        },
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "doc:proposal",
-              "id": "edge:8a2e9fe01b4f40450ebd1211",
-              "to": "task:parity-harness",
-              "type": "MENTIONS",
-              "weight": 0.84
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "doc:proposal",
-              "id": "edge:118aa0fc1ce3333002ab7296",
-              "to": "concept:retrieval",
-              "type": "MENTIONS",
-              "weight": 0.87
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "doc:proposal",
-              "id": "edge:8a2e9fe01b4f40450ebd1211",
-              "to": "task:parity-harness",
-              "type": "MENTIONS",
-              "weight": 0.84
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "doc:proposal",
-              "id": "edge:118aa0fc1ce3333002ab7296",
-              "to": "concept:retrieval",
-              "type": "MENTIONS",
-              "weight": 0.87
-            }
-          }
-        ],
-        "id": "doc:proposal",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".md",
-          "filename": "proposal.md",
-          "relative_path": "docs/proposal.md"
-        },
-        "node_id": "doc:proposal",
-        "rank": 10,
-        "score": 0.05625,
-        "source_scores": {
-          "graph": 0.225
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
-        "title": "제안서 초안: 검색 품질 개선",
-        "type": "Document",
-        "updated_at": "2026-07-30T09:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "fact",
-          "sources": [
-            "graph"
-          ],
-          "weights": {
-            "graph": 0.25,
-            "keyword": 0.35,
-            "vector": 0.4
-          }
-        },
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "task:parity-harness",
-              "id": "edge:114efd07a566c6c3774cf8c6",
-              "to": "dec:rust-foundation",
-              "type": "MENTIONS",
-              "weight": 1.0
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "task:parity-harness",
-              "id": "edge:114efd07a566c6c3774cf8c6",
-              "to": "dec:rust-foundation",
-              "type": "MENTIONS",
-              "weight": 1.0
-            }
-          }
-        ],
-        "id": "dec:rust-foundation",
-        "item_type": "node",
-        "metadata": {
-          "category": "platform"
-        },
-        "node_id": "dec:rust-foundation",
-        "rank": 11,
-        "score": 0.05625,
-        "source_scores": {
-          "graph": 0.225
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
-        "title": "Rust 기반 검색 이관 결정",
-        "type": "Decision",
-        "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "fusion": {
-          "query_class": "fact",
-          "sources": [
-            "graph"
-          ],
-          "weights": {
-            "graph": 0.25,
-            "keyword": 0.35,
-            "vector": 0.4
-          }
-        },
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "person:jiwon",
-              "id": "edge:22fe3b50b2c1aeaec62c9510",
-              "to": "task:parity-harness",
-              "type": "MENTIONS",
-              "weight": 0.6
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "person:jiwon",
-              "id": "edge:22fe3b50b2c1aeaec62c9510",
-              "to": "task:parity-harness",
-              "type": "MENTIONS",
-              "weight": 0.6
-            }
-          }
-        ],
-        "id": "person:jiwon",
-        "item_type": "node",
-        "metadata": {
-          "role": "owner"
-        },
-        "node_id": "person:jiwon",
-        "rank": 12,
-        "score": 0.05625,
-        "source_scores": {
-          "graph": 0.225
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
       },
       {
         "fusion": {
@@ -844,6 +842,483 @@
         "title": "Tie candidate A",
         "type": "Concept",
         "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "twin:concept-a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "twin:concept-a",
+        "rank": 18,
+        "score": 0.028571,
+        "source_scores": {
+          "vector": 0.061314
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "동일한 시각의 개념 A",
+        "title": "Twin concept A",
+        "type": "Concept",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "twin:doc-b",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-b",
+        "rank": 19,
+        "score": 0.026667,
+        "source_scores": {
+          "vector": 0.059235
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "동일한 시각의 문서 B",
+        "title": "Twin document B",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "twin:doc-a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-a",
+        "rank": 20,
+        "score": 0.025,
+        "source_scores": {
+          "vector": 0.059235
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "동일한 시각의 문서 A",
+        "title": "Twin document A",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "doc:handbook",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "parent_node_id": null,
+          "parent_type": null,
+          "source_node": "doc:handbook",
+          "vector": {
+            "ext": ".pdf",
+            "filename": "handbook.pdf",
+            "node_type": "Document",
+            "source_node": "doc:handbook"
+          }
+        },
+        "node_id": "doc:handbook",
+        "rank": 21,
+        "score": 0.023529,
+        "source_scores": {
+          "vector": 0.058272
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "repo:lattice",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Repository"
+          }
+        },
+        "node_id": "repo:lattice",
+        "rank": 22,
+        "score": 0.022942,
+        "source_scores": {
+          "vector": 0.057354
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The monorepo holding the Python worker and the Rust workspace.",
+        "title": "lattice-ai",
+        "type": "Repository",
+        "updated_at": "2026-02-21T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "concept:evidence",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:evidence",
+        "rank": 23,
+        "score": 0.022256,
+        "source_scores": {
+          "vector": 0.055641
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "audio:standup",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "standup-2026-07-13.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "standup-2026-07-13.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:standup",
+        "rank": 24,
+        "score": 0.021902,
+        "source_scores": {
+          "vector": 0.054754
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Standup recording where the parity harness was assigned.",
+        "title": "standup-2026-07-13.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-13T09:05:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "audio:proposal-call",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:proposal-call",
+        "rank": 25,
+        "score": 0.021192,
+        "source_scores": {
+          "vector": 0.052981
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "sheet:proposal-budget",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "proposal-budget.xlsx",
+            "node_type": "Spreadsheet"
+          }
+        },
+        "node_id": "sheet:proposal-budget",
+        "rank": 26,
+        "score": 0.019907,
+        "source_scores": {
+          "vector": 0.049767
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-07-17T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chat:ranking",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-1",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-1",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:ranking",
+        "rank": 27,
+        "score": 0.017997,
+        "source_scores": {
+          "vector": 0.044992
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
+        "title": "랭킹 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-05T21:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chat:proposal",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-f",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-f",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:proposal",
+        "rank": 28,
+        "score": 0.015385,
+        "source_scores": {
+          "vector": 0.038236
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "dec:doc-format",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:doc-format",
+        "rank": 29,
+        "score": 0.014815,
+        "source_scores": {
+          "vector": 0.033464
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "feature:command-palette",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:command-palette",
+        "rank": 30,
+        "score": 0.014286,
+        "source_scores": {
+          "vector": 0.032444
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature",
+        "updated_at": "2026-03-05T10:00:00"
       }
     ],
     "mode": "hybrid",

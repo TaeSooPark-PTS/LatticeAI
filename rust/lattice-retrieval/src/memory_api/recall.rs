@@ -228,24 +228,30 @@ pub fn recall_with_query_vector(
         let model = lattice_core::LocalEmbeddingModel::from_env();
         let vector_result = if let Some(reason) = semantic_degraded {
             Err(CoreError::InvalidRequest(reason.to_string()))
-        } else if let Some(ovr) = query_embedding {
-            crate::vector::vector_search_aligned(
-                conn,
-                crate::vector::VectorQueryInput::Precomputed {
+        } else {
+            let query_input = match query_embedding {
+                Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
                     model_id: &ovr.model_id,
                     vector: &ovr.vector,
                     is_hash_fallback: ovr.is_hash_fallback,
                 },
+                None => crate::vector::VectorQueryInput::Model(&model),
+            };
+            let vector_scope = crate::service::Scope {
+                allowed_workspaces: allowed.clone(),
+                include_legacy_global: false,
+            };
+            crate::vector::vector_search_aligned(
+                conn,
+                query_input,
                 &search_q,
                 &crate::vector::VectorSearchOptions {
                     limit,
                     min_score: 0.0,
-                    scope: None,
+                    scope: Some(&vector_scope),
                     include_historical: false,
                 },
             )
-        } else {
-            crate::vector::vector_search(conn, &model, &search_q, limit, 0.0)
         };
         let hits = match vector_result {
             Ok(payload) => {

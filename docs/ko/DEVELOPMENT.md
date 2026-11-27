@@ -4,7 +4,7 @@
 
 > **상태: 정본 (14.2.0)** — 현재 릴리스와 동기화되는 기여자 안내 문서입니다.
 
-현재 릴리스: **14.2.0 — Temporal Synthesis**.
+현재 릴리스: **14.4.0 — Measured Retrieval**.
 
 이 문서는 기여자 온보딩 경로를 정리합니다: 저장소를 어떻게 실행하는지, 변경 사항이 어디에 들어가야 하는지, 어떤 게이트가 실패하는지, 그리고 제품의 정직성을 지키는 내부 규칙을 다룹니다. 제품 포지셔닝과 5분 첫 실행 흐름은 [README.md](../../README.md)와 [ONBOARDING.md](./ONBOARDING.md)에 있습니다. 지원되는 릴리스 이력(13.0.0 이상)은 [CHANGELOG.md](./CHANGELOG.md)와 [RELEASE.md](./RELEASE.md)에 있으며(`13.x–14.x`는 현대적인 Rust 호스트 + 도메인 그룹 아키텍처 세대이므로 [SECURITY.md](./SECURITY.md)도 `13.x` 및 `14.x`를 지원합니다), 아직 열린 과제는 [ROADMAP.md](./ROADMAP.md)(참고 문서, 정본 아님)에 정리되어 있습니다.
 

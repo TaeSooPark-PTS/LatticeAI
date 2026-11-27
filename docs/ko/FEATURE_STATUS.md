@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.3.0)
+# Lattice AI 기능 현황 (v14.4.0)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.3.0 — Temporal Synthesis**.
+현재 릴리스: **14.4.0 — Measured Retrieval**.
 
-이 문서는 `v14.3.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.4.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---
@@ -58,15 +58,15 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **PostgreSQL 백엔드** | 계획됨(Planned) | 공식 로컬 라이브 저장소는 SQLite WAL입니다. PostgreSQL/pgvector는 드라이런 계획 및 수동 실행 CI 가드만 존재하는 계획 단계입니다. |
 | **텔레그램 브리지 & SSO/OIDC 로그인 콜백** | 제거됨 (11.6.0) | 제품 서버가 Rust(`lattice-host`)로 전환되면서 함께 은퇴했습니다. 비밀번호 로그인, 세션, `$scrypt$` 해싱, 레이트 리미팅, CSRF, SSO 설정 표면은 `lattice-auth`에서 네이티브로 유지됩니다. |
 | **시간 인식 검색 & 청킹** | 현재 제공 | 문맥 접두어를 갖춘 토큰 크기의 parent-child 청크, tree-sitter 코드 분할, 시간 의도 사전 필터, 최신성 감쇠, `SUPERSEDES` 처리, `sort_by=relevance\|newest`, `ltcai search`. |
-| **재랭킹 & 채팅 근거 게이트** | 현재 제공(reranker는 `rag` extra 필요) | RRF 대체를 갖춘 `POST /worker/rerank` cross-encoder 재랭킹, 문서당 상한을 둔 MMR, Self-RAG 답변 보류. 실제 reranker·EmbeddingGemma 2 로딩은 빌드 환경에서 검증하지 못했습니다. |
+| **재랭킹 & 채팅 근거 게이트** | 현재 제공(reranker는 `rag` extra 필요) | RRF 대체를 갖춘 `POST /worker/rerank` cross-encoder 재랭킹, 문서당 상한을 둔 MMR, Self-RAG 답변 보류. 실제 reranker·EmbeddingGemma 2 로딩은 14.4.0에서 실제 가중치로 측정했습니다(`docs/ko/BENCHMARKS.md` 참고). |
 | **3D 살아있는 Brain & 데스크톱 셸** | 현재 제공 | 검색 점등과 2D 대체를 갖춘 3D 그래프, 고정 뷰포트 셸, Brain Vital Pill, 도킹 근거 패널, `Cmd/Ctrl+K` 팔레트. |
-| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.3.0_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
+| **릴리스 아티팩트 & 크로스플랫폼 CI/CD** | 현재 제공 | 정확 버전 Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG(`Lattice AI_14.4.0_aarch64.dmg`), `SHA256SUMS`가 Ubuntu·Windows Rust CI, macOS Tauri CI, 다이제스트 고정 Docker 스모크 CI, PR + `main` Playwright 시각 스모크로 검증됩니다. |
 
 ---
 
 ## 알려진 한계 (정직한 경계)
 
-- **검색 모델 미검증:** 14.2.0에서 실제 EmbeddingGemma 2와 `bge-reranker-v2-m3` 로딩은 실행해 보지 못했습니다. 실패하면 해시 임베딩과 RRF 순서로 대체합니다.
+- **검색 모델 단일 기기 측정:** 14.4.0에서 실제 EmbeddingGemma 2와 `bge-reranker-v2-m3`를 Apple Silicon(MPS)에서 작은 합성 데이터셋으로 측정했습니다. 실패하면 여전히 해시 임베딩과 RRF 순서로 대체합니다.
 - **워크스페이스 내 문서의 사용자별 비공개 없음:** 다중 사용자 뷰어 필터는 대화 파생 노드에만 적용됩니다.
 - **소형 모델의 어려운 과제 내용 품질**: 범용 적응형 에이전트 하네스가 기계적 실행 안정성을 크게 높였지만(`Qwen2.5-0.5B-Instruct-Q4_K_M` 기준 `28.0% → 84.0%`), 0.5B~2B 모델은 개방형 과제에서 유창하지만 불완전한 요약을 생성할 수 있으며 fail-closed 검증기가 이를 `NEEDS_REVIEW`로 격리합니다.
 - **클라우드 `api_key` 라이브 과금 경계**: `api_key` 경로는 무과금 `GET /models` 프로브로 연결성을 검증하고 실패 시 fail-closed 합니다. CI에서는 과금 채팅 완성 호출을 실행하지 않으며 라이브 E2E는 무과금 `cli_oauth`로 검증합니다.

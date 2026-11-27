@@ -225,7 +225,15 @@ pub fn service_hybrid_search(
             "matches": [],
         })
     } else {
-        vector_search(conn, model, &search_query, options.vector_limit, 0.0, scope)?
+        vector_search(
+            conn,
+            model,
+            &search_query,
+            options.vector_limit,
+            0.0,
+            scope,
+            options.include_historical,
+        )?
     };
     let channels: Vec<(&str, Value)> = vec![
         (

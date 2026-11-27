@@ -111,10 +111,58 @@ fn updated_at_for(doc: &RagEvalDatasetDocument, mode: UpdatedAtMode) -> String {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct EvalEmbeddings {
+    pub model_id: String,
+    pub documents: BTreeMap<String, Vec<f64>>,
+    pub queries: BTreeMap<String, Vec<f64>>,
+}
+
+fn missing_vector(kind: &str, id: &str) -> CoreError {
+    CoreError::InvalidRequest(format!("eval embeddings carry no {kind} vector for {id}"))
+}
+
+impl EvalEmbeddings {
+    pub fn document(&self, id: &str) -> Result<&Vec<f64>, CoreError> {
+        self.documents
+            .get(id)
+            .ok_or_else(|| missing_vector("document", id))
+    }
+
+    pub fn query(&self, id: &str) -> Result<&Vec<f64>, CoreError> {
+        self.queries
+            .get(id)
+            .ok_or_else(|| missing_vector("query", id))
+    }
+}
+
+fn document_metadata(doc: &RagEvalDatasetDocument) -> serde_json::Map<String, serde_json::Value> {
+    let mut meta = serde_json::Map::new();
+    meta.insert("workspace_id".into(), doc.workspace_id.clone().into());
+    meta.insert("source_uri".into(), doc.source_uri.clone().into());
+    meta.insert("valid_from".into(), doc.valid_from.clone().into());
+    meta.insert("valid_to".into(), doc.valid_to.clone().into());
+    meta.insert("superseded_by".into(), doc.superseded_by.clone().into());
+    meta
+}
+
+pub fn eval_passage_text(doc: &RagEvalDatasetDocument) -> String {
+    crate::memory_api::kg::vector_text_for_node(&doc.title, &doc.text, &document_metadata(doc))
+}
+
 pub fn seed_versioned_dataset(
     dataset: &VersionedRagDataset,
     embedder: &LocalEmbeddingModel,
     mode: UpdatedAtMode,
+) -> Result<Connection, CoreError> {
+    seed_versioned_dataset_with(dataset, embedder, mode, None)
+}
+
+pub fn seed_versioned_dataset_with(
+    dataset: &VersionedRagDataset,
+    embedder: &LocalEmbeddingModel,
+    mode: UpdatedAtMode,
+    precomputed: Option<&EvalEmbeddings>,
 ) -> Result<Connection, CoreError> {
     let mut conn = Connection::open_in_memory()?;
     {
@@ -122,17 +170,13 @@ pub fn seed_versioned_dataset(
         bootstrap(&tx, SEED_STAMP)?;
         tx.commit()?;
     }
-    let model_name = embedder.model_id().to_string();
+    let model_name = precomputed.map_or_else(
+        || embedder.model_id().to_string(),
+        |vectors| vectors.model_id.clone(),
+    );
     for doc in &dataset.documents {
         let stamp = updated_at_for(doc, mode);
-        let meta = serde_json::json!({
-            "workspace_id": doc.workspace_id,
-            "source_uri": doc.source_uri,
-            "valid_from": doc.valid_from,
-            "valid_to": doc.valid_to,
-            "superseded_by": doc.superseded_by,
-        })
-        .to_string();
+        let meta = serde_json::Value::Object(document_metadata(doc)).to_string();
         conn.execute(
             "INSERT INTO nodes(id, type, title, summary, raw_json, metadata_json, created_at, updated_at)
              VALUES (?1, 'Document', ?2, ?3, '{}', ?4, ?5, ?5)",
@@ -153,15 +197,19 @@ pub fn seed_versioned_dataset(
                 stamp,
             ],
         )?;
-        let vec_f32 = embedder.embed(&format!("{} {}", doc.title, doc.text));
-        let mut blob = Vec::with_capacity(vec_f32.len() * 4);
-        for v in vec_f32 {
-            blob.extend_from_slice(&v.to_le_bytes());
+        let values = match precomputed {
+            Some(vectors) => vectors.document(&doc.doc_id)?.clone(),
+            None => embedder.embed(&eval_passage_text(doc)),
+        };
+        let dim = values.len() as i64;
+        let mut blob = Vec::with_capacity(values.len() * 4);
+        for v in values {
+            blob.extend_from_slice(&(v as f32).to_le_bytes());
         }
         conn.execute(
             "INSERT INTO vector_embeddings(item_id, item_type, source_node, text_hash, embedding, embedding_dim, embedding_model, metadata_json, indexed_at)
-             VALUES (?1, 'node', ?1, 'h', ?2, 384, ?3, '{}', ?4)",
-            params![doc.doc_id, blob, model_name, SEED_STAMP],
+             VALUES (?1, 'node', ?1, 'h', ?2, ?3, ?4, '{}', ?5)",
+            params![doc.doc_id, blob, dim, model_name, SEED_STAMP],
         )?;
     }
     Ok(conn)
@@ -349,7 +397,7 @@ mod tests {
         assert_eq!(report.superseded_exclusion_rate, 1.0);
         assert_eq!(report.duplication_rate, 0.0);
         assert!(
-            report.recall_at_5 >= 0.96,
+            report.recall_at_5 >= 0.97,
             "recall@5={}",
             report.recall_at_5
         );
@@ -358,7 +406,96 @@ mod tests {
             "recall@10={}",
             report.recall_at_10
         );
-        assert!(report.mrr >= 0.82, "mrr={}", report.mrr);
-        assert!(report.ndcg_at_10 >= 0.84, "ndcg@10={}", report.ndcg_at_10);
+        assert!(report.mrr >= 0.86, "mrr={}", report.mrr);
+        assert!(report.ndcg_at_10 >= 0.87, "ndcg@10={}", report.ndcg_at_10);
+    }
+
+    #[test]
+    fn the_seeded_vector_lane_answers_every_query() {
+        use crate::vector_alignment::{
+            vector_search_aligned, VectorQueryInput, VectorSearchOptions,
+        };
+
+        let dataset_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../datasets/rag_eval_v1.json");
+        let ds = load_versioned_dataset(&dataset_path).expect("load rag_eval_v1.json");
+        let embedder = LocalEmbeddingModel::new(384);
+        let conn = seed_versioned_dataset(&ds, &embedder, UpdatedAtMode::Constant).expect("seed");
+        let blob_bytes: i64 = conn
+            .query_row(
+                "SELECT MAX(length(embedding)) FROM vector_embeddings",
+                [],
+                |row| row.get(0),
+            )
+            .expect("blob size");
+        assert_eq!(blob_bytes, 384 * 4);
+        let mut silent = Vec::new();
+        let mut total = 0usize;
+        for query in &ds.queries {
+            let scope = Scope::for_workspace(&query.workspace_id);
+            let vector = embedder.embed(&query.query);
+            let payload = vector_search_aligned(
+                &conn,
+                VectorQueryInput::Precomputed {
+                    model_id: embedder.model_id(),
+                    vector: &vector,
+                    is_hash_fallback: true,
+                },
+                &query.query,
+                &VectorSearchOptions {
+                    limit: 20,
+                    min_score: 0.05,
+                    scope: Some(&scope),
+                    include_historical: true,
+                },
+            )
+            .expect("vector search");
+            let found = payload["matches"].as_array().map_or(0, Vec::len);
+            total += found;
+            if found == 0 {
+                silent.push(query.id.clone());
+            }
+        }
+        assert!(total >= 6_000, "vector lane returned {total} matches");
+        assert!(silent.len() <= 5, "silent vector queries: {silent:?}");
+    }
+
+    #[test]
+    fn precomputed_vectors_seed_their_own_dimension_and_model() {
+        let dataset_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../datasets/rag_eval_v1.json");
+        let mut ds = load_versioned_dataset(&dataset_path).expect("load rag_eval_v1.json");
+        ds.documents.truncate(1);
+        let doc_id = ds.documents[0].doc_id.clone();
+        let vectors = EvalEmbeddings {
+            model_id: "huggingface:test:3".into(),
+            documents: BTreeMap::from([(doc_id.clone(), vec![0.5, 0.25, 0.125])]),
+            queries: BTreeMap::new(),
+        };
+        let embedder = LocalEmbeddingModel::new(384);
+        let conn =
+            seed_versioned_dataset_with(&ds, &embedder, UpdatedAtMode::ValidFrom, Some(&vectors))
+                .expect("seed");
+        let (dim, model, bytes): (i64, String, i64) = conn
+            .query_row(
+                "SELECT embedding_dim, embedding_model, length(embedding) FROM vector_embeddings",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!((dim, model.as_str(), bytes), (3, "huggingface:test:3", 12));
+        assert!(vectors.query("missing").is_err());
+        let empty = EvalEmbeddings::default();
+        assert!(
+            seed_versioned_dataset_with(&ds, &embedder, UpdatedAtMode::Constant, Some(&empty))
+                .is_err()
+        );
+        assert_eq!(
+            eval_passage_text(&ds.documents[0]),
+            lattice_core::clean_text(&format!(
+                "{}\n{}\n",
+                ds.documents[0].title, ds.documents[0].text
+            ))
+        );
     }
 }

@@ -1,14 +1,14 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v14.3.0)
+# Lattice AI Feature Status (v14.4.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.3.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 This document records the live product capabilities and honest boundaries of
-Lattice AI as of `v14.3.0`. Public release history is maintained from `v13.0.0`
+Lattice AI as of `v14.4.0`. Public release history is maintained from `v13.0.0`
 onward in [`RELEASE.md`](RELEASE.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md),
 and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
@@ -65,7 +65,7 @@ replaceable runtimes over that Brain.
 | **Deleted-File Cleanup** | Current (consent-gated) | Incremental ingest reports vanished files without auto-deleting. `POST /api/ingestion/folder/prune` previews dry-run counts and, upon explicit `confirm`, removes only the graph subtree (`delete_document_tree` / `delete_node_subgraph`). Disk files are never touched. |
 | **Vector Index Backends & Embedding Registry** | Current | Unified Rust ↔ Python `EmbeddingIndexContract` (`provider`, `model_id`, `model_revision`, `dimension`, `normalization`, `index_version`, `grade`, `semantic`). Supports `brute` (default exact scan), `quantized`, and bounded LRU `NativeHnswIndex` / worker `hnsw+rescore` (auto-tried at 512+ vectors with a bound worker). `EmbeddingModelRegistry` supports resumable shadow re-indexing, quality-gated cutover, and instant rollback. |
 | **Temporal Retrieval & Chunking** | Current | Token-sized parent-child chunks with contextual prefixes, tree-sitter code splitting, time-intent prefilter, recency decay, `SUPERSEDES` handling, `sort_by=relevance\|newest`, and `ltcai search`. |
-| **Reranking & Chat Grounding Gates** | Current (reranker needs `rag` extra) | Cross-encoder rerank through `POST /worker/rerank` with RRF fallback, MMR with a per-document cap, and Self-RAG abstention. Real reranker and EmbeddingGemma 2 loading is unverified in the build environment. |
+| **Reranking & Chat Grounding Gates** | Current (reranker needs `rag` extra) | Cross-encoder rerank through `POST /worker/rerank` with RRF fallback, MMR with a per-document cap, and Self-RAG abstention. Real reranker and EmbeddingGemma 2 loading was measured in 14.4.0 with the real weights (see `docs/BENCHMARKS.md`). |
 | **3D Living Brain & Desktop Shell** | Current | 3D graph view with retrieval firing and 2D fallback, fixed-viewport shell, Brain Vital Pill, docked evidence panel, and `Cmd/Ctrl+K` palette. |
 | **Background Embedding & Drain Controls** | Current | Durable `vector_jobs` queue drained by `lattice-jobs` adaptive scheduler (preserving partial drain progress and guarding `/host/jobs` with loopback/Bearer checks). `VectorFreshnessNotice` surfaces embedded-vs-total progress and one-click **Index now** (`POST /api/index/drain`). |
 | **Proactive Synthesis, Learning Loop & Self-Model** | Current | Event-driven synthesis stages `kg_change_digest` proposals for contradictions, unnamed topics, unlinked pairs, and stale fragments. Local-only `knowledge_corrections` learning loop records user corrections with workspace ownership checks. `SelfModelPanel` and `/api/memory/self-model*` manage owner preferences, habits, decisions, and relationships with proposal-first writes. |
@@ -82,15 +82,15 @@ replaceable runtimes over that Brain.
 | **Multimodal (Image, Audio, Video)** | Opt-in (default off) | Behind `allow_multimodal`: first-class `Image`/`ImageText`, `Audio`, and `Video` (`Modality::Video` + `ffmpeg` keyframes + `.srt`/`.vtt`) nodes. OCR (`pytesseract`), VLM captions, vision embeddings, transcribers, and `ffmpeg` are not bundled and report `unavailable` honestly when absent. |
 | **PostgreSQL Backend** | Planned | SQLite WAL is the official live local Brain store. PostgreSQL/pgvector remains `Planned` (dry-run planning and opt-in dispatch CI guard only). |
 | **Telegram Bridge & SSO/OIDC Login Callbacks** | Removed (11.6.0) | Retired when the product server moved to Rust (`lattice-host`). Password authentication, sessions, `$scrypt$` hashing, rate limiting, CSRF, and SSO configuration surfaces remain native in `lattice-auth`. |
-| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.3.0_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
+| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.4.0_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
 
 ---
 
 ## Known Limitations (Honest Boundaries)
 
-- **Retrieval models unverified here:** real EmbeddingGemma 2 and
-  `bge-reranker-v2-m3` loading was not exercised for 14.2.0; failures degrade to
-  hash embeddings and RRF order.
+- **Retrieval models measured on one machine:** real EmbeddingGemma 2 and
+  `bge-reranker-v2-m3` were measured for 14.4.0 on Apple Silicon (MPS) with a
+  small synthetic dataset; failures still degrade to hash embeddings and RRF order.
 - **No per-user document privacy inside a workspace:** the multi-user viewer
   filter covers conversation-derived nodes only.
 - **Small-model content quality on hard tasks:** The Universal Adaptive Agent

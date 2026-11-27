@@ -291,6 +291,33 @@
       },
       {
         "fusion": "vector",
+        "id": "code:build-failure",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".py",
+            "filename": "build_pipeline.py",
+            "node_type": "CodeFile"
+          }
+        },
+        "node_id": "code:build-failure",
+        "rank": 11,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      },
+      {
+        "fusion": "vector",
         "id": "deck:proposal",
         "metadata": {
           "ext": ".pptx",
@@ -304,7 +331,7 @@
           }
         },
         "node_id": "deck:proposal",
-        "rank": 11,
+        "rank": 12,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -315,11 +342,111 @@
         "title": "제안 발표자료",
         "type": "SlideDeck",
         "updated_at": "2026-07-29T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "img:proposal-sketch",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "rank": 13,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "imgtext:proposal-ocr",
+        "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "proposal-sketch.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "imgtext:proposal-ocr",
+        "rank": 14,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText",
+        "updated_at": "2026-07-16T09:01:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "meeting:kickoff",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Meeting"
+          }
+        },
+        "node_id": "meeting:kickoff",
+        "rank": 15,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "Kickoff meeting for the Rust foundation work.",
+        "title": "Kickoff meeting",
+        "type": "Meeting",
+        "updated_at": "2026-02-09T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "slide:proposal-1",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:proposal-1",
+        "rank": 16,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "제안서 요약 슬라이드입니다.",
+        "title": "제안 슬라이드 1",
+        "type": "Slide",
+        "updated_at": "2026-07-19T09:00:00"
       }
     ],
     "mode": "hybrid",
     "multimodal": {
-      "images": 2,
+      "images": 4,
       "types": [
         "ImageText",
         "Image"
@@ -338,14 +465,14 @@
     },
     "sources": {
       "lexical": 1,
-      "vector": 13
+      "vector": 18
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 69,
+      "embedded_rows": 18,
       "exhaustive": true,
       "truncated": false
     }

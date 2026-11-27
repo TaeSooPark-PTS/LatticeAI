@@ -61,6 +61,61 @@
   font-weight: 600;
 }
 
+.brain-3d-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.brain-3d-label,
+.brain-3d-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface-overlay) / 0.78);
+  color: hsl(var(--foreground));
+  padding: 0 0.35rem;
+  font-size: var(--lt-type-caption);
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.brain-3d-label[hidden],
+.brain-3d-tooltip[hidden] {
+  display: none;
+}
+
+.brain-3d-label.is-selected {
+  border: 1px solid hsl(var(--border));
+  font-weight: 700;
+}
+
+.brain-3d-tooltip {
+  z-index: 5;
+  border: 1px solid hsl(var(--border));
+  padding: 0.1rem 0.5rem;
+}
+
+.brain-3d-context-lost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 6;
+  width: min(22rem, 85%);
+  transform: translate(-50%, -50%);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: hsl(var(--surface-overlay) / 0.94);
+  color: hsl(var(--foreground));
+  padding: 0.75rem 1rem;
+  font-size: var(--lt-type-small);
+  text-align: center;
+}
+
 .brain-3d-fallback {
   display: flex;
   align-items: center;
