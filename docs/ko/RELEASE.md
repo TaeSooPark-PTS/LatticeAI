@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.4.0 — Measured Retrieval (2026-11-27)
+
+실제 EmbeddingGemma 2 및 `BAAI/bge-reranker-v2-m3` 가중치로 처음 검색을 측정했고, 그 측정에서 드러난 결함을 고쳤습니다. "최신" 질문은 최신성 정렬 때문에 답변을 잃지 않으며(최신성은 답변만 재정렬), 벡터 경로·하이브리드 검색·메모리 회상·HNSW 인덱스에서 워크스페이스 범위를 top-k 절단 전에 적용하고, `LATTICEAI_RERANK_CANDIDATES`는 최대 64까지 동작하며, 재랭커는 워커 시작 시 미리 적재되고, 동시 콜드 요청에서 임베딩 모델은 한 번만 적재됩니다. `pip install "ltcai[rag]"`는 `torchvision`을 함께 설치합니다. 벡터 경로가 비활성인 상태로 측정되었던 v14.3.0 해시 게이트는 시드를 고친 뒤 다시 측정해 하한선을 올렸고, 채팅 경로와 야간 평가는 제품 검색기를 사용합니다. 3D 살아있는 브레인에서는 노드 라벨이 라벨 모드를 따르고, WebGL 컨텍스트 손실 시 렌더링을 일시 중지·재개하며, 호버 피킹은 프레임당 최대 한 번 실행됩니다.
+
+릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.4.0.md](./releases/RELEASE_NOTES_v14.4.0.md).
+
+빌드 산출물은 `dist/ltcai-14.4.0-py3-none-any.whl`, `dist/ltcai-14.4.0.tar.gz`, `ltcai-14.4.0.tgz`, `dist/ltcai-14.4.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.4.0_aarch64.dmg` 입니다.
+
 ## v14.3.0 — Temporal Synthesis (2026-11-27)
 
 첫 답변 후 데스크톱 채팅 접힘, `Cmd/Ctrl+K` "오늘의 브리핑" 화면 이동 열기, 2D 기억 그래프 "구버전 표시" 필터링, 커맨드 팔레트 키보드 스크롤을 수정했습니다. 채팅 검색에 IDF/BM25F 관련도 랭킹, `as_of` 시점 유효기간 필터링 및 연도 파싱, 엄격한 Self-RAG 커버리지 보류, 채팅 경로 CI 래칫 게이트(`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`)를 추가했습니다. 또한 공유 번들 내보내기·가져오기, 시간 사전 필터 범위 제한, `LIMIT` 이전 범위 필터, 연대기 fail-closed 뷰어 필터, 덮어쓰기 식별자 인덱싱 등 6건의 다중 사용자 개인정보·무결성 결함을 해결했습니다.

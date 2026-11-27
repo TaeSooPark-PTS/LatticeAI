@@ -20,6 +20,14 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.4.0": {
+    "_why": [
+      "Measured Retrieval (14.4.0) adds node labels to the 3D memory graph view.",
+      "Its other changes are retrieval, evaluation, and runtime fixes that do not",
+      "alter any other captured screen."
+    ],
+    "05-memory-graph.png": {}
+  },
   "14.3.0": {
     "_why": [
       "Temporal Synthesis (14.3.0) fixes interactive frontend defects (post-send",

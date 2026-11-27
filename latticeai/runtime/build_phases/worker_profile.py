@@ -52,7 +52,7 @@ def phase_worker_routes(ctx: Any) -> None:
     from latticeai.api.worker_compute import create_worker_compute_router
     from latticeai.api.worker_resilience import install_worker_compute_resilience
     from latticeai.api.worker_seams import create_worker_seams_router
-    from latticeai.core.rerankers import resolve_reranker
+    from latticeai.core.rerankers import resolve_reranker, warm_reranker
 
     app = ctx.app
     install_worker_compute_resilience(app)
@@ -70,6 +70,7 @@ def phase_worker_routes(ctx: Any) -> None:
         from pathlib import Path
 
         db_path = Path(data_dir) / "knowledge_graph.sqlite"
+    reranker = resolve_reranker()
     app.include_router(
         create_worker_compute_router(
             embedder=getattr(ctx, "EMBEDDER", None),
@@ -77,10 +78,11 @@ def phase_worker_routes(ctx: Any) -> None:
             require_user=ctx.require_user,
             enforce_rate_limit=ctx.enforce_rate_limit,
             db_path=db_path,
-            reranker=resolve_reranker(),
+            reranker=reranker,
         )
     )
     apply_worker_route_filter(app)
+    warm_reranker(reranker)
 
 
 def _included_router(route: Any) -> Any:

@@ -2,7 +2,7 @@
 
 # Lattice AI Trust Model
 
-Current release: **14.3.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

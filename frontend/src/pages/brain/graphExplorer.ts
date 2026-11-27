@@ -332,3 +332,12 @@ export function buildExplorerModel({
     hiddenByFilters: Math.max(0, graph.nodes.length - capped.length),
   };
 }
+
+export function nodeDisplayLabels(model: Pick<ExplorerModel, "elements">): Map<string, string> {
+  const labels = new Map<string, string>();
+  for (const element of model.elements) {
+    const { id, displayLabel } = element.data;
+    if (id && typeof displayLabel === "string" && displayLabel) labels.set(id, displayLabel);
+  }
+  return labels;
+}

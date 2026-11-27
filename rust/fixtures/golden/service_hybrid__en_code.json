@@ -15,6 +15,7 @@
         "embedding_dim": 384,
         "embedding_model": "lattice-local-hash-v1:384",
         "mode": "vector",
+        "provider_status": "hash_fallback",
         "query": "vector_search() returns",
         "recall": {
           "backend": "bruteforce-cosine",
@@ -23,7 +24,16 @@
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
-        }
+        },
+        "reindex_required": false,
+        "stored_models": [
+          {
+            "dim": 384,
+            "is_hash": true,
+            "model_id": "lattice-local-hash-v1:384",
+            "row_count": 69
+          }
+        ]
       }
     },
     "matches": [

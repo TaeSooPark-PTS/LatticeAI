@@ -448,7 +448,7 @@
         "updated_at": "2026-07-24T09:00:00"
       },
       {
-        "fusion": "lexical",
+        "fusion": "both",
         "id": "self:habit:b2",
         "metadata": {
           "confidence": 0.6,
@@ -513,14 +513,14 @@
     },
     "sources": {
       "lexical": 8,
-      "vector": 31
+      "vector": 40
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 69,
+      "embedded_rows": 51,
       "exhaustive": true,
       "truncated": false
     }

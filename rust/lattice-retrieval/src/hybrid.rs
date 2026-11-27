@@ -15,7 +15,6 @@ use crate::shape::{
     class_json, empty_result, expansion_json, multimodal_signal, parent_node_id, policy_json,
     py_str, sources_json, truthy, DEFAULT_EXPANSION_CAP,
 };
-use crate::vector::vector_search;
 
 #[derive(Debug, Clone)]
 pub struct HybridOptions {
@@ -172,29 +171,29 @@ pub fn hybrid_search(
     let vector_outcome = if let Some(reason) = options.semantic_degraded.as_ref() {
         vector_degraded = Some(reason.clone());
         Err(CoreError::InvalidRequest(reason.clone()))
-    } else if let Some(ovr) = options.query_embedding.as_ref() {
-        crate::vector::vector_search_aligned(
-            conn,
-            crate::vector::VectorQueryInput::Precomputed {
+    } else {
+        let query_input = match options.query_embedding.as_ref() {
+            Some(ovr) => crate::vector::VectorQueryInput::Precomputed {
                 model_id: &ovr.model_id,
                 vector: &ovr.vector,
                 is_hash_fallback: ovr.is_hash_fallback,
             },
+            None => crate::vector::VectorQueryInput::Model(model),
+        };
+        let vector_scope = crate::service::Scope {
+            allowed_workspaces: options.allowed_workspaces.clone(),
+            include_legacy_global: options.include_legacy_global,
+        };
+        crate::vector::vector_search_aligned(
+            conn,
+            query_input,
             &search_query,
             &crate::vector::VectorSearchOptions {
                 limit: vec_fetch,
                 min_score: options.min_vector_score,
-                scope: None,
+                scope: Some(&vector_scope),
                 include_historical: false,
             },
-        )
-    } else {
-        vector_search(
-            conn,
-            model,
-            &search_query,
-            vec_fetch,
-            options.min_vector_score,
         )
     };
     match vector_outcome {

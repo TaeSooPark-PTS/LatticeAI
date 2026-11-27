@@ -2,7 +2,7 @@
 
 # Lattice AI — Browser Extension (Manifest V3)
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this

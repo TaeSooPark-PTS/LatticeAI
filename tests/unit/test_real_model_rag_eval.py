@@ -196,26 +196,21 @@ def _temporal_dataset() -> dict[str, Any]:
     }
 
 
-def test_retrieval_metrics_report_mrr_ndcg_and_recency() -> None:
+def test_retrieval_report_is_labelled_as_the_product_chat_path(tmp_path: Path) -> None:
     mod = _load_eval_module()
-    out = mod.evaluate_retrieval(_temporal_dataset())
-    assert out["queries_evaluated"] == 2
-    assert out["recall_at_5"] == 1.0
-    assert out["mrr"] == 1.0
-    assert out["ndcg_at_10"] == 1.0
-    assert out["temporal_cases"] == 1
-    assert out["recency_accuracy"] == 1.0
+    report = tmp_path / "chat.json"
+    report.write_text('{"recall_at_5": 0.98, "mrr": 0.86}', encoding="utf-8")
+    out = mod.load_retrieval_report(str(report))
+    assert out["status"] == "executed"
+    assert out["retriever"] == "product_chat_path_hash_embedder"
+    assert out["recall_at_5"] == 0.98
 
 
-def test_retrieval_never_crosses_workspace_or_leaks_superseded() -> None:
+def test_missing_retrieval_report_is_reported_not_invented() -> None:
     mod = _load_eval_module()
-    dataset = _temporal_dataset()
-    ranked = mod.rank_documents(dataset, dataset["queries"][0])
-    assert "doc:atlas:restricted" not in ranked
-    assert "doc:atlas:2024" not in ranked
-    assert mod.recency_correct(["old", "new"], ["new"], ["old"]) is False
-    assert mod.recency_correct(["new", "old"], ["new"], ["old"]) is True
-    assert mod.reciprocal_rank(["x", "y", "z"], ["z"]) == 1.0 / 3
+    out = mod.load_retrieval_report("")
+    assert out["status"] == "not_run"
+    assert "recall_at_5" not in out
 
 
 def test_generation_reports_faithfulness_and_recency(monkeypatch: Any) -> None:

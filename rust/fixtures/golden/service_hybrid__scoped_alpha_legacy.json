@@ -15,15 +15,25 @@
         "embedding_dim": 384,
         "embedding_model": "lattice-local-hash-v1:384",
         "mode": "vector",
+        "provider_status": "hash_fallback",
         "query": "회의 결정 사항",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 69,
-          "candidates_total": 69,
+          "candidates_scanned": 51,
+          "candidates_total": 51,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
-        }
+        },
+        "reindex_required": false,
+        "stored_models": [
+          {
+            "dim": 384,
+            "is_hash": true,
+            "model_id": "lattice-local-hash-v1:384",
+            "row_count": 69
+          }
+        ]
       }
     },
     "matches": [
@@ -1146,6 +1156,7 @@
         "fusion": {
           "query_class": "fact",
           "sources": [
+            "vector",
             "graph"
           ],
           "weights": {
@@ -1164,31 +1175,30 @@
               "type": "MENTIONS",
               "weight": 0.73
             }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "sheet:proposal-budget",
-              "id": "edge:4bf2021502951f76e7811377",
-              "to": "doc:proposal",
-              "type": "MENTIONS",
-              "weight": 0.73
-            }
           }
         ],
         "id": "sheet:proposal-budget",
         "item_type": "node",
         "metadata": {
           "ext": ".xlsx",
-          "filename": "proposal-budget.xlsx"
+          "filename": "proposal-budget.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "proposal-budget.xlsx",
+            "node_type": "Spreadsheet"
+          }
         },
         "node_id": "sheet:proposal-budget",
         "rank": 24,
-        "score": 0.028125,
+        "score": 0.04351,
         "source_scores": {
-          "graph": 0.1125
+          "graph": 0.1125,
+          "vector": 0.0
         },
         "sources": [
+          "vector",
           "graph"
         ],
         "summary": "제안서 예산 표입니다.",
@@ -1417,7 +1427,7 @@
         "fusion": {
           "query_class": "fact",
           "sources": [
-            "graph"
+            "vector"
           ],
           "weights": {
             "graph": 0.25,
@@ -1425,47 +1435,32 @@
             "vector": 0.4
           }
         },
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "self:habit:b2",
-              "id": "edge:0081e4ca77bf4f557fb27d78",
-              "to": "self:root",
-              "type": "PART_OF",
-              "weight": 1.0
-            }
-          },
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "self:habit:b2",
-              "id": "edge:0081e4ca77bf4f557fb27d78",
-              "to": "self:root",
-              "type": "PART_OF",
-              "weight": 1.0
-            }
-          }
-        ],
-        "id": "self:root",
+        "id": "audio:proposal-call",
         "item_type": "node",
         "metadata": {
-          "self_model": true,
-          "self_model_kind": "root"
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
         },
-        "node_id": "self:root",
+        "node_id": "audio:proposal-call",
         "rank": 30,
-        "score": 0.014063,
+        "score": 0.014815,
         "source_scores": {
-          "graph": 0.05625
+          "vector": 0.0
         },
         "sources": [
-          "graph"
+          "vector"
         ],
-        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
-        "title": "나",
-        "type": "Self",
-        "updated_at": "2026-07-01T09:00:00"
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
       }
     ],
     "mode": "hybrid",

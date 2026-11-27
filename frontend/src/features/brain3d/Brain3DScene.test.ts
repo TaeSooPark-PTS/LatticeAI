@@ -440,3 +440,128 @@ describe("Brain3DSceneController interaction", () => {
     expect(camera().position.length()).toBeCloseTo(3.2, 1);
   });
 });
+
+describe("Brain3DSceneController labels and context loss", () => {
+  const labelTexts = (container: HTMLElement) =>
+    [...container.querySelectorAll(".brain-3d-label")].map((element) => element.textContent);
+
+  function sized(renderer: { domElement: HTMLCanvasElement }) {
+    vi.spyOn(renderer.domElement, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 800, height: 600 } as DOMRect);
+  }
+
+  it("draws the requested node labels and drops hidden nodes", () => {
+    const { controller, container, renderer } = mount();
+    Object.defineProperty(renderer.domElement, "clientWidth", { configurable: true, value: 800 });
+    Object.defineProperty(renderer.domElement, "clientHeight", { configurable: true, value: 600 });
+    controller.setLabels(new Map([["a", "A"], ["old", "Old"]]));
+    controller.updateGraph(points, edges, growth, true);
+    step();
+    expect(labelTexts(container).sort()).toEqual(["A", "Old"]);
+    controller.updateGraph(points, edges, growth, false);
+    expect(labelTexts(container)).toEqual(["A"]);
+    controller.setLabels(new Map());
+    expect(labelTexts(container)).toEqual([]);
+  });
+
+  it("names the hovered node and hides the name when the pointer leaves or drags", () => {
+    const { controller, container, renderer } = mount();
+    sized(renderer);
+    controller.updateGraph(points, edges, growth, true);
+    controller.setSelection("a");
+    step(60);
+    const tooltip = container.querySelector<HTMLDivElement>(".brain-3d-tooltip")!;
+    const at = screenPosition(0);
+    const hover = (init: { clientX: number; clientY: number }) => {
+      pointer(renderer.domElement, "pointermove", init);
+      step();
+    };
+    hover(at);
+    expect(tooltip.hidden).toBe(false);
+    expect(tooltip.textContent).toBe("A");
+    pointer(renderer.domElement, "pointerleave");
+    expect(tooltip.hidden).toBe(true);
+    hover(at);
+    hover({ clientX: 1, clientY: 1 });
+    expect(tooltip.hidden).toBe(true);
+    pointer(renderer.domElement, "pointerdown", at);
+    hover(at);
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("raycasts at most once per frame, for the latest pointer position", () => {
+    const { controller, container, renderer } = mount({ reducedMotion: true });
+    sized(renderer);
+    controller.updateGraph(points, edges, growth, true);
+    step(60);
+    const intersect = vi.spyOn(THREE.Raycaster.prototype, "intersectObject");
+    const at = screenPosition(1);
+    pointer(renderer.domElement, "pointermove", { clientX: 1, clientY: 1 });
+    pointer(renderer.domElement, "pointermove", { clientX: 2, clientY: 2 });
+    pointer(renderer.domElement, "pointermove", at);
+    expect(intersect).not.toHaveBeenCalled();
+    step(3);
+    expect(intersect).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".brain-3d-tooltip")!.textContent).toBe("B");
+  });
+
+  it("drops a queued hover when the pointer leaves, the context is lost or the scene is destroyed", () => {
+    const { controller, renderer } = mount();
+    sized(renderer);
+    controller.updateGraph(points, edges, growth, true);
+    step();
+    const intersect = vi.spyOn(THREE.Raycaster.prototype, "intersectObject");
+    const move = () => pointer(renderer.domElement, "pointermove", { clientX: 400, clientY: 300 });
+
+    move();
+    pointer(renderer.domElement, "pointerleave");
+    step();
+    move();
+    renderer.domElement.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
+    renderer.domElement.dispatchEvent(new Event("webglcontextrestored"));
+    step();
+    move();
+    controllers.splice(0);
+    controller.dispose();
+    step();
+    expect(frames.size).toBe(0);
+    expect(intersect).not.toHaveBeenCalled();
+  });
+
+  it("ignores hover before any node exists or while the canvas has no size", () => {
+    const { controller, container, renderer } = mount();
+    const tooltip = container.querySelector<HTMLDivElement>(".brain-3d-tooltip")!;
+    pointer(renderer.domElement, "pointermove", { clientX: 400, clientY: 300 });
+    step();
+    controller.updateGraph(points, edges, growth, true);
+    vi.spyOn(renderer.domElement, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 0, height: 0 } as DOMRect);
+    pointer(renderer.domElement, "pointermove", { clientX: 400, clientY: 300 });
+    step();
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("stops drawing when the context is lost and resumes when it returns", () => {
+    const onContextLost = vi.fn();
+    const onContextRestored = vi.fn();
+    const { renderer } = mount({ onContextLost, onContextRestored });
+    step();
+    const lost = new Event("webglcontextlost", { cancelable: true });
+    renderer.domElement.dispatchEvent(lost);
+    expect(lost.defaultPrevented).toBe(true);
+    expect(onContextLost).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(0);
+
+    renderer.domElement.dispatchEvent(new Event("webglcontextrestored"));
+    renderer.domElement.dispatchEvent(new Event("webglcontextrestored"));
+    expect(onContextRestored).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(1);
+  });
+
+  it("survives a context loss without listeners and ignores a restore after dispose", () => {
+    const { controller, renderer } = mount({ ambientOnly: true });
+    renderer.domElement.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
+    controllers.splice(0);
+    controller.dispose();
+    renderer.domElement.dispatchEvent(new Event("webglcontextrestored"));
+    expect(frames.size).toBe(0);
+  });
+});

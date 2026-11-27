@@ -137,7 +137,11 @@ def test_runtime_gap_names_both_floors_and_clears_on_new_enough_versions():
     assert "found none" in missing
     assert (
         text_mod.embeddinggemma_2_runtime_gap(
-            {"sentence-transformers": "6.3.0", "transformers": "5.24.1"}.get
+            {
+                "sentence-transformers": "6.3.0",
+                "transformers": "5.24.1",
+                "torchvision": "0.29.2",
+            }.get
         )
         == ""
     )
@@ -191,6 +195,27 @@ def test_a_real_sentence_transformers_loads_gemma_2_text_only_and_offline(
         "status": "unavailable",
         "detail": "EmbeddingGemma 2 needs x",
     }
+
+
+def test_a_missing_gemma_dependency_is_named_instead_of_an_empty_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class SentenceTransformer:
+        def __init__(self, target: str, **options: Any) -> None:
+            raise ImportError("this processor requires the Torchvision library")
+
+    SentenceTransformer.__module__ = "sentence_transformers.sentence_transformer"
+    module = types.ModuleType("sentence_transformers")
+    module.SentenceTransformer = SentenceTransformer
+    monkeypatch.setitem(sys.modules, "sentence_transformers", module)
+    monkeypatch.setattr(text_mod, "embeddinggemma_2_runtime_gap", lambda: "")
+
+    provider = HuggingFaceEmbeddingProvider(
+        _RemoteConfig(model="google/embeddinggemma-2")
+    )
+    health = provider.health()
+    assert health["status"] == "unavailable"
+    assert "requires the Torchvision library" in health["detail"]
 
 
 def test_a_failing_sentence_transformers_load_is_unavailable_not_faked(
@@ -291,11 +316,13 @@ def test_the_cross_encoder_loads_once_truncates_and_checks_its_output() -> None:
 def test_the_default_loader_builds_a_sentence_transformers_cross_encoder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    seen: List[Tuple[str, int]] = []
+    seen: List[Tuple[str, int, bool]] = []
 
     class CrossEncoder:
-        def __init__(self, target: str, max_length: int) -> None:
-            seen.append((target, max_length))
+        def __init__(
+            self, target: str, max_length: int, local_files_only: bool
+        ) -> None:
+            seen.append((target, max_length, local_files_only))
 
     module = types.ModuleType("sentence_transformers")
     module.CrossEncoder = CrossEncoder
@@ -303,7 +330,7 @@ def test_the_default_loader_builds_a_sentence_transformers_cross_encoder(
     assert isinstance(
         rerankers._sentence_transformers_cross_encoder("/s", 64), CrossEncoder
     )
-    assert seen == [("/s", 64)]
+    assert seen == [("/s", 64, True)]
 
 
 def test_worker_rerank_scores_candidates_with_the_cross_encoder(tmp_path: Path) -> None:

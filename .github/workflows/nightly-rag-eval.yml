@@ -31,6 +31,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Measure the product chat retriever
+        working-directory: rust
+        env:
+          LATTICE_CHAT_EVAL_REPORT: ${{ github.workspace }}/chat_retrieval_report.json
+        run: |
+          cargo test --release -p lattice-retrieval --test neural_rag_eval \
+            the_chat_retriever_report_is_written_for_the_nightly_workflow -- --ignored --exact
+
       - name: Run real-model RAG evaluation (graceful skip when endpoints unset)
         env:
           LATTICE_EVAL_LOCAL_ENDPOINT: ${{ vars.LATTICE_EVAL_LOCAL_ENDPOINT || secrets.LATTICE_EVAL_LOCAL_ENDPOINT }}
@@ -42,6 +53,7 @@ jobs:
         run: |
           python3 scripts/run_real_model_rag_eval.py \
             --limit "$SAMPLE_LIMIT" \
+            --retrieval-report chat_retrieval_report.json \
             > rag_eval_report.json
           cat rag_eval_report.json
           python3 - <<'PY'
@@ -56,11 +68,11 @@ jobs:
               "## Nightly Real-Model RAG Evaluation Summary",
               f"- Dataset: `{report['dataset_version']}`",
               "",
-              "### Retrieval (temporal-aware baseline)",
+              "### Retrieval (product chat path, deterministic hash embedder)",
               "",
-              "| Recall@5 | Recall@10 | MRR | NDCG@10 | Recency Accuracy | Temporal Cases |",
+              "| Recall@5 | MRR | NDCG@10 | Superseded Excluded | Workspace Leaks | Queries |",
               "|---|---|---|---|---|---|",
-              f"| {pct(retrieval.get('recall_at_5'))} | {pct(retrieval.get('recall_at_10'))} | {retrieval.get('mrr', 0):.3f} | {retrieval.get('ndcg_at_10', 0):.3f} | {pct(retrieval.get('recency_accuracy'))} | {retrieval.get('temporal_cases', '-')} |",
+              f"| {pct(retrieval.get('recall_at_5'))} | {retrieval.get('mrr', 0):.3f} | {retrieval.get('ndcg_at_10', 0):.3f} | {pct(retrieval.get('superseded_exclusion_rate'))} | {retrieval.get('workspace_boundary_leaks', '-')} | {retrieval.get('answerable_queries', '-')} |",
               "",
               "### Generation",
               "",

@@ -428,6 +428,41 @@ fn newest_sort_runs_after_rerank_on_the_relevance_gated_top_k() {
 }
 
 #[test]
+fn newest_order_reorders_the_answer_and_never_recruits_from_the_rerank_pool() {
+    let conn = store();
+    let ranking = TemporalRanking::default().with_request(SortBy::Newest, false, None, None);
+    let pool = || {
+        vec![
+            hit("answer", 0.9, "2026-01-15T00:00:00"),
+            hit("sibling", 0.5, "2026-02-01T00:00:00"),
+            hit("peer", 0.4, "2026-01-15T00:00:00"),
+            hit("off_topic_a", 0.35, "2026-02-01T00:00:00"),
+            hit("off_topic_b", 0.33, "2026-02-01T00:00:00"),
+            hit("off_topic_c", 0.31, "2026-02-01T00:00:00"),
+        ]
+    };
+    let mut wide = plan(&conn, "notes", &ranking);
+    let recruited = wide.finalize(pool(), 20);
+    assert_eq!(
+        &ids(&recruited)[..3],
+        ["sibling", "off_topic_a", "off_topic_b"]
+    );
+    let mut bounded = plan(&conn, "notes", &ranking);
+    let answer = bounded.finalize_within(pool(), 20, 3);
+    assert_eq!(ids(&answer), ["sibling", "answer", "peer"]);
+    assert_eq!(answer[0]["rank"], 1);
+    assert_eq!(bounded.report["sort"]["returned"], 3);
+
+    let mut relevance = plan(&conn, "notes", &TemporalRanking::default());
+    let kept = relevance.finalize_within(pool(), 4, 2);
+    assert_eq!(ids(&kept), ["answer", "sibling", "peer", "off_topic_a"]);
+    let mut clamped = plan(&conn, "notes", &ranking);
+    assert_eq!(clamped.finalize_within(pool(), 2, 9).len(), 2);
+    let mut floor = plan(&conn, "notes", &ranking);
+    assert_eq!(ids(&floor.finalize_within(pool(), 0, 0)), ["answer"]);
+}
+
+#[test]
 fn engine_reports_carry_the_temporal_block_and_the_original_query() {
     let conn = store();
     let ranking = TemporalRanking::default();

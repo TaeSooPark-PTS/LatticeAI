@@ -9,7 +9,6 @@ use serde_json::{Map, Value};
 use crate::graph_reads::{relationship_search, traverse, RelationshipQuery, TraverseOptions};
 use crate::keyword::KeywordRanking;
 use crate::shape::{py_str, truthy};
-use crate::vector::vector_search as graph_vector_search;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Scope {
@@ -197,9 +196,17 @@ pub fn vector_search(
     limit: i64,
     min_score: f64,
     scope: &Scope,
+    include_historical: bool,
 ) -> Result<Value, CoreError> {
-    let payload = graph_vector_search(conn, model, query, limit, min_score)?;
-    format_vector_service_payload(conn, query, &payload, scope)
+    vector_search_aligned_service(
+        conn,
+        crate::vector::VectorQueryInput::Model(model),
+        query,
+        limit,
+        min_score,
+        scope,
+        include_historical,
+    )
 }
 
 pub fn vector_search_aligned_service(
@@ -654,7 +661,8 @@ mod tests {
             ],
         )
         .unwrap();
-        let out = vector_search(&conn, &model, "ranking", 10, 0.0, &Scope::default()).unwrap();
+        let out =
+            vector_search(&conn, &model, "ranking", 10, 0.0, &Scope::default(), true).unwrap();
         assert_eq!(out["mode"], "vector");
         assert_eq!(out["embedding_dim"], 384);
         assert!(out["recall"].is_object());

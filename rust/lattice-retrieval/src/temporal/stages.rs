@@ -264,12 +264,22 @@ impl TemporalPlan {
         }
     }
 
-    pub fn finalize(&mut self, mut matches: Vec<Value>, limit: usize) -> Vec<Value> {
-        let limit = limit.max(1);
+    pub fn finalize(&mut self, matches: Vec<Value>, limit: usize) -> Vec<Value> {
+        self.finalize_within(matches, limit, limit)
+    }
+
+    pub fn finalize_within(
+        &mut self,
+        mut matches: Vec<Value>,
+        pool: usize,
+        answer: usize,
+    ) -> Vec<Value> {
+        let limit = pool.max(1);
+        let answer = answer.clamp(1, limit);
         let candidates = matches.len();
         if self.sort == SortBy::Newest {
             let max_score = matches.iter().map(score_of).fold(0.0, f64::max);
-            let cap = self.ranking.gate.top_k.min(limit);
+            let cap = self.ranking.gate.top_k.min(answer);
             let mut relevant: Vec<Value> = matches
                 .into_iter()
                 .filter(|item| self.passes_gate(item, max_score))
@@ -315,9 +325,13 @@ impl TemporalPlan {
     }
 
     pub fn apply_finalize(&mut self, report: &mut Value, limit: usize) {
+        self.apply_finalize_within(report, limit, limit);
+    }
+
+    pub fn apply_finalize_within(&mut self, report: &mut Value, pool: usize, answer: usize) {
         let recency_class = recency_class_of(report);
         let matches = take_matches(report);
-        let finished = self.finalize(matches, limit);
+        let finished = self.finalize_within(matches, pool, answer);
         put_matches(report, finished);
         if let Some(object) = report.as_object_mut() {
             if object.contains_key("query") {

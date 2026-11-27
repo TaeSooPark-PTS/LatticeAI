@@ -6,6 +6,27 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.4.0] - 2026-11-27 — Measured Retrieval
+
+### Fixed
+- "Latest" questions: chat passed its 20-candidate rerank pool to the recency sort instead of the 5-document answer size; recency now only reorders the answer.
+- Workspace scope is applied before the top-k cut in the no-worker chat vector lane, hybrid search, memory recall and the HNSW index.
+- The v14.3.0 hash gates were measured with the vector lane inactive (8-byte seeded values read as 4-byte values). The seeding is fixed, the floors are re-measured and raised, and the gates fail if the vector lane returns nothing.
+- Concurrent cold requests load the embedding model once (Hugging Face and MLX providers).
+- The chat-path evaluation uses the product's query planning, embedded query text, evidence gate, rerank candidate rules and passage text; the nightly workflow measures the product retriever instead of a separate lexical baseline.
+
+### Added
+- `LATTICEAI_RERANK_CANDIDATES` values above 20 are honored (up to 64).
+- The reranker is warmed at worker start in a background thread; `LATTICEAI_RERANKER=off` disables it.
+- `scripts/run_neural_retrieval_eval.py` evaluates cached real weights offline.
+- `pip install "ltcai[rag]"` installs `torchvision`, which the EmbeddingGemma 2 processor imports even for text.
+- 3D Living Brain node labels follow the label mode, with overlap culling sized for wide glyphs; WebGL context loss pauses rendering and announces the state, and resumes on restore.
+
+### Changed
+- Hover picking in the 3D view runs at most once per frame.
+
+Details, real-model results and limitations: [docs/releases/RELEASE_NOTES_v14.4.0.md](releases/RELEASE_NOTES_v14.4.0.md).
+
 ## [14.3.0] - 2026-11-27 — Temporal Synthesis
 
 ### Added

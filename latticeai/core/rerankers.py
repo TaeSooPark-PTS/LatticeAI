@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import os
 import threading
 from dataclasses import dataclass, field
@@ -16,6 +17,10 @@ RERANKER_MAX_LENGTH = 512
 RERANK_MAX_DOCUMENTS = 64
 RERANK_DOCUMENT_MAX_CHARS = 2_000
 RERANKER_PROVIDER = "cross-encoder"
+RERANKER_WARMUP_TEXT = "warm up"
+RERANKER_WARMUP_THREAD = "lattice-reranker-warmup"
+
+_LOG = logging.getLogger(__name__)
 
 _OFF = {"0", "false", "no", "off", "disabled", "none"}
 
@@ -29,7 +34,7 @@ class RerankerUnavailable(RuntimeError):
 def _sentence_transformers_cross_encoder(target: str, max_length: int) -> Any:
     from sentence_transformers import CrossEncoder
 
-    return CrossEncoder(target, max_length=max_length)
+    return CrossEncoder(target, max_length=max_length, local_files_only=True)
 
 
 @dataclass
@@ -144,16 +149,49 @@ def resolve_reranker(
     )
 
 
+Starter = Callable[[Callable[[], None]], Any]
+
+
+def _start_daemon(task: Callable[[], None]) -> threading.Thread:
+    thread = threading.Thread(target=task, name=RERANKER_WARMUP_THREAD, daemon=True)
+    thread.start()
+    return thread
+
+
+def _warm(reranker: CrossEncoderReranker) -> None:
+    try:
+        reranker.score(RERANKER_WARMUP_TEXT, [RERANKER_WARMUP_TEXT])
+    except RerankerUnavailable as exc:
+        _LOG.warning(
+            "cross-encoder warm-up failed; the first rerank request loads it: %s", exc
+        )
+
+
+def warm_reranker(resolution: Any, *, start: Starter = _start_daemon) -> bool:
+    reranker = getattr(resolution, "reranker", None)
+    if reranker is None:
+        return False
+    try:
+        start(lambda: _warm(reranker))
+    except RuntimeError as exc:
+        _LOG.warning("cross-encoder warm-up could not start: %s", exc)
+        return False
+    return True
+
+
 __all__ = [
     "DEFAULT_RERANKER_MODEL",
     "RERANKER_ENV",
     "RERANKER_MAX_LENGTH",
     "RERANKER_MODEL_ENV",
     "RERANKER_PROVIDER",
+    "RERANKER_WARMUP_TEXT",
+    "RERANKER_WARMUP_THREAD",
     "RERANK_DOCUMENT_MAX_CHARS",
     "RERANK_MAX_DOCUMENTS",
     "CrossEncoderReranker",
     "RerankerResolution",
     "RerankerUnavailable",
     "resolve_reranker",
+    "warm_reranker",
 ]

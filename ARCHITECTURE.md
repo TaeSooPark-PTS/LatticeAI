@@ -6,7 +6,7 @@
 > with the current release. Subsystem design principles and operational views
 > live in [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **14.3.0 — Temporal Synthesis**.
+Current release: **14.4.0 — Measured Retrieval**.
 
 Lattice AI is a local-first Digital Brain platform built around a single-writer
 Rust product host (`lattice-host`), a 21-route loopback Python AI compute worker
@@ -246,13 +246,13 @@ security primitives (`latticeai.core.security`).
 
 ## Release Artifact Map
 
-14.3.0 exact artifact names:
+14.4.0 exact artifact names:
 
-- Python wheel: `dist/ltcai-14.3.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.3.0.tar.gz`
-- npm tarball: `ltcai-14.3.0.tgz`
-- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.3.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.3.0_aarch64.dmg`
+- Python wheel: `dist/ltcai-14.4.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.4.0.tar.gz`
+- npm tarball: `ltcai-14.4.0.tgz`
+- VS Code / Cursor / Antigravity extension: `dist/ltcai-14.4.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.4.0_aarch64.dmg`
 
 ## Known Boundaries
 

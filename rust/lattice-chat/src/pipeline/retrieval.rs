@@ -108,8 +108,8 @@ pub(crate) async fn retrieve(
     let mut historical = false;
     if let Some(mut plan) = plan {
         historical = plan.include_historical();
-        let limit = lattice_retrieval::context::knowledge_fetch_limit(request);
-        plan.apply_finalize(&mut payload, limit as usize);
+        let pool = lattice_retrieval::context::knowledge_fetch_limit(request);
+        lattice_retrieval::context::finalize_knowledge(&mut plan, &mut payload, request, pool);
     }
     let mut diversity = Value::Null;
     if let Some(matches) = payload.get_mut("matches").and_then(Value::as_array_mut) {

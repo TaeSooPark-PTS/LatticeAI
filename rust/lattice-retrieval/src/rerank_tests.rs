@@ -262,3 +262,34 @@ async fn reports_without_matches_only_gain_a_rerank_block() {
     );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
 }
+
+#[test]
+fn the_shared_candidate_rules_match_what_the_seam_call_enforces() {
+    let config = RerankConfig::default();
+    assert_eq!(rerank_candidate_count("q", &sample(30), &config), Ok(20));
+    assert_eq!(rerank_candidate_count("q", &sample(3), &config), Ok(3));
+    assert_eq!(
+        rerank_candidate_count("q", &sample(1), &config),
+        Err("rerank_too_few_candidates")
+    );
+    assert_eq!(
+        rerank_candidate_count("  ", &sample(3), &config),
+        Err("rerank_too_few_candidates")
+    );
+    let off = RerankConfig {
+        enabled: false,
+        ..config
+    };
+    assert_eq!(
+        rerank_candidate_count("q", &sample(3), &off),
+        Err("rerank_disabled")
+    );
+    assert_eq!(
+        rerank_candidate_documents(&sample(2), 5).map(|docs| docs.len()),
+        Ok(2)
+    );
+    assert_eq!(
+        rerank_candidate_documents(&[json!({"id": "a"}), json!({"id": "b"})], 2),
+        Err("rerank_candidates_without_text")
+    );
+}

@@ -369,9 +369,27 @@ fn knowledge_options(request: &ContextRequest, limit: i64) -> ServiceHybridOptio
 }
 
 pub fn knowledge_fetch_limit(request: &ContextRequest) -> i64 {
-    request
-        .knowledge_limit
-        .max(crate::rerank::DEFAULT_RERANK_CANDIDATES as i64)
+    fetch_limit_for(
+        request.knowledge_limit,
+        &crate::rerank::RerankConfig::from_env(),
+    )
+}
+
+pub fn fetch_limit_for(knowledge_limit: i64, rerank: &crate::rerank::RerankConfig) -> i64 {
+    knowledge_limit.max(rerank.candidates as i64)
+}
+
+pub fn finalize_knowledge(
+    plan: &mut crate::temporal::TemporalPlan,
+    payload: &mut Value,
+    request: &ContextRequest,
+    pool: i64,
+) {
+    plan.apply_finalize_within(
+        payload,
+        pool.max(1) as usize,
+        request.knowledge_limit.max(1) as usize,
+    );
 }
 
 fn match_key(item: &Value) -> String {
@@ -511,7 +529,12 @@ pub fn knowledge_search(
 ) -> Result<Value, CoreError> {
     let (mut payload, plan) = knowledge_search_ranked(conn, model, request)?;
     if let Some(mut plan) = plan {
-        plan.apply_finalize(&mut payload, knowledge_fetch_limit(request) as usize);
+        finalize_knowledge(
+            &mut plan,
+            &mut payload,
+            request,
+            knowledge_fetch_limit(request),
+        );
     }
     Ok(payload)
 }
@@ -619,6 +642,23 @@ mod tests {
             provenance: Vec::new(),
             truncated: false,
         }
+    }
+
+    #[test]
+    fn the_fetch_limit_follows_the_configured_rerank_candidate_count() {
+        let configured = |raw: &'static str| {
+            crate::rerank::RerankConfig::from_lookup(move |key| {
+                (key == crate::rerank::RERANK_CANDIDATES_ENV).then(|| raw.to_string())
+            })
+        };
+        assert_eq!(fetch_limit_for(5, &configured("40")), 40);
+        assert_eq!(fetch_limit_for(5, &configured("64")), 64);
+        assert_eq!(fetch_limit_for(5, &configured("500")), 64);
+        assert_eq!(fetch_limit_for(80, &configured("40")), 80);
+        assert_eq!(
+            fetch_limit_for(5, &crate::rerank::RerankConfig::default()),
+            crate::rerank::DEFAULT_RERANK_CANDIDATES as i64
+        );
     }
 
     #[test]

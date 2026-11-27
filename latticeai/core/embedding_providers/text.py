@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -65,6 +66,7 @@ def _wants_embeddinggemma_prefix(model: str) -> bool:
 EMBEDDINGGEMMA_2_RUNTIME: Tuple[Tuple[str, Tuple[int, int]], ...] = (
     ("sentence-transformers", (6, 1)),
     ("transformers", (5, 18)),
+    ("torchvision", (0, 20)),
 )
 
 EMBEDDINGGEMMA_2_TEXT_ONLY: Dict[str, Any] = {
@@ -181,6 +183,7 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
             self.dim = _guess_dim(model_name, DEFAULT_EMBEDDING_DIM)
         self.model_id = f"huggingface:{model_name}:{self.dim}"
         self._encoder: Optional[Tuple[str, Any, Any]] = None
+        self._load_lock = threading.Lock()
         self._prefixed_e5 = _wants_e5_prefix(model_name)
         self._prefixed_gemma = _wants_embeddinggemma_prefix(model_name) and bool(
             cfg.extra.get("instruction_prefixes", True)
@@ -204,7 +207,12 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
     def _load(self) -> Tuple[str, Any, Any]:
         if self._encoder is not None:
             return self._encoder
+        with self._load_lock:
+            if self._encoder is None:
+                self._encoder = self._open_encoder()
+            return self._encoder
 
+    def _open_encoder(self) -> Tuple[str, Any, Any]:
         is_mlx_repo = self._model_name.startswith(
             "mlx-community/"
         ) or self._model_name.endswith("-mlx")
@@ -248,9 +256,12 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 encoder = SentenceTransformer(self._model_name)
             self._encoder = ("sentence_transformers", encoder, None)
             return self._encoder
-        except ImportError:
+        except ImportError as exc:
             if gemma_2:
-                raise EmbeddingUnavailable(embeddinggemma_2_runtime_gap())
+                raise EmbeddingUnavailable(
+                    embeddinggemma_2_runtime_gap()
+                    or f"EmbeddingGemma 2 could not be imported: {exc}"
+                ) from exc
         except EmbeddingUnavailable:
             raise
         except Exception as exc:
@@ -412,6 +423,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             self.dim = _guess_dim(cfg.model, DEFAULT_EMBEDDING_DIM)
         self.model_id = f"mlx:{cfg.model}:{self.dim}"
         self._encoder: Optional[Tuple[str, Any, Any]] = None
+        self._load_lock = threading.Lock()
         self._prefixed = _wants_e5_prefix(cfg.model)
         rev = cfg.extra.get("model_revision") or cfg.extra.get("revision")
         self.model_revision = str(rev).strip() if rev else None
@@ -425,12 +437,17 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
     def _load(self):
         if self._encoder is not None:
             return self._encoder
+        with self._load_lock:
+            if self._encoder is None:
+                self._encoder = self._open_encoder()
+            return self._encoder
+
+    def _open_encoder(self) -> Tuple[str, Any, Any]:
         try:
             from mlx_embeddings.utils import load as mlx_load
 
             model, tokenizer = mlx_load(self._cfg.model)
-            self._encoder = ("mlx_embeddings", model, tokenizer)
-            return self._encoder
+            return ("mlx_embeddings", model, tokenizer)
         except ImportError as exc:
             raise EmbeddingUnavailable(
                 f"MLX embedding model unavailable: {exc}"

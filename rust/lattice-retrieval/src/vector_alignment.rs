@@ -517,7 +517,7 @@ pub fn vector_search_aligned(
             .filter(|r| allow_ids.contains(&r.item_id))
             .cloned()
             .collect();
-        if filtered.is_empty() {
+        if filtered.len() < (limit as usize).min(all_rows.len()) {
             index_json = selection.as_json();
             all_rows
         } else {
