@@ -9,7 +9,9 @@ use crate::expansion::{
     expansion_enabled, one_hop, rrf_enabled, rrf_scores, EXPANSION_SCORE_FACTOR, EXPANSION_SEEDS,
 };
 use crate::policy::{class_weights, resolve_policy};
-use crate::service::{graph_search, keyword_search, vector_search, GraphSearchOptions, Scope};
+use crate::service::{
+    graph_search, keyword_search_ranked, vector_search, GraphSearchOptions, Scope,
+};
 use crate::shape::{truthy, DEFAULT_EXPANSION_CAP};
 
 pub const DEFAULT_HYBRID_WEIGHTS: [(&str, f64); 3] =
@@ -30,6 +32,7 @@ pub struct ServiceHybridOptions {
     pub semantic_degraded: Option<String>,
     pub recency: Option<crate::temporal::RecencyDecay>,
     pub include_historical: bool,
+    pub keyword_ranking: crate::keyword::KeywordRanking,
 }
 
 impl Default for ServiceHybridOptions {
@@ -46,6 +49,7 @@ impl Default for ServiceHybridOptions {
             semantic_degraded: None,
             recency: None,
             include_historical: false,
+            keyword_ranking: crate::keyword::KeywordRanking::Legacy,
         }
     }
 }
@@ -226,7 +230,13 @@ pub fn service_hybrid_search(
     let channels: Vec<(&str, Value)> = vec![
         (
             "keyword",
-            keyword_search(conn, &search_query, options.keyword_limit, scope)?,
+            keyword_search_ranked(
+                conn,
+                &search_query,
+                options.keyword_limit,
+                scope,
+                options.keyword_ranking,
+            )?,
         ),
         ("vector", vector_payload),
         (
@@ -238,6 +248,7 @@ pub fn service_hybrid_search(
                     limit: options.graph_limit,
                     expand_depth: 1,
                     scope: scope.clone(),
+                    keyword_ranking: options.keyword_ranking,
                 },
             )?,
         ),

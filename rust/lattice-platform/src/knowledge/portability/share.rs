@@ -6,7 +6,7 @@ use axum::extract::{Path as AxumPath, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_auth::OrderedMap;
-use lattice_core::graph_write::types::ImportRequest;
+use lattice_core::graph_write::share_import::SharedSubgraphImport;
 use serde_json::{json, Value};
 
 use crate::adminops::admin::enterprise::{
@@ -31,6 +31,8 @@ use super::*;
 const SUBGRAPH_ENTRY: &str = "bundle.json";
 const SHARE_REVIEW_SOURCE: &str = "kg_change_digest";
 const SHARE_REVIEW_KIND: &str = "kg_share_bundle";
+const UNSIGNED_BUNDLE: &str =
+    "Shared subgraph bundles must carry a valid Ed25519 signature; unsigned or altered bundles are refused.";
 
 pub(crate) async fn share_status(
     State(state): State<PortabilityState>,
@@ -76,7 +78,40 @@ pub(crate) async fn share_status(
 #[path = "share_bundle.rs"]
 mod bundle;
 pub(super) use bundle::emit_portability_audit;
-use bundle::{build_subgraph_bundle, verify_subgraph_bundle_signature};
+use bundle::{build_subgraph_bundle, verify_subgraph_bundle_signature, ShareViewer};
+
+fn sender_is_paired_peer(state: &PortabilityState, bundle: &Value) -> bool {
+    let Some(signer) = bundle
+        .get("signature")
+        .and_then(|s| s.get("public_key"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+    else {
+        return false;
+    };
+    crate::knowledge::network::PeerRegistry::open(
+        state
+            .config
+            .data_dir()
+            .join(crate::knowledge::network::PEERS_FILE),
+    )
+    .list()
+    .iter()
+    .any(|peer| {
+        peer.get("public_key")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            == Some(signer)
+    })
+}
+
+fn share_viewer(state: &PortabilityState, email: &str) -> ShareViewer {
+    ShareViewer {
+        viewer: state.auth.graph_viewer(email),
+        require_workspace: state.auth.effective_require_auth(),
+    }
+}
 
 fn share_disabled(headers: &HeaderMap) -> Response {
     message_detail(403, "portability.brain_network_disabled", headers)
@@ -114,9 +149,10 @@ pub(crate) async fn share_export(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    if let Err(refusal) = state.auth.require_admin(&headers) {
-        return refusal;
-    }
+    let identity = match state.auth.require_admin(&headers) {
+        Ok(id) => id,
+        Err(refusal) => return refusal,
+    };
     if let Err(refusal) = require_graph(&state, &headers) {
         return refusal;
     }
@@ -127,7 +163,8 @@ pub(crate) async fn share_export(
         Ok(v) => v,
         Err(refusal) => return refusal,
     };
-    match build_subgraph_bundle(&state, &object) {
+    let scope = share_viewer(&state, &identity.email);
+    match build_subgraph_bundle(&state, &object, &scope) {
         Ok((bundle, counts, excluded_local_only)) => {
             emit_portability_audit(
                 &state,
@@ -162,9 +199,10 @@ pub(crate) async fn share_archive(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    if let Err(refusal) = state.auth.require_admin(&headers) {
-        return refusal;
-    }
+    let identity = match state.auth.require_admin(&headers) {
+        Ok(id) => id,
+        Err(refusal) => return refusal,
+    };
     if let Err(refusal) = require_graph(&state, &headers) {
         return refusal;
     }
@@ -175,6 +213,7 @@ pub(crate) async fn share_archive(
         Ok(v) => v,
         Err(refusal) => return refusal,
     };
+    let scope = share_viewer(&state, &identity.email);
     let passphrase = object
         .get("passphrase")
         .and_then(Value::as_str)
@@ -197,7 +236,8 @@ pub(crate) async fn share_archive(
         }
     };
 
-    let (bundle, counts, excluded_local_only) = match build_subgraph_bundle(&state, &object) {
+    let (bundle, counts, excluded_local_only) = match build_subgraph_bundle(&state, &object, &scope)
+    {
         Ok(v) => v,
         Err(err) => return detail(StatusCode::BAD_REQUEST, &err),
     };
@@ -375,9 +415,12 @@ pub(crate) async fn share_import(
     };
 
     let signature_verified = match verify_subgraph_bundle_signature(&bundle) {
-        Ok(v) => v,
+        Ok(true) => true,
+        Ok(false) => return detail(StatusCode::BAD_REQUEST, UNSIGNED_BUNDLE),
         Err(err) => return detail(StatusCode::BAD_REQUEST, &err),
     };
+    let sender_trusted = sender_is_paired_peer(&state, &bundle);
+    let ignored_sources = array_rows(&bundle, "knowledge_sources").len();
 
     let nodes = array_rows(&bundle, "nodes").len();
     let edges = array_rows(&bundle, "edges").len();
@@ -396,6 +439,7 @@ pub(crate) async fn share_import(
         map.insert("dry_run", json!(true));
         map.insert("staged", json!(false));
         map.insert("signature_verified", json!(signature_verified));
+        map.insert("sender_trusted", json!(sender_trusted));
         map.insert("counts", counts);
         return json_ok(map);
     }
@@ -414,11 +458,12 @@ pub(crate) async fn share_import(
         .to_string();
     let title = format!("Shared Subgraph ({nodes} nodes, {edges} edges) from {sender_fp}");
     let summary = format!(
-        "Staged selective subgraph package ({nodes} nodes, {edges} edges, {chunks} chunks) awaiting review approval."
+        "Staged selective subgraph package ({nodes} nodes, {edges} edges, {chunks} chunks, {provenance} provenance records; {ignored_sources} knowledge sources ignored) awaiting review approval. Existing local items are never overwritten."
     );
     let provenance_meta = json!({
         "sender_fingerprint": sender_fp,
         "signature_verified": signature_verified,
+        "sender_trusted": sender_trusted,
         "format": bundle.get("format").cloned().unwrap_or_else(|| json!(SUBGRAPH_FORMAT)),
         "received_at": http_reply::now_iso_utc(),
         "workspace_id": workspace_id,
@@ -461,6 +506,7 @@ pub(crate) async fn share_import(
     map.insert("status", json!("pending_review"));
     map.insert("dry_run", json!(false));
     map.insert("signature_verified", json!(signature_verified));
+    map.insert("sender_trusted", json!(sender_trusted));
     map.insert("proposal_id", json!(proposal_id));
     map.insert("counts", counts);
     map.insert("review_item", review_item);
@@ -550,25 +596,35 @@ pub(crate) async fn share_accept(
             "Review item is not a staged Knowledge Graph share proposal.",
         );
     }
-    let payload_map = stored
-        .get("payload")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
+    let payload = stored.get("payload").cloned().unwrap_or(Value::Null);
+    if !matches!(verify_subgraph_bundle_signature(&payload), Ok(true)) {
+        return detail(StatusCode::CONFLICT, UNSIGNED_BUNDLE);
+    }
+    let origin = payload
+        .get("signature")
+        .and_then(|s| s.get("fingerprint"))
+        .and_then(Value::as_str)
+        .unwrap_or("unknown")
+        .to_string();
 
     let Some(graph) = state.graph.clone() else {
         return message_detail(503, "portability.review_queue_unavailable", &headers);
     };
-    let req = ImportRequest {
-        data: payload_map,
-        mode: "merge".into(),
-        dry_run: false,
+    let req = SharedSubgraphImport {
+        data: payload.as_object().cloned().unwrap_or_default(),
+        workspace_id: workspace_id
+            .or(stored_ws)
+            .unwrap_or(lattice_core::read::DEFAULT_WORKSPACE_ID)
+            .to_string(),
+        owner: Some(identity.email.trim().to_string()).filter(|email| !email.is_empty()),
+        origin,
     };
-    let outcome = match tokio::task::spawn_blocking(move || graph.import_graph_data(&req)).await {
-        Ok(Ok(outcome)) => outcome,
-        Ok(Err(err)) => return detail(StatusCode::BAD_REQUEST, &err.to_string()),
-        Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
-    };
+    let outcome =
+        match tokio::task::spawn_blocking(move || graph.import_shared_subgraph(&req)).await {
+            Ok(Ok(outcome)) => outcome,
+            Ok(Err(err)) => return detail(StatusCode::BAD_REQUEST, &err.to_string()),
+            Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
+        };
 
     let updated = match transition_approve(&gov, &item_id, workspace_id) {
         Ok(item) => item,

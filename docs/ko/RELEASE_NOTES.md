@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.3.0 - Temporal Synthesis] (2026-11-27)
+
+첫 답변 후 데스크톱 채팅 접힘, `Cmd/Ctrl+K` "오늘의 브리핑" 화면 이동 열기, 2D 기억 그래프 "구버전 표시" 토글, 커맨드 팔레트 키보드 스크롤을 수정했습니다. 채팅 검색에 IDF/BM25F 관련도 랭킹, `as_of` 유효기간 평가 및 연도 파싱, 엄격한 Self-RAG 커버리지 보류, 채팅 경로 CI 래칫 게이트(`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`)를 추가하고, 공유 번들 내보내기·가져오기, 시간 사전 필터, `LIMIT` 이전 범위 필터, 연대기 fail-closed 뷰어 필터, 덮어쓰기 식별자 인덱싱을 강화했습니다.
+
+상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.3.0.md](./releases/RELEASE_NOTES_v14.3.0.md).
+
 # [v14.2.0 - Temporal Synthesis] (2026-11-27)
 
 검색을 시간 중심으로 재구성했습니다: 문맥 접두어를 갖춘 토큰·AST·parent-child 청킹, 새 `auto` 임베딩 기본값과 선택적 `rag` extra를 통한 EmbeddingGemma 2, RRF 대체를 갖춘 cross-encoder 재랭킹, `sort_by`·시간 의도 사전 필터·`SUPERSEDES` 처리를 포함한 2단계 시간 랭킹, 채팅의 대화 이력 반영 질의 재작성·MMR·Self-RAG 게이트, 3D 살아있는 Brain 화면·고정 뷰포트 데스크톱 셸·커맨드 팔레트, `ltcai search` CLI, 다중 사용자 대화 노출·업로드/폴더 소유권·공유 번들 가져오기 수정. 실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했습니다.
@@ -130,10 +136,11 @@ Rust 전 워크스페이스(`lattice-auth`, `lattice-core`, `lattice-ingest`, `l
 
 # 릴리스 노트 색인
 
-이 저장소는 **13.0.0부터 14.2.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
+이 저장소는 **13.0.0부터 14.3.0까지**의 공개 릴리스 이력을 유지합니다(최신 Rust 호스트 + 도메인 그룹 아키텍처 세대). `SECURITY.md`가 `14.x` 및 `13.x` 세대를 지원하며, 이 색인 역시 동일한 경계를 따릅니다.
 
 ## 릴리스 목록 (13.0.0+)
 
+- [v14.3.0 - Temporal Synthesis](./releases/RELEASE_NOTES_v14.3.0.md)
 - [v14.2.0 - Temporal Synthesis](./releases/RELEASE_NOTES_v14.2.0.md)
 - [v14.1.2 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.2.md)
 - [v14.1.1 - Living Synthesis](./releases/RELEASE_NOTES_v14.1.1.md)

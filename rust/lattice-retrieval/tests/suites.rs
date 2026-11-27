@@ -127,6 +127,7 @@ fn run(
                 limit: int(spec, "limit", 30),
                 expand_depth: int(spec, "expand_depth", 1),
                 scope: graph_scope(spec),
+                ..GraphSearchOptions::default()
             },
         )
         .expect("graph_search must not fail on the fixture"),

@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.3.0 — Temporal Synthesis (2026-11-27)
+
+Fixed post-send desktop chat collapse, `Cmd/Ctrl+K` "Today's briefing" cross-route drawer opening, 2D Memory Graph "Show superseded" filtering, and command palette keyboard scrolling; upgraded chat retrieval with IDF/BM25F relevance ranking, true `as_of` point-in-time valid-time filtering and year-only parsing, stricter Self-RAG coverage abstention, and CI chat-path ratchet floors (`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`); and closed six multi-user privacy and integrity findings across share bundle export/import, scoped temporal prefilters, scope-before-`LIMIT` graph/brain/search queries, fail-closed Chronicle viewer filtering, and indexed supersede-on-ingest identity lookups.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.3.0.md](docs/releases/RELEASE_NOTES_v14.3.0.md).
+
+Build artifacts: `dist/ltcai-14.3.0-py3-none-any.whl`, `dist/ltcai-14.3.0.tar.gz`, `ltcai-14.3.0.tgz`, `dist/ltcai-14.3.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.3.0_aarch64.dmg`.
+
 ## v14.2.0 — Temporal Synthesis (2026-11-27)
 
 Rebuilt retrieval around time: token, AST and parent-child chunking with contextual prefixes; EmbeddingGemma 2 through the new `auto` embedding default and optional `rag` extra; cross-encoder reranking with RRF fallback; two-stage temporal ranking with `sort_by`, time-intent prefilters and `SUPERSEDES` handling; history-aware query rewrite, MMR and a Self-RAG gate in chat; a 3D living brain view, fixed-viewport desktop shell and command palette; the `ltcai search` CLI; and fixes for a multi-user conversation leak, upload and folder ownership, and shared-bundle import. Real EmbeddingGemma 2 and reranker model loading was not verified in the build environment.

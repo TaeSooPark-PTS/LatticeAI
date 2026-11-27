@@ -205,7 +205,9 @@ impl GraphWriter {
                 }
             }
             for node in &nodes {
-                let Some(node) = node.as_object() else { continue };
+                let Some(node) = node.as_object() else {
+                    continue;
+                };
                 self.upsert_node(
                     txn,
                     &NodeSpec {
@@ -227,8 +229,10 @@ impl GraphWriter {
             }
             super::chunk_parents::import_chunk_parents(txn, &parents)?;
             for chunk in &chunks {
-                let Some(chunk) = chunk.as_object() else { continue };
-                self.restore_missing_chunk_node(txn, chunk)?;
+                let Some(chunk) = chunk.as_object() else {
+                    continue;
+                };
+                self.restore_missing_chunk_node(txn, chunk, None, None)?;
                 self.upsert_chunk(
                     txn,
                     &text_of(chunk, "id"),
@@ -238,7 +242,9 @@ impl GraphWriter {
                 )?;
             }
             for edge in &edges {
-                let Some(edge) = edge.as_object() else { continue };
+                let Some(edge) = edge.as_object() else {
+                    continue;
+                };
                 let meta =
                     crate::pytext::safe_loads(edge.get("metadata_json").and_then(Value::as_str));
                 let legacy_label = meta
@@ -263,7 +269,9 @@ impl GraphWriter {
                 )?;
             }
             for source in &sources {
-                let Some(source) = source.as_object() else { continue };
+                let Some(source) = source.as_object() else {
+                    continue;
+                };
                 txn.execute(
                     "INSERT OR REPLACE INTO knowledge_sources( \
                        id, root_path, os_type, drive_id, label, status, include_ocr, \
@@ -294,43 +302,10 @@ impl GraphWriter {
                 )?;
             }
             for record in &provenance {
-                let Some(record) = record.as_object() else { continue };
-                txn.execute(
-                    "INSERT OR REPLACE INTO ingestion_provenance( \
-                       id, node_id, source_type, source_uri, content_hash, title, pipeline, \
-                       owner, workspace_id, captured_at, modified_at, embedded, linked, \
-                       duplicate, agent_used, chunk_count, permissions_json, metadata_json, created_at) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    rusqlite::params![
-                        text_of(record, "id"),
-                        text_of(record, "node_id"),
-                        text_of(record, "source_type"),
-                        optional_text(record, "source_uri"),
-                        optional_text(record, "content_hash"),
-                        optional_text(record, "title"),
-                        optional_text(record, "pipeline")
-                            .filter(|value| !value.is_empty())
-                            .unwrap_or_else(|| "import".into()),
-                        optional_text(record, "owner"),
-                        optional_text(record, "workspace_id"),
-                        optional_text(record, "captured_at"),
-                        optional_text(record, "modified_at"),
-                        int_of(record, "embedded"),
-                        int_of(record, "linked"),
-                        int_of(record, "duplicate"),
-                        optional_text(record, "agent_used"),
-                        int_of(record, "chunk_count"),
-                        optional_text(record, "permissions_json")
-                            .filter(|value| !value.is_empty())
-                            .unwrap_or_else(|| "{}".into()),
-                        optional_text(record, "metadata_json")
-                            .filter(|value| !value.is_empty())
-                            .unwrap_or_else(|| "{}".into()),
-                        optional_text(record, "created_at")
-                            .filter(|value| !value.is_empty())
-                            .unwrap_or_else(|| now.clone()),
-                    ],
-                )?;
+                let Some(record) = record.as_object() else {
+                    continue;
+                };
+                insert_provenance_row(txn, record, &now)?;
             }
             Ok(())
         })?;
@@ -345,10 +320,12 @@ impl GraphWriter {
 }
 
 impl GraphWriter {
-    fn restore_missing_chunk_node(
+    pub(super) fn restore_missing_chunk_node(
         &self,
         txn: &Transaction<'_>,
         chunk: &Map<String, Value>,
+        owner: Option<&str>,
+        workspace_id: Option<&str>,
     ) -> Result<(), CoreError> {
         let chunk_id = text_of(chunk, "id");
         if self.node_exists(txn, &chunk_id)? {
@@ -383,6 +360,8 @@ impl GraphWriter {
                 title: format!("{title} chunk {position}"),
                 summary: crate::pytext::truncate_chars(&text, 500),
                 metadata,
+                owner: owner.map(str::to_string),
+                workspace_id: workspace_id.map(str::to_string),
                 ..NodeSpec::default()
             },
         )?;
@@ -401,18 +380,62 @@ impl GraphWriter {
     }
 }
 
-fn array_of(data: &Map<String, Value>, key: &str) -> Vec<Value> {
+pub(super) fn insert_provenance_row(
+    txn: &Transaction<'_>,
+    record: &Map<String, Value>,
+    now: &str,
+) -> Result<(), CoreError> {
+    txn.execute(
+        "INSERT OR REPLACE INTO ingestion_provenance( \
+           id, node_id, source_type, source_uri, content_hash, title, pipeline, \
+           owner, workspace_id, captured_at, modified_at, embedded, linked, \
+           duplicate, agent_used, chunk_count, permissions_json, metadata_json, created_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        rusqlite::params![
+            text_of(record, "id"),
+            text_of(record, "node_id"),
+            text_of(record, "source_type"),
+            optional_text(record, "source_uri"),
+            optional_text(record, "content_hash"),
+            optional_text(record, "title"),
+            optional_text(record, "pipeline")
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "import".into()),
+            optional_text(record, "owner"),
+            optional_text(record, "workspace_id"),
+            optional_text(record, "captured_at"),
+            optional_text(record, "modified_at"),
+            int_of(record, "embedded"),
+            int_of(record, "linked"),
+            int_of(record, "duplicate"),
+            optional_text(record, "agent_used"),
+            int_of(record, "chunk_count"),
+            optional_text(record, "permissions_json")
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "{}".into()),
+            optional_text(record, "metadata_json")
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "{}".into()),
+            optional_text(record, "created_at")
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| now.to_string()),
+        ],
+    )?;
+    Ok(())
+}
+
+pub(super) fn array_of(data: &Map<String, Value>, key: &str) -> Vec<Value> {
     data.get(key)
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default()
 }
 
-fn text_of(map: &Map<String, Value>, key: &str) -> String {
+pub(super) fn text_of(map: &Map<String, Value>, key: &str) -> String {
     map.get(key).map(py_str).unwrap_or_default()
 }
 
-fn optional_text(map: &Map<String, Value>, key: &str) -> Option<String> {
+pub(super) fn optional_text(map: &Map<String, Value>, key: &str) -> Option<String> {
     map.get(key).filter(|value| !value.is_null()).map(py_str)
 }
 

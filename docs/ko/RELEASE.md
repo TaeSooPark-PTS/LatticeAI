@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.3.0 — Temporal Synthesis (2026-11-27)
+
+첫 답변 후 데스크톱 채팅 접힘, `Cmd/Ctrl+K` "오늘의 브리핑" 화면 이동 열기, 2D 기억 그래프 "구버전 표시" 필터링, 커맨드 팔레트 키보드 스크롤을 수정했습니다. 채팅 검색에 IDF/BM25F 관련도 랭킹, `as_of` 시점 유효기간 필터링 및 연도 파싱, 엄격한 Self-RAG 커버리지 보류, 채팅 경로 CI 래칫 게이트(`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`, `temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`)를 추가했습니다. 또한 공유 번들 내보내기·가져오기, 시간 사전 필터 범위 제한, `LIMIT` 이전 범위 필터, 연대기 fail-closed 뷰어 필터, 덮어쓰기 식별자 인덱싱 등 6건의 다중 사용자 개인정보·무결성 결함을 해결했습니다.
+
+릴리스 노트는 [docs/ko/releases/RELEASE_NOTES_v14.3.0.md](./releases/RELEASE_NOTES_v14.3.0.md).
+
+빌드 산출물은 `dist/ltcai-14.3.0-py3-none-any.whl`, `dist/ltcai-14.3.0.tar.gz`, `ltcai-14.3.0.tgz`, `dist/ltcai-14.3.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.3.0_aarch64.dmg` 입니다.
+
 ## v14.2.0 — Temporal Synthesis (2026-11-27)
 
 검색을 시간 중심으로 재구성했습니다: 문맥 접두어를 갖춘 토큰·AST·parent-child 청킹, 새 `auto` 임베딩 기본값과 선택적 `rag` extra를 통한 EmbeddingGemma 2, RRF 대체를 갖춘 cross-encoder 재랭킹, `sort_by`·시간 의도 사전 필터·`SUPERSEDES` 처리를 포함한 2단계 시간 랭킹, 채팅의 대화 이력 반영 질의 재작성·MMR·Self-RAG 게이트, 3D 살아있는 Brain 화면·고정 뷰포트 데스크톱 셸·커맨드 팔레트, `ltcai search` CLI, 다중 사용자 대화 노출·업로드/폴더 소유권·공유 번들 가져오기 수정. 실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했습니다.

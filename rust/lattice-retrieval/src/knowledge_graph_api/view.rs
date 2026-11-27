@@ -5,7 +5,7 @@ use lattice_core::CoreError;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
-use crate::knowledge_graph_api::reads::{filter_scoped, list_documents, stats};
+use crate::knowledge_graph_api::reads::{filter_scoped, list_documents, scope_sql, stats};
 use crate::knowledge_graph_api::GRAPH_VISIBLE_TYPES;
 use crate::service::Scope;
 
@@ -22,12 +22,26 @@ pub fn graph_view(
         .map(|name| format!("'{name}'"))
         .collect::<Vec<_>>()
         .join(",");
+    let predicate = scope_sql(scope);
+    let (scope_clause, scope_params) = match &predicate {
+        Some((clause, params)) => (
+            format!(" AND id IN (SELECT id FROM nodes_v2 WHERE {clause})"),
+            params.clone(),
+        ),
+        None => (String::new(), Vec::new()),
+    };
 
+    let mut node_params: Vec<rusqlite::types::Value> = scope_params
+        .iter()
+        .cloned()
+        .map(rusqlite::types::Value::Text)
+        .collect();
+    node_params.push(rusqlite::types::Value::Integer(limit));
     let mut statement = conn.prepare(&format!(
         "SELECT id, type, title, summary, metadata_json, updated_at FROM {nodes_table} \
-         WHERE type IN ({visible}) ORDER BY updated_at DESC, id ASC LIMIT ?"
+         WHERE type IN ({visible}){scope_clause} ORDER BY updated_at DESC, id ASC LIMIT ?"
     ))?;
-    let rows = statement.query_map([limit], |row| {
+    let rows = statement.query_map(rusqlite::params_from_iter(node_params.iter()), |row| {
         let mut node = OrderedMap::new();
         node.insert("id", column_json(row, "id")?);
         node.insert("type", column_json(row, "type")?);
@@ -46,15 +60,17 @@ pub fn graph_view(
 
     let mut edges: Vec<Value> = Vec::new();
     if !nodes.is_empty() {
+        let mut edge_params = node_params.clone();
+        edge_params.extend(node_params);
         let mut statement = conn.prepare(&format!(
             "SELECT id, from_node, to_node, type, weight, metadata_json FROM {edges_table} \
-             WHERE from_node IN (SELECT id FROM {nodes_table} WHERE type IN ({visible}) \
+             WHERE from_node IN (SELECT id FROM {nodes_table} WHERE type IN ({visible}){scope_clause} \
                                  ORDER BY updated_at DESC, id ASC LIMIT ?) \
-             AND to_node IN (SELECT id FROM {nodes_table} WHERE type IN ({visible}) \
+             AND to_node IN (SELECT id FROM {nodes_table} WHERE type IN ({visible}){scope_clause} \
                              ORDER BY updated_at DESC, id ASC LIMIT ?) \
              ORDER BY weight DESC, created_at DESC, id ASC"
         ))?;
-        let rows = statement.query_map([limit, limit], |row| {
+        let rows = statement.query_map(rusqlite::params_from_iter(edge_params.iter()), |row| {
             let mut edge = OrderedMap::new();
             edge.insert("id", column_json(row, "id")?);
             edge.insert("from", column_json(row, "from_node")?);
@@ -417,4 +433,57 @@ pub fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
     let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
     (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn graph_view_applies_workspace_scope_before_limit() {
+        let mut conn = Connection::open_in_memory().expect("db");
+        let txn = conn.transaction().expect("txn");
+        lattice_core::graph_write::schema::bootstrap(&txn, "2026-01-01T00:00:00").expect("schema");
+        txn.commit().expect("commit");
+        for i in 0..5 {
+            let id = format!("other-{i}");
+            let ts = format!("2026-05-0{}T00:00:00", i + 1);
+            conn.execute(
+                "INSERT INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at) \
+                 VALUES (?1, 'Document', ?1, 's', '{\"workspace_id\":\"other\"}', '{}', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node");
+            conn.execute(
+                "INSERT INTO nodes_v2(id, label, type, workspace_id, created_at, updated_at) \
+                 VALUES (?1, ?1, 'Document', 'other', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node_v2");
+        }
+        for i in 0..2 {
+            let id = format!("team-{i}");
+            let ts = format!("2026-01-0{}T00:00:00", i + 1);
+            conn.execute(
+                "INSERT INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at) \
+                 VALUES (?1, 'Document', ?1, 's', '{\"workspace_id\":\"team\"}', '{}', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node");
+            conn.execute(
+                "INSERT INTO nodes_v2(id, label, type, workspace_id, created_at, updated_at) \
+                 VALUES (?1, ?1, 'Document', 'team', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node_v2");
+        }
+
+        let scope = Scope::for_workspace("team");
+        let view = graph_view(&conn, 2, &scope, 1_780_000_000.0).expect("view");
+        let nodes = view["nodes"].as_array().expect("nodes");
+        assert_eq!(nodes.len(), 2);
+        let ids: Vec<&str> = nodes.iter().filter_map(|n| n["id"].as_str()).collect();
+        assert!(ids.contains(&"team-0"));
+        assert!(ids.contains(&"team-1"));
+    }
 }

@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.3.0 — Temporal Synthesis**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite
@@ -113,10 +113,4 @@ EmbeddingGemma 2), see [`MODEL_POLICY.md`](../MODEL_POLICY.md).
 
 ## Compatibility & Upgrades
 
-14.2.0 changes the schema only additively (the `chunk_parents` table is created
-on first parent write) and performs no destructive migration. Documents are
-re-embedded once on their next sync because chunk index text now includes a
-contextual prefix, and the `auto` embedding default can change the active
-embedder, which reports `reindex_required`. See
-[the 14.2.0 release notes](releases/RELEASE_NOTES_v14.2.0.md) for the retrieval
-pipeline, environment variables, and limitations.
+14.3.0 adds expression indexes on `nodes(json_extract(metadata_json, '$.source_uri'))` and `nodes(json_extract(metadata_json, '$.filename'))` additively with no destructive migration, scopes temporal prefilters and graph/brain/search `LIMIT` queries before truncation, hardens share bundle export/import with viewer filtering and non-overwriting import isolation, upgrades chat retrieval to IDF/BM25F relevance ranking with `as_of` valid-time evaluation and stricter Self-RAG coverage abstention, and fixes desktop chat post-send layout, `Cmd/Ctrl+K` briefing routing, 2D superseded filtering, and palette keyboard scrolling. See [the 14.3.0 release notes](releases/RELEASE_NOTES_v14.3.0.md) for full details and RAG metrics.

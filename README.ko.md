@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.2.0 Living Brain 둘러보기](output/release/v14.2.0/gifs/v14.2.0-living-brain-walkthrough.gif)
+![v14.3.0 Living Brain 둘러보기](output/release/v14.3.0/gifs/v14.3.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ LatticeAI 13.4.0은 **범용 적응형 에이전트 하네스(Universal Adaptive
 
 ### 1. 데스크톱 앱 (macOS)
 
-[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.2.0_aarch64.dmg`를 내려받아 실행하세요.
+[GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)에서 `Lattice AI_14.3.0_aarch64.dmg`를 내려받아 실행하세요.
 
 ### 2. 한 줄 명령 CLI & 웹 스튜디오
 
@@ -94,15 +94,15 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 | 온보딩 & 하드웨어 맞춤 추천 | 실시간 모델 라이브러리 & SSE 진행률 |
 | --- | --- |
-| ![추천 모델](output/release/v14.2.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.2.0/screenshots/03-install-load-progress.png) |
+| ![추천 모델](output/release/v14.3.0/screenshots/02-recommended-models.png) | ![설치 및 로드 진행률](output/release/v14.3.0/screenshots/03-install-load-progress.png) |
 | **브레인 채팅 홈** — 출처 근거가 함께 제시되는 답변 | **기억 그래프** — 2-Hop 개념 및 파일 연결 탐색 |
-| ![브레인 채팅 홈](output/release/v14.2.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.2.0/screenshots/05-memory-graph.png) |
+| ![브레인 채팅 홈](output/release/v14.3.0/screenshots/04-brain-chat-home.png) | ![기억 그래프](output/release/v14.3.0/screenshots/05-memory-graph.png) |
 | **자료 수집 & 지식 여정** — 자료가 기억으로 정리되는 과정 | **검토 센터** — 모든 수정이 반영되기 전 diff 확인 |
-| ![자료에서 기억으로](output/release/v14.2.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.2.0/screenshots/12-review-center.png) |
+| ![자료에서 기억으로](output/release/v14.3.0/screenshots/11-knowledge-journey.png) | ![검토 센터](output/release/v14.3.0/screenshots/12-review-center.png) |
 | **브레인 연대기** — 성장 곡선, 히트맵, 일일 기록 | **자율성 다이얼 & 시스템** — 쉬운 언어로 제어하는 권한 |
-| ![브레인 연대기](output/release/v14.2.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.2.0/screenshots/08-system.png) |
+| ![브레인 연대기](output/release/v14.3.0/screenshots/13-chronicle.png) | ![설정 화면](output/release/v14.3.0/screenshots/08-system.png) |
 
-전체 화면 인덱스: [output/release/v14.2.0/SCREENSHOT_INDEX.md](output/release/v14.2.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.2.0/screenshots/01-login.png), [06-capture.png](output/release/v14.2.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.2.0/screenshots/07-model-library.png)).
+전체 화면 인덱스: [output/release/v14.3.0/SCREENSHOT_INDEX.md](output/release/v14.3.0/SCREENSHOT_INDEX.md) (로그인 및 라이브러리 화면: [01-login.png](output/release/v14.3.0/screenshots/01-login.png), [06-capture.png](output/release/v14.3.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.3.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -126,27 +126,26 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **14.2.0 — Temporal Synthesis**입니다:
+현재 최신 릴리스는 **14.3.0 — Temporal Synthesis**입니다:
 
-- **시간 인식 검색** — 한국어·영어 시간 표현이 날짜 사전 필터가 되고, 최신성 감쇠가 항상 적용되며, 현재 상태 답변에서 구버전(superseded)을 제외하고, `sort_by=relevance|newest`를 지원합니다.
-- **개선된 청크와 랭킹** — 토큰 크기의 parent-child 청크, tree-sitter 코드 분할, 문맥 접두어, RRF 대체를 갖춘 cross-encoder 재랭킹, MMR, 기록이 답을 뒷받침하지 못하면 보류하는 Self-RAG 게이트.
-- **3D 살아있는 Brain과 데스크톱 셸** — 검색 경로를 따라 점등하며 성장하는 3D 뇌, 고정 뷰포트 글래스 작업공간, `Cmd/Ctrl+K` 팔레트.
-- **`ltcai search`와 개인정보 수정** — 터미널에서 검색할 수 있으며, 다중 사용자 모드에서 다른 사용자의 대화 본문을 공유 그래프에서 더 이상 읽을 수 없습니다.
+- **채팅 검색 및 시간 정확도 개선** — 채팅 경로에 IDF/BM25F 관련도 랭킹을 적용하고(`R@5 0.9194 → >=0.98`, `MRR 0.6122 → >=0.85`, `nDCG@10 0.6826 → >=0.87`), `as_of` 시점 유효기간 필터링과 연도 질의 파싱(`temporal_ordering` `R@5 0.600 → >=0.99`, `MRR 0.267 → >=0.79`), 더 엄격한 Self-RAG 커버리지 보류, 채팅 경로 CI 래칫 게이트를 추가했습니다.
+- **다중 사용자 개인정보 및 무결성 강화** — 공유 번들 내보내기 뷰어 필터링, 공유 번들 가져오기 강화(기존 로컬 ID 덮어쓰기 차단, 워크스페이스·소유자 고정, `knowledge_sources` 주입 차단, 대화 타입 제외), 워크스페이스·뷰어 범위 시간 사전 필터, `LIMIT` 이전 범위 필터 적용, 연대기 뷰어 필터 fail-closed 처리, 덮어쓰기(supersede) 식별자 인덱싱을 적용했습니다.
+- **데스크톱 채팅 및 탐색기 UX 수정** — 첫 답변 후 데스크톱 채팅 영역이 접히는 문제(`1024×640`, `1280×720`, `1440×900`)를 해결하고, 다른 화면에서 `Cmd/Ctrl+K` "오늘의 브리핑" 열기, 2D 기억 그래프의 "구버전 표시" 토글 연동, 커맨드 팔레트 키보드 탐색 `scrollIntoView`를 적용했습니다.
 
-실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했으며, 워크스페이스 안의 문서는 사용자별로 비공개가 아닙니다. 파이프라인 다이어그램, 용어집, 환경 변수, 한계는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.2.0.md)를 참고하세요.
+실제 EmbeddingGemma 2 및 reranker 모델 로딩은 빌드 환경에서 검증하지 못했으며, 워크스페이스 안의 문서는 사용자별로 비공개가 아닙니다. 상세 내용, RAG 지표, 한계는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.3.0.md)를 참고하세요.
 
 <details>
-<summary>14.2.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>14.3.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](docs/ko/releases/RELEASE_NOTES_v14.2.0.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.3.0.md](docs/ko/releases/RELEASE_NOTES_v14.3.0.md).
 
-14.2.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+14.3.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-14.2.0-py3-none-any.whl`
-- `dist/ltcai-14.2.0.tar.gz`
-- `ltcai-14.2.0.tgz`
-- `dist/ltcai-14.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.2.0_aarch64.dmg`
+- `dist/ltcai-14.3.0-py3-none-any.whl`
+- `dist/ltcai-14.3.0.tar.gz`
+- `ltcai-14.3.0.tgz`
+- `dist/ltcai-14.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.3.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -169,6 +168,7 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.3.0 | Temporal Synthesis | [RELEASE_NOTES_v14.3.0.md](docs/ko/releases/RELEASE_NOTES_v14.3.0.md) |
 | 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](docs/ko/releases/RELEASE_NOTES_v14.2.0.md) |
 | 14.1.2 | Living Synthesis | [RELEASE_NOTES_v14.1.2.md](docs/ko/releases/RELEASE_NOTES_v14.1.2.md) |
 | 14.1.1 | Living Synthesis | [RELEASE_NOTES_v14.1.1.md](docs/ko/releases/RELEASE_NOTES_v14.1.1.md) |

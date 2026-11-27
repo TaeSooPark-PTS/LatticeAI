@@ -4,8 +4,9 @@ use lattice_core::{parse_iso, CoreError};
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 
+use super::calendar::iso;
 use super::intent::{parse_time_intent, TimeIntent, TimeWindow};
-use super::prefilter::{version_anchor, window_node_ids};
+use super::prefilter::{instant, version_anchor, window_node_ids};
 use super::{SortBy, TemporalRanking, PIPELINE_ORDER};
 
 pub const WIDENED_FETCH_FACTOR: i64 = 3;
@@ -20,6 +21,8 @@ pub struct TemporalPlan {
     pub window: Option<TimeWindow>,
     pub window_source: Option<&'static str>,
     pub window_ids: Option<HashSet<String>>,
+    pub as_of: Option<TimeWindow>,
+    pub as_of_source: Option<&'static str>,
     pub sort: SortBy,
     pub historical: bool,
     pub report: Map<String, Value>,
@@ -32,6 +35,15 @@ fn explicit_window(ranking: &TemporalRanking) -> Option<TimeWindow> {
         since,
         until,
         label: "explicit".to_string(),
+    })
+}
+
+fn explicit_as_of(ranking: &TemporalRanking) -> Option<TimeWindow> {
+    let at = instant(ranking.as_of.as_deref())?;
+    Some(TimeWindow {
+        since: Some(at),
+        until: Some(at + 1.0),
+        label: "as_of".to_string(),
     })
 }
 
@@ -55,7 +67,7 @@ impl TemporalPlan {
         let mut window_source = window.as_ref().map(|_| "explicit");
         if window.is_none() {
             if let Some(version) = intent.version.as_deref() {
-                match version_anchor(conn, version)? {
+                match version_anchor(conn, version, &ranking.scope)? {
                     Some((epoch, node_id)) => {
                         report.insert(
                             "version_anchor".into(),
@@ -82,8 +94,16 @@ impl TemporalPlan {
             window_source = window.as_ref().map(|_| "query");
         }
         let window_ids = match window.as_ref() {
-            Some(found) => Some(window_node_ids(conn, found)?),
+            Some(found) => Some(window_node_ids(conn, found, &ranking.scope)?),
             None => None,
+        };
+        let (as_of, as_of_source) = match explicit_as_of(ranking) {
+            Some(found) => (Some(found), Some("explicit")),
+            None => {
+                let parsed = intent.as_of.clone();
+                let source = parsed.as_ref().map(|_| "query");
+                (parsed, source)
+            }
         };
         let sort = match ranking.sort_by {
             SortBy::Auto if intent.has_time_signal() || window.is_some() => SortBy::Newest,
@@ -103,6 +123,8 @@ impl TemporalPlan {
             window,
             window_source,
             window_ids,
+            as_of,
+            as_of_source,
             sort,
             historical,
             report,
@@ -117,9 +139,20 @@ impl TemporalPlan {
         self.historical
     }
 
+    pub fn engine_includes_historical(&self) -> bool {
+        self.historical || self.as_of.is_some()
+    }
+
+    pub fn as_of_epoch(&self) -> Option<f64> {
+        let span = self.as_of.as_ref()?;
+        let since = span.since?;
+        let until = span.until.unwrap_or(since + 1.0);
+        Some((until - 1.0).min(self.now_secs).max(since))
+    }
+
     pub fn fetch_limit(&self, limit: i64) -> i64 {
         let limit = limit.clamp(1, MAX_FETCH);
-        if self.window.is_some() {
+        if self.window.is_some() || self.as_of.is_some() {
             (limit * WIDENED_FETCH_FACTOR).clamp(limit, MAX_FETCH)
         } else {
             limit
@@ -153,6 +186,20 @@ impl TemporalPlan {
                             "nodes_in_window".into(),
                             json!(self.window_ids.as_ref().map(HashSet::len)),
                         );
+                    }
+                    value
+                }
+                None => Value::Null,
+            },
+        );
+        out.insert(
+            "as_of".into(),
+            match self.as_of.as_ref() {
+                Some(found) => {
+                    let mut value = found.as_json();
+                    if let Some(object) = value.as_object_mut() {
+                        object.insert("source".into(), json!(self.as_of_source));
+                        object.insert("evaluated_at".into(), json!(self.as_of_epoch().map(iso)));
                     }
                     value
                 }

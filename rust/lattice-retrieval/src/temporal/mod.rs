@@ -100,6 +100,8 @@ pub struct TemporalRanking {
     pub include_historical: bool,
     pub since: Option<String>,
     pub until: Option<String>,
+    pub as_of: Option<String>,
+    pub scope: crate::service::Scope,
     pub parse_intent: bool,
     pub decay: RecencyDecay,
     pub gate: RelevanceGate,
@@ -112,6 +114,8 @@ impl Default for TemporalRanking {
             include_historical: false,
             since: None,
             until: None,
+            as_of: None,
+            scope: crate::service::Scope::default(),
             parse_intent: true,
             decay: RecencyDecay::default(),
             gate: RelevanceGate::default(),
@@ -145,7 +149,21 @@ impl TemporalRanking {
         self.until = until.filter(|value| !value.trim().is_empty());
         self
     }
+
+    pub fn with_as_of(mut self, as_of: Option<String>) -> Self {
+        if let Some(value) = as_of.filter(|value| !value.trim().is_empty()) {
+            self.as_of = Some(value);
+        }
+        self
+    }
+
+    pub fn with_scope(mut self, scope: crate::service::Scope) -> Self {
+        self.scope = scope;
+        self
+    }
 }
 
+#[cfg(test)]
+mod as_of_tests;
 #[cfg(test)]
 mod tests;

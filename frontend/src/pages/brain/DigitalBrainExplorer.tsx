@@ -78,7 +78,8 @@ export function DigitalBrainExplorer({ data }: { data: unknown }) {
     labelMode,
     maxNodes: 220,
     conflictsOnly,
-  }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode, conflictsOnly]);
+    showSuperseded,
+  }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode, conflictsOnly, showSuperseded]);
 
   const selected = parsed.nodes.find((node) => node.id === selectedId);
   const selectedGroup = selectedId?.startsWith("group:") ? model.groups.find((group) => group.id === selectedId.replace("group:", "")) : null;

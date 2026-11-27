@@ -325,6 +325,84 @@ pub fn topic_candidates(text: &str, limit: usize) -> Vec<String> {
     seen.values().into_iter().take(limit).collect()
 }
 
+pub const KOREAN_PARTICLES: [&str; 19] = [
+    "에서는",
+    "에서",
+    "에게",
+    "으로",
+    "부터",
+    "까지",
+    "이랑",
+    "하고",
+    "은요",
+    "는요",
+    "은",
+    "는",
+    "을",
+    "를",
+    "이",
+    "가",
+    "의",
+    "와",
+    "과",
+];
+
+pub fn is_hangul(c: char) -> bool {
+    ('\u{AC00}'..='\u{D7A3}').contains(&c)
+}
+
+pub fn strip_korean_particle(token: &str) -> &str {
+    if !token.chars().last().is_some_and(is_hangul) {
+        return token;
+    }
+    for particle in KOREAN_PARTICLES {
+        if let Some(stem) = token.strip_suffix(particle) {
+            if stem.chars().count() >= 2 {
+                return stem;
+            }
+        }
+    }
+    token
+}
+
+fn ranking_key(term: &str) -> Option<String> {
+    let key = strip_korean_particle(term.trim()).to_lowercase();
+    let countable = key.chars().count() >= 2 && !key.chars().all(|c| c.is_ascii_digit());
+    (countable && !stop_set().contains(key.as_str())).then_some(key)
+}
+
+pub const CONCEPT_TERM_WEIGHT: f64 = 2.0;
+pub const TOKEN_TERM_WEIGHT: f64 = 1.0;
+
+pub fn weighted_ranking_terms(text: &str, limit: usize) -> Vec<(String, f64)> {
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut out: Vec<(String, f64)> = Vec::new();
+    let concepts = extract_concepts_rules(text, limit)
+        .into_iter()
+        .map(|term| (term, CONCEPT_TERM_WEIGHT));
+    let tokens = findall_whole(&patterns().fallback_token, text)
+        .into_iter()
+        .map(|term| (term, TOKEN_TERM_WEIGHT));
+    for (term, weight) in concepts.chain(tokens) {
+        if out.len() >= limit {
+            break;
+        }
+        if let Some(key) = ranking_key(&term) {
+            if seen.insert(key.clone()) {
+                out.push((key, weight));
+            }
+        }
+    }
+    out
+}
+
+pub fn ranking_terms(text: &str, limit: usize) -> Vec<String> {
+    weighted_ranking_terms(text, limit)
+        .into_iter()
+        .map(|(term, _)| term)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,6 +470,23 @@ mod tests {
         assert_eq!(topic_candidates("zzqq wumpus nonsense", 2).len(), 2);
         assert!(topic_candidates("", 8).is_empty());
         assert!(topic_candidates("!!! 123", 8).is_empty());
+    }
+
+    #[test]
+    fn ranking_terms_union_concepts_with_tokens_and_strip_particles() {
+        assert_eq!(
+            ranking_terms("What technology powers Atlas?", 12),
+            vec!["atlas", "technology", "powers"]
+        );
+        assert_eq!(
+            ranking_terms("프로젝트 아틀라스의 현재 담당자는 누구인가?", 12),
+            vec!["아틀라스", "담당자", "누구인", "프로젝트", "현재"]
+        );
+        assert_eq!(ranking_terms("a b 42", 12), Vec::<String>::new());
+        assert_eq!(ranking_terms("alpha beta gamma", 2).len(), 2);
+        assert_eq!(strip_korean_particle("문서에서"), "문서");
+        assert_eq!(strip_korean_particle("가의"), "가의");
+        assert_eq!(strip_korean_particle("Atlas"), "Atlas");
     }
 
     #[test]

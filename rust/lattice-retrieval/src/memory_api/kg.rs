@@ -211,14 +211,28 @@ pub fn graph_slice(
         .map(|kind| format!("'{kind}'"))
         .collect::<Vec<_>>()
         .join(",");
+    let predicate = lattice_core::workspace_membership_sql(allowed, false);
+    let (scope_clause, scope_params) = match &predicate {
+        Some((clause, params)) => (
+            format!(" AND id IN (SELECT id FROM nodes_v2 WHERE {clause})"),
+            params.clone(),
+        ),
+        None => (String::new(), Vec::new()),
+    };
+    let mut node_params: Vec<rusqlite::types::Value> = scope_params
+        .iter()
+        .cloned()
+        .map(rusqlite::types::Value::Text)
+        .collect();
+    node_params.push(rusqlite::types::Value::Integer(limit));
     let mut nodes: Vec<Value> = Vec::new();
     {
         let sql = format!(
             "SELECT id, type, title, summary, metadata_json, updated_at FROM {nt} \
-             WHERE type IN ({visible}) ORDER BY updated_at DESC, id ASC LIMIT ?"
+             WHERE type IN ({visible}){scope_clause} ORDER BY updated_at DESC, id ASC LIMIT ?"
         );
         let mut stmt = conn.prepare(&sql)?;
-        let mut rows = stmt.query([limit])?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(node_params.iter()))?;
         while let Some(row) = rows.next()? {
             let mut node = OrderedMap::new();
             node.insert("id", lattice_core::sql_json(row.get_ref("id")?));
@@ -240,8 +254,10 @@ pub fn graph_slice(
     }
     let mut edges: Vec<Value> = Vec::new();
     if !nodes.is_empty() {
+        let mut edge_params = node_params.clone();
+        edge_params.extend(node_params);
         let window = format!(
-            "SELECT id FROM {nt} WHERE type IN ({visible}) ORDER BY updated_at DESC, id ASC LIMIT ?"
+            "SELECT id FROM {nt} WHERE type IN ({visible}){scope_clause} ORDER BY updated_at DESC, id ASC LIMIT ?"
         );
         let sql = format!(
             "SELECT id, from_node, to_node, type, weight, metadata_json FROM {et} \
@@ -249,7 +265,7 @@ pub fn graph_slice(
              ORDER BY weight DESC, created_at DESC, id ASC"
         );
         let mut stmt = conn.prepare(&sql)?;
-        let mut rows = stmt.query([limit, limit])?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(edge_params.iter()))?;
         while let Some(row) = rows.next()? {
             let mut edge = OrderedMap::new();
             edge.insert("id", lattice_core::sql_json(row.get_ref("id")?));
@@ -427,4 +443,61 @@ pub fn get_node(conn: &Connection, node_id: &str) -> Result<Option<Value>, CoreE
         lattice_core::sql_json(row.get_ref("updated_at")?),
     );
     Ok(Some(serde_json::to_value(&node).unwrap_or(Value::Null)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn graph_slice_applies_workspace_scope_before_limit() {
+        let mut conn = Connection::open_in_memory().expect("db");
+        let txn = conn.transaction().expect("txn");
+        lattice_core::graph_write::schema::bootstrap(&txn, "2026-01-01T00:00:00").expect("schema");
+        txn.commit().expect("commit");
+        for i in 0..5 {
+            let id = format!("other-{i}");
+            let ts = format!("2026-05-0{}T00:00:00", i + 1);
+            conn.execute(
+                "INSERT INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at) \
+                 VALUES (?1, 'Document', ?1, 's', '{\"workspace_id\":\"other\"}', '{}', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node");
+            conn.execute(
+                "INSERT INTO nodes_v2(id, label, type, workspace_id, created_at, updated_at) \
+                 VALUES (?1, ?1, 'Document', 'other', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node_v2");
+        }
+        for i in 0..2 {
+            let id = format!("team-{i}");
+            let ts = format!("2026-01-0{}T00:00:00", i + 1);
+            conn.execute(
+                "INSERT INTO nodes(id, type, title, summary, metadata_json, raw_json, created_at, updated_at) \
+                 VALUES (?1, 'Document', ?1, 's', '{\"workspace_id\":\"team\"}', '{}', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node");
+            conn.execute(
+                "INSERT INTO nodes_v2(id, label, type, workspace_id, created_at, updated_at) \
+                 VALUES (?1, ?1, 'Document', 'team', ?2, ?2)",
+                rusqlite::params![id, ts],
+            )
+            .expect("node_v2");
+        }
+
+        let mut allowed = BTreeSet::new();
+        allowed.insert("team".to_string());
+        let slice = graph_slice(&conn, 2, Some(&allowed)).expect("slice");
+        assert_eq!(slice.nodes.len(), 2);
+        let ids: Vec<&str> = slice
+            .nodes
+            .iter()
+            .filter_map(|n| n["id"].as_str())
+            .collect();
+        assert!(ids.contains(&"team-0"));
+        assert!(ids.contains(&"team-1"));
+    }
 }

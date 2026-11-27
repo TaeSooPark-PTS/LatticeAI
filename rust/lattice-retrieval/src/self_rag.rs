@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fancy_regex::Regex;
 use lattice_core::graph_write::chunk_parents::ChunkParentRow;
@@ -7,13 +7,14 @@ use std::sync::OnceLock;
 
 use crate::context_parents::parent_id_of;
 use crate::grounding::{
-    verify_grounding_and_abstention, AbstentionReason, EvidencePassage, GroundingVerdict,
+    build_abstention_messages, content_tokens, verify_grounding_and_abstention, AbstentionReason,
+    EvidencePassage, GroundingVerdict,
 };
 use crate::query_plan::content_terms;
 
 pub const SELF_RAG_ENV: &str = "LATTICEAI_SELF_RAG";
 pub const MIN_SEMANTIC_SUPPORT: f64 = 0.6;
-const MIN_TERM_COVERAGE: f64 = 0.25;
+pub const MIN_TERM_COVERAGE: f64 = 0.5;
 
 const REFERENCE_WORDS: &[&str] = &[
     "note",
@@ -277,23 +278,22 @@ pub fn assess(
         .map(|item| passage_of(item, parents, historical))
         .collect();
     let topic = topic_of(query);
-    let evidence: String = passages
+    let topic_tokens: BTreeSet<String> = content_tokens(&topic.join(" ")).into_iter().collect();
+    let evidence: BTreeSet<String> = passages
         .iter()
         .filter(|passage| !passage.is_superseded)
-        .map(|passage| format!("{} {}", passage.title, passage.text))
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_lowercase();
-    let coverage = if topic.is_empty() {
+        .flat_map(|passage| content_tokens(&format!("{} {}", passage.title, passage.text)))
+        .collect();
+    let coverage = if topic_tokens.is_empty() {
         1.0
     } else {
-        topic
+        topic_tokens
             .iter()
-            .filter(|term| evidence.contains(&term.to_lowercase()))
+            .filter(|token| evidence.contains(*token))
             .count() as f64
-            / topic.len() as f64
+            / topic_tokens.len() as f64
     };
-    let verdict = verify_grounding_and_abstention(&topic.join(" "), &passages, None, &[]);
+    let mut verdict = verify_grounding_and_abstention(&topic.join(" "), &passages, None, &[]);
     let semantic_support = semantic
         && matches.iter().any(|item| {
             item.get("source_scores")
@@ -301,13 +301,17 @@ pub fn assess(
                 .and_then(Value::as_f64)
                 .is_some_and(|score| score >= MIN_SEMANTIC_SUPPORT)
         });
+    let supported = coverage >= MIN_TERM_COVERAGE || semantic_support;
     let sufficient = match verdict.abstention_reason {
-        None => true,
-        Some(AbstentionReason::InsufficientQueryAlignment) => {
-            coverage >= MIN_TERM_COVERAGE || semantic_support
-        }
+        None | Some(AbstentionReason::InsufficientQueryAlignment) => supported,
         Some(_) => false,
     };
+    if !sufficient && verdict.abstention_reason.is_none() {
+        let (en, ko) = build_abstention_messages(AbstentionReason::InsufficientQueryAlignment);
+        verdict.abstention_reason = Some(AbstentionReason::InsufficientQueryAlignment);
+        verdict.abstention_message_en = Some(en);
+        verdict.abstention_message_ko = Some(ko);
+    }
     Sufficiency::verdict(sufficient, verdict, coverage, passages.len())
 }
 
@@ -412,6 +416,61 @@ mod tests {
         ] {
             assert!(is_evidence(&item), "{item}");
         }
+    }
+
+    #[test]
+    fn entity_only_overlap_is_not_sufficient_evidence() {
+        let matches = vec![
+            json!({
+                "id": "doc:atlas:current",
+                "title": "Atlas (프로젝트 아틀라스) 2026 Operations Spec",
+                "summary": "Atlas (프로젝트 아틀라스) runs on SQLite WAL inside Rust Core. The project owner is Lee Jiwon and the active service port is 4825.",
+            }),
+            json!({
+                "id": "doc:atlas:arch",
+                "title": "Atlas Architecture & Dependencies",
+                "summary": "Rust Core depends on SQLite WAL for Atlas. Lee Jiwon reviews all schema migrations.",
+            }),
+        ];
+        for query in [
+            "What do my notes say about the rack number of Atlas's backup generator?",
+            "What do my notes say about Atlas's SSH passphrase?",
+            "내 노트에서 아틀라스 2029년 주가 전망 알려줘",
+        ] {
+            let verdict = assess(query, &matches, &BTreeMap::new(), false, false);
+            assert!(!verdict.sufficient, "{query}: {verdict:?}");
+            assert_eq!(
+                verdict.reason,
+                Some(AbstentionReason::InsufficientQueryAlignment)
+            );
+            assert!(verdict.message("en").contains("Brain"));
+        }
+        let answered = assess(
+            "What do my notes say about Atlas's service port?",
+            &matches,
+            &BTreeMap::new(),
+            false,
+            false,
+        );
+        assert!(answered.sufficient, "{answered:?}");
+        let owner = assess(
+            "Atlas's owner according to my notes",
+            &matches,
+            &BTreeMap::new(),
+            false,
+            false,
+        );
+        assert!(owner.sufficient, "{owner:?}");
+        let mut semantic = matches[0].clone();
+        semantic["source_scores"] = json!({"vector": 0.9});
+        let rescued = assess(
+            "What do my notes say about Atlas's SSH passphrase?",
+            &[semantic],
+            &BTreeMap::new(),
+            false,
+            true,
+        );
+        assert!(rescued.sufficient, "{rescued:?}");
     }
 
     #[test]

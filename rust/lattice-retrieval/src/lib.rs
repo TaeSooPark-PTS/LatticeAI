@@ -31,6 +31,7 @@ pub mod policy;
 pub mod query_embed;
 pub mod query_plan;
 pub mod rag_eval;
+pub mod rag_eval_chat;
 pub mod rag_eval_dataset;
 pub mod rag_eval_grounded;
 pub mod rerank;

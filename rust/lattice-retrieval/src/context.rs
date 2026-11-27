@@ -101,6 +101,7 @@ pub struct ContextRequest {
     pub knowledge_payload: Option<Value>,
     pub density_aware: bool,
     pub temporal: Option<crate::temporal::TemporalRanking>,
+    pub as_of: Option<String>,
     pub sub_queries: Vec<String>,
     pub annotate_temporal: bool,
 }
@@ -358,6 +359,11 @@ fn knowledge_options(request: &ContextRequest, limit: i64) -> ServiceHybridOptio
         now_secs: request.now_secs,
         query_embedding: request.query_embedding.clone(),
         semantic_degraded: request.semantic_degraded.clone(),
+        keyword_ranking: if request.temporal.is_some() {
+            crate::keyword::KeywordRanking::Relevance
+        } else {
+            crate::keyword::KeywordRanking::Legacy
+        },
         ..ServiceHybridOptions::default()
     }
 }
@@ -467,18 +473,25 @@ pub fn knowledge_search_ranked(
     request: &ContextRequest,
 ) -> Result<(Value, Option<crate::temporal::TemporalPlan>), CoreError> {
     let limit = knowledge_fetch_limit(request);
-    let Some(ranking) = request.temporal.as_ref() else {
+    let Some(base) = request.temporal.as_ref() else {
         let options = knowledge_options(request, limit);
         return Ok((
             multi_query_search(conn, model, request, &request.query, &options)?,
             None,
         ));
     };
+    let ranking = base
+        .clone()
+        .with_as_of(request.as_of.clone())
+        .with_scope(knowledge_scope(
+            request.workspace_id.as_deref(),
+            request.viewer.as_deref(),
+        ));
     let (payload, plan) = crate::temporal::prepare_ranked(
         conn,
         &request.query,
         request.now_secs,
-        ranking,
+        &ranking,
         limit,
         true,
         |call| {

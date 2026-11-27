@@ -7,7 +7,7 @@ use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::graph_reads::{relationship_search, traverse, RelationshipQuery, TraverseOptions};
-use crate::keyword::search as graph_keyword_search;
+use crate::keyword::KeywordRanking;
 use crate::shape::{py_str, truthy};
 use crate::vector::vector_search as graph_vector_search;
 
@@ -77,12 +77,23 @@ pub fn keyword_search(
     limit: i64,
     scope: &Scope,
 ) -> Result<Value, CoreError> {
-    let payload = graph_keyword_search(
+    keyword_search_ranked(conn, query, limit, scope, KeywordRanking::Legacy)
+}
+
+pub fn keyword_search_ranked(
+    conn: &Connection,
+    query: &str,
+    limit: i64,
+    scope: &Scope,
+    ranking: KeywordRanking,
+) -> Result<Value, CoreError> {
+    let payload = crate::keyword::search_ranked(
         conn,
         query,
         limit,
         scope.allowed(),
         scope.include_legacy_global,
+        ranking,
     )?;
     let mut matches = Vec::new();
     for (index, item) in payload["matches"]
@@ -215,6 +226,7 @@ pub struct GraphSearchOptions {
     pub limit: i64,
     pub expand_depth: i64,
     pub scope: Scope,
+    pub keyword_ranking: KeywordRanking,
 }
 
 impl Default for GraphSearchOptions {
@@ -223,6 +235,7 @@ impl Default for GraphSearchOptions {
             limit: 30,
             expand_depth: 1,
             scope: Scope::default(),
+            keyword_ranking: KeywordRanking::Legacy,
         }
     }
 }
@@ -327,12 +340,13 @@ pub fn graph_search(
     .clamp(0, 3);
     let scope = &options.scope;
 
-    let direct = graph_keyword_search(
+    let direct = crate::keyword::search_ranked(
         conn,
         query,
         limit.max(10),
         scope.allowed(),
         scope.include_legacy_global,
+        options.keyword_ranking,
     )?;
     let relationships = relationship_search(
         conn,

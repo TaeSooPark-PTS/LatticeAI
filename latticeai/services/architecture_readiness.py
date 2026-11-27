@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-ARCHITECTURE_VERSION_TARGET = "14.2.0"
+ARCHITECTURE_VERSION_TARGET = "14.3.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",

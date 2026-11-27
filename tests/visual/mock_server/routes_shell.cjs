@@ -28,6 +28,17 @@ module.exports = function handleShell({ req, res, url, pathname }) {
     res.end();
     return true;
   }
+  if (pathname === "/api/command/briefing") return json(res, {
+    sections: {
+      knowledge: { available: true, recent: graphNodes.slice(0, 3).map((n) => ({ id: n.id, title: n.title })) },
+      conversations: { available: true, questions: 4 },
+      automations: { available: true, total: 3, enabled: 1, drafts: 2 },
+      review: { available: true, pending: 2 },
+      health: { available: true, grade: "B", score: 82 },
+      suggestions: { available: true, count: 1, top: [] },
+    },
+    quick_actions: [{ id: "review-pending", kind: "review", count: 2, target: "/act/review" }],
+  });
   if (pathname === "/history/conversations") return json(res, [
     { id: "conv-hybrid", title: "How hybrid search ranks", updated_at: "2026-06-06T13:20:00" },
     { id: "conv-reindex", title: "Reindex the workspace", updated_at: "2026-06-06T11:05:00" },

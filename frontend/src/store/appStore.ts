@@ -14,6 +14,7 @@ type AppState = {
   language: Language;
   focusedGraphNodeId: string | null;
   pendingChatPrompt: string | null;
+  briefingRequested: boolean;
   graphViewMode: GraphViewMode;
   showSuperseded: boolean;
   activeFiringTrace: FiringTrace | null;
@@ -24,6 +25,7 @@ type AppState = {
   setLanguage: (language: Language) => void;
   setFocusedGraphNodeId: (nodeId: string | null) => void;
   setPendingChatPrompt: (prompt: string | null) => void;
+  setBriefingRequested: (requested: boolean) => void;
   setGraphViewMode: (mode: GraphViewMode) => void;
   setShowSuperseded: (show: boolean) => void;
   setActiveFiringTrace: (trace: FiringTrace | null) => void;
@@ -91,6 +93,7 @@ export const useAppStore = create<AppState>((set) => ({
   language: readLanguage(),
   focusedGraphNodeId: null,
   pendingChatPrompt: null,
+  briefingRequested: false,
   graphViewMode: readGraphViewMode(),
   showSuperseded: true,
   activeFiringTrace: null,
@@ -143,6 +146,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setFocusedGraphNodeId: (focusedGraphNodeId) => set({ focusedGraphNodeId }),
   setPendingChatPrompt: (pendingChatPrompt) => set({ pendingChatPrompt }),
+  setBriefingRequested: (briefingRequested) => set({ briefingRequested }),
   setGraphViewMode: (graphViewMode) => {
     try {
       localStorage.setItem("lattice.graphViewMode", graphViewMode);

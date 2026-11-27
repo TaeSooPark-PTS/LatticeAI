@@ -7,7 +7,7 @@ use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
 use serde_json::{Map, Value};
 
 use crate::bm25::scoring::{build_node_scope_sql, detect_nodes_v2_schema};
-use crate::concepts::topic_candidates;
+use crate::concepts::{ranking_terms, topic_candidates, weighted_ranking_terms};
 use crate::service::Scope;
 use crate::shape::{haystack, json_opt};
 
@@ -65,19 +65,150 @@ fn query_nodes(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-fn score_key(row: &NodeRow, terms: &BTreeSet<String>) -> (usize, u8, String) {
+pub const TITLE_WEIGHT: f64 = 2.0;
+pub const SUMMARY_WEIGHT: f64 = 1.0;
+pub const METADATA_WEIGHT: f64 = 0.3;
+const BM25_K1: f64 = 1.2;
+const BM25_B: f64 = 0.75;
+
+fn fields_of(row: &NodeRow) -> [String; 3] {
+    [&row.title, &row.summary, &row.metadata_json]
+        .map(|value| value.as_deref().unwrap_or("None").to_lowercase())
+}
+
+fn occurrences(field: &str, term: &str) -> f64 {
+    if term.is_empty() {
+        0.0
+    } else {
+        field.matches(term).count() as f64
+    }
+}
+
+pub struct LexicalStats {
+    terms: Vec<(String, f64)>,
+    idf: Vec<f64>,
+    average_len: [f64; 3],
+}
+
+impl LexicalStats {
+    pub fn over(rows: &[NodeRow], terms: Vec<(String, f64)>) -> Self {
+        let fields: Vec<[String; 3]> = rows.iter().map(fields_of).collect();
+        let docs = fields.len().max(1) as f64;
+        let idf = terms
+            .iter()
+            .map(|(term, weight)| {
+                let df = fields
+                    .iter()
+                    .filter(|row| row.iter().any(|field| field.contains(term.as_str())))
+                    .count() as f64;
+                weight * (1.0 + (docs - df + 0.5) / (df + 0.5)).ln()
+            })
+            .collect();
+        let mut average_len = [0.0; 3];
+        for row in &fields {
+            for (slot, field) in row.iter().enumerate() {
+                average_len[slot] += field.chars().count() as f64 / docs;
+            }
+        }
+        Self {
+            terms,
+            idf,
+            average_len,
+        }
+    }
+
+    pub fn score(&self, row: &NodeRow) -> f64 {
+        let fields = fields_of(row);
+        let weights = [TITLE_WEIGHT, SUMMARY_WEIGHT, METADATA_WEIGHT];
+        let lengths: Vec<f64> = fields
+            .iter()
+            .zip(self.average_len)
+            .map(|(field, average)| {
+                let ratio = if average > 0.0 {
+                    field.chars().count() as f64 / average
+                } else {
+                    1.0
+                };
+                1.0 - BM25_B + BM25_B * ratio
+            })
+            .collect();
+        self.terms
+            .iter()
+            .zip(&self.idf)
+            .map(|((term, _), idf)| {
+                let tf: f64 = fields
+                    .iter()
+                    .zip(weights)
+                    .zip(&lengths)
+                    .map(|((field, weight), norm)| weight * occurrences(field, term) / norm)
+                    .sum();
+                idf * tf / (BM25_K1 + tf)
+            })
+            .sum()
+    }
+}
+
+fn legacy_key(row: &NodeRow, terms: &BTreeSet<String>) -> (usize, u8, String) {
     let hay = haystack(row);
     let hits = terms
         .iter()
         .filter(|term| hay.contains(&term.to_lowercase()))
         .count();
-    let boost = u8::from(
-        row.node_type
-            .as_deref()
-            .map(|t| TYPE_BOOST.contains(&t))
-            .unwrap_or(false),
-    );
-    (hits, boost, row.updated_at.clone().unwrap_or_default())
+    (
+        hits,
+        u8::from(type_boost(row)),
+        row.updated_at.clone().unwrap_or_default(),
+    )
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum KeywordRanking {
+    #[default]
+    Legacy,
+    Relevance,
+}
+
+impl KeywordRanking {
+    fn pool_terms(self, query: &str, limit: usize) -> Vec<String> {
+        match self {
+            Self::Legacy => topic_candidates(query, limit),
+            Self::Relevance => ranking_terms(query, limit),
+        }
+    }
+
+    fn order(self, rows: &mut Vec<NodeRow>, query: &str) {
+        match self {
+            Self::Legacy => {
+                let terms: BTreeSet<String> = topic_candidates(query, 12).into_iter().collect();
+                rows.sort_by_key(|row| row.id.clone());
+                rows.sort_by_key(|row| std::cmp::Reverse(legacy_key(row, &terms)));
+            }
+            Self::Relevance => {
+                let stats = LexicalStats::over(rows, weighted_ranking_terms(query, 12));
+                rank_rows(rows, &stats);
+            }
+        }
+    }
+}
+
+fn type_boost(row: &NodeRow) -> bool {
+    row.node_type
+        .as_deref()
+        .is_some_and(|t| TYPE_BOOST.contains(&t))
+}
+
+fn rank_rows(rows: &mut Vec<NodeRow>, stats: &LexicalStats) {
+    let mut scored: Vec<(f64, NodeRow)> =
+        rows.drain(..).map(|row| (stats.score(&row), row)).collect();
+    scored.sort_by(|(left_score, left), (right_score, right)| {
+        right_score
+            .partial_cmp(left_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| type_boost(right).cmp(&type_boost(left)))
+            .then_with(|| right.updated_at.cmp(&left.updated_at))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    rows.extend(scored.into_iter().map(|(_, row)| row));
 }
 
 fn as_match(row: &NodeRow) -> Map<String, Value> {
@@ -100,6 +231,24 @@ pub fn search(
     limit: i64,
     allowed: Option<&BTreeSet<String>>,
     include_legacy_global: bool,
+) -> Result<Value, CoreError> {
+    search_ranked(
+        conn,
+        query,
+        limit,
+        allowed,
+        include_legacy_global,
+        KeywordRanking::Legacy,
+    )
+}
+
+pub fn search_ranked(
+    conn: &Connection,
+    query: &str,
+    limit: i64,
+    allowed: Option<&BTreeSet<String>>,
+    include_legacy_global: bool,
+    ranking: KeywordRanking,
 ) -> Result<Value, CoreError> {
     let query = query.trim().to_string();
     let like = format!("%{query}%");
@@ -168,7 +317,7 @@ pub fn search(
     }
 
     if (rows.len() as i64) < limit {
-        let terms = topic_candidates(&query, 8);
+        let terms = ranking.pool_terms(&query, 8);
         if !terms.is_empty() {
             let clauses =
                 vec!["(n.title LIKE ? OR n.summary LIKE ? OR n.metadata_json LIKE ?)"; terms.len()]
@@ -204,9 +353,7 @@ pub fn search(
         }
     }
 
-    let terms_for_score: BTreeSet<String> = topic_candidates(&query, 12).into_iter().collect();
-    rows.sort_by_key(|row| row.id.clone());
-    rows.sort_by_key(|row| std::cmp::Reverse(score_key(row, &terms_for_score)));
+    ranking.order(&mut rows, &query);
 
     let matches: Vec<Map<String, Value>> = rows.iter().map(as_match).collect();
     let mut matches = filter_scoped_nodes(conn, matches, allowed, include_legacy_global, |item| {
@@ -247,18 +394,62 @@ mod tests {
         (dir, conn)
     }
 
+    fn row(id: &str, node_type: &str, title: &str, updated_at: &str) -> NodeRow {
+        NodeRow {
+            id: id.into(),
+            node_type: Some(node_type.into()),
+            title: Some(title.into()),
+            summary: Some("about ranking".into()),
+            metadata_json: Some("{}".into()),
+            updated_at: Some(updated_at.into()),
+        }
+    }
+
     #[test]
-    fn type_boost_and_id_order_break_ties() {
+    fn type_boost_then_recency_then_id_break_relevance_ties() {
         let (_dir, conn) = fixture();
         let out = search(&conn, "ranking", 30, None, false).unwrap();
-        let ids: Vec<&str> = out["matches"]
+        let mut ids: Vec<&str> = out["matches"]
             .as_array()
             .unwrap()
             .iter()
             .map(|m| m["id"].as_str().unwrap())
             .collect();
+        ids.sort_unstable();
         assert_eq!(&ids[..2], &["a", "b"]);
         assert_eq!(out["query"], "ranking");
+        let mut rows = vec![
+            row("d", "Concept", "Beta ranking", "2026-01-02T00:00:00"),
+            row("c", "Concept", "Beta ranking", "2026-01-02T00:00:00"),
+            row("e", "Concept", "Beta ranking", "2026-01-03T00:00:00"),
+            row("f", "Decision", "Beta ranking", "2026-01-01T00:00:00"),
+        ];
+        let stats = LexicalStats::over(&rows, vec![("ranking".into(), 1.0)]);
+        rank_rows(&mut rows, &stats);
+        let order: Vec<&str> = rows.iter().map(|row| row.id.as_str()).collect();
+        assert_eq!(order, ["f", "e", "c", "d"]);
+    }
+
+    #[test]
+    fn rarer_and_concept_terms_outrank_a_single_common_term() {
+        let mut rows = vec![
+            row(
+                "common",
+                "Document",
+                "Beta ranking ranking",
+                "2026-03-01T00:00:00",
+            ),
+            row(
+                "specific",
+                "Document",
+                "Atlas ranking",
+                "2026-01-01T00:00:00",
+            ),
+            row("other", "Document", "Gamma ranking", "2026-02-01T00:00:00"),
+        ];
+        let stats = LexicalStats::over(&rows, weighted_ranking_terms("Atlas ranking", 12));
+        rank_rows(&mut rows, &stats);
+        assert_eq!(rows[0].id, "specific");
     }
 
     #[test]
@@ -271,9 +462,15 @@ mod tests {
             metadata_json: None,
             updated_at: None,
         };
-        assert_eq!(haystack(&empty), "none none none");
+        assert_eq!(
+            fields_of(&empty),
+            ["none", "none", "none"].map(String::from)
+        );
+        let stats = LexicalStats::over(std::slice::from_ref(&empty), vec![("none".into(), 1.0)]);
+        assert!(stats.score(&empty) > 0.0);
         let terms: BTreeSet<String> = ["None".to_string()].into_iter().collect();
-        assert_eq!(score_key(&empty, &terms), (1, 0, String::new()));
+        assert_eq!(legacy_key(&empty, &terms), (1, 0, String::new()));
+        assert!(!type_boost(&empty));
 
         let item = as_match(&empty);
         assert_eq!(item["title"], Value::Null);

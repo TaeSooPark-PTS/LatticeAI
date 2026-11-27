@@ -301,7 +301,10 @@ fn build_minimal_context_inner(
         semantic_degraded,
         ..Default::default()
     };
-    let ranking = TemporalRanking::from_env();
+    let ranking = TemporalRanking::from_env().with_scope(lattice_retrieval::service::Scope {
+        allowed_workspaces: allowed_workspaces.cloned(),
+        include_legacy_global: false,
+    });
     let searched = match chat {
         Some(chat) => planned_search(conn, model, chat, &options, &ranking),
         None => ranked_hybrid_search(conn, model, &query, &options, &ranking),

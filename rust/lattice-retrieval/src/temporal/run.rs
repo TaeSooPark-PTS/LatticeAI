@@ -38,7 +38,7 @@ where
     let call = EngineCall {
         search_query: plan.search_query().to_string(),
         fetch_limit: plan.fetch_limit(limit),
-        include_historical: plan.include_historical(),
+        include_historical: plan.engine_includes_historical(),
         decay: ranking.decay,
     };
     let mut report = engine(&call)?;
@@ -78,11 +78,19 @@ pub fn ranked_hybrid_search(
     options: &crate::hybrid::HybridOptions,
     ranking: &TemporalRanking,
 ) -> Result<Value, CoreError> {
+    let scoped = if ranking.scope == crate::service::Scope::default() {
+        ranking.clone().with_scope(crate::service::Scope {
+            allowed_workspaces: options.allowed_workspaces.clone(),
+            include_legacy_global: options.include_legacy_global,
+        })
+    } else {
+        ranking.clone()
+    };
     ranked_search(
         conn,
         query,
         options.now_secs,
-        ranking,
+        &scoped,
         options.top_k,
         true,
         |call| {

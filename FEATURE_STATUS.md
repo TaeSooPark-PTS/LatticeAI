@@ -1,14 +1,14 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v14.2.0)
+# Lattice AI Feature Status (v14.3.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.2.0 — Temporal Synthesis**.
+Current release: **14.3.0 — Temporal Synthesis**.
 
 This document records the live product capabilities and honest boundaries of
-Lattice AI as of `v14.2.0`. Public release history is maintained from `v13.0.0`
+Lattice AI as of `v14.3.0`. Public release history is maintained from `v13.0.0`
 onward in [`RELEASE.md`](RELEASE.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md),
 and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
@@ -82,7 +82,7 @@ replaceable runtimes over that Brain.
 | **Multimodal (Image, Audio, Video)** | Opt-in (default off) | Behind `allow_multimodal`: first-class `Image`/`ImageText`, `Audio`, and `Video` (`Modality::Video` + `ffmpeg` keyframes + `.srt`/`.vtt`) nodes. OCR (`pytesseract`), VLM captions, vision embeddings, transcribers, and `ffmpeg` are not bundled and report `unavailable` honestly when absent. |
 | **PostgreSQL Backend** | Planned | SQLite WAL is the official live local Brain store. PostgreSQL/pgvector remains `Planned` (dry-run planning and opt-in dispatch CI guard only). |
 | **Telegram Bridge & SSO/OIDC Login Callbacks** | Removed (11.6.0) | Retired when the product server moved to Rust (`lattice-host`). Password authentication, sessions, `$scrypt$` hashing, rate limiting, CSRF, and SSO configuration surfaces remain native in `lattice-auth`. |
-| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.2.0_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
+| **Release Artifacts & Cross-Platform CI/CD** | Current | Exact-version Python wheel/sdist, npm tarball, VS Code VSIX, macOS Apple Silicon DMG (`Lattice AI_14.3.0_aarch64.dmg`), and `SHA256SUMS`, verified by Ubuntu + Windows Rust CI, macOS Tauri CI, digest-pinned Docker smoke CI, and PR + `main` Playwright visual smoke. |
 
 ---
 

@@ -243,7 +243,7 @@ fn generation_candidates(
         conn,
         query,
         request.now_secs,
-        ranking,
+        &ranking.clone().with_scope(request.scope.clone()),
         limit,
         false,
         |call| {

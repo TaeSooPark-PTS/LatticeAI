@@ -154,7 +154,13 @@ pub(crate) async fn search_route(
         return ok(&serde_json::to_value(payload).unwrap_or(Value::Null));
     }
     match read(&state, move |conn| {
-        let mut payload = crate::keyword::search(conn, &q, limit, None, false)?;
+        let mut payload = crate::keyword::search(
+            conn,
+            &q,
+            limit,
+            scope.allowed_workspaces.as_ref(),
+            scope.include_legacy_global,
+        )?;
         if scope.allowed_workspaces.is_some() {
             let matches = payload
                 .get("matches")

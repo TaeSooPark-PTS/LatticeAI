@@ -1,4 +1,5 @@
 import type { ElementDefinition } from "cytoscape";
+import { isSupersededNode } from "@/features/brain3d/brainGrowth";
 import { t, type Language } from "@/i18n";
 import { asArray, isRecord as isRecordValue, plainText, shortId } from "@/lib/utils";
 
@@ -209,6 +210,7 @@ export function buildExplorerModel({
   labelMode,
   maxNodes,
   conflictsOnly = false,
+  showSuperseded = true,
 }: {
   graph: ParsedGraph;
   search: string;
@@ -219,6 +221,7 @@ export function buildExplorerModel({
   labelMode: LabelMode;
   maxNodes: number;
   conflictsOnly?: boolean;
+  showSuperseded?: boolean;
 }): ExplorerModel {
   const query = search.trim().toLowerCase();
   const neighborIds = new Set<string>();
@@ -229,7 +232,8 @@ export function buildExplorerModel({
       if (edge.target === selectedId) neighborIds.add(edge.source);
     });
   }
-  const filtered = graph.nodes
+  const current = showSuperseded ? graph.nodes : graph.nodes.filter((node) => !isSupersededNode(node));
+  const filtered = current
     .filter((node) => !conflictsOnly || Boolean(graph.conflictNodeIds?.has(node.id)))
     .filter((node) => groupFilter === "all" || node.group === groupFilter || node.type === groupFilter)
     .filter((node) => query ? node.searchText.includes(query) : node.importance >= minImportance)
@@ -309,8 +313,11 @@ export function buildExplorerModel({
   }));
   const visibleCounts = new Map<string, number>();
   visibleNodes.forEach((node) => visibleCounts.set(node.group, (visibleCounts.get(node.group) || 0) + 1));
+  const currentCounts = new Map<string, number>();
+  current.forEach((node) => currentCounts.set(node.group, (currentCounts.get(node.group) || 0) + 1));
   const groups = graph.groups.map((group) => ({
     ...group,
+    count: currentCounts.get(group.id) || 0,
     visibleCount: (visibleCounts.get(group.id) || 0) + (aggregateNodes.get(`group:${group.id}`)?.count || 0),
     collapsed: collapsedGroups.has(group.id),
   }));
