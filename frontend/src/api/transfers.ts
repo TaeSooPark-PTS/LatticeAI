@@ -167,3 +167,50 @@ export async function downloadWorkspaceFile(path: string, filename: string): Pro
     return { ok: false, error: friendlyCaughtError(err, "Download failed") };
   }
 }
+
+export type VaultExportResult = {
+  ok: boolean;
+  error?: string;
+  notes: number;
+  history: number;
+  withheld: number;
+  omitted: number;
+  truncated: number;
+};
+
+export async function exportBrainVault(workspaceId: string): Promise<VaultExportResult> {
+  const empty = { notes: 0, history: 0, withheld: 0, omitted: 0, truncated: 0 };
+  const base = await apiBase();
+  try {
+    const res = await fetch(`${base}/api/knowledge-graph/export-vault`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...workspaceHeaders() } satisfies HeadersInit,
+      body: JSON.stringify({ workspace_id: workspaceId }),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      return { ...empty, ok: false, error: friendlyError(payload, res.statusText || `HTTP ${res.status}`) };
+    }
+    const count = (name: keyof typeof empty) => Number(res.headers.get(`x-lattice-vault-${name}`)) || 0;
+    const filename = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1];
+    const url = URL.createObjectURL(await res.blob());
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename ?? "lattice-brain-vault.zip";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    return {
+      ok: true,
+      notes: count("notes"),
+      history: count("history"),
+      withheld: count("withheld"),
+      omitted: count("omitted"),
+      truncated: count("truncated"),
+    };
+  } catch (err) {
+    return { ...empty, ok: false, error: friendlyCaughtError(err, "unreachable") };
+  }
+}

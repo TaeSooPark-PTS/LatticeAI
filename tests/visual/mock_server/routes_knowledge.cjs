@@ -2,6 +2,32 @@ const { repoRoot, json } = require("./http.cjs");
 const { graphNodes, graphEdges, workspaceOs } = require("./fixtures.cjs");
 
 module.exports = function handleKnowledge({ req, res, url, pathname }) {
+  if (pathname === "/api/ingestion/interop" && req.method === "GET") return json(res, {
+    sources: { notion: { available: true }, git: { available: true }, mail: { available: true } },
+  });
+  if ((pathname === "/api/ingestion/obsidian" || pathname === "/api/ingestion/interop") && req.method === "POST") {
+    let raw = "";
+    req.on("data", (chunk) => { raw += chunk; });
+    req.on("end", () => {
+      const body = JSON.parse(raw || "{}");
+      if (!body.approved) return json(res, { permission_required: true, path: body.path, action: "read", approval_token: "mock-import-token", expires_in: 300 });
+      const dryRun = Boolean(body.dry_run);
+      return json(res, {
+        path: body.path,
+        dry_run: dryRun,
+        files_scanned: 3,
+        notes_found: 2,
+        items_found: 2,
+        wikilinks_detected: 1,
+        ingested: dryRun ? 0 : 2,
+        duplicates: 0,
+        failed: 0,
+        sample_files: ["notes/retrieval.md", "notes/index.md"],
+        errors: [],
+      });
+    });
+    return true;
+  }
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
   if (pathname === "/knowledge-graph/pipeline/status") return json(res, {
@@ -77,6 +103,18 @@ module.exports = function handleKnowledge({ req, res, url, pathname }) {
     encrypted_archives: 1,
     zip_backups: 0,
   });
+  if (pathname === "/api/knowledge-graph/export-vault" && req.method === "POST") {
+    res.writeHead(200, {
+      "content-type": "application/zip",
+      "content-disposition": 'attachment; filename="lattice-brain-vault-demo.zip"',
+      "x-lattice-vault-notes": "8",
+      "x-lattice-vault-history": "1",
+      "x-lattice-vault-withheld": "0",
+      "x-lattice-vault-omitted": "0",
+      "x-lattice-vault-truncated": "0",
+    });
+    return res.end(Buffer.from("504b0506000000000000000000000000000000000000", "hex"));
+  }
   if (pathname === "/api/knowledge-graph/archive" && req.method === "POST") return json(res, {
     path: "~/.ltcai/workspace_exports/brain-demo.latticebrain",
     bytes: 4096,

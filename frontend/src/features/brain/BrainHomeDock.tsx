@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ChartSpline, History, Network, SlidersHorizontal, X } from "lucide-react";
 
 import type { BrainState } from "@/components/LivingBrain";
+import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useAppStore } from "@/store/appStore";
@@ -35,6 +36,8 @@ import {
   ModelContinuityDemo,
   PastConversationsPanel,
 } from "./HomePanels";
+
+const ConversationLibrary = React.lazy(() => import("./library/ConversationLibrary"));
 
 export type DockTab = "conversations" | "stats" | "map" | "features";
 
@@ -102,6 +105,7 @@ export function BrainHomeDock({
   const mode = useAppStore((state) => state.mode);
   const isBasic = mode === "basic";
   const [tab, setTab] = React.useState<DockTab | null>(null);
+  const [libraryOpen, setLibraryOpen] = React.useState(false);
   const open = tab !== null;
   const trapRef = useFocusTrap<HTMLElement>(() => {
     const peek = document.getElementById("brain-ring-peek");
@@ -189,14 +193,31 @@ export function BrainHomeDock({
             </header>
 
             <div className="brain-home-drawer-body">
-              {tab === "conversations" ? (
-                <PastConversationsPanel
-                  language={language}
-                  items={pastConversations}
-                  busyId={historyBusyId}
-                  onResume={onResumeConversation}
-                  onDelete={onDeleteConversation}
-                />
+              {tab === "conversations" && !libraryOpen ? (
+                <>
+                  <PastConversationsPanel
+                    language={language}
+                    items={pastConversations}
+                    busyId={historyBusyId}
+                    onResume={onResumeConversation}
+                    onDelete={onDeleteConversation}
+                  />
+                  <Button variant="outline" size="sm" data-testid="brain-history-library-open" onClick={() => setLibraryOpen(true)}>
+                    {t(language, "brain.history.library.open")}
+                  </Button>
+                </>
+              ) : null}
+
+              {tab === "conversations" && libraryOpen ? (
+                <React.Suspense fallback={<p role="status" className="text-sm text-muted-foreground">{t(language, "ui.loading")}</p>}>
+                  <ConversationLibrary
+                    language={language}
+                    busyId={historyBusyId}
+                    onResume={onResumeConversation}
+                    onDelete={onDeleteConversation}
+                    onBack={() => setLibraryOpen(false)}
+                  />
+                </React.Suspense>
               ) : null}
 
               {tab === "stats" ? (

@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.5.0 - Living Automations] (2026-11-27)
+
+Shipped live scheduled (`interval`) and event-driven (`brain_event`) automations backed by `workflow_designer/triggers/`, `GraphWriter` post-ingest dispatch, Review Center draft staging, and real `armed` rows on `GET /workflows/api/triggers`; added provenance/trust-aware "latest" ranking and active citation feedback demotion/boost in `lattice-core` and `lattice-retrieval`; added `POST /api/portability/vault` Markdown/Obsidian ZIP export with Settings UI (`431` paths / `474` operations); and added Capture Import Sources UI (Obsidian/Notion/Git/Mail), searchable Conversation Library with Markdown export, workflow run history/replay, export/stop fixes, bulk review actions, search filters, and one-click "not a good source" feedback.
+
+See [docs/releases/RELEASE_NOTES_v14.5.0.md](docs/releases/RELEASE_NOTES_v14.5.0.md).
+
 # [v14.4.0 - Measured Retrieval] (2026-11-27)
 
 First release measured with the real EmbeddingGemma 2 and `BAAI/bge-reranker-v2-m3` weights. Fixed "latest" questions losing the answer to recency sort, workspace scope applied before the top-k cut, reranker warm-up at worker start, and once-only loading of the embedding model on concurrent cold requests; `pip install "ltcai[rag]"` now installs `torchvision`; re-measured and raised the v14.3.0 hash gates (previously measured with the vector lane inactive); and the 3D Living Brain label, WebGL context loss and hover picking updates.
@@ -142,7 +148,7 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.4.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.5.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 

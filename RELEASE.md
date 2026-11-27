@@ -17,6 +17,14 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.5.0 — Living Automations (2026-11-27)
+
+Enabled `interval` and `brain_event` automations now arm and execute via `workflow_designer/triggers/`, dispatch on non-duplicate `GraphWriter` ingests, stage drafts in Review Center, and return real `armed` rows on `GET /workflows/api/triggers`. Added provenance/trust-aware "latest" ranking (`temporal/trust.rs`, `frontmatter.rs`, legacy-schema-safe SQLite reads) and active citation feedback ranking adjustments (`correction_signals.rs`, `temporal/signals.rs`). Shipped `POST /api/portability/vault` Markdown/Obsidian ZIP export with Settings UI (`431` paths / `474` operations), unified Capture Import Sources UI (Obsidian/Notion/Git/Mail), searchable Conversation Library with Markdown export, workflow run history/replay, export-download and stop-button fixes, bulk review actions, date/historical search filters, and one-click "not a good source" feedback.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.5.0.md](docs/releases/RELEASE_NOTES_v14.5.0.md).
+
+Build artifacts: `dist/ltcai-14.5.0-py3-none-any.whl`, `dist/ltcai-14.5.0.tar.gz`, `ltcai-14.5.0.tgz`, `dist/ltcai-14.5.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.5.0_aarch64.dmg`.
+
 ## v14.4.0 — Measured Retrieval (2026-11-27)
 
 First release measured with the real EmbeddingGemma 2 and `BAAI/bge-reranker-v2-m3` weights. Fixed the defects that measurement exposed: "latest" questions keep the answer (recency only reorders the answer), workspace scope is applied before the top-k cut in the no-worker vector lane, hybrid search, memory recall and the HNSW index, `LATTICEAI_RERANK_CANDIDATES` up to 64 works, the reranker is warmed at worker start, and concurrent cold requests load the embedding model once. `pip install "ltcai[rag]"` installs `torchvision`. The v14.3.0 hash gates, which were measured with the vector lane inactive, are re-measured with the seeding fixed and raised, and the chat-path and nightly evaluations use the product retriever. 3D Living Brain labels follow the label mode, WebGL context loss pauses and resumes rendering, and hover picking runs at most once per frame.

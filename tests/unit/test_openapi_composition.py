@@ -62,8 +62,8 @@ def test_every_committed_operation_has_exactly_one_family(spec, mapping):
         f"unmapped={sorted(set(keys) - set(mapping['operations']))[:10]} "
         f"orphans={sorted(set(mapping['operations']) - set(keys))[:10]}"
     )
-    assert len(keys) == mapping["source"]["operations"] == 473
-    assert len(spec["paths"]) == mapping["source"]["paths"] == 430
+    assert len(keys) == mapping["source"]["operations"] == 474
+    assert len(spec["paths"]) == mapping["source"]["paths"] == 431
 
 
 def test_family_names_are_the_plan_work_packages(mapping):
@@ -160,7 +160,7 @@ def test_committed_fragments_compose_into_the_committed_spec():
 def test_compose_cli_is_green_and_reports_what_it_proved(capsys):
     assert composer.main([]) == 0
     out = capsys.readouterr().out
-    assert "430 paths / 473 operations" in out
+    assert "431 paths / 474 operations" in out
     assert "byte-identical" in out
 
 
@@ -181,7 +181,7 @@ def test_generation_is_deterministic(spec, mapping, rendered, tmp_path):
 
 def test_generator_cli_writes_the_committed_tree(tmp_path, capsys):
     assert generator.main(["--out", str(tmp_path)]) == 0
-    assert "430 paths / 473 operations" in capsys.readouterr().out
+    assert "431 paths / 474 operations" in capsys.readouterr().out
     for path in generator.FRAGMENT_DIR.glob("*.json"):
         assert (tmp_path / path.name).read_text(encoding="utf-8") == path.read_text(
             encoding="utf-8"
@@ -247,9 +247,9 @@ def test_index_totals_and_hashes_describe_the_files_on_disk():
     assert index["serialization"] == generator.SERIALIZATION
     assert index["totals"] == {
         "families": 13,
-        "operations": 473,
-        "paths": 430,
-        "schemas": 180,
+        "operations": 474,
+        "paths": 431,
+        "schemas": 181,
     }
     for entry in index["fragments"]:
         text = (generator.FRAGMENT_DIR / entry["file"]).read_text(encoding="utf-8")

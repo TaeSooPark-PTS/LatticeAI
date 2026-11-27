@@ -5,9 +5,12 @@ use lattice_agent::surface::looproutes::LoopConfig;
 use lattice_agent::tools::sandbox::Workspace;
 use lattice_auth::{AuthConfig, AuthState};
 use lattice_core::db::{RuntimeConfig, Store};
-use lattice_core::graph_write::GraphWriter;
+use lattice_core::graph_write::{BrainIngestEvent, GraphWriter};
 use lattice_core::worker::WorkerSeamClient;
 use lattice_platform::governance::hooks::{HooksStore, NativeHookSink};
+use lattice_platform::governance::workflow_designer::{
+    BrainEventPayload, LocalGraphSink, WorkflowDesignerState,
+};
 
 use super::agent_catalog::{self, PlatformCatalog};
 use lattice_platform::governance::review_queue::GovernanceState;
@@ -34,6 +37,7 @@ pub struct OneDoorState {
     pub workspace_state: WorkspaceState,
     pub resolver: Arc<WorkspaceService>,
     pub governance: GovernanceState,
+    pub workflow_designer: WorkflowDesignerState,
     pub hooks: HooksStore,
     pub loop_config: LoopConfig,
     pub local_approvals: Arc<lattice_ingest::local_files_api::LocalApprovals>,
@@ -86,9 +90,6 @@ impl OneDoorState {
                 .open_store()
                 .map_err(|err| GatewayError::State(format!("cannot open the brain: {err}")))?,
         );
-        let graph = GraphWriter::open(Arc::clone(&store), data_dir.join(BLOB_DIR))
-            .map_err(|err| GatewayError::State(format!("cannot open the graph writer: {err}")))?;
-
         let auth = AuthState::new(auth_config);
         auth.set_audit_sink(Arc::new(super::sinks::PlatformAuthAudit::new(&data_dir)));
         let seam = WorkerSeamClient::with_client(client.clone(), worker_origin);
@@ -100,20 +101,51 @@ impl OneDoorState {
             ))
         })?;
 
-        let workspace_state = WorkspaceState::new(Arc::clone(&auth), &data_dir)
-            .with_deps(WorkspaceDeps {
-                seam: lattice_platform::workspaceos::workspace::GraphSeam::Native(graph.clone()),
-                ..WorkspaceDeps::default()
-            })
-            .with_worker(seam.clone());
-        let resolver = Arc::new(workspace_state.resolver());
-
+        let workspace_state = WorkspaceState::new(Arc::clone(&auth), &data_dir);
         let governance = GovernanceState::with_store(
             Arc::clone(&auth),
             Arc::clone(&workspace_state.store),
             agent_root,
             Some(seam.clone()),
         );
+        let workflow_designer = WorkflowDesignerState::new(Arc::clone(&auth), &data_dir)
+            .with_graph(Arc::new(LocalGraphSink))
+            .with_governance(governance.clone());
+        let triggers = workflow_designer.triggers();
+        let graph = GraphWriter::open(Arc::clone(&store), data_dir.join(BLOB_DIR))
+            .map_err(|err| GatewayError::State(format!("cannot open the graph writer: {err}")))?
+            .with_ingest_listener(Arc::new(move |event: &BrainIngestEvent| {
+                if event.duplicate {
+                    return;
+                }
+                let payload = BrainEventPayload {
+                    node_id: event.node_id.clone(),
+                    title: event.title.clone(),
+                    source_type: event.source_type.clone(),
+                    workspace_id: event.workspace_id.clone(),
+                    owner: event.owner.clone(),
+                };
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs_f64();
+                let engine = Arc::clone(&triggers);
+                if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                    handle.spawn_blocking(move || {
+                        let _ = engine.dispatch_brain_event(&payload, now);
+                    });
+                } else {
+                    let _ = engine.dispatch_brain_event(&payload, now);
+                }
+            }));
+
+        let workspace_state = workspace_state
+            .with_deps(WorkspaceDeps {
+                seam: lattice_platform::workspaceos::workspace::GraphSeam::Native(graph.clone()),
+                ..WorkspaceDeps::default()
+            })
+            .with_worker(seam.clone());
+        let resolver = Arc::new(workspace_state.resolver());
         let loop_config = loop_config.with_proposals(Arc::new(governance.clone()));
         let shared_writer = Arc::new(SharedStateWriter(Arc::clone(&workspace_state.store)));
         lattice_retrieval::memory_api::wsos::install_state_writer(shared_writer.clone());
@@ -140,6 +172,7 @@ impl OneDoorState {
             workspace_state,
             resolver,
             governance,
+            workflow_designer,
             hooks,
             loop_config,
             local_approvals: lattice_ingest::local_files_api::LocalApprovals::new(),

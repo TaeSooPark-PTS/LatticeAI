@@ -5,7 +5,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -247,7 +247,7 @@ fixture parity tests stay deterministic, and falls back to
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **14.4.0 — …**` matching
+included) must carry `Current release: **14.5.0 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -333,7 +333,7 @@ that lane.
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 14.2.0 release work, exact artifacts are:
+For 14.5.0 release work, exact artifacts are:
 
 - `dist/ltcai-14.2.0-py3-none-any.whl`
 - `dist/ltcai-14.2.0.tar.gz`

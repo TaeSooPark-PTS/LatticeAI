@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use axum::Router;
 use lattice_platform::adminops::{admin, funnel_metrics, security_dashboard};
-use lattice_platform::governance::workflow_designer::LocalGraphSink;
 use lattice_platform::governance::{
     automation, change_proposals, hooks, review_queue, workflow_designer,
 };
@@ -288,10 +287,7 @@ pub fn platform_router(state: &OneDoorState) -> Router {
         .merge(permission_mode::router(
             permission_mode::PermissionModeState::new(auth(), &data_dir),
         ))
-        .merge(workflow_designer::router(
-            workflow_designer::WorkflowDesignerState::new(auth(), &data_dir)
-                .with_graph(Arc::new(LocalGraphSink)),
-        ))
+        .merge(workflow_designer::router(state.workflow_designer.clone()))
 }
 
 pub fn knowledge_router(state: &OneDoorState) -> Router {

@@ -2,6 +2,7 @@ import * as React from "react";
 import { Share2, X } from "lucide-react";
 
 import { latticeApi, type EvidenceAction } from "@/api/client";
+import { SourceFeedback } from "@/features/evidence/SourceFeedback";
 import { t, type Language } from "@/i18n";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useAppStore } from "@/store/appStore";
@@ -108,6 +109,9 @@ export function AnswerProofCard({
                   {t(language, "brain.sourceModal.open")}
                 </span>
               </button>
+              {citation.id.startsWith("recall-") ? null : (
+                <SourceFeedback language={language} nodeId={citation.id} title={citation.title} query={proof.query} />
+              )}
             </li>
           ))}
         </ol>

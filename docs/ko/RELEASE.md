@@ -17,6 +17,14 @@
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로 `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며(`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를 체크아웃해 재생성할 수 있습니다.
 
+## v14.5.0 — Living Automations (2026-11-27)
+
+활성화된 `interval` 및 `brain_event` 자동화가 `workflow_designer/triggers/` 스케줄러와 `GraphWriter` 수집 후크를 통해 실제로 실행되어 검토 센터에 초안을 올리고 `GET /workflows/api/triggers`에 실제 `armed` 목록을 반환합니다. 출처·신뢰 등급 기반 "최신" 랭킹(`temporal/trust.rs`, `frontmatter.rs`, 구형 SQLite 호환)과 인용 피드백 랭킹 반영(`correction_signals.rs`, `temporal/signals.rs`)을 도입했습니다. `POST /api/portability/vault` Markdown/Obsidian 볼트 내보내기(`431` 경로 / `474` 오퍼레이션), 캡처 가져오기 소스 UI(Obsidian/Notion/Git/Mail), 대화 라이브러리(검색·전체·Markdown 내보내기), 워크플로 실행 이력/리플레이, 내보내기·중지 결함 수정, 검토 일괄 처리, 검색 필터, 원클릭 출처 피드백을 출시했습니다.
+
+릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.5.0.md](./releases/RELEASE_NOTES_v14.5.0.md).
+
+빌드 산출물은 `dist/ltcai-14.5.0-py3-none-any.whl`, `dist/ltcai-14.5.0.tar.gz`, `ltcai-14.5.0.tgz`, `dist/ltcai-14.5.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.5.0_aarch64.dmg` 입니다.
+
 ## v14.4.0 — Measured Retrieval (2026-11-27)
 
 실제 EmbeddingGemma 2 및 `BAAI/bge-reranker-v2-m3` 가중치로 처음 검색을 측정했고, 그 측정에서 드러난 결함을 고쳤습니다. "최신" 질문은 최신성 정렬 때문에 답변을 잃지 않으며(최신성은 답변만 재정렬), 벡터 경로·하이브리드 검색·메모리 회상·HNSW 인덱스에서 워크스페이스 범위를 top-k 절단 전에 적용하고, `LATTICEAI_RERANK_CANDIDATES`는 최대 64까지 동작하며, 재랭커는 워커 시작 시 미리 적재되고, 동시 콜드 요청에서 임베딩 모델은 한 번만 적재됩니다. `pip install "ltcai[rag]"`는 `torchvision`을 함께 설치합니다. 벡터 경로가 비활성인 상태로 측정되었던 v14.3.0 해시 게이트는 시드를 고친 뒤 다시 측정해 하한선을 올렸고, 채팅 경로와 야간 평가는 제품 검색기를 사용합니다. 3D 살아있는 브레인에서는 노드 라벨이 라벨 모드를 따르고, WebGL 컨텍스트 손실 시 렌더링을 일시 중지·재개하며, 호버 피킹은 프레임당 최대 한 번 실행됩니다.

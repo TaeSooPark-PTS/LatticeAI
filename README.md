@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.4.0 Living Brain walkthrough](output/release/v14.4.0/gifs/v14.4.0-living-brain-walkthrough.gif)
+![v14.5.0 Living Brain walkthrough](output/release/v14.5.0/gifs/v14.5.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -56,7 +56,7 @@ Read the full empirical benchmark report, methodology, and reproducibility guide
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_14.4.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_14.5.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -94,15 +94,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v14.4.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.4.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v14.5.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v14.5.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v14.4.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.4.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v14.5.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v14.5.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v14.4.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.4.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v14.5.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v14.5.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v14.4.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.4.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v14.5.0/screenshots/13-chronicle.png) | ![Settings](output/release/v14.5.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v14.4.0/SCREENSHOT_INDEX.md](output/release/v14.4.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.4.0/screenshots/01-login.png), [06-capture.png](output/release/v14.4.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.4.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v14.5.0/SCREENSHOT_INDEX.md](output/release/v14.5.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v14.5.0/screenshots/01-login.png), [06-capture.png](output/release/v14.5.0/screenshots/06-capture.png), [07-model-library.png](output/release/v14.5.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -126,26 +126,26 @@ Full visual index: [output/release/v14.4.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **14.4.0 — Measured Retrieval**:
+The current release is **14.5.0 — Living Automations**:
 
-- **Real-model retrieval measured** — the first release measured with the real EmbeddingGemma 2 and `BAAI/bge-reranker-v2-m3` weights. The v14.3.0 hash gates were measured with the vector lane inactive; they are re-measured and raised, and now fail if the vector lane returns nothing.
-- **Retrieval fixes** — "latest" questions keep the answer (recency only reorders it), workspace scope is applied before the top-k cut, `LATTICEAI_RERANK_CANDIDATES` works up to 64, the reranker is warmed at worker start, and concurrent cold requests load the embedding model once.
-- **3D Living Brain** — node labels follow the label mode, WebGL context loss pauses and resumes rendering, and hover picking runs at most once per frame.
+- **Living automations** — enabled `interval` and `brain_event` workflows now arm and execute via `workflow_designer/triggers/`, dispatch on non-duplicate `GraphWriter` ingests, stage drafts in Review Center, and surface real `armed` rows on `GET /workflows/api/triggers`.
+- **Trust-aware "latest" ranking & citation feedback** — frontmatter, lifecycle verification, confirmed corrections, and provenance classify nodes into `Verified` / `Normal` / `Draft` tiers, while `wrong_source` / `useful` feedback directly adjusts retrieval ranking.
+- **Markdown / Obsidian vault export & workspace UX** — `POST /api/portability/vault` exports a redacted, workspace-scoped Obsidian-ready ZIP vault; Capture adds Obsidian/Notion/Git/Mail import panels; Brain adds a searchable Conversation Library with Markdown export; and Act/Review gain run history/replay, bulk review actions, search filters, and one-click source feedback.
 
-Real-model retrieval numbers and latency are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md). That evaluation runs manually on cached weights, and documents inside a workspace are not private per user. See the [release notes](docs/releases/RELEASE_NOTES_v14.4.0.md) for details and limitations.
+See the [release notes](docs/releases/RELEASE_NOTES_v14.5.0.md) for details and verification notes.
 
 <details>
-<summary>Release notes & exact 14.4.0 distribution artifacts</summary>
+<summary>Release notes & exact 14.5.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.4.0.md](docs/releases/RELEASE_NOTES_v14.4.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.5.0.md](docs/releases/RELEASE_NOTES_v14.5.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 14.4.0 must use exact filenames:
+Expected artifacts for 14.5.0 must use exact filenames:
 
-- `dist/ltcai-14.4.0-py3-none-any.whl`
-- `dist/ltcai-14.4.0.tar.gz`
-- `ltcai-14.4.0.tgz`
-- `dist/ltcai-14.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.4.0_aarch64.dmg`
+- `dist/ltcai-14.5.0-py3-none-any.whl`
+- `dist/ltcai-14.5.0.tar.gz`
+- `ltcai-14.5.0.tgz`
+- `dist/ltcai-14.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.5.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -168,6 +168,7 @@ Public release history in this repository covers `v13.0.0+` (the Rust-host + dom
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 14.5.0 | Living Automations | [RELEASE_NOTES_v14.5.0.md](docs/releases/RELEASE_NOTES_v14.5.0.md) |
 | 14.4.0 | Measured Retrieval | [RELEASE_NOTES_v14.4.0.md](docs/releases/RELEASE_NOTES_v14.4.0.md) |
 | 14.3.0 | Temporal Synthesis | [RELEASE_NOTES_v14.3.0.md](docs/releases/RELEASE_NOTES_v14.3.0.md) |
 | 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](docs/releases/RELEASE_NOTES_v14.2.0.md) |

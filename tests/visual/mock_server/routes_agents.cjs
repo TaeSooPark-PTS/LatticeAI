@@ -102,6 +102,19 @@ module.exports = function handleAgents({ req, res, url, pathname }) {
   }
   if (pathname.startsWith("/workflows/api/definitions/") && req.method === "PATCH") return json(res, { workflow: { id: "wf-agent-review", name: "Agent Review Workflow" } });
   if (pathname === "/workflows/api/triggers") return json(res, { running: true, tick_seconds: 5, armed: [{ workflow_id: "wf-agent-review", name: "Agent Review Workflow", kind: "brain_event", config: { source_type: "upload" }, last_fired_at: 1780300800, recent_events: [{ type: "fired", trigger: "brain_event" }] }] });
+  if (pathname.startsWith("/workflows/api/definitions/") && pathname.endsWith("/runs")) return json(res, { runs: [
+    { id: "wf-run-approval", workflow_id: pathname.split("/")[4], status: "awaiting_approval", created_at: "2026-06-06T12:05:00" },
+    { id: "wf-run-1", workflow_id: pathname.split("/")[4], status: "ok", created_at: "2026-06-06T12:00:00" },
+  ] });
+  if (pathname.startsWith("/workflows/api/runs/") && pathname.endsWith("/replay")) return json(res, { replay: {
+    kind: "workflow", run_id: pathname.split("/")[4], status: "ok", replayable: true, outputs: {},
+    frames: [
+      { index: 0, event: "workflow_started", actor: "workflow", when: "2026-06-06T12:00:00", why: "", output: null, decision: "queued", raw: {} },
+      { index: 1, event: "step_completed", actor: "agent", when: "2026-06-06T12:00:01", why: "", output: "Drafted a short review.", decision: "ok", raw: {} },
+      { index: 2, event: "workflow_finished", actor: "workflow", when: "2026-06-06T12:00:02", why: "", output: null, decision: "ok", raw: {} },
+    ],
+  } });
+  if (pathname.startsWith("/workflows/api/export/")) return json(res, { lattice_workflow_export: "1", name: "Agent Review Workflow", nodes: [], metadata: {} });
   if (pathname === "/workflows/api/runs") return json(res, { runs: [
     { id: "wf-run-approval", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "awaiting_approval", mode: "live", pause: { node: "tool" }, timeline: [{ event: "workflow_started", status: "running" }, { event: "approval_required", status: "awaiting_approval" }], created_at: "2026-06-06T12:05:00" },
     { id: "wf-run-1", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "ok", mode: "live", created_at: "2026-06-06T12:00:00" },

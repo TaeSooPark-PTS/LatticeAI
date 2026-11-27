@@ -11,6 +11,13 @@ pub(crate) fn now_iso() -> String {
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}")
 }
 
+pub(crate) fn now_epoch() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+}
+
 pub(crate) fn utc_parts(secs: u64) -> (i32, u32, u32, u32, u32, u32) {
     let z = secs / 86400;
     let rem = secs % 86400;

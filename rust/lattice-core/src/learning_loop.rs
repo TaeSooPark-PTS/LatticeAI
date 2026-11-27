@@ -139,7 +139,10 @@ pub fn assert_external_training_upload_forbidden(
     Ok(())
 }
 
-fn node_effective_workspace(conn: &Connection, node_id: &str) -> Result<Option<String>, CoreError> {
+pub(crate) fn node_effective_workspace(
+    conn: &Connection,
+    node_id: &str,
+) -> Result<Option<String>, CoreError> {
     let has_v2: bool = conn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='nodes_v2')",
@@ -252,19 +255,25 @@ pub fn record_knowledge_correction(
         req.workspace_id.trim().to_string()
     };
     verify_correction_target_workspace(conn, &ws, req.target_kind, &req.target_id)?;
-    let correction_id = format!(
-        "corr:{}",
-        &sha256_text(&format!(
-            "{}|{}|{}|{}|{}",
-            ws,
-            req.target_kind.as_str(),
-            req.target_id,
-            req.actor,
-            now
-        ))[..20]
-    );
     let before_json = serde_json::to_string(&req.before_snapshot).unwrap_or_else(|_| "{}".into());
     let after_json = serde_json::to_string(&req.after_snapshot).unwrap_or_else(|_| "{}".into());
+    let basis = format!(
+        "{}|{}|{}|{}|{}",
+        ws,
+        req.target_kind.as_str(),
+        req.target_id,
+        req.actor,
+        now
+    );
+    let mut correction_id = format!("corr:{}", &sha256_text(&basis)[..20]);
+    let mut attempt = 0usize;
+    while load_correction(conn, &correction_id)?.is_some() {
+        attempt += 1;
+        correction_id = format!(
+            "corr:{}",
+            &sha256_text(&format!("{basis}|{after_json}|{attempt}"))[..20]
+        );
+    }
 
     let tx = conn.transaction()?;
     let mut reindex_triggered = false;

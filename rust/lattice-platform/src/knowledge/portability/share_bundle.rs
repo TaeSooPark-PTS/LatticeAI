@@ -380,7 +380,7 @@ fn str_list(object: &Map<String, Value>, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn is_node_share_blocked(node: &Value) -> bool {
+pub(in crate::knowledge::portability) fn is_node_share_blocked(node: &Value) -> bool {
     let ntype = node.get("type").and_then(Value::as_str).unwrap_or("");
     if HARD_BLOCK_NODE_TYPES
         .iter()
@@ -397,7 +397,7 @@ fn is_node_share_blocked(node: &Value) -> bool {
     false
 }
 
-fn matches_workspace_boundary(
+pub(in crate::knowledge::portability) fn matches_workspace_boundary(
     node_workspace: Option<String>,
     workspace_id: Option<&str>,
     include_legacy_global: bool,
@@ -411,13 +411,19 @@ fn matches_workspace_boundary(
     }
 }
 
-fn belongs_to_other_workspace(node_workspace: Option<String>, workspace_id: Option<&str>) -> bool {
+pub(in crate::knowledge::portability) fn belongs_to_other_workspace(
+    node_workspace: Option<String>,
+    workspace_id: Option<&str>,
+) -> bool {
     workspace_id
         .zip(node_workspace)
         .is_some_and(|(wanted, ws)| ws != wanted)
 }
 
-fn node_workspace(node: &Value, column_workspaces: &HashMap<String, String>) -> Option<String> {
+pub(in crate::knowledge::portability) fn node_workspace(
+    node: &Value,
+    column_workspaces: &HashMap<String, String>,
+) -> Option<String> {
     let meta = metadata_of(node);
     meta.get("workspace_id")
         .and_then(Value::as_str)
@@ -431,7 +437,9 @@ fn node_workspace(node: &Value, column_workspaces: &HashMap<String, String>) -> 
         })
 }
 
-fn v2_workspaces(conn: &rusqlite::Connection) -> HashMap<String, String> {
+pub(in crate::knowledge::portability) fn v2_workspaces(
+    conn: &rusqlite::Connection,
+) -> HashMap<String, String> {
     let Ok(mut stmt) = conn.prepare(
         "SELECT id, workspace_id FROM nodes_v2 \
          WHERE workspace_id IS NOT NULL AND workspace_id <> ''",
@@ -444,7 +452,7 @@ fn v2_workspaces(conn: &rusqlite::Connection) -> HashMap<String, String> {
     rows.flatten().collect()
 }
 
-fn foreign_conversation_nodes(
+pub(in crate::knowledge::portability) fn foreign_conversation_nodes(
     conn: Option<&rusqlite::Connection>,
     node_lookup: &HashMap<&str, &Value>,
     ids: &HashSet<String>,
@@ -494,7 +502,7 @@ fn legacy_foreign_conversation(node: &Value, viewer: &str) -> bool {
     derived && owner != viewer
 }
 
-fn metadata_of(row: &Value) -> Value {
+pub(in crate::knowledge::portability) fn metadata_of(row: &Value) -> Value {
     let raw = row
         .get("metadata_json")
         .and_then(Value::as_str)

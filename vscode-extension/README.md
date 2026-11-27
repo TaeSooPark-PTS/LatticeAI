@@ -14,7 +14,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**14.4.0 — Measured Retrieval** keeps the extension in step with a Lattice AI host that measures retrieval with the real EmbeddingGemma 2 and `BAAI/bge-reranker-v2-m3` weights and fixes the retrieval defects that measurement exposed. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.4.0.md`.
+**14.5.0 — Living Automations** keeps the extension in step with a Lattice AI host that runs live `interval` and `brain_event` automations, ranks "latest" answers with trust tiers and citation feedback, and exports Markdown/Obsidian vaults. Full disclosure is in `docs/releases/RELEASE_NOTES_v14.5.0.md`.
 
 **The core protocol remains backward-compatible.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before; cloud escalation and MCP live on the host, not in the editor.
 

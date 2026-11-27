@@ -2,7 +2,7 @@
 
 # Lattice AI Trust Model
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

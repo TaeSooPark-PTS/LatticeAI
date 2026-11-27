@@ -6,7 +6,9 @@ pub mod params;
 pub mod plan;
 mod prefilter;
 pub mod run;
+pub mod signals;
 mod stages;
+pub mod trust;
 
 pub use decay::RecencyDecay;
 pub use external::{rank_candidates, RankedCandidates};
@@ -14,6 +16,8 @@ pub use intent::{parse_time_intent, TimeIntent, TimeWindow};
 pub use params::{ranking_from_lookup, TEMPORAL_PARAM_KEYS};
 pub use plan::TemporalPlan;
 pub use run::{prepare_ranked, ranked_hybrid_search, ranked_search, search_text_for, EngineCall};
+pub use signals::{USEFUL_MULTIPLIER, WRONG_SOURCE_MULTIPLIER};
+pub use trust::{TrustAssessment, TrustTier};
 
 pub const SORT_TOP_K_ENV: &str = "LATTICEAI_RECENCY_SORT_TOP_K";
 pub const MIN_RELEVANCE_ENV: &str = "LATTICEAI_RELEVANCE_MIN_RATIO";

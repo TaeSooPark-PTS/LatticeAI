@@ -353,7 +353,7 @@ describe("ActPage", () => {
         workflowRuns: ok({
           runs: [{ id: "w-1", workflow_id: "wf-1", status: "awaiting_approval", name: "주간 점검" }],
         }),
-        stopWorkflowRun: () => Promise.resolve(ok({})),
+        stopWorkflowRun: () => Promise.resolve(ok({ stopped: true })),
         resumeWorkflowRun: () => Promise.resolve(ok({})),
       }, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getByText("회의록 요약")).toBeTruthy());
@@ -366,9 +366,9 @@ describe("ActPage", () => {
       await userEvent.click(screen.getByRole("button", { name: "거부 후 재개" }));
       await waitFor(() => expect(latticeApi.resumeWorkflowRun).toHaveBeenLastCalledWith("w-1", false));
 
-      const stopButtons = screen.getAllByRole("button", { name: "중지" });
-      await userEvent.click(stopButtons[1]!);
+      await userEvent.click(screen.getByRole("button", { name: "중지" }));
       await waitFor(() => expect(latticeApi.stopWorkflowRun).toHaveBeenCalledWith("w-1"));
+      expect(await screen.findByText("중지했어요")).toBeTruthy();
     });
 
     it("falls back to runtime data for the combined panel when the activity feed fails", async () => {
@@ -390,14 +390,48 @@ describe("ActPage", () => {
       await waitFor(() => expect(within(sub!).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true"));
     });
 
-    it("titles a run from a plain string input and stops it", async () => {
+    it("titles a run from a plain string input and offers no stop on a finished run", async () => {
       render({
-        activityRuns: ok({ runs: [{ run_id: "r-9", status: "ok", input: "이 문서를 요약해줘" }] }),
-        stopAgentRun: () => Promise.resolve(ok({})),
+        activityRuns: ok({ runs: [
+          { run_id: "r-9", status: "ok", input: "이 문서를 요약해줘" },
+          { run_id: "w-7", workflow_id: "wf", status: "ok", name: "끝난 워크플로" },
+        ] }),
       }, {}, { initialTab: "runs" });
       await waitFor(() => expect(screen.getByText("이 문서를 요약해줘")).toBeTruthy());
-      await userEvent.click(screen.getByRole("button", { name: "중지" }));
-      await waitFor(() => expect(latticeApi.stopAgentRun).toHaveBeenCalledWith("r-9"));
+      expect(screen.queryByRole("button", { name: "중지" })).toBeNull();
+    });
+
+    it("never claims a stop the server refused", async () => {
+      const answers = [
+        ok({ stopped: false, reason: "run already finished" }),
+        ok({ stopped: false, reason: "run not found" }),
+        fail("멈출 수 없는 서버", {}),
+        fail("", {}),
+      ];
+      render({
+        activityRuns: ok({ runs: [{ run_id: "w-9", workflow_id: "wf", status: "running", name: "도는 작업" }] }),
+        stopWorkflowRun: () => Promise.resolve(answers.shift()),
+      }, {}, { initialTab: "runs" });
+      const stop = await screen.findByRole("button", { name: "중지" });
+      for (const text of ["이미 끝난 작업이라 중지하지 않았어요.", "서버가 이 작업을 중지하지 않았어요.", "멈출 수 없는 서버", "응답 없음"]) {
+        await userEvent.click(stop);
+        expect(await screen.findByText(text)).toBeTruthy();
+      }
+      expect(screen.queryByText("중지했어요")).toBeNull();
+    });
+
+    it("keeps the answer visible after the refreshed list shows the run finished", async () => {
+      let status = "running";
+      render({
+        activityRuns: () => Promise.resolve(ok({ runs: [{ run_id: "w-8", workflow_id: "wf", status, name: "곧 끝날 작업" }] })),
+        stopWorkflowRun: () => {
+          status = "cancelled";
+          return Promise.resolve(ok({ stopped: true }));
+        },
+      }, {}, { initialTab: "runs" });
+      await userEvent.click(await screen.findByRole("button", { name: "중지" }));
+      await waitFor(() => expect(screen.queryByRole("button", { name: "중지" })).toBeNull());
+      expect(screen.getByText("중지했어요")).toBeTruthy();
     });
 
     it("titles a run from a nested input object", async () => {
@@ -596,5 +630,32 @@ describe("ActPage", () => {
       render({ toolPermissions: ok({ permissions: [{ tool: "execute_command", risk: "high" }] }) }, {}, { initialTab: "tools" });
       await waitFor(() => expect(screen.getByText("execute_command")).toBeTruthy());
     });
+  });
+});
+
+describe("ActPage workflow export", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("downloads the exported file and downloads nothing when the export fails", async () => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:wf"), revokeObjectURL: vi.fn() });
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    const answers = [ok({ name: "A" }), fail("내보낼 수 없어요", {})];
+    render({
+      workflowDefinitions: ok({ workflows: [{ id: "wf-1", name: "주간 점검" }, { id: "wf-2" }] }),
+      workflowDefinitionRuns: ok({ runs: [] }),
+      exportWorkflow: () => Promise.resolve(answers.shift()),
+    }, {}, { initialTab: "workflows" });
+    const buttons = await screen.findAllByRole("button", { name: "내보내기" });
+    await userEvent.click(buttons[0]!);
+    expect(await screen.findByText("파일로 내려받았어요")).toBeTruthy();
+    await userEvent.click(buttons[1]!);
+    expect(await screen.findByText("내보낼 수 없어요")).toBeTruthy();
+    expect(names).toEqual(["주간 점검.json"]);
+    answers.push(ok({}));
+    await userEvent.click(buttons[1]!);
+    await waitFor(() => expect(names).toEqual(["주간 점검.json", "wf-2.json"]));
   });
 });

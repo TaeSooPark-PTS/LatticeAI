@@ -6,6 +6,20 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.5.0] - 2026-11-27 — Living Automations
+
+### Added
+- Live automation trigger engine (`rust/lattice-platform/src/governance/workflow_designer/triggers/`) with interval scheduling, `GraphWriter` post-ingest `brain_event` dispatch, Review Queue draft staging (`source: "trigger"`), and real workspace-scoped `armed` rows on `GET /workflows/api/triggers`.
+- Provenance- and trust-aware "latest" ranking (`rust/lattice-retrieval/src/temporal/trust.rs`, `rust/lattice-core/src/graph_write/frontmatter.rs`) classifying nodes into `Verified`, `Normal`, and `Draft` tiers with legacy SQLite schema compatibility.
+- Active citation feedback ranking adjustments (`rust/lattice-core/src/correction_signals.rs`, `rust/lattice-retrieval/src/temporal/signals.rs`) applying workspace-scoped `wrong_source` (`0.25×`) and `useful` (`1.1×`) multipliers plus one-click "not a good source" UI (`SourceFeedback.tsx`).
+- Markdown/Obsidian vault export endpoint (`POST /api/portability/vault`, `431` paths / `474` operations / `181` schemas) with YAML frontmatter, `[[wikilinks]]`, `_history/` superseded separation, secret redaction, path sanitization, and Settings UI (`VaultExportCard.tsx`).
+- Capture Import Sources UI (`ImportPanel.tsx` for Obsidian, Notion, Git, Mail), searchable Conversation Library with Markdown export (`ConversationLibrary.tsx`), workflow run history/replay (`WorkflowRunHistory.tsx`), bulk review bar (`BulkReviewBar.tsx`), and date/historical search filters (`SearchFilters.tsx`).
+
+### Fixed
+- Workflow export download and run stop-button behaviors across `RunsListPanel.tsx`, `WorkflowsPanel.tsx`, and `transfers.ts`.
+
+Details: [docs/releases/RELEASE_NOTES_v14.5.0.md](releases/RELEASE_NOTES_v14.5.0.md).
+
 ## [14.4.0] - 2026-11-27 — Measured Retrieval
 
 ### Fixed

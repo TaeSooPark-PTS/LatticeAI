@@ -129,6 +129,7 @@ impl GraphWriter {
         metadata.insert("extracted".into(), Value::Object(extracted_without_content));
         metadata.insert("structure".into(), Value::Object(request.structure.clone()));
         stamp_sensitivity(&mut metadata, &source_uri);
+        super::super::frontmatter::stamp_frontmatter(&mut metadata, &text);
 
         let mut chunk_ids: Vec<String> = Vec::new();
         let (source_node_id, duplicate) = self.store.with_write_txn(|txn| {
@@ -343,6 +344,23 @@ impl GraphWriter {
             }
             Ok((source_node_id, duplicate))
         })?;
+        if !duplicate {
+            let source_type = request
+                .source_type
+                .clone()
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "file".to_string());
+            self.notify_ingest(super::super::BrainIngestEvent {
+                node_id: file_id.clone(),
+                title: filename,
+                source_type,
+                workspace_id: workspace
+                    .unwrap_or(crate::read::DEFAULT_WORKSPACE_ID)
+                    .to_string(),
+                owner,
+                duplicate,
+            });
+        }
         Ok(IngestOutcome {
             node_id: file_id,
             node_type: "Document".into(),

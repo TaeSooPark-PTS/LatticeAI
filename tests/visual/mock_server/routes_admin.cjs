@@ -158,6 +158,11 @@ module.exports = function handleAdmin({ req, res, url, pathname }) {
       items: items.filter((item) => (!status || item.effective_status === status) && (!source || item.source === source)),
     });
   }
+  if (pathname.startsWith("/automation/reviews/bulk/") && req.method === "POST") {
+    return json(res, { action: pathname.split("/")[4], requested: 1, succeeded: 1, failed: 0, results: [{ id: "rev-kg-digest", status: "ok", item_status: "approved", detail: null }] });
+  }
+  if (pathname === "/api/brain/corrections" && req.method === "POST") return json(res, { correction_id: "corr:demo", target_kind: "citation", status: "confirmed" });
+  if (pathname.startsWith("/api/brain/corrections/") && pathname.endsWith("/revert")) return json(res, { correction_id: "corr:demo", status: "rejected" });
   if (pathname.startsWith("/automation/reviews/")) {
     return json(res, {
       id: "rev-7-8-release",

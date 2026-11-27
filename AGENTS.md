@@ -2,7 +2,7 @@
 
 # LatticeAI Project AGENTS.md
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

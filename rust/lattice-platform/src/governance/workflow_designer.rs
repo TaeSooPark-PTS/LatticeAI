@@ -18,6 +18,7 @@ mod handlers;
 mod recipes;
 mod store;
 mod time;
+pub mod triggers;
 
 pub(crate) use executor::{
     execute_workflow_now, is_awaiting_approval, resume_paused, start_run, store_data_dir,
@@ -30,6 +31,7 @@ use handlers::{
 };
 use store::WorkflowStore;
 use time::json_hash;
+pub use triggers::{BrainEventPayload, TriggerEngine, TriggerKind, TriggerTickReport};
 
 pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/workflows/api/automation/recipes"),
@@ -80,6 +82,7 @@ pub struct WorkflowDesignerState {
     auth: Arc<AuthState>,
     pub(crate) store: Arc<WorkflowStore>,
     pub(crate) graph: Option<Arc<dyn GraphSink>>,
+    pub(crate) triggers: Arc<TriggerEngine>,
     pub(crate) trigger_tz: String,
     pub(crate) trigger_tick_seconds: f64,
 }
@@ -87,18 +90,37 @@ pub struct WorkflowDesignerState {
 impl WorkflowDesignerState {
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         let path = data_dir.as_ref().join(state_files::WORKSPACE_OS);
+        let store = Arc::new(WorkflowStore::open(path));
+        let tick = 5.0;
+        let triggers = Arc::new(TriggerEngine::new(Arc::clone(&store), tick));
         Self {
             auth,
-            store: Arc::new(WorkflowStore::open(path)),
+            store,
             graph: None,
+            triggers,
             trigger_tz: std::env::var("LATTICE_TZ").unwrap_or_else(|_| "UTC".into()),
-            trigger_tick_seconds: 5.0,
+            trigger_tick_seconds: tick,
         }
     }
 
     pub fn with_graph(mut self, graph: Arc<dyn GraphSink>) -> Self {
         self.graph = Some(graph);
         self
+    }
+
+    pub fn with_governance(
+        mut self,
+        governance: crate::governance::review_queue::GovernanceState,
+    ) -> Self {
+        self.triggers = Arc::new(
+            TriggerEngine::new(Arc::clone(&self.store), self.trigger_tick_seconds)
+                .with_governance(governance),
+        );
+        self
+    }
+
+    pub fn triggers(&self) -> Arc<TriggerEngine> {
+        Arc::clone(&self.triggers)
     }
 
     pub fn path(&self) -> &Path {

@@ -2,6 +2,7 @@ pub mod chunk_parents;
 pub mod clock;
 pub mod curator;
 pub mod dump;
+pub mod frontmatter;
 pub mod identity;
 pub mod lifecycle;
 pub mod pyaux;
@@ -20,6 +21,7 @@ mod revision;
 mod vectors;
 mod vectors_contract;
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -35,6 +37,27 @@ pub use revision::{RevisionOutcome, RevisionReplace};
 pub use types::IngestStatus;
 
 #[derive(Debug, Clone)]
+pub struct BrainIngestEvent {
+    pub node_id: String,
+    pub title: String,
+    pub source_type: String,
+    pub workspace_id: String,
+    pub owner: Option<String>,
+    pub duplicate: bool,
+}
+
+pub type IngestListener = Arc<dyn Fn(&BrainIngestEvent) + Send + Sync>;
+
+#[derive(Clone)]
+struct ListenerHandle(IngestListener);
+
+impl fmt::Debug for ListenerHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("IngestListener(..)")
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct GraphWriter {
     store: Arc<Store>,
     blob_dir: PathBuf,
@@ -42,6 +65,7 @@ pub struct GraphWriter {
     clock: Arc<dyn Clock>,
     default_workspace: Option<String>,
     persist_bm25_sidecar: bool,
+    ingest_listener: Option<ListenerHandle>,
 }
 
 impl GraphWriter {
@@ -78,9 +102,21 @@ impl GraphWriter {
             clock,
             default_workspace: None,
             persist_bm25_sidecar: false,
+            ingest_listener: None,
         };
         writer.bootstrap()?;
         Ok(writer)
+    }
+
+    pub fn with_ingest_listener(mut self, listener: IngestListener) -> Self {
+        self.ingest_listener = Some(ListenerHandle(listener));
+        self
+    }
+
+    pub(crate) fn notify_ingest(&self, event: BrainIngestEvent) {
+        if let Some(listener) = &self.ingest_listener {
+            (listener.0)(&event);
+        }
     }
 
     pub fn bootstrap(&self) -> Result<(), CoreError> {

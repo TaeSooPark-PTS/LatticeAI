@@ -1,10 +1,12 @@
+import * as React from "react";
 import "@/i18n/workspace";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { InstalledAutomations } from "@/features/act/InstalledAutomations";
-import { approvalActionLabel, firstString, humanRunTitle, runStatusLabel } from "@/features/act/actHelpers";
+import { ACTIVE_RUN_STATUSES, approvalActionLabel, firstString, humanRunTitle, runStatusLabel } from "@/features/act/actHelpers";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
@@ -89,6 +91,43 @@ function HumanPermissionDetails({ data, language }: { data: Record<string, unkno
   );
 }
 
+function WorkflowRunActions({ runId, status, language }: { runId: string; status: string; language: Language }) {
+  const qc = useQueryClient();
+  const [notice, setNotice] = React.useState<{ ok: boolean; text: string } | null>(null);
+  const action = useMutation({
+    mutationFn: async (kind: "stop" | "approve" | "deny") => {
+      const result = kind === "stop"
+        ? await latticeApi.stopWorkflowRun(runId)
+        : await latticeApi.resumeWorkflowRun(runId, kind === "approve");
+      const body = result.data as Record<string, unknown>;
+      if (!result.ok) setNotice({ ok: false, text: result.error || t(language, "ui.status.unavailable") });
+      else if (kind === "stop" && body.stopped !== true) {
+        setNotice({ ok: false, text: t(language, body.reason === "run already finished" ? "act.run.alreadyFinished" : "act.run.notStopped") });
+      } else setNotice({ ok: true, text: t(language, kind === "stop" ? "act.run.stopped" : "ui.done") });
+      await Promise.all(
+        ["workflowRuns", "activityRuns", "agentRuntime", "workflowDefinitionRuns", "workflowReplay"]
+          .map((key) => qc.invalidateQueries({ queryKey: [key] })),
+      );
+    },
+  });
+  const active = ACTIVE_RUN_STATUSES.includes(status);
+  if (!active && !notice) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {active ? (
+        <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate("stop")}>{t(language, "act.action.stop")}</Button>
+      ) : null}
+      {status === "awaiting_approval" ? (
+        <>
+          <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate("approve")}>{t(language, "act.action.resumeApproved")}</Button>
+          <Button variant="destructive" disabled={action.isPending} onClick={() => action.mutate("deny")}>{t(language, "act.action.resumeDenied")}</Button>
+        </>
+      ) : null}
+      {notice ? <span role="status" className={`text-xs ${notice.ok ? "text-success" : "text-warning"}`}>{notice.text}</span> : null}
+    </div>
+  );
+}
+
 function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" | "combined" }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
@@ -114,15 +153,7 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
               <Badge variant={isSuccess ? "success" : needsApproval ? "warning" : "muted"}>{label}</Badge>
             </div>
             {mode === "basic" ? null : <div className="mt-1 text-xs text-muted-foreground">{shortId(id, 18)}</div>}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <ActionButton label={t(language, "act.action.stop")} action={() => isWorkflow ? latticeApi.stopWorkflowRun(id) : latticeApi.stopAgentRun(id)} />
-              {needsApproval && isWorkflow ? (
-                <>
-                  <ActionButton label={t(language, "act.action.resumeApproved")} action={() => latticeApi.resumeWorkflowRun(id, true)} />
-                  <ActionButton label={t(language, "act.action.resumeDenied")} action={() => latticeApi.resumeWorkflowRun(id, false)} variant="destructive" />
-                </>
-              ) : null}
-            </div>
+            {isWorkflow ? <WorkflowRunActions runId={id} status={status} language={language} /> : null}
           </div>
         );
       })}

@@ -237,6 +237,11 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "approveProposal", invoke: () => api.approveProposal("p1"), method: "POST", path: "/api/proposals/p1/approve", body: {} },
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1"), method: "POST", path: "/api/proposals/p1/reject", body: {} },
   { name: "rejectProposal", invoke: () => api.rejectProposal("p1", "아님"), method: "POST", path: "/api/proposals/p1/reject", body: { reason: "아님" } },
+  { name: "workflowDefinitionRuns", invoke: () => api.workflowDefinitionRuns("wf 1"), method: "GET", path: "/workflows/api/definitions/wf%201/runs", query: { limit: "20" } },
+  { name: "workflowRunReplay", invoke: () => api.workflowRunReplay("r 1"), method: "GET", path: "/workflows/api/runs/r%201/replay" },
+  { name: "bulkReview", invoke: () => api.bulkReview("approve", ["a"]), method: "POST", path: "/automation/reviews/bulk/approve", body: { ids: ["a"] } },
+  { name: "rejectCitation", invoke: () => api.rejectCitation("n1", "q"), method: "POST", path: "/api/brain/corrections", body: { target_kind: "citation", target_id: "n1", status: "confirmed", reason: "not_a_good_source", before_snapshot: {}, after_snapshot: { feedback: "wrong_source", query: "q" } } },
+  { name: "revertCorrection", invoke: () => api.revertCorrection("corr:1"), method: "POST", path: "/api/brain/corrections/corr%3A1/revert", body: {} },
   { name: "commandSearch", invoke: () => api.commandSearch("찾기"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8" } },
   { name: "commandSearch", invoke: () => api.commandSearch("찾기", 8, "newest"), method: "GET", path: "/api/command/search", query: { q: "찾기", limit: "8", sort_by: "newest" } },
   { name: "brainHealth", invoke: () => api.brainHealth(), method: "GET", path: "/api/brain/health" },
@@ -250,6 +255,9 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "memoryCompact", invoke: () => api.memoryCompact(), method: "POST", path: "/api/memory/compact", body: {} },
   { name: "memoryRebuild", invoke: () => api.memoryRebuild(), method: "POST", path: "/api/memory/rebuild", body: { target: "vector" } },
   { name: "chatHistory", invoke: () => api.chatHistory(), method: "GET", path: "/history/conversations" },
+  { name: "searchHistory", invoke: () => api.searchHistory("rank"), method: "GET", path: "/history/search", query: { q: "rank" } },
+  { name: "interopStatus", invoke: () => api.interopStatus(), method: "GET", path: "/api/ingestion/interop" },
+  { name: "importFromTool", invoke: () => api.importFromTool({ source: "git", path: "/r", approved: false }), method: "POST", path: "/api/ingestion/interop", body: { source: "git", path: "/r", approved: false } },
   { name: "conversation", invoke: () => api.conversation("c1"), method: "GET", path: "/history/conversations/c1" },
   { name: "deleteConversation", invoke: () => api.deleteConversation("c1"), method: "DELETE", path: "/history/conversations/c1" },
   { name: "agentApprovals", invoke: () => api.agentApprovals(), method: "GET", path: "/agent/approvals" },
@@ -405,6 +413,7 @@ const SPECIAL_CASES = new Set([
   "saveChatFile",
   "readWorkspaceFile",
   "downloadWorkspaceFile",
+  "exportBrainVault",
   "uploadDocument",
   "resolveApprovedLocalServeUrl",
 ]);
@@ -436,6 +445,80 @@ describe("every endpoint wrapper", () => {
       }
       expect(call.headers.get("X-Lattice-Language"), `${entry.name} language header`).toBeTruthy();
     }
+  });
+});
+
+describe("exportBrainVault", () => {
+  const archive = (headers: Record<string, string>) => new Response("PK", { status: 200, headers });
+
+  function stubDownload() {
+    URL.createObjectURL = vi.fn(() => "blob:lattice/vault") as never;
+    URL.revokeObjectURL = vi.fn() as never;
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    return names;
+  }
+
+  it("posts the workspace and saves the archive under the server's name", async () => {
+    const names = stubDownload();
+    const calls = recordFetch(() => archive({
+      "content-disposition": 'attachment; filename="lattice-brain-vault-2026-11-27.zip"',
+      "x-lattice-vault-notes": "12",
+      "x-lattice-vault-history": "2",
+      "x-lattice-vault-withheld": "1",
+      "x-lattice-vault-omitted": "3",
+      "x-lattice-vault-truncated": "4",
+    }));
+
+    const res = await latticeApi.exportBrainVault("personal");
+
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.url.pathname).toBe("/api/knowledge-graph/export-vault");
+    expect(calls[0]!.body).toEqual({ workspace_id: "personal" });
+    expect(names).toEqual(["lattice-brain-vault-2026-11-27.zip"]);
+    expect(res).toEqual({ ok: true, notes: 12, history: 2, withheld: 1, omitted: 3, truncated: 4 });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:lattice/vault");
+  });
+
+  it("falls back to a default name and zero counts without headers", async () => {
+    const names = stubDownload();
+    recordFetch(() => archive({}));
+
+    const res = await latticeApi.exportBrainVault("org-1");
+
+    expect(names).toEqual(["lattice-brain-vault.zip"]);
+    expect(res.ok).toBe(true);
+    expect(res.notes).toBe(0);
+  });
+
+  it("reports the server's refusal and downloads nothing", async () => {
+    const names = stubDownload();
+    recordFetch(() => jsonResponse({ detail: "Admin access required." }, 403));
+
+    const res = await latticeApi.exportBrainVault("personal");
+
+    expect(res).toMatchObject({ ok: false, error: "Admin access required." });
+    expect(names).toEqual([]);
+  });
+
+  it("falls back to the status when the refusal has no readable body", async () => {
+    stubDownload();
+    recordFetch(() => new Response("<html>", { status: 502, statusText: "Bad Gateway" }));
+    expect((await latticeApi.exportBrainVault("personal")).error).toBe("Bad Gateway");
+
+    recordFetch(() => new Response("<html>", { status: 502 }));
+    expect((await latticeApi.exportBrainVault("personal")).error).toBe("HTTP 502");
+  });
+
+  it("reports an unreachable service", async () => {
+    failFetchWith(new TypeError("Failed to fetch"));
+
+    const res = await latticeApi.exportBrainVault("personal");
+
+    expect(res.ok).toBe(false);
+    expect(res.error).toBeTruthy();
   });
 });
 

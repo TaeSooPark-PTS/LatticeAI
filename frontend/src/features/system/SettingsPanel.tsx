@@ -11,6 +11,7 @@ import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { BackupHealthView, HealthView, StorageView } from "./SystemViews";
 import { useSettingsPanel } from "./hooks/useSystemPanels";
+import { VaultExportCard } from "./VaultExportCard";
 
 export function SettingsPanel() {
   const { theme, setTheme, mode, setMode } = useAppStore();
@@ -112,6 +113,7 @@ export function SettingsPanel() {
       <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data}>
         {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}
       </DataPanel>
+      <VaultExportCard />
       {mode === "basic" ? null : (
         <DataPanel title={t(language, "system.backup.health")} result={backupHealth.data}>
           {(data) => <BackupHealthView data={data as Record<string, unknown>} />}

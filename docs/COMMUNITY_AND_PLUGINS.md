@@ -2,7 +2,7 @@
 
 # Community And Plugins
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 LatticeAI defines a clear path from a local-first Rust-host Digital Brain
 platform to a governed product ecosystem. The immediate goal is small and

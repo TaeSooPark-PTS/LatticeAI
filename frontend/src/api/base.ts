@@ -191,12 +191,13 @@ async function apiJson<T>(
     query?: Query;
     headers?: Record<string, string>;
     shape: T;
+    timeoutMs?: number;
   },
 ): Promise<ApiResult<T>> {
   const base = await apiBase();
   const client = clientFor(base);
   const ctrl = new AbortController();
-  const timer = window.setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = window.setTimeout(() => ctrl.abort(), opts.timeoutMs ?? TIMEOUT_MS);
   try {
     const request = {
       body: opts.body,
@@ -279,8 +280,8 @@ export function get<T>(path: string, shape: T, query?: Query) {
   return apiJson<T>("GET", path, { query, shape });
 }
 
-export function post<T>(path: string, body: unknown, shape: T) {
-  return apiJson<T>("POST", path, { body, shape });
+export function post<T>(path: string, body: unknown, shape: T, timeoutMs?: number) {
+  return apiJson<T>("POST", path, { body, shape, timeoutMs });
 }
 
 export function patch<T>(path: string, body: unknown, shape: T) {

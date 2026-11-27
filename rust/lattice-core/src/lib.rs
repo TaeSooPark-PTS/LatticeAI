@@ -1,4 +1,5 @@
 pub mod bm25_stats;
+pub mod correction_signals;
 pub mod db;
 pub mod embedding_contract;
 pub mod embedding_registry;

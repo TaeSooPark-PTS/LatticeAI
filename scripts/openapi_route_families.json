@@ -43,7 +43,7 @@
       "wp": "R10"
     },
     "portability_network": {
-      "operations": 60,
+      "operations": 61,
       "summary": "Portability/backup/share, peer network, network boundary, realtime, project sessions and computer use.",
       "target": "lattice-platform (portability)",
       "wp": "R9"
@@ -1420,6 +1420,10 @@
       "family": "portability_network",
       "module": "latticeai.api.portability"
     },
+    "POST /api/knowledge-graph/export-vault": {
+      "family": "portability_network",
+      "module": "latticeai.api.portability"
+    },
     "POST /api/knowledge-graph/import": {
       "family": "portability_network",
       "module": "latticeai.api.portability"
@@ -2162,8 +2166,8 @@
   "source": {
     "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
     "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py",
-    "operations": 473,
-    "paths": 430,
+    "operations": 474,
+    "paths": 431,
     "spec": "frontend/openapi.json",
     "spec_version": "11.8.0"
   }

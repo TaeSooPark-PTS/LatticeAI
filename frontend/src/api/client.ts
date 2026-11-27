@@ -1,5 +1,6 @@
 import type { components, operations } from "./openapi";
 import { chronicleApi } from "./chronicle";
+import { importsApi } from "./imports";
 import {
   type ApiResult,
   del,
@@ -13,6 +14,7 @@ import {
 } from "./base";
 import { cloudStatus } from "./cloud";
 import { selfModelApi } from "./selfModel";
+import { actReviewApi } from "./actReview";
 import {
   resumeAgentApproval,
   streamChat,
@@ -21,6 +23,7 @@ import {
 import {
   type DemoCorpusStatus,
   downloadWorkspaceFile,
+  exportBrainVault,
   installDemoCorpus,
   readWorkspaceFile,
   runAgent,
@@ -60,6 +63,8 @@ export type {
   ChronicleSourceCard,
   ChronicleTopEntity,
 } from "./chronicle";
+
+export type SearchFilterBody = { since?: string; until?: string; include_historical?: boolean };
 
 export type SearchSortBy = NonNullable<components["schemas"]["HybridSearchRequest"]["sort_by"]>;
 
@@ -309,6 +314,7 @@ export type EvidenceActionsPayload = {
 
 export const latticeApi = {
   ...chronicleApi,
+  ...importsApi,
   raw: get,
   selectFolder,
   desktopBackendStatus: async (): Promise<ApiResult<Record<string, unknown>>> => {
@@ -344,10 +350,10 @@ export const latticeApi = {
   brainArchiveVerify: (body: { path: string; passphrase: string }) => post("/api/knowledge-graph/archive/verify", body, {}),
   brainArchiveRestore: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/restore", body, {}),
   brainArchiveImport: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/import", body, {}),
-  hybridSearch: async (query: string, weights?: unknown, sortBy?: SearchSortBy) => {
+  hybridSearch: async (query: string, weights?: unknown, sortBy?: SearchSortBy, filters?: SearchFilterBody) => {
     const res = await post<Record<string, unknown>>(
       "/api/search/hybrid",
-      { query, ...(weights ? { weights } : {}), ...(sortBy ? { sort_by: sortBy } : {}) },
+      { query, ...(weights ? { weights } : {}), ...(sortBy ? { sort_by: sortBy } : {}), ...filters },
       { matches: [] },
     );
     const data = res.data as Record<string, unknown>;
@@ -356,10 +362,10 @@ export const latticeApi = {
     }
     return res;
   },
-  hybridSearchGraphRag: (query: string, limit = 12, sortBy?: SearchSortBy) =>
+  hybridSearchGraphRag: (query: string, limit = 12, sortBy?: SearchSortBy, filters?: SearchFilterBody) =>
     post<Record<string, unknown>>(
       "/api/search/hybrid",
-      { query, mode: "graphrag", limit, ...(sortBy ? { sort_by: sortBy } : {}) },
+      { query, mode: "graphrag", limit, ...(sortBy ? { sort_by: sortBy } : {}), ...filters },
       { matches: [], reasoning_paths: [], synthesis: {} },
     ),
   browserReadUrl: (url: string) => post("/api/browser/read-url", { url }, {}),
@@ -453,6 +459,7 @@ export const latticeApi = {
   memoryCompact: () => post("/api/memory/compact", {}, {}),
   memoryRebuild: () => post("/api/memory/rebuild", { target: "vector" }, {}),
   chatHistory: () => get("/history/conversations", []),
+  searchHistory: (q: string) => get<Record<string, unknown>>("/history/search", { results: [], query: "" }, { q }),
   conversation: (id: string) => get(`/history/conversations/${encodeURIComponent(id)}`, { messages: [] }),
   deleteConversation: (id: string) => del(`/history/conversations/${encodeURIComponent(id)}`, {}),
   streamChat,
@@ -489,6 +496,7 @@ export const latticeApi = {
   ),
   saveChatFile,
   downloadWorkspaceFile,
+  exportBrainVault,
   readWorkspaceFile,
   uploadDocument,
   documents: (limit = 200) => get("/knowledge-graph/documents", { documents: [] }, { limit }),
@@ -609,4 +617,5 @@ export const latticeApi = {
   activityRuns: (limit = 20) => get("/api/activity/runs", { runs: [] }, { limit }),
   adminHealthSummary: () => get("/admin/health-summary", { status: "ok", issue_count: 0, issues: [] }),
   ...selfModelApi,
+  ...actReviewApi,
 };

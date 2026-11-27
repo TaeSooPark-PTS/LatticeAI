@@ -22,6 +22,7 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/knowledge-graph/backup-health"),
     ("POST", "/api/knowledge-graph/export"),
     ("POST", "/api/knowledge-graph/export-file"),
+    ("POST", "/api/knowledge-graph/export-vault"),
     ("POST", "/api/knowledge-graph/import"),
     ("GET", "/api/knowledge-graph/portability"),
     ("GET", "/api/knowledge-graph/provenance"),
@@ -88,6 +89,8 @@ mod kdf;
 mod postgres;
 mod share;
 mod status;
+mod vault;
+mod vault_render;
 mod x25519;
 
 use archive::{
@@ -100,6 +103,7 @@ use share::{
 };
 use status::{backup_health, brain_storage, portability_status, provenance};
 pub(crate) use status::{backup_health_payload, postgres_capabilities, sqlite_capabilities};
+use vault::export_vault;
 
 pub fn router(state: PortabilityState) -> Router {
     Router::new()
@@ -109,6 +113,7 @@ pub fn router(state: PortabilityState) -> Router {
         .route("/api/knowledge-graph/provenance", get(provenance))
         .route("/api/knowledge-graph/export", post(export_graph))
         .route("/api/knowledge-graph/export-file", post(export_graph_file))
+        .route("/api/knowledge-graph/export-vault", post(export_vault))
         .route("/api/knowledge-graph/import", post(import_graph))
         .route("/api/knowledge-graph/backup", post(backup_graph))
         .route("/api/knowledge-graph/restore", post(restore_graph))
