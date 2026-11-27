@@ -2,7 +2,7 @@
 
 # CI & Release Gates
 
-> **Status: canonical** — updated 2026-11-27. Current release: **14.4.0 — Measured Retrieval**.
+> **Status: canonical** — updated 2026-11-27. Current release: **14.5.0 — Living Automations**.
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection

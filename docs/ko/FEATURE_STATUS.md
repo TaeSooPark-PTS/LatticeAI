@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.4.0)
+# Lattice AI 기능 현황 (v14.5.0)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.4.0 — Measured Retrieval**.
+현재 릴리스: **14.5.0 — Living Automations**.
 
-이 문서는 `v14.4.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.5.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---

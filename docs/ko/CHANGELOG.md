@@ -5,6 +5,20 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.5.0] - 2026-11-27 — Living Automations
+
+### 추가됨
+- 실제 자동화 트리거 엔진(`rust/lattice-platform/src/governance/workflow_designer/triggers/`): `interval` 스케줄러, `GraphWriter` 수집 직후 `brain_event` 디스패치, 검토 큐 초안 스테이징(`source: "trigger"`), 실제 워크스페이스별 `GET /workflows/api/triggers` `armed` 응답.
+- 출처·신뢰 등급 기반 "최신" 랭킹(`rust/lattice-retrieval/src/temporal/trust.rs`, `rust/lattice-core/src/graph_write/frontmatter.rs`): `Verified` / `Normal` / `Draft` 분류 및 구형 SQLite 스키마 호환.
+- 활성 인용 피드백 랭킹 조정(`rust/lattice-core/src/correction_signals.rs`, `rust/lattice-retrieval/src/temporal/signals.rs`): `wrong_source`(`0.25×`)·`useful`(`1.1×`) 배수 및 원클릭 "좋은 출처가 아님" UI(`SourceFeedback.tsx`).
+- Markdown/Obsidian 볼트 내보내기(`POST /api/portability/vault`, `431` 경로 / `474` 오퍼레이션 / `181` 스키마): YAML 프론트매터, `[[위키링크]]`, `_history/` 구버전 분리, 시크릿 마스킹, 경로 정제 및 설정 UI(`VaultExportCard.tsx`).
+- 캡처 가져오기 소스 UI(`ImportPanel.tsx`: Obsidian/Notion/Git/Mail), 대화 라이브러리(검색·전체·Markdown 내보내기), 워크플로 실행 이력/리플레이(`WorkflowRunHistory.tsx`), 검토 일괄 처리 바(`BulkReviewBar.tsx`), 날짜·구버전 검색 필터(`SearchFilters.tsx`).
+
+### 수정됨
+- `RunsListPanel.tsx`, `WorkflowsPanel.tsx`, `transfers.ts`의 워크플로 내보내기 다운로드 및 실행 중지 버튼 결함.
+
+세부 내용: [docs/ko/releases/RELEASE_NOTES_v14.5.0.md](./releases/RELEASE_NOTES_v14.5.0.md).
+
 ## [14.4.0] - 2026-11-27 — Measured Retrieval
 
 ### 수정됨

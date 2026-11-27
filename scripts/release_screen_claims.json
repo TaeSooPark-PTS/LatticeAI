@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.5.0": {
+    "_why": [
+      "Living Automations (14.5.0) adds the unified Import Sources panel on Capture",
+      "(06-capture.png, 11-knowledge-journey.png) and the Bulk Review bar on Review",
+      "Center (12-review-center.png). Other additions (VaultExportCard below the",
+      "Settings fold, ConversationLibrary drawer, WorkflowRunHistory, SearchFilters,",
+      "SourceFeedback, and backend trigger/trust engines) do not redesign idle shells."
+    ],
+    "06-capture.png": {},
+    "11-knowledge-journey.png": {},
+    "12-review-center.png": {}
+  },
   "14.4.0": {
     "_why": [
       "Measured Retrieval (14.4.0) adds node labels to the 3D memory graph view.",

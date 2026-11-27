@@ -1,14 +1,14 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v14.4.0)
+# Lattice AI Feature Status (v14.5.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 This document records the live product capabilities and honest boundaries of
-Lattice AI as of `v14.4.0`. Public release history is maintained from `v13.0.0`
+Lattice AI as of `v14.5.0`. Public release history is maintained from `v13.0.0`
 onward in [`RELEASE.md`](RELEASE.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md),
 and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 

@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.5.0 - Living Automations] (2026-11-27)
+
+`workflow_designer/triggers/`와 `GraphWriter` 수집 후크 기반의 실제 예약(`interval`) 및 브레인 이벤트(`brain_event`) 자동화, 검토 센터 초안 스테이징, 실제 `GET /workflows/api/triggers` `armed` 응답을 출시했습니다. 출처·신뢰 등급 기반 "최신" 랭킹과 인용 피드백 점수 조정을 도입하고, `POST /api/portability/vault` Markdown/Obsidian 볼트 내보내기(`431` 경로 / `474` 오퍼레이션), 캡처 가져오기 소스 UI, 대화 라이브러리(검색·전체·Markdown 내보내기), 워크플로 실행 이력/리플레이, 내보내기·중지 결함 수정, 검토 일괄 처리, 검색 필터, 원클릭 출처 피드백을 추가했습니다.
+
+상세 내용: [docs/ko/releases/RELEASE_NOTES_v14.5.0.md](./releases/RELEASE_NOTES_v14.5.0.md).
+
 # [v14.4.0 - Measured Retrieval] (2026-11-27)
 
 실제 EmbeddingGemma 2 및 `BAAI/bge-reranker-v2-m3` 가중치로 처음 측정했으며, "최신" 질문이 최신성 정렬로 답변을 잃던 문제, top-k 절단 전 워크스페이스 범위 적용, 워커 시작 시 재랭커 미리 적재, 동시 콜드 요청에서의 임베딩 모델 단일 적재를 고쳤습니다. `pip install "ltcai[rag]"`는 이제 `torchvision`을 설치합니다. 벡터 경로가 비활성인 상태로 측정되었던 v14.3.0 해시 게이트를 다시 측정해 하한선을 올렸고, 3D 살아있는 브레인의 라벨·WebGL 컨텍스트 손실·호버 피킹을 업데이트했습니다.

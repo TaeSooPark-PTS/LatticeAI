@@ -4,7 +4,7 @@
 
 > **Status: canonical** — empirical harness benchmark kept in sync with the current release.
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 This report documents the empirical evaluation of the **LatticeAI Universal Adaptive Agent Harness** introduced in `13.4.0`. The harness measures each loaded model empirically at runtime with **zero per-model code branches** and adapts execution structure so small local instruction-tuned models achieve strong reliability across tool calling, web handling, computer use, grounded answers, and bi-temporal RAG.
 

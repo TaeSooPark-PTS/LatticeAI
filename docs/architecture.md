@@ -6,7 +6,7 @@
 > the current release. The full system map, crate inventory, and exact release
 > artifact map live in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-Current release: **14.4.0 — Measured Retrieval**.
+Current release: **14.5.0 — Living Automations**.
 
 Lattice AI is a local-first **Digital Brain Platform**. The architecture is
 organized around one durable center owned by the user: the single-writer SQLite

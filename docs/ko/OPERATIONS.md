@@ -1,8 +1,8 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../OPERATIONS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./OPERATIONS.md)
 
-# Lattice AI — 운영 가이드 (v14.4.0)
+# Lattice AI — 운영 가이드 (v14.5.0)
 
-> **상태: 정본 (14.4.0)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
+> **상태: 정본 (14.5.0)** — 현재 릴리스와 동기화됩니다. 아래 저장소 구조는
 > 초기 노드별 Markdown 그래프가 아니라 SQLite 라이브 Brain 스토어와 워크스페이스
 > 스코핑을 반영합니다.
 
