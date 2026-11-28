@@ -5,17 +5,18 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **14.6.0 — Within Your Scope**.
+Current release: **14.7.0 — Private Scope, Verified Index**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **13.0.0 through 14.6.0** (the
+The public Git tree keeps release history from **13.0.0 through 14.7.0** (the
 modern Rust-host and domain-grouped architecture era). Security support follows
 that same product era: **the 14.x and 13.x lines receive fixes.**
 
 | Version | Support |
 | --- | --- |
-| 14.6.x (latest) | Supported |
+| 14.7.x (latest) | Supported |
+| 14.6.x | Supported |
 | 14.3.x | Supported |
 | 14.2.x | Supported |
 | 14.1.x | Supported |

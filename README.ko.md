@@ -16,7 +16,7 @@
 
 <br/>
 
-![v14.6.0 Living Brain 둘러보기](output/release/v14.6.0/gifs/v14.6.0-living-brain-walkthrough.gif)
+![v14.7.0 Living Brain 둘러보기](output/release/v14.7.0/gifs/v14.7.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -126,26 +126,27 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 ## 현재 릴리스
 
-현재 최신 릴리스는 **14.6.0 — Within Your Scope**입니다:
+현재 최신 릴리스는 **14.7.0 — Private Scope, Verified Index**입니다:
 
-- **소유자 범위 자동화** — `brain_event` 자동화는 기본적으로 본인 항목에만 실행됩니다. 동료의 공유 항목에 반응하려면 **Workspace** 범위를 선택하세요. 개인 항목과 대화 항목은 소유자나 워크스페이스를 넘어 실행되지 않습니다.
-- **정직한 수정** — 기각되거나 승인된 종합 제안이 재제안을 막지 않도록 고쳤고, Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용되며, 훅 카탈로그가 실제 실행 여부를 밝힙니다.
-- **일상 UI** — 명령 팔레트에서 대화 결과를 열 수 있고, 검색 결과에서 바로 작업할 수 있으며, 기억 관리자·문서 라이브러리·실행 이력에 필터와 제어가 추가되었습니다.
+- **워크스페이스 내 비공개 문서** — 파일 업로드 및 노트 수집 시 `private` 가시성을 지정하면 검색·벡터·그래프 탐색·문서 목록·공유 번들·관리자 파일 조회에서 소유자 본인에게만 보이며 소유자 범위 ID로 교차 중복 제거도 방지됩니다.
+- **검증된 HNSW 벡터 기본값 전환** — `datasets/rag_eval_v1.json` 320개 질의 및 5회 churn 라운드에서 recall@10(`baseline=1.0000`, `0.9991..0.9963`)을 검증한 뒤 `LATTICEAI_VECTOR_INDEX` 기본값을 `hnsw`로 전환했습니다.
+- **Hugging Face 리비전 고정 및 SHA-256 검증 완결** — 미고정 리포 제어 플래그(`LATTICEAI_HF_REQUIRE_PINNED`, `LATTICEAI_HF_ALLOW_UNPINNED`)와 LFS/파일 SHA-256 무결성 검증을 다운로드·임베딩·로드 전 경로에 적용했습니다.
+- **소형 모델 합성 품질·Self-Model LLM Refiner·Brain Network UI** — `decomposed` 프로파일용 구조화 근거 스캐폴딩/커버리지 검증(`synthesis.rs`), 옵트인 `LATTICEAI_SELF_MODEL_LLM_REFINER=1` 정제기, `desk::open_keys_in` snoozed 회귀 테스트, 거버넌스 허브 내 Brain Network 공유 UI를 추가했습니다.
 
-상세 내용과 검증 결과는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.6.0.md)를 참고하세요.
+상세 내용과 검증 결과는 [릴리스 노트](docs/ko/releases/RELEASE_NOTES_v14.7.0.md)를 참고하세요.
 
 <details>
-<summary>14.6.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
+<summary>14.7.0 릴리스 노트 및 정확한 배포 아티팩트 목록</summary>
 
-릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.6.0.md](docs/ko/releases/RELEASE_NOTES_v14.5.0.md).
+릴리스 가이드: [docs/ko/RELEASE.md](docs/ko/RELEASE.md) · 변경 이력: [docs/ko/CHANGELOG.md](docs/ko/CHANGELOG.md) · 상세 릴리스 노트: [docs/ko/releases/RELEASE_NOTES_v14.7.0.md](docs/ko/releases/RELEASE_NOTES_v14.7.0.md).
 
-14.6.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
+14.7.0 배포 아티팩트는 반드시 정확한 파일명만 사용합니다:
 
-- `dist/ltcai-14.6.0-py3-none-any.whl`
-- `dist/ltcai-14.6.0.tar.gz`
-- `ltcai-14.6.0.tgz`
-- `dist/ltcai-14.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_14.6.0_aarch64.dmg`
+- `dist/ltcai-14.7.0-py3-none-any.whl`
+- `dist/ltcai-14.7.0.tar.gz`
+- `ltcai-14.7.0.tgz`
+- `dist/ltcai-14.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_14.7.0_aarch64.dmg`
 
 와일드카드(`dist/*`) 업로드는 금지됩니다. 패키지 레지스트리 배포는 `CI` 통과 후 `.github/workflows/release.yml` → `.github/workflows/publish.yml`(CD) 파이프라인을 통해 자동 검증·실행됩니다.
 
@@ -156,9 +157,9 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 ## 정직한 경계
 
 - **기본값은 로컬**: SQLite가 실제 운영 브레인 저장소입니다. 클라우드 모델(`cli_oauth` 또는 `api_key`), 모델 다운로드, 브레인 네트워크, 업데이트 확인은 모두 사용자의 명시적 행동이 있어야만 동작합니다.
-- **정직한 검색 & 시뮬레이션**: 로드된 LLM이 없을 때 에이전트/워크플로우 시뮬레이션은 모델을 호출하지 않는 결정론적 동작이며 화면에 명시됩니다. 벡터 검색 기본값은 정확 전수 검색이며 `LATTICEAI_VECTOR_INDEX=hnsw` 설정 시 512개 이상 벡터에서 `hnsw+rescore`를 활성화합니다.
+- **정직한 검색 & 시뮬레이션**: 로드된 LLM이 없을 때 에이전트/워크플로우 시뮬레이션은 모델을 호출하지 않는 결정론적 동작이며 화면에 명시됩니다. 벡터 검색 기본값은 네이티브 `hnsw`입니다(`datasets/rag_eval_v1.json` 검증 완료, `LATTICEAI_VECTOR_INDEX=brute`로 전수 검색 복원 가능).
 - **안전한 삭제 & 코드 서명**: 감시 폴더 정리는 확인 후 지식 그래프에서만 제거하며 디스크 원본 파일은 삭제하지 않습니다. macOS `.dmg`는 ad-hoc 서명되므로 첫 실행 시 macOS Gatekeeper 허용 절차가 필요합니다. 남은 개선 항목은 [docs/ko/ROADMAP.md](docs/ko/ROADMAP.md) 및 [docs/ko/FEATURE_STATUS.md](docs/ko/FEATURE_STATUS.md)에 투명하게 기록합니다.
-- **사용자별 개인정보**: 다중 사용자 모드에서 대화 파생 그래프 노드는 소유자에게만 보입니다. 문서와 업로드는 사용자별이 아니라 워크스페이스 단위로 범위가 정해집니다.
+- **사용자별 개인정보**: 다중 사용자 모드에서 대화 파생 그래프 노드와 `private` 가시성 문서·노트는 소유자에게만 보이며, 기본 `workspace` 업로드는 같은 워크스페이스 내에서 공유됩니다.
 
 ---
 
@@ -168,6 +169,7 @@ ltcai search "릴리스 담당자" --sort newest --limit 5
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.7.0 | Private Scope, Verified Index | [RELEASE_NOTES_v14.7.0.md](docs/ko/releases/RELEASE_NOTES_v14.7.0.md) |
 | 14.6.0 | Within Your Scope | [RELEASE_NOTES_v14.6.0.md](docs/ko/releases/RELEASE_NOTES_v14.6.0.md) |
 | 14.5.0 | Living Automations | [RELEASE_NOTES_v14.5.0.md](docs/ko/releases/RELEASE_NOTES_v14.5.0.md) |
 | 14.4.0 | Measured Retrieval | [RELEASE_NOTES_v14.4.0.md](docs/ko/releases/RELEASE_NOTES_v14.4.0.md) |

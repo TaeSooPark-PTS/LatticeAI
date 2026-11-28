@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from dataclasses import dataclass
@@ -7,12 +8,18 @@ from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Mapping, Optional
 
 HF_REVISIONS_ENV = "LATTICEAI_HF_REVISIONS"
+HF_ALLOW_UNPINNED_ENV = "LATTICEAI_HF_ALLOW_UNPINNED"
+HF_REQUIRE_PINNED_ENV = "LATTICEAI_HF_REQUIRE_PINNED"
+HF_SHA256_ENV = "LATTICEAI_HF_SHA256"
+HF_REQUIRE_SHA256_ENV = "LATTICEAI_HF_REQUIRE_SHA256"
 
 REVISION_PINNED = "pinned"
 REVISION_OVERRIDE = "override"
 REVISION_UNPINNED = "unpinned"
 REVISION_CACHED_FALLBACK = "cached_fallback"
 REVISION_LOCAL_PATH = "local_path"
+
+PINNED_HF_SHA256: Dict[str, str] = {}
 
 PINNED_HF_REVISIONS: Dict[str, str] = {
     "BAAI/bge-reranker-v2-m3": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
@@ -99,10 +106,36 @@ _PINNED_BY_KEY: Dict[str, str] = {
 }
 
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
+_SHA256_HEX = re.compile(r"[0-9a-fA-F]{64}")
+_TRUTHY = {"1", "true", "yes", "on"}
+_FALSY = {"0", "false", "no", "off"}
 
 
 def is_commit_sha(value: Optional[str]) -> bool:
     return bool(value) and _COMMIT_SHA.fullmatch(str(value)) is not None
+
+
+def is_sha256_hex(value: Optional[str]) -> bool:
+    return bool(value) and _SHA256_HEX.fullmatch(str(value).strip()) is not None
+
+
+def allow_unpinned(env: Optional[Mapping[str, str]] = None) -> bool:
+    source = env if env is not None else os.environ
+    require_raw = str(source.get(HF_REQUIRE_PINNED_ENV) or "").strip().lower()
+    if require_raw in _TRUTHY:
+        return False
+    allow_raw = str(source.get(HF_ALLOW_UNPINNED_ENV) or "").strip().lower()
+    if allow_raw in _FALSY:
+        return False
+    if allow_raw in _TRUTHY:
+        return True
+    return True
+
+
+def require_sha256_enabled(env: Optional[Mapping[str, str]] = None) -> bool:
+    source = env if env is not None else os.environ
+    raw = str(source.get(HF_REQUIRE_SHA256_ENV) or "").strip().lower()
+    return raw in _TRUTHY
 
 
 def pinned_revision(repo_id: str) -> Optional[str]:
@@ -233,17 +266,159 @@ def find_cached_snapshot(
     return None
 
 
-def fetch_pinned_snapshot(request: RevisionRequest) -> CachedSnapshot:
+def fetch_pinned_snapshot(
+    request: RevisionRequest,
+    env: Optional[Mapping[str, str]] = None,
+) -> CachedSnapshot:
+    require_pinned_revision(request, env=env)
     from huggingface_hub import snapshot_download
 
-    path = Path(snapshot_download(repo_id=request.repo_id, revision=request.revision))
+    raw_path = (
+        snapshot_download(repo_id=request.repo_id, revision=request.revision)
+        if request.revision
+        else snapshot_download(repo_id=request.repo_id)
+    )
+    path = Path(raw_path)
+    verify_snapshot_integrity(path, request.repo_id, env=env)
     revision = path.name if is_commit_sha(path.name) else request.revision
     return CachedSnapshot(path, revision, request.source)
 
 
+def require_pinned_revision(
+    request: RevisionRequest,
+    env: Optional[Mapping[str, str]] = None,
+) -> RevisionRequest:
+    if request.source == REVISION_UNPINNED and not allow_unpinned(env):
+        raise ValueError(
+            f"Unpinned Hugging Face repo {request.repo_id!r} refused; "
+            f"set {HF_REVISIONS_ENV}='{request.repo_id}=<40-char-sha>' "
+            f"or opt in with {HF_ALLOW_UNPINNED_ENV}=1"
+        )
+    return request
+
+
+def sha256_overrides(env: Optional[Mapping[str, str]] = None) -> Dict[str, str]:
+    source = env if env is not None else os.environ
+    raw = str(source.get(HF_SHA256_ENV) or "").strip()
+    overrides: Dict[str, str] = {}
+    for entry in raw.split(","):
+        item = entry.strip()
+        if not item:
+            continue
+        target, sep, digest = item.partition("=")
+        clean_target = target.strip().lower()
+        clean_digest = digest.strip().lower()
+        if not sep or not clean_target or not is_sha256_hex(clean_digest):
+            raise ValueError(
+                f"{HF_SHA256_ENV} entry {item!r} must look like org/repo/file=<64-hex-sha256>"
+            )
+        overrides[clean_target] = clean_digest
+    return overrides
+
+
+def expected_sha256(
+    repo_id: str,
+    filename: str,
+    env: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    repo_key = str(repo_id or "").strip().lower()
+    file_key = str(filename or "").strip().lstrip("/").lower()
+    overrides = sha256_overrides(env)
+    if repo_key and file_key:
+        scoped = f"{repo_key}/{file_key}"
+        if scoped in overrides:
+            return overrides[scoped]
+        if scoped in PINNED_HF_SHA256:
+            return PINNED_HF_SHA256[scoped].lower()
+    if file_key and file_key in overrides:
+        return overrides[file_key]
+    return None
+
+
+def compute_file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def verify_file_sha256(
+    path: Path,
+    expected: Optional[str] = None,
+    *,
+    repo_id: Optional[str] = None,
+    filename: Optional[str] = None,
+    env: Optional[Mapping[str, str]] = None,
+    require_digest: Optional[bool] = None,
+) -> str:
+    if not path.is_file():
+        raise ValueError(f"Cannot verify SHA-256 of missing file: {path}")
+    digest_expected = expected.strip().lower() if expected else None
+    if digest_expected is None and repo_id and filename:
+        digest_expected = expected_sha256(repo_id, filename, env=env)
+    strict = (
+        require_sha256_enabled(env) if require_digest is None else bool(require_digest)
+    )
+    if digest_expected is None and strict:
+        raise ValueError(
+            f"SHA-256 verification required for {path.name}, but no expected digest was configured"
+        )
+    if digest_expected is not None and not is_sha256_hex(digest_expected):
+        raise ValueError(
+            f"Invalid expected SHA-256 digest for {path.name}: {digest_expected!r}"
+        )
+    actual = compute_file_sha256(path)
+    if digest_expected is not None and actual != digest_expected:
+        raise ValueError(
+            f"SHA-256 mismatch for {path.name}: expected {digest_expected}, got {actual}"
+        )
+    return actual
+
+
+def verify_snapshot_integrity(
+    snapshot_dir: Path,
+    repo_id: str,
+    env: Optional[Mapping[str, str]] = None,
+) -> Dict[str, str]:
+    verified: Dict[str, str] = {}
+    if not snapshot_dir.is_dir():
+        return verified
+    overrides = sha256_overrides(env)
+    repo_prefix = f"{str(repo_id or '').strip().lower()}/"
+    has_configured = any(
+        key.startswith(repo_prefix) or "/" not in key
+        for key in (*overrides.keys(), *PINNED_HF_SHA256.keys())
+    )
+    strict = require_sha256_enabled(env)
+    if not has_configured and not strict:
+        return verified
+    for file_path in sorted(p for p in snapshot_dir.rglob("*") if p.is_file()):
+        rel = file_path.relative_to(snapshot_dir).as_posix()
+        digest_expected = expected_sha256(repo_id, rel, env=env)
+        if digest_expected is not None or (
+            strict and rel.endswith((".safetensors", ".bin", ".gguf", ".onnx"))
+        ):
+            verified[rel] = verify_file_sha256(
+                file_path,
+                digest_expected,
+                require_digest=strict,
+                env=env,
+            )
+    return verified
+
+
 __all__ = [
+    "HF_ALLOW_UNPINNED_ENV",
+    "HF_REQUIRE_PINNED_ENV",
+    "HF_REQUIRE_SHA256_ENV",
     "HF_REVISIONS_ENV",
+    "HF_SHA256_ENV",
     "PINNED_HF_REVISIONS",
+    "PINNED_HF_SHA256",
     "REVISION_CACHED_FALLBACK",
     "REVISION_LOCAL_PATH",
     "REVISION_OVERRIDE",
@@ -251,10 +426,19 @@ __all__ = [
     "REVISION_UNPINNED",
     "CachedSnapshot",
     "RevisionRequest",
+    "allow_unpinned",
+    "compute_file_sha256",
+    "expected_sha256",
     "fetch_pinned_snapshot",
     "find_cached_snapshot",
     "is_commit_sha",
+    "is_sha256_hex",
     "pinned_revision",
+    "require_pinned_revision",
+    "require_sha256_enabled",
     "resolve_revision",
     "revision_overrides",
+    "sha256_overrides",
+    "verify_file_sha256",
+    "verify_snapshot_integrity",
 ]

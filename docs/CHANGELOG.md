@@ -6,6 +6,23 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [14.7.0] - 2026-11-28 — Private Scope, Verified Index
+
+### Added
+- Owner-only `private` documents and notes inside workspaces across `lattice-core` (`viewer_scope.rs`, `graph_write/`), `lattice-retrieval` (`bm25/scoring.rs`, `vector_alignment.rs`, `knowledge_graph_api/`), `lattice-ingest` (`upload_parse.rs`, `ingest.rs`), `lattice-platform` (`share_bundle.rs`, `security_dashboard/handlers.rs`), and Brain ingestion UI/API (`transfers.ts`, `client.ts`, `useBrainIngestion.ts`, `IngestionPanels.tsx`).
+- Continuous ingest/delete/revise recall@10 benchmark (`rust/lattice-retrieval/tests/hnsw_rag_eval_recall.rs`) on `datasets/rag_eval_v1.json` (`baseline=1.0000`, 5 churn rounds `[0.9990625, 0.9984375, 0.9978125, 0.99625, 0.9965625]`).
+- Small-model multi-source evidence scaffolding and coverage refinement (`rust/lattice-agent/src/kernel/agentloop/synthesis.rs`) wired into `guided/args.rs`, `execution/mod.rs`, and fail-closed `verification.rs`.
+- Opt-in Self-Model LLM refiner (`rust/lattice-retrieval/src/memory_api/self_model_refiner.rs`, `LATTICEAI_SELF_MODEL_LLM_REFINER=1`) strictly proposal-first through Review Center.
+- Self-Model `desk::open_keys_in` snoozed-suppression regression test (`rust/lattice-retrieval/src/brain_api/desk_tests.rs`).
+- Dedicated Brain Network share UI (`frontend/src/api/brainNetwork.ts`, `BrainNetworkPanel.tsx` in `BrainGovernanceHub.tsx`).
+
+### Changed
+- Flipped `LATTICEAI_VECTOR_INDEX` default from `brute` to `hnsw` across `lattice-retrieval`, `lattice-jobs`, `lattice-platform`, and `lattice-core::messages`.
+- Completed Hugging Face revision pinning and SHA-256/LFS verification across `latticeai/core/hf_revisions.py`, `local_models.py`, `embedding_providers/{autodetect,text}.py`, and `model_runtime/download.py` with `LATTICEAI_HF_ALLOW_UNPINNED` / `LATTICEAI_HF_REQUIRE_PINNED` / `LATTICEAI_HF_REQUIRE_SHA256` controls.
+- Updated `docs/ROADMAP.md` and `docs/ko/ROADMAP.md` from `v14.1.1` to `v14.7.0`.
+
+Details: [docs/releases/RELEASE_NOTES_v14.7.0.md](releases/RELEASE_NOTES_v14.7.0.md).
+
 ## [14.6.0] - 2026-11-28 — Within Your Scope
 
 ### Changed

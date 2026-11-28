@@ -1,12 +1,12 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./FEATURE_STATUS.md)
 
-# Lattice AI 기능 현황 (v14.5.0)
+# Lattice AI 기능 현황 (v14.7.0)
 
 > **상태: 정본(Canonical)** — 현재 릴리스 기준의 실제 기능 상태와 한계를 기록합니다.
 
-현재 릴리스: **14.6.0 — Within Your Scope**.
+현재 릴리스: **14.7.0 — Private Scope, Verified Index**.
 
-이 문서는 `v14.5.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
+이 문서는 `v14.7.0` 기준 Lattice AI의 실제 제공 기능과 정직한 한계를 정리합니다.
 공개 릴리스 이력은 [`RELEASE.md`](./RELEASE.md), [`RELEASE_NOTES.md`](./RELEASE_NOTES.md), [`CHANGELOG.md`](./CHANGELOG.md)에서 `v13.0.0` 이후 버전만 유지합니다.
 
 ---
@@ -41,7 +41,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **섹션 트리 & 구조 보존 수집** | 현재 제공 | `Document ←PART_OF— Section —HAS_CHUNK→ Chunk` 목차 트리와 표·페이지·슬라이드·시트·캡션 및 선택적 로컬 OCR/비전 오버레이를 보존합니다(`document_structure.rs`). |
 | **폴더 수집 · 디바운스 감시 · 청크 증분 동기화** | 현재 제공 | `.latticeignore` 필터링, 파일 지문(크기+mtime+SHA-256) 미변경 스킵(재인덱싱 `33s → 0.26s`), `spawn_blocking` 파일 I/O, `DebouncedWatchEngine`(`moved_from_uri` 이동 연동·일시중지), 2단계 비동기 청크 증분 재임베딩(`incremental_sync.rs`, `watch_deliver.rs`)을 지원합니다. |
 | **삭제된 파일 정리** | 현재 제공(동의 필요) | 증분 수집은 사라진 파일을 자동 삭제하지 않고 보고합니다. `POST /api/ingestion/folder/prune`은 드라이런을 먼저 제시하고 명시적 `confirm` 시 그래프 서브트리(`delete_document_tree` / `delete_node_subgraph`)만 정리합니다(디스크 원본 파일은 절대 삭제하지 않음). |
-| **벡터 인덱스 백엔드 & 임베딩 레지스트리** | 현재 제공 | Rust ↔ Python 공통 `EmbeddingIndexContract`로 모델·리비전·차원·정규화 계약을 일치시킵니다. `brute`(기본 정확 스캔), `quantized`, 상한 LRU 캐시 `NativeHnswIndex` / 워커 `hnsw+rescore`(512개 이상 벡터 + 워커 연결 시 자동 시도)를 지원하며, `EmbeddingModelRegistry`로 재개 가능한 섀도 재색인·품질 게이트 컷오버·즉시 롤백을 제공합니다. |
+| **벡터 인덱스 백엔드 & 임베딩 레지스트리** | 현재 제공 | Rust ↔ Python 공통 `EmbeddingIndexContract`로 모델·리비전·차원·정규화 계약을 일치시킵니다. `datasets/rag_eval_v1.json` recall@10 검증 후 `hnsw`(`NativeHnswIndex`, 상한 LRU 캐시)가 기본 `LATTICEAI_VECTOR_INDEX` 백엔드로 동작하며 `brute`·`quantized`도 선택할 수 있습니다. `EmbeddingModelRegistry`로 재개 가능한 섀도 재색인·품질 게이트 컷오버·즉시 롤백을 지원합니다. |
 | **백그라운드 임베딩 & 실시간 드레인 제어** | 현재 제공 | 내구성 `vector_jobs` 큐를 `lattice-jobs` 적응형 스케줄러가 처리합니다(부분 드레인 통계 보존 및 `/host/jobs` 루프백/Bearer 가드 포함). `VectorFreshnessNotice`에서 임베딩 진행률과 원클릭 **지금 인덱싱(`POST /api/index/drain`)**을 제어합니다. |
 | **능동적 합성 · 학습 루프 · 자기모델** | 현재 제공 | 이벤트 기반 합성이 모순, 미명명 주제, 미연결 쌍, 오래된 기억을 `kg_change_digest` 제안으로 생성합니다. 로컬 전용 `knowledge_corrections` 학습 루프가 워크스페이스 소유권 검증 하에 교정 이력을 기록하며, `SelfModelPanel`과 `/api/memory/self-model*`로 소유자 선호·습관·결정·관계를 제안 우선으로 관리합니다. |
 | **범용 적응형 에이전트 하네스 & 내구성 워크플로** | 현재 제공 | 모델별 분기 없는 `kernel/probe.rs` 3턴 마이크로 프로빙으로 `standard` / `compact` / `guided` 다이얼을 자동 선택하며, 하향 전용 자가 강등(`demote_to_guided`), `ui_resolve.rs`, `rag_grounding.rs`, fail-closed `NEEDS_REVIEW` 검증을 수행합니다. `DurableWorkflowStore`가 원자적 체크포인트, SHA-256 멱등 재생, `WaitingApproval` 재시작 복구, 파일 스냅샷 롤백, 최소 권한 5역할 `MultiAgentSession`을 제공합니다. |
@@ -52,7 +52,7 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 | **도구 레지스트리 & 네이티브 MCP 서버** | 현재 제공 | `POST /mcp`가 OpenAPI 제품 계약에 포함된 네이티브 Streamable-HTTP JSON-RPC 서버(`initialize` / `tools/list` / `tools/call`)로 동작하며 에이전트 카탈로그(`mcp.<tool>`, `skill.<name>`)와 동일한 `check_governance` 게이트를 공유합니다. |
 | **기능 토글 (Feature Toggles)** | 현재 제공 | 서버 렌더링 **기능** 서랍(`GET/POST /api/features`, 우선순위 `사용자 → 환경 변수 → 기본값`)에서 멀티모달, 비디오 수집, 볼트 감시, 브레인 네트워크, 자동 합성, 인라인 벡터 동기화, RRF 융합, 그래프 확장, 벡터 백엔드를 재시작 없이 제어합니다. |
 | **네이티브 로컬 상호운용 브리지** | 현재 제공(옵트인) | 벤더 API 없이 승인 토큰 하에 Obsidian 볼트(`[[wikilink]]` `LINKS_TO` 엣지), Notion 내보내기(폴더/`.zip`), 로컬 Git 커밋 로그, `.eml`/`.ics` 파일을 네이티브 Rust `GraphWriter`로 직접 수집합니다. |
-| **암호화 `.latticebrain` 아카이브 & Brain Network** | 현재 제공 | Rust 기반 RFC 7914 `scrypt` 암호문구 또는 `X25519` + `HKDF-SHA256` 수신자 공개키 암호화, 상수 시간 `SHA256-CTR` + `HMAC-SHA256` 검증, ZIP 경로 탈출 차단을 제공합니다. 옵트인 서브그래프 공유(`LATTICEAI_BRAIN_NETWORK=1`)는 Ed25519 서명과 검토함 제안 수신을 사용합니다. |
+| **암호화 `.latticebrain` 아카이브 & Brain Network** | 현재 제공 | Rust 기반 RFC 7914 `scrypt` 암호문구 또는 `X25519` + `HKDF-SHA256` 수신자 공개키 암호화, 상수 시간 `SHA256-CTR` + `HMAC-SHA256` 검증, ZIP 경로 탈출 차단을 제공합니다. 옵트인 서브그래프 공유(`LATTICEAI_BRAIN_NETWORK=1`)는 Ed25519 서명, 검토함 제안 수신, 거버넌스 허브의 `BrainNetworkPanel` UI를 사용합니다. |
 | **데스크톱 셸(Tauri 2.11) & 확장 프로그램** | 현재 제공 | 직렬화된 비동기 Tauri 게이트웨이 생명주기, 프로덕션 포트 `4825` 충돌 시 즉시 실패하는 `PortPolicy::PinnedProduction`, `'unsafe-inline'` 없는 엄격 CSP, 직접 `BackendStatus`를 반환하는 비실패 커맨드, `spawn_blocking` 폴더 선택기를 제공합니다. VS Code 확장(Bearer 인증, TTL 승인 캐시, 실시간 `agent_step` 타임라인, 크로스플랫폼 VSIX)과 브라우저 확장(포트 4825 권한, 라이브 DOM 가시성 추출, UTF-8 바이트 절단, 서버 언어 동기화)을 포함합니다. |
 | **멀티모달(이미지 · 오디오 · 비디오)** | 옵트인(기본 꺼짐) | `allow_multimodal` 활성화 시 `Image`/`ImageText`, `Audio`, `Video`(`Modality::Video` + `ffmpeg` 키프레임 + `.srt`/`.vtt`)를 지원합니다. OCR(`pytesseract`), VLM 캡션, 비전 임베딩, 음성 전사기, `ffmpeg`는 번들되지 않으며 미설치 시 가짜 출력 없이 `unavailable`로 보고합니다. |
 | **PostgreSQL 백엔드** | 계획됨(Planned) | 공식 로컬 라이브 저장소는 SQLite WAL입니다. PostgreSQL/pgvector는 드라이런 계획 및 수동 실행 CI 가드만 존재하는 계획 단계입니다. |
@@ -67,17 +67,17 @@ Lattice AI는 **로컬 우선(Local-first) 디지털 브레인**입니다. 영�
 ## 알려진 한계 (정직한 경계)
 
 - **검색 모델 단일 기기 측정:** 14.4.0에서 실제 EmbeddingGemma 2와 `bge-reranker-v2-m3`를 Apple Silicon(MPS)에서 작은 합성 데이터셋으로 측정했습니다. 실패하면 여전히 해시 임베딩과 RRF 순서로 대체합니다.
-- **워크스페이스 내 문서의 사용자별 비공개 없음:** 다중 사용자 뷰어 필터는 대화 파생 노드에만 적용됩니다.
-- **소형 모델의 어려운 과제 내용 품질**: 범용 적응형 에이전트 하네스가 기계적 실행 안정성을 크게 높였지만(`Qwen2.5-0.5B-Instruct-Q4_K_M` 기준 `28.0% → 84.0%`), 0.5B~2B 모델은 개방형 과제에서 유창하지만 불완전한 요약을 생성할 수 있으며 fail-closed 검증기가 이를 `NEEDS_REVIEW`로 격리합니다.
+- **워크스페이스 내 소유자별 문서 비공개:** 대화 파생 노드와 `visibility: "private"`로 지정한 업로드 문서·노트는 소유자에게만 보이며, 기본 `workspace` 업로드는 같은 워크스페이스 내에서 공유됩니다.
+- **소형 모델의 어려운 과제 내용 품질**: 범용 적응형 에이전트 하네스와 `[S1]`..`[Sn]` 구조화 근거 스캐폴딩·커버리지 보정(`synthesis.rs`)으로 다중 근거 합성이 향상되었으며, 불완전한 답변은 fail-closed 검증기가 `NEEDS_REVIEW`로 격리합니다.
 - **클라우드 `api_key` 라이브 과금 경계**: `api_key` 경로는 무과금 `GET /models` 프로브로 연결성을 검증하고 실패 시 fail-closed 합니다. CI에서는 과금 채팅 완성 호출을 실행하지 않으며 라이브 E2E는 무과금 `cli_oauth`로 검증합니다.
 - **macOS DMG 코드 서명**: `.github/workflows/release.yml`은 `APPLE_CERTIFICATE` 시크릿 구성 시 Developer ID 서명 및 공증을 수행하고, 미구성 시 ad-hoc 서명(최초 실행 시 Gatekeeper 허용 필요)으로 폴백합니다. `npm run release:validate`는 파일명과 존재 여부만 검증합니다.
-- **벡터 백엔드 환경 변수 기본값**: `LATTICEAI_VECTOR_INDEX` 기본값은 `brute`이며(512개 이상 벡터 + 워커 연결 시 `hnsw+rescore` 자동 시도), 기본 환경 변수 전환은 연속 수집 환경의 라이브 recall@10 검증을 전제로 합니다. `quantized` int8 백엔드는 10k 행 기준 메모리 절감 대비 약 2.2배 느려 기본 권장 대상이 아닙니다.
-- **Hugging Face 런타임 커밋 고정 백로그**: `scripts/verify_hf_model_registry.py`는 가중치 다운로드 없이 Hub 메타데이터와 크기를 정적 검증하지만, `model_runtime/download.py`와 `embedding_providers/text.py`의 런타임 다운로드에는 기본 불변 `revision=` 고정이 아직 전 경로에 적용되지 않았습니다([`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md)에 Bandit `B615`로 추적 중).
+- **벡터 백엔드 환경 변수 기본값**: `LATTICEAI_VECTOR_INDEX` 기본값은 네이티브 `hnsw`입니다(`datasets/rag_eval_v1.json` 기준 검증 완료, `brute`도 선택 가능). `quantized` int8 백엔드는 10k 행 기준 메모리 절감 대비 약 2.2배 느려 기본 권장 대상이 아닙니다.
+- **Hugging Face 런타임 커밋 고정 및 SHA-256 검증**: `hf_revisions.py`, `local_models.py`, `embedding_providers/{autodetect,text}.py`, `model_runtime/download.py`에서 고정 커밋 `revision=`과 SHA-256/LFS 다이제스트 검증을 기본 적용하며 사용자 지정 미고정 리포는 `LATTICEAI_HF_ALLOW_UNPINNED` / `LATTICEAI_HF_REQUIRE_PINNED`로 제어합니다.
 - **비전·음성 모델 및 `ffmpeg` 미번들**: OCR, VLM 캡션, 공유 공간 비전 임베딩, 음성 전사기, `ffmpeg`는 선택적 외부 의존성이며 부재 시 가짜 값을 만들지 않고 `unavailable`로 보고합니다. 이미지·비디오 관찰 헬퍼는 별도 HTTP 라우트 없이 Brain Core 단위 테스트로 유지됩니다.
 - **이미지 근거 썸네일**: 근거 카드는 기본적으로 96px 인라인 `data:image/` 썸네일(24 KB 상한)만 렌더링하며, 원본 이미지는 사용자가 명시적으로 승인한 뒤에만 `/local/serve`로 제공됩니다(동의 게이트 뷰어, `CitationVisual` 테스트).
 - **로컬 내보내기 전용 상호운용 브리지**: Notion API, IMAP, macOS 캘린더/메일 실시간 연동은 의도적으로 범위 밖이며 사용자가 내보낸 로컬 파일만 수집합니다.
 - **포인터 도구(`pyautogui`)**: 6개 포인터 도구는 네이티브 Rust OS 액추에이터가 아니라 Python 워커(`pip install "ltcai[pointer]"`)에서 실행됩니다.
-- **자기모델 추출 범위**: 한/영 구문 테이블 기반 제안 우선 추출이며 LLM `refiner`는 미연결 상태입니다. `open_keys`는 `pending`과 `snoozed` 제안을 모두 열린 항목으로 취급해 중복을 억제하지만, `snoozed` 결정을 고정하는 회귀 테스트는 아직 없습니다.
+- **자기모델 추출 범위**: 한/영 구문 테이블 기반 제안 우선 추출과 선택적 `LATTICEAI_SELF_MODEL_LLM_REFINER=1` 정제를 함께 지원하며 모든 후보는 검토 센터를 거칩니다. `open_keys`는 `pending`과 `snoozed` 제안을 모두 열린 항목으로 취급해 중복을 억제하며, `desk_tests.rs` 회귀 테스트로 동작을 고정했습니다.
 - **커버리지 하한 비대칭**: 프론트엔드 Vitest는 구문·분기·함수·라인 100%(`all: true`)를 강제하고, Python CI는 라인 커버리지 90% 하한을 적용합니다.
 - **로컬 OS 보안 경계**: 디스크 수준 데이터 보호는 OS 사용자 계정, 디스크 암호화, 외부 백업 정책에 의존합니다.
 

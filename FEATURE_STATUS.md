@@ -1,14 +1,14 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./FEATURE_STATUS.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/FEATURE_STATUS.md)
 
-# Lattice AI Feature Status (v14.5.0)
+# Lattice AI Feature Status (v14.7.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **14.6.0 — Within Your Scope**.
+Current release: **14.7.0 — Private Scope, Verified Index**.
 
 This document records the live product capabilities and honest boundaries of
-Lattice AI as of `v14.5.0`. Public release history is maintained from `v13.0.0`
+Lattice AI as of `v14.7.0`. Public release history is maintained from `v13.0.0`
 onward in [`RELEASE.md`](RELEASE.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md),
 and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
@@ -63,7 +63,7 @@ replaceable runtimes over that Brain.
 | **Section Tree & Structure-Preserving Ingestion** | Current | Writes `Document ←PART_OF— Section —HAS_CHUNK→ Chunk` outlines alongside structured table, page, slide, sheet, caption, and optional local OCR/vision overlays (`document_structure.rs`). |
 | **Folder Ingestion, Debounced Watch & Incremental Sync** | Current | `.latticeignore` filtering, fingerprint skip (path + size + mtime + sha256; no-change reindex `33s → 0.26s`), `spawn_blocking` filesystem I/O, `DebouncedWatchEngine` (`moved_from_uri` relocation + per-watch `paused`), and two-phase async chunk-level incremental re-embedding (`incremental_sync.rs`, `watch_deliver.rs`). |
 | **Deleted-File Cleanup** | Current (consent-gated) | Incremental ingest reports vanished files without auto-deleting. `POST /api/ingestion/folder/prune` previews dry-run counts and, upon explicit `confirm`, removes only the graph subtree (`delete_document_tree` / `delete_node_subgraph`). Disk files are never touched. |
-| **Vector Index Backends & Embedding Registry** | Current | Unified Rust ↔ Python `EmbeddingIndexContract` (`provider`, `model_id`, `model_revision`, `dimension`, `normalization`, `index_version`, `grade`, `semantic`). Supports `brute` (default exact scan), `quantized`, and bounded LRU `NativeHnswIndex` / worker `hnsw+rescore` (auto-tried at 512+ vectors with a bound worker). `EmbeddingModelRegistry` supports resumable shadow re-indexing, quality-gated cutover, and instant rollback. |
+| **Vector Index Backends & Embedding Registry** | Current | Unified Rust ↔ Python `EmbeddingIndexContract` (`provider`, `model_id`, `model_revision`, `dimension`, `normalization`, `index_version`, `grade`, `semantic`). `hnsw` (`NativeHnswIndex`, LRU-bounded) is now the default `LATTICEAI_VECTOR_INDEX` backend after verifying recall@10 on `datasets/rag_eval_v1.json`; `brute` exact scan and `quantized` int8 remain selectable. `EmbeddingModelRegistry` supports resumable shadow re-indexing, quality-gated cutover, and instant rollback. |
 | **Temporal Retrieval & Chunking** | Current | Token-sized parent-child chunks with contextual prefixes, tree-sitter code splitting, time-intent prefilter, recency decay, `SUPERSEDES` handling, `sort_by=relevance\|newest`, and `ltcai search`. |
 | **Reranking & Chat Grounding Gates** | Current (reranker needs `rag` extra) | Cross-encoder rerank through `POST /worker/rerank` with RRF fallback, MMR with a per-document cap, and Self-RAG abstention. Real reranker and EmbeddingGemma 2 loading was measured in 14.4.0 with the real weights (see `docs/BENCHMARKS.md`). |
 | **3D Living Brain & Desktop Shell** | Current | 3D graph view with retrieval firing and 2D fallback, fixed-viewport shell, Brain Vital Pill, docked evidence panel, and `Cmd/Ctrl+K` palette. |
@@ -77,7 +77,7 @@ replaceable runtimes over that Brain.
 | **Tool Registry & Native MCP Server** | Current | `POST /mcp` is a native streamable-HTTP JSON-RPC server inside the OpenAPI product contract (`initialize` / `tools/list` / `tools/call`) sharing `check_governance` with the agent catalog (`mcp.<tool>` and `skill.<name>`). |
 | **Feature Toggles** | Current | Server-rendered **Features** drawer (`GET/POST /api/features`, precedence `user → env → default`) toggles multimodal, video ingest, vault watch, Brain Network, synthesis, inline vector sync, RRF fusion, graph expansion, and vector backend without restart. |
 | **Native Local Interop Bridges** | Current (opt-in) | Local-file-only native Rust `GraphWriter` ingestion for Obsidian vaults (`[[wikilink]]` `LINKS_TO` edges), Notion exports (directory/`.zip`), local Git commit logs, and `.eml`/`.ics` files behind approval tokens. |
-| **Encrypted `.latticebrain` Archives & Brain Network** | Current | Rust-backed RFC 7914 `scrypt` passphrase or `X25519` + `HKDF-SHA256` recipient encryption, `SHA256-CTR` + `HMAC-SHA256` constant-time verification, and ZIP path-traversal blocking. Opt-in selective subgraph sharing (`LATTICEAI_BRAIN_NETWORK=1`) uses Ed25519 signatures and Review Center proposals. |
+| **Encrypted `.latticebrain` Archives & Brain Network** | Current | Rust-backed RFC 7914 `scrypt` passphrase or `X25519` + `HKDF-SHA256` recipient encryption, `SHA256-CTR` + `HMAC-SHA256` constant-time verification, and ZIP path-traversal blocking. Opt-in selective subgraph sharing (`LATTICEAI_BRAIN_NETWORK=1`) uses Ed25519 signatures, Review Center proposals, and `BrainNetworkPanel` inside Brain Governance Hub. |
 | **Desktop Shell (Tauri 2.11) & Extensions** | Current | Serialized async Tauri gateway lifecycle with `PortPolicy::PinnedProduction` fail-fast on port `4825`, strict CSP without `'unsafe-inline'`, direct `BackendStatus` infallible commands, and `spawn_blocking` folder picking. Hardened VS Code extension (Bearer auth, TTL approval cache, live `agent_step` timeline, cross-platform VSIX) and Browser extension (port-4825 permissions, live DOM visibility capture, UTF-8 byte truncation, server language sync). |
 | **Multimodal (Image, Audio, Video)** | Opt-in (default off) | Behind `allow_multimodal`: first-class `Image`/`ImageText`, `Audio`, and `Video` (`Modality::Video` + `ffmpeg` keyframes + `.srt`/`.vtt`) nodes. OCR (`pytesseract`), VLM captions, vision embeddings, transcribers, and `ffmpeg` are not bundled and report `unavailable` honestly when absent. |
 | **PostgreSQL Backend** | Planned | SQLite WAL is the official live local Brain store. PostgreSQL/pgvector remains `Planned` (dry-run planning and opt-in dispatch CI guard only). |
@@ -91,13 +91,16 @@ replaceable runtimes over that Brain.
 - **Retrieval models measured on one machine:** real EmbeddingGemma 2 and
   `bge-reranker-v2-m3` were measured for 14.4.0 on Apple Silicon (MPS) with a
   small synthetic dataset; failures still degrade to hash embeddings and RRF order.
-- **No per-user document privacy inside a workspace:** the multi-user viewer
-  filter covers conversation-derived nodes only.
+- **Per-user privacy inside a workspace:** conversation-derived nodes and
+  documents/notes explicitly marked `visibility: "private"` are visible only
+  to their owner; default `workspace` uploads remain shared within the
+  workspace.
 - **Small-model content quality on hard tasks:** The Universal Adaptive Agent
   Harness solves mechanical execution (`28.0% → 84.0%` on
-  `Qwen2.5-0.5B-Instruct-Q4_K_M`), yet 0.5B–2B models can still produce fluent
-  but incomplete summaries on open-ended tasks. Fail-closed verification routes
-  those runs to `NEEDS_REVIEW` rather than reporting false success.
+  `Qwen2.5-0.5B-Instruct-Q4_K_M`), and structured `[S1]`..`[Sn]` evidence
+  scaffolding + coverage refinement (`synthesis.rs`) improve multi-source
+  synthesis. Fail-closed verification still routes incomplete answers to
+  `NEEDS_REVIEW` rather than reporting false success.
 - **Cloud `api_key` live billing boundary:** `api_key` mode live-probes
   `GET /models` with zero billing and fail-closes when unreachable; billed chat
   completions are not executed in CI (live E2E is verified with zero-billing
@@ -108,16 +111,14 @@ replaceable runtimes over that Brain.
   Gatekeeper approval). `npm run release:validate` verifies artifact presence
   and naming, not Developer ID signatures.
 - **Default vector backend environment variable:** `LATTICEAI_VECTOR_INDEX`
-  defaults to `brute` (while `hnsw+rescore` auto-activates at 512+ vectors with
-  a bound worker). Flipping the default env remains gated on continuous-ingest
-  live recall@10 measurement. The `quantized` int8 backend is ~2.2× slower than
+  now defaults to native `hnsw` (verified against `datasets/rag_eval_v1.json`;
+  `brute` remains selectable). The `quantized` int8 backend is ~2.2× slower than
   `brute` at 10k rows without meaningful peak-RSS savings and is not recommended.
-- **Hugging Face runtime commit pinning:** `scripts/verify_hf_model_registry.py`
-  statically validates Hub metadata and sizes without downloading weights, while
-  runtime downloads in `model_runtime/download.py` and
-  `embedding_providers/text.py` do not yet enforce default immutable `revision=`
-  pinning across all unpinned loads (tracked as Bandit `B615` in
-  [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md)).
+- **Hugging Face runtime commit pinning & SHA-256 verification:** `hf_revisions.py`,
+  `local_models.py`, `embedding_providers/{autodetect,text}.py`, and
+  `model_runtime/download.py` apply pinned `revision=` commits and SHA-256/LFS
+  digest checks by default, with explicit opt-in/opt-out controls for custom
+  unpinned repos (`LATTICEAI_HF_ALLOW_UNPINNED` / `LATTICEAI_HF_REQUIRE_PINNED`).
 - **Unbundled vision/speech models & `ffmpeg`:** OCR, VLM captioning, shared-space
   vision embeddings, ASR transcribers, and `ffmpeg` are optional external
   dependencies; missing components report `unavailable` without fabricating
@@ -133,9 +134,10 @@ replaceable runtimes over that Brain.
 - **Pointer tools (`pyautogui`):** The six pointer tools execute in the Python
   worker (`pip install "ltcai[pointer]"`) rather than a native Rust OS actuator.
 - **Self-Model extraction scope:** Phrase-table extraction (EN/KO) is
-  proposal-first with no LLM `refiner` wired yet. `open_keys` treats both
-  `pending` and `snoozed` proposals as open (suppressing duplicates); the
-  `snoozed` decision is not yet pinned by a regression test.
+  proposal-first with optional `LATTICEAI_SELF_MODEL_LLM_REFINER=1` worker-backed
+  refinement (all candidates still stage through Review Center). `open_keys` treats
+  both `pending` and `snoozed` proposals as open (suppressing duplicates),
+  pinned by `desk_tests.rs`.
 - **Coverage floor asymmetry:** Frontend Vitest enforces 100% across statements,
   branches, functions, and lines (`all: true`); Python CI enforces a `>= 90%`
   line-coverage floor.

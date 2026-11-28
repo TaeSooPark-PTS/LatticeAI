@@ -1,33 +1,78 @@
-use serde_json::{json, Value};
-
 use super::*;
-
-fn digest_item(id: &str, status: &str, snoozed_until: Value) -> Value {
-    json!({
-        "id": id,
-        "status": status,
-        "title": format!("title {id}"),
-        "source": SYNTHESIS_SOURCE,
-        "kind": "concept",
-        "payload": {"proposal_key": format!("concept:{id}")},
-        "effective_status": "pending",
-        "snoozed_until": snoozed_until,
-        "workspace_id": "personal",
-    })
-}
-
-fn doc_of(items: Vec<Value>) -> Value {
-    json!({"review_items": items})
-}
+use serde_json::json;
 
 #[test]
-fn a_dismissed_or_approved_proposal_with_a_stale_stored_status_is_not_pending() {
-    let doc = doc_of(vec![
-        digest_item("a", "dismissed", Value::Null),
-        digest_item("b", "approved", Value::Null),
-        digest_item("c", "pending", Value::Null),
-    ]);
-    let pending = pending_synthesis(&doc, Some("personal"), 0.0);
-    let ids: Vec<&str> = pending.iter().filter_map(|i| i["id"].as_str()).collect();
-    assert_eq!(ids, vec!["c"]);
+fn open_keys_in_treats_pending_and_active_snoozed_as_open_and_suppresses_duplicates() {
+    let now = wsos::review_snooze_expiry_secs("2026-11-28T10:00:00Z").expect("now");
+    let doc = json!({
+        "review_items": [
+            {
+                "id": "rev-pending",
+                "status": "pending",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-a",
+                "snoozed_until": null,
+                "payload": {"proposal_key": "self_model:habit:daily-review"}
+            },
+            {
+                "id": "rev-snoozed-active",
+                "status": "snoozed",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-a",
+                "snoozed_until": "2026-11-28T11:00:00Z",
+                "payload": {"proposal_key": "self_model:preference:dark-mode"}
+            },
+            {
+                "id": "rev-snoozed-expired",
+                "status": "snoozed",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-a",
+                "snoozed_until": "2026-11-28T09:59:00Z",
+                "payload": {"proposal_key": "self_model:decision:use-rust"}
+            },
+            {
+                "id": "rev-approved",
+                "status": "approved",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-a",
+                "payload": {"proposal_key": "self_model:trait:curious"}
+            },
+            {
+                "id": "rev-dismissed",
+                "status": "dismissed",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-a",
+                "payload": {"proposal_key": "self_model:habit:skip-lunch"}
+            },
+            {
+                "id": "rev-other-ws",
+                "status": "snoozed",
+                "source": SYNTHESIS_SOURCE,
+                "kind": "self_model_fact",
+                "workspace_id": "ws-b",
+                "snoozed_until": "2026-11-28T11:00:00Z",
+                "payload": {"proposal_key": "self_model:trait:other-ws"}
+            }
+        ]
+    });
+
+    let keys_a = open_keys_in(&doc, Some("ws-a"), now);
+    assert!(keys_a.contains("self_model:habit:daily-review"));
+    assert!(keys_a.contains("self_model:preference:dark-mode"));
+    assert!(keys_a.contains("self_model:decision:use-rust"));
+    assert!(!keys_a.contains("self_model:trait:curious"));
+    assert!(!keys_a.contains("self_model:habit:skip-lunch"));
+    assert!(!keys_a.contains("self_model:trait:other-ws"));
+
+    let pending_a = pending_synthesis(&doc, Some("ws-a"), now);
+    let pending_ids: Vec<&str> = pending_a
+        .iter()
+        .filter_map(|item| item.get("id").and_then(Value::as_str))
+        .collect();
+    assert_eq!(pending_ids, vec!["rev-pending", "rev-snoozed-expired"]);
 }

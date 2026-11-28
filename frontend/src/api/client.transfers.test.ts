@@ -26,6 +26,18 @@ describe("uploadDocument", () => {
     expect(body).toBeInstanceOf(FormData);
     const part = body.get("file") as File;
     expect(part.name).toBe("메모.txt");
+    expect(body.get("visibility")).toBeNull();
+  });
+
+  it("attaches private visibility field and header when requested", async () => {
+    const calls = recordFetch(() => jsonResponse({ status: "ingested" }));
+
+    const res = await latticeApi.uploadDocument(file(), "private");
+
+    expect(res.ok).toBe(true);
+    const body = calls[0]!.body as FormData;
+    expect(body.get("visibility")).toBe("private");
+    expect(calls[0]!.headers.get("x-lattice-visibility")).toBe("private");
   });
 
   it("reads the server's explanation out of a rejected upload", async () => {

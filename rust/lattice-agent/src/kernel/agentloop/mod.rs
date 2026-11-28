@@ -6,6 +6,7 @@ pub mod guided;
 pub(crate) mod harness;
 pub mod planning;
 pub mod recovery;
+pub mod synthesis;
 pub mod verification;
 
 use std::collections::BTreeSet;

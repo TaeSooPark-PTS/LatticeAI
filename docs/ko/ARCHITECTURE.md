@@ -5,7 +5,7 @@
 > **상태: 정본(canonical)** — 현재 릴리스와 동기화되는 최신 아키텍처 정본 문서입니다.
 > 서브시스템 설계 원칙과 운영 관점 개요는 [`docs/ko/architecture-overview.md`](./architecture-overview.md)를 참고하세요.
 
-현재 릴리스: **14.6.0 — Within Your Scope**.
+현재 릴리스: **14.7.0 — Private Scope, Verified Index**.
 
 Lattice AI는 단일 라이터 Rust 제품 호스트(`lattice-host`), 21개 라우트의 루프백 Python AI 연산 워커(`latticeai.worker_app`), 로컬 SQLite 지식 그래프, 모델 비종속 범용 적응형 에이전트 하네스(Universal Adaptive Agent Harness), 엄격 모드 TypeScript 7 / React / Vite 8 UI로 구성된 로컬 우선 Digital Brain 플랫폼입니다.
 
@@ -127,6 +127,8 @@ flowchart LR
 
 운영 수집은 문맥 접두어를 갖춘 토큰 크기의 parent-child 청크를 씁니다(`lattice-ingest/src/chunk/`, parent는 `chunk_parents`). 랭킹 검색은 `temporal_prefilter -> fusion_with_recency_decay -> superseded_policy -> rerank -> relevance_gate -> sort` 순서로 실행되며(`lattice-retrieval/src/temporal/`), cross-encoder는 RRF 대체를 갖춘 워커 라우트 `POST /worker/rerank`입니다. 채팅은 규칙 기반 질의 계획, 문서당 상한을 둔 MMR, Self-RAG 보류 게이트를 거친 뒤 parent 확장과 윈도우 비례 토큰 예산을 적용합니다. 다중 사용자 모드에서 대화 파생 노드는 뷰어 기준으로 필터링합니다(`lattice-core/src/viewer_scope.rs`). 다이어그램, 환경 변수, 한계는 [docs/ko/releases/RELEASE_NOTES_v14.2.0.md](./releases/RELEASE_NOTES_v14.2.0.md)를 참고하세요.
 
+- **검색 계층:** 다중 사용자 모드에서 대화 파생 노드와 `visibility: "private"` 문서·노트를 소유자 기준으로 필터링합니다(`lattice-core/src/viewer_scope.rs`). `datasets/rag_eval_v1.json` 검증 기반 `hnsw`가 기본 벡터 인덱스이며(`LATTICEAI_VECTOR_INDEX`), `synthesis.rs` 구조화 스캐폴딩과 `self_model_refiner.rs` 옵트인 정제기가 포함됩니다.
+
 ## Python AI 워커 및 크로스플랫폼 모델 런타임
 
 `latticeai.worker_app`(`create_worker_app`)은 **21개** 허용 라우트만 제공하는 루프백 전용 연산 워커이며 `worker_resilience.py`(`x-lattice-idempotency-key` 병합 및 단항 타임아웃 격리), `ContextVar` 기반 LLM 라우터 의존성 주입(`lattice_brain.graph.runtime.llm_router_scope`), 사전 컴파일·비동기 지원 폴백 임베딩(`lattice_brain.embeddings`), 상한 레이트·프록시 보안 프리미티브(`latticeai.core.security`)를 제공합니다.
@@ -159,13 +161,13 @@ flowchart LR
 
 ## 릴리스 산출물 맵
 
-14.4.0 정확 버전 산출물 이름:
+14.7.0 정확 버전 산출물 이름:
 
-- Python 휠: `dist/ltcai-14.4.0-py3-none-any.whl`
-- Python sdist: `dist/ltcai-14.4.0.tar.gz`
-- npm tarball: `ltcai-14.4.0.tgz`
-- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.4.0.vsix`
-- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.4.0_aarch64.dmg`
+- Python 휠: `dist/ltcai-14.7.0-py3-none-any.whl`
+- Python sdist: `dist/ltcai-14.7.0.tar.gz`
+- npm tarball: `ltcai-14.7.0.tgz`
+- VS Code / Cursor / Antigravity 확장: `dist/ltcai-14.7.0.vsix`
+- macOS Apple Silicon DMG: `src-tauri/target/release/bundle/dmg/Lattice AI_14.7.0_aarch64.dmg`
 
 ## 알려진 경계
 

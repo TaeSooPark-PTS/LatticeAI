@@ -370,9 +370,15 @@ export const latticeApi = {
       { matches: [], reasoning_paths: [], synthesis: {} },
     ),
   browserReadUrl: (url: string) => post("/api/browser/read-url", { url }, {}),
-  ingestNote: (content: string, title = "Brain note") => post(
+  ingestNote: (
+    content: string,
+    title = "Brain note",
+    visibility: "workspace" | "private" = "workspace",
+  ) => post(
     "/knowledge-graph/ingest",
-    { type: "note", content, title, source: "brain_home" },
+    visibility === "private"
+      ? { type: "note", content, title, source: "brain_home", visibility }
+      : { type: "note", content, title, source: "brain_home" },
     {},
   ),
   memoryManager: () => get("/api/memory/manager", { sources: [], tiers: [], usage: {} }),

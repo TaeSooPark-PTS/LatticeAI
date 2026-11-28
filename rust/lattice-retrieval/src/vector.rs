@@ -69,10 +69,14 @@ pub fn explicit_bruteforce_pinned() -> bool {
 }
 
 pub fn resolve_vector_index() -> BackendSelection {
-    let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
-    let name = raw.trim().to_lowercase();
+    let raw = std::env::var(VECTOR_INDEX_ENV).ok();
+    resolve_vector_index_from(raw.as_deref())
+}
+
+pub fn resolve_vector_index_from(raw: Option<&str>) -> BackendSelection {
+    let name = raw.unwrap_or_default().trim().to_lowercase();
     let name = if name.is_empty() {
-        "brute".to_string()
+        "hnsw".to_string()
     } else {
         name
     };
@@ -471,7 +475,7 @@ mod tests {
                                  metadata_json TEXT);
              CREATE TABLE vector_embeddings(item_id TEXT PRIMARY KEY, item_type TEXT,
                source_node TEXT, embedding BLOB, embedding_dim INT, embedding_model TEXT,
-               metadata_json TEXT, indexed_at TEXT);",
+               text_hash TEXT, metadata_json TEXT, indexed_at TEXT);",
         )
         .unwrap();
         let node_vec = model.encode(&model.embed("retrieval ranking"));
@@ -487,12 +491,12 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO vector_embeddings VALUES ('n1','node','n1',?,384,?,'{}','2026-02-01T00:00:02')",
+            "INSERT INTO vector_embeddings VALUES ('n1','node','n1',?,384,?,'h-n1','{}','2026-02-01T00:00:02')",
             rusqlite::params![node_vec, model.model_id()],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO vector_embeddings VALUES ('c1','chunk','c1',?,384,?,'{\"parent_source_node\":\"n1\"}','2026-02-01T00:00:01')",
+            "INSERT INTO vector_embeddings VALUES ('c1','chunk','c1',?,384,?,'h-c1','{\"parent_source_node\":\"n1\"}','2026-02-01T00:00:01')",
             rusqlite::params![chunk_vec, model.model_id()],
         )
         .unwrap();
@@ -533,7 +537,22 @@ mod tests {
         assert_eq!(node["summary"], "Node summary");
         assert_eq!(node["metadata"]["parent_node_id"], Value::Null);
         assert_eq!(out["recall"]["candidates_scanned"], 2);
-        assert_eq!(out["index"]["name"], "brute");
+        assert_eq!(out["index"]["name"], "hnsw+rescore");
+    }
+
+    #[test]
+    fn resolve_vector_index_defaults_to_hnsw_and_honors_brute_override() {
+        let default_sel = resolve_vector_index_from(None);
+        assert_eq!(default_sel.requested, "hnsw");
+        assert_eq!(default_sel.name, "hnsw");
+        assert!(default_sel.approx);
+        let empty_sel = resolve_vector_index_from(Some("  "));
+        assert_eq!(empty_sel.requested, "hnsw");
+        assert_eq!(empty_sel.name, "hnsw");
+        let brute_sel = resolve_vector_index_from(Some("brute"));
+        assert_eq!(brute_sel.requested, "brute");
+        assert_eq!(brute_sel.name, "brute");
+        assert!(brute_sel.exhaustive);
     }
 
     #[test]
@@ -550,7 +569,7 @@ mod tests {
     fn a_dimension_mismatch_is_an_error_the_caller_can_read() {
         let (_dir, conn, model) = vector_db();
         conn.execute(
-            "UPDATE vector_embeddings SET embedding=x'0000000000000000' WHERE item_id='n1'",
+            "UPDATE vector_embeddings SET embedding=x'0000000000000000' WHERE item_id IN ('n1', 'c1')",
             [],
         )
         .unwrap();

@@ -492,6 +492,11 @@ fn legacy_foreign_conversation(node: &Value, viewer: &str) -> bool {
     else {
         return false;
     };
+    let is_private = text("visibility").as_deref() == Some("private")
+        || node
+            .get("visibility")
+            .and_then(Value::as_str)
+            .is_some_and(|v| v.trim().eq_ignore_ascii_case("private"));
     let derived = lattice_core::viewer_scope::CONVERSATION_NODE_TYPES.contains(&ntype)
         || text("source_node").is_some_and(|source| {
             lattice_core::viewer_scope::CONVERSATION_SOURCE_PREFIXES
@@ -499,7 +504,7 @@ fn legacy_foreign_conversation(node: &Value, viewer: &str) -> bool {
                 .any(|prefix| source.starts_with(prefix))
         })
         || (ntype == "Person" && text("email").as_deref() == Some(owner.as_str()));
-    derived && owner != viewer
+    (derived || is_private) && owner != viewer
 }
 
 pub(in crate::knowledge::portability) fn metadata_of(row: &Value) -> Value {

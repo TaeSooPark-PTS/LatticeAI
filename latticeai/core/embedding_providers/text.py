@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM
-from latticeai.core.hf_revisions import resolve_revision
+from latticeai.core.hf_revisions import require_pinned_revision, resolve_revision
 
 from .autodetect import (
     AUTO_PROVIDER,
@@ -238,9 +238,13 @@ class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
                 ) from exc
 
         snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map), env_map)
-        revision = resolve_revision(
-            self._model_name, override=self.model_revision, env=env_map
-        ).revision
+        revision_request = require_pinned_revision(
+            resolve_revision(
+                self._model_name, override=self.model_revision, env=env_map
+            ),
+            env=env_map,
+        )
+        revision = revision_request.revision
 
         gemma_2 = _is_embeddinggemma_2(self._model_name)
         try:

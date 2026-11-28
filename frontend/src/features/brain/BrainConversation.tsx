@@ -128,10 +128,10 @@ export function BrainConversation({
   onOpenDepth: (depth: BrainDepth) => void;
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
-  onUploadDocument: (file: File) => void;
+  onUploadDocument: (file: File, visibility?: "workspace" | "private") => void;
   onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
-  onIngestNote: (note: string) => Promise<boolean>;
+  onIngestNote: (note: string, visibility?: "workspace" | "private") => Promise<boolean>;
   onIngestWeb: (url: string) => void;
   onVerifyModelContinuity: () => void;
   onSend: () => void;

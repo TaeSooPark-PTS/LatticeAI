@@ -489,6 +489,11 @@ Choose one of these exact names: {known}."
             if crate::kernel::transcript::rag_grounding::transcript_has_evidence(&ctx.transcript) {
                 self.enforce_or_repair_grounded_final(ctx, req).await;
             }
+            let exec_model = ctx.executing_model.clone().or(req.executing_model.clone());
+            if self.profile(exec_model.as_deref()).decomposed {
+                self.refine_synthesis_coverage(ctx, req, exec_model.as_deref())
+                    .await;
+            }
             ctx.transcript.push(json!({
                 "state": AgentState::Executing.as_str(),
                 "action": "final", "thoughts": thoughts,
@@ -712,6 +717,79 @@ never uses [SUPERSEDED] facts, and cites active sources (e.g. [1], [2]). Reply w
                 "execute",
                 "grounded_answer_repaired",
                 &[("before", report.to_detail()), ("after", after.to_detail())],
+            );
+        }
+    }
+
+    async fn refine_synthesis_coverage(
+        &mut self,
+        ctx: &mut AgentRunContext,
+        req: &RunRequest,
+        model_id: Option<&str>,
+    ) {
+        use crate::kernel::agentloop::synthesis::{
+            build_evidence_scaffold, build_synthesis_refinement_prompt, check_synthesis_coverage,
+            collect_evidence_sources,
+        };
+        if crate::kernel::transcript::rag_grounding::is_abstention(&ctx.final_message) {
+            return;
+        }
+        let sources = collect_evidence_sources(&ctx.transcript, 8);
+        if sources.len() < 2 {
+            return;
+        }
+        let before = check_synthesis_coverage(&ctx.final_message, &sources);
+        if before.is_complete() {
+            return;
+        }
+        let scaffold = build_evidence_scaffold(&req.message, &ctx.transcript, 1400);
+        if scaffold.is_empty() {
+            return;
+        }
+        let prompt = build_synthesis_refinement_prompt(
+            &req.message,
+            &ctx.final_message,
+            &scaffold,
+            &before.missing_sources,
+        );
+        let Ok(raw) = self
+            .deps
+            .worker
+            .llm(Completion {
+                model_id,
+                message: "Revise the answer to cover all listed evidence sources.",
+                context: &prompt,
+                max_tokens: self.deps.phase_budgets.execute_tokens.min(512),
+                temperature: 0.0,
+                stop: &[],
+                prefix: "",
+            })
+            .await
+        else {
+            return;
+        };
+        ctx.trace.llm_call("execute", model_id);
+        let candidate = match crate::parse::channel::channel_payload(&raw) {
+            Some(payload) => crate::kernel::agentloop::guided::strip_control_tokens(&payload),
+            None => crate::kernel::agentloop::guided::strip_control_tokens(&raw),
+        }
+        .trim()
+        .to_string();
+        if candidate.is_empty() {
+            return;
+        }
+        let after = check_synthesis_coverage(&candidate, &sources);
+        if !after.echoed_instruction
+            && !after.is_stub
+            && (after.covered_sources >= before.covered_sources
+                || before.echoed_instruction
+                || before.is_stub)
+        {
+            ctx.final_message = candidate;
+            ctx.trace.decision(
+                "execute",
+                "synthesis_coverage_refined",
+                &[("before", before.to_detail()), ("after", after.to_detail())],
             );
         }
     }

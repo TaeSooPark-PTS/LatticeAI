@@ -11,6 +11,7 @@ from latticeai.core.hf_revisions import (
     RevisionRequest,
     fetch_pinned_snapshot,
     find_cached_snapshot,
+    require_pinned_revision,
     resolve_revision,
 )
 
@@ -155,13 +156,15 @@ def pinned_model_target(
     raw = str(model or "").strip()
     if not _is_hub_repo_id(raw) or Path(raw).expanduser().exists():
         return raw
-    request = resolve_revision(raw, override=override, env=env)
+    request = require_pinned_revision(
+        resolve_revision(raw, override=override, env=env), env=env
+    )
     if request.source == REVISION_UNPINNED:
         return raw
     found = cached_snapshot(request, hf_cache_roots(env))
     if found is not None:
         return str(found.path)
-    return str(fetch_pinned_snapshot(request).path)
+    return str(fetch_pinned_snapshot(request, env=env).path)
 
 
 def detect_local_hf(env: Optional[Dict[str, str]] = None) -> Detection:

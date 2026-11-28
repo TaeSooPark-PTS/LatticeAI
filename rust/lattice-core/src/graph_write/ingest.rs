@@ -163,10 +163,12 @@ impl GraphWriter {
         title_for: impl Fn(usize) -> String,
         owner: Option<&str>,
         workspace_id: Option<&str>,
+        visibility: Option<&str>,
         scope_node_metadata: bool,
         parent_ids: &[String],
     ) -> Result<Vec<String>, CoreError> {
         let mut ids = Vec::with_capacity(chunks.len());
+        let is_private = visibility == Some("private");
         for (index, piece) in chunks.iter().enumerate() {
             let chunk_id = format!(
                 "chunk:{}",
@@ -177,6 +179,9 @@ impl GraphWriter {
             node_metadata.insert("source_node".into(), json!(source_node));
             if scope_node_metadata {
                 node_metadata.insert("workspace_id".into(), json!(workspace_id));
+            }
+            if is_private {
+                node_metadata.insert("visibility".into(), json!("private"));
             }
             for (key, value) in &piece.fields {
                 node_metadata.insert(key.clone(), value.clone());
@@ -199,7 +204,7 @@ impl GraphWriter {
                     raw: Map::new(),
                     owner: owner.map(str::to_string),
                     workspace_id: workspace_id.map(str::to_string),
-                    visibility: None,
+                    visibility: visibility.map(str::to_string),
                 },
             )?;
             let mut chunk_metadata = Map::new();
@@ -254,16 +259,36 @@ impl GraphWriter {
         edge_metadata: Map<String, Value>,
         owner: Option<&str>,
         workspace_id: Option<&str>,
+        visibility: Option<&str>,
     ) -> Result<Vec<(String, String)>, CoreError> {
         let workspace = workspace_id.filter(|value| !value.is_empty());
+        let is_private = visibility == Some("private");
+        let normalized_owner = owner
+            .map(|v| v.trim().to_lowercase())
+            .filter(|v| !v.is_empty());
         let mut resolved: Vec<(String, String)> = Vec::new();
         for concept in concepts {
+            let slug_input = if is_private {
+                match normalized_owner.as_deref() {
+                    Some(own) => format!("{}::private:{own}", concept.text),
+                    None => format!("{}::private", concept.text),
+                }
+            } else {
+                concept.text.clone()
+            };
             let concept_id =
-                scoped_slug_id(&concept.node_type.to_lowercase(), &concept.text, workspace);
+                scoped_slug_id(&concept.node_type.to_lowercase(), &slug_input, workspace);
             let key = concept.text.to_lowercase();
             match resolved.iter_mut().find(|(existing, _)| *existing == key) {
                 Some(slot) => slot.1 = concept_id.clone(),
                 None => resolved.push((key, concept_id.clone())),
+            }
+            let mut meta = metadata_for(concept);
+            if is_private {
+                meta.insert("visibility".into(), json!("private"));
+                if let Some(own) = normalized_owner.as_deref() {
+                    meta.insert("source_owner".into(), json!(own));
+                }
             }
             self.upsert_node(
                 txn,
@@ -271,9 +296,10 @@ impl GraphWriter {
                     id: concept_id.clone(),
                     node_type: concept.node_type.clone(),
                     title: concept.text.clone(),
-                    metadata: metadata_for(concept),
+                    metadata: meta,
                     owner: owner.map(str::to_string),
                     workspace_id: workspace_id.map(str::to_string),
+                    visibility: visibility.map(str::to_string),
                     ..NodeSpec::default()
                 },
             )?;

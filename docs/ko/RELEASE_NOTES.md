@@ -1,5 +1,11 @@
 [![English](https://img.shields.io/badge/English-Switch-475569?style=flat-square)](../../RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-현재_언어-2563eb?style=flat-square)](./RELEASE_NOTES.md)
 
+# [v14.7.0 - Private Scope, Verified Index] (2026-11-28)
+
+워크스페이스 내 소유자 전용 `private` 문서·노트 격리와 소유자 범위 ID(`lattice-core`/`retrieval`/`ingest`/`platform` 및 Brain 수집 UI)를 추가했습니다. `datasets/rag_eval_v1.json` 기준 HNSW recall@10(`baseline=1.0000`, 5회 churn 라운드 `0.9991..0.9963`) 검증 후 `LATTICEAI_VECTOR_INDEX` 기본값을 `hnsw`로 전환하고, Hugging Face 리비전 고정 및 SHA-256/LFS 검증, 소형 모델 다중 근거 합성(`synthesis.rs`), 옵트인 Self-Model LLM 정제기(`LATTICEAI_SELF_MODEL_LLM_REFINER`), `desk::open_keys_in` snoozed 회귀 테스트, 거버넌스 허브 Brain Network 공유 UI를 출시했습니다.
+
+상세 내용: [docs/ko/releases/RELEASE_NOTES_v14.7.0.md](./releases/RELEASE_NOTES_v14.7.0.md).
+
 # [v14.6.0 - Within Your Scope] (2026-11-28)
 
 `brain_event` 자동화는 이제 기본적으로 소유자 범위(`owner_scope: "self"`)로 동작합니다. `"workspace"` 범위는 다른 사람이 소유한 공유 항목에서만 실행되며, 개인 항목이나 대화 항목에서는 절대 실행되지 않고 워크스페이스 경계를 넘지 않습니다. 동료의 업로드를 감시하던 기존 다중 사용자 트리거는 **Workspace** 범위로 설정해야 합니다. 단일 사용자 설치에는 영향이 없습니다. 새 `source_types`·`title_contains` 필터가 UI 양식과 함께 추가되었습니다. 수정: 기각되거나 승인된 종합 제안이 `pending`으로 남아 재제안을 막던 문제(오래된 `effective_status`)를 고쳤습니다. Hugging Face 리비전 고정이 다운로드와 로드 경로에 실제로 적용되며(`LATTICEAI_HF_REVISIONS`로 재정의 가능), endpoint·token·revision을 떨어뜨리던 조용한 `TypeError` 재시도를 제거했습니다. 이미 받은 모델은 다시 고정되지 않으며, 고정되지 않은 저장소는 여전히 `main`을 사용합니다. 훅 카탈로그는 `executed`, `implementation`, `not_executed_reason` 필드로 실제 실행 여부를 정직하게 보고합니다.

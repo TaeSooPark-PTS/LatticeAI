@@ -2,7 +2,7 @@
 
 # Privacy
 
-Current release: **14.6.0 — Within Your Scope**.
+Current release: **14.7.0 — Private Scope, Verified Index**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -28,9 +28,8 @@ Stored local data can include:
 
 When authentication is required, graph nodes derived from conversations (chats,
 messages, AI responses, and items extracted from them) are readable only by the
-user who owns them. Documents and uploads are scoped by workspace, not per user:
-every member of a workspace, including the shared `personal` workspace, can read
-them. Administrator exports and backups contain all data.
+user who owns them. Uploaded files and notes default to `workspace` visibility,
+and can be marked `visibility: "private"` at upload or ingest time (`x-lattice-visibility: private` / UI selector) so they remain visible only to their owner across search, vectors, graph neighbors, file listings, exports, and admin file inspectors. Administrator full backups (`export`) still contain workspace backup snapshots.
 
 ## What Can Leave The Machine
 

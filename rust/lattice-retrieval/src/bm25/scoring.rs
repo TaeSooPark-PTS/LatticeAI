@@ -333,6 +333,7 @@ pub(crate) fn build_node_scope_sql(
                 owner: "v2.owner_id",
                 node_type: &node_type_col,
                 metadata: &metadata_col,
+                visibility: schema.has_visibility.then_some("v2.visibility"),
             };
             clauses.push(lattice_core::viewer_scope::owner_visible_sql(&cols, "?"));
             params.push(SqlValue::Text(viewer.to_string()));

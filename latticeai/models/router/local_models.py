@@ -7,6 +7,7 @@ from latticeai.core.hf_revisions import (
     REVISION_UNPINNED,
     fetch_pinned_snapshot,
     find_cached_snapshot,
+    require_pinned_revision,
     resolve_revision,
 )
 
@@ -48,7 +49,7 @@ def _resolve_local_hf_model(model_id: str) -> str:
     cached_dir = hf_cache_model_dir(model_id)
     if cached_dir is not None:
         return str(cached_dir)
-    request = resolve_revision(model_id)
+    request = require_pinned_revision(resolve_revision(model_id))
     if request.source == REVISION_UNPINNED:
         return model_id
     return str(fetch_pinned_snapshot(request).path)

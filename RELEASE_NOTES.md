@@ -1,10 +1,16 @@
 [![English](https://img.shields.io/badge/English-Active-2563eb?style=flat-square)](./RELEASE_NOTES.md) [![한국어](https://img.shields.io/badge/한국어-Korean-475569?style=flat-square)](./docs/ko/RELEASE_NOTES.md)
 
+# [v14.7.0 - Private Scope, Verified Index] (2026-11-28)
+
+Added per-owner `private` documents and notes inside workspaces across `lattice-core`, `lattice-retrieval`, `lattice-ingest`, `lattice-platform`, and Brain ingestion UI/API with owner-scoped node/concept IDs and cross-surface isolation; flipped `LATTICEAI_VECTOR_INDEX` default to `hnsw` after verifying recall@10 on `datasets/rag_eval_v1.json` (`baseline=1.0000`, 5 churn rounds `[0.9990625, 0.9984375, 0.9978125, 0.99625, 0.9965625]`); completed Hugging Face revision pinning and SHA-256/LFS digest verification; upgraded small-model multi-source synthesis (`synthesis.rs`) with structured `[S1]`..`[Sn]` scaffolding and fail-closed `NEEDS_REVIEW` coverage verification; added opt-in `LATTICEAI_SELF_MODEL_LLM_REFINER` proposal refinement and `desk::open_keys_in` snoozed-suppression regression test; and shipped the Brain Network share UI panel inside `BrainGovernanceHub`.
+
+See [docs/releases/RELEASE_NOTES_v14.7.0.md](docs/releases/RELEASE_NOTES_v14.7.0.md).
+
 # [v14.6.0 - Within Your Scope] (2026-11-28)
 
 `brain_event` automations are now owner-scoped by default (`owner_scope: "self"`). A `"workspace"` scope fires on shared items owned by others, never on private or conversation items, and never across workspaces. Existing multi-user triggers that watched colleagues' uploads must be set to the **Workspace** scope; single-user installs are unaffected. New `source_types` and `title_contains` filters ship with a UI form. Fixed: dismissed or approved synthesis proposals no longer stay `pending` and block re-proposals (stale `effective_status`). Hugging Face revision pinning is now applied on download and load paths (`LATTICEAI_HF_REVISIONS` overrides); silent `TypeError` retries that dropped endpoint, token, or revision were removed. Models already downloaded are not re-pinned, and unpinned repositories still use `main`. The hooks catalog reports honest `executed`, `implementation`, and `not_executed_reason` fields.
 
-See [docs/releases/RELEASE_NOTES_v14.6.0.md](docs/releases/RELEASE_NOTES_v14.6.0.md).
+See [docs/releases/RELEASE_NOTES_v14.7.0.md](docs/releases/RELEASE_NOTES_v14.6.0.md).
 
 # [v14.5.0 - Living Automations] (2026-11-27)
 
@@ -154,7 +160,7 @@ See [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0
 
 # Release Notes
 
-This repository keeps public release history from **13.0.0 through 14.6.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
+This repository keeps public release history from **13.0.0 through 14.7.0** (the modern Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `14.x` and `13.x` eras, and this index follows the same boundary.
 
 ## Releases (13.0.0+)
 

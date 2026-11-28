@@ -5,7 +5,7 @@ use crate::pytext::{clean_text, truncate_chars};
 
 use super::super::identity::foreign_owner;
 use super::super::pyaux::{scoped_slug_id, sha256_text};
-use super::super::types::{EdgeSpec, IngestContentRequest, NodeSpec};
+use super::super::types::{normalize_visibility, EdgeSpec, IngestContentRequest, NodeSpec};
 use super::super::{revision::RevisionReplace, GraphWriter};
 use super::IngestOutcome;
 
@@ -52,12 +52,30 @@ impl GraphWriter {
             .clone()
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| self.clock.now_iso());
+        let explicit_visibility =
+            normalize_visibility(request.visibility.as_deref()).or_else(|| {
+                normalize_visibility(request.metadata.get("visibility").and_then(Value::as_str))
+            });
+        let is_private = explicit_visibility.as_deref() == Some("private");
         let content_hash = sha256_text(&format!(
             "{source_type}|{}|{text}",
             request.source_uri.clone().unwrap_or_default()
         ));
+        let owner_scope_suffix = if is_private {
+            match request
+                .owner
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            {
+                Some(own) => format!("|private:{}", own.to_lowercase()),
+                None => "|private".to_string(),
+            }
+        } else {
+            String::new()
+        };
         let identity_hash = sha256_text(&format!(
-            "{}|{content_hash}",
+            "{}|{content_hash}{owner_scope_suffix}",
             request
                 .workspace_id
                 .clone()
@@ -88,7 +106,14 @@ impl GraphWriter {
         for (key, value) in &request.metadata {
             node_meta.insert(key.clone(), value.clone());
         }
+        if let Some(vis) = explicit_visibility.as_deref() {
+            node_meta.insert("visibility".into(), json!(vis));
+        }
         super::super::frontmatter::stamp_frontmatter(&mut node_meta, &text);
+        let node_visibility = explicit_visibility.clone().filter(|vis| vis == "private");
+        let event_visibility = explicit_visibility
+            .clone()
+            .unwrap_or_else(|| super::super::ingest_visibility(&node_type, &node_meta));
 
         let mut chunk_ids: Vec<String> = Vec::new();
         let mut hook_result = 0usize;
@@ -108,7 +133,7 @@ impl GraphWriter {
                     raw: node_meta.clone(),
                     owner: request.owner.clone(),
                     workspace_id: request.workspace_id.clone(),
-                    visibility: None,
+                    visibility: node_visibility.clone(),
                 },
                 request.embedding.as_ref(),
             )?;
@@ -197,6 +222,7 @@ impl GraphWriter {
                 |index| format!("{title} chunk {}", index + 1),
                 request.owner.as_deref(),
                 request.workspace_id.as_deref(),
+                node_visibility.as_deref(),
                 true,
                 &parent_ids,
             )?;
@@ -217,6 +243,7 @@ impl GraphWriter {
                 Map::new(),
                 request.owner.as_deref(),
                 request.workspace_id.as_deref(),
+                node_visibility.as_deref(),
             )?;
             self.write_triples(txn, &request.triples, &concept_ids)?;
             for item in &request.semantic {
@@ -229,6 +256,9 @@ impl GraphWriter {
                 metadata.insert("auto_extracted".into(), json!(true));
                 metadata.insert("source_node".into(), json!(content_id));
                 metadata.insert("workspace_id".into(), json!(request.workspace_id));
+                if node_visibility.as_deref() == Some("private") {
+                    metadata.insert("visibility".into(), json!("private"));
+                }
                 self.upsert_node(
                     txn,
                     &NodeSpec {
@@ -240,7 +270,7 @@ impl GraphWriter {
                         raw: item.raw.clone(),
                         owner: request.owner.clone(),
                         workspace_id: request.workspace_id.clone(),
-                        visibility: None,
+                        visibility: node_visibility.clone(),
                     },
                 )?;
                 self.upsert_edge(
@@ -291,7 +321,7 @@ impl GraphWriter {
                     .unwrap_or(crate::read::DEFAULT_WORKSPACE_ID)
                     .to_string(),
                 owner: request.owner.clone(),
-                visibility: super::super::ingest_visibility(&node_type, &request.metadata),
+                visibility: event_visibility,
                 duplicate,
             });
         }

@@ -39,15 +39,25 @@ export type DemoCorpusInstallResult = {
   suggested_questions: DemoCorpusQuestion[];
 };
 
-export async function uploadDocument(file: File): Promise<ApiResult<Record<string, unknown> | null>> {
+export type DocumentVisibility = "workspace" | "private";
+
+export async function uploadDocument(
+  file: File,
+  visibility: DocumentVisibility = "workspace",
+): Promise<ApiResult<Record<string, unknown> | null>> {
   const base = await apiBase();
   const form = new FormData();
   form.append("file", file);
+  const headers: Record<string, string> = { Accept: "application/json", ...workspaceHeaders() };
+  if (visibility === "private") {
+    form.append("visibility", visibility);
+    headers["x-lattice-visibility"] = visibility;
+  }
   try {
     const res = await fetch(`${base}/upload/document`, {
       method: "POST",
       credentials: "include",
-      headers: { Accept: "application/json", ...workspaceHeaders() } satisfies HeadersInit,
+      headers,
       body: form,
     });
     const data = await res.json().catch(() => null);

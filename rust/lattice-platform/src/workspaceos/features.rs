@@ -276,7 +276,7 @@ impl FeatureService {
         }
         (
             if def.id == "vector_backend" {
-                json!("brute")
+                json!("hnsw")
             } else {
                 def.default.clone()
             },
@@ -353,7 +353,7 @@ impl FeatureService {
         out.insert(
             "default",
             if def.id == "vector_backend" {
-                json!("brute")
+                json!("hnsw")
             } else {
                 def.default.clone()
             },

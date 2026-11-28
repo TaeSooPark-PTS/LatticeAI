@@ -51,6 +51,16 @@ pub fn ingest_visibility(
     node_type: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> String {
+    if types::normalize_visibility(
+        metadata
+            .get("visibility")
+            .and_then(serde_json::Value::as_str),
+    )
+    .as_deref()
+        == Some("private")
+    {
+        return "private".into();
+    }
     let from_conversation = metadata
         .get("source_node")
         .and_then(serde_json::Value::as_str)

@@ -499,7 +499,8 @@ pub(super) async fn upload_document(
     let Some(graph) = state.graph().cloned() else {
         return http_error(503, "capture.ingestion_disabled", lang);
     };
-    let (filename, bytes) = super::enrich::unwrap_upload(&headers, &body);
+    let (filename, bytes, upload_visibility) =
+        super::enrich::unwrap_upload_with_visibility(&headers, &body);
     let mime = super::enrich::mime_hint(&filename);
     let needs_parse = super::enrich::needs_parse(&filename, &bytes);
     let parsed = if needs_parse {
@@ -613,6 +614,7 @@ pub(super) async fn upload_document(
         original_filename: Some(filename),
         owner,
         workspace_id,
+        visibility: upload_visibility,
         mime_type: mime,
         extracted: extracted_map,
         structure: structure_plan.structure.clone(),

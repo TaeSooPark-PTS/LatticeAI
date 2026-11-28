@@ -546,12 +546,9 @@ pub(crate) fn vector_index_selection() -> Value {
         requested
     };
     let (name, detail): (&str, Option<String>) = match requested.as_str() {
-        "brute" => ("brute", None),
+        "brute" | "bruteforce" => ("brute", None),
         "quantized" => ("quantized", None),
-        "hnsw" => (
-            "brute",
-            Some("hnswlib is a Python optional extra and is not available to the Rust gateway; falling back to the exact brute-force scan".into()),
-        ),
+        "hnsw" => ("hnsw", None),
         other => (
             "brute",
             Some(format!(
@@ -561,14 +558,15 @@ pub(crate) fn vector_index_selection() -> Value {
     };
     let backend = match name {
         "quantized" => "int8-quantized-cosine",
+        "hnsw" => "native-hnsw+rescore",
         _ => "bruteforce-cosine",
     };
     let mut selection = OrderedMap::new();
     selection.insert("requested", json!(requested));
     selection.insert("backend", json!(backend));
     selection.insert("name", json!(name));
-    selection.insert("approx", json!(name == "quantized"));
-    selection.insert("exhaustive", json!(true));
+    selection.insert("approx", json!(name == "quantized" || name == "hnsw"));
+    selection.insert("exhaustive", json!(name != "hnsw"));
     selection.insert("honored", json!(requested == name));
     selection.insert("detail", detail.map(Value::String).unwrap_or(Value::Null));
     serde_json::to_value(selection).unwrap_or(Value::Null)

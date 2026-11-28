@@ -299,6 +299,19 @@ describe("BrainHome wiring", () => {
     fireEvent.change(documentInput, { target: { files: [file] } });
     expect(api.ingestion.uploadDocument).toHaveBeenCalledWith(file);
 
+    fireEvent.change(screen.getByLabelText(t("ko", "brain.ingest.visibility.aria")), {
+      target: { value: "private" },
+    });
+    const dockFileInput = screen
+      .getByTestId("brain-ingestion-dock")
+      .querySelector('input[type="file"]') as HTMLInputElement;
+    const privateFile = new File(["비밀"], "secret.md", { type: "text/markdown" });
+    fireEvent.change(dockFileInput, { target: { files: [privateFile] } });
+    expect(api.ingestion.uploadDocument).toHaveBeenLastCalledWith(privateFile, "private");
+    fireEvent.change(screen.getByLabelText(t("ko", "brain.ingest.visibility.aria")), {
+      target: { value: "workspace" },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: t("ko", "brain.ingest.type.folder") }));
     fireEvent.click(screen.getByRole("button", { name: new RegExp(t("ko", "capture.local.choose")) }));
     expect(api.ingestion.pickFolder).toHaveBeenCalledTimes(1);

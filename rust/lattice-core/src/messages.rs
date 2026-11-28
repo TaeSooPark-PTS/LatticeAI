@@ -73,7 +73,7 @@ const MESSAGES: &[(&str, &str, &str)] = &[
     ("features.vector_backend.choice.hnsw", "근사 검색 (가장 빠름)", "Approximate search (fastest)"),
     ("features.vector_backend.choice.quantized", "간추려 비교 (빠름)", "Compare compressed (faster)"),
     ("features.vector_backend.label", "의미 검색 방식", "Meaning-search engine"),
-    ("features.vector_backend.summary", "빠르기와 정확함 사이에서 고릅니다. 기본값은 전부 훑어보는 정확한 방식입니다.", "Trade speed against exactness. The default compares everything and is exact."),
+    ("features.vector_backend.summary", "빠르기와 정확함 사이에서 고릅니다. 기본값은 빠른 근사 검색(HNSW)입니다.", "Trade speed against exactness. The default uses fast approximate HNSW search."),
     ("features.video_ingest.label", "영상도 함께", "Include videos"),
     ("features.video_ingest.summary", "사진·녹음을 켠 상태에서, 영상은 장면과 자막으로 저장합니다.", "With the switch above on, videos are stored as keyframes and subtitles."),
     ("graph.node_id_required", "노드 식별자가 필요합니다.", "A node id is required."),

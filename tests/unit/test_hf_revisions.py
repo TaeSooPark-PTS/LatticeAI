@@ -308,3 +308,95 @@ def test_hf_mlx_embedding_loads_pinned_snapshot(monkeypatch, tmp_path: Path) -> 
     override._open_encoder()
     assert seen == [{"repo_id": repo, "revision": "dev"}]
     assert loaded[-1] == str(tmp_path / "dev")
+
+
+def test_require_pinned_revision_policy_and_sha256_integrity(
+    monkeypatch, tmp_path: Path
+) -> None:
+    unpinned = hr.resolve_revision("custom/unpinned", env={})
+    assert hr.require_pinned_revision(unpinned, env={}) == unpinned
+
+    with pytest.raises(ValueError, match="Unpinned Hugging Face repo"):
+        hr.require_pinned_revision(unpinned, env={hr.HF_ALLOW_UNPINNED_ENV: "0"})
+    with pytest.raises(ValueError, match="Unpinned Hugging Face repo"):
+        hr.require_pinned_revision(unpinned, env={hr.HF_REQUIRE_PINNED_ENV: "1"})
+    assert (
+        hr.require_pinned_revision(
+            unpinned, env={hr.HF_REQUIRE_PINNED_ENV: "0", hr.HF_ALLOW_UNPINNED_ENV: "1"}
+        )
+        == unpinned
+    )
+
+    weights = tmp_path / "model.safetensors"
+    weights.write_bytes(b"lattice-weights")
+    digest = hr.compute_file_sha256(weights)
+    assert hr.is_sha256_hex(digest)
+    assert hr.verify_file_sha256(weights, expected=digest) == digest
+
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        hr.verify_file_sha256(weights, expected="0" * 64)
+    with pytest.raises(ValueError, match="SHA-256 verification required"):
+        hr.verify_file_sha256(weights, require_digest=True)
+    with pytest.raises(ValueError, match="Invalid expected SHA-256"):
+        hr.verify_file_sha256(weights, expected="not-a-sha")
+    with pytest.raises(ValueError, match="missing file"):
+        hr.verify_file_sha256(tmp_path / "missing.bin", expected=digest)
+
+    env_sha = {hr.HF_SHA256_ENV: f"{PINNED_REPO.lower()}/model.safetensors={digest}"}
+    assert hr.expected_sha256(PINNED_REPO, "model.safetensors", env=env_sha) == digest
+    with pytest.raises(ValueError, match="LATTICEAI_HF_SHA256"):
+        hr.sha256_overrides({hr.HF_SHA256_ENV: "bad=entry"})
+
+    snap = _snapshot(tmp_path / "hub", PINNED_REPO, PINNED_SHA)
+    snap_weights = snap / "model.safetensors"
+    snap_digest = hr.compute_file_sha256(snap_weights)
+    verified = hr.verify_snapshot_integrity(
+        snap,
+        PINNED_REPO,
+        env={hr.HF_SHA256_ENV: f"{PINNED_REPO}/model.safetensors={snap_digest}"},
+    )
+    assert verified == {"model.safetensors": snap_digest}
+
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        hr.verify_snapshot_integrity(
+            snap,
+            PINNED_REPO,
+            env={hr.HF_SHA256_ENV: f"{PINNED_REPO}/model.safetensors={'f' * 64}"},
+        )
+
+
+def test_download_verifies_lfs_sha256_and_deletes_corrupt_file(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        download_mod, "hf_model_dir", lambda repo: tmp_path / repo.replace("/", "__")
+    )
+    bad_file = tmp_path / "corrupt.gguf"
+    bad_file.write_bytes(b"corrupt")
+
+    class Lfs:
+        sha256 = "e" * 64
+
+    class Sib:
+        rfilename = "corrupt.gguf"
+        size = 7
+        lfs = Lfs()
+
+    class Api:
+        def model_info(self, repo_id, revision=None, files_metadata=True):
+            return types.SimpleNamespace(siblings=[Sib()])
+
+    monkeypatch.setattr(download_mod, "_build_hf_api", lambda: Api())
+    hub = types.ModuleType("huggingface_hub")
+    hub.hf_hub_download = lambda **kw: str(bad_file)
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+
+    with pytest.raises(download_mod.ModelRuntimeError, match="무결성 검증 실패"):
+        download_mod._download_single_hf_repo(
+            PINNED_REPO,
+            requested_repo=PINNED_REPO,
+            provider="llamacpp",
+            progress_emit=None,
+            used_fallback=False,
+        )
+    assert not bad_file.exists()

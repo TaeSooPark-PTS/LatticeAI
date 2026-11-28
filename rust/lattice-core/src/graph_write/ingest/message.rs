@@ -159,6 +159,7 @@ impl GraphWriter {
                 |index| format!("chunk {}", index + 1),
                 request.user_email.as_deref(),
                 request.workspace_id.as_deref(),
+                None,
                 false,
                 &[],
             )?;
@@ -180,6 +181,7 @@ impl GraphWriter {
                 source_meta,
                 request.user_email.as_deref(),
                 request.workspace_id.as_deref(),
+                None,
             )?;
             self.write_triples(txn, &request.triples, &concept_ids)?;
             for item in &request.semantic {

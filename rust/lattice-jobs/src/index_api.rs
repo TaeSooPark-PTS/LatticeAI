@@ -27,7 +27,7 @@ pub const MAX_DRAIN_LIMIT: i64 = 100;
 pub const WORKER_EMBED_ENV: &str = "LATTICEAI_JOBS_WORKER_EMBED";
 
 pub const VECTOR_INDEX_ENV: &str = "LATTICEAI_VECTOR_INDEX";
-pub const DEFAULT_VECTOR_INDEX: &str = "brute";
+pub const DEFAULT_VECTOR_INDEX: &str = "hnsw";
 pub const TARGET_REBUILD_MS: i64 = 10_000;
 
 pub const SQLITE_VEC_REASON: &str = "sqlite-vec is not linked into the Rust gateway's SQLite build; using real brute-force cosine fallback, not sqlite-vec ANN";
@@ -412,7 +412,7 @@ mod tests {
         assert_eq!(payload["embedder"]["stale_embedder"], json!(false));
         assert_eq!(payload["storage"]["backend"], json!("sqlite"));
         assert_eq!(payload["storage"]["fts_enabled"], json!(false));
-        assert_eq!(payload["storage"]["vector_index"]["name"], json!("brute"));
+        assert_eq!(payload["storage"]["vector_index"]["name"], json!("hnsw"));
         assert_eq!(
             payload["scale"]["latency_budget"]["within_target"],
             Value::Null
@@ -531,18 +531,19 @@ mod tests {
     }
 
     #[test]
-    fn the_vector_index_selection_reports_an_unavailable_backend_honestly() {
+    fn the_vector_index_selection_reports_hnsw_default_and_fallbacks_honestly() {
         std::env::remove_var(VECTOR_INDEX_ENV);
         let default = vector_index_selection();
-        assert_eq!(default["requested"], json!("brute"));
+        assert_eq!(default["requested"], json!("hnsw"));
+        assert_eq!(default["name"], json!("hnsw"));
         assert_eq!(default["honored"], json!(true));
         assert_eq!(default["detail"], Value::Null);
 
-        std::env::set_var(VECTOR_INDEX_ENV, "hnsw");
-        let hnsw = vector_index_selection();
-        assert_eq!(hnsw["name"], json!("brute"));
-        assert_eq!(hnsw["honored"], json!(false));
-        assert!(hnsw["detail"].as_str().unwrap().contains("hnswlib"));
+        std::env::set_var(VECTOR_INDEX_ENV, "brute");
+        let brute = vector_index_selection();
+        assert_eq!(brute["name"], json!("brute"));
+        assert_eq!(brute["honored"], json!(true));
+        assert_eq!(brute["detail"], Value::Null);
 
         std::env::set_var(VECTOR_INDEX_ENV, "nope");
         let unknown = vector_index_selection();

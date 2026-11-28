@@ -17,13 +17,21 @@ This document is the single checklist and canonical release ledger for building,
 
 > **Release evidence retention policy (`output/release/`)**: Versioned screenshot and walkthrough GIF evidence is kept for the latest 3 releases only. `npm run release:evidence` automatically runs `scripts/prune_release_evidence.mjs` after capture (`LTCAI_RELEASE_EVIDENCE_KEEP` configures retention), and historical evidence can be regenerated at any time by checking out the corresponding git tag.
 
+## v14.7.0 — Private Scope, Verified Index (2026-11-28)
+
+Added per-owner `private` documents and notes inside workspaces across `lattice-core`, `lattice-retrieval`, `lattice-ingest`, `lattice-platform`, and Brain ingestion UI/API with owner-scoped node/concept IDs and cross-surface isolation. Flipped `LATTICEAI_VECTOR_INDEX` default to `hnsw` after verifying recall@10 on `datasets/rag_eval_v1.json` (`baseline=1.0000`, 5 churn rounds `[0.9990625, 0.9984375, 0.9978125, 0.99625, 0.9965625]`). Completed Hugging Face revision pinning and SHA-256/LFS digest verification with explicit unpinned override controls; improved small-model multi-source synthesis (`synthesis.rs`) with structured `[S1]`..`[Sn]` scaffolding and fail-closed `NEEDS_REVIEW` coverage verification; added opt-in `LATTICEAI_SELF_MODEL_LLM_REFINER` proposal refinement and `desk::open_keys_in` snoozed-suppression regression test; and shipped the Brain Network share UI panel in `BrainGovernanceHub`.
+
+Release notes: [docs/releases/RELEASE_NOTES_v14.7.0.md](docs/releases/RELEASE_NOTES_v14.7.0.md).
+
+Build artifacts: `dist/ltcai-14.7.0-py3-none-any.whl`, `dist/ltcai-14.7.0.tar.gz`, `ltcai-14.7.0.tgz`, `dist/ltcai-14.7.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.7.0_aarch64.dmg`.
+
 ## v14.6.0 — Within Your Scope (2026-11-28)
 
 `brain_event` automations are now owner-scoped by default (`owner_scope: "self"`). A `"workspace"` scope fires on shared items owned by others, never on private or conversation items, and never across workspaces. Existing multi-user triggers that watched colleagues' uploads must be set to the **Workspace** scope; single-user installs are unaffected. New `source_types` and `title_contains` filters ship with a UI form. Fixed: dismissed or approved synthesis proposals no longer stay `pending` and block re-proposals (stale `effective_status`). Hugging Face revision pinning is now applied on download and load paths (`LATTICEAI_HF_REVISIONS` overrides); silent `TypeError` retries that dropped endpoint, token, or revision were removed. Models already downloaded are not re-pinned, and unpinned repositories still use `main`. The hooks catalog reports honest `executed`, `implementation`, and `not_executed_reason` fields. UI: the command palette opens conversation hits and has a top-bar button; search results are actionable; a memory manager (view, add, search, forget); an honest "Save to Brain" status; a document library with filter and preview; run history filters including cancelled, show more, and an error state. Tests add an HNSW churn recall test. Known gap: private documents inside a workspace are not implemented (see docs/ROADMAP.md). This release does not add private uploads and makes no such claim.
 
-Release notes: [docs/releases/RELEASE_NOTES_v14.6.0.md](docs/releases/RELEASE_NOTES_v14.6.0.md).
+Release notes: [docs/releases/RELEASE_NOTES_v14.7.0.md](docs/releases/RELEASE_NOTES_v14.7.0.md).
 
-Build artifacts: `dist/ltcai-14.6.0-py3-none-any.whl`, `dist/ltcai-14.6.0.tar.gz`, `ltcai-14.6.0.tgz`, `dist/ltcai-14.6.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.6.0_aarch64.dmg`.
+Build artifacts: `dist/ltcai-14.7.0-py3-none-any.whl`, `dist/ltcai-14.7.0.tar.gz`, `ltcai-14.7.0.tgz`, `dist/ltcai-14.7.0.vsix`, `src-tauri/target/release/bundle/dmg/Lattice AI_14.7.0_aarch64.dmg`.
 
 ## v14.5.0 — Living Automations (2026-11-27)
 

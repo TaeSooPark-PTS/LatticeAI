@@ -6,8 +6,15 @@ import { EntityMergePanel } from "./EntityMergePanel";
 import { KnowledgeCorrectionsPanel } from "./KnowledgeCorrectionsPanel";
 import { EmbeddingRegistryPanel } from "./EmbeddingRegistryPanel";
 import { ClustersGapsPanel } from "./ClustersGapsPanel";
+import { BrainNetworkPanel } from "../BrainNetworkPanel";
 
-type GovernanceTab = "integrity" | "entities" | "corrections" | "embeddings" | "clusters";
+type GovernanceTab =
+  | "integrity"
+  | "entities"
+  | "corrections"
+  | "embeddings"
+  | "clusters"
+  | "network";
 
 export function BrainGovernanceHub({ language }: { language: Language }) {
   const [tab, setTab] = React.useState<GovernanceTab>("integrity");
@@ -18,6 +25,7 @@ export function BrainGovernanceHub({ language }: { language: Language }) {
     { id: "corrections", label: t(language, "brain.gov.tab.corrections") },
     { id: "embeddings", label: t(language, "brain.gov.tab.embeddings") },
     { id: "clusters", label: t(language, "brain.gov.tab.clusters") },
+    { id: "network", label: t(language, "brain.gov.tab.network") },
   ];
 
   return (
@@ -32,6 +40,7 @@ export function BrainGovernanceHub({ language }: { language: Language }) {
       {tab === "corrections" ? <KnowledgeCorrectionsPanel language={language} /> : null}
       {tab === "embeddings" ? <EmbeddingRegistryPanel language={language} /> : null}
       {tab === "clusters" ? <ClustersGapsPanel language={language} /> : null}
+      {tab === "network" ? <BrainNetworkPanel language={language} /> : null}
     </section>
   );
 }

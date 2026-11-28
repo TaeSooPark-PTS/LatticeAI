@@ -206,14 +206,16 @@ export function useBrainIngestion({
     });
   }, []);
 
-  const uploadDocument = React.useCallback(async (file: File) => {
+  const uploadDocument = React.useCallback(async (file: File, visibility?: "workspace" | "private") => {
     if (uploadingDocument) return;
     setUploadingDocument(true);
     setMemoryFeedback(t(language, "brain.upload.pending", { name: file.name }));
     onBrainChange("recalling", 0.86);
     beginIngestion("file", file.name);
     try {
-      const result = await latticeApi.uploadDocument(file);
+      const result = visibility === "private"
+        ? await latticeApi.uploadDocument(file, "private")
+        : await latticeApi.uploadDocument(file);
       if (!result.ok) {
         const reason = result.error || "unavailable";
         setMemoryFeedback(t(language, "brain.upload.failed", { reason }));
@@ -300,13 +302,15 @@ export function useBrainIngestion({
     setMemoryFeedback,
   ]);
 
-  const ingestNote = React.useCallback(async (note: string) => {
+  const ingestNote = React.useCallback(async (note: string, visibility?: "workspace" | "private") => {
     const content = note.trim();
     if (!content) return false;
     setMemoryFeedback(t(language, "brain.ingest.note.pending"));
     onBrainChange("recalling", 0.84);
     beginIngestion("note", content.slice(0, 80));
-    const result = await latticeApi.ingestNote(content, content.slice(0, 80));
+    const result = visibility === "private"
+      ? await latticeApi.ingestNote(content, content.slice(0, 80), "private")
+      : await latticeApi.ingestNote(content, content.slice(0, 80));
     if (!result.ok) {
       const reason = result.error || "unavailable";
       setMemoryFeedback(t(language, "brain.ingest.note.failed", { reason }));

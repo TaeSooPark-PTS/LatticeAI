@@ -205,6 +205,7 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "browserReadUrl", invoke: () => api.browserReadUrl("https://example.com"), method: "POST", path: "/api/browser/read-url", body: { url: "https://example.com" } },
   { name: "ingestNote", invoke: () => api.ingestNote("메모"), method: "POST", path: "/knowledge-graph/ingest", body: { type: "note", content: "메모", title: "Brain note", source: "brain_home" } },
   { name: "ingestNote", invoke: () => api.ingestNote("메모", "제목"), method: "POST", path: "/knowledge-graph/ingest", body: { type: "note", content: "메모", title: "제목", source: "brain_home" } },
+  { name: "ingestNote", invoke: () => api.ingestNote("메모", "제목", "private"), method: "POST", path: "/knowledge-graph/ingest", body: { type: "note", content: "메모", title: "제목", source: "brain_home", visibility: "private" } },
   { name: "memoryManager", invoke: () => api.memoryManager(), method: "GET", path: "/api/memory/manager" },
   { name: "memoryBrainQuality", invoke: () => api.memoryBrainQuality(), method: "GET", path: "/api/memory/brain-quality" },
   { name: "memoryBrainBrief", invoke: () => api.memoryBrainBrief(), method: "GET", path: "/api/memory/brain-brief", query: { limit: "3" } },

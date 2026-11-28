@@ -2,11 +2,11 @@
 
 # Lattice AI Gap Roadmap
 
-> **Status: reference** — point-in-time gap inventory, refreshed at **v14.1.1**
-> (2026-11-25). Not a canonical current-release document; version gates do not
+> **Status: reference** — point-in-time gap inventory, refreshed at **v14.7.0**
+> (2026-11-28). Not a canonical current-release document; version gates do not
 > bind it.
 
-As of **2026-11-25**, against the **14.1.1 — Living Synthesis** tree. This page
+As of **2026-11-28**, against the **14.7.0 — Private Scope, Verified Index** tree. This page
 tracks genuine remaining engineering gaps sourced from
 [`FEATURE_STATUS.md`](../FEATURE_STATUS.md),
 [`docs/SECURITY_AUDIT.md`](SECURITY_AUDIT.md), and the active `v13.0.0+` release
@@ -20,10 +20,18 @@ multi-part program (credentials, model harness, index format, or platform port).
 
 ---
 
-## Recently Closed (`v13.0.0` – `v14.1.1`) — Do Not Reopen
+## Recently Closed (`v13.0.0` – `v14.7.0`) — Do Not Reopen
 
 | Item | Shipped In | Resolution |
 | --- | --- | --- |
+| Private documents inside a workspace | `14.7.0` | Added owner-only `visibility` (`workspace` vs `private`) across `lattice-core` (`viewer_scope.rs`, `graph_write/`), `lattice-retrieval` (BM25F/vector/graph/ingest), `lattice-ingest` (`/upload/document`), `lattice-platform` (share & admin security dashboard), and Brain ingestion UI/API. |
+| Default `LATTICEAI_VECTOR_INDEX` flip (`brute` → `hnsw`) | `14.7.0` | Verified `NativeHnswIndex` recall@10 against `datasets/rag_eval_v1.json` (`baseline=1.0000`, 5 churn rounds `0.9991..0.9963`) before flipping default from `brute` to `hnsw` across `lattice-retrieval`, `lattice-jobs`, and `lattice-platform`. |
+| Hugging Face runtime commit `revision=` & SHA-256 verification | `14.7.0` | Completed revision pinning and SHA-256 digest verification (including LFS SHA-256) across `hf_revisions.py`, `local_models.py`, `embedding_providers/{autodetect,text}.py`, and `model_runtime/download.py` with clean unpinned override controls. |
+| Small-model (0.5B–2B) multi-source synthesis quality | `14.7.0` | Added `synthesis.rs` structured `[S1]`..`[Sn]` evidence scaffolding, coverage refinement pass, echoed-instruction/stub rejection, and fail-closed `NEEDS_REVIEW` gating for decomposed profiles with zero per-model branches. |
+| Optional LLM `refiner` for Self-Model extraction | `14.7.0` | Added opt-in `LATTICEAI_SELF_MODEL_LLM_REFINER=1` worker-backed refiner in `self_model_refiner.rs` alongside deterministic extraction, strictly proposal-first via Review Center. |
+| Self-Model `open_keys` `snoozed` regression test | `14.7.0` | Added `desk_tests.rs` locking `desk::open_keys_in` suppression of duplicate re-proposals for `snoozed` items. |
+| Dedicated Brain Network share UI | `14.7.0` | Added `brainNetwork.ts` and `BrainNetworkPanel.tsx` inside `BrainGovernanceHub` for device identity, peer pairing/push, and signed subgraph export/import into Review Center. |
+| Owner-scoped automations & real trigger scheduler | `14.5.0` / `14.6.0` | Shipped live `interval`/`brain_event` triggers, provenance trust ranking, Obsidian Vault ZIP export, and owner-scoped `brain_event` default (`owner_scope: "self"`). |
 | Self-Model & Brain Governance UI panels | `13.1.0` / `13.9.0` | Added `SelfModelPanel` plus five lazy-loaded Brain Governance panels (`IntegrityRepairPanel`, `EntityMergePanel`, `KnowledgeCorrectionsPanel`, `EmbeddingRegistryPanel`, `ClustersGapsPanel`) wired to unified `brain_api` OpenAPI types. |
 | Cooperative model download cancellation | `13.1.0` | Added end-to-end `AbortController` + HTTP `499` cancellation and byte/filename SSE progress across `InstallScreen.tsx` and `ModelsPanel.tsx`. |
 | Server-side i18n ratchet & Rust catalog | `13.0.0` | Locked all 6/6 worker routers and unified 146 Rust server messages in `lattice_core::messages` verified by `scripts/check_server_i18n.mjs`. |
@@ -40,24 +48,13 @@ multi-part program (credentials, model harness, index format, or platform port).
 
 ---
 
-## P1 — High-Impact Quality & Supply-Chain Gaps
-
-| Item | Why It Remains | Difficulty | Priority | Suggested Path |
-| --- | --- | --- | --- | --- |
-| **Small-model (0.5B–2B) open-ended content quality** | Mechanical tool execution and grounding are solved (`84.0%` on 0.5B), and fail-closed verification routes weak outputs to `NEEDS_REVIEW`, but 0.5B–2B models can still produce fluent yet incomplete prose summaries on complex multi-file synthesis. | L | **P1** | Keep measuring empirically with `probe.rs` and `rag_eval_v1.json`; improve structured evidence scaffolding without adding per-model branches. |
-| **Hugging Face runtime commit `revision=` pinning (Bandit `B615`)** | `scripts/verify_hf_model_registry.py` statically checks Hub metadata and `EmbeddingIndexContract` records `model_revision`, but runtime downloads in `model_runtime/download.py` and `embedding_providers/text.py` still allow unpinned default revisions when not explicitly supplied. | M | **P1** | Store verified Hub commit SHAs in the catalog manifest and pass `revision=` + SHA-256 verification by default while preserving an explicit opt-in override for custom user repos. |
-
----
-
 ## P2 — Important Platform & Verification Gaps
 
 | Item | Why It Remains | Difficulty | Priority | Suggested Path |
 | --- | --- | --- | --- | --- |
 | **Signed & notarized macOS DMG by default** | `.github/workflows/release.yml` supports Developer ID signing + notarization when `APPLE_CERTIFICATE` secrets are configured, but falls back to ad-hoc signing otherwise (requiring Gatekeeper approval on first launch). | M | **P2** | Configure repository Apple Developer ID + notarization secrets and extend `release:validate` with an optional `--require-signed` check. |
 | **Live billed `api_key` completion contract test** | `api_key` mode live-probes `GET /models` with zero billing and fail-closes on errors, while live E2E chat completions run via zero-billing `cli_oauth` (`agy`/`grok`) and mock contracts. | S | **P2** | Add an opt-in scheduled/manual live completion contract smoke once a dedicated CI API budget is provisioned; keep `local_only` winning per request. |
-| **Default `LATTICEAI_VECTOR_INDEX` flip (`brute` → `hnsw`)** | `hnsw+rescore` auto-activates at 512+ vectors with a bound worker and `NativeHnswIndex` is LRU-bounded, but the env default stays `brute` until recall@10 vs. exact scan is re-verified under long-running continuous ingest/delete churn. | M | **P2** | Run a continuous-ingest/delete recall@10 benchmark against `rag_eval_v1.json` before flipping the default. |
 | **Nightly real-model RAG eval runner** | `.github/workflows/nightly-rag-eval.yml` is wired and reports `skipped`/`unavailable` honestly when no model endpoint is configured, because standard hosted GitHub runners lack Apple Silicon MLX / local GPUs. | L | **P2** | Bind a self-hosted GPU/Apple Silicon runner or managed eval endpoint so nightly real-model scores publish automatically. |
-| **Private documents inside a workspace** | Owner-only documents are not implemented. The viewer scope in `rust/lattice-core` has no visibility rule, the file id is a content+workspace hash so identical content dedups across owners, concept-node sources do not track their owner, and admin file lists, exports, chronicle/briefing, events, and agent file tools are not audited for owner scoping. | L | **P2** | Add a per-document visibility rule to the viewer scope in `rust/lattice-core`; make content ids owner-scoped; track source owners on concept nodes; audit admin file lists, exports, chronicle/briefing, events, and agent file tools against that rule. |
 
 ---
 
@@ -65,9 +62,6 @@ multi-part program (credentials, model harness, index format, or platform port).
 
 | Item | Why It Remains | Difficulty | Priority | Suggested Path |
 | --- | --- | --- | --- | --- |
-| **Optional LLM `refiner` for Self-Model extraction** | Current EN/KO phrase-table extraction is deterministic and safe because every candidate lands in Review Center, but non-standard phrasings can be missed. | M | P3 | Wire an opt-in local model `refiner` behind a feature flag; keep proposal-first approval mandatory. |
-| **Self-Model `open_keys` `snoozed` alignment** | `desk::open_keys_in` already treats `snoozed` as open (a snoozed proposal suppresses a duplicate re-proposal), but no regression test pins that decision. | S | P3 | Add a regression test in `rust/lattice-retrieval` that locks the snoozed suppression (or change the filter) and record the outcome here. |
-| **Dedicated Brain Network share UI** | Selective X25519/Ed25519 subgraph sharing works behind `LATTICEAI_BRAIN_NETWORK=1` and lands in Review Center, without a standalone peer-management screen yet. | M | P3 | Add a peer/share drawer under Brain only when multi-device sharing exits prototype status. |
 | **PostgreSQL / pgvector live migration** | SQLite WAL is the canonical single-writer store; Postgres export/status and `postgres-integration.yml` remain `Planned`. | L | P3 | Build only when multi-node org deployment demands shared server storage; preserve SQLite as the zero-config local default. |
 | **Native OS pointer actuator** | The six pointer tools run in the Python worker via opt-in `pip install "ltcai[pointer]"` (`pyautogui`). | L | P3 | Keep opt-in worker execution unless a cross-platform native Rust accessibility/input layer is prioritized. |
 | **Quantized int8 vector backend efficiency** | Exhaustive int8 scanning is ~2.2× slower than `brute` at 10k rows without meaningful peak-RSS savings because fetched SQLite rows dominate memory. | L | P3 | Retain as a future disk-resident index representation; do not recommend over `brute` or `hnsw`. |

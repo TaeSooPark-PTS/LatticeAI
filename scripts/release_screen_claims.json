@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "14.7.0": {
+    "_why": [
+      "Private Scope, Verified Index (14.7.0) adds document/note visibility",
+      "controls inside capture forms and the Brain Network tab inside Brain",
+      "Governance Hub, flips the vector index default to HNSW, completes HF",
+      "SHA-256 pinning, and adds optional LLM refiner and small-model synthesis.",
+      "",
+      "No static initial-load screen layout was redesigned in 14.7.0; empty claim set on purpose."
+    ],
+    "claims": []
+  },
   "14.6.0": {
     "_why": [
       "Within Your Scope (14.6.0) adds a top-bar search button, memory manager,",

@@ -3794,7 +3794,7 @@
   },
   "schema_count": 36,
   "source": "frontend/openapi.json",
-  "spec_version": "14.6.0",
+  "spec_version": "14.7.0",
   "summary": "MCP, marketplace, plugin SDK, agent registry, multi-agent runtime and the direct tool surface.",
   "target": "lattice-platform / lattice-agent",
   "wp": "R8"
