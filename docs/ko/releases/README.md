@@ -6,6 +6,9 @@ Lattice AI(`v13.0.0` 이후)의 버전별 상세 릴리스 노트입니다. 통�
 
 | 버전 | 테마 | 릴리스 노트 |
 | --- | --- | --- |
+| 14.7.0 | Private Scope, Verified Index | [RELEASE_NOTES_v14.7.0.md](RELEASE_NOTES_v14.7.0.md) |
+| 14.6.0 | Within Your Scope | [RELEASE_NOTES_v14.6.0.md](RELEASE_NOTES_v14.6.0.md) |
+| 14.5.0 | Living Automations | [RELEASE_NOTES_v14.5.0.md](RELEASE_NOTES_v14.5.0.md) |
 | 14.4.0 | Measured Retrieval | [RELEASE_NOTES_v14.4.0.md](RELEASE_NOTES_v14.4.0.md) |
 | 14.3.0 | Temporal Synthesis | [RELEASE_NOTES_v14.3.0.md](RELEASE_NOTES_v14.3.0.md) |
 | 14.2.0 | Temporal Synthesis | [RELEASE_NOTES_v14.2.0.md](RELEASE_NOTES_v14.2.0.md) |

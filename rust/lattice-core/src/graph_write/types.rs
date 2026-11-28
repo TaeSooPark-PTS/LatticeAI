@@ -73,6 +73,15 @@ pub struct ChunkPiece {
     pub embedding: Option<SuppliedVector>,
 }
 
+pub fn normalize_visibility(raw: Option<&str>) -> Option<String> {
+    let value = raw?.trim().to_ascii_lowercase();
+    match value.as_str() {
+        "private" => Some("private".into()),
+        "workspace" => Some("workspace".into()),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ChunkParentPiece {
     pub text: String,
@@ -126,6 +135,8 @@ pub struct IngestContentRequest {
     #[serde(default)]
     pub workspace_id: Option<String>,
     #[serde(default)]
+    pub visibility: Option<String>,
+    #[serde(default)]
     pub permissions: Map<String, Value>,
     #[serde(default)]
     pub captured_at: Option<String>,
@@ -177,6 +188,8 @@ pub struct IngestFileRequest {
     pub owner: Option<String>,
     #[serde(default)]
     pub workspace_id: Option<String>,
+    #[serde(default)]
+    pub visibility: Option<String>,
     #[serde(default)]
     pub permissions: Map<String, Value>,
     #[serde(default)]

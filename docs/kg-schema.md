@@ -2,7 +2,7 @@
 
 # Knowledge Graph Schema
 
-Current release: **14.6.0 — Within Your Scope**.
+Current release: **14.7.0 — Private Scope, Verified Index**.
 
 Spec reference: `lattice_ai_full_spec.pptx` slides 20, 21, and 22  
 Implementation: `lattice_brain/graph/schema.py`

@@ -302,6 +302,18 @@ fn build_aligned_vector_sql(
             extra_clauses.push(ws_clause);
             scope_params.extend(ws_params);
         }
+        if let Some(viewer) = lattice_core::scope_viewer(active_scope.allowed_workspaces.as_ref()) {
+            if schema.exists && schema.has_owner_id {
+                let cols = lattice_core::viewer_scope::OwnerColumns {
+                    owner: "v2.owner_id",
+                    node_type: "COALESCE(NULLIF(n.type, ''), NULLIF(pn.type, ''), 'Document')",
+                    metadata: meta_expr,
+                    visibility: schema.has_visibility.then_some("v2.visibility"),
+                };
+                extra_clauses.push(lattice_core::viewer_scope::owner_visible_sql(&cols, "?"));
+                scope_params.push(SqlValue::Text(viewer.to_string()));
+            }
+        }
     }
 
     if !include_historical {

@@ -298,3 +298,21 @@ fn legacy_uuid_owner_ids_resolve_via_metadata_email_and_keep_ownerless_rows_visi
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn private_documents_are_hidden_from_other_users_while_workspace_docs_remain_visible() {
+    let conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE nodes_v2(id TEXT PRIMARY KEY, type TEXT, legacy_type TEXT, owner_id TEXT, visibility TEXT, attrs TEXT);
+         INSERT INTO nodes_v2 VALUES
+           ('doc-private', 'DOCUMENT', 'Document', 'alice@acme.test', 'private', '{\"visibility\":\"private\"}'),
+           ('doc-shared', 'DOCUMENT', 'Document', 'alice@acme.test', 'workspace', '{\"visibility\":\"workspace\"}');",
+    )
+    .unwrap();
+    let ids = vec!["doc-private".to_string(), "doc-shared".to_string()];
+    let bob_hidden = foreign_conversation_ids(&conn, &ids, BOB).unwrap();
+    assert_eq!(bob_hidden, HashSet::from(["doc-private".to_string()]));
+    assert!(foreign_conversation_ids(&conn, &ids, ALICE)
+        .unwrap()
+        .is_empty());
+}

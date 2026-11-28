@@ -71,6 +71,11 @@ describe("BrainIngestionPanel", () => {
     await userEvent.upload(input, file);
     expect(onUploadDocument).toHaveBeenCalledWith(file);
     expect(input.value).toBe("");
+
+    fireEvent.change(screen.getByLabelText("문서 공개 범위"), { target: { value: "private" } });
+    expect(screen.getByTestId("private-visibility-hint")).toBeTruthy();
+    await userEvent.upload(input, file);
+    expect(onUploadDocument).toHaveBeenLastCalledWith(file, "private");
   });
 
   it("ignores a change event that carries no file", () => {
@@ -103,6 +108,11 @@ describe("BrainIngestionPanel", () => {
     fireEvent.submit(noteInput!.closest("form")!);
     expect(onIngestNote).toHaveBeenCalledWith("오늘 배운 것");
     expect(noteInput!.value).toBe("");
+
+    fireEvent.change(screen.getByLabelText("문서 공개 범위"), { target: { value: "private" } });
+    fireEvent.change(noteInput!, { target: { value: "비공개 메모" } });
+    fireEvent.submit(noteInput!.closest("form")!);
+    expect(onIngestNote).toHaveBeenLastCalledWith("비공개 메모", "private");
 
     fireEvent.change(webInput!, { target: { value: "https://lattice.dev" } });
     fireEvent.submit(webInput!.closest("form")!);
@@ -350,8 +360,8 @@ describe("BrainIngestionDock", () => {
     expect(document.querySelector(".brain-ingestion-dock-popover")).toBeNull();
   });
 
-  it("closes the popover on Escape or its close button", () => {
-    renderDock();
+  it("closes the popover on Escape or its close button", async () => {
+    const { onUploadDocument, onIngestNote } = renderDock();
     fireEvent.click(screen.getByRole("button", { name: "노트" }));
     expect(document.querySelector(".brain-ingestion-dock-popover")).toBeTruthy();
     fireEvent.keyDown(screen.getByTestId("brain-ingestion-dock"), { key: "Escape" });
@@ -363,6 +373,17 @@ describe("BrainIngestionDock", () => {
     expect(document.querySelector(".brain-ingestion-dock-popover")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "자료 입력 닫기" }));
     expect(document.querySelector(".brain-ingestion-dock-popover")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("문서 공개 범위"), { target: { value: "private" } });
+    const dockFile = new File(["비밀"], "dock-secret.txt", { type: "text/plain" });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(fileInput, dockFile);
+    expect(onUploadDocument).toHaveBeenLastCalledWith(dockFile, "private");
+    fireEvent.click(screen.getByRole("button", { name: "노트" }));
+    const noteBox = screen.getByPlaceholderText("결정이나 맥락을 붙여넣기");
+    fireEvent.change(noteBox, { target: { value: "독 비공개 노트" } });
+    fireEvent.submit(noteBox.closest("form")!);
+    expect(onIngestNote).toHaveBeenLastCalledWith("독 비공개 노트", "private");
   });
 
   it("shows the pipeline state for the open source inside the popover", () => {

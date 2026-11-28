@@ -5,7 +5,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **14.6.0 — Within Your Scope**.
+Current release: **14.7.0 — Private Scope, Verified Index**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -333,7 +333,7 @@ that lane.
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 14.6.0 release work, exact artifacts are:
+For 14.7.0 release work, exact artifacts are:
 
 - `dist/ltcai-14.2.0-py3-none-any.whl`
 - `dist/ltcai-14.2.0.tar.gz`

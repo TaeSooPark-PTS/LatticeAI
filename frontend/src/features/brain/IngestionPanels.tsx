@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowUp, FileText, FileUp, FolderOpen, FolderPlus, Globe2, Loader2, Sparkles, X } from "lucide-react";
 
+import { type DocumentVisibility } from "@/api/transfers";
 import { t, type Language } from "@/i18n";
 import {
   type EmergenceEvent,
@@ -30,22 +31,39 @@ export function BrainIngestionPanel({
   language: Language;
   uploadingDocument: boolean;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
-  onUploadDocument: (file: File) => void;
+  onUploadDocument: (file: File, visibility?: DocumentVisibility) => void;
   onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
-  onIngestNote: (note: string) => void;
+  onIngestNote: (note: string, visibility?: DocumentVisibility) => void;
   onIngestWeb: (url: string) => void;
 }) {
   const [folderPath, setFolderPath] = React.useState("");
   const [note, setNote] = React.useState("");
   const [url, setUrl] = React.useState("");
+  const [visibility, setVisibility] = React.useState<DocumentVisibility>("workspace");
 
   return (
     <section className="brain-ingestion-panel" aria-label={t(language, "brain.ingest.aria")}>
       <div className="brain-ingestion-head">
         <span>{t(language, "brain.ingest.kicker")}</span>
         <strong>{t(language, "brain.ingest.title")}</strong>
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <select
+            aria-label={t(language, "brain.ingest.visibility.aria")}
+            className="h-7 rounded border border-input bg-background px-2 text-xs"
+            value={visibility}
+            onChange={(event) => setVisibility(event.target.value as DocumentVisibility)}
+          >
+            <option value="workspace">{t(language, "brain.ingest.visibility.workspace")}</option>
+            <option value="private">{t(language, "brain.ingest.visibility.private")}</option>
+          </select>
+        </label>
       </div>
+      {visibility === "private" ? (
+        <p className="text-xs text-muted-foreground" data-testid="private-visibility-hint">
+          {t(language, "brain.ingest.visibility.hint")}
+        </p>
+      ) : null}
       <div className="brain-ingestion-grid">
         <label
           className={`brain-ingest-tile is-primary ${tileStateClass(ingestionStates.file)} ${uploadingDocument ? "is-disabled" : ""}`}
@@ -61,7 +79,10 @@ export function BrainIngestionPanel({
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.currentTarget.value = "";
-              if (file) onUploadDocument(file);
+              if (file) {
+                if (visibility === "private") onUploadDocument(file, "private");
+                else onUploadDocument(file);
+              }
             }}
           />
           <IngestionStageTrack language={language} state={ingestionStates.file} ctaKey="brain.ingest.cta.file" />
@@ -87,7 +108,8 @@ export function BrainIngestionPanel({
           className={`brain-ingest-tile ${tileStateClass(ingestionStates.note)}`}
           onSubmit={(event) => {
             event.preventDefault();
-            onIngestNote(note);
+            if (visibility === "private") onIngestNote(note, "private");
+            else onIngestNote(note);
             setNote("");
           }}
         >
@@ -130,10 +152,10 @@ export function BrainIngestionDock({
   language: Language;
   uploadingDocument: boolean;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
-  onUploadDocument: (file: File) => void;
+  onUploadDocument: (file: File, visibility?: DocumentVisibility) => void;
   onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
-  onIngestNote: (note: string) => void;
+  onIngestNote: (note: string, visibility?: DocumentVisibility) => void;
   onIngestWeb: (url: string) => void;
   variant?: "panel" | "inline";
 }) {
@@ -141,6 +163,7 @@ export function BrainIngestionDock({
   const [folderPath, setFolderPath] = React.useState("");
   const [note, setNote] = React.useState("");
   const [url, setUrl] = React.useState("");
+  const [visibility, setVisibility] = React.useState<DocumentVisibility>("workspace");
   const popoverId = React.useId();
 
   const toggle = (source: DockSource) => {
@@ -154,7 +177,8 @@ export function BrainIngestionDock({
       setFolderPath("");
     } else if (source === "note") {
       if (!note.trim()) return;
-      onIngestNote(note);
+      if (visibility === "private") onIngestNote(note, "private");
+      else onIngestNote(note);
       setNote("");
     } else {
       if (!url.trim()) return;
@@ -196,10 +220,22 @@ export function BrainIngestionDock({
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.currentTarget.value = "";
-              if (file) onUploadDocument(file);
+              if (file) {
+                if (visibility === "private") onUploadDocument(file, "private");
+                else onUploadDocument(file);
+              }
             }}
           />
         </label>
+        <select
+          aria-label={t(language, "brain.ingest.visibility.aria")}
+          className="h-7 rounded border border-input bg-background px-1.5 text-xs"
+          value={visibility}
+          onChange={(event) => setVisibility(event.target.value as DocumentVisibility)}
+        >
+          <option value="workspace">{t(language, "brain.ingest.visibility.workspace")}</option>
+          <option value="private">{t(language, "brain.ingest.visibility.private")}</option>
+        </select>
         {([
           ["folder", FolderOpen],
           ["note", FileText],

@@ -197,7 +197,10 @@ export function BrainHome({
         onOpenDepth={openDepth}
         onDraftChange={chat.setDraft}
         onImageDataChange={chat.setImageData}
-        onUploadDocument={(file) => void ingestion.uploadDocument(file)}
+        onUploadDocument={(file, visibility) =>
+          void (visibility === "private"
+            ? ingestion.uploadDocument(file, "private")
+            : ingestion.uploadDocument(file))}
         onPickFolder={() => void ingestion.pickFolder()}
         onConnectFolder={(path) => void ingestion.connectFolder(path)}
         onIngestNote={ingestion.ingestNote}

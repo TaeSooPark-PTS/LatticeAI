@@ -19,6 +19,7 @@ const INGEST_REQUEST: &[crate::search_api::FieldSpec] = &[
     crate::search_api::optional("conversation_id", Kind::Str(0)),
     crate::search_api::optional("user_email", Kind::Str(0)),
     crate::search_api::optional("user_nickname", Kind::Str(0)),
+    crate::search_api::optional("visibility", Kind::OptStr),
     crate::search_api::optional("metadata", Kind::Object),
 ];
 
@@ -166,6 +167,14 @@ pub(crate) async fn ingest(
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
+    let requested_visibility = lattice_core::graph_write::types::normalize_visibility(
+        model.get("visibility").and_then(Value::as_str),
+    )
+    .or_else(|| {
+        lattice_core::graph_write::types::normalize_visibility(
+            metadata.get("visibility").and_then(Value::as_str),
+        )
+    });
     let is_note = event_type == "note";
     let extract_text = if is_note {
         if title.is_empty() {
@@ -195,6 +204,7 @@ pub(crate) async fn ingest(
                 source_uri: Some(source),
                 owner: effective_user,
                 workspace_id: workspace,
+                visibility: requested_visibility.clone(),
                 conversation_id,
                 metadata,
                 concepts: extracted.concepts.clone(),

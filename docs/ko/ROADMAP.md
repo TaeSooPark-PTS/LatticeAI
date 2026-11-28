@@ -2,18 +2,26 @@
 
 # Lattice AI 갭 로드맵
 
-> **상태: 참고 문서** — **v14.1.1** (2026-11-25) 기준으로 갱신된 시점별 갭 인벤토리입니다. 현재 릴리스 정본 문서가 아니므로 버전 게이트의 구속을 받지 않습니다.
+> **상태: 참고 문서** — **v14.7.0** (2026-11-28) 기준으로 갱신된 시점별 갭 인벤토리입니다. 현재 릴리스 정본 문서가 아니므로 버전 게이트의 구속을 받지 않습니다.
 
-기준 시점: **2026-11-25**, **14.1.1 — Living Synthesis** 트리 기준. 이 문서는 [`FEATURE_STATUS.md`](./FEATURE_STATUS.md), [`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), 그리고 [`docs/ko/releases/README.md`](./releases/README.md)의 `v13.0.0+` 릴리스 노트에서 추려낸 실제 잔여 엔지니어링 과제를 추적합니다. 크레이트 소유권 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md), 기여자 가이드는 [`docs/ko/DEVELOPMENT.md`](./DEVELOPMENT.md)를 참고하세요.
+기준 시점: **2026-11-28**, **14.7.0 — Private Scope, Verified Index** 트리 기준. 이 문서는 [`FEATURE_STATUS.md`](./FEATURE_STATUS.md), [`docs/SECURITY_AUDIT.md`](../SECURITY_AUDIT.md), 그리고 [`docs/ko/releases/README.md`](./releases/README.md)의 `v13.0.0+` 릴리스 노트에서 추려낸 실제 잔여 엔지니어링 과제를 추적합니다. 크레이트 소유권 지도는 [`rust/lattice-agent/ARCHITECTURE.md`](../../rust/lattice-agent/ARCHITECTURE.md)와 [`rust/lattice-platform/ARCHITECTURE.md`](../../rust/lattice-platform/ARCHITECTURE.md), 기여자 가이드는 [`docs/ko/DEVELOPMENT.md`](./DEVELOPMENT.md)를 참고하세요.
 
 난이도: **S** 집중 변경 1건 · **M** 수직 슬라이스 · **L** 복합 프로그램(자격 증명, 모델 하네스, 인덱스 포맷 또는 플랫폼 포트).
 
 ---
 
-## 최근 완료 항목 (`v13.0.0` – `v14.1.1`) — 다시 열지 말 것
+## 최근 완료 항목 (`v13.0.0` – `v14.7.0`) — 다시 열지 말 것
 
 | 항목 | 출시 버전 | 해결 내용 |
 | --- | --- | --- |
+| 워크스페이스 내 비공개 문서 | `14.7.0` | `lattice-core`(`viewer_scope.rs`, `graph_write/`), `lattice-retrieval`, `lattice-ingest`, `lattice-platform` 및 프론트엔드 수집 UI에 소유자 전용 `visibility`(`workspace`/`private`) 규칙과 소유자 범위 ID를 적용했습니다. |
+| `LATTICEAI_VECTOR_INDEX` 기본값 전환 (`brute` → `hnsw`) | `14.7.0` | `datasets/rag_eval_v1.json` 기준 recall@10(`baseline=1.0000`, 5회 churn 라운드 `0.9991..0.9963`) 검증 후 기본값을 `hnsw`로 전환했습니다. |
+| Hugging Face 리비전 `revision=` 고정 및 SHA-256 무결성 검증 | `14.7.0` | `hf_revisions.py`, `local_models.py`, `embedding_providers/{autodetect,text}.py`, `download.py` 전반에 리비전 고정 및 SHA-256/LFS 검증과 미고정 리포 제어 플래그를 완결했습니다. |
+| 소형 모델(0.5B–2B) 다중 근거 합성 품질 향상 | `14.7.0` | `synthesis.rs`의 `[S1]`..`[Sn]` 구조화 근거 스캐폴드, 커버리지 보정 패스, 지시문 에코/단답 차단, fail-closed `NEEDS_REVIEW` 게이트를 모델별 분기 없이 추가했습니다. |
+| Self-Model 추출용 선택적 LLM `refiner` | `14.7.0` | `LATTICEAI_SELF_MODEL_LLM_REFINER=1` 옵트인 시 `self_model_refiner.rs`가 비정형 프로필 사실을 검토 센터 제안으로 추가합니다. |
+| Self-Model `open_keys` `snoozed` 회귀 테스트 | `14.7.0` | `desk_tests.rs`에서 `desk::open_keys_in`의 `snoozed` 중복 억제 동작을 검증했습니다. |
+| 전용 Brain Network 공유 UI | `14.7.0` | `BrainGovernanceHub`에 `BrainNetworkPanel.tsx`와 `brainNetwork.ts`를 추가해 장치 신원, 피어 페어링·푸시, 서명 서브그래프 내보내기/스테이징을 지원합니다. |
+| 소유자 범위 자동화 및 실시간 트리거 스케줄러 | `14.5.0` / `14.6.0` | `interval`/`brain_event` 트리거, 출처·신뢰 등급 랭킹, Obsidian 볼트 내보내기, 소유자 범위 `brain_event` 기본값을 출시했습니다. |
 | Self-Model 및 브레인 거버넌스 UI 패널 | `13.1.0` / `13.9.0` | `SelfModelPanel`과 통합 `brain_api` OpenAPI 타입에 연결된 5개 지연 로드 브레인 거버넌스 패널(`IntegrityRepairPanel`, `EntityMergePanel`, `KnowledgeCorrectionsPanel`, `EmbeddingRegistryPanel`, `ClustersGapsPanel`)을 추가했습니다. |
 | 협조적 모델 다운로드 취소 | `13.1.0` | `InstallScreen.tsx`와 `ModelsPanel.tsx`에 종단간 `AbortController` + HTTP `499` 취소와 바이트/파일명 SSE 진행률을 추가했습니다. |
 | 서버 측 i18n 래칫 및 Rust 카탈로그 | `13.0.0` | 6/6 워커 라우터를 모두 잠그고 146개 Rust 서버 메시지를 `lattice_core::messages`로 통합해 `scripts/check_server_i18n.mjs`로 검증합니다. |
@@ -30,24 +38,13 @@
 
 ---
 
-## P1 — 핵심 품질 및 공급망 갭
-
-| 항목 | 남은 이유 | 난이도 | 우선순위 | 제안 경로 |
-| --- | --- | --- | --- | --- |
-| **소형 모델(0.5B–2B) 개방형 과제 내용 품질** | 기계적 도구 호출과 그라운딩은 해결되었고(0.5B 기준 `84.0%`) fail-closed 검증기가 취약한 출력을 `NEEDS_REVIEW`로 격리하지만, 복합 다중 파일 요약에서는 여전히 유창하지만 불완전한 서술이 나올 수 있습니다. | L | **P1** | 모델별 분기 없이 `probe.rs`와 `rag_eval_v1.json`으로 지속 실측하며 구조화 근거 스캐폴딩을 고도화합니다. |
-| **Hugging Face 런타임 커밋 `revision=` 고정 (Bandit `B615`)** | `scripts/verify_hf_model_registry.py`가 Hub 메타데이터를 정적 검증하고 `EmbeddingIndexContract`가 `model_revision`을 기록하지만, `model_runtime/download.py`와 `embedding_providers/text.py`는 미지정 시 기본 리비전 고정을 아직 강제하지 않습니다. | M | **P1** | 카탈로그 매니페스트에 검증된 Hub 커밋 SHA를 저장하고 기본으로 `revision=` + SHA-256 검증을 적용하되 사용자 지정 리포용 옵트인 오버라이드를 유지합니다. |
-
----
-
 ## P2 — 주요 플랫폼 및 검증 갭
 
 | 항목 | 남은 이유 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
 | **기본 서명·공증 macOS DMG** | `.github/workflows/release.yml`은 `APPLE_CERTIFICATE` 시크릿 구성 시 Developer ID 서명과 공증을 수행하지만, 미구성 시 ad-hoc 서명(최초 실행 시 Gatekeeper 허용 필요)으로 폴백합니다. | M | **P2** | 저장소에 Apple Developer ID 및 공증 시크릿을 구성하고 `release:validate`에 선택적 `--require-signed` 검사를 추가합니다. |
 | **과금 `api_key` 라이브 완료 계약 테스트** | `api_key` 모드는 무과금 `GET /models` 라이브 프로브로 검증하고 실패 시 fail-closed 하며, 실제 채팅 E2E는 무과금 `cli_oauth`(`agy`/`grok`)와 목 계약 테스트로 커버됩니다. | S | **P2** | 전용 CI API 예산 확보 시 수동/예약 라이브 완료 스모크 1건을 추가하고 요청 단위 `local_only` 우선을 유지합니다. |
-| **`LATTICEAI_VECTOR_INDEX` 기본값 전환 (`brute` → `hnsw`)** | 512개 이상 벡터 + 워커 연결 시 `hnsw+rescore`가 자동 시도되고 `NativeHnswIndex`도 LRU 상한을 갖추었지만, 장시간 연속 수집·삭제 환경의 recall@10 재검증 전까지 환경 변수 기본값은 `brute`로 유지합니다. | M | **P2** | `rag_eval_v1.json` 기반 연속 수집·삭제 recall@10 벤치마크 검증 후 기본값을 전환합니다. |
 | **야간 실모델 RAG 평가 전용 러너** | `.github/workflows/nightly-rag-eval.yml`이 구성되어 엔드포인트 미설정 시 정직하게 `skipped`/`unavailable`을 보고하지만, 호스티드 GitHub 러너에는 Apple Silicon MLX/로컬 GPU가 없습니다. | L | **P2** | 셀프 호스티드 GPU/Apple Silicon 러너 또는 관리형 평가 엔드포인트를 연결해 야간 실모델 점수를 자동 발행합니다. |
-| **워크스페이스 내 비공개 문서** | 소유자 전용 문서가 구현되어 있지 않습니다. `rust/lattice-core` 뷰어 범위에 가시성 규칙이 없고, 파일 id가 콘텐츠+워크스페이스 해시라 동일 콘텐츠가 소유자 간 중복 제거(dedup)되며, 개념 노드 출처가 소유자를 추적하지 않고, 관리자 파일 목록·내보내기·chronicle/briefing·이벤트·에이전트 파일 도구가 소유자 범위로 감사되지 않았습니다. | L | **P2** | `rust/lattice-core` 뷰어 범위에 문서별 가시성 규칙을 추가하고, 콘텐츠 id를 소유자 범위로 만들며, 개념 노드 출처에 소유자를 기록하고, 관리자 파일 목록·내보내기·chronicle/briefing·이벤트·에이전트 파일 도구를 해당 규칙으로 감사합니다. |
 
 ---
 
@@ -55,9 +52,6 @@
 
 | 항목 | 남은 이유 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
-| **Self-Model 추출용 선택적 LLM `refiner`** | 현재 한/영 구문 테이블 추출은 모든 후보가 검토함을 거치므로 안전하지만, 비정형 표현을 놓칠 수 있습니다. | M | P3 | 기능 플래그 뒤 선택적 로컬 모델 `refiner`를 연결하되 제안 우선 승인을 유지합니다. |
-| **Self-Model `open_keys`의 `snoozed` 정합성** | `desk::open_keys_in`은 이미 `snoozed`를 열린 항목으로 취급해 중복 재제안을 억제하지만(보류 제안이 같은 키의 재제안을 막음), 이 결정을 고정하는 회귀 테스트가 없습니다. | S | P3 | `rust/lattice-retrieval`에 `snoozed` 억제를 고정하는 회귀 테스트를 추가(또는 필터 변경)하고 결과를 여기에 기록합니다. |
-| **전용 Brain Network 공유 UI** | X25519/Ed25519 선택 서브그래프 공유는 `LATTICEAI_BRAIN_NETWORK=1` 아래 검토함으로 동작하며 독립 피어 관리 화면은 아직 없습니다. | M | P3 | 다중 기기 공유가 프로토타입 단계를 벗어날 때 Brain 내 전용 피어/공유 서랍을 추가합니다. |
 | **PostgreSQL / pgvector 라이브 마이그레이션** | SQLite WAL이 정본 단일 라이터이며 Postgres 내보내기/상태와 `postgres-integration.yml`은 `Planned` 상태입니다. | L | P3 | 다중 노드 조직 배포 수요가 발생할 때 구현하되, 무설정 로컬 기본값으로 SQLite를 유지합니다. |
 | **네이티브 OS 포인터 액추에이터** | 6개 포인터 도구는 옵트인 `pip install "ltcai[pointer]"`(`pyautogui`)로 Python 워커에서 실행됩니다. | L | P3 | 크로스플랫폼 네이티브 Rust 접근성/입력 계층이 우선순위가 될 때까지 옵트인 워커 실행을 유지합니다. |
 | **양자화 int8 벡터 백엔드 효율** | 10k 행 기준 SQLite 행 페치가 RSS 대부분을 차지해 메모리 절감 대비 `brute`보다 약 2.2배 느립니다. | L | P3 | 향후 디스크 상주 인덱스용 표현으로만 보류하고 `brute`/`hnsw`보다 권장하지 않습니다. |

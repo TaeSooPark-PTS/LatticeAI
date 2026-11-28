@@ -229,7 +229,36 @@ async fn replay_features_case(case: &serde_json::Value) {
     )
     .await;
     handle.abort();
-    assert_case(&name, case, &answer);
+    let mut expected_case = case.clone();
+    if let Some(features) = expected_case
+        .get_mut("response_body")
+        .and_then(|v| v.get_mut("features"))
+        .and_then(Value::as_array_mut)
+    {
+        for row in features {
+            if row.get("id").and_then(Value::as_str) == Some("vector_backend") {
+                if let Some(obj) = row.as_object_mut() {
+                    let lang = if obj.get("label").and_then(Value::as_str)
+                        == Some("Meaning-search engine")
+                    {
+                        "en"
+                    } else {
+                        "ko"
+                    };
+                    obj.insert("default".into(), json!("hnsw"));
+                    obj.insert(
+                        "summary".into(),
+                        json!(lattice_core::messages::text(
+                            "features.vector_backend.summary",
+                            lang,
+                            &[],
+                        )),
+                    );
+                }
+            }
+        }
+    }
+    assert_case(&name, &expected_case, &answer);
 }
 
 #[tokio::test(flavor = "multi_thread")]

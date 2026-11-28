@@ -202,6 +202,12 @@ describe("uploadDocument", () => {
     expect(setLastRecallQuery).toHaveBeenCalledWith("노트.pdf");
     expect(result.current.ingestionStates.file).toMatchObject({ stage: "complete", extraction: { level: "high" } });
     expect(result.current.uploadingDocument).toBe(false);
+
+    const secret = new File(["비밀"], "secret.pdf");
+    await act(async () => {
+      await result.current.uploadDocument(secret, "private");
+    });
+    expect(latticeApi.uploadDocument).toHaveBeenCalledWith(secret, "private");
   });
 
   it("reports an upload failure with the server reason or a plain fallback", async () => {
@@ -382,6 +388,11 @@ describe("ingestNote and ingestWeb", () => {
     expect(feedback.at(-1)).toBe(t("ko", "brain.ingest.note.saved"));
     expect(setLastRecallQuery).toHaveBeenCalledWith("오늘 회의: 출시일 확정");
     expect(result.current.ingestionStates.note).toMatchObject({ stage: "complete" });
+
+    await act(async () => {
+      expect(await result.current.ingestNote("비공개 메모", "private")).toBe(true);
+    });
+    expect(latticeApi.ingestNote).toHaveBeenCalledWith("비공개 메모", "비공개 메모", "private");
   });
 
   it("reports a note failure with the reason or a plain fallback", async () => {

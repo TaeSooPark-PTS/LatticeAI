@@ -5,6 +5,23 @@
 최상단 항목은 현재 릴리스 라인 또는 미배포 `main` 브랜치 작업 내역입니다.
 이전 항목은 해당 릴리스 시점의 동작을 기록한 이력이며, 공개 변경 이력은 `v13.0.0` 이후 버전만 유지합니다.
 
+## [14.7.0] - 2026-11-28 — Private Scope, Verified Index
+
+### 추가됨
+- 워크스페이스 내 소유자 전용 `private` 문서·노트 지원 (`lattice-core`, `lattice-retrieval`, `lattice-ingest`, `lattice-platform` 및 Brain 수집 UI/API).
+- `datasets/rag_eval_v1.json` 연속 수집·삭제·개정 HNSW recall@10 벤치마크 (`rust/lattice-retrieval/tests/hnsw_rag_eval_recall.rs`: 기준선 `1.0000`, 5라운드 `0.9991..0.9963`).
+- 소형 모델 다중 근거 스캐폴딩 및 커버리지 보정 (`rust/lattice-agent/src/kernel/agentloop/synthesis.rs`, `execution/mod.rs`, `verification.rs`).
+- 옵트인 Self-Model LLM 정제기 (`self_model_refiner.rs`, `LATTICEAI_SELF_MODEL_LLM_REFINER=1`) — 검토 센터 승인 후에만 저장.
+- `desk::open_keys_in` snoozed 중복 억제 회귀 테스트 (`desk_tests.rs`).
+- 전용 Brain Network 공유 UI (`brainNetwork.ts`, `BrainNetworkPanel.tsx`).
+
+### 변경됨
+- `LATTICEAI_VECTOR_INDEX` 기본값을 `brute`에서 `hnsw`로 전환했습니다.
+- `hf_revisions.py`, `local_models.py`, `embedding_providers/{autodetect,text}.py`, `model_runtime/download.py`의 Hugging Face 리비전 고정 및 SHA-256/LFS 무결성 검증을 완결했습니다.
+- `docs/ROADMAP.md` 및 `docs/ko/ROADMAP.md` 기준 버전을 `v14.7.0`으로 동기화했습니다.
+
+상세 내용: [docs/ko/releases/RELEASE_NOTES_v14.7.0.md](releases/RELEASE_NOTES_v14.7.0.md).
+
 ## [14.6.0] - 2026-11-28 — Within Your Scope
 
 ### 변경

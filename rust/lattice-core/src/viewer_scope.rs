@@ -59,12 +59,14 @@ pub struct OwnerColumns<'a> {
     pub owner: &'a str,
     pub node_type: &'a str,
     pub metadata: &'a str,
+    pub visibility: Option<&'a str>,
 }
 
 pub const NODES_V2_OWNER_COLUMNS: OwnerColumns<'static> = OwnerColumns {
     owner: "owner_id",
     node_type: "COALESCE(NULLIF(legacy_type, ''), type)",
     metadata: "attrs",
+    visibility: Some("visibility"),
 };
 
 fn quoted_list(values: &[&str]) -> String {
@@ -80,6 +82,7 @@ fn effective_owner_sql(columns: &OwnerColumns<'_>) -> String {
         owner,
         node_type,
         metadata,
+        ..
     } = *columns;
     format!(
         "NULLIF(LOWER(TRIM(CASE \
@@ -112,17 +115,44 @@ pub fn conversation_derived_sql(columns: &OwnerColumns<'_>) -> String {
     )
 }
 
+pub fn private_visibility_sql(columns: &OwnerColumns<'_>) -> String {
+    let metadata = columns.metadata;
+    let json_private = format!(
+        "(json_valid({metadata}) AND LOWER(TRIM(COALESCE(json_extract({metadata}, '$.visibility'), ''))) = 'private')"
+    );
+    match columns.visibility {
+        Some(vis) => format!("(LOWER(TRIM(COALESCE({vis}, ''))) = 'private' OR {json_private})"),
+        None => json_private,
+    }
+}
+
 pub fn foreign_conversation_sql(columns: &OwnerColumns<'_>, viewer_param: &str) -> String {
     let effective = effective_owner_sql(columns);
     let derived = conversation_derived_sql(columns);
+    let private_vis = private_visibility_sql(columns);
     format!(
         "COALESCE(({effective} IS NOT NULL \
-         AND {effective} <> {viewer_param} AND {derived}), 0)"
+         AND {effective} <> {viewer_param} AND ({derived} OR {private_vis})), 0)"
     )
+}
+
+pub fn foreign_private_sql(columns: &OwnerColumns<'_>, viewer_param: &str) -> String {
+    foreign_conversation_sql(columns, viewer_param)
 }
 
 pub fn owner_visible_sql(columns: &OwnerColumns<'_>, viewer_param: &str) -> String {
     format!("NOT {}", foreign_conversation_sql(columns, viewer_param))
+}
+
+fn nodes_v2_has_visibility(conn: &Connection) -> bool {
+    let Ok(mut stmt) = conn.prepare("PRAGMA table_info(nodes_v2)") else {
+        return false;
+    };
+    let result = match stmt.query_map([], |row| row.get::<_, String>(1)) {
+        Ok(rows) => rows.flatten().any(|name| name == "visibility"),
+        Err(_) => false,
+    };
+    result
 }
 
 pub fn foreign_conversation_ids(
@@ -132,7 +162,11 @@ pub fn foreign_conversation_ids(
 ) -> Result<HashSet<String>, CoreError> {
     let wanted: Vec<&String> = ids.iter().filter(|id| !id.is_empty()).collect();
     let mut hidden = HashSet::new();
-    let predicate = foreign_conversation_sql(&NODES_V2_OWNER_COLUMNS, "?");
+    let mut columns = NODES_V2_OWNER_COLUMNS;
+    if !nodes_v2_has_visibility(conn) {
+        columns.visibility = None;
+    }
+    let predicate = foreign_conversation_sql(&columns, "?");
     for batch in wanted.chunks(ID_BATCH) {
         let placeholders = vec!["?"; batch.len()].join(",");
         let sql = format!("SELECT id FROM nodes_v2 WHERE id IN ({placeholders}) AND {predicate}");

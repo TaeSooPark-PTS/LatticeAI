@@ -9,7 +9,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set
 
-from latticeai.core.hf_revisions import resolve_revision
+from latticeai.core.hf_revisions import (
+    require_pinned_revision,
+    resolve_revision,
+    verify_file_sha256,
+)
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
 from latticeai.models.router.errors import MODEL_RUNTIME_BOUNDARY_ERRORS
@@ -361,7 +365,7 @@ def _call_hf_hub_download(
 
 def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
     api = _build_hf_api()
-    revision = resolve_revision(repo_id).revision
+    revision = require_pinned_revision(resolve_revision(repo_id)).revision
     try:
         info = api.model_info(repo_id, revision=revision, files_metadata=True)
         files = []
@@ -369,7 +373,15 @@ def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
             name = str(getattr(sibling, "rfilename", "") or "").strip()
             if not name or name.endswith("/"):
                 continue
-            files.append({"name": name, "size": int(getattr(sibling, "size", 0) or 0)})
+            lfs = getattr(sibling, "lfs", None)
+            lfs_sha = getattr(lfs, "sha256", None) if lfs is not None else None
+            entry: Dict[str, Any] = {
+                "name": name,
+                "size": int(getattr(sibling, "size", 0) or 0),
+            }
+            if isinstance(lfs_sha, str) and lfs_sha.strip():
+                entry["sha256"] = lfs_sha.strip().lower()
+            files.append(entry)
         if files:
             return files
     except Exception as e:
@@ -439,7 +451,7 @@ def _download_single_hf_repo(
 
     target_dir = hf_model_dir(active_repo)
     target_dir.mkdir(parents=True, exist_ok=True)
-    revision_request = resolve_revision(active_repo)
+    revision_request = require_pinned_revision(resolve_revision(active_repo))
     started_at = time.time()
     fallback_kwargs: Dict[str, Any] = (
         {"gated_fallback": True, "fallback_repo": active_repo} if used_fallback else {}
@@ -596,6 +608,21 @@ def _download_single_hf_repo(
             tqdm_class=tqdm_class,
             revision=revision_request.revision,
         )
+        local_file = Path(local_path)
+        if local_file.is_file():
+            try:
+                verify_file_sha256(
+                    local_file,
+                    expected=item.get("sha256"),
+                    repo_id=active_repo,
+                    filename=filename,
+                )
+            except ValueError as exc:
+                local_file.unlink(missing_ok=True)
+                raise ModelRuntimeError(
+                    status_code=500,
+                    detail=f"모델 파일 무결성 검증 실패 ({filename}): {exc}",
+                ) from exc
         if size <= 0:
             try:
                 size = Path(local_path).stat().st_size

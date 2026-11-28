@@ -652,5 +652,8 @@ describe("BrainGovernanceHub & 5 dedicated Brain UI panels", () => {
     expect(
       screen.getByText("No isolated entities or missing provenance detected."),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Brain Network" }));
+    expect(screen.getByTestId("brain-network-panel")).toBeInTheDocument();
   });
 });

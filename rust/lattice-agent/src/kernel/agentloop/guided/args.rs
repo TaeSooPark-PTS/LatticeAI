@@ -143,13 +143,31 @@ impl Runtime {
         let mut args = Map::new();
         let has_rag_evidence = entry.name == "final"
             && crate::kernel::transcript::rag_grounding::transcript_has_evidence(&ctx.transcript);
+        let synthesis_scaffold = if entry.name == "final" && profile.decomposed {
+            crate::kernel::agentloop::synthesis::build_evidence_scaffold(
+                &req.message,
+                &ctx.transcript,
+                1400,
+            )
+        } else {
+            String::new()
+        };
         let brief = if has_rag_evidence {
             let passages = crate::kernel::transcript::rag_grounding::extract_evidence_passages(
                 &ctx.transcript,
             );
             let card =
                 crate::kernel::transcript::rag_grounding::build_evidence_card(&passages, 1200);
-            format!("{}\n\n{card}", self.argument_brief(ctx, req))
+            if synthesis_scaffold.is_empty() {
+                format!("{}\n\n{card}", self.argument_brief(ctx, req))
+            } else {
+                format!(
+                    "{}\n\n{card}\n\n{synthesis_scaffold}",
+                    self.argument_brief(ctx, req)
+                )
+            }
+        } else if !synthesis_scaffold.is_empty() {
+            format!("{}\n\n{synthesis_scaffold}", self.argument_brief(ctx, req))
         } else {
             self.argument_brief(ctx, req)
         };

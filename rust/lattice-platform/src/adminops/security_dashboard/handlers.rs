@@ -377,13 +377,33 @@ fn file_id_of(f: &Value) -> String {
         .to_string()
 }
 
+fn file_visible_to(file: &Value, viewer_email: &str) -> bool {
+    let is_private = file
+        .get("visibility")
+        .and_then(Value::as_str)
+        .is_some_and(|v| v.trim().eq_ignore_ascii_case("private"));
+    if !is_private {
+        return true;
+    }
+    let owner = file
+        .get("user_email")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    match (owner, viewer_email.trim()) {
+        (Some(own), viewer) if !viewer.is_empty() => own.eq_ignore_ascii_case(viewer),
+        _ => true,
+    }
+}
+
 pub(crate) async fn security_files(
     State(state): State<SecurityState>,
     headers: HeaderMap,
 ) -> Result<Response, Response> {
-    require_admin(&state, &headers)?;
+    let (admin, _) = require_admin(&state, &headers)?;
     let files: Vec<Value> = file_events(&state)
         .iter()
+        .filter(|file| file_visible_to(file, &admin.email))
         .map(|file| {
             let mut value = redact_structure(file);
             if let Some(object) = value.as_object_mut() {
@@ -409,7 +429,10 @@ pub(crate) async fn security_file_detail(
 ) -> Result<Response, Response> {
     let (admin, _) = require_admin(&state, &headers)?;
     let files = file_events(&state);
-    let Some(target) = files.iter().find(|f| file_id_of(f) == file_id) else {
+    let Some(target) = files
+        .iter()
+        .find(|f| file_id_of(f) == file_id && file_visible_to(f, &admin.email))
+    else {
         return Err(detail_status(
             StatusCode::NOT_FOUND,
             "파일을 찾을 수 없습니다.",
@@ -452,7 +475,10 @@ pub(crate) async fn security_file_content(
 ) -> Result<Response, Response> {
     let (admin, _) = require_admin(&state, &headers)?;
     let files = file_events(&state);
-    let Some(target) = files.iter().find(|f| file_id_of(f) == file_id) else {
+    let Some(target) = files
+        .iter()
+        .find(|f| file_id_of(f) == file_id && file_visible_to(f, &admin.email))
+    else {
         return Err(detail_status(
             StatusCode::NOT_FOUND,
             "파일을 찾을 수 없습니다.",
@@ -490,7 +516,12 @@ pub(crate) async fn security_raw(
     let payload = match scope.as_str() {
         "audit" => Value::Array(events(&state)),
         "history" => Value::Array(history(&state)),
-        "files" => Value::Array(file_events(&state)),
+        "files" => Value::Array(
+            file_events(&state)
+                .into_iter()
+                .filter(|file| file_visible_to(file, &admin.email))
+                .collect(),
+        ),
         _ => {
             return Err(detail_status(
                 StatusCode::BAD_REQUEST,

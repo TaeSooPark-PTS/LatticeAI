@@ -6,16 +6,35 @@ const PARSEABLE_EXTS: &[&str] = &[
 const BINARY_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".doc", ".odt", ".epub"];
 const MARKUP_EXTS: &[&str] = &[".html", ".htm"];
 
+#[cfg(test)]
 pub(crate) fn unwrap_upload(headers: &HeaderMap, body: &[u8]) -> (String, Vec<u8>) {
+    let (name, bytes, _) = unwrap_upload_with_visibility(headers, body);
+    (name, bytes)
+}
+
+pub(crate) fn unwrap_upload_with_visibility(
+    headers: &HeaderMap,
+    body: &[u8],
+) -> (String, Vec<u8>, Option<String>) {
     let content_type = header_str(headers, "content-type");
     let hinted = filename_from_headers(headers);
-    if let Some((name, bytes)) = parse_multipart(&content_type, body) {
+    let header_vis = header_str(headers, "x-lattice-visibility");
+    let header_vis = lattice_core::graph_write::types::normalize_visibility(Some(&header_vis));
+    if let Some((name, bytes, form_vis)) = parse_multipart_with_visibility(&content_type, body) {
         let name = hinted.unwrap_or(name);
-        return (refine_filename(&sanitize_filename(&name), &bytes), bytes);
+        return (
+            refine_filename(&sanitize_filename(&name), &bytes),
+            bytes,
+            header_vis.or(form_vis),
+        );
     }
     let name = hinted.unwrap_or_else(|| "upload.bin".to_string());
     let bytes = body.to_vec();
-    (refine_filename(&sanitize_filename(&name), &bytes), bytes)
+    (
+        refine_filename(&sanitize_filename(&name), &bytes),
+        bytes,
+        header_vis,
+    )
 }
 
 pub(crate) fn needs_parse(filename: &str, bytes: &[u8]) -> bool {
@@ -187,7 +206,15 @@ fn sniff_office_zip(bytes: &[u8]) -> &'static str {
     }
 }
 
+#[cfg(test)]
 fn parse_multipart(content_type: &str, body: &[u8]) -> Option<(String, Vec<u8>)> {
+    parse_multipart_with_visibility(content_type, body).map(|(name, data, _)| (name, data))
+}
+
+fn parse_multipart_with_visibility(
+    content_type: &str,
+    body: &[u8],
+) -> Option<(String, Vec<u8>, Option<String>)> {
     if !content_type
         .to_ascii_lowercase()
         .starts_with("multipart/form-data")
@@ -206,7 +233,9 @@ fn parse_multipart(content_type: &str, body: &[u8]) -> Option<(String, Vec<u8>)>
     let delimiter = format!("--{boundary}");
     let delim = delimiter.as_bytes();
     let mut rest = body;
+    let mut primary: Option<(String, Vec<u8>)> = None;
     let mut fallback: Option<(String, Vec<u8>)> = None;
+    let mut visibility: Option<String> = None;
     while let Some(pos) = find_bytes(rest, delim) {
         rest = &rest[pos + delim.len()..];
         if rest.starts_with(b"--") {
@@ -226,18 +255,23 @@ fn parse_multipart(content_type: &str, body: &[u8]) -> Option<(String, Vec<u8>)>
             data.pop();
         }
         let (field, filename) = part_identity(&headers);
-        if filename.is_some() || field.as_deref() == Some("file") {
-            let name = filename.unwrap_or_else(|| "upload.bin".into());
-            if field.as_deref() == Some("file") {
-                return Some((name, data));
+        if field.as_deref() == Some("visibility") && filename.is_none() {
+            if let Ok(raw_vis) = std::str::from_utf8(&data) {
+                visibility = lattice_core::graph_write::types::normalize_visibility(Some(raw_vis));
             }
-            if fallback.is_none() {
+        } else if filename.is_some() || field.as_deref() == Some("file") {
+            let name = filename.unwrap_or_else(|| "upload.bin".into());
+            if field.as_deref() == Some("file") && primary.is_none() {
+                primary = Some((name, data));
+            } else if fallback.is_none() {
                 fallback = Some((name, data));
             }
         }
         rest = after_headers;
     }
-    fallback
+    primary
+        .or(fallback)
+        .map(|(name, data)| (name, data, visibility))
 }
 
 fn split_headers(body: &[u8]) -> Option<(String, &[u8])> {

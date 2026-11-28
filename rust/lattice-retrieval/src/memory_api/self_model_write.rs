@@ -438,7 +438,13 @@ async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal>
         .and_then(Value::as_i64)
         .unwrap_or(5)
         .max(0) as usize;
-    let candidates = extract(text, source);
+    let (candidates, refiner_used) = super::self_model_refiner::collect_candidates(
+        state.seam(),
+        text,
+        source,
+        super::self_model_refiner::refiner_enabled(),
+    )
+    .await;
 
     let scope: Option<BTreeSet<String>> = workspace_id
         .clone()
@@ -520,6 +526,7 @@ async fn propose(state: &BrainState, args: &Value) -> Result<Value, SeamRefusal>
         "proposed": proposed,
         "proposed_count": proposed.len(),
         "suppressed": suppressed,
+        "refiner_used": refiner_used,
         "generated_at": state.now(),
     }))
 }

@@ -3,7 +3,9 @@ use lattice_core::graph_write::types::{ChunkPiece, ExtractReply, SuppliedVector}
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
 
-pub(crate) use super::upload_parse::{encode_base64, mime_hint, needs_parse, unwrap_upload};
+pub(crate) use super::upload_parse::{
+    encode_base64, mime_hint, needs_parse, unwrap_upload_with_visibility,
+};
 
 pub(crate) const EXTRACT_PATH: &str = "/worker/extract";
 pub(crate) const EMBED_PATH: &str = "/worker/embed";

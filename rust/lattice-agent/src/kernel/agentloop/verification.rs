@@ -312,7 +312,7 @@ impl Runtime {
                     None => "작업이 완료되었습니다.".into(),
                 };
             }
-            if Self::settle_answer(ctx, req, &self.deps.file_create_actions) {
+            if self.settle_answer(ctx, req, &self.deps.file_create_actions) {
                 return Ok(());
             }
             ctx.state = AgentState::Done;
@@ -388,7 +388,7 @@ impl Runtime {
                         _ => "작업이 완료되었습니다.".into(),
                     };
                 }
-                if Self::settle_answer(ctx, req, &self.deps.file_create_actions) {
+                if self.settle_answer(ctx, req, &self.deps.file_create_actions) {
                     return Ok(());
                 }
                 ctx.state = AgentState::Done;
@@ -444,6 +444,7 @@ impl Runtime {
     }
 
     fn settle_answer(
+        &self,
         ctx: &mut AgentRunContext,
         req: &RunRequest,
         file_create_actions: &BTreeSet<String>,
@@ -509,6 +510,38 @@ impl Runtime {
                 );
                 Self::hold_for_review(ctx, req, file_create_actions, &caveat);
                 return true;
+            }
+        }
+        let review_model = ctx.reviewing_model.clone().or(req.reviewing_model.clone());
+        let exec_model = ctx.executing_model.clone().or(req.executing_model.clone());
+        if (self.profile(review_model.as_deref()).decomposed
+            || self.profile(exec_model.as_deref()).decomposed)
+            && !crate::kernel::transcript::rag_grounding::is_abstention(&ctx.final_message)
+        {
+            let sources =
+                crate::kernel::agentloop::synthesis::collect_evidence_sources(&ctx.transcript, 8);
+            if sources.len() >= 2 {
+                let coverage = crate::kernel::agentloop::synthesis::check_synthesis_coverage(
+                    &ctx.final_message,
+                    &sources,
+                );
+                if !coverage.is_complete() {
+                    ctx.trace.decision(
+                        "verify",
+                        "needs_review_synthesis_coverage",
+                        &[("coverage", coverage.to_detail())],
+                    );
+                    let caveat = if coverage.missing_sources.is_empty() {
+                        "소형 모델 합성 답변의 형식이 완전하지 않아 검토가 필요합니다. 결과를 직접 확인해 주세요.".to_string()
+                    } else {
+                        format!(
+                            "답변이 수집된 일부 근거({})를 충분히 통합하지 못해 완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요.",
+                            coverage.missing_sources.join(", ")
+                        )
+                    };
+                    Self::hold_for_review(ctx, req, file_create_actions, &caveat);
+                    return true;
+                }
             }
         }
         false
